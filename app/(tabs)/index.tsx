@@ -1,70 +1,73 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, {useState} from 'react';
+import {View, Text, TouchableOpacity} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import {useRouter} from 'expo-router';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useTheme} from '@/hooks/useTheme';
+import {createStyles} from './styles';
+import {moderateScale} from 'react-native-size-matters';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import RecitersView from '@/components/RecitersView';
+import SurahsView from '@/components/SurahsView';
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const {theme} = useTheme();
+  const styles = createStyles(theme);
+
+  const [activeView, setActiveView] = useState<'Reciters' | 'Surahs'>(
+    'Reciters',
+  );
+
+  const handleToggle = (option: 'Reciters' | 'Surahs') => {
+    setActiveView(option);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Home</Text>
+        <TouchableOpacity
+          style={styles.settingsIcon}
+          onPress={() => router.push('/(modals)/settings')}>
+          <Icon
+            name="settings-sharp"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            activeView === 'Reciters' && styles.activeToggleButton,
+          ]}
+          onPress={() => handleToggle('Reciters')}>
+          <Text
+            style={[
+              styles.toggleButtonText,
+              activeView === 'Reciters' && styles.activeToggleButtonText,
+            ]}>
+            Reciters
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            activeView === 'Surahs' && styles.activeToggleButton,
+          ]}
+          onPress={() => handleToggle('Surahs')}>
+          <Text
+            style={[
+              styles.toggleButtonText,
+              activeView === 'Surahs' && styles.activeToggleButtonText,
+            ]}>
+            Surahs
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {activeView === 'Reciters' ? <RecitersView /> : <SurahsView />}
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

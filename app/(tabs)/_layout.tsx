@@ -1,37 +1,28 @@
-import { Tabs } from 'expo-router';
+/* eslint-disable react/no-unstable-nested-components */
 import React from 'react';
+import {Tabs} from 'expo-router';
+// import {FloatingPlayer} from '@/components/FloatingPlayer';
+import BottomTabBar from '@/components/BottomTabBar';
+import {useTheme} from '@/hooks/useTheme';
 
-import { TabBarIcon } from '@/components/navigation/TabBarIcon';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function TabsLayout() {
+  const {theme} = useTheme();
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} />
-          ),
+    <>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: theme.colors.background,
+          },
         }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+        tabBar={props => <BottomTabBar {...props} />}>
+        <Tabs.Screen name="index" options={{title: 'Home'}} />
+        <Tabs.Screen name="search" options={{title: 'Search'}} />
+        <Tabs.Screen name="library" options={{title: 'Library'}} />
+      </Tabs>
+      {/* <FloatingPlayer /> */}
+    </>
   );
 }
