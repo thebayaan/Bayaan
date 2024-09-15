@@ -1,0 +1,215 @@
+import {
+  ScaledSheet,
+  moderateScale,
+  verticalScale,
+} from 'react-native-size-matters';
+import {Theme} from '@/styles/theme';
+
+export const createStyles = (theme: Theme) =>
+  ScaledSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    content: {
+      flex: 1,
+      justifyContent: 'flex-start',
+      paddingHorizontal: moderateScale(20),
+      paddingTop: verticalScale(80),
+    },
+    title: {
+      fontSize: moderateScale(24),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      marginBottom: verticalScale(20),
+    },
+    inputContainer: {
+      marginBottom: verticalScale(15),
+      position: 'relative',
+    },
+    input: {
+      height: verticalScale(45),
+      borderRadius: moderateScale(8),
+      paddingHorizontal: moderateScale(10),
+      color: theme.colors.text,
+      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(16),
+    },
+    eyeIcon: {
+      position: 'relative',
+      right: moderateScale(10),
+      top: verticalScale(13),
+      color: theme.colors.light,
+      fontSize: moderateScale(24),
+    },
+    errorText: {
+      color: theme.colors.error,
+      marginBottom: verticalScale(10),
+      fontSize: moderateScale(14),
+    },
+    button: {
+      marginBottom: verticalScale(15),
+      borderWidth: moderateScale(2),
+      borderColor: 'transparent',
+    },
+    buttonText: {
+      fontSize: moderateScale(20),
+    },
+    buttonDisabled: {
+      backgroundColor: theme.colors.background,
+      borderColor: theme.colors.light,
+    },
+    buttonTextDisabled: {
+      color: theme.colors.textSecondary,
+    },
+    linkContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: verticalScale(15),
+    },
+    linkText: {
+      color: theme.colors.textSecondary,
+      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(12),
+    },
+    link: {
+      color: theme.colors.primary,
+      fontFamily: theme.fonts.bold,
+      fontSize: moderateScale(12),
+      fontWeight: 'bold',
+    },
+    inputOverride: {
+      height: verticalScale(35),
+      fontSize: moderateScale(14),
+      placeholderTextColor: theme.colors.light,
+      borderColor: theme.colors.border,
+      iconColor: theme.colors.light,
+      backgroundColor: theme.colors.backgroundSecondary,
+      borderWidth: moderateScale(0.3),
+    },
+    forgotPassword: {
+      color: theme.colors.primary,
+      fontFamily: theme.fonts.regular,
+      marginBottom: verticalScale(15),
+      fontSize: moderateScale(12),
+      textAlign: 'left',
+      paddingLeft: moderateScale(4),
+      fontWeight: 'bold',
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: verticalScale(20),
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.colors.light,
+    },
+    dividerText: {
+      color: theme.colors.textSecondary,
+      paddingHorizontal: moderateScale(10),
+      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(16),
+    },
+    socialButton: {
+      flexDirection: 'row',
+      height: verticalScale(38),
+      marginBottom: verticalScale(15),
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+      borderRadius: moderateScale(8),
+      backgroundColor: '#FFFFFF',
+      // width: '100%',
+    },
+    socialButtonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    appleIcon: {
+      width: moderateScale(36),
+      height: moderateScale(36),
+      marginRight: moderateScale(4),
+    },
+    googleIcon: {
+      width: moderateScale(20),
+      height: moderateScale(20),
+      marginRight: moderateScale(12),
+    },
+    socialButtonText: {
+      // color: '#000000',
+      fontSize: moderateScale(18),
+    },
+    codeContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: verticalScale(30),
+    },
+    codeInput: {
+      width: moderateScale(40),
+      height: moderateScale(43),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderRadius: moderateScale(4),
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontSize: moderateScale(24),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    codeInputFilled: {
+      borderColor: theme.colors.accent,
+    },
+    subtitle: {
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      marginBottom: verticalScale(30),
+    },
+    resendCode: {
+      color: theme.colors.primary,
+      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(12),
+      textAlign: 'center',
+      marginTop: verticalScale(20),
+    },
+    logo: {
+      width: moderateScale(100),
+      height: moderateScale(100),
+      marginBottom: moderateScale(theme.spacing.unit * 2),
+      alignSelf: 'center',
+    },
+    welcomeText: {
+      fontSize: moderateScale(24),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      marginBottom: moderateScale(theme.spacing.unit),
+      textAlign: 'center',
+    },
+    subText: {
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      marginBottom: moderateScale(theme.spacing.unit * 3),
+      textAlign: 'center',
+    },
+    buttonIcon: {
+      marginRight: moderateScale(theme.spacing.unit),
+    },
+    forgotPasswordContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: moderateScale(theme.spacing.unit * 2),
+      marginLeft: moderateScale(4),
+    },
+  });

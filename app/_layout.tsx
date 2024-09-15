@@ -1,37 +1,92 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+/* eslint-disable react-native/no-inline-styles */
+import React, {useEffect, useState} from 'react';
+import {Stack, useRouter} from 'expo-router';
+import {View, Text} from 'react-native';
+import {AudioPlayerProvider} from '@/contexts/AudioPlayerContext';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {StatusBar} from 'expo-status-bar';
+import {ThemeProvider} from '@/contexts/ThemeContext';
+import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+import {useAuthStore} from '@/store/authStore';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  const [fontsLoaded] = useFonts({
+    SurahNames: require('@/assets/fonts/surah_names.ttf'),
   });
+  const {session, isLoading, initializeAuth} = useAuthStore();
+  const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    async function prepare() {
+      try {
+        await SplashScreen.preventAutoHideAsync();
+        await initializeAuth();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setIsReady(true);
+      }
     }
-  }, [loaded]);
+    prepare();
+  }, [initializeAuth]);
 
-  if (!loaded) {
-    return null;
+  useEffect(() => {
+    if (isReady && fontsLoaded && !isLoading) {
+      SplashScreen.hideAsync();
+      if (session) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(auth)/welcome');
+      }
+    }
+  }, [isReady, fontsLoaded, isLoading, session, router]);
+
+  if (!isReady || !fontsLoaded || isLoading) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+        <Text>Loading...</Text>
+      </View>
+    );
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+    <ThemeProvider>
+      <GestureHandlerRootView style={{flex: 1}}>
+        <StatusBar style="auto" />
+        <AudioPlayerProvider>
+          <Stack screenOptions={{headerShown: false}}>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="(modals)/settings"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="player"
+              options={{
+                presentation: 'card',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+                animationDuration: 400,
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="(modals)/setting-item-playground"
+              options={{
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+                headerShown: false,
+              }}
+            />
+          </Stack>
+        </AudioPlayerProvider>
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }
