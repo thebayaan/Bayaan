@@ -26,7 +26,7 @@ export const createStyles = (theme: Theme) =>
     searchBoxContainer: {
       backgroundColor: theme.colors.background,
       marginHorizontal: moderateScale(15),
-      marginBottom: verticalScale(10),
+      marginBottom: verticalScale(2),
       marginTop: verticalScale(10),
     },
     resultsContainer: {
@@ -46,11 +46,11 @@ export const createStyles = (theme: Theme) =>
     placeholderSectionTitle: {
       fontSize: moderateScale(14),
       color: theme.colors.textSecondary,
-      marginTop: verticalScale(20),
+      marginTop: verticalScale(5),
       marginBottom: verticalScale(10),
     },
     searchSuggestionsContainer: {
-      marginTop: verticalScale(20),
+      marginTop: verticalScale(10),
     },
     searchItem: {
       flexDirection: 'row',
@@ -78,7 +78,7 @@ export const createStyles = (theme: Theme) =>
     },
     subtitle: {
       fontSize: moderateScale(16),
-      marginBottom: verticalScale(20),
+      marginBottom: verticalScale(10),
     },
     toggleContainer: {
       flexDirection: 'row',
@@ -103,5 +103,25 @@ export const createStyles = (theme: Theme) =>
     },
     activeToggleButtonText: {
       color: theme.colors.text,
+    },
+    suggestionsContainer: {
+      marginTop: verticalScale(2),
+      marginBottom: verticalScale(2),
+    },
+    suggestionRow: {},
+    suggestionRowContent: {
+      paddingHorizontal: moderateScale(15),
+    },
+    suggestionButton: {
+      marginRight: moderateScale(8),
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: verticalScale(4),
+      borderRadius: moderateScale(16),
+      borderWidth: moderateScale(0.6),
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.background,
+    },
+    suggestionButtonText: {
+      fontSize: moderateScale(14),
     },
   });

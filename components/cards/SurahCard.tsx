@@ -66,19 +66,19 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       alignItems: 'center',
     },
     arabicName: {
-      fontSize: moderateScale(32),
+      fontSize: moderateScale(25),
       color: theme.colors.text,
       textAlign: 'center',
       fontFamily: 'SurahNames',
       marginBottom: moderateScale(10),
     },
     name: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(10),
       color: theme.colors.text,
       textAlign: 'center',
     },
     translatedName: {
-      fontSize: moderateScale(10),
+      fontSize: moderateScale(8),
       color: theme.colors.textSecondary,
       textAlign: 'center',
     },

@@ -3,17 +3,13 @@ import {View, Text, ScrollView, FlatList, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {SurahCard} from './cards/SurahCard';
+import {SURAHS, Surah} from '@/data/surahData';
 
-// This is dummy data. Replace it with actual data from your API or database.
-const dummySurahs = [
-  {id: 1, name: 'Al-Fatihah', translatedName: 'The Opener'},
-  {id: 2, name: 'Al-Baqarah', translatedName: 'The Cow'},
-  {id: 3, name: "Ali'Imran", translatedName: 'Family of Imran'},
-  {id: 4, name: 'An-Nisa', translatedName: 'The Women'},
-  {id: 5, name: "Al-Ma'idah", translatedName: 'The Table Spread'},
-];
+interface SurahsViewProps {
+  onSurahPress: (surah: Surah) => void;
+}
 
-export default function SurahsView() {
+export default function SurahsView({onSurahPress}: SurahsViewProps) {
   const {theme} = useTheme();
 
   const styles = StyleSheet.create({
@@ -32,25 +28,16 @@ export default function SurahsView() {
     },
   });
 
-  const handleSurahPress = (surahId: number) => {
-    console.log(`Surah pressed: ${surahId}`);
-    // Navigate to surah details or start playing
-  };
-
-  const renderSurahCard = ({
-    item,
-  }: {
-    item: {id: number; name: string; translatedName: string};
-  }) => (
+  const renderSurahCard = ({item}: {item: Surah}) => (
     <SurahCard
       id={item.id}
       name={item.name}
-      translatedName={item.translatedName}
-      onPress={() => handleSurahPress(item.id)}
+      translatedName={item.translated_name_english}
+      onPress={() => onSurahPress(item)}
     />
   );
 
-  const renderSection = (title: string, data: typeof dummySurahs) => (
+  const renderSection = (title: string, data: Surah[]) => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <FlatList
@@ -66,10 +53,10 @@ export default function SurahsView() {
 
   return (
     <ScrollView style={styles.container}>
-      {renderSection('Recents', dummySurahs)}
-      {renderSection('Surah of the Day', [dummySurahs[0]])}
-      {renderSection('Most Played', dummySurahs)}
-      {renderSection('From your Collection', dummySurahs)}
+      {renderSection('Recents', SURAHS.slice(0, 5))}
+      {renderSection('Surah of the Day', [SURAHS[0]])}
+      {renderSection('Most Played', SURAHS.slice(5, 10))}
+      {renderSection('From your Collection', SURAHS.slice(10, 15))}
     </ScrollView>
   );
 }

@@ -29,6 +29,7 @@ export default function SettingsModal() {
 
   const [downloadQuality, setDownloadQuality] = useState('high');
   const [language, setLanguage] = useState('en');
+  const [defaultReciter, setDefaultReciter] = useState<string | null>(null);
   const [currentSetting, setCurrentSetting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,6 +42,12 @@ export default function SettingsModal() {
 
     const storedLanguage = await AsyncStorage.getItem(LANGUAGE_KEY);
     if (storedLanguage) setLanguage(storedLanguage);
+
+    const storedDefaultReciter = await AsyncStorage.getItem('default_reciter');
+    if (storedDefaultReciter) {
+      const reciter = JSON.parse(storedDefaultReciter);
+      setDefaultReciter(reciter.name);
+    }
   };
 
   const handleDownloadQualityChange = async (quality: string) => {
@@ -224,6 +231,12 @@ export default function SettingsModal() {
             'language',
           )}
           {renderSettingItem(
+            'Default Reciter',
+            defaultReciter || 'Not set',
+            () => router.push('/setting-item-playground?type=defaultReciter'),
+            'person',
+          )}
+          {renderSettingItem(
             'About',
             '',
             () => router.push('/setting-item-playground?type=about'),
@@ -242,7 +255,7 @@ export default function SettingsModal() {
                 title="Log Out"
                 onPress={handleLogout}
                 style={styles.logoutButton}
-                textColor={theme.colors.error}
+                textColor={'#b00020'}
               />
             </View>
           )}
@@ -263,11 +276,10 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: moderateScale(15),
-      paddingVertical: verticalScale(10),
     },
     closeButton: {
       position: 'absolute',
-      right: moderateScale(15),
+      left: moderateScale(15),
       zIndex: 1,
     },
     headerTitle: {
@@ -319,7 +331,8 @@ const createStyles = (theme: Theme) =>
     logoutButton: {
       backgroundColor: theme.colors.background,
       borderWidth: moderateScale(0.8),
-      borderColor: theme.colors.error,
+      borderRadius: moderateScale(20),
+      borderColor: '#b00020',
       width: '50%',
     },
   });

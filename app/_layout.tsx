@@ -1,7 +1,6 @@
 /* eslint-disable react-native/no-inline-styles */
 import React, {useEffect, useState} from 'react';
 import {Stack, useRouter} from 'expo-router';
-import {View, Text} from 'react-native';
 import {AudioPlayerProvider} from '@/contexts/AudioPlayerContext';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {StatusBar} from 'expo-status-bar';
@@ -9,6 +8,7 @@ import {ThemeProvider} from '@/contexts/ThemeContext';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import {useAuthStore} from '@/store/authStore';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -43,50 +43,64 @@ export default function RootLayout() {
     }
   }, [isReady, fontsLoaded, isLoading, session, router]);
 
-  if (!isReady || !fontsLoaded || isLoading) {
-    return (
-      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
-
   return (
     <ThemeProvider>
-      <GestureHandlerRootView style={{flex: 1}}>
-        <StatusBar style="auto" />
-        <AudioPlayerProvider>
-          <Stack screenOptions={{headerShown: false}}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="(modals)/settings"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="player"
-              options={{
-                presentation: 'card',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-                animationDuration: 400,
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="(modals)/setting-item-playground"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                headerShown: false,
-              }}
-            />
-          </Stack>
-        </AudioPlayerProvider>
-      </GestureHandlerRootView>
+      {!isReady || !fontsLoaded || isLoading ? (
+        <LoadingIndicator />
+      ) : (
+        <GestureHandlerRootView style={{flex: 1}}>
+          <StatusBar style="auto" />
+          <AudioPlayerProvider>
+            <Stack screenOptions={{headerShown: false}}>
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="(modals)/settings"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="(modals)/select-reciter"
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen
+                name="(modals)/player"
+                options={{
+                  presentation: 'card',
+                  animation: 'slide_from_bottom',
+                  gestureEnabled: true,
+                  gestureDirection: 'vertical',
+                }}
+              />
+              <Stack.Screen
+                name="(modals)/setting-item-playground"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                }}
+              />
+              <Stack.Screen
+                name="reciter/[id]"
+                options={{
+                  presentation: 'card',
+                }}
+              />
+              <Stack.Screen
+                name="reciter-browse"
+                options={{
+                  presentation: 'card',
+                  animation: 'slide_from_right',
+                }}
+              />
+            </Stack>
+          </AudioPlayerProvider>
+        </GestureHandlerRootView>
+      )}
     </ThemeProvider>
   );
 }

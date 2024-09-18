@@ -6,7 +6,7 @@ import {CommonActions} from '@react-navigation/native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {HomeIcon, SearchIcon, LibraryIcon} from '@/components/Icons';
+import {HomeIcon, SearchIcon, CollectionIcon} from '@/components/Icons';
 
 const BottomTabBar: React.FC<BottomTabBarProps> = ({
   state,
@@ -19,8 +19,6 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   const styles = StyleSheet.create({
     container: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
       backgroundColor: theme.colors.card,
       shadowColor: '#000',
       shadowOffset: {
@@ -33,15 +31,14 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
     },
     content: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(20),
-      paddingVertical: moderateScale(10),
+      flex: 1,
+      paddingBottom: insets.bottom,
     },
     tabButton: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      paddingVertical: moderateScale(10),
     },
     tabText: {
       fontSize: moderateScale(12),
@@ -52,7 +49,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.content, {paddingBottom: insets.bottom}]}>
+      <View style={styles.content}>
         {state.routes.map((route, index) => {
           const {options} = descriptors[route.key];
           const label =
@@ -108,11 +105,11 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
                     size: iconSize,
                   },
                 };
-              case 'library':
+              case 'collection':
                 return {
-                  component: LibraryIcon,
+                  component: CollectionIcon,
                   props: {
-                    type: 'library' as const,
+                    type: 'collection' as const,
                     filled: isFocused,
                     color: isFocused
                       ? theme.colors.text

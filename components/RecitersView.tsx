@@ -3,23 +3,13 @@ import {View, Text, ScrollView, FlatList, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterCard} from './cards/ReciterCard';
+import {RECITERS, Reciter} from '@/data/reciterData';
 
-// Import test images
-const Image1 = require('@/assets/images/1.jpeg');
-const Image2 = require('@/assets/images/2.jpeg');
-const Image3 = require('@/assets/images/3.jpeg');
-const Image4 = require('@/assets/images/4.png');
-const Image5 = require('@/assets/images/5.jpeg');
+interface RecitersViewProps {
+  onReciterPress: (reciter: Reciter) => void;
+}
 
-const dummyReciters = [
-  {id: '1', image: Image1, name: 'Reciter 1', moshafName: 'Moshaf 1'},
-  {id: '2', image: Image2, name: 'Reciter 2', moshafName: 'Moshaf 2'},
-  {id: '3', image: Image3, name: 'Reciter 3', moshafName: 'Moshaf 3'},
-  {id: '4', image: Image4, name: 'Reciter 4', moshafName: 'Moshaf 4'},
-  {id: '5', image: Image5, name: 'Reciter 5', moshafName: 'Moshaf 5'},
-];
-
-export default function RecitersView() {
+export default function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
 
   const styles = StyleSheet.create({
@@ -38,21 +28,16 @@ export default function RecitersView() {
     },
   });
 
-  const handleReciterPress = (reciterId: string) => {
-    console.log(`Reciter pressed: ${reciterId}`);
-    // Navigate to reciter details or start playing
-  };
-
-  const renderReciterCard = ({item}: {item: (typeof dummyReciters)[0]}) => (
+  const renderReciterCard = ({item}: {item: Reciter}) => (
     <ReciterCard
-      image={item.image}
+      image={{uri: item.image_url}}
       name={item.name}
-      moshafName={item.moshafName}
-      onPress={() => handleReciterPress(item.id)}
+      moshafName={item.moshaf_name}
+      onPress={() => onReciterPress(item)}
     />
   );
 
-  const renderSection = (title: string, data: typeof dummyReciters) => (
+  const renderSection = (title: string, data: Reciter[]) => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <FlatList
@@ -68,10 +53,10 @@ export default function RecitersView() {
 
   return (
     <ScrollView style={styles.container}>
-      {renderSection('Recents', dummyReciters)}
-      {renderSection('Featured', dummyReciters)}
-      {renderSection('New', dummyReciters)}
-      {renderSection('From your Collection', dummyReciters)}
+      {renderSection('Recents', RECITERS.slice(0, 5))}
+      {renderSection('Featured', RECITERS.slice(5, 10))}
+      {renderSection('New', RECITERS.slice(10, 15))}
+      {renderSection('From your Collection', RECITERS.slice(15, 20))}
     </ScrollView>
   );
 }

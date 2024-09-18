@@ -5,9 +5,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageSourcePropType,
+  View,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {ProfileIcon} from '@/components/Icons';
 
 interface ReciterCardProps {
   image: ImageSourcePropType;
@@ -29,7 +31,7 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
       width: moderateScale(120),
       marginRight: moderateScale(10),
     },
-    image: {
+    imageContainer: {
       width: moderateScale(120),
       height: moderateScale(120),
       borderRadius: moderateScale(2),
@@ -37,6 +39,13 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.card,
       marginBottom: verticalScale(5),
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    image: {
+      width: '100%',
+      height: '100%',
     },
     name: {
       fontSize: moderateScale(14),
@@ -49,9 +58,17 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
     },
   });
 
+  const hasImage = image && (image as {uri?: string}).uri !== '';
+
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <Image source={image} style={styles.image} />
+      <View style={styles.imageContainer}>
+        {hasImage ? (
+          <Image source={image} style={styles.image} />
+        ) : (
+          <ProfileIcon color={theme.colors.light} size={moderateScale(75)} />
+        )}
+      </View>
       <Text style={styles.name} numberOfLines={1}>
         {name}
       </Text>
