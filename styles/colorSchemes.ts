@@ -11,7 +11,7 @@ export const lightColors = {
   light: '#d2d2d2',
   border: '#a4a4a4',
   shadow: '#000000',
-  error: '#d9c8fe',
+  error: '#b00020',
   card: '#edebe5',
   tertiary: '#5645a1',
 };
@@ -24,7 +24,7 @@ export const darkColors = {
   secondary: '#1c1a1e',
   accent: '#00623a',
   textSecondary: '#B0B0B0',
-  light: '#332f38',
+  light: '#605e63',
   border: '#332f38',
   shadow: '#000000',
   error: '#d9c8fe',

@@ -21,6 +21,7 @@ import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
+import {Button} from '@/components/Button';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -160,6 +161,39 @@ export default function SearchScreen() {
     ],
   );
 
+  const renderSuggestionButton = useCallback(
+    ({item}: {item: string}) => (
+      <Button
+        title={item}
+        onPress={() => setQuery(item)}
+        size="small"
+        style={styles.suggestionButton}
+        textStyle={styles.suggestionButtonText}
+        backgroundColor={theme.colors.card}
+        textColor={theme.colors.text}
+        borderWidth={1}
+        borderColor={theme.colors.border}
+      />
+    ),
+    [setQuery, styles, theme],
+  );
+
+  const renderSuggestionRow = useCallback(
+    ({item}: {item: string[]}) => (
+      <View style={styles.suggestionRow}>
+        <FlatList
+          data={item}
+          renderItem={renderSuggestionButton}
+          keyExtractor={suggestion => suggestion}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.suggestionRowContent}
+        />
+      </View>
+    ),
+    [renderSuggestionButton, styles],
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -183,6 +217,17 @@ export default function SearchScreen() {
           onChangeText={setQuery}
         />
       </View>
+      <View style={styles.suggestionsContainer}>
+        <FlatList
+          data={[
+            searchSuggestions.slice(0, Math.ceil(searchSuggestions.length / 2)),
+            searchSuggestions.slice(Math.ceil(searchSuggestions.length / 2)),
+          ]}
+          renderItem={renderSuggestionRow}
+          keyExtractor={(_, index) => `row-${index}`}
+          scrollEnabled={false}
+        />
+      </View>
       {query.length === 0 ? (
         <ScrollView style={styles.emptyContainer}>
           {recentSearches.length > 0 && (
@@ -198,17 +243,6 @@ export default function SearchScreen() {
               />
             </View>
           )}
-          <View style={styles.searchSuggestionsContainer}>
-            <Text style={styles.placeholderSectionTitle}>
-              TRY SEARCHING WITH
-            </Text>
-            <FlatList
-              data={searchSuggestions}
-              renderItem={renderSearchItem}
-              keyExtractor={item => item}
-              scrollEnabled={false}
-            />
-          </View>
         </ScrollView>
       ) : (
         <ScrollView style={styles.resultsContainer}>

@@ -5,8 +5,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Icon} from '@rneui/themed';
 import {Reciter} from '@/data/reciterData';
-
-const PLACEHOLDER_IMAGE = require('@/assets/images/placeholder_avatar.png');
+import {ProfileIcon} from '@/components/Icons';
 
 interface ReciterItemProps {
   item: Reciter;
@@ -20,12 +19,17 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
     const [moshafName1, moshafName2] = item.moshaf_name.split(' - ');
 
+    const hasImage = item.image_url && item.image_url !== '';
+
     return (
       <TouchableOpacity style={styles.reciterItem} onPress={handlePress}>
-        <Image
-          source={{uri: item.image_url || PLACEHOLDER_IMAGE}}
-          style={styles.reciterImage}
-        />
+        <View style={styles.imageContainer}>
+          {hasImage ? (
+            <Image source={{uri: item.image_url}} style={styles.reciterImage} />
+          ) : (
+            <ProfileIcon color={theme.colors.light} size={moderateScale(40)} />
+          )}
+        </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
           <View style={styles.moshafInfo}>
@@ -57,11 +61,19 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(10),
     },
-    reciterImage: {
+    imageContainer: {
       width: moderateScale(60),
       height: moderateScale(60),
       borderRadius: moderateScale(25),
       marginRight: moderateScale(15),
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden',
+      backgroundColor: theme.colors.card,
+    },
+    reciterImage: {
+      width: '100%',
+      height: '100%',
     },
     reciterInfo: {
       flex: 1,

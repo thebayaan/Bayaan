@@ -51,6 +51,7 @@ export const createStyles = (theme: Theme) =>
       marginBottom: verticalScale(15),
       borderWidth: moderateScale(2),
       borderColor: 'transparent',
+      borderRadius: moderateScale(20),
     },
     buttonText: {
       fontSize: moderateScale(20),
@@ -126,7 +127,7 @@ export const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
       elevation: 5,
-      borderRadius: moderateScale(8),
+      borderRadius: moderateScale(20),
       backgroundColor: '#FFFFFF',
       // width: '100%',
     },

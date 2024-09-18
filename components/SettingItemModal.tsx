@@ -44,7 +44,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
     },
     optionsContainer: {
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: moderateScale(20),
     },
     option: {
       paddingVertical: moderateScale(12),

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback} from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useRouter} from 'expo-router';
@@ -9,6 +9,8 @@ import {moderateScale} from 'react-native-size-matters';
 
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
+import {Reciter} from '@/data/reciterData';
+import {Surah} from '@/data/surahData';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -22,6 +24,26 @@ export default function HomeScreen() {
   const handleToggle = (option: 'Reciters' | 'Surahs') => {
     setActiveView(option);
   };
+
+  const handleReciterPress = useCallback(
+    (reciter: Reciter) => {
+      router.push({
+        pathname: '/reciter/[id]',
+        params: {id: reciter.id},
+      });
+    },
+    [router],
+  );
+
+  const handleSurahPress = useCallback(
+    (surah: Surah) => {
+      router.push({
+        pathname: '/(modals)/select-reciter',
+        params: {surahId: surah.id},
+      });
+    },
+    [router],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,7 +89,11 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-      {activeView === 'Reciters' ? <RecitersView /> : <SurahsView />}
+      {activeView === 'Reciters' ? (
+        <RecitersView onReciterPress={handleReciterPress} />
+      ) : (
+        <SurahsView onSurahPress={handleSurahPress} />
+      )}
     </SafeAreaView>
   );
 }
