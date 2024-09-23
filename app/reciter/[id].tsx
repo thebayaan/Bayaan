@@ -1,20 +1,24 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {View, Text, Image, TouchableOpacity, Animated} from 'react-native';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
+import {View, Text, TouchableOpacity, Animated} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './styles';
 import {Icon} from '@rneui/themed';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale} from 'react-native-size-matters';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 import {getReciterById, getAllSurahs} from '@/services/dataService';
-import {ProfileIcon} from '@/components/Icons';
 import {LinearGradient} from 'expo-linear-gradient';
 import SearchBar from '@/components/SearchBar';
 import {SurahItem} from '@/components/SurahItem';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {usePlayerStore} from '@/store/playerStore';
+import {ReciterImage} from '@/components/ReciterImage';
+import {Dimensions} from 'react-native';
+import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
+
 export default function ReciterProfile() {
   const router = useRouter();
   const {theme} = useTheme();
@@ -25,6 +29,7 @@ export default function ReciterProfile() {
   const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const insets = useSafeAreaInsets();
+  usePlayerStore();
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const scrollThreshold = 250;
@@ -35,6 +40,8 @@ export default function ReciterProfile() {
     extrapolate: 'clamp',
   });
 
+  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       if (typeof id === 'string') {
@@ -42,18 +49,30 @@ export default function ReciterProfile() {
         if (fetchedReciter) {
           setReciter(fetchedReciter);
           const allSurahs = await getAllSurahs();
-          const filteredSurahs = allSurahs.filter(
+          const surahsMatchingReciter = allSurahs.filter(
             surah =>
               fetchedReciter.surah_list?.includes(surah.id) ||
               fetchedReciter.surah_total === 114,
           );
-          setSurahs(filteredSurahs);
-          setFilteredSurahs(filteredSurahs);
+          setSurahs(surahsMatchingReciter);
+          setFilteredSurahs(surahsMatchingReciter);
         }
       }
     };
     fetchData();
   }, [id]);
+
+  useEffect(() => {
+    const listener = headerOpacity.addListener(({value}) => {
+      if (value === 1 && !isHeaderVisible) {
+        setIsHeaderVisible(true);
+      } else if (value < 1 && isHeaderVisible) {
+        setIsHeaderVisible(false);
+      }
+    });
+
+    return () => headerOpacity.removeListener(listener);
+  }, [headerOpacity, isHeaderVisible]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -68,20 +87,15 @@ export default function ReciterProfile() {
     setFilteredSurahs(filtered);
   };
 
-  const handleSurahPress = (surah: Surah) => {
-    router.push({
-      pathname: '/audio-player',
-      params: {
-        surahId: surah.id,
-        reciterId: id,
-        surahName: surah.name,
-        reciterName: reciter?.name || '',
-        audioUrl: '', // We'll generate this in the AudioPlayer component
-        // isFavorited: false,
-        currentPosition: 0,
-      },
-    });
-  };
+  const {navigateToPlayer} = usePlayerNavigation();
+
+  const handleSurahPress = useCallback(
+    async (surah: Surah) => {
+      if (!reciter) return;
+      await navigateToPlayer(reciter, surah.id.toString());
+    },
+    [reciter, navigateToPlayer],
+  );
 
   if (!reciter) {
     return (
@@ -91,7 +105,7 @@ export default function ReciterProfile() {
     );
   }
 
-  const hasImage = reciter.image_url && reciter.image_url !== '';
+  const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
   return (
     <View style={styles.container}>
@@ -102,19 +116,11 @@ export default function ReciterProfile() {
         )}
         scrollEventThrottle={16}>
         <View style={styles.headerContainer}>
-          {hasImage ? (
-            <Image
-              source={{uri: reciter.image_url}}
-              style={styles.reciterImage}
-            />
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <ProfileIcon
-                color={theme.colors.light}
-                size={moderateScale(200)}
-              />
-            </View>
-          )}
+          <ReciterImage
+            imageUrl={reciter.image_url}
+            width={SCREEN_WIDTH}
+            height={SCREEN_HEIGHT * 0.4}
+          />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.gradientOverlay}
@@ -169,16 +175,27 @@ export default function ReciterProfile() {
         ]}>
         <Text style={styles.stickyReciterName}>{reciter.name}</Text>
       </Animated.View>
-      <TouchableOpacity
-        onPress={() => router.back()}
-        style={[styles.backButton, {top: insets.top + verticalScale(10)}]}>
-        <Icon
-          name="arrow-left"
-          type="feather"
-          size={moderateScale(24)}
-          color={'white'}
-        />
-      </TouchableOpacity>
+      <Animated.View
+        style={[
+          styles.backButton,
+          {
+            backgroundColor: headerOpacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['rgba(0, 0, 0, 0.2)', 'transparent'],
+            }),
+            top: insets.top,
+            left: moderateScale(20),
+          },
+        ]}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Icon
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }

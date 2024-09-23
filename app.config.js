@@ -14,6 +14,7 @@ export default {
       eas: {
         projectId: 'e079f57f-241e-4180-a227-5d7da83c5d06',
       },
+      isDevelopmentMode: process.env.NODE_ENV === 'development',
     },
   },
 };

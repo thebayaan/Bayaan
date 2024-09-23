@@ -1,45 +1,52 @@
-import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
+import React, {useCallback, useMemo, useEffect, useState} from 'react';
 import {View, Text} from 'react-native';
 import {useRouter, useLocalSearchParams} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
-import BottomSheet, {BottomSheetBackdrop} from '@gorhom/bottom-sheet';
-import {BottomSheetDefaultBackdropProps} from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types';
-import {BottomSheetHandle} from '@gorhom/bottom-sheet';
-import {useReciterStore} from '@/store/useReciterStore';
+import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
+import {getSurahById} from '@/services/dataService';
+import {usePlayerStore} from '@/store/playerStore';
+import BottomSheetModal from '@/components/BottomSheetModal';
+import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 
 export default function SelectReciterModal() {
   const router = useRouter();
   const {surahId} = useLocalSearchParams<{surahId: string}>();
   const {theme} = useTheme();
-  const bottomSheetRef = useRef<BottomSheet>(null);
   const defaultReciter = useReciterStore(state => state.defaultReciter);
-  const [, setReciterName] = useState<string>('Default Reciter');
+  const [, setSurahName] = useState<string>('');
 
   useEffect(() => {
-    if (defaultReciter) {
-      setReciterName(defaultReciter.name);
+    const fetchSurahName = async () => {
+      if (surahId) {
+        const surahIdNumber = parseInt(surahId, 10);
+        if (!isNaN(surahIdNumber)) {
+          const surah = await getSurahById(surahIdNumber);
+          if (surah) {
+            setSurahName(surah.name);
+          }
+        }
+      }
+    };
+    fetchSurahName();
+  }, [surahId]);
+
+  const snapPoints = useMemo(() => ['45%'], []);
+
+  usePlayerStore();
+
+  const {navigateToPlayer} = usePlayerNavigation();
+
+  const handleUseDefaultReciter = useCallback(async () => {
+    if (defaultReciter && surahId) {
+      await navigateToPlayer(defaultReciter, surahId, true); // Use replace
     }
-  }, [defaultReciter]);
+  }, [defaultReciter, surahId, navigateToPlayer]);
 
-  const snapPoints = useMemo(() => ['50%'], []);
-
-  const handleUseDefaultReciter = useCallback(() => {
-    router.replace({
-      pathname: '/(modals)/player',
-      params: {
-        surahId,
-        reciterId: defaultReciter ? defaultReciter.id : 'default',
-      },
-    });
-  }, [router, surahId, defaultReciter]);
   const handleSheetClose = useCallback(() => {
     router.back();
-    requestAnimationFrame(() => {
-      bottomSheetRef.current?.close();
-    });
   }, [router]);
 
   const handleBrowseAllReciters = useCallback(() => {
@@ -62,29 +69,11 @@ export default function SelectReciterModal() {
     });
   }, [router, surahId, handleSheetClose]);
 
-  const renderBackdrop = useCallback(
-    (
-      props: React.JSX.IntrinsicAttributes & BottomSheetDefaultBackdropProps,
-    ) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
-  );
-
   return (
-    <BottomSheet
-      ref={bottomSheetRef}
-      index={0}
-      snapPoints={snapPoints}
-      backdropComponent={renderBackdrop}
-      backgroundStyle={{backgroundColor: theme.colors.background}}
-      enablePanDownToClose={true}
-      handleComponent={BottomSheetHandle}
-      onClose={handleSheetClose}>
+    <BottomSheetModal
+      isVisible={true}
+      onClose={handleSheetClose}
+      snapPoints={snapPoints}>
       <View style={createStyles(theme).contentContainer}>
         <Text style={[createStyles(theme).title, {color: theme.colors.text}]}>
           Select Reciter
@@ -117,7 +106,7 @@ export default function SelectReciterModal() {
           </Text>
         </Button>
       </View>
-    </BottomSheet>
+    </BottomSheetModal>
   );
 }
 

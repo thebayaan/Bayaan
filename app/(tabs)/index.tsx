@@ -2,7 +2,6 @@ import React, {useState, useCallback} from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useRouter} from 'expo-router';
-import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './styles';
 import {moderateScale} from 'react-native-size-matters';
@@ -11,12 +10,12 @@ import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
-
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 export default function HomeScreen() {
   const router = useRouter();
   const {theme} = useTheme();
   const styles = createStyles(theme);
-
+  const insets = useSafeAreaInsets();
   const [activeView, setActiveView] = useState<'Reciters' | 'Surahs'>(
     'Reciters',
   );
@@ -46,54 +45,58 @@ export default function HomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Home</Text>
-        <TouchableOpacity
-          style={styles.settingsIcon}
-          onPress={() => router.push('/(modals)/settings')}>
-          <Icon
-            name="settings-sharp"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            activeView === 'Reciters' && styles.activeToggleButton,
-          ]}
-          onPress={() => handleToggle('Reciters')}>
-          <Text
+    <View style={styles.container}>
+      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Home</Text>
+          <TouchableOpacity
+            style={styles.settingsIcon}
+            onPress={() => router.push('/(modals)/settings')}>
+            <Icon
+              name="settings-sharp"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
             style={[
-              styles.toggleButtonText,
-              activeView === 'Reciters' && styles.activeToggleButtonText,
-            ]}>
-            Reciters
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            activeView === 'Surahs' && styles.activeToggleButton,
-          ]}
-          onPress={() => handleToggle('Surahs')}>
-          <Text
+              styles.toggleButton,
+              activeView === 'Reciters' && styles.activeToggleButton,
+            ]}
+            onPress={() => handleToggle('Reciters')}>
+            <Text
+              style={[
+                styles.toggleButtonText,
+                activeView === 'Reciters' && styles.activeToggleButtonText,
+              ]}>
+              Reciters
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[
-              styles.toggleButtonText,
-              activeView === 'Surahs' && styles.activeToggleButtonText,
-            ]}>
-            Surahs
-          </Text>
-        </TouchableOpacity>
+              styles.toggleButton,
+              activeView === 'Surahs' && styles.activeToggleButton,
+            ]}
+            onPress={() => handleToggle('Surahs')}>
+            <Text
+              style={[
+                styles.toggleButtonText,
+                activeView === 'Surahs' && styles.activeToggleButtonText,
+              ]}>
+              Surahs
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      {activeView === 'Reciters' ? (
-        <RecitersView onReciterPress={handleReciterPress} />
-      ) : (
-        <SurahsView onSurahPress={handleSurahPress} />
-      )}
-    </SafeAreaView>
+      <View style={styles.contentContainer}>
+        {activeView === 'Reciters' ? (
+          <RecitersView onReciterPress={handleReciterPress} />
+        ) : (
+          <SurahsView onSurahPress={handleSurahPress} />
+        )}
+      </View>
+    </View>
   );
 }

@@ -52,12 +52,20 @@ export const createStyles = (theme: Theme) =>
       borderWidth: moderateScale(2),
       borderColor: 'transparent',
       borderRadius: moderateScale(20),
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     buttonText: {
       fontSize: moderateScale(20),
     },
     buttonDisabled: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.card,
       borderColor: theme.colors.light,
     },
     buttonTextDisabled: {
@@ -185,8 +193,8 @@ export const createStyles = (theme: Theme) =>
       marginTop: verticalScale(20),
     },
     logo: {
-      width: moderateScale(100),
-      height: moderateScale(100),
+      width: moderateScale(200),
+      height: moderateScale(200),
       marginBottom: moderateScale(theme.spacing.unit * 2),
       alignSelf: 'center',
     },

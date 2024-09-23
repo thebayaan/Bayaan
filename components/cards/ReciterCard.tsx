@@ -1,25 +1,18 @@
 import React from 'react';
-import {
-  Text,
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  ImageSourcePropType,
-  View,
-} from 'react-native';
+import {Text, TouchableOpacity, View, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
-import {ProfileIcon} from '@/components/Icons';
+import {ReciterImage} from '@/components/ReciterImage';
 
 interface ReciterCardProps {
-  image: ImageSourcePropType;
+  imageUrl?: string;
   name: string;
   moshafName: string;
   onPress: () => void;
 }
 
 export const ReciterCard: React.FC<ReciterCardProps> = ({
-  image,
+  imageUrl,
   name,
   moshafName,
   onPress,
@@ -34,18 +27,8 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
     imageContainer: {
       width: moderateScale(120),
       height: moderateScale(120),
-      borderRadius: moderateScale(2),
-      borderWidth: moderateScale(0.4),
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.card,
       marginBottom: verticalScale(5),
-      justifyContent: 'center',
-      alignItems: 'center',
       overflow: 'hidden',
-    },
-    image: {
-      width: '100%',
-      height: '100%',
     },
     name: {
       fontSize: moderateScale(14),
@@ -58,16 +41,10 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
     },
   });
 
-  const hasImage = image && (image as {uri?: string}).uri !== '';
-
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <View style={styles.imageContainer}>
-        {hasImage ? (
-          <Image source={image} style={styles.image} />
-        ) : (
-          <ProfileIcon color={theme.colors.light} size={moderateScale(75)} />
-        )}
+        <ReciterImage imageUrl={imageUrl} width={120} height={120} />
       </View>
       <Text style={styles.name} numberOfLines={1}>
         {name}

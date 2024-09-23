@@ -16,12 +16,12 @@ import Fuse from 'fuse.js';
 import {createStyles} from './styles';
 import SearchBar from '@/components/SearchBar';
 import {Icon} from '@rneui/themed';
-import {SafeAreaView} from 'react-native-safe-area-context';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {Button} from '@/components/Button';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -33,7 +33,7 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(true);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const router = useRouter();
-
+  const insets = useSafeAreaInsets();
   const [reciterFuse, setReciterFuse] = useState<Fuse<Reciter> | null>(null);
   const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
 
@@ -122,7 +122,7 @@ export default function SearchScreen() {
     (surah: Surah) => {
       addToRecentSearches(query);
       router.push({
-        pathname: '/surah/[id]',
+        pathname: '/(modals)/select-reciter',
         params: {id: surah.id, name: surah.name},
       });
     },
@@ -203,74 +203,80 @@ export default function SearchScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <View style={styles.header}>
-        <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-          Search
-        </Text>
+    <View style={styles.container}>
+      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
+            Search
+          </Text>
+        </View>
+        <View style={styles.searchBoxContainer}>
+          <SearchBar
+            placeholder="What do you want to listen to?"
+            value={query}
+            onChangeText={setQuery}
+          />
+        </View>
+        <View style={styles.suggestionsContainer}>
+          <FlatList
+            data={[
+              searchSuggestions.slice(
+                0,
+                Math.ceil(searchSuggestions.length / 2),
+              ),
+              searchSuggestions.slice(Math.ceil(searchSuggestions.length / 2)),
+            ]}
+            renderItem={renderSuggestionRow}
+            keyExtractor={(_, index) => `row-${index}`}
+            scrollEnabled={false}
+          />
+        </View>
       </View>
-      <View style={styles.searchBoxContainer}>
-        <SearchBar
-          placeholder="What do you want to listen to?"
-          value={query}
-          onChangeText={setQuery}
-        />
-      </View>
-      <View style={styles.suggestionsContainer}>
-        <FlatList
-          data={[
-            searchSuggestions.slice(0, Math.ceil(searchSuggestions.length / 2)),
-            searchSuggestions.slice(Math.ceil(searchSuggestions.length / 2)),
-          ]}
-          renderItem={renderSuggestionRow}
-          keyExtractor={(_, index) => `row-${index}`}
-          scrollEnabled={false}
-        />
-      </View>
-      {query.length === 0 ? (
-        <ScrollView style={styles.emptyContainer}>
-          {recentSearches.length > 0 && (
-            <View>
-              <Text style={styles.placeholderSectionTitle}>
-                RECENT SEARCHES
-              </Text>
-              <FlatList
-                data={recentSearches}
-                renderItem={renderSearchItem}
-                keyExtractor={item => item}
-                scrollEnabled={false}
-              />
-            </View>
-          )}
-        </ScrollView>
-      ) : (
-        <ScrollView style={styles.resultsContainer}>
-          {filteredSurahs.length > 0 && (
-            <View>
-              <Text style={styles.sectionTitle}>Surahs</Text>
-              {filteredSurahs.map(renderSurah)}
-            </View>
-          )}
-          {reciterResults.length > 0 && (
-            <View>
-              <Text style={styles.sectionTitle}>Reciters</Text>
-              {reciterResults.map(reciter => (
-                <ReciterItem
-                  key={reciter.id}
-                  item={reciter}
-                  onPress={handleReciterPress}
+      <View style={styles.contentContainer}>
+        {query.length === 0 ? (
+          <ScrollView style={styles.emptyContainer}>
+            {recentSearches.length > 0 && (
+              <View>
+                <Text style={styles.placeholderSectionTitle}>
+                  RECENT SEARCHES
+                </Text>
+                <FlatList
+                  data={recentSearches}
+                  renderItem={renderSearchItem}
+                  keyExtractor={item => item}
+                  scrollEnabled={false}
                 />
-              ))}
-            </View>
-          )}
-          {query.length > 0 &&
-            filteredSurahs.length === 0 &&
-            reciterResults.length === 0 && (
-              <Text style={styles.emptyText}>No results found.</Text>
+              </View>
             )}
-        </ScrollView>
-      )}
-    </SafeAreaView>
+          </ScrollView>
+        ) : (
+          <ScrollView style={styles.resultsContainer}>
+            {filteredSurahs.length > 0 && (
+              <View>
+                <Text style={styles.sectionTitle}>Surahs</Text>
+                {filteredSurahs.map(renderSurah)}
+              </View>
+            )}
+            {reciterResults.length > 0 && (
+              <View>
+                <Text style={styles.sectionTitle}>Reciters</Text>
+                {reciterResults.map(reciter => (
+                  <ReciterItem
+                    key={reciter.id}
+                    item={reciter}
+                    onPress={handleReciterPress}
+                  />
+                ))}
+              </View>
+            )}
+            {query.length > 0 &&
+              filteredSurahs.length === 0 &&
+              reciterResults.length === 0 && (
+                <Text style={styles.emptyText}>No results found.</Text>
+              )}
+          </ScrollView>
+        )}
+      </View>
+    </View>
   );
 }

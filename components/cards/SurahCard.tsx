@@ -53,7 +53,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       borderWidth: moderateScale(0.3),
       borderColor: theme.colors.border,
       marginRight: moderateScale(10),
-      marginTop: moderateScale(10),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
