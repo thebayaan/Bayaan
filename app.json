@@ -4,7 +4,7 @@
     "slug": "Bayaan",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app_icon.png",
     "scheme": "bayaan",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -14,13 +14,22 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.osmansaeday.Bayaan"
+      "bundleIdentifier": "com.osmansaeday.Bayaan",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app uses the microphone to play audio.",
+        "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
       "bundler": "metro",

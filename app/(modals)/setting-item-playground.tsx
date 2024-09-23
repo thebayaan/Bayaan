@@ -15,7 +15,7 @@ import {PrimaryColor, Theme} from '@/utils/themeUtils';
 import SearchBar from '@/components/SearchBar';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
-import {useReciterStore} from '@/store/useReciterStore';
+import {useReciterStore} from '@/store/reciterStore';
 
 export default function SettingItemPlayground() {
   const router = useRouter();

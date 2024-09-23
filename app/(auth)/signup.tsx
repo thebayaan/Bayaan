@@ -44,10 +44,14 @@ export default function SignUpScreen() {
           params: {email},
         });
       } else {
-        setError(signUpError || 'An error occurred during sign up');
+        setError(
+          signUpError || 'An error occurred during sign up. Please try again.',
+        );
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      setError(
+        'An unexpected error occurred. Please check your connection and try again.',
+      );
       console.error(err);
     }
   };
@@ -64,8 +68,11 @@ export default function SignUpScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          autoCorrect={false}
+          autoComplete="email"
           style={styles.inputOverride}
           iconColor={theme.colors.light}
+          returnKeyType="done"
         />
 
         <Input
@@ -77,6 +84,7 @@ export default function SignUpScreen() {
           onRightIconPress={() => setShowPassword(!showPassword)}
           style={styles.inputOverride}
           iconColor={theme.colors.light}
+          returnKeyType="done"
         />
 
         <Input
@@ -88,6 +96,7 @@ export default function SignUpScreen() {
           onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
           style={styles.inputOverride}
           iconColor={theme.colors.light}
+          returnKeyType="done"
         />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}

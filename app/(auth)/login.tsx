@@ -68,6 +68,8 @@ export default function LoginScreen() {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
           keyboardType="email-address"
           style={styles.inputOverride}
         />
@@ -80,6 +82,11 @@ export default function LoginScreen() {
           rightIcon={showPassword ? 'eye' : 'eyeo'}
           onRightIconPress={() => setShowPassword(!showPassword)}
           style={styles.inputOverride}
+          onSubmitEditing={handleLogin}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="password"
+          returnKeyType="done"
         />
         <View style={styles.forgotPasswordContainer}>
           <Text style={styles.linkText}>FORGOT PASSWORD? — </Text>

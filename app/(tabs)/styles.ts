@@ -11,6 +11,21 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    headerContainer: {
+      backgroundColor: theme.colors.background,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 5,
+      zIndex: 1,
+    },
+    contentContainer: {
+      flex: 1,
+    },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -48,6 +63,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginTop: verticalScale(5),
       marginBottom: verticalScale(10),
+      zIndex: 1,
     },
     searchSuggestionsContainer: {
       marginTop: verticalScale(10),
@@ -78,7 +94,7 @@ export const createStyles = (theme: Theme) =>
     },
     subtitle: {
       fontSize: moderateScale(16),
-      marginBottom: verticalScale(10),
+      marginVertical: verticalScale(10),
     },
     toggleContainer: {
       flexDirection: 'row',
@@ -106,7 +122,7 @@ export const createStyles = (theme: Theme) =>
     },
     suggestionsContainer: {
       marginTop: verticalScale(2),
-      marginBottom: verticalScale(2),
+      marginBottom: verticalScale(10),
     },
     suggestionRow: {},
     suggestionRowContent: {
@@ -123,5 +139,40 @@ export const createStyles = (theme: Theme) =>
     },
     suggestionButtonText: {
       fontSize: moderateScale(14),
+    },
+    headerBorder: {
+      borderBottomWidth: 0.1,
+      borderBottomColor: theme.colors.border,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+      borderWidth: 0,
+      borderColor: 'transparent',
+      marginVertical: verticalScale(10),
+    },
+    surahItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(10),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    surahName: {
+      marginLeft: moderateScale(15),
+      fontSize: moderateScale(16),
+      color: theme.colors.text,
+    },
+    flatList: {
+      flex: 1,
+    },
+    surahGlyph: {
+      fontSize: moderateScale(40),
+      color: theme.colors.text,
+      fontFamily: 'SurahNames2',
     },
   });

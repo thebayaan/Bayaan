@@ -34,12 +34,12 @@ export const darkColors = {
 
 export const primaryColors = {
   Purple: '#5645a1',
-  Blue: '#007aff',
-  Green: '#00c851',
-  Red: '#ff4444',
-  Yellow: '#ffbb33',
-  Orange: '#ff9500',
-  Pink: '#ff41b4',
+  Blue: '#30aec6',
+  Green: '#253d0f',
+  Red: '#5c0700',
+  Yellow: '#f5ec00',
+  Orange: '#ad3d00',
+  Pink: '#d257fe',
 };
 
 export type ColorScheme = typeof lightColors & {primary: string};

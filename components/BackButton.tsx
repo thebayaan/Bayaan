@@ -4,6 +4,7 @@ import {Icon} from '@rneui/themed';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useNavigation} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface BackButtonProps {
   onPress?: () => void;
@@ -18,6 +19,7 @@ export const BackButton: React.FC<BackButtonProps> = ({
 }) => {
   const {theme} = useTheme();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const handlePress = () => {
     if (onPress) {
@@ -28,7 +30,9 @@ export const BackButton: React.FC<BackButtonProps> = ({
   };
 
   return (
-    <TouchableOpacity style={[styles.backButton, style]} onPress={handlePress}>
+    <TouchableOpacity
+      style={[styles.backButton, style, {marginLeft: insets.left}]}
+      onPress={handlePress}>
       <Icon
         name="chevron-left"
         type="feather"

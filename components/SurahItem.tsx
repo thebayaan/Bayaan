@@ -42,10 +42,10 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           <IconComponent
             size={
               revelationPlace === 'makkah'
-                ? moderateScale(14)
-                : moderateScale(18)
+                ? moderateScale(18)
+                : moderateScale(25)
             }
-            color={theme.colors.textSecondary}
+            color={theme.colors.primary}
           />
         </View>
       </TouchableOpacity>

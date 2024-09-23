@@ -73,7 +73,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
               <Icon
                 name="close"
                 type="antdesign"
-                size={20}
+                size={moderateScale(20)}
                 color={theme.colors.text}
                 containerStyle={styles.clearIcon}
               />
@@ -104,13 +104,13 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.colors.backgroundSecondary,
-      borderRadius: theme.spacing.unit,
-      paddingHorizontal: theme.spacing.unit,
+      borderRadius: moderateScale(20),
+      paddingHorizontal: moderateScale(15),
       borderWidth: moderateScale(0.3),
       borderColor: theme.colors.border,
     },
     searchIcon: {
-      marginRight: theme.spacing.unit,
+      marginRight: moderateScale(10),
     },
     input: {
       flex: 1,
@@ -120,10 +120,10 @@ const createStyles = (theme: Theme) =>
       height: moderateScale(33),
     },
     clearIcon: {
-      marginLeft: theme.spacing.unit,
+      marginLeft: moderateScale(10),
     },
     cancelButton: {
-      marginLeft: theme.spacing.unit,
+      marginLeft: moderateScale(10),
     },
     cancelButtonText: {
       color: theme.colors.text,

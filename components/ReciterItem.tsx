@@ -1,11 +1,11 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, Image} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Icon} from '@rneui/themed';
 import {Reciter} from '@/data/reciterData';
-import {ProfileIcon} from '@/components/Icons';
+import {ReciterImage} from '@/components/ReciterImage';
 
 interface ReciterItemProps {
   item: Reciter;
@@ -19,16 +19,10 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
     const [moshafName1, moshafName2] = item.moshaf_name.split(' - ');
 
-    const hasImage = item.image_url && item.image_url !== '';
-
     return (
       <TouchableOpacity style={styles.reciterItem} onPress={handlePress}>
         <View style={styles.imageContainer}>
-          {hasImage ? (
-            <Image source={{uri: item.image_url}} style={styles.reciterImage} />
-          ) : (
-            <ProfileIcon color={theme.colors.light} size={moderateScale(40)} />
-          )}
+          <ReciterImage imageUrl={item.image_url} width={60} height={60} />
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
@@ -64,12 +58,13 @@ const createStyles = (theme: Theme) =>
     imageContainer: {
       width: moderateScale(60),
       height: moderateScale(60),
-      borderRadius: moderateScale(25),
       marginRight: moderateScale(15),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      backgroundColor: theme.colors.card,
+      borderRadius: moderateScale(20),
+      borderWidth: moderateScale(1),
+      borderColor: 'transparent',
     },
     reciterImage: {
       width: '100%',

@@ -17,6 +17,9 @@ export const createStyles = (theme: Theme) =>
     headerContainer: {
       height: SCREEN_HEIGHT * 0.4,
       width: '100%',
+      position: 'relative',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     imageContainer: {
       position: 'absolute',
@@ -48,12 +51,9 @@ export const createStyles = (theme: Theme) =>
     },
     backButton: {
       position: 'absolute',
-      top: moderateScale(50), // Increased top padding
-      left: moderateScale(20),
+      zIndex: 10,
       padding: moderateScale(10),
       borderRadius: moderateScale(20),
-      backgroundColor: 'rgba(0, 0, 0, 0.3)',
-      zIndex: 10, // Ensure it's above other elements
     },
     reciterInfoOverlay: {
       position: 'absolute',
@@ -64,12 +64,12 @@ export const createStyles = (theme: Theme) =>
     reciterName: {
       fontSize: moderateScale(24),
       fontWeight: 'bold',
-      color: theme.colors.background,
+      color: 'white',
       marginBottom: verticalScale(5),
     },
     reciterStyle: {
       fontSize: moderateScale(16),
-      color: theme.colors.background,
+      color: 'white',
     },
     contentContainer: {
       backgroundColor: theme.colors.background,
@@ -164,11 +164,19 @@ export const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       backgroundColor: theme.colors.background,
       zIndex: 1,
-      paddingTop: moderateScale(40),
-      paddingBottom: moderateScale(10),
+      paddingBottom: moderateScale(15),
       paddingHorizontal: moderateScale(10),
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     stickyReciterName: {
+      paddingTop: moderateScale(10),
       fontSize: moderateScale(16),
       fontWeight: 'bold',
       color: theme.colors.text,

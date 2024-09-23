@@ -6,25 +6,13 @@ const POSTMARK_FROM_EMAIL = Constants.expoConfig?.extra?.postmarkFromEmail;
 
 const client = new Postmark.ServerClient(POSTMARK_API_KEY);
 
-const POSTMARK_TEMPLATE_ALIAS = 'email-verification-bayaan';
+const POSTMARK_TEMPLATE_ALIAS = 'email-verification-bayaan-1';
 
 export async function sendVerificationEmail(
   to: string,
   verificationCode: string,
 ) {
   try {
-    // Check if the 'to' email is on the same domain as POSTMARK_FROM_EMAIL
-    const fromDomain = POSTMARK_FROM_EMAIL.split('@')[1];
-    const toDomain = to.split('@')[1];
-
-    if (fromDomain !== toDomain && !__DEV__) {
-      console.log(
-        `Test mode: Cannot send to ${to}. Logging verification code instead.`,
-      );
-      console.log(`Verification code for ${to}: ${verificationCode}`);
-      return;
-    }
-
     await client.sendEmailWithTemplate({
       From: POSTMARK_FROM_EMAIL,
       To: to,

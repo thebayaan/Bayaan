@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {View, Text, TouchableOpacity, FlatList} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -13,9 +13,12 @@ import SearchBar from '@/components/SearchBar';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
 import {Theme} from '@/utils/themeUtils';
+import {getSurahById} from '@/services/dataService';
+import {usePlayerStore} from '@/store/playerStore';
+import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 
 export default function ReciterBrowseScreen() {
-  const {view} = useLocalSearchParams<{
+  const {view, surahId} = useLocalSearchParams<{
     view: string;
     surahId: string;
   }>();
@@ -24,6 +27,23 @@ export default function ReciterBrowseScreen() {
   const [activeView, setActiveView] = useState(view);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredReciters, setFilteredReciters] = useState<Reciter[]>(RECITERS);
+  const [, setSurahName] = useState<string>('');
+  usePlayerStore();
+
+  useEffect(() => {
+    const fetchSurahName = async () => {
+      if (surahId) {
+        const surahIdNumber = parseInt(surahId, 10);
+        if (!isNaN(surahIdNumber)) {
+          const surah = await getSurahById(surahIdNumber);
+          if (surah) {
+            setSurahName(surah.name);
+          }
+        }
+      }
+    };
+    fetchSurahName();
+  }, [surahId]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -33,10 +53,18 @@ export default function ReciterBrowseScreen() {
     setFilteredReciters(filtered);
   }, []);
 
-  const handleReciterSelect = useCallback((reciter: Reciter) => {
-    // Implement reciter selection logic here
-    console.log('Selected reciter:', reciter);
-  }, []);
+  const {navigateToPlayer} = usePlayerNavigation();
+
+  const handleReciterSelect = useCallback(
+    async (reciter: Reciter) => {
+      if (!surahId) {
+        console.error('Missing surahId');
+        return;
+      }
+      await navigateToPlayer(reciter, surahId);
+    },
+    [surahId, navigateToPlayer],
+  );
 
   return (
     <SafeAreaView
@@ -51,7 +79,7 @@ export default function ReciterBrowseScreen() {
           <Icon
             name="arrow-left"
             type="feather"
-            size={moderateScale(24)}
+            size={moderateScale(20)}
             color={theme.colors.text}
           />
         </TouchableOpacity>
