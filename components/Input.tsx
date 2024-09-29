@@ -63,7 +63,7 @@ const createStyles = (theme: Theme) =>
     },
     input: {
       height: moderateScale(50),
-      borderWidth: moderateScale(0.5),
+      // borderWidth: moderateScale(0.5),
       borderColor: theme.colors.border,
       borderRadius: moderateScale(20),
       paddingHorizontal: moderateScale(15),

@@ -103,10 +103,9 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.card,
       borderRadius: moderateScale(20),
       paddingHorizontal: moderateScale(15),
-      borderWidth: moderateScale(0.3),
       borderColor: theme.colors.border,
     },
     searchIcon: {

@@ -1,12 +1,11 @@
 import React from 'react';
 import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
-import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
-import {Icon} from '@rneui/themed';
-import {CommonActions} from '@react-navigation/native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {HomeIcon, SearchIcon, CollectionIcon} from '@/components/Icons';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {CommonActions} from '@react-navigation/native';
+import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 
 const BottomTabBar: React.FC<BottomTabBarProps> = ({
   state,
@@ -14,12 +13,14 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   navigation,
 }) => {
   const {theme} = useTheme();
-  const iconSize = moderateScale(28, 0.3);
   const insets = useSafeAreaInsets();
+  const iconSize = moderateScale(28, 0.2);
+  const tabTextSize = moderateScale(12, 0.2);
+
   const styles = StyleSheet.create({
     container: {
       flexDirection: 'row',
-      backgroundColor: theme.colors.card,
+      backgroundColor: theme.colors.backgroundSecondary,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -28,24 +29,55 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
       shadowOpacity: 0.1,
       shadowRadius: 4,
       elevation: 5,
+      paddingBottom: insets.bottom,
     },
     content: {
       flexDirection: 'row',
       flex: 1,
-      paddingBottom: insets.bottom,
     },
     tabButton: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: moderateScale(10),
+      paddingTop: moderateScale(10),
     },
     tabText: {
-      fontSize: moderateScale(12),
+      fontSize: tabTextSize,
       marginTop: moderateScale(4),
       color: theme.colors.text,
     },
   });
+
+  const getIcon = (routeName: string, isFocused: boolean) => {
+    switch (routeName) {
+      case '(home)':
+        return (
+          <HomeIcon
+            filled={isFocused}
+            color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+            size={iconSize}
+          />
+        );
+      case '(search)':
+        return (
+          <SearchIcon
+            filled={isFocused}
+            color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+            size={iconSize}
+          />
+        );
+      case '(collection)':
+        return (
+          <CollectionIcon
+            filled={isFocused}
+            color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+            size={iconSize}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -74,77 +106,17 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
               );
             }
 
-            if (route.name === 'Search') {
+            if (route.name === 'search') {
               navigation.setParams({focusSearchBar: true});
             }
           };
-
-          const getIcon = () => {
-            switch (route.name) {
-              case 'index':
-                return {
-                  component: HomeIcon,
-                  props: {
-                    type: 'home' as const,
-                    filled: isFocused,
-                    color: isFocused
-                      ? theme.colors.text
-                      : theme.colors.textSecondary,
-                    size: iconSize,
-                  },
-                };
-              case 'search':
-                return {
-                  component: SearchIcon,
-                  props: {
-                    type: 'search' as const,
-                    filled: isFocused,
-                    color: isFocused
-                      ? theme.colors.text
-                      : theme.colors.textSecondary,
-                    size: iconSize,
-                  },
-                };
-              case 'collection':
-                return {
-                  component: CollectionIcon,
-                  props: {
-                    type: 'collection' as const,
-                    filled: isFocused,
-                    color: isFocused
-                      ? theme.colors.text
-                      : theme.colors.textSecondary,
-                    size: iconSize,
-                  },
-                };
-              default:
-                return {
-                  name: 'question',
-                  type: 'font-awesome',
-                  color: isFocused
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary,
-                };
-            }
-          };
-
-          const iconConfig = getIcon();
 
           return (
             <TouchableOpacity
               key={index}
               onPress={onPress}
               style={styles.tabButton}>
-              {iconConfig.component ? (
-                <iconConfig.component {...iconConfig.props} />
-              ) : (
-                <Icon
-                  name={iconConfig.name}
-                  type={iconConfig.type}
-                  color={iconConfig.color}
-                  size={24}
-                />
-              )}
+              {getIcon(route.name, isFocused)}
               <Text style={styles.tabText}>
                 {typeof label === 'string' ? label : ''}
               </Text>

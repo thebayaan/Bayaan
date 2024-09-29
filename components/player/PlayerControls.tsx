@@ -1,58 +1,81 @@
 import React from 'react';
 import {View, TouchableOpacity} from 'react-native';
-import {Icon} from '@rneui/themed';
+import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, ScaledSheet} from 'react-native-size-matters';
-import {usePlayerStore} from '@/store/playerStore';
+import {Icon} from '@rneui/themed';
 import TrackPlayer from 'react-native-track-player';
+import {usePlayerStore} from '@/store/playerStore';
 
-const PlayerControls = () => {
+const PlayerControls: React.FC = () => {
   const {theme} = useTheme();
-  const {isPlaying, togglePlayback} = usePlayerStore();
+  const styles = createStyles();
+  const {isPlaying, togglePlayback, seekTo, skipToNext} = usePlayerStore();
 
-  const skipBackward = async () => {
-    try {
-      const progress = await TrackPlayer.getProgress();
-      await TrackPlayer.seekTo(Math.max(0, progress.position - 10));
-    } catch (error) {
-      console.error('Error skipping backward:', error);
-    }
+  const handlePlayPause = async () => {
+    await togglePlayback();
   };
 
-  const skipForward = async () => {
-    try {
-      const progress = await TrackPlayer.getProgress();
-      await TrackPlayer.seekTo(
-        Math.min(progress.duration, progress.position + 10),
-      );
-    } catch (error) {
-      console.error('Error skipping forward:', error);
-    }
+  const handlePrevious = async () => {
+    await TrackPlayer.skipToPrevious();
+  };
+
+  const handleNext = async () => {
+    await skipToNext();
+  };
+
+  const handleSeekBackward = async () => {
+    const position = await TrackPlayer.getPosition();
+    await seekTo(Math.max(0, position - 15));
+  };
+
+  const handleSeekForward = async () => {
+    const position = await TrackPlayer.getPosition();
+    await seekTo(position + 15);
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={skipBackward}>
+      <TouchableOpacity onPress={handlePrevious}>
         <Icon
-          name="replay-10"
-          type="material"
-          size={moderateScale(40)}
+          name="controller-jump-to-start"
+          type="entypo"
+          size={moderateScale(24)}
           color={theme.colors.text}
         />
       </TouchableOpacity>
-      <TouchableOpacity onPress={togglePlayback} style={styles.playPauseButton}>
+      <View style={styles.centerControls}>
+        <TouchableOpacity onPress={handleSeekBackward}>
+          <Icon
+            name="rewind-15"
+            type="material-community"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.playPauseButton}
+          onPress={handlePlayPause}>
+          <Icon
+            name={isPlaying ? 'controller-paus' : 'controller-play'}
+            type="entypo"
+            size={moderateScale(40)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleSeekForward}>
+          <Icon
+            name="fast-forward-15"
+            type="material-community"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity onPress={handleNext}>
         <Icon
-          name={isPlaying ? 'pause' : 'play-arrow'}
-          type="material"
-          size={moderateScale(50)}
-          color={theme.colors.text}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={skipForward}>
-        <Icon
-          name="forward-10"
-          type="material"
-          size={moderateScale(40)}
+          name="controller-next"
+          type="entypo"
+          size={moderateScale(24)}
           color={theme.colors.text}
         />
       </TouchableOpacity>
@@ -60,18 +83,28 @@ const PlayerControls = () => {
   );
 };
 
-const styles = ScaledSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-    width: '100%',
-  },
-  playPauseButton: {
-    backgroundColor: 'primary',
-    borderRadius: 30,
-    padding: 10,
-  },
-});
+// Styles remain unchanged
+const createStyles = () =>
+  ScaledSheet.create({
+    container: {
+      flexDirection: 'row',
+      justifyContent: 'space-evenly',
+      alignItems: 'center',
+      width: '100%',
+    },
+    centerControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    playPauseButton: {
+      backgroundColor: 'transparent',
+      borderRadius: moderateScale(32),
+      width: moderateScale(64),
+      height: moderateScale(64),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginHorizontal: moderateScale(24),
+    },
+  });
 
 export default PlayerControls;

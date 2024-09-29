@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, ViewStyle, StyleProp} from 'react-native';
 import FastImage from 'react-native-fast-image';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
@@ -7,20 +7,17 @@ import {ProfileIcon} from '@/components/Icons';
 
 interface ReciterImageProps {
   imageUrl?: string;
-  width?: number;
-  height?: number;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({imageUrl, width = 120, height = 120}) => {
+  ({imageUrl, style}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
       () =>
         StyleSheet.create({
           container: {
-            width: moderateScale(width),
-            height: moderateScale(height),
             borderRadius: moderateScale(4),
             // borderWidth: moderateScale(0.4),
             borderColor: theme.colors.border,
@@ -34,11 +31,11 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             height: '100%',
           },
         }),
-      [width, height, theme],
+      [theme],
     );
 
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, style]}>
         {imageUrl ? (
           <FastImage
             source={{uri: imageUrl}}
@@ -46,10 +43,7 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             resizeMode={FastImage.resizeMode.cover}
           />
         ) : (
-          <ProfileIcon
-            color={theme.colors.light}
-            size={moderateScale(Math.min(width, height) * 0.625)}
-          />
+          <ProfileIcon color={theme.colors.light} size={moderateScale(60)} />
         )}
       </View>
     );

@@ -55,7 +55,7 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       backgroundStyle={{backgroundColor: theme.colors.background}}
       enablePanDownToClose={true}
       handleComponent={BottomSheetHandle}
-      handleIndicatorStyle={{backgroundColor: theme.colors.text}}
+      handleIndicatorStyle={{backgroundColor: theme.colors.background}}
       onClose={onClose}>
       <View style={[styles(theme).contentContainer, contentContainerStyle]}>
         {children}

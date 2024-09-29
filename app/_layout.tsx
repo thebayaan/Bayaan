@@ -7,9 +7,11 @@ import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import {useAuthStore} from '@/store/authStore';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import TrackPlayer, {Capability, Event} from 'react-native-track-player';
+import TrackPlayer, {Event} from 'react-native-track-player';
 import {playbackService} from '@/services/playbackService';
 import {usePlayerStore} from '@/store/playerStore';
+import {setupTrackPlayer} from '@/utils/trackPlayerSetup';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 TrackPlayer.registerPlaybackService(() => playbackService);
 
@@ -18,27 +20,16 @@ export default function RootLayout() {
   const setActiveTrack = usePlayerStore(state => state.setActiveTrack);
 
   useEffect(() => {
-    async function setupTrackPlayer() {
+    async function initializeTrackPlayer() {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Add a 1-second delay
-        await TrackPlayer.setupPlayer();
-        await TrackPlayer.updateOptions({
-          capabilities: [
-            Capability.Play,
-            Capability.Pause,
-            Capability.SkipToNext,
-            Capability.SkipToPrevious,
-            Capability.Stop,
-          ],
-          compactCapabilities: [Capability.Play, Capability.Pause],
-        });
+        await setupTrackPlayer();
         setIsPlayerReady(true);
       } catch (error) {
-        console.error('Error setting up TrackPlayer:', error);
+        console.error('Error initializing TrackPlayer:', error);
       }
     }
 
-    setupTrackPlayer();
+    initializeTrackPlayer();
   }, []);
 
   useEffect(() => {
@@ -91,7 +82,7 @@ export default function RootLayout() {
     if (isReady && fontsLoaded && !isLoading && isPlayerReady) {
       SplashScreen.hideAsync();
       if (session) {
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/(home)');
       } else {
         router.replace('/(auth)/welcome');
       }
@@ -99,61 +90,56 @@ export default function RootLayout() {
   }, [isReady, fontsLoaded, isLoading, session, router, isPlayerReady]);
 
   return (
-    <ThemeProvider>
-      <GestureHandlerRootView style={{flex: 1}}>
-        <StatusBar style="auto" />
-        {!fontsLoaded || !isPlayerReady ? (
-          <LoadingIndicator />
-        ) : (
-          <Stack screenOptions={{headerShown: false}}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="(modals)/settings"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="(modals)/select-reciter"
-              options={{
-                presentation: 'transparentModal',
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen
-              name="(modals)/player"
-              options={{
-                presentation: 'card',
-                animation: 'slide_from_bottom',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
-            <Stack.Screen
-              name="(modals)/setting-item-playground"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-              }}
-            />
-            <Stack.Screen
-              name="reciter/[id]"
-              options={{
-                presentation: 'card',
-              }}
-            />
-            <Stack.Screen
-              name="reciter-browse"
-              options={{
-                presentation: 'card',
-                animation: 'slide_from_right',
-              }}
-            />
-          </Stack>
-        )}
-      </GestureHandlerRootView>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <GestureHandlerRootView style={{flex: 1}}>
+          <StatusBar style="auto" />
+          {!fontsLoaded || !isPlayerReady || !isReady ? (
+            <LoadingIndicator />
+          ) : (
+            <Stack screenOptions={{headerShown: false}}>
+              <Stack.Screen name="(auth)" options={{headerShown: false}} />
+              <Stack.Screen
+                name="(modals)/settings"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                  headerShown: false,
+                }}
+              />
+              {/* <Stack.Screen
+                name="(tabs)/(collection)/reciter/select-reciter"
+                options={{presentation: 'transparentModal', animation: 'fade'}}
+              />
+              <Stack.Screen
+                name="(tabs)/(home)reciter/select-reciter"
+                options={{presentation: 'transparentModal', animation: 'fade'}}
+              /> */}
+              <Stack.Screen
+                name="(modals)/select-reciter"
+                options={{presentation: 'transparentModal', animation: 'fade'}}
+              />
+              <Stack.Screen name="(tabs)" options={{headerShown: false}} />
+              <Stack.Screen
+                name="player"
+                options={{
+                  presentation: 'card',
+                  animation: 'slide_from_bottom',
+                  gestureEnabled: true,
+                  gestureDirection: 'vertical',
+                }}
+              />
+              <Stack.Screen
+                name="(modals)/setting-item-playground"
+                options={{
+                  presentation: 'modal',
+                  animation: 'slide_from_bottom',
+                }}
+              />
+            </Stack>
+          )}
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
