@@ -13,7 +13,7 @@ import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 import Fuse from 'fuse.js';
-import {createStyles} from './styles';
+import {createStyles} from '../styles';
 import SearchBar from '@/components/SearchBar';
 import {Icon} from '@rneui/themed';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -111,7 +111,7 @@ export default function SearchScreen() {
     (reciter: Reciter) => {
       addToRecentSearches(query);
       router.push({
-        pathname: '/reciter/[id]',
+        pathname: '/(tabs)/(search)/reciter/[id]',
         params: {id: reciter.id, name: reciter.name},
       });
     },
@@ -122,7 +122,7 @@ export default function SearchScreen() {
     (surah: Surah) => {
       addToRecentSearches(query);
       router.push({
-        pathname: '/(modals)/select-reciter',
+        pathname: '(modals)/select-reciter',
         params: {id: surah.id, name: surah.name},
       });
     },
@@ -187,7 +187,6 @@ export default function SearchScreen() {
           keyExtractor={suggestion => suggestion}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.suggestionRowContent}
         />
       </View>
     ),
@@ -217,35 +216,39 @@ export default function SearchScreen() {
             onChangeText={setQuery}
           />
         </View>
-        <View style={styles.suggestionsContainer}>
-          <FlatList
-            data={[
-              searchSuggestions.slice(
-                0,
-                Math.ceil(searchSuggestions.length / 2),
-              ),
-              searchSuggestions.slice(Math.ceil(searchSuggestions.length / 2)),
-            ]}
-            renderItem={renderSuggestionRow}
-            keyExtractor={(_, index) => `row-${index}`}
-            scrollEnabled={false}
-          />
-        </View>
       </View>
       <View style={styles.contentContainer}>
         {query.length === 0 ? (
-          <ScrollView style={styles.emptyContainer}>
+          <ScrollView>
             {recentSearches.length > 0 && (
-              <View>
-                <Text style={styles.placeholderSectionTitle}>
-                  RECENT SEARCHES
-                </Text>
-                <FlatList
-                  data={recentSearches}
-                  renderItem={renderSearchItem}
-                  keyExtractor={item => item}
-                  scrollEnabled={false}
-                />
+              <View style={styles.emptyContainer}>
+                <View style={styles.suggestionsContainer}>
+                  <FlatList
+                    data={[
+                      searchSuggestions.slice(
+                        0,
+                        Math.ceil(searchSuggestions.length / 2),
+                      ),
+                      searchSuggestions.slice(
+                        Math.ceil(searchSuggestions.length / 2),
+                      ),
+                    ]}
+                    renderItem={renderSuggestionRow}
+                    keyExtractor={(_, index) => `row-${index}`}
+                    scrollEnabled={false}
+                  />
+                </View>
+                <View>
+                  <Text style={styles.placeholderSectionTitle}>
+                    RECENT SEARCHES
+                  </Text>
+                  <FlatList
+                    data={recentSearches}
+                    renderItem={renderSearchItem}
+                    keyExtractor={item => item}
+                    scrollEnabled={false}
+                  />
+                </View>
               </View>
             )}
           </ScrollView>

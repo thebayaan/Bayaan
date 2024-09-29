@@ -1,14 +1,14 @@
 import React, {useEffect, useCallback} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {Slider} from 'react-native-awesome-slider';
-import {usePlayerControls} from '@/hooks/usePlayerControls';
+import {usePlayerStore} from '@/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {useSharedValue} from 'react-native-reanimated';
-import TrackPlayer, {useProgress} from 'react-native-track-player';
+import {useProgress} from 'react-native-track-player';
 
 const PlayerProgressBar: React.FC = React.memo(() => {
-  usePlayerControls();
+  const {seekTo} = usePlayerStore();
   const {theme} = useTheme();
   const progress = useProgress(100);
 
@@ -21,16 +21,11 @@ const PlayerProgressBar: React.FC = React.memo(() => {
     if (!isSliding.value) {
       if (progress.duration > 0) {
         progressValue.value = progress.position / progress.duration;
+      } else {
+        console.log('Duration is 0, cannot update progress');
       }
     }
   }, [progress.position, progress.duration, isSliding, progressValue]);
-
-  useEffect(() => {
-    const checkPlaybackState = async () => {
-      await TrackPlayer.getState();
-    };
-    checkPlaybackState();
-  }, []);
 
   const formatTime = useCallback((seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -49,16 +44,25 @@ const PlayerProgressBar: React.FC = React.memo(() => {
   }, [isSliding]);
 
   const handleSlidingComplete = useCallback(
-    async (value: number) => {
+    (value: number) => {
       isSliding.value = false;
-      const newPosition = value * progress.duration;
-      await TrackPlayer.seekTo(newPosition);
+      if (progress.duration > 0) {
+        seekTo(value * progress.duration);
+      }
     },
-    [progress.duration, isSliding],
+    [seekTo, progress.duration, isSliding],
   );
 
   return (
     <View style={styles.container}>
+      <View style={styles.timeContainer}>
+        <Text style={[styles.timeText, {color: theme.colors.text}]}>
+          {formatTime(progress.position)}
+        </Text>
+        <Text style={[styles.timeText, {color: theme.colors.text}]}>
+          {'-'} {formatTime(progress.duration - progress.position)}
+        </Text>
+      </View>
       <Slider
         progress={progressValue}
         minimumValue={min}
@@ -72,15 +76,9 @@ const PlayerProgressBar: React.FC = React.memo(() => {
         }}
         thumbWidth={0}
         renderBubble={() => null}
+        sliderHeight={moderateScale(1.5)}
+        bubbleWidth={5}
       />
-      <View style={styles.timeContainer}>
-        <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {formatTime(progress.position)}
-        </Text>
-        <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {'-'} {formatTime(progress.duration - progress.position)}
-        </Text>
-      </View>
     </View>
   );
 });
@@ -89,13 +87,12 @@ PlayerProgressBar.displayName = 'PlayerProgressBar';
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    paddingHorizontal: moderateScale(20),
+    justifyContent: 'center',
   },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: moderateScale(5),
+    marginBottom: moderateScale(5),
   },
   timeText: {
     fontSize: moderateScale(12),

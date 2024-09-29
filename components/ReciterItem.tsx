@@ -22,7 +22,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     return (
       <TouchableOpacity style={styles.reciterItem} onPress={handlePress}>
         <View style={styles.imageContainer}>
-          <ReciterImage imageUrl={item.image_url} width={60} height={60} />
+          <ReciterImage imageUrl={item.image_url} style={styles.reciterImage} />
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
@@ -67,8 +67,8 @@ const createStyles = (theme: Theme) =>
       borderColor: 'transparent',
     },
     reciterImage: {
-      width: '100%',
-      height: '100%',
+      width: moderateScale(60),
+      height: moderateScale(60),
     },
     reciterInfo: {
       flex: 1,

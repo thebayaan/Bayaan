@@ -3,14 +3,14 @@ import {View, Text, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from '../styles';
 import {moderateScale} from 'react-native-size-matters';
-
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Toggle from '@/components/Toggle';
 export default function HomeScreen() {
   const router = useRouter();
   const {theme} = useTheme();
@@ -27,7 +27,7 @@ export default function HomeScreen() {
   const handleReciterPress = useCallback(
     (reciter: Reciter) => {
       router.push({
-        pathname: '/reciter/[id]',
+        pathname: '/(tabs)/(home)/reciter/[id]',
         params: {id: reciter.id},
       });
     },
@@ -37,7 +37,7 @@ export default function HomeScreen() {
   const handleSurahPress = useCallback(
     (surah: Surah) => {
       router.push({
-        pathname: '/(modals)/select-reciter',
+        pathname: '(modals)/select-reciter',
         params: {surahId: surah.id},
       });
     },
@@ -60,34 +60,11 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              activeView === 'Reciters' && styles.activeToggleButton,
-            ]}
-            onPress={() => handleToggle('Reciters')}>
-            <Text
-              style={[
-                styles.toggleButtonText,
-                activeView === 'Reciters' && styles.activeToggleButtonText,
-              ]}>
-              Reciters
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              activeView === 'Surahs' && styles.activeToggleButton,
-            ]}
-            onPress={() => handleToggle('Surahs')}>
-            <Text
-              style={[
-                styles.toggleButtonText,
-                activeView === 'Surahs' && styles.activeToggleButtonText,
-              ]}>
-              Surahs
-            </Text>
-          </TouchableOpacity>
+          <Toggle
+            options={['Reciters', 'Surahs']}
+            selectedOption={activeView}
+            onToggle={handleToggle}
+          />
         </View>
       </View>
       <View style={styles.contentContainer}>

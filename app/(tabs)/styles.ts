@@ -13,14 +13,14 @@ export const createStyles = (theme: Theme) =>
     },
     headerContainer: {
       backgroundColor: theme.colors.background,
-      shadowColor: theme.colors.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 3,
-      elevation: 5,
+      // shadowColor: theme.colors.shadow,
+      // shadowOffset: {
+      //   width: 0,
+      //   height: 1,
+      // },
+      // shadowOpacity: 0.1,
+      // shadowRadius: 3,
+      // elevation: 5,
       zIndex: 1,
     },
     contentContainer: {
@@ -56,7 +56,7 @@ export const createStyles = (theme: Theme) =>
     },
     emptyContainer: {
       flex: 1,
-      padding: moderateScale(20),
+      paddingHorizontal: moderateScale(20),
     },
     placeholderSectionTitle: {
       fontSize: moderateScale(14),
@@ -109,7 +109,7 @@ export const createStyles = (theme: Theme) =>
     },
     activeToggleButton: {
       backgroundColor: theme.colors.card,
-      borderWidth: moderateScale(0.4),
+      borderWidth: moderateScale(1),
       borderColor: theme.colors.border,
     },
     toggleButtonText: {

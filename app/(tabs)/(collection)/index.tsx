@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, FlatList, ScrollView} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from '../styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SURAHS} from '@/data/surahData';
 import SurahNameSvg from '@/components/SurahNameSvg';

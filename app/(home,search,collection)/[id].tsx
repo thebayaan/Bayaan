@@ -16,8 +16,8 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {usePlayerStore} from '@/store/playerStore';
 import {ReciterImage} from '@/components/ReciterImage';
-import {Dimensions} from 'react-native';
 import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
+import {usePlayback} from '@/hooks/usePlayback';
 
 export default function ReciterProfile() {
   const router = useRouter();
@@ -88,14 +88,31 @@ export default function ReciterProfile() {
   };
 
   const {navigateToPlayer} = usePlayerNavigation();
+  const {playTrack, playAll} = usePlayback();
 
   const handleSurahPress = useCallback(
     async (surah: Surah) => {
-      if (!reciter) return;
-      await navigateToPlayer(reciter, surah.id.toString());
+      if (reciter) {
+        await playTrack(reciter, surah.id.toString());
+        navigateToPlayer(reciter.image_url);
+      }
     },
-    [reciter, navigateToPlayer],
+    [reciter, playTrack, navigateToPlayer],
   );
+
+  const handlePlayAll = useCallback(() => {
+    if (reciter) {
+      playAll(reciter, filteredSurahs);
+      navigateToPlayer(reciter.image_url);
+    }
+  }, [reciter, filteredSurahs, playAll, navigateToPlayer]);
+
+  const handleShuffleAll = useCallback(() => {
+    if (reciter) {
+      playAll(reciter, filteredSurahs, true);
+      navigateToPlayer(reciter.image_url);
+    }
+  }, [reciter, filteredSurahs, playAll, navigateToPlayer]);
 
   if (!reciter) {
     return (
@@ -104,9 +121,6 @@ export default function ReciterProfile() {
       </SafeAreaView>
     );
   }
-
-  const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
-
   return (
     <View style={styles.container}>
       <Animated.ScrollView
@@ -118,8 +132,7 @@ export default function ReciterProfile() {
         <View style={styles.headerContainer}>
           <ReciterImage
             imageUrl={reciter.image_url}
-            width={SCREEN_WIDTH}
-            height={SCREEN_HEIGHT * 0.4}
+            style={styles.reciterImage}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
@@ -136,15 +149,20 @@ export default function ReciterProfile() {
               <Icon name="heart" type="feather" color={theme.colors.primary} />
             </TouchableOpacity>
             <View style={styles.rightAlignedButtons}>
-              <TouchableOpacity style={styles.actionButton}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleShuffleAll}>
                 <Icon name="shuffle" type="feather" color={theme.colors.text} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.playButton}>
+              <TouchableOpacity
+                style={styles.playButton}
+                onPress={handlePlayAll}>
                 <Icon
-                  name="play"
-                  type="feather"
+                  name="controller-play"
+                  type="entypo"
                   color={theme.colors.background}
-                  size={moderateScale(24)}
+                  size={moderateScale(40)}
+                  containerStyle={styles.playButtonIcon}
                 />
               </TouchableOpacity>
             </View>

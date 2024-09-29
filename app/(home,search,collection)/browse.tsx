@@ -16,6 +16,7 @@ import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
 import {usePlayerStore} from '@/store/playerStore';
 import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
+import {usePlayback} from '@/hooks/usePlayback';
 
 export default function ReciterBrowseScreen() {
   const {view, surahId} = useLocalSearchParams<{
@@ -54,6 +55,7 @@ export default function ReciterBrowseScreen() {
   }, []);
 
   const {navigateToPlayer} = usePlayerNavigation();
+  const {playTrack} = usePlayback();
 
   const handleReciterSelect = useCallback(
     async (reciter: Reciter) => {
@@ -61,9 +63,10 @@ export default function ReciterBrowseScreen() {
         console.error('Missing surahId');
         return;
       }
-      await navigateToPlayer(reciter, surahId);
+      playTrack(reciter, surahId);
+      navigateToPlayer(reciter.image_url);
     },
-    [surahId, navigateToPlayer],
+    [surahId, playTrack, navigateToPlayer],
   );
 
   return (

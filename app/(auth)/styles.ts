@@ -66,7 +66,7 @@ export const createStyles = (theme: Theme) =>
     },
     buttonDisabled: {
       backgroundColor: theme.colors.card,
-      borderColor: theme.colors.light,
+      borderColor: 'transparent',
     },
     buttonTextDisabled: {
       color: theme.colors.textSecondary,
@@ -94,7 +94,7 @@ export const createStyles = (theme: Theme) =>
       borderColor: theme.colors.border,
       iconColor: theme.colors.light,
       backgroundColor: theme.colors.backgroundSecondary,
-      borderWidth: moderateScale(0.3),
+      // borderWidth: moderateScale(0.3),
     },
     forgotPassword: {
       color: theme.colors.primary,

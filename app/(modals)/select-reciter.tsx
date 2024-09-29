@@ -10,6 +10,7 @@ import {getSurahById} from '@/services/dataService';
 import {usePlayerStore} from '@/store/playerStore';
 import BottomSheetModal from '@/components/BottomSheetModal';
 import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
+import {usePlayback} from '@/hooks/usePlayback';
 
 export default function SelectReciterModal() {
   const router = useRouter();
@@ -38,12 +39,14 @@ export default function SelectReciterModal() {
   usePlayerStore();
 
   const {navigateToPlayer} = usePlayerNavigation();
+  const {playTrack} = usePlayback();
 
   const handleUseDefaultReciter = useCallback(async () => {
     if (defaultReciter && surahId) {
-      await navigateToPlayer(defaultReciter, surahId, true); // Use replace
+      playTrack(defaultReciter, surahId);
+      navigateToPlayer(defaultReciter.image_url, true);
     }
-  }, [defaultReciter, surahId, navigateToPlayer]);
+  }, [defaultReciter, surahId, playTrack, navigateToPlayer]);
 
   const handleSheetClose = useCallback(() => {
     router.back();
@@ -53,7 +56,7 @@ export default function SelectReciterModal() {
     handleSheetClose();
     requestAnimationFrame(() => {
       router.push({
-        pathname: '/reciter-browse',
+        pathname: './reciter/browse',
         params: {view: 'all', surahId},
       });
     });
@@ -63,7 +66,7 @@ export default function SelectReciterModal() {
     handleSheetClose();
     requestAnimationFrame(() => {
       router.push({
-        pathname: '/reciter-browse',
+        pathname: './reciter/browse',
         params: {view: 'favorites', surahId},
       });
     });
@@ -126,17 +129,17 @@ const createStyles = (theme: Theme) =>
       padding: moderateScale(15),
       borderRadius: moderateScale(20),
       marginTop: moderateScale(10),
-      backgroundColor: theme.colors.card,
-      borderWidth: moderateScale(0.4),
+      backgroundColor: theme.colors.background,
+      borderWidth: moderateScale(1),
       borderColor: theme.colors.border,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
+      // shadowColor: '#000',
+      // shadowOffset: {
+      //   width: 0,
+      //   height: 2,
+      // },
+      // shadowOpacity: 0.25,
+      // shadowRadius: 3.84,
+      // elevation: 5,
       size: 'small',
     },
     buttonText: {
@@ -149,7 +152,7 @@ const createStyles = (theme: Theme) =>
       padding: moderateScale(15),
       borderRadius: moderateScale(20),
       marginVertical: moderateScale(5),
-      backgroundColor: theme.colors.primary,
+      backgroundColor: theme.colors.text,
       borderWidth: moderateScale(0.4),
       borderColor: theme.colors.border,
       textColor: 'white',

@@ -31,8 +31,8 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.card,
     },
     reciterImage: {
-      width: '100%',
-      height: '100%',
+      width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT * 0.4,
       resizeMode: 'cover',
     },
     placeholderContainer: {
@@ -147,12 +147,11 @@ export const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(28),
       justifyContent: 'center',
       alignItems: 'center',
-      borderWidth: 2,
       borderColor: theme.colors.light,
       marginLeft: moderateScale(10),
     },
     playButtonIcon: {
-      marginLeft: 3,
+      paddingLeft: moderateScale(4),
     },
     stickyHeader: {
       position: 'absolute',
