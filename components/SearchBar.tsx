@@ -102,9 +102,8 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
             value={value}
             onChangeText={text => {
               const sanitizedText = text
-                .trim()
                 .slice(0, 100)
-                .replace(/[^\w\s]/gi, '');
+                .replace(/[^\w\s\u0600-\u06FF]/gi, '');
               onChangeText(sanitizedText);
             }}
             onFocus={handleFocus}
