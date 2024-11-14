@@ -8,7 +8,7 @@ import {BackButton} from '@/components/BackButton';
 import {createStyles} from './styles';
 import {isValidEmail} from '@/utils/validation';
 import {useTheme} from '@/hooks/useTheme';
-import {useAuthStore} from '@/store/authStore';
+import {signIn} from '@/services/auth';
 const AppleLogo = require('@/assets/images/apple-logo.png');
 const GoogleIcon = require('@/assets/images/google-icon.png');
 
@@ -20,30 +20,30 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const signIn = useAuthStore(state => state.signIn);
 
   useEffect(() => {
     setIsFormValid(isValidEmail(email) && password.length >= 8);
   }, [email, password]);
 
   const handleLogin = async () => {
+    setIsLoading(true);
     try {
       const {success, error: signInError} = await signIn(email, password);
-      if (success) {
-        router.replace('/(tabs)');
-      } else {
+      if (!success) {
         setError(signInError || 'An error occurred during login');
       }
     } catch (err) {
       setError('An unexpected error occurred');
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    // Implement forgot password functionality
-    console.log('Forgot password clicked');
+    router.push('/password-reset/forgot-password');
   };
 
   const handleSocialSignIn = (provider: string) => {
@@ -84,6 +84,7 @@ export default function LoginScreen() {
           style={styles.inputOverride}
           onSubmitEditing={handleLogin}
           autoCapitalize="none"
+          sanitize={false}
           autoCorrect={false}
           autoComplete="password"
           returnKeyType="done"
@@ -106,6 +107,8 @@ export default function LoginScreen() {
             !isFormValid && styles.buttonTextDisabled,
           ]}
           disabled={!isFormValid}
+          loading={isLoading}
+          textColor={theme.colors.background}
         />
 
         <View style={styles.divider}>

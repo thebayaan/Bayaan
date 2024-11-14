@@ -73,7 +73,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.card,
       borderRadius: moderateScale(12),
       padding: moderateScale(16),
-      marginTop: moderateScale(16),
       width: '100%',
       shadowColor: theme.colors.shadow,
       shadowOffset: {

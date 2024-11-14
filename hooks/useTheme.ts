@@ -1,16 +1,15 @@
-import {useContext} from 'react';
-import {ThemeContext} from '@/contexts/ThemeContext';
+import {useThemeStore} from '@/store/themeStore';
+import {ThemeMode, PrimaryColor} from '@/utils/themeUtils';
 
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
+export function useTheme() {
+  const store = useThemeStore();
 
-  const isDarkMode =
-    context.themeMode === 'dark' ||
-    (context.themeMode === 'system' &&
-      context.theme.colors.background === '#121212');
-
-  return {...context, isDarkMode};
-};
+  return {
+    theme: store.theme,
+    themeMode: store.themeMode,
+    primaryColor: store.primaryColor,
+    setThemeMode: (mode: ThemeMode) => store.setThemeMode(mode),
+    setPrimaryColor: (color: PrimaryColor) => store.setPrimaryColor(color),
+    isDarkMode: store.theme.isDarkMode,
+  };
+}

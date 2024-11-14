@@ -1,9 +1,9 @@
 import React, {useState, useCallback} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
+import {View, TouchableOpacity, ScrollView} from 'react-native';
+import {Icon} from '@rneui/themed';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from '../styles';
+import {createStyles} from './styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
@@ -11,6 +11,11 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Toggle from '@/components/Toggle';
+import {useSettings} from '@/hooks/useSettings';
+import {useReciterStore} from '@/store/reciterStore';
+import {usePlayback} from '@/hooks/usePlayback';
+import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+
 export default function HomeScreen() {
   const router = useRouter();
   const {theme} = useTheme();
@@ -34,46 +39,96 @@ export default function HomeScreen() {
     [router],
   );
 
+  const {askEveryTime, defaultReciterSelection} = useSettings();
+  const {playTrack} = usePlayback();
+  const defaultReciter = useReciterStore(state => state.defaultReciter);
+
   const handleSurahPress = useCallback(
     (surah: Surah) => {
-      router.push({
-        pathname: '(modals)/select-reciter',
-        params: {surahId: surah.id},
-      });
+      if (askEveryTime) {
+        router.push({
+          pathname: '(modals)/select-reciter',
+          params: {surahId: surah.id},
+        });
+      } else {
+        switch (defaultReciterSelection) {
+          case 'browseAll':
+            router.push({
+              pathname: './reciter/browse',
+              params: {view: 'all', surahId: surah.id},
+            });
+            break;
+          case 'searchFavorites':
+            router.push({
+              pathname: './reciter/browse',
+              params: {view: 'favorites', surahId: surah.id},
+            });
+            break;
+          case 'useDefault':
+            if (defaultReciter) {
+              playTrack(defaultReciter, surah.id.toString());
+              router.push({
+                pathname: '/player',
+                params: {reciterImageUrl: defaultReciter.image_url},
+              });
+            } else {
+              router.push({
+                pathname: '(modals)/select-reciter',
+                params: {surahId: surah.id},
+              });
+            }
+            break;
+          default:
+            router.push({
+              pathname: '(modals)/select-reciter',
+              params: {surahId: surah.id},
+            });
+        }
+      }
     },
-    [router],
+    [router, askEveryTime, defaultReciterSelection, defaultReciter, playTrack],
   );
+
+  const handleSettingsPress = () => {
+    router.push('/settings');
+  };
 
   return (
     <View style={styles.container}>
-      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Home</Text>
-          <TouchableOpacity
-            style={styles.settingsIcon}
-            onPress={() => router.push('/(modals)/settings')}>
-            <Icon
-              name="settings-sharp"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={{
+          paddingBottom: TOTAL_BOTTOM_PADDING,
+        }}>
+        <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
+          <View style={styles.header}>
+            <View style={styles.leftPlaceholder} />
+            <View style={styles.toggleContainer}>
+              <Toggle
+                options={['Reciters', 'Surahs']}
+                selectedOption={activeView}
+                onToggle={handleToggle}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.settingsIcon}
+              onPress={handleSettingsPress}>
+              <Icon
+                type="antdesign"
+                name="setting"
+                size={moderateScale(24)}
+                color={theme.colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.toggleContainer}>
-          <Toggle
-            options={['Reciters', 'Surahs']}
-            selectedOption={activeView}
-            onToggle={handleToggle}
-          />
+        <View style={styles.contentContainer}>
+          {activeView === 'Reciters' ? (
+            <RecitersView onReciterPress={handleReciterPress} />
+          ) : (
+            <SurahsView onSurahPress={handleSurahPress} />
+          )}
         </View>
-      </View>
-      <View style={styles.contentContainer}>
-        {activeView === 'Reciters' ? (
-          <RecitersView onReciterPress={handleReciterPress} />
-        ) : (
-          <SurahsView onSurahPress={handleSurahPress} />
-        )}
-      </View>
+      </ScrollView>
     </View>
   );
 }

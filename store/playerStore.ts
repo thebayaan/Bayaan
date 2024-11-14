@@ -9,10 +9,19 @@ import TrackPlayer, {
 } from 'react-native-track-player';
 
 interface PlayerState {
-  activeTrack: Track | null;
+  activeTrackId: string | null;
+  activeTrack: {
+    id: string;
+    reciterId: string;
+    title: string;
+    artist: string;
+    artwork: string;
+  } | null;
+  progress: number;
+  duration: number;
   isPlaying: boolean;
   sleepTimer: NodeJS.Timeout | null;
-  sleepTimerEnd: number | null;
+  sleepTimerEnd: number | 'END_OF_SURAH' | null;
   playbackSpeed: number;
   repeatMode: 'off' | 'all' | 'once';
   setActiveTrack: (track: Track) => Promise<void>;
@@ -34,12 +43,19 @@ interface PlayerState {
   clearQueue: () => Promise<void>;
   getQueue: () => Promise<Track[]>;
   setIsPlaying: (isPlaying: boolean) => void;
+  currentTrack: Track | null;
+  setCurrentTrack: (track: Track | null) => void;
+  updateCurrentTrack: () => Promise<void>;
+  cleanup: () => Promise<void>;
 }
 
 export const usePlayerStore = create<PlayerState>()(
   persist(
     (set, get) => ({
+      activeTrackId: null,
       activeTrack: null,
+      progress: 0,
+      duration: 0,
       isPlaying: false,
       sleepTimer: null,
       sleepTimerEnd: null,
@@ -48,7 +64,7 @@ export const usePlayerStore = create<PlayerState>()(
       isEndOfSurahTimer: false,
       favoriteTrackIds: [],
       setActiveTrack: async track => {
-        set({activeTrack: track});
+        set({activeTrackId: track.id});
       },
 
       togglePlayback: async () => {
@@ -85,7 +101,7 @@ export const usePlayerStore = create<PlayerState>()(
           });
 
           await TrackPlayer.play();
-          set({activeTrack: track, isPlaying: true, queue});
+          set({activeTrackId: track.id, isPlaying: true, queue});
         } catch (error) {
           console.error('Error in loadAndPlayTrack:', error);
         }
@@ -98,21 +114,26 @@ export const usePlayerStore = create<PlayerState>()(
         }
 
         if (minutes === 'END_OF_SURAH') {
-          set({isEndOfSurahTimer: true, sleepTimer: null, sleepTimerEnd: null});
+          set({
+            isEndOfSurahTimer: true,
+            sleepTimer: null,
+            sleepTimerEnd: 'END_OF_SURAH',
+          });
         } else {
+          const endTime = Date.now() + minutes * 60 * 1000;
           const timer = setTimeout(
             () => {
-              TrackPlayer.stop();
+              TrackPlayer.pause();
               set({
                 sleepTimer: null,
                 sleepTimerEnd: null,
                 isEndOfSurahTimer: false,
+                isPlaying: false,
               });
             },
             minutes * 60 * 1000,
           );
 
-          const endTime = Date.now() + minutes * 60 * 1000;
           set({
             sleepTimer: timer,
             sleepTimerEnd: endTime,
@@ -252,6 +273,41 @@ export const usePlayerStore = create<PlayerState>()(
       },
       setIsPlaying: (isPlaying: boolean) => {
         set({isPlaying});
+      },
+      currentTrack: null,
+
+      setCurrentTrack: track => {
+        set({currentTrack: track});
+      },
+
+      updateCurrentTrack: async () => {
+        const trackIndex = await TrackPlayer.getCurrentTrack();
+        if (trackIndex !== null) {
+          const track = await TrackPlayer.getTrack(trackIndex);
+          set({currentTrack: track || null});
+        } else {
+          set({currentTrack: null});
+        }
+      },
+
+      cleanup: async () => {
+        try {
+          await TrackPlayer.reset();
+          await TrackPlayer.stop();
+          set({
+            activeTrackId: null,
+            activeTrack: null,
+            progress: 0,
+            duration: 0,
+            isPlaying: false,
+            sleepTimer: null,
+            sleepTimerEnd: null,
+            currentTrack: null,
+            queue: [],
+          });
+        } catch (error) {
+          console.error('Error cleaning up player:', error);
+        }
       },
     }),
     {

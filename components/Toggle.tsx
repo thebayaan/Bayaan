@@ -46,7 +46,7 @@ const createStyles = (theme: Theme) =>
     toggleContainer: {
       flexDirection: 'row',
       justifyContent: 'center',
-      paddingBottom: verticalScale(10),
+      paddingBottom: verticalScale(5),
     },
     toggleButton: {
       paddingVertical: verticalScale(8),
@@ -56,11 +56,11 @@ const createStyles = (theme: Theme) =>
     },
     activeToggleButton: {
       backgroundColor: theme.colors.card,
-      borderWidth: moderateScale(1),
+      // borderWidth: moderateScale(0.3),
       borderColor: theme.colors.border,
     },
     toggleButtonText: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(14),
       fontWeight: '600',
       color: theme.colors.textSecondary,
     },

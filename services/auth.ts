@@ -1,87 +1,34 @@
 // services/auth.ts
+
 import {supabase} from './supabase';
-import {sendVerificationEmail} from './emailService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
+import {usePlayerStore} from '@/store/playerStore';
 
-const MAX_RETRIES = 3;
-const INITIAL_BACKOFF = 1000; // 1 second
-
-const IS_DEV_MODE = Constants.expoConfig?.extra?.isDevelopmentMode || false;
-const ALLOWED_DOMAINS = [
-  'bayaanquran.com',
-  'gmail.com',
-  'outlook.com',
-  'hotmail.com',
-];
-
-function isAllowedEmail(email: string): boolean {
-  if (IS_DEV_MODE) {
-    const domain = email.split('@')[1];
-    return ALLOWED_DOMAINS.includes(domain);
-  }
-  return true; // In production, allow all emails
-}
-
-export async function signUp(email: string, password: string, retryCount = 0) {
+export async function signUp(email: string) {
   try {
-    if (!isAllowedEmail(email)) {
-      return {
-        success: false,
-        error: 'Email domain not allowed for sign-up during development.',
-      };
-    }
-
-    console.log(
-      `Attempt ${retryCount + 1}: Starting sign up process for:`,
+    const {error} = await supabase.auth.signInWithOtp({
       email,
-    );
-    const {data, error} = await supabase.auth.signUp({
-      email,
-      password,
+      options: {
+        emailRedirectTo: 'bayaan://verify-email',
+        data: {
+          email_verified: false,
+        },
+      },
     });
-    if (error) throw error;
 
-    console.log('Supabase sign up successful, generating verification code');
-    const verificationCode = Math.floor(
-      100000 + Math.random() * 900000,
-    ).toString();
-
-    console.log('Sending verification email');
-    await sendVerificationEmail(email, verificationCode);
-    console.log('Verification email sent successfully');
-
-    console.log('Storing verification code in Supabase');
-    const {error: insertError} = await supabase
-      .from('verification_codes')
-      .insert({email, code: verificationCode});
-    if (insertError) throw insertError;
-    console.log('Verification code stored successfully');
-
-    return {success: true, data};
-  } catch (error) {
-    console.error(`Attempt ${retryCount + 1} failed:`, error);
-    if (error instanceof Error) {
-      if (
-        (error.message.includes('timeout') || error.message.includes('504')) &&
-        retryCount < MAX_RETRIES
-      ) {
-        const backoffTime = INITIAL_BACKOFF * Math.pow(2, retryCount);
-        console.log(`Retrying in ${backoffTime}ms...`);
-        await new Promise(resolve => setTimeout(resolve, backoffTime));
-        return signUp(email, password, retryCount + 1);
-      }
-      if (error.message.includes('network')) {
-        return {
-          success: false,
-          error:
-            'A network error occurred. Please check your connection and try again.',
-        };
-      }
+    if (error) {
+      console.error('Sign up error:', error);
+      return {success: false, error: error.message};
     }
+
+    return {success: true};
+  } catch (error) {
+    console.error('Unexpected sign up error:', error);
     return {
       success: false,
-      error: 'An unexpected error occurred. Please try again later.',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'An unexpected error occurred. Please try again later.',
     };
   }
 }
@@ -92,13 +39,15 @@ export async function signIn(email: string, password: string) {
       email,
       password,
     });
-    if (error) throw error;
-    if (data.session) {
-      await AsyncStorage.setItem('userSession', JSON.stringify(data.session));
+
+    if (error) {
+      console.error('Sign in error:', error);
+      return {success: false, error: error.message};
     }
+
     return {success: true, data: data.session};
   } catch (error) {
-    console.error('Sign in error:', error);
+    console.error('Unexpected sign in error:', error);
     return {
       success: false,
       error:
@@ -109,11 +58,181 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
+    // Clean up player state before signing out
+    await usePlayerStore.getState().cleanup();
+
     const {error} = await supabase.auth.signOut();
-    if (error) throw error;
-    await AsyncStorage.removeItem('userSession');
+
+    if (error) {
+      console.error('Sign out error:', error);
+      return {success: false, error: error.message};
+    }
+
     return {success: true};
   } catch (error) {
+    console.error('Unexpected sign out error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
+
+export async function resetPassword(email: string) {
+  try {
+    const {error} = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'bayaan://reset-password',
+    });
+
+    if (error) {
+      console.error('Password reset error:', error);
+      return {success: false, error: error.message};
+    }
+
+    return {success: true};
+  } catch (error) {
+    console.error('Unexpected password reset error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
+
+export async function updatePassword(newPassword: string) {
+  try {
+    const {error} = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      console.error('Password update error:', error);
+      return {success: false, error: error.message};
+    }
+
+    return {success: true};
+  } catch (error) {
+    console.error('Unexpected password update error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
+
+export async function resetPasswordWithOtp(email: string) {
+  try {
+    const {error} = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: undefined, // Remove redirectTo to prevent magic link
+    });
+
+    if (error) {
+      console.error('Password reset error:', error);
+      return {success: false, error: error.message};
+    }
+
+    return {success: true};
+  } catch (error) {
+    console.error('Unexpected password reset error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
+
+export async function verifyPasswordReset(
+  email: string,
+  token: string,
+  newPassword: string,
+) {
+  try {
+    // First verify the OTP
+    const {error: verifyError} = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'recovery',
+    });
+
+    if (verifyError) {
+      console.error('OTP verification error:', verifyError);
+      return {success: false, error: verifyError.message};
+    }
+
+    // Then update the password
+    const {error: updateError} = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      console.error('Password update error:', updateError);
+      return {success: false, error: updateError.message};
+    }
+
+    return {success: true};
+  } catch (error) {
+    console.error('Password reset verification error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
+
+export async function signInWithGoogle() {
+  try {
+    const {data, error} = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'bayaan://auth/callback',
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('Google sign in error:', error);
+      return {success: false, error: error.message};
+    }
+
+    return {success: true, data};
+  } catch (error) {
+    console.error('Unexpected Google sign in error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
+
+export async function signInWithApple() {
+  try {
+    const {data, error} = await supabase.auth.signInWithOAuth({
+      provider: 'apple',
+      options: {
+        redirectTo: 'bayaan://auth/callback',
+        queryParams: {
+          scope: 'email name',
+        },
+      },
+    });
+
+    if (error) {
+      console.error('Apple sign in error:', error);
+      return {success: false, error: error.message};
+    }
+
+    return {success: true, data};
+  } catch (error) {
+    console.error('Unexpected Apple sign in error:', error);
     return {
       success: false,
       error:

@@ -1,4 +1,5 @@
 #import "AppDelegate.h"
+#import <AVFoundation/AVFoundation.h>
 
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTLinkingManager.h>
@@ -7,6 +8,21 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+  // Configure audio session
+  NSError *error = nil;
+  AVAudioSession *session = [AVAudioSession sharedInstance];
+  [session setCategory:AVAudioSessionCategoryPlayback
+            withOptions:AVAudioSessionCategoryOptionMixWithOthers
+                  error:&error];
+  if (error) {
+    NSLog(@"Failed to set audio session category: %@", error);
+  }
+  
+  [session setActive:YES error:&error];
+  if (error) {
+    NSLog(@"Failed to set audio session active: %@", error);
+  }
+  
   self.moduleName = @"main";
 
   // You can add your custom initial props in the dictionary below.

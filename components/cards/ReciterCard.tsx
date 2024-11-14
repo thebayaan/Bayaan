@@ -48,7 +48,11 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <View style={styles.imageContainer}>
-        <ReciterImage imageUrl={imageUrl} style={styles.reciterImage} />
+        <ReciterImage
+          imageUrl={imageUrl}
+          reciterName={name}
+          style={styles.reciterImage}
+        />
       </View>
       <Text style={styles.name} numberOfLines={1}>
         {name}

@@ -9,7 +9,10 @@ export default function CollectionLayout() {
       }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="reciter/[id]" />
-      {/* Add other screens under Collection tab here if needed */}
+      <Stack.Screen name="collection/loved" />
+      <Stack.Screen name="collection/favorite-reciters" />
+      <Stack.Screen name="collection/playlists" />
+      <Stack.Screen name="collection/downloads" />
     </Stack>
   );
 }

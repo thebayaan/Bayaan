@@ -1,9 +1,10 @@
 import React, {useState, useImperativeHandle, forwardRef, useRef} from 'react';
-import {View, TouchableOpacity, Text, TextInput} from 'react-native';
+import {TouchableOpacity, Text, TextInput, Animated} from 'react-native';
 import {Icon} from '@rneui/themed';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {MotiView} from 'moti';
 
 interface SearchBarProps {
   placeholder: string;
@@ -23,15 +24,24 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
     const inputRef = useRef<TextInput>(null);
     const {theme} = useTheme();
     const styles = createStyles(theme);
+    const iconRotation = useRef(new Animated.Value(0)).current;
 
     const handleFocus = () => {
       setIsFocused(true);
       if (onFocus) onFocus();
+      Animated.spring(iconRotation, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
     };
 
     const handleBlur = () => {
       setIsFocused(false);
       if (onBlur) onBlur();
+      Animated.spring(iconRotation, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
     };
 
     const handleCancel = () => {
@@ -43,49 +53,97 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
       focusSearchBar: () => inputRef.current?.focus(),
     }));
 
+    const spin = iconRotation.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '360deg'],
+    });
+
     return (
-      <View style={styles.container}>
-        <View style={styles.inputContainer}>
-          <Icon
-            name="search"
-            type="feather"
-            size={moderateScale(20)}
-            color={theme.colors.textSecondary}
-            containerStyle={styles.searchIcon}
-            onPress={() => inputRef.current?.focus()}
-          />
+      <MotiView
+        style={styles.container}
+        animate={{
+          width: isFocused ? '95%' : '100%',
+        }}
+        transition={{
+          type: 'spring',
+          damping: 20,
+          stiffness: 300,
+        }}>
+        <MotiView
+          style={[
+            styles.inputContainer,
+            isFocused && styles.inputContainerFocused,
+          ]}
+          animate={{
+            scale: isFocused ? 1.02 : 1,
+          }}>
+          <Animated.View
+            style={[
+              styles.searchIcon,
+              {
+                transform: [{rotate: spin}],
+              },
+            ]}>
+            <Icon
+              name="search"
+              type="feather"
+              size={moderateScale(20)}
+              color={
+                isFocused ? theme.colors.primary : theme.colors.textSecondary
+              }
+              onPress={() => inputRef.current?.focus()}
+            />
+          </Animated.View>
           <TextInput
             ref={inputRef}
             style={styles.input}
             placeholder={placeholder}
             placeholderTextColor={theme.colors.textSecondary}
             value={value}
-            onChangeText={onChangeText}
+            onChangeText={text => {
+              const sanitizedText = text
+                .trim()
+                .slice(0, 100)
+                .replace(/[^\w\s]/gi, '');
+              onChangeText(sanitizedText);
+            }}
             onFocus={handleFocus}
             onBlur={handleBlur}
             autoComplete="off"
             autoCorrect={false}
             autoCapitalize="none"
             returnKeyType="search"
+            maxLength={100}
           />
           {value.length > 0 && (
-            <TouchableOpacity onPress={() => onChangeText('')}>
-              <Icon
-                name="close"
-                type="antdesign"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-                containerStyle={styles.clearIcon}
-              />
-            </TouchableOpacity>
+            <MotiView
+              from={{opacity: 0, scale: 0}}
+              animate={{opacity: 1, scale: 1}}
+              exit={{opacity: 0, scale: 0}}>
+              <TouchableOpacity onPress={() => onChangeText('')}>
+                <Icon
+                  name="close"
+                  type="antdesign"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                  containerStyle={styles.clearIcon}
+                />
+              </TouchableOpacity>
+            </MotiView>
           )}
-        </View>
+        </MotiView>
         {isFocused && (
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+          <MotiView
+            from={{opacity: 0, translateX: 20}}
+            animate={{opacity: 1, translateX: 0}}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </MotiView>
         )}
-      </View>
+      </MotiView>
     );
   },
 );
@@ -103,10 +161,23 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.card,
+      backgroundColor: theme.colors.light,
       borderRadius: moderateScale(20),
       paddingHorizontal: moderateScale(15),
-      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderColor: 'transparent',
+      height: moderateScale(45),
+    },
+    inputContainerFocused: {
+      borderColor: theme.colors.primary,
+      shadowColor: theme.colors.primary,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     searchIcon: {
       marginRight: moderateScale(10),
@@ -116,7 +187,6 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       fontSize: theme.typography.bodySize,
       fontFamily: theme.fonts.regular,
-      height: moderateScale(33),
     },
     clearIcon: {
       marginLeft: moderateScale(10),
@@ -125,7 +195,7 @@ const createStyles = (theme: Theme) =>
       marginLeft: moderateScale(10),
     },
     cancelButtonText: {
-      color: theme.colors.text,
+      color: theme.colors.primary,
       fontSize: theme.typography.bodySize,
       fontFamily: theme.fonts.regular,
     },

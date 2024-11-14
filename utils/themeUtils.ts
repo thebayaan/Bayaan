@@ -9,7 +9,7 @@ import {Dimensions} from 'react-native';
 const {width} = Dimensions.get('window');
 const scale = (size: number) => (width / 375) * size;
 
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark';
 export type {PrimaryColor} from '@/styles/colorSchemes';
 
 export const createTheme = (
@@ -20,6 +20,7 @@ export const createTheme = (
     ...(colorScheme === 'light' ? lightColors : darkColors),
     primary: primaryColors[primaryColor],
   },
+  isDarkMode: colorScheme === 'dark',
   fonts: {
     regular: 'AvenirNextLTPro-Regular',
     bold: 'AvenirNextLTPro-Bold',

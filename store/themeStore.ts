@@ -6,37 +6,49 @@ import {ThemeMode, PrimaryColor, Theme, createTheme} from '@/utils/themeUtils';
 interface ThemeState {
   themeMode: ThemeMode;
   primaryColor: PrimaryColor;
+  theme: Theme;
   setThemeMode: (mode: ThemeMode) => void;
   setPrimaryColor: (color: PrimaryColor) => void;
-  theme: Theme;
 }
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     set => ({
-      themeMode: 'system',
+      themeMode: 'light',
       primaryColor: 'Purple',
-      setThemeMode: (mode: ThemeMode) =>
-        set(state => {
-          const newTheme = createTheme(
-            mode === 'system' ? 'light' : mode,
-            state.primaryColor,
-          );
-          return {themeMode: mode, theme: newTheme};
-        }),
-      setPrimaryColor: (color: PrimaryColor) =>
-        set(state => {
-          const newTheme = createTheme(
-            state.themeMode === 'system' ? 'light' : state.themeMode,
-            color,
-          );
-          return {primaryColor: color, theme: newTheme};
-        }),
       theme: createTheme('light', 'Purple'),
+
+      setThemeMode: mode =>
+        set(state => {
+          const newTheme = createTheme(mode, state.primaryColor);
+          return {
+            themeMode: mode,
+            theme: newTheme,
+          };
+        }),
+
+      setPrimaryColor: color =>
+        set(state => {
+          const newTheme = createTheme(state.themeMode, color);
+          return {
+            primaryColor: color,
+            theme: newTheme,
+          };
+        }),
     }),
     {
       name: 'theme-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: state => ({
+        themeMode: state.themeMode,
+        primaryColor: state.primaryColor,
+      }),
+      onRehydrateStorage: () => state => {
+        if (state) {
+          // Recreate theme on rehydration
+          state.theme = createTheme(state.themeMode, state.primaryColor);
+        }
+      },
     },
   ),
 );

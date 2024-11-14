@@ -1,35 +1,46 @@
-import TrackPlayer, {Event} from 'react-native-track-player';
+import TrackPlayer, {Event, State} from 'react-native-track-player';
 
-const playbackService = async () => {
-  console.log('Playback service function called');
+export async function playbackService() {
+  // Basic Controls
+  TrackPlayer.addEventListener(Event.RemotePlay, () => TrackPlayer.play());
+  TrackPlayer.addEventListener(Event.RemotePause, () => TrackPlayer.pause());
+  TrackPlayer.addEventListener(Event.RemoteStop, () => TrackPlayer.stop());
+  TrackPlayer.addEventListener(Event.RemoteNext, () =>
+    TrackPlayer.skipToNext(),
+  );
+  TrackPlayer.addEventListener(Event.RemotePrevious, () =>
+    TrackPlayer.skipToPrevious(),
+  );
 
-  TrackPlayer.addEventListener(Event.RemotePlay, () => {
-    console.log('Remote play event received');
-    TrackPlayer.play()
-      .then(() => console.log('Play command executed'))
-      .catch(error => console.error('Error playing:', error));
+  // Jump Forward/Backward
+  TrackPlayer.addEventListener(Event.RemoteJumpForward, async () => {
+    const position = await TrackPlayer.getPosition();
+    await TrackPlayer.seekTo(position + 15);
   });
 
-  TrackPlayer.addEventListener(Event.RemotePause, () => {
-    TrackPlayer.pause();
+  TrackPlayer.addEventListener(Event.RemoteJumpBackward, async () => {
+    const position = await TrackPlayer.getPosition();
+    await TrackPlayer.seekTo(Math.max(0, position - 15));
   });
 
-  TrackPlayer.addEventListener(Event.RemoteStop, () => {
-    TrackPlayer.stop();
+  // Seek
+  TrackPlayer.addEventListener(Event.RemoteSeek, ({position}) => {
+    TrackPlayer.seekTo(position);
   });
 
-  TrackPlayer.addEventListener(Event.RemoteNext, () => {
-    TrackPlayer.skipToNext();
+  // Handle audio interruptions
+  TrackPlayer.addEventListener(Event.RemoteDuck, async event => {
+    if (event.permanent) {
+      await TrackPlayer.pause();
+    } else {
+      if (event.paused) {
+        await TrackPlayer.pause();
+      } else {
+        const playerState = await TrackPlayer.getState();
+        if (playerState !== State.Playing) {
+          await TrackPlayer.play();
+        }
+      }
+    }
   });
-
-  TrackPlayer.addEventListener(Event.RemotePrevious, () => {
-    TrackPlayer.skipToPrevious();
-  });
-
-  TrackPlayer.addEventListener(Event.PlaybackError, async error => {
-    console.error('Playback error in service:', error);
-    // Optionally, notify the user or take other actions
-  });
-};
-
-export {playbackService};
+}

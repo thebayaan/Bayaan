@@ -7,6 +7,7 @@ import {
   TouchableOpacityProps,
   View,
   StyleProp,
+  ActivityIndicator,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -41,6 +42,7 @@ export const Button: React.FC<ButtonProps> = ({
   borderColor,
   disabled = false,
   icon,
+  loading = false,
   ...props
 }) => {
   const {theme} = useTheme();
@@ -69,11 +71,20 @@ export const Button: React.FC<ButtonProps> = ({
     <TouchableOpacity
       style={buttonStyle}
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       {...props}>
       <View style={styles.buttonContent}>
-        {icon && <View style={styles.iconContainer}>{icon}</View>}
-        <Text style={buttonTextStyle}>{title}</Text>
+        {loading ? (
+          <ActivityIndicator
+            color={theme.colors.background}
+            style={styles.loadingIndicator}
+          />
+        ) : (
+          <>
+            {icon && <View style={styles.iconContainer}>{icon}</View>}
+            <Text style={buttonTextStyle}>{title}</Text>
+          </>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -91,9 +102,16 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      minHeight: moderateScale(24),
     },
     iconContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       marginRight: moderateScale(8),
+    },
+    loadingIndicator: {
+      marginHorizontal: moderateScale(8),
     },
     buttonText: {
       color: 'white',
