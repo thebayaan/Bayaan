@@ -1,9 +1,14 @@
 import React from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+import {
+  TimerIcon,
+  RepeatIcon,
+  RepeatOneIcon,
+  QueueIcon,
+} from '@/components/Icons';
 
 interface PlayerControlButtonsProps {
   playbackSpeed: number;
@@ -36,7 +41,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
           <Text
             style={[
               styles.speedButtonText,
-              playbackSpeed !== 1 && {color: theme.colors.primary},
+              playbackSpeed !== 1 && {color: theme.colors.text},
             ]}>
             {`${playbackSpeed}x`}
           </Text>
@@ -46,41 +51,43 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
             styles.activeDot,
             {
               backgroundColor:
-                playbackSpeed !== 1 ? theme.colors.primary : 'transparent',
+                playbackSpeed !== 1 ? theme.colors.text : 'transparent',
             },
           ]}
         />
       </View>
       <View style={styles.buttonWrapper}>
         <TouchableOpacity onPress={onRepeatPress}>
-          <MaterialCommunityIcons
-            name={repeatMode === 'once' ? 'repeat-once' : 'repeat'}
-            size={moderateScale(24)}
-            color={
-              repeatMode === 'off' ? theme.colors.text : theme.colors.primary
-            }
-          />
+          {repeatMode === 'off' && (
+            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
+          )}
+          {repeatMode === 'all' && (
+            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
+          )}
+          {repeatMode === 'once' && (
+            <RepeatOneIcon size={moderateScale(24)} color={theme.colors.text} />
+          )}
         </TouchableOpacity>
         <View
           style={[
             styles.activeDot,
             {
               backgroundColor:
-                repeatMode !== 'off' ? theme.colors.primary : 'transparent',
+                repeatMode !== 'off' ? theme.colors.text : 'transparent',
             },
           ]}
         />
       </View>
       <View style={styles.buttonWrapper}>
         <TouchableOpacity onPress={onSleepTimerPress}>
-          <MaterialCommunityIcons
-            name={sleepTimer || isEndOfSurahTimer ? 'timer' : 'timer-outline'}
-            size={moderateScale(24)}
+          <TimerIcon
             color={
               sleepTimer || isEndOfSurahTimer
-                ? theme.colors.primary
+                ? theme.colors.text
                 : theme.colors.text
             }
+            size={moderateScale(24)}
+            filled={!!(sleepTimer || isEndOfSurahTimer)}
           />
         </TouchableOpacity>
         <View
@@ -89,7 +96,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
             {
               backgroundColor:
                 sleepTimer || isEndOfSurahTimer
-                  ? theme.colors.primary
+                  ? theme.colors.text
                   : 'transparent',
             },
           ]}
@@ -97,11 +104,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
       </View>
       <View style={styles.buttonWrapper}>
         <TouchableOpacity onPress={onQueuePress}>
-          <MaterialCommunityIcons
-            name="playlist-music"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
+          <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
     </View>
@@ -114,20 +117,23 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-evenly',
       width: '100%',
+      paddingVertical: moderateScale(16),
     },
     buttonWrapper: {
       alignItems: 'center',
+      width: moderateScale(60),
+      height: moderateScale(40),
     },
     speedButtonText: {
       color: theme.colors.text,
       fontSize: moderateScale(20),
-      fontWeight: 'bold',
+      fontWeight: '500',
     },
     activeDot: {
       width: moderateScale(4),
       height: moderateScale(4),
       borderRadius: moderateScale(2),
-      backgroundColor: theme.colors.primary,
+      backgroundColor: theme.colors.text,
       marginTop: moderateScale(4),
     },
   });

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useMemo} from 'react';
+import React, {useState, useEffect, useMemo, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
-import PlayerControls from '@/components/player/PlayerControls';
+import PlaybackControls from '@/components/player/PlaybackControls';
 import PlayerProgressBar from '@/components/player/PlayerProgressBar';
 import {ReciterImage} from '@/components/ReciterImage';
 import {usePlayerStore} from '@/store/playerStore';
@@ -24,11 +24,13 @@ import TrackInfo from '@/components/player/TrackInfo';
 import {Theme} from '@/utils/themeUtils';
 import AdditionalControls from '@/components/player/AdditionalControls';
 import {useTrackPlayerFavorite} from '@/hooks/usePlayerFavorite';
-import PlayerOptionsModal from '@/components/player/PlayerOptionsModal';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import SurahSummary from '@/components/player/SurahSummary';
-import QueueModal from '@/components/player/QueueModal';
 import {useQueueManagement} from '@/hooks/useQueueManagement';
+import BottomSheet from '@gorhom/bottom-sheet';
+import {LinearGradient} from 'expo-linear-gradient';
+import {usePlayerBackground} from '@/hooks/usePlayerBackground';
+import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 
 type SurahInfo = {
   [key: string]: {
@@ -44,10 +46,12 @@ const surahInfo: SurahInfo = require('@/data/surahInfo.json');
 // const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
 const PlayerScreen = () => {
-  const {theme} = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const activeTrack = usePlayerStore(state => state.activeTrack);
+  const {theme, isDarkMode} = useTheme();
+  const currentTrack = usePlayerStore(state => state.currentTrack);
+  const updateCurrentTrack = usePlayerStore(state => state.updateCurrentTrack);
+  const {gradientColors} = usePlayerBackground(theme, isDarkMode);
   const {
     setSleepTimer,
     clearSleepTimer,
@@ -77,14 +81,39 @@ const PlayerScreen = () => {
     skipToNext: state.skipToNext,
   }));
   const {isFavorite, toggleFavorite} = useTrackPlayerFavorite();
-  const [isSpeedModalVisible, setIsSpeedModalVisible] = useState(false);
-  const [isSleepModalVisible, setIsSleepModalVisible] = useState(false);
-  const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
+  const [, setIsSpeedModalVisible] = useState(false);
   const [isFavoriteTrack, setIsFavoriteTrack] = useState(false);
-  const [isQueueModalVisible, setIsQueueModalVisible] = useState(false);
+  useQueueManagement();
 
-  const {queue, handleQueuePress, handleTrackPress, handleRemoveTrack} =
-    useQueueManagement();
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const playbackSpeedBottomSheetRef = useRef<BottomSheet>(null);
+
+  const [remainingTime, setRemainingTime] = useState<number | null>(null);
+
+  const {navigateToReciterProfile} = useReciterNavigation();
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (sleepTimerEnd && typeof sleepTimerEnd === 'number') {
+      interval = setInterval(() => {
+        const remaining = Math.max(
+          0,
+          Math.ceil((sleepTimerEnd - Date.now()) / 60000),
+        );
+        setRemainingTime(remaining);
+        if (remaining === 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
+    } else {
+      setRemainingTime(null);
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [sleepTimerEnd]);
 
   const handleSpeedChange = async (speed: number) => {
     setPlaybackSpeed(speed);
@@ -93,7 +122,6 @@ const PlayerScreen = () => {
 
   const handleSleepTimerChange = (minutes: number | 'END_OF_SURAH') => {
     setSleepTimer(minutes);
-    setIsSleepModalVisible(false);
   };
 
   const handleTurnOffTimer = () => {
@@ -105,28 +133,32 @@ const PlayerScreen = () => {
   };
 
   const handleToggleFavorite = () => {
-    if (activeTrack) {
-      toggleFavorite(activeTrack.reciterId, activeTrack.id);
+    if (currentTrack) {
+      toggleFavorite(currentTrack.reciterId, currentTrack.id);
       setIsFavoriteTrack(!isFavoriteTrack);
     }
   };
 
-  const handleOpenOptions = () => {
-    setIsOptionsModalVisible(true);
+  const handleOpenQueue = () => {
+    router.push('/player/queue');
   };
 
-  const handleOpenQueue = async () => {
-    await handleQueuePress();
-    setIsQueueModalVisible(true);
+  const handleSleepTimerPress = () => {
+    bottomSheetRef.current?.expand();
+  };
+
+  const handleSpeedPress = () => {
+    playbackSpeedBottomSheetRef.current?.expand();
   };
 
   useEffect(() => {
     return () => {
       if (sleepTimer) {
         clearTimeout(sleepTimer);
+        clearSleepTimer();
       }
     };
-  }, [sleepTimer]);
+  }, [sleepTimer, clearSleepTimer]);
 
   useEffect(() => {
     const listener = TrackPlayer.addEventListener(
@@ -137,33 +169,40 @@ const PlayerScreen = () => {
   }, [handleTrackEnd]);
 
   useEffect(() => {
-    if (activeTrack) {
-      const isFav = isFavorite(activeTrack.reciterId, activeTrack.id);
+    if (currentTrack) {
+      const isFav = isFavorite(currentTrack.reciterId, currentTrack.id);
       setIsFavoriteTrack(isFav);
     }
-  }, [activeTrack, isFavorite]);
+  }, [currentTrack, isFavorite]);
 
-  const surahNumber = activeTrack?.id
-    ? parseInt(activeTrack.id, 10)
+  useEffect(() => {
+    updateCurrentTrack();
+  }, [updateCurrentTrack]);
+
+  const surahNumber = currentTrack?.id
+    ? parseInt(currentTrack.id, 10)
     : undefined;
   const surahGlyph = surahNumber
     ? surahGlyphMap[surahNumber] + surahGlyphMap[0]
     : '';
 
+  const handleReciterPress = useCallback(() => {
+    if (currentTrack) {
+      navigateToReciterProfile(currentTrack.reciterId);
+    }
+  }, [currentTrack, navigateToReciterProfile]);
+
   const styles = useMemo(() => createStyles(theme, insets), [theme, insets]);
 
-  // const albumArtSize = useMemo(() => {
-  //   const availableHeight = SCREEN_HEIGHT - insets.top - insets.bottom - 400; // Adjust 400 based on the total height of other components
-  //   return Math.min(availableHeight, SCREEN_WIDTH * 0.8);
-  // }, [SCREEN_HEIGHT, SCREEN_WIDTH, insets.top, insets.bottom]);
   return (
     <View style={styles.container}>
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
           <Icon
-            name="chevron-down"
-            type="feather"
-            size={moderateScale(24)}
+            name="chevron-thin-down"
+            type="entypo"
+            size={moderateScale(22)}
             color={theme.colors.text}
           />
         </TouchableOpacity>
@@ -171,11 +210,13 @@ const PlayerScreen = () => {
       </View>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        bounces={false}
         showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
           <View style={styles.albumArtContainer}>
             <ReciterImage
-              imageUrl={activeTrack?.artwork}
+              imageUrl={currentTrack?.artwork}
+              reciterName={currentTrack?.artist || ''}
               style={styles.reciterImage}
             />
           </View>
@@ -183,7 +224,6 @@ const PlayerScreen = () => {
             <AdditionalControls
               isFavorite={isFavoriteTrack}
               onToggleFavorite={handleToggleFavorite}
-              onOpenOptions={handleOpenOptions}
             />
           </View>
           <View style={styles.controlsContainer}>
@@ -192,12 +232,13 @@ const PlayerScreen = () => {
             </View>
             <View style={styles.trackInfoContainer}>
               <TrackInfo
-                surahName={activeTrack?.title || ''}
-                reciterName={activeTrack?.artist || ''}
+                surahName={currentTrack?.title || ''}
+                reciterName={currentTrack?.artist || ''}
+                onReciterPress={handleReciterPress}
               />
             </View>
-            <View style={styles.playerControlsContainer}>
-              <PlayerControls />
+            <View style={styles.playbackControlsContainer}>
+              <PlaybackControls />
             </View>
             <View style={styles.playerControlButtonsContainer}>
               <PlayerControlButtons
@@ -205,9 +246,9 @@ const PlayerScreen = () => {
                 repeatMode={repeatMode}
                 sleepTimer={sleepTimer}
                 isEndOfSurahTimer={isEndOfSurahTimer}
-                onSpeedPress={() => setIsSpeedModalVisible(true)}
+                onSpeedPress={handleSpeedPress}
                 onRepeatPress={toggleRepeatMode}
-                onSleepTimerPress={() => setIsSleepModalVisible(true)}
+                onSleepTimerPress={handleSleepTimerPress}
                 onQueuePress={handleOpenQueue}
               />
             </View>
@@ -216,31 +257,17 @@ const PlayerScreen = () => {
         </View>
       </ScrollView>
       <PlaybackSpeedModal
-        isVisible={isSpeedModalVisible}
-        onClose={() => setIsSpeedModalVisible(false)}
+        bottomSheetRef={playbackSpeedBottomSheetRef}
         onSpeedChange={handleSpeedChange}
+        currentSpeed={playbackSpeed}
       />
       <SleepTimerModal
-        isVisible={isSleepModalVisible}
-        onClose={() => setIsSleepModalVisible(false)}
+        bottomSheetRef={bottomSheetRef}
         onTimerChange={handleSleepTimerChange}
         onTurnOffTimer={handleTurnOffTimer}
         sleepTimer={sleepTimer}
-        remainingTime={
-          sleepTimerEnd ? Math.ceil((sleepTimerEnd - Date.now()) / 60000) : null
-        }
-      />
-      <PlayerOptionsModal
-        isVisible={isOptionsModalVisible}
-        onClose={() => setIsOptionsModalVisible(false)}
-      />
-      <QueueModal
-        isVisible={isQueueModalVisible}
-        onClose={() => setIsQueueModalVisible(false)}
-        queue={queue}
-        currentTrackId={activeTrack?.id}
-        onTrackPress={handleTrackPress}
-        onRemoveTrack={handleRemoveTrack}
+        remainingTime={remainingTime}
+        currentTimer={sleepTimerEnd}
       />
     </View>
   );
@@ -255,6 +282,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       borderTopLeftRadius: moderateScale(12),
       borderTopRightRadius: moderateScale(12),
       marginTop: moderateScale(-20),
+      overflow: 'hidden',
     },
     header: {
       flexDirection: 'row',
@@ -275,6 +303,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     },
     scrollContent: {
       flexGrow: 1,
+      paddingBottom: moderateScale(30),
     },
     contentContainer: {
       alignItems: 'center',
@@ -317,7 +346,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     progressBarContainer: {
       marginBottom: moderateScale(16),
     },
-    playerControlsContainer: {
+    playbackControlsContainer: {
       marginBottom: moderateScale(16),
     },
     playerControlButtonsContainer: {

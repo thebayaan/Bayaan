@@ -31,30 +31,44 @@ const ExtendedSurahSummary = () => {
     ? surahGlyphMap[parseInt(surahNumber, 10)] + surahGlyphMap[0]
     : '';
 
-  const htmlContent = {
-    html: fullText,
-  };
-
   return (
     <View style={styles.container}>
       <View style={[styles.header]}>
         <TouchableOpacity style={styles.closeButton} onPress={router.back}>
           <Icon
-            name="arrow-left"
-            type="feather"
+            name="chevron-thin-left"
+            type="entypo"
             size={moderateScale(20)}
             color={theme.colors.text}
           />
         </TouchableOpacity>
         <Text style={styles.arabicSurahName}>{surahGlyph}</Text>
       </View>
-      <ScrollView style={styles.content}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + moderateScale(16),
+        }}>
         <Text style={styles.title}>{surahName}</Text>
         <Text style={styles.surahNumber}>Surah {surahNumber}</Text>
         <RenderHtml
           contentWidth={width}
-          source={htmlContent}
+          source={{html: fullText || ''}}
           baseStyle={styles.summaryText}
+          renderersProps={{
+            ol: {
+              enableExperimentalRtl: true,
+            },
+          }}
+          systemFonts={['SurahNames']}
+          tagsStyles={{
+            ol: {
+              color: theme.colors.text,
+            },
+            li: {
+              color: theme.colors.text,
+            },
+          }}
         />
       </ScrollView>
     </View>

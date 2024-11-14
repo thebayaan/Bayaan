@@ -4,17 +4,26 @@
     "strict": true,
     "resolveJsonModule": true,
     "typeRoots": [
-      "./types"
+      "./types",
+      "./node_modules/@types"
     ],
     "paths": {
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "types": ["node"]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "**/*.json"
-  ]
+    "**/*.json",
+    "scripts/**/*",
+    "types/**/*"
+  ],
+  "exclude": ["node_modules"],
 }

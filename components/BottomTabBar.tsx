@@ -20,7 +20,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   const styles = StyleSheet.create({
     container: {
       flexDirection: 'row',
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,

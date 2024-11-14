@@ -1,13 +1,61 @@
-import React, {useState, useEffect, useRef} from 'react';
-import {View, Text, TouchableOpacity, TextInput} from 'react-native';
+import React, {useState, useRef} from 'react';
+import {View, Text, TouchableOpacity, TextInput, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRouter, useLocalSearchParams} from 'expo-router';
 import {supabase} from '@/services/supabase';
 import {Button} from '@/components/Button';
 import {BackButton} from '@/components/BackButton';
 import {useTheme} from '@/hooks/useTheme';
-import {sendVerificationEmail} from '@/services/emailService';
 import {createStyles} from './styles';
+
+interface AuthError {
+  message: string;
+  status?: number;
+  name?: string;
+  statusCode?: string;
+}
+
+const handleVerificationError = (
+  error: AuthError | Error | unknown,
+): string => {
+  if (!error) return 'An unexpected error occurred';
+
+  const errorMessage =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error !== null && 'message' in error
+        ? (error.message as string)
+        : 'An unexpected error occurred';
+
+  // Token/OTP specific errors
+  if (errorMessage.includes('Token has expired')) {
+    return 'Verification code is invalid or has expired. Please try again or request a new code.';
+  }
+  if (errorMessage.includes('Token is invalid')) {
+    return 'Verification code is invalid or has expired. Please try again or request a new code.';
+  }
+  if (errorMessage.toLowerCase().includes('invalid otp')) {
+    return 'Invalid verification code. Please check and try again.';
+  }
+
+  // Rate limiting errors
+  if (errorMessage.toLowerCase().includes('too many requests')) {
+    return 'Too many attempts. Please wait a moment before trying again.';
+  }
+
+  // Session errors
+  if (errorMessage.toLowerCase().includes('session expired')) {
+    return 'Your session has expired. Please request a new verification code.';
+  }
+
+  // Network related errors
+  if (errorMessage.toLowerCase().includes('network')) {
+    return 'Network error. Please check your internet connection.';
+  }
+
+  // Generic error with the actual message if available
+  return 'Invalid verification code. Please check and try again.';
+};
 
 export default function VerifyEmailScreen() {
   const {theme} = useTheme();
@@ -20,17 +68,20 @@ export default function VerifyEmailScreen() {
     '',
     '',
   ]);
-  const [email, setEmail] = useState('');
+  // const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
+  const email = (params.email as string) || '';
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
-  useEffect(() => {
-    if (params.email) {
-      setEmail(params.email as string);
-    }
-  }, [params]);
+  // useEffect(() => {
+  //   if (params.email) {
+  //     setEmail(params.email as string);
+  //   }
+  // }, [params]);
 
   const handleBackButton = () => {
     router.back();
@@ -72,49 +123,83 @@ export default function VerifyEmailScreen() {
   };
 
   const handleVerify = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setError('');
+
     const code = verificationCode.join('');
+    if (code.length !== 6) {
+      setError('Please enter all 6 digits of the verification code');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const {data, error: verificationError} = await supabase
-        .from('verification_codes')
-        .select()
-        .eq('email', email)
-        .eq('code', code)
-        .single();
+      const {error: verifyError} = await supabase.auth.verifyOtp({
+        email,
+        token: code,
+        type: 'signup',
+      });
 
-      if (verificationError) throw verificationError;
+      if (verifyError) throw verifyError;
 
-      if (data) {
-        const {error: confirmError} = await supabase.auth.updateUser({
-          data: {email_confirmed: true},
-        });
-        if (confirmError) throw confirmError;
-
-        await supabase.from('verification_codes').delete().eq('email', email);
-
-        router.replace('/(tabs)');
-      } else {
-        setError('Invalid verification code. Please try again.');
-      }
+      Alert.alert('Success', 'Email verified successfully!', [
+        {
+          text: 'Continue',
+          onPress: () => router.replace('/(tabs)'),
+        },
+      ]);
     } catch (err) {
-      setError('An error occurred during verification');
-      console.error(err);
+      const errorMessage = handleVerificationError(err);
+      setError(errorMessage);
+      console.error('Verification error:', err);
+
+      // Clear the verification code if it's invalid or expired
+      if (
+        errorMessage.includes('expired') ||
+        errorMessage.includes('invalid')
+      ) {
+        setVerificationCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    try {
-      const newCode = Math.floor(100000 + Math.random() * 900000).toString();
-      await sendVerificationEmail(email, newCode);
-      await supabase
-        .from('verification_codes')
-        .upsert({email, code: newCode}, {onConflict: 'email'});
+    if (isResending) return;
+    setIsResending(true);
 
-      setError('');
+    try {
+      setError(''); // Clear any existing errors
+      const {error: resendError} = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      });
+
+      if (resendError) throw resendError;
+
+      // Clear the verification code fields
       setVerificationCode(['', '', '', '', '', '']);
-      setError('A new verification code has been sent to your email.');
+
+      // Show success message
+      Alert.alert(
+        'Code Sent',
+        'A new verification code has been sent to your email.',
+        [
+          {
+            text: 'OK',
+            onPress: () => inputRefs.current[0]?.focus(), // Focus on first input
+          },
+        ],
+      );
     } catch (err) {
-      setError('An error occurred while resending the code');
-      console.error(err);
+      const errorMessage = handleVerificationError(err);
+      setError(errorMessage);
+      console.error('Resend code error:', err);
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -157,11 +242,25 @@ export default function VerifyEmailScreen() {
           onPress={handleVerify}
           style={styles.button}
           textStyle={styles.buttonText}
+          loading={isLoading}
+          disabled={isLoading || verificationCode.some(digit => digit === '')}
         />
 
-        <TouchableOpacity onPress={handleResendCode}>
-          <Text style={styles.resendCode}>
-            I DIDN&apos;T RECEIVE A CODE — RESEND VERIFICATION CODE
+        <TouchableOpacity
+          onPress={handleResendCode}
+          disabled={isResending}
+          style={[
+            styles.resendCodeContainer,
+            isResending && styles.resendCodeDisabled,
+          ]}>
+          <Text
+            style={[
+              styles.resendCode,
+              isResending && styles.resendCodeTextDisabled,
+            ]}>
+            {isResending
+              ? 'SENDING CODE...'
+              : "I DIDN'T RECEIVE A CODE — RESEND VERIFICATION CODE"}
           </Text>
         </TouchableOpacity>
       </View>

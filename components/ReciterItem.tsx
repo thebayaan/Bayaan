@@ -10,19 +10,30 @@ import {ReciterImage} from '@/components/ReciterImage';
 interface ReciterItemProps {
   item: Reciter;
   onPress: (item: Reciter) => void;
+  isSelected?: boolean;
 }
 
 export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
-  ({item, onPress}) => {
+  ({item, onPress, isSelected}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
     const [moshafName1, moshafName2] = item.moshaf_name.split(' - ');
 
     return (
-      <TouchableOpacity style={styles.reciterItem} onPress={handlePress}>
-        <View style={styles.imageContainer}>
-          <ReciterImage imageUrl={item.image_url} style={styles.reciterImage} />
+      <TouchableOpacity
+        style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
+        onPress={handlePress}>
+        <View
+          style={[
+            styles.imageContainer,
+            isSelected && styles.selectedImageContainer,
+          ]}>
+          <ReciterImage
+            imageUrl={item.image_url}
+            reciterName={item.name}
+            style={styles.reciterImage}
+          />
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
@@ -41,6 +52,15 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
             </View>
           </View>
         </View>
+        {isSelected && (
+          <Icon
+            name="check-circle"
+            type="feather"
+            size={moderateScale(24)}
+            color={theme.colors.primary}
+            style={{marginLeft: moderateScale(10)}}
+          />
+        )}
       </TouchableOpacity>
     );
   },
@@ -90,5 +110,14 @@ const createStyles = (theme: Theme) =>
     moshafName: {
       fontSize: moderateScale(14),
       color: theme.colors.textSecondary,
+    },
+    selectedReciterItem: {
+      borderRadius: moderateScale(12),
+    },
+    selectedImageContainer: {
+      borderColor: theme.colors.primary,
+    },
+    checkIcon: {
+      marginLeft: moderateScale(10),
     },
   });

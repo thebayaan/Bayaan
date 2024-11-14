@@ -10,6 +10,7 @@ export const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
+      paddingHorizontal: moderateScale(10),
     },
     content: {
       flex: 1,
@@ -49,9 +50,8 @@ export const createStyles = (theme: Theme) =>
     },
     button: {
       marginBottom: verticalScale(15),
-      borderWidth: moderateScale(2),
-      borderColor: 'transparent',
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(35),
+      backgroundColor: theme.colors.text,
       shadowColor: '#000',
       shadowOffset: {
         width: 0,
@@ -63,6 +63,7 @@ export const createStyles = (theme: Theme) =>
     },
     buttonText: {
       fontSize: moderateScale(20),
+      color: theme.colors.background,
     },
     buttonDisabled: {
       backgroundColor: theme.colors.card,
@@ -82,7 +83,7 @@ export const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12),
     },
     link: {
-      color: theme.colors.primary,
+      color: theme.colors.text,
       fontFamily: theme.fonts.bold,
       fontSize: moderateScale(12),
       fontWeight: 'bold',
@@ -97,7 +98,7 @@ export const createStyles = (theme: Theme) =>
       // borderWidth: moderateScale(0.3),
     },
     forgotPassword: {
-      color: theme.colors.primary,
+      color: theme.colors.text,
       fontFamily: theme.fonts.regular,
       marginBottom: verticalScale(15),
       fontSize: moderateScale(12),
@@ -125,6 +126,8 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       height: verticalScale(38),
       marginBottom: verticalScale(15),
+      // borderWidth: moderateScale(1),
+      // borderColor: theme.colors.text,
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: '#000',
@@ -135,7 +138,7 @@ export const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
       elevation: 5,
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(35),
       backgroundColor: '#FFFFFF',
       // width: '100%',
     },
@@ -177,7 +180,7 @@ export const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     codeInputFilled: {
-      borderColor: theme.colors.accent,
+      borderColor: theme.colors.primary,
     },
     subtitle: {
       fontSize: moderateScale(16),
@@ -185,12 +188,22 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginBottom: verticalScale(30),
     },
+    resendCodeContainer: {
+      marginTop: moderateScale(theme.spacing.unit * 2),
+      alignItems: 'center',
+    },
     resendCode: {
-      color: theme.colors.primary,
-      fontFamily: theme.fonts.regular,
-      fontSize: moderateScale(12),
+      color: theme.colors.text,
+      fontSize: moderateScale(14),
       textAlign: 'center',
-      marginTop: verticalScale(20),
+      fontFamily: theme.fonts.regular,
+    },
+    resendCodeDisabled: {
+      opacity: 0.5,
+    },
+    resendCodeTextDisabled: {
+      color: theme.colors.textSecondary,
+      fontSize: moderateScale(14),
     },
     logo: {
       width: moderateScale(200),
@@ -206,10 +219,10 @@ export const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     subText: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(40),
       fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      marginBottom: moderateScale(theme.spacing.unit * 3),
+      color: theme.colors.text,
+      marginBottom: moderateScale(theme.spacing.unit * 6),
       textAlign: 'center',
     },
     buttonIcon: {
@@ -220,5 +233,24 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       marginBottom: moderateScale(theme.spacing.unit * 2),
       marginLeft: moderateScale(4),
+    },
+    secondaryButton: {
+      marginBottom: verticalScale(15),
+    },
+    secondaryButtonText: {
+      color: theme.colors.text,
+    },
+    logoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: moderateScale(150),
+      marginTop: moderateScale(-50),
+    },
+    appName: {
+      fontSize: moderateScale(35),
+      fontWeight: 'bold',
+      color: theme.colors.text,
+      marginLeft: moderateScale(15),
     },
   });

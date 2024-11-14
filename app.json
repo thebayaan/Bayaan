@@ -9,18 +9,20 @@
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "resizeMode": "cover",
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.osmansaeday.Bayaan",
+      "bundleIdentifier": "com.bayaan.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses the microphone to play audio.",
-        "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio."
+        "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio.",
+        "UILaunchStoryboardName": "SplashScreen"
       }
     },
     "android": {
+      "package": "com.bayaan.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"

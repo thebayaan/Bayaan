@@ -1,8 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
-import {StatusBar} from 'expo-status-bar';
-import {ThemeProvider} from '@/contexts/ThemeContext';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import {useAuthStore} from '@/store/authStore';
@@ -12,134 +10,159 @@ import {playbackService} from '@/services/playbackService';
 import {usePlayerStore} from '@/store/playerStore';
 import {setupTrackPlayer} from '@/utils/trackPlayerSetup';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {View, Text} from 'react-native';
+import {useTheme} from '@/hooks/useTheme';
 
+// Prevent auto hiding of splash screen
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* reloading the app might trigger this */
+});
+
+// Register playback service
 TrackPlayer.registerPlaybackService(() => playbackService);
 
 export default function RootLayout() {
+  const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const setActiveTrack = usePlayerStore(state => state.setActiveTrack);
+  const router = useRouter();
+  const {session, isLoading, initializeAuth, isInitialized} = useAuthStore();
 
-  useEffect(() => {
-    async function initializeTrackPlayer() {
-      try {
-        await setupTrackPlayer();
-        setIsPlayerReady(true);
-      } catch (error) {
-        console.error('Error initializing TrackPlayer:', error);
-      }
-    }
+  useTheme();
 
-    initializeTrackPlayer();
-  }, []);
-
-  useEffect(() => {
-    if (isPlayerReady) {
-      const listener = TrackPlayer.addEventListener(
-        Event.PlaybackTrackChanged,
-        async event => {
-          if (event.nextTrack !== undefined) {
-            const track = await TrackPlayer.getTrack(event.nextTrack);
-            if (track) {
-              setActiveTrack(track);
-            }
-          }
-        },
-      );
-
-      return () => {
-        listener.remove();
-      };
-    }
-  }, [isPlayerReady, setActiveTrack]);
-
-  TrackPlayer.addEventListener(Event.PlaybackError, error => {
-    console.error('Playback error:', error);
-  });
-
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SurahNames: require('@/assets/fonts/surah_names.ttf'),
     SurahNames2: require('@/assets/fonts/surah_names_2.ttf'),
   });
-  const {session, isLoading, initializeAuth} = useAuthStore();
-  const router = useRouter();
-  const [isReady, setIsReady] = useState(false);
 
+  // Initialize app
   useEffect(() => {
     async function prepare() {
       try {
-        await SplashScreen.preventAutoHideAsync();
         await initializeAuth();
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setIsReady(true);
+        await setupTrackPlayer();
+        setIsPlayerReady(true);
+        setAppIsReady(true);
+      } catch (error) {
+        console.error('Preparation error:', error);
       }
     }
+
     prepare();
   }, [initializeAuth]);
 
+  // Handle navigation after initialization
   useEffect(() => {
-    if (isReady && fontsLoaded && !isLoading && isPlayerReady) {
-      SplashScreen.hideAsync();
-      if (session) {
-        router.replace('/(tabs)/(home)');
-      } else {
-        router.replace('/(auth)/welcome');
-      }
+    if (
+      !appIsReady ||
+      !fontsLoaded ||
+      isLoading ||
+      !isPlayerReady ||
+      !isInitialized ||
+      fontError
+    ) {
+      return;
     }
-  }, [isReady, fontsLoaded, isLoading, session, router, isPlayerReady]);
+
+    const handleNavigation = async () => {
+      try {
+        await SplashScreen.hideAsync();
+        const route = session ? '/(tabs)/(home)' : '/(auth)/welcome';
+        router.replace(route);
+      } catch (error) {
+        console.error('Navigation error:', error);
+      }
+    };
+
+    handleNavigation();
+  }, [
+    appIsReady,
+    fontsLoaded,
+    fontError,
+    isLoading,
+    isPlayerReady,
+    isInitialized,
+    session,
+    router,
+  ]);
+
+  // Setup TrackPlayer event listeners
+  useEffect(() => {
+    if (!isPlayerReady) return;
+
+    const listeners = [
+      TrackPlayer.addEventListener(Event.PlaybackTrackChanged, async () => {
+        await usePlayerStore.getState().updateCurrentTrack();
+      }),
+      TrackPlayer.addEventListener(Event.PlaybackError, error => {
+        console.error('Playback error:', error);
+      }),
+    ];
+
+    return () => {
+      listeners.forEach(listener => listener.remove());
+    };
+  }, [isPlayerReady]);
+
+  if (fontError) {
+    return (
+      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+        <Text>Error loading fonts</Text>
+      </View>
+    );
+  }
+
+  if (
+    !fontsLoaded ||
+    !isPlayerReady ||
+    !appIsReady ||
+    !isInitialized ||
+    isLoading
+  ) {
+    return <LoadingIndicator />;
+  }
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
+      <SafeAreaProvider>
         <GestureHandlerRootView style={{flex: 1}}>
-          <StatusBar style="auto" />
-          {!fontsLoaded || !isPlayerReady || !isReady ? (
-            <LoadingIndicator />
-          ) : (
-            <Stack screenOptions={{headerShown: false}}>
-              <Stack.Screen name="(auth)" options={{headerShown: false}} />
-              <Stack.Screen
-                name="(modals)/settings"
-                options={{
-                  presentation: 'modal',
-                  animation: 'slide_from_bottom',
-                  headerShown: false,
-                }}
-              />
-              {/* <Stack.Screen
-                name="(tabs)/(collection)/reciter/select-reciter"
-                options={{presentation: 'transparentModal', animation: 'fade'}}
-              />
-              <Stack.Screen
-                name="(tabs)/(home)reciter/select-reciter"
-                options={{presentation: 'transparentModal', animation: 'fade'}}
-              /> */}
-              <Stack.Screen
-                name="(modals)/select-reciter"
-                options={{presentation: 'transparentModal', animation: 'fade'}}
-              />
-              <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-              <Stack.Screen
-                name="player"
-                options={{
-                  presentation: 'card',
-                  animation: 'slide_from_bottom',
-                  gestureEnabled: true,
-                  gestureDirection: 'vertical',
-                }}
-              />
-              <Stack.Screen
-                name="(modals)/setting-item-playground"
-                options={{
-                  presentation: 'modal',
-                  animation: 'slide_from_bottom',
-                }}
-              />
-            </Stack>
-          )}
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: {
+                paddingTop: 0,
+              },
+              animation: 'fade',
+            }}>
+            <Stack.Screen name="(auth)" options={{headerShown: false}} />
+            <Stack.Screen
+              name="(modals)/select-reciter"
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen name="(tabs)" options={{headerShown: false}} />
+            <Stack.Screen
+              name="player"
+              options={{
+                presentation: 'card',
+                animation: 'slide_from_bottom',
+                gestureEnabled: true,
+                gestureDirection: 'vertical',
+              }}
+            />
+            <Stack.Screen
+              name="(modals)/add-favorite-reciters"
+              options={{
+                presentation: 'transparentModal',
+                animation: 'fade',
+                headerShown: false,
+              }}
+            />
+          </Stack>
         </GestureHandlerRootView>
-      </ThemeProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

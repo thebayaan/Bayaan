@@ -1,25 +1,40 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  GestureResponderEvent,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
-import {MakkahIcon, MadinahIcon} from '@/components/Icons';
+import {MakkahIcon, MadinahIcon, PlayIcon} from '@/components/Icons';
 
 interface SurahItemProps {
   item: Surah;
   onPress: (item: Surah) => void;
+  showPlayButton?: boolean;
+  onPlayPress?: (item: Surah) => void;
 }
 
 export const SurahItem: React.FC<SurahItemProps> = React.memo(
-  ({item, onPress}) => {
+  ({item, onPress, showPlayButton = false, onPlayPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const revelationPlace = item.revelation_place.toLowerCase() as
       | 'makkah'
       | 'madinah';
+
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
+    const handlePlayPress = React.useCallback(
+      (e: GestureResponderEvent) => {
+        e.stopPropagation();
+        onPlayPress && onPlayPress(item);
+      },
+      [item, onPlayPress],
+    );
 
     const IconComponent =
       revelationPlace === 'makkah' ? MakkahIcon : MadinahIcon;
@@ -39,12 +54,15 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           <Text style={styles.surahSecondaryInfo}>
             {item.translated_name_english}
           </Text>
+        </View>
+        {showPlayButton && (
+          <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
+            <PlayIcon color={theme.colors.text} size={moderateScale(24)} />
+          </TouchableOpacity>
+        )}
+        <View style={styles.iconOverlay}>
           <IconComponent
-            size={
-              revelationPlace === 'makkah'
-                ? moderateScale(18)
-                : moderateScale(25)
-            }
+            size={moderateScale(80)}
             color={theme.colors.primary}
           />
         </View>
@@ -57,10 +75,16 @@ SurahItem.displayName = 'SurahItem';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
+    container: {
+      width: '100%',
+    },
     surahItem: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(10),
+      backgroundColor: theme.colors.background,
+      position: 'relative',
+      overflow: 'hidden',
     },
     surahInfoContainer: {
       flex: 1,
@@ -87,5 +111,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'SurahNames',
       color: theme.colors.text,
       textAlign: 'center',
+    },
+    playButton: {
+      padding: moderateScale(10),
+    },
+    iconOverlay: {
+      position: 'absolute',
+      right: moderateScale(-5),
+      top: moderateScale(-5),
+      opacity: 0.1,
+      transform: [{rotate: '-15deg'}],
     },
   });

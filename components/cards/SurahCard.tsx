@@ -5,12 +5,15 @@ import {moderateScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
+import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 // Light Indigo
 
 interface SurahCardProps {
   id: number;
   name: string;
   translatedName: string;
+  versesCount: number;
+  revelationPlace: string;
   onPress: () => void;
 }
 
@@ -18,27 +21,25 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   id,
   name,
   translatedName,
+  versesCount,
+  revelationPlace,
   onPress,
 }) => {
   const {theme, isDarkMode} = useTheme();
-
-  // Add these constants at the top of your file, outside the component
-  const DARKEST_COLOR = theme.colors.card; // Deep Indigo
-  const LIGHTEST_COLOR = theme.colors.card;
+  const baseColor = theme.colors.primary;
 
   const getGradientColors = () => {
-    const baseColor = theme.colors.primary;
     const startColor = Color(baseColor)
       .mix(
-        Color(isDarkMode ? DARKEST_COLOR : LIGHTEST_COLOR),
-        isDarkMode ? 0.89 : 0.89,
+        Color(isDarkMode ? theme.colors.card : theme.colors.background),
+        0.85,
       )
       .rgb()
       .string();
     const endColor = Color(startColor)
       .mix(
-        Color(isDarkMode ? DARKEST_COLOR : LIGHTEST_COLOR),
-        isDarkMode ? 1.4 : 0.999,
+        Color(isDarkMode ? theme.colors.card : theme.colors.background),
+        0.95,
       )
       .rgb()
       .string();
@@ -47,55 +48,90 @@ export const SurahCard: React.FC<SurahCardProps> = ({
 
   const styles = StyleSheet.create({
     container: {
-      width: moderateScale(120),
-      height: moderateScale(120),
-      borderRadius: moderateScale(2),
-      borderWidth: moderateScale(0.3),
-      borderColor: theme.colors.border,
-      marginRight: moderateScale(10),
-      justifyContent: 'center',
-      alignItems: 'center',
+      width: moderateScale(160),
+      height: moderateScale(200),
+      borderRadius: moderateScale(20),
+      marginRight: moderateScale(12),
       overflow: 'hidden',
     },
-    gradient: {
-      ...StyleSheet.absoluteFillObject,
-    },
     content: {
-      justifyContent: 'center',
+      flex: 1,
+      padding: moderateScale(16),
+      justifyContent: 'space-between',
+    },
+    topSection: {
       alignItems: 'center',
     },
     arabicName: {
-      fontSize: moderateScale(25),
+      fontSize: moderateScale(32),
       color: theme.colors.text,
-      textAlign: 'center',
       fontFamily: 'SurahNames',
-      marginBottom: moderateScale(10),
+      marginBottom: moderateScale(8),
+    },
+    nameContainer: {
+      alignItems: 'center',
     },
     name: {
-      fontSize: moderateScale(10),
+      fontSize: moderateScale(16),
+      fontWeight: '600',
       color: theme.colors.text,
-      textAlign: 'center',
+      marginBottom: moderateScale(4),
     },
     translatedName: {
-      fontSize: moderateScale(8),
+      fontSize: moderateScale(12),
       color: theme.colors.textSecondary,
-      textAlign: 'center',
+      marginBottom: moderateScale(8),
+    },
+    revelationIcon: {
+      marginLeft: moderateScale(4),
+    },
+    infoContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: moderateScale(8),
+      paddingTop: moderateScale(8),
+    },
+    infoGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    infoText: {
+      fontSize: moderateScale(11),
+      color: theme.colors.textSecondary,
+    },
+    iconOverlay: {
+      position: 'absolute',
+      right: moderateScale(-30),
+      bottom: moderateScale(-30),
+      opacity: 0.05,
+      transform: [{rotate: '-15deg'}],
     },
   });
-
-  const [gradientStart, gradientEnd] = getGradientColors();
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <LinearGradient
-        colors={[gradientStart, gradientEnd]}
-        style={styles.gradient}
+        colors={getGradientColors()}
+        style={StyleSheet.absoluteFill}
       />
+      <View style={styles.iconOverlay}>
+        {revelationPlace.toLowerCase() === 'makkah' ? (
+          <MakkahIcon size={moderateScale(120)} color={theme.colors.primary} />
+        ) : (
+          <MadinahIcon size={moderateScale(120)} color={theme.colors.primary} />
+        )}
+      </View>
       <View style={styles.content}>
-        <Text style={styles.arabicName}>{surahGlyphMap[id]}</Text>
-        <View>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.translatedName}>{translatedName}</Text>
+        <View style={styles.topSection}>
+          <Text style={styles.arabicName}>{surahGlyphMap[id]}</Text>
+          <View style={styles.nameContainer}>
+            <Text style={styles.name}>{name}</Text>
+            <Text style={styles.translatedName}>{translatedName}</Text>
+          </View>
+        </View>
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoText}>{versesCount} verses</Text>
         </View>
       </View>
     </TouchableOpacity>

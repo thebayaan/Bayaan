@@ -1,19 +1,12 @@
 import React, {useState, useEffect, useCallback, useMemo} from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-  FlatList,
-} from 'react-native';
+import {View, Text, TouchableOpacity, ScrollView, FlatList} from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 import Fuse from 'fuse.js';
-import {createStyles} from '../styles';
+import {createStyles} from './styles';
 import SearchBar from '@/components/SearchBar';
 import {Icon} from '@rneui/themed';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -22,6 +15,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {Button} from '@/components/Button';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {useSettings} from '@/hooks/useSettings';
+import {useReciterStore} from '@/store/reciterStore';
+import {usePlayback} from '@/hooks/usePlayback';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -44,6 +41,10 @@ export default function SearchScreen() {
 
   const {theme} = useTheme();
   const styles = createStyles(theme);
+
+  const {askEveryTime, defaultReciterSelection} = useSettings();
+  const {playTrack} = usePlayback();
+  const defaultReciter = useReciterStore(state => state.defaultReciter);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,16 +77,19 @@ export default function SearchScreen() {
   }, []);
 
   const performSearch = useCallback(() => {
-    if (query.length > 0 && reciterFuse && surahFuse) {
-      const reciterSearchResults = reciterFuse.search(query).slice(0, 10);
-      const surahSearchResults = surahFuse.search(query).slice(0, 5);
+    if (!reciterFuse || !surahFuse) return; // Early return if Fuse instances aren't ready
 
-      setReciterResults(reciterSearchResults.map(result => result.item));
-      setFilteredSurahs(surahSearchResults.map(result => result.item));
-    } else {
+    if (query.length === 0) {
       setReciterResults([]);
       setFilteredSurahs([]);
+      return;
     }
+
+    const reciterSearchResults = reciterFuse.search(query, {limit: 10});
+    const surahSearchResults = surahFuse.search(query, {limit: 5});
+
+    setReciterResults(reciterSearchResults.map(result => result.item));
+    setFilteredSurahs(surahSearchResults.map(result => result.item));
   }, [query, reciterFuse, surahFuse]);
 
   useEffect(() => {
@@ -121,12 +125,56 @@ export default function SearchScreen() {
   const handleSurahPress = useCallback(
     (surah: Surah) => {
       addToRecentSearches(query);
-      router.push({
-        pathname: '(modals)/select-reciter',
-        params: {id: surah.id, name: surah.name},
-      });
+      if (askEveryTime) {
+        router.push({
+          pathname: '(modals)/select-reciter',
+          params: {surahId: surah.id},
+        });
+      } else {
+        switch (defaultReciterSelection) {
+          case 'browseAll':
+            router.push({
+              pathname: '/(tabs)/(search)/reciter/browse',
+              params: {view: 'all', surahId: surah.id},
+            });
+            break;
+          case 'searchFavorites':
+            router.push({
+              pathname: '/(tabs)/(search)/reciter/browse',
+              params: {view: 'favorites', surahId: surah.id},
+            });
+            break;
+          case 'useDefault':
+            if (defaultReciter) {
+              playTrack(defaultReciter, surah.id.toString());
+              router.push({
+                pathname: '/player',
+                params: {reciterImageUrl: defaultReciter.image_url},
+              });
+            } else {
+              router.push({
+                pathname: '(modals)/select-reciter',
+                params: {surahId: surah.id},
+              });
+            }
+            break;
+          default:
+            router.push({
+              pathname: '(modals)/select-reciter',
+              params: {surahId: surah.id},
+            });
+        }
+      }
     },
-    [router, query, addToRecentSearches],
+    [
+      router,
+      askEveryTime,
+      defaultReciterSelection,
+      defaultReciter,
+      playTrack,
+      query,
+      addToRecentSearches,
+    ],
   );
 
   const renderSurah = useCallback(
@@ -193,10 +241,15 @@ export default function SearchScreen() {
     [renderSuggestionButton, styles],
   );
 
+  const clearRecentSearches = useCallback(async () => {
+    setRecentSearches([]);
+    await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingIndicator />
       </View>
     );
   }
@@ -204,11 +257,6 @@ export default function SearchScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Search
-          </Text>
-        </View>
         <View style={styles.searchBoxContainer}>
           <SearchBar
             placeholder="What do you want to listen to?"
@@ -220,28 +268,33 @@ export default function SearchScreen() {
       <View style={styles.contentContainer}>
         {query.length === 0 ? (
           <ScrollView>
-            {recentSearches.length > 0 && (
-              <View style={styles.emptyContainer}>
-                <View style={styles.suggestionsContainer}>
-                  <FlatList
-                    data={[
-                      searchSuggestions.slice(
-                        0,
-                        Math.ceil(searchSuggestions.length / 2),
-                      ),
-                      searchSuggestions.slice(
-                        Math.ceil(searchSuggestions.length / 2),
-                      ),
-                    ]}
-                    renderItem={renderSuggestionRow}
-                    keyExtractor={(_, index) => `row-${index}`}
-                    scrollEnabled={false}
-                  />
-                </View>
+            <View style={styles.emptyContainer}>
+              <View style={styles.suggestionsContainer}>
+                <FlatList
+                  data={[
+                    searchSuggestions.slice(
+                      0,
+                      Math.ceil(searchSuggestions.length / 2),
+                    ),
+                    searchSuggestions.slice(
+                      Math.ceil(searchSuggestions.length / 2),
+                    ),
+                  ]}
+                  renderItem={renderSuggestionRow}
+                  keyExtractor={(_, index) => `row-${index}`}
+                  scrollEnabled={false}
+                />
+              </View>
+              {recentSearches.length > 0 && (
                 <View>
-                  <Text style={styles.placeholderSectionTitle}>
-                    RECENT SEARCHES
-                  </Text>
+                  <View style={styles.recentSearchesHeader}>
+                    <Text style={styles.placeholderSectionTitle}>
+                      RECENT SEARCHES
+                    </Text>
+                    <TouchableOpacity onPress={clearRecentSearches}>
+                      <Text style={styles.clearButton}>Clear All</Text>
+                    </TouchableOpacity>
+                  </View>
                   <FlatList
                     data={recentSearches}
                     renderItem={renderSearchItem}
@@ -249,11 +302,13 @@ export default function SearchScreen() {
                     scrollEnabled={false}
                   />
                 </View>
-              </View>
-            )}
+              )}
+            </View>
           </ScrollView>
         ) : (
-          <ScrollView style={styles.resultsContainer}>
+          <ScrollView
+            style={styles.resultsContainer}
+            contentContainerStyle={{paddingBottom: 70}}>
             {filteredSurahs.length > 0 && (
               <View>
                 <Text style={styles.sectionTitle}>Surahs</Text>

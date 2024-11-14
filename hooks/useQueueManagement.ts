@@ -1,10 +1,14 @@
 import {useCallback} from 'react';
 import {useQueueStore} from '@/store/queueStore';
+import {Reciter} from '@/data/reciterData';
+import {Surah} from '@/data/surahData';
+import {Track} from '@/types/audio';
+import {generateAudioUrl} from '@/utils/audioUtils';
 
 export const useQueueManagement = () => {
   const {
     queue,
-    addToQueue,
+    addToQueue: addToQueueStore,
     addNext,
     clearQueue,
     shuffleQueue,
@@ -12,6 +16,23 @@ export const useQueueManagement = () => {
     skipToTrack,
     removeFromQueue,
   } = useQueueStore();
+
+  const createTrack = (reciter: Reciter, surah: Surah): Track => ({
+    id: surah.id.toString(),
+    url: generateAudioUrl(reciter, surah.id.toString()),
+    title: surah.name,
+    artist: reciter.name,
+    reciterId: reciter.id,
+    artwork: reciter.image_url || undefined,
+  });
+
+  const addToQueue = useCallback(
+    async (reciter: Reciter, surah: Surah) => {
+      const track = createTrack(reciter, surah);
+      await addToQueueStore(track);
+    },
+    [addToQueueStore],
+  );
 
   const refreshQueue = useCallback(async () => {
     await getQueue();
@@ -43,15 +64,16 @@ export const useQueueManagement = () => {
 
   return {
     queue,
-    handleQueuePress,
-    handleTrackPress,
-    handleRemoveTrack,
-    refreshQueue,
     addToQueue,
     addNext,
     clearQueue,
     shuffleQueue,
+    getQueue,
     skipToTrack,
     removeFromQueue,
+    handleQueuePress,
+    handleTrackPress,
+    handleRemoveTrack,
+    refreshQueue,
   };
 };

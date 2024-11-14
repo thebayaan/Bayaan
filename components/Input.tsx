@@ -11,7 +11,21 @@ interface InputProps extends TextInputProps {
   rightIcon?: string;
   onRightIconPress?: () => void;
   iconColor?: string;
+  sanitize?: boolean; // Add this prop to control sanitization
 }
+
+const sanitizeInput = (text: string): string => {
+  // Remove any HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+
+  // Remove special characters that could be used for XSS
+  text = text.replace(/[&<>"'`=\\/]/g, '');
+
+  // Trim whitespace
+  text = text.trim();
+
+  return text;
+};
 
 export const Input: React.FC<InputProps> = ({
   icon,
@@ -19,10 +33,19 @@ export const Input: React.FC<InputProps> = ({
   rightIcon,
   onRightIconPress,
   iconColor,
+  sanitize = true, // Default to true for security
+  onChangeText,
   ...props
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+
+  const handleChangeText = (text: string) => {
+    if (sanitize) {
+      text = sanitizeInput(text);
+    }
+    onChangeText?.(text);
+  };
 
   const inputStyle = [
     styles.input,
@@ -36,7 +59,8 @@ export const Input: React.FC<InputProps> = ({
       {icon && <View style={styles.iconContainer}>{icon}</View>}
       <TextInput
         style={inputStyle}
-        placeholderTextColor={iconColor || theme.colors.light}
+        placeholderTextColor={iconColor || theme.colors.textSecondary}
+        onChangeText={handleChangeText}
         {...props}
       />
       {rightIcon && (
@@ -47,7 +71,7 @@ export const Input: React.FC<InputProps> = ({
             type="antdesign"
             name={rightIcon}
             size={moderateScale(20)}
-            color={iconColor || theme.colors.light}
+            color={iconColor || theme.colors.textSecondary}
           />
         </TouchableOpacity>
       )}

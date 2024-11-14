@@ -1,5 +1,7 @@
+// app/auth/signup.tsx
+
 import React, {useState, useEffect} from 'react';
-import {View, Text} from 'react-native';
+import {View, Text, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 
@@ -16,9 +18,9 @@ export default function SignUpScreen() {
   const styles = createStyles(theme);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
   const [isFormValid, setIsFormValid] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -28,19 +30,20 @@ export default function SignUpScreen() {
   };
 
   useEffect(() => {
-    setIsFormValid(
-      isValidEmail(email) &&
-        password.length >= 8 &&
-        password === confirmPassword,
-    );
-  }, [email, password, confirmPassword]);
+    setIsFormValid(isValidEmail(email) && password.length >= 8);
+  }, [email, password]);
 
   const handleSignUp = async () => {
+    setIsLoading(true);
     try {
-      const {success, error: signUpError} = await signUp(email, password);
+      const {success, error: signUpError} = await signUp(email);
       if (success) {
+        Alert.alert(
+          'Verification Email Sent',
+          'Please check your email to verify your account.',
+        );
         router.push({
-          pathname: '/verify-email',
+          pathname: '/(auth)/verify-email',
           params: {email},
         });
       } else {
@@ -53,6 +56,8 @@ export default function SignUpScreen() {
         'An unexpected error occurred. Please check your connection and try again.',
       );
       console.error(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,12 +72,10 @@ export default function SignUpScreen() {
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
-          keyboardType="email-address"
           autoCorrect={false}
           autoComplete="email"
+          keyboardType="email-address"
           style={styles.inputOverride}
-          iconColor={theme.colors.light}
-          returnKeyType="done"
         />
 
         <Input
@@ -83,19 +86,11 @@ export default function SignUpScreen() {
           rightIcon={showPassword ? 'eye' : 'eyeo'}
           onRightIconPress={() => setShowPassword(!showPassword)}
           style={styles.inputOverride}
-          iconColor={theme.colors.light}
-          returnKeyType="done"
-        />
-
-        <Input
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showConfirmPassword}
-          rightIcon={showConfirmPassword ? 'eye' : 'eyeo'}
-          onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
-          style={styles.inputOverride}
-          iconColor={theme.colors.light}
+          sanitize={false}
+          onSubmitEditing={handleSignUp}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="password"
           returnKeyType="done"
         />
 
@@ -110,6 +105,7 @@ export default function SignUpScreen() {
             !isFormValid && styles.buttonTextDisabled,
           ]}
           disabled={!isFormValid}
+          loading={isLoading}
         />
       </View>
     </SafeAreaView>

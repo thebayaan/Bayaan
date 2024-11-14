@@ -1,47 +1,39 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect} from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import {useRouter} from 'expo-router';
-import {Icon} from '@rneui/themed';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
-import TrackPlayer, {
-  usePlaybackState,
-  State,
-  Track,
-} from 'react-native-track-player';
+import TrackPlayer, {usePlaybackState, State} from 'react-native-track-player';
 import {useSharedValue, withTiming, Easing} from 'react-native-reanimated';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import {PlayIcon, PauseIcon} from '@/components/Icons';
+import {usePlayerBackground} from '@/hooks/usePlayerBackground';
+import {LinearGradient} from 'expo-linear-gradient';
+import {StyleSheet} from 'react-native';
+import {usePlayerStore} from '@/store/playerStore';
 
 export const FloatingPlayer: React.FC = () => {
   const router = useRouter();
-  const {theme} = useTheme();
+  const {theme, isDarkMode} = useTheme();
   const playbackState = usePlaybackState();
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
+  const currentTrack = usePlayerStore(state => state.currentTrack);
+  const updateCurrentTrack = usePlayerStore(state => state.updateCurrentTrack);
   const styles = createStyles(theme);
+  const {gradientColors} = usePlayerBackground(theme, isDarkMode);
 
   const translateY = useSharedValue(100);
 
   useEffect(() => {
-    const fetchCurrentTrack = async () => {
-      const track = await TrackPlayer.getCurrentTrack();
-      if (track !== null) {
-        const trackObject = await TrackPlayer.getTrack(track);
-        setCurrentTrack(trackObject || null);
-        translateY.value = withTiming(0, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-      } else {
-        translateY.value = withTiming(100, {
-          duration: 300,
-          easing: Easing.in(Easing.cubic),
-        });
-      }
-    };
+    updateCurrentTrack();
+  }, [playbackState, updateCurrentTrack]);
 
-    fetchCurrentTrack();
-  }, [playbackState, translateY]);
+  useEffect(() => {
+    translateY.value = withTiming(currentTrack ? 0 : 100, {
+      duration: 300,
+      easing: currentTrack ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+    });
+  }, [currentTrack, translateY]);
 
   if (!currentTrack) return null;
 
@@ -65,15 +57,17 @@ export const FloatingPlayer: React.FC = () => {
 
   return (
     <View style={[styles.container]}>
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
       <TouchableOpacity style={styles.content} onPress={handlePress}>
-        <TouchableOpacity style={styles.playButton} onPress={togglePlayback}>
-          <Icon
-            name={playbackState.state === State.Playing ? 'pause' : 'play'}
-            type="foundation"
-            color={theme.colors.text}
-            size={moderateScale(30)}
-          />
-        </TouchableOpacity>
+        <View style={styles.playButtonContainer}>
+          <TouchableOpacity style={styles.playButton} onPress={togglePlayback}>
+            {playbackState.state === State.Playing ? (
+              <PauseIcon color={theme.colors.text} size={moderateScale(26)} />
+            ) : (
+              <PlayIcon color={theme.colors.text} size={moderateScale(30)} />
+            )}
+          </TouchableOpacity>
+        </View>
         <View style={styles.textContainer}>
           <Text style={styles.title} numberOfLines={1}>
             {currentTrack.title}
@@ -92,10 +86,9 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
       position: 'absolute',
-      bottom: 100,
+      bottom: 105, // Add some padding
       left: moderateScale(10),
       right: moderateScale(10),
-      backgroundColor: theme.colors.backgroundSecondary,
       borderRadius: moderateScale(15),
       paddingHorizontal: moderateScale(15),
       paddingVertical: moderateScale(6),
@@ -107,6 +100,7 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
       elevation: 5,
+      overflow: 'hidden',
     },
     content: {
       flexDirection: 'row',
@@ -127,6 +121,12 @@ const createStyles = (theme: Theme) =>
     },
     playButton: {
       paddingRight: moderateScale(10),
+    },
+    playButtonContainer: {
+      width: moderateScale(30),
+      height: moderateScale(40),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     surahName: {
       fontFamily: 'SurahNames',

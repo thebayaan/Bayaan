@@ -4,8 +4,12 @@ import {Slider} from 'react-native-awesome-slider';
 import {usePlayerStore} from '@/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
-import {useSharedValue} from 'react-native-reanimated';
 import {useProgress} from 'react-native-track-player';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 const PlayerProgressBar: React.FC = React.memo(() => {
   const {seekTo} = usePlayerStore();
@@ -16,6 +20,13 @@ const PlayerProgressBar: React.FC = React.memo(() => {
   const min = useSharedValue(0);
   const max = useSharedValue(1);
   const isSliding = useSharedValue(false);
+  const thumbSize = useSharedValue(moderateScale(8));
+
+  const animatedThumbStyle = useAnimatedStyle(() => ({
+    width: thumbSize.value,
+    height: thumbSize.value,
+    borderRadius: thumbSize.value / 2,
+  }));
 
   useEffect(() => {
     if (!isSliding.value) {
@@ -41,16 +52,18 @@ const PlayerProgressBar: React.FC = React.memo(() => {
 
   const handleSlidingStart = useCallback(() => {
     isSliding.value = true;
-  }, [isSliding]);
+    thumbSize.value = withTiming(moderateScale(14), {duration: 200});
+  }, [isSliding, thumbSize]);
 
   const handleSlidingComplete = useCallback(
     (value: number) => {
       isSliding.value = false;
+      thumbSize.value = withTiming(moderateScale(10), {duration: 100});
       if (progress.duration > 0) {
         seekTo(value * progress.duration);
       }
     },
-    [seekTo, progress.duration, isSliding],
+    [seekTo, progress.duration, isSliding, thumbSize],
   );
 
   return (
@@ -70,14 +83,19 @@ const PlayerProgressBar: React.FC = React.memo(() => {
         onSlidingStart={handleSlidingStart}
         onSlidingComplete={handleSlidingComplete}
         theme={{
-          minimumTrackTintColor: theme.colors.primary,
+          minimumTrackTintColor: theme.colors.text,
           maximumTrackTintColor: theme.colors.border,
-          bubbleBackgroundColor: theme.colors.primary,
+          bubbleBackgroundColor: theme.colors.text,
         }}
-        thumbWidth={0}
+        renderThumb={() => (
+          <Animated.View
+            style={[{backgroundColor: theme.colors.text}, animatedThumbStyle]}
+          />
+        )}
         renderBubble={() => null}
-        sliderHeight={moderateScale(1.5)}
-        bubbleWidth={5}
+        sliderHeight={moderateScale(3)}
+        bubbleWidth={8}
+        containerStyle={{borderRadius: moderateScale(10)}}
       />
     </View>
   );
