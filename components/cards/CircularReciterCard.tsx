@@ -52,8 +52,9 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
       borderRadius: moderateScale(imageSize / 2),
       overflow: 'hidden',
       marginBottom: verticalScale(5),
-      borderWidth: variant === 'add' ? 0 : isSelected ? 3 : 0,
-      borderColor: variant === 'add' ? theme.colors.border : theme.colors.text,
+      borderWidth: variant === 'add' ? 0 : isSelected ? 4 : 0,
+      borderColor:
+        variant === 'add' ? theme.colors.border : theme.colors.primary,
       backgroundColor: variant === 'add' ? theme.colors.card : undefined,
       justifyContent: variant === 'add' ? 'center' : undefined,
       alignItems: variant === 'add' ? 'center' : undefined,
@@ -79,7 +80,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
     selectedOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: theme.colors.primary,
-      opacity: 0.2,
+      opacity: 0.3,
     },
   });
 
