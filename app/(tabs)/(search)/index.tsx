@@ -56,13 +56,18 @@ export default function SearchScreen() {
       setReciterFuse(
         new Fuse(reciterData, {
           keys: ['name'],
-          threshold: 0.4,
+          threshold: 0.3,
+          distance: 100,
+          minMatchCharLength: 2,
         }),
       );
       setSurahFuse(
         new Fuse(surahData, {
           keys: ['name', 'name_arabic', 'translated_name_english', 'id'],
-          threshold: 0.4,
+          threshold: 0.3,
+          distance: 100,
+          minMatchCharLength: 2,
+          useExtendedSearch: true,
         }),
       );
 
