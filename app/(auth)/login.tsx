@@ -91,7 +91,7 @@ export default function LoginScreen() {
         />
         <View style={styles.forgotPasswordContainer}>
           <Text style={styles.linkText}>FORGOT PASSWORD? — </Text>
-          <TouchableOpacity onPress={handleForgotPassword}>
+          <TouchableOpacity activeOpacity={0.99} onPress={handleForgotPassword}>
             <Text style={styles.link}>RESET PASSWORD</Text>
           </TouchableOpacity>
         </View>
@@ -119,6 +119,7 @@ export default function LoginScreen() {
 
         {Platform.OS === 'ios' && (
           <TouchableOpacity
+            activeOpacity={0.99}
             style={[styles.socialButton]}
             onPress={() => handleSocialSignIn('Apple')}>
             <View style={styles.socialButtonContent}>
@@ -129,6 +130,7 @@ export default function LoginScreen() {
         )}
 
         <TouchableOpacity
+          activeOpacity={0.99}
           style={[styles.socialButton]}
           onPress={() => handleSocialSignIn('Google')}>
           <View style={styles.socialButtonContent}>
@@ -139,7 +141,9 @@ export default function LoginScreen() {
 
         <View style={styles.linkContainer}>
           <Text style={styles.linkText}>DON&apos;T HAVE AN ACCOUNT? </Text>
-          <TouchableOpacity onPress={() => router.push('/signup')}>
+          <TouchableOpacity
+            activeOpacity={0.99}
+            onPress={() => router.push('/signup')}>
             <Text style={styles.link}>CREATE ACCOUNT</Text>
           </TouchableOpacity>
         </View>

@@ -120,7 +120,9 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
               from={{opacity: 0, scale: 0}}
               animate={{opacity: 1, scale: 1}}
               exit={{opacity: 0, scale: 0}}>
-              <TouchableOpacity onPress={() => onChangeText('')}>
+              <TouchableOpacity
+                activeOpacity={0.99}
+                onPress={() => onChangeText('')}>
                 <Icon
                   name="close"
                   type="antdesign"
@@ -137,6 +139,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
             from={{opacity: 0, translateX: 20}}
             animate={{opacity: 1, translateX: 0}}>
             <TouchableOpacity
+              activeOpacity={0.99}
               style={styles.cancelButton}
               onPress={handleCancel}>
               <Text style={styles.cancelButtonText}>Cancel</Text>

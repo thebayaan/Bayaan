@@ -22,6 +22,7 @@ const Toggle: React.FC<ToggleProps> = ({options, selectedOption, onToggle}) => {
     <View style={styles.toggleContainer}>
       {options.map(option => (
         <TouchableOpacity
+          activeOpacity={0.99}
           key={option}
           style={[
             styles.toggleButton,

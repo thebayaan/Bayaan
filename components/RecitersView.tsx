@@ -84,7 +84,10 @@ const HeroSection = ({
   });
 
   return (
-    <TouchableOpacity style={styles.hero} onPress={handlePress}>
+    <TouchableOpacity
+      activeOpacity={0.99}
+      style={styles.hero}
+      onPress={handlePress}>
       <View style={styles.imageContainer}>
         <ReciterImage
           imageUrl={reciter.image_url}

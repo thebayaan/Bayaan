@@ -85,7 +85,10 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   });
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity
+      activeOpacity={0.99}
+      style={styles.container}
+      onPress={onPress}>
       <View style={styles.imageContainer}>
         {variant === 'default' ? (
           <>

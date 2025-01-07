@@ -50,7 +50,7 @@ const SurahSummary: React.FC<SurahSummaryProps> = ({
 
   return (
     <View style={styles.summaryCard}>
-      <TouchableOpacity onPress={handleReadFull}>
+      <TouchableOpacity activeOpacity={0.99} onPress={handleReadFull}>
         <Text style={styles.summaryTitle}>About the surah</Text>
         <ReadMore
           numberOfLines={3}

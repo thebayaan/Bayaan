@@ -8,10 +8,7 @@ export const usePlayerBackground = (theme: Theme, isDarkMode: boolean) => {
     const DARKEST_COLOR = theme.colors.card;
     const LIGHTEST_COLOR = theme.colors.card;
 
-    // Calculate the opposite color
-    const oppositeColor = Color(baseColor).rotate(180).string();
-
-    const startColor = Color(oppositeColor)
+    const startColor = Color(baseColor)
       .mix(Color(isDarkMode ? DARKEST_COLOR : LIGHTEST_COLOR), 0.75)
       .rgb()
       .string();

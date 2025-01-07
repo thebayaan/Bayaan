@@ -257,6 +257,7 @@ export default function VerifyResetScreen() {
         />
 
         <TouchableOpacity
+          activeOpacity={0.99}
           onPress={handleResendCode}
           disabled={isResending}
           style={[

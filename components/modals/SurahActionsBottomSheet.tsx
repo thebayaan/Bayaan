@@ -35,6 +35,7 @@ export const SurahActionsBottomSheet = forwardRef<
       <View style={styles.container}>
         <Text style={styles.title}>{`${surah.id}. ${surah.name}`}</Text>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={styles.action}
           onPress={() => {
             onAddToQueue(surah);
@@ -44,6 +45,7 @@ export const SurahActionsBottomSheet = forwardRef<
           <Text style={styles.actionText}>Add to Queue</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={styles.action}
           onPress={() => {
             onToggleLove(surah);

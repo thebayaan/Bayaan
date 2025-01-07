@@ -49,7 +49,9 @@ export default function WelcomeScreen() {
 
         <View style={styles.linkContainer}>
           <Text style={styles.linkText}>ALREADY HAVE AN ACCOUNT? </Text>
-          <TouchableOpacity onPress={() => router.push('/login')}>
+          <TouchableOpacity
+            activeOpacity={0.99}
+            onPress={() => router.push('/login')}>
             <Text style={styles.link}>LOG IN</Text>
           </TouchableOpacity>
         </View>

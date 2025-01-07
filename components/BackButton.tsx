@@ -31,6 +31,7 @@ export const BackButton: React.FC<BackButtonProps> = ({
 
   return (
     <TouchableOpacity
+      activeOpacity={0.99}
       style={[styles.backButton, style, {marginLeft: insets.left}]}
       onPress={handlePress}>
       <Icon

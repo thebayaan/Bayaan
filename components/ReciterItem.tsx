@@ -22,6 +22,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
 
     return (
       <TouchableOpacity
+        activeOpacity={0.99}
         style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
         onPress={handlePress}>
         <View

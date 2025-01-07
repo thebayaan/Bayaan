@@ -37,7 +37,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.buttonWrapper}>
-        <TouchableOpacity onPress={onSpeedPress}>
+        <TouchableOpacity activeOpacity={0.99} onPress={onSpeedPress}>
           <Text
             style={[
               styles.speedButtonText,
@@ -57,7 +57,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
         />
       </View>
       <View style={styles.buttonWrapper}>
-        <TouchableOpacity onPress={onRepeatPress}>
+        <TouchableOpacity activeOpacity={0.99} onPress={onRepeatPress}>
           {repeatMode === 'off' && (
             <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
           )}
@@ -79,7 +79,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
         />
       </View>
       <View style={styles.buttonWrapper}>
-        <TouchableOpacity onPress={onSleepTimerPress}>
+        <TouchableOpacity activeOpacity={0.99} onPress={onSleepTimerPress}>
           <TimerIcon
             color={
               sleepTimer || isEndOfSurahTimer
@@ -103,7 +103,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
         />
       </View>
       <View style={styles.buttonWrapper}>
-        <TouchableOpacity onPress={onQueuePress}>
+        <TouchableOpacity activeOpacity={0.99} onPress={onQueuePress}>
           <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
         </TouchableOpacity>
       </View>

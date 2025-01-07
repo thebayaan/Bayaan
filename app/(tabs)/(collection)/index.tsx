@@ -90,6 +90,7 @@ export default function CollectionScreen() {
     return (
       <View>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={styles.listItem}
           onPress={() => router.push(`/collection/${item.id}`)}>
           <item.icon

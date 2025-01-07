@@ -21,7 +21,10 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({title}) => {
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      <TouchableOpacity
+        activeOpacity={0.99}
+        onPress={() => router.back()}
+        style={styles.backButton}>
         <Icon
           name="chevron-thin-left"
           type="entypo"

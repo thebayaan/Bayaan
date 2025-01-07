@@ -113,6 +113,7 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
       ]}>
       <View style={createStyles(theme).header}>
         <TouchableOpacity
+          activeOpacity={0.99}
           onPress={() => router.back()}
           style={createStyles(theme).backButton}>
           <Icon
@@ -136,6 +137,7 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
       </View>
       <View style={createStyles(theme).toggleContainer}>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={[
             createStyles(theme).toggleButton,
             activeView === 'all' && createStyles(theme).activeToggleButton,
@@ -151,6 +153,7 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={[
             createStyles(theme).toggleButton,
             activeView === 'favorites' &&

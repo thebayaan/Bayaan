@@ -21,7 +21,10 @@ export const ReciterProfileActionButtons: React.FC<
 
   return (
     <View style={styles.actionButtons}>
-      <TouchableOpacity style={styles.actionButton} onPress={onFavoritePress}>
+      <TouchableOpacity
+        activeOpacity={0.99}
+        style={styles.actionButton}
+        onPress={onFavoritePress}>
         <StarIcon
           color={
             isFavoriteReciter
@@ -33,13 +36,19 @@ export const ReciterProfileActionButtons: React.FC<
         />
       </TouchableOpacity>
       <View style={styles.rightAlignedButtons}>
-        <TouchableOpacity style={styles.actionButton} onPress={onShufflePress}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.actionButton}
+          onPress={onShufflePress}>
           <ShuffleIcon
             color={theme.colors.textSecondary}
             size={moderateScale(28)}
           />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.playButton} onPress={onPlayPress}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.playButton}
+          onPress={onPlayPress}>
           <PlayIcon color={'white'} size={moderateScale(28)} />
         </TouchableOpacity>
       </View>

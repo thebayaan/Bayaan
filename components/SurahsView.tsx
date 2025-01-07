@@ -94,7 +94,10 @@ const HeroSection = ({
   });
 
   return (
-    <TouchableOpacity style={styles.hero} onPress={handlePress}>
+    <TouchableOpacity
+      activeOpacity={0.99}
+      style={styles.hero}
+      onPress={handlePress}>
       <Text style={styles.heroTitle}>SURAH OF THE DAY</Text>
       <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>
       <Text style={styles.heroSurahName}>{surah.name}</Text>

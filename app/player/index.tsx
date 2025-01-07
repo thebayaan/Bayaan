@@ -198,7 +198,10 @@ const PlayerScreen = () => {
     <View style={styles.container}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.closeButton}
+          onPress={handleClose}>
           <Icon
             name="chevron-thin-down"
             type="entypo"
@@ -339,6 +342,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     },
     additionalControlsContainer: {
       alignItems: 'center',
+      width: '100%',
     },
     trackInfoContainer: {
       marginBottom: moderateScale(16),

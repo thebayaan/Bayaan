@@ -81,6 +81,7 @@ const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
         <View style={styles(theme).contentContainer}>
           {timers.map(timer => (
             <TouchableOpacity
+              activeOpacity={0.99}
               key={timer.value}
               style={[
                 styles(theme).timerButton,
@@ -109,6 +110,7 @@ const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
           ))}
           {showRemoveTimer && (
             <TouchableOpacity
+              activeOpacity={0.99}
               style={styles(theme).timerButton}
               onPress={() => {
                 onTurnOffTimer();

@@ -133,7 +133,10 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
   });
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity
+      activeOpacity={0.99}
+      style={styles.container}
+      onPress={onPress}>
       <LinearGradient
         colors={[
           Color(theme.colors.primary).alpha(0.03).toString(),
@@ -164,7 +167,10 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
             {surahName}
           </Text>
           <View style={styles.progressSection}>
-            <TouchableOpacity style={styles.playButton} onPress={onPress}>
+            <TouchableOpacity
+              activeOpacity={0.99}
+              style={styles.playButton}
+              onPress={onPress}>
               <PlayIcon
                 color={theme.colors.text}
                 size={moderateScale(20)}
