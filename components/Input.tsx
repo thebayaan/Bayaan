@@ -61,6 +61,7 @@ export const Input: React.FC<InputProps> = ({
         style={inputStyle}
         placeholderTextColor={iconColor || theme.colors.textSecondary}
         onChangeText={handleChangeText}
+        keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
         {...props}
       />
       {rightIcon && (

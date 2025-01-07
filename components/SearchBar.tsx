@@ -113,6 +113,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
             autoCapitalize="none"
             returnKeyType="search"
             maxLength={100}
+            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
           />
           {value.length > 0 && (
             <MotiView
