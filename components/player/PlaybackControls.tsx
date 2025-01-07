@@ -39,15 +39,19 @@ const PlaybackControls: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={handleSeekBackward}>
+      <TouchableOpacity onPress={handleSeekBackward} activeOpacity={0.99}>
         <Text style={styles.seekText}>-15</Text>
       </TouchableOpacity>
       <View style={styles.centerControls}>
-        <TouchableOpacity onPress={handlePrevious} style={styles.sideButton}>
+        <TouchableOpacity
+          onPress={handlePrevious}
+          style={styles.sideButton}
+          activeOpacity={0.99}>
           <PreviousIcon color={theme.colors.text} size={moderateScale(28)} />
         </TouchableOpacity>
         <View style={styles.playPauseContainer}>
           <TouchableOpacity
+            activeOpacity={0.99}
             onPress={handlePlayPause}
             style={styles.playPauseButton}>
             {playbackState.state === State.Playing ? (
@@ -57,11 +61,14 @@ const PlaybackControls: React.FC = () => {
             )}
           </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleNext} style={styles.sideButton}>
+        <TouchableOpacity
+          onPress={handleNext}
+          style={styles.sideButton}
+          activeOpacity={0.99}>
           <NextIcon color={theme.colors.text} size={moderateScale(28)} />
         </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={handleSeekForward}>
+      <TouchableOpacity onPress={handleSeekForward} activeOpacity={0.99}>
         <Text style={styles.seekText}>15+</Text>
       </TouchableOpacity>
     </View>

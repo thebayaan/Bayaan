@@ -192,6 +192,7 @@ export default function SearchScreen() {
   const renderSearchItem = useCallback(
     ({item}: {item: string}) => (
       <TouchableOpacity
+        activeOpacity={0.99}
         style={styles.searchItem}
         onPress={() => setQuery(item)}>
         <View style={styles.searchIconContainer}>
@@ -296,7 +297,9 @@ export default function SearchScreen() {
                     <Text style={styles.placeholderSectionTitle}>
                       RECENT SEARCHES
                     </Text>
-                    <TouchableOpacity onPress={clearRecentSearches}>
+                    <TouchableOpacity
+                      activeOpacity={0.99}
+                      onPress={clearRecentSearches}>
                       <Text style={styles.clearButton}>Clear All</Text>
                     </TouchableOpacity>
                   </View>

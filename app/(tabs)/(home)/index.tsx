@@ -110,6 +110,7 @@ export default function HomeScreen() {
               />
             </View>
             <TouchableOpacity
+              activeOpacity={0.99}
               style={styles.settingsIcon}
               onPress={handleSettingsPress}>
               <Icon

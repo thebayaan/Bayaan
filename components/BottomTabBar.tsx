@@ -113,6 +113,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
           return (
             <TouchableOpacity
+              activeOpacity={0.99}
               key={index}
               onPress={onPress}
               style={styles.tabButton}>

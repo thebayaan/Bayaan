@@ -66,6 +66,7 @@ export const Input: React.FC<InputProps> = ({
       />
       {rightIcon && (
         <TouchableOpacity
+          activeOpacity={0.99}
           style={styles.rightIconContainer}
           onPress={onRightIconPress}>
           <Icon

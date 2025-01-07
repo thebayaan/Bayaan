@@ -81,6 +81,7 @@ export default function ReciterChoiceSettings() {
           <Text style={styles.sectionTitle}>Default Selection Method</Text>
           {options.map(option => (
             <TouchableOpacity
+              activeOpacity={0.99}
               key={option.action}
               style={[
                 styles.optionCard,

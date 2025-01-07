@@ -59,6 +59,7 @@ const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
         </Text>
         {options.map((option, index) => (
           <TouchableOpacity
+            activeOpacity={0.99}
             key={index}
             style={styles(theme).option}
             onPress={option.onPress}>

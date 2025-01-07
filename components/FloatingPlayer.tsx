@@ -58,9 +58,15 @@ export const FloatingPlayer: React.FC = () => {
   return (
     <View style={[styles.container]}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      <TouchableOpacity style={styles.content} onPress={handlePress}>
+      <TouchableOpacity
+        activeOpacity={0.99}
+        style={styles.content}
+        onPress={handlePress}>
         <View style={styles.playButtonContainer}>
-          <TouchableOpacity style={styles.playButton} onPress={togglePlayback}>
+          <TouchableOpacity
+            activeOpacity={0.99}
+            style={styles.playButton}
+            onPress={togglePlayback}>
             {playbackState.state === State.Playing ? (
               <PauseIcon color={theme.colors.text} size={moderateScale(26)} />
             ) : (

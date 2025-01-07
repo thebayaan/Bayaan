@@ -21,7 +21,10 @@ export const CollectionActionButtons: React.FC<
   return (
     <View style={styles.actionButtons}>
       {showDownloadIcon && (
-        <TouchableOpacity style={styles.actionButton} disabled={true}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.actionButton}
+          disabled={true}>
           <DownloadIcon
             color={theme.colors.textSecondary + '40'}
             size={moderateScale(28)}
@@ -29,13 +32,19 @@ export const CollectionActionButtons: React.FC<
         </TouchableOpacity>
       )}
       <View style={styles.rightAlignedButtons}>
-        <TouchableOpacity style={styles.actionButton} onPress={onShufflePress}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.actionButton}
+          onPress={onShufflePress}>
           <ShuffleIcon
             color={theme.colors.textSecondary}
             size={moderateScale(28)}
           />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.playButton} onPress={onPlayPress}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.playButton}
+          onPress={onPlayPress}>
           <PlayIcon color={'white'} size={moderateScale(28)} />
         </TouchableOpacity>
       </View>

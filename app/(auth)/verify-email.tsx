@@ -247,6 +247,7 @@ export default function VerifyEmailScreen() {
         />
 
         <TouchableOpacity
+          activeOpacity={0.99}
           onPress={handleResendCode}
           disabled={isResending}
           style={[

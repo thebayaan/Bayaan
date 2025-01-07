@@ -21,7 +21,7 @@ const TrackInfo: React.FC<TrackInfoProps> = ({
       <Text style={[styles.surahName, {color: theme.colors.text}]}>
         {surahName}
       </Text>
-      <TouchableOpacity onPress={onReciterPress}>
+      <TouchableOpacity activeOpacity={0.99} onPress={onReciterPress}>
         <Text style={[styles.reciterName, {color: theme.colors.textSecondary}]}>
           {reciterName}
         </Text>

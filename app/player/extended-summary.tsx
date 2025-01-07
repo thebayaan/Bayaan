@@ -34,7 +34,10 @@ const ExtendedSurahSummary = () => {
   return (
     <View style={styles.container}>
       <View style={[styles.header]}>
-        <TouchableOpacity style={styles.closeButton} onPress={router.back}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.closeButton}
+          onPress={router.back}>
           <Icon
             name="chevron-thin-left"
             type="entypo"

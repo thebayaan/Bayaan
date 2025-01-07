@@ -43,6 +43,7 @@ const QueueScreen: React.FC = () => {
   function renderItem({item}: {item: Track}): JSX.Element {
     return (
       <TouchableOpacity
+        activeOpacity={0.99}
         style={[
           styles.trackItem,
           item.id === activeTrack?.id && styles.currentTrack,
@@ -53,6 +54,7 @@ const QueueScreen: React.FC = () => {
           <Text style={styles.trackArtist}>{item.artist}</Text>
         </View>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={styles.removeButton}
           onPress={() => handleRemoveTrack(item.id)}>
           <Icon
@@ -80,7 +82,10 @@ const QueueScreen: React.FC = () => {
           />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Queue</Text>
-        <TouchableOpacity onPress={handleShuffle} style={styles.shuffleButton}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          onPress={handleShuffle}
+          style={styles.shuffleButton}>
           <ShuffleIcon color={theme.colors.text} size={moderateScale(24)} />
         </TouchableOpacity>
       </View>

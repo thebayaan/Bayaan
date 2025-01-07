@@ -34,6 +34,7 @@ const QueueModal: React.FC<QueueModalProps> = ({
 
   const renderItem = ({item}: {item: Track}) => (
     <TouchableOpacity
+      activeOpacity={0.99}
       style={[
         styles.trackItem,
         item.id === currentTrackId && styles.currentTrack,
@@ -44,6 +45,7 @@ const QueueModal: React.FC<QueueModalProps> = ({
         <Text style={styles.trackArtist}>{item.artist}</Text>
       </View>
       <TouchableOpacity
+        activeOpacity={0.99}
         style={styles.removeButton}
         onPress={() => onRemoveTrack(item.id)}>
         <MaterialCommunityIcons
@@ -64,6 +66,7 @@ const QueueModal: React.FC<QueueModalProps> = ({
         <View style={styles.header}>
           <Text style={styles.title}>Queue</Text>
           <TouchableOpacity
+            activeOpacity={0.99}
             onPress={handleShuffle}
             style={styles.shuffleButton}>
             <MaterialCommunityIcons

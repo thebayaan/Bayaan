@@ -29,7 +29,10 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const surahGlyph = surahGlyphMap[surah.id];
 
     return (
-      <TouchableOpacity style={styles.trackItem} onPress={onPress}>
+      <TouchableOpacity
+        activeOpacity={0.99}
+        style={styles.trackItem}
+        onPress={onPress}>
         <View style={styles.imageContainer}>
           <ReciterImage
             imageUrl={reciter.image_url}

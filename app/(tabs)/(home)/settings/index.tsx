@@ -63,6 +63,7 @@ export default function SettingsScreen() {
           <View style={styles.themeContainer}>
             {themeOptions.map(option => (
               <TouchableOpacity
+                activeOpacity={0.99}
                 key={option.value}
                 style={[
                   styles.themeOption,
@@ -91,6 +92,7 @@ export default function SettingsScreen() {
             {Object.entries(primaryColors).map(([color, value]) => (
               <View key={color} style={styles.colorOptionContainer}>
                 <TouchableOpacity
+                  activeOpacity={0.99}
                   style={[
                     styles.colorOption,
                     {backgroundColor: value},
@@ -114,6 +116,7 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Other Settings</Text>
           {settingsItems.map((item, index) => (
             <TouchableOpacity
+              activeOpacity={0.99}
               key={index}
               style={styles.settingItem}
               onPress={() => router.push(`/settings/${item.type}`)}>

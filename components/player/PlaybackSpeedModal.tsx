@@ -57,6 +57,7 @@ const PlaybackSpeedModal: React.FC<PlaybackSpeedModalProps> = ({
         <View style={styles(theme).contentContainer}>
           {speeds.map(speed => (
             <TouchableOpacity
+              activeOpacity={0.99}
               key={speed}
               style={[
                 styles(theme).speedButton,

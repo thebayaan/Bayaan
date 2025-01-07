@@ -40,7 +40,10 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       revelationPlace === 'makkah' ? MakkahIcon : MadinahIcon;
 
     return (
-      <TouchableOpacity style={styles.surahItem} onPress={handlePress}>
+      <TouchableOpacity
+        activeOpacity={0.99}
+        style={styles.surahItem}
+        onPress={handlePress}>
         <View style={styles.surahGlyphContainer}>
           <Text
             style={styles.surahGlyph}
@@ -56,7 +59,10 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           </Text>
         </View>
         {showPlayButton && (
-          <TouchableOpacity style={styles.playButton} onPress={handlePlayPress}>
+          <TouchableOpacity
+            activeOpacity={0.99}
+            style={styles.playButton}
+            onPress={handlePlayPress}>
             <PlayIcon color={theme.colors.text} size={moderateScale(24)} />
           </TouchableOpacity>
         )}

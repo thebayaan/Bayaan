@@ -46,7 +46,10 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
   });
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity
+      activeOpacity={0.99}
+      style={styles.container}
+      onPress={onPress}>
       <View style={styles.imageContainer}>
         <ReciterImage
           imageUrl={imageUrl}
