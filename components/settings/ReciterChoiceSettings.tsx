@@ -11,7 +11,6 @@ import {useSettings} from '@/hooks/useSettings';
 import {Switch} from 'react-native-gesture-handler';
 import {Icon} from '@rneui/themed';
 import Color from 'color';
-import {StarIcon} from '@/components/Icons';
 
 export default function ReciterChoiceSettings() {
   const {theme} = useTheme();
@@ -29,21 +28,6 @@ export default function ReciterChoiceSettings() {
       action: 'browseAll',
       description: 'Search through our complete collection of reciters',
       icon: 'search1',
-    },
-    {
-      label: 'Search from Favorites',
-      action: 'searchFavorites',
-      description: 'Quick access to your favorite reciters',
-      icon: (
-        <StarIcon
-          size={24}
-          color={
-            defaultReciterSelection === 'searchFavorites'
-              ? theme.colors.primary
-              : theme.colors.text
-          }
-        />
-      ),
     },
     {
       label: 'Use Default Reciter',

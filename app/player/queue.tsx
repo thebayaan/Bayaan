@@ -72,6 +72,7 @@ const QueueScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
+          activeOpacity={0.99}
           style={styles.backButton}
           onPress={() => router.back()}>
           <Icon

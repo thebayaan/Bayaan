@@ -17,7 +17,6 @@ import SleepTimerModal from '@/components/player/SleepTimerModal';
 import TrackPlayer, {Event} from 'react-native-track-player';
 import {Icon} from '@rneui/themed';
 import {useRouter} from 'expo-router';
-import {EdgeInsets, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import PlayerControlButtons from '@/components/player/PlayerControlButtons';
 import TrackInfo from '@/components/player/TrackInfo';
@@ -43,11 +42,8 @@ type SurahInfo = {
 
 const surahInfo: SurahInfo = require('@/data/surahInfo.json');
 
-// const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
-
 const PlayerScreen = () => {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const {theme, isDarkMode} = useTheme();
   const currentTrack = usePlayerStore(state => state.currentTrack);
   const updateCurrentTrack = usePlayerStore(state => state.updateCurrentTrack);
@@ -192,7 +188,7 @@ const PlayerScreen = () => {
     }
   }, [currentTrack, navigateToReciterProfile]);
 
-  const styles = useMemo(() => createStyles(theme, insets), [theme, insets]);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
@@ -276,16 +272,11 @@ const PlayerScreen = () => {
   );
 };
 
-const createStyles = (theme: Theme, insets: EdgeInsets) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-      paddingTop: insets.top,
-      borderTopLeftRadius: moderateScale(12),
-      borderTopRightRadius: moderateScale(12),
-      marginTop: moderateScale(-20),
-      overflow: 'hidden',
     },
     header: {
       flexDirection: 'row',

@@ -187,7 +187,7 @@ export default function FavoriteRecitersScreen() {
             left: moderateScale(20),
           },
         ]}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
           <Animated.View
             style={{
               opacity: headerOpacity.interpolate({
@@ -225,6 +225,7 @@ export default function FavoriteRecitersScreen() {
           },
         ]}>
         <TouchableOpacity
+          activeOpacity={0.99}
           onPress={() => {
             setShowSearch(!showSearch);
             if (!showSearch) {

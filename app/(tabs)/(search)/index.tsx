@@ -35,7 +35,7 @@ export default function SearchScreen() {
   const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
 
   const searchSuggestions = useMemo(
-    () => ['الرحمن', 'Al-Rahman', 'The Merciful', '55', 'Mishari'],
+    () => ['الرحمن', 'Ar-Rahman', 'The Merciful', '55', 'Mishari'],
     [],
   );
 

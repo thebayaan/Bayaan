@@ -67,6 +67,7 @@ export default function PlaylistsScreen() {
         }
         ListHeaderComponent={
           <TouchableOpacity
+            activeOpacity={0.99}
             style={styles.createPlaylistButton}
             onPress={() => {
               /* Handle create playlist */
