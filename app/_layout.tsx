@@ -146,7 +146,7 @@ export default function RootLayout() {
             <Stack.Screen
               name="player"
               options={{
-                presentation: 'card',
+                presentation: 'modal',
                 animation: 'slide_from_bottom',
                 gestureEnabled: true,
                 gestureDirection: 'vertical',

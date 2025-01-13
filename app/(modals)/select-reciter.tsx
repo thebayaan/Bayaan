@@ -39,7 +39,7 @@ export default function SelectReciterModal() {
     fetchSurahName();
   }, [surahId]);
 
-  const snapPoints = useMemo(() => ['45%'], []);
+  const snapPoints = useMemo(() => ['40%'], []);
 
   usePlayerStore();
 
@@ -63,16 +63,6 @@ export default function SelectReciterModal() {
       router.push({
         pathname: './reciter/browse',
         params: {view: 'all', surahId},
-      });
-    });
-  }, [router, surahId, handleSheetClose]);
-
-  const handleSearchFavorites = useCallback(() => {
-    handleSheetClose();
-    requestAnimationFrame(() => {
-      router.push({
-        pathname: './reciter/browse',
-        params: {view: 'favorites', surahId},
       });
     });
   }, [router, surahId, handleSheetClose]);
@@ -175,17 +165,6 @@ export default function SelectReciterModal() {
             }>
             <Text style={[createStyles(theme).buttonText]}>
               Browse All Reciters
-            </Text>
-          </Button>
-          <Button
-            title="Search from Favorites"
-            style={[createStyles(theme).button]}
-            textStyle={createStyles(theme).buttonText}
-            onPress={() =>
-              handleReciterSelection(handleSearchFavorites, 'searchFavorites')
-            }>
-            <Text style={[createStyles(theme).buttonText]}>
-              Search from Favorites
             </Text>
           </Button>
           <Button
