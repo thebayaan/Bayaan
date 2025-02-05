@@ -9,14 +9,16 @@ import {Button} from '@/components/Button';
 import {getSurahById} from '@/services/dataService';
 import {usePlayerStore} from '@/store/playerStore';
 import BottomSheetModal from '@/components/BottomSheetModal';
-import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 import {usePlayback} from '@/hooks/usePlayback';
 import {useSettings} from '@/hooks/useSettings';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 export default function SelectReciterModal() {
   const router = useRouter();
-  const {surahId} = useLocalSearchParams<{surahId: string}>();
+  const {surahId, source} = useLocalSearchParams<{
+    surahId: string;
+    source?: 'search' | 'home';
+  }>();
   const {theme} = useTheme();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const [, setSurahName] = useState<string>('');
@@ -43,43 +45,52 @@ export default function SelectReciterModal() {
 
   usePlayerStore();
 
-  const {navigateToPlayer} = usePlayerNavigation();
   const {playTrack} = usePlayback();
 
   const handleUseDefaultReciter = useCallback(() => {
-    if (defaultReciter && surahId) {
-      playTrack(defaultReciter, surahId);
-      navigateToPlayer(defaultReciter.image_url, true);
-    }
-  }, [defaultReciter, surahId, playTrack, navigateToPlayer]);
+    if (!surahId || !defaultReciter) return;
 
-  const handleSheetClose = useCallback(() => {
+    playTrack(defaultReciter, parseInt(surahId, 10));
     router.back();
-  }, [router]);
+  }, [defaultReciter, surahId, playTrack, router]);
 
   const handleBrowseAllReciters = useCallback(() => {
-    handleSheetClose();
-    requestAnimationFrame(() => {
-      router.push({
-        pathname: './reciter/browse',
-        params: {view: 'all', surahId},
-      });
-    });
-  }, [router, surahId, handleSheetClose]);
+    if (!surahId) return;
 
-  const handleAskEveryTimeToggle = useCallback(() => {
-    setAskEveryTime(!askEveryTime);
-  }, [askEveryTime, setAskEveryTime]);
+    const route =
+      source === 'search'
+        ? '/(tabs)/(search)/reciter/browse'
+        : '/(tabs)/(home)/reciter/browse';
+
+    router.back();
+    setTimeout(() => {
+      router.push({
+        pathname: route,
+        params: {
+          view: 'all',
+          surahId,
+        },
+      });
+    }, 100);
+  }, [surahId, router, source]);
 
   const handleReciterSelection = useCallback(
-    (action: () => void, selectionType: string) => {
+    (action: () => void, selection: string | null) => {
       if (!askEveryTime) {
-        setDefaultReciterSelection(selectionType);
+        setDefaultReciterSelection(selection);
       }
       action();
     },
     [askEveryTime, setDefaultReciterSelection],
   );
+
+  const handleSheetClose = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const handleAskEveryTimeToggle = useCallback(() => {
+    setAskEveryTime(!askEveryTime);
+  }, [askEveryTime, setAskEveryTime]);
 
   const createStyles = (_theme: Theme) =>
     ScaledSheet.create({
@@ -98,6 +109,7 @@ export default function SelectReciterModal() {
       title: {
         fontSize: moderateScale(24),
         fontWeight: 'bold',
+        fontFamily: theme.fonts.bold,
       },
       button: {
         padding: moderateScale(15),
@@ -110,7 +122,7 @@ export default function SelectReciterModal() {
       },
       buttonText: {
         fontSize: moderateScale(16),
-        fontWeight: 'bold',
+        fontFamily: theme.fonts.bold,
         textAlign: 'center',
         color: theme.colors.text,
       },
@@ -128,6 +140,7 @@ export default function SelectReciterModal() {
       defaultButtonText: {
         fontSize: moderateScale(16),
         fontWeight: 'bold',
+        fontFamily: theme.fonts.bold,
         textAlign: 'center',
         color: theme.colors.background,
       },

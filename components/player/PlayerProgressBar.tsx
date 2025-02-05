@@ -1,42 +1,63 @@
-import React, {useEffect, useCallback} from 'react';
+import React, {useCallback, useState, useEffect} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {Slider} from 'react-native-awesome-slider';
+import {Slider} from '@miblanchard/react-native-slider';
 import {usePlayerStore} from '@/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {useProgress} from 'react-native-track-player';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Color from 'color';
+import {usePlayerBackground} from '@/hooks/usePlayerBackground';
 
 const PlayerProgressBar: React.FC = React.memo(() => {
   const {seekTo} = usePlayerStore();
   const {theme} = useTheme();
-  const progress = useProgress(100);
+  const {gradientColors} = usePlayerBackground(theme, theme.isDarkMode);
 
-  const progressValue = useSharedValue(0);
-  const min = useSharedValue(0);
-  const max = useSharedValue(1);
-  const isSliding = useSharedValue(false);
-  const thumbSize = useSharedValue(moderateScale(8));
+  // Calculate contrasting colors based on background
+  const baseColor = Color(gradientColors[0]);
+  const contrastColor = baseColor.isLight()
+    ? baseColor.darken(0.7)
+    : baseColor.lighten(3.9);
+  const secondaryColor = baseColor.isLight()
+    ? baseColor.darken(0.3)
+    : baseColor.lighten(1.2);
 
-  const animatedThumbStyle = useAnimatedStyle(() => ({
-    width: thumbSize.value,
-    height: thumbSize.value,
-    borderRadius: thumbSize.value / 2,
-  }));
+  // Reduce update frequency to 500ms
+  const progress = useProgress(500);
 
+  // Local state for optimistic updates
+  const [localPosition, setLocalPosition] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+
+  // Update local position when not seeking
   useEffect(() => {
-    if (!isSliding.value) {
-      if (progress.duration > 0) {
-        progressValue.value = progress.position / progress.duration;
-      } else {
-        console.log('Duration is 0, cannot update progress');
-      }
+    if (!isSeeking) {
+      setLocalPosition(progress.position);
     }
-  }, [progress.position, progress.duration, isSliding, progressValue]);
+  }, [progress.position, isSeeking]);
+
+  const handleValueChange = useCallback(
+    (values: number[]) => {
+      if (progress.duration > 0) {
+        const newPosition = values[0] * progress.duration;
+        // Update local position immediately
+        setLocalPosition(newPosition);
+        setIsSeeking(true);
+      }
+    },
+    [progress.duration],
+  );
+
+  const handleSlidingComplete = useCallback(
+    async (values: number[]) => {
+      if (progress.duration > 0) {
+        const newPosition = values[0] * progress.duration;
+        await seekTo(newPosition);
+        setIsSeeking(false);
+      }
+    },
+    [seekTo, progress.duration],
+  );
 
   const formatTime = useCallback((seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -44,58 +65,39 @@ const PlayerProgressBar: React.FC = React.memo(() => {
     const remainingSeconds = Math.floor(seconds % 60);
 
     if (hours > 0) {
-      return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+      return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${
+        remainingSeconds < 10 ? '0' : ''
+      }${remainingSeconds}`;
     } else {
       return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
     }
   }, []);
 
-  const handleSlidingStart = useCallback(() => {
-    isSliding.value = true;
-    thumbSize.value = withTiming(moderateScale(14), {duration: 200});
-  }, [isSliding, thumbSize]);
-
-  const handleSlidingComplete = useCallback(
-    (value: number) => {
-      isSliding.value = false;
-      thumbSize.value = withTiming(moderateScale(10), {duration: 100});
-      if (progress.duration > 0) {
-        seekTo(value * progress.duration);
-      }
-    },
-    [seekTo, progress.duration, isSliding, thumbSize],
-  );
+  // Use local position for UI updates
+  const displayPosition = isSeeking ? localPosition : progress.position;
 
   return (
     <View style={styles.container}>
       <View style={styles.timeContainer}>
-        <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {formatTime(progress.position)}
+        <Text style={[styles.timeText, {color: contrastColor.string()}]}>
+          {formatTime(displayPosition)}
         </Text>
-        <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {'-'} {formatTime(progress.duration - progress.position)}
+        <Text style={[styles.timeText, {color: contrastColor.string()}]}>
+          {'-'} {formatTime(progress.duration - displayPosition)}
         </Text>
       </View>
       <Slider
-        progress={progressValue}
-        minimumValue={min}
-        maximumValue={max}
-        onSlidingStart={handleSlidingStart}
+        value={progress.duration > 0 ? displayPosition / progress.duration : 0}
+        onValueChange={handleValueChange}
         onSlidingComplete={handleSlidingComplete}
-        theme={{
-          minimumTrackTintColor: theme.colors.text,
-          maximumTrackTintColor: theme.colors.border,
-          bubbleBackgroundColor: theme.colors.text,
+        minimumTrackTintColor={contrastColor.string()}
+        maximumTrackTintColor={secondaryColor.alpha(0.3).string()}
+        trackStyle={{
+          height: moderateScale(8),
+          borderRadius: moderateScale(4),
         }}
-        renderThumb={() => (
-          <Animated.View
-            style={[{backgroundColor: theme.colors.text}, animatedThumbStyle]}
-          />
-        )}
-        renderBubble={() => null}
-        sliderHeight={moderateScale(3)}
-        bubbleWidth={8}
-        containerStyle={{borderRadius: moderateScale(10)}}
+        thumbStyle={{height: 0, width: 0}}
+        containerStyle={styles.sliderContainer}
       />
     </View>
   );
@@ -105,17 +107,19 @@ PlayerProgressBar.displayName = 'PlayerProgressBar';
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: moderateScale(10),
   },
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: moderateScale(5),
+    marginBottom: moderateScale(8),
   },
   timeText: {
     fontSize: moderateScale(12),
-    opacity: 0.75,
-    fontWeight: '500',
+  },
+  sliderContainer: {
+    height: moderateScale(8),
   },
 });
 

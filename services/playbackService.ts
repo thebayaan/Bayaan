@@ -1,4 +1,5 @@
 import TrackPlayer, {Event, State} from 'react-native-track-player';
+import {usePlayerStore} from '@/store/playerStore';
 
 export async function playbackService() {
   // Basic Controls
@@ -11,6 +12,11 @@ export async function playbackService() {
   TrackPlayer.addEventListener(Event.RemotePrevious, () =>
     TrackPlayer.skipToPrevious(),
   );
+
+  // Reset loading state on playback state change
+  TrackPlayer.addEventListener(Event.PlaybackState, () => {
+    usePlayerStore.getState().setIsLoading(false);
+  });
 
   // Jump Forward/Backward
   TrackPlayer.addEventListener(Event.RemoteJumpForward, async () => {

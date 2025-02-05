@@ -15,9 +15,9 @@ export default function SettingScreen() {
 
   const renderSettingComponent = () => {
     switch (type) {
-      case 'defaultReciter':
+      case 'default-reciter':
         return <DefaultReciterSettings />;
-      case 'reciterChoice':
+      case 'reciter-choice':
         return <ReciterChoiceSettings />;
       default:
         return null;
@@ -26,7 +26,7 @@ export default function SettingScreen() {
 
   const title = type
     ? type
-        .split(/(?=[A-Z])/)
+        .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ')
     : 'Settings';

@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, RECITERS} from '../data/reciterData';
+import {QueueManager} from '../services/QueueManager';
+import {usePlayerStore} from '../store/playerStore';
 
 // Constants
 const RECITERS_KEY = 'bayaan_reciters';
@@ -96,7 +98,25 @@ export async function fetchAudioUrl(
 
 // Utility functions
 export async function clearStoredData(): Promise<void> {
-  await AsyncStorage.multiRemove([RECITERS_KEY, RECITER_SERVERS_KEY]);
+  try {
+    // Clear the player queue and reset player state
+    const queueManager = QueueManager.getInstance();
+    await queueManager.clearQueue();
+
+    // Clear AsyncStorage data
+    await AsyncStorage.multiRemove([
+      RECITERS_KEY,
+      RECITER_SERVERS_KEY,
+      '@bayaan/last_track', // From trackPersistence.ts
+      '@bayaan/last_position', // From trackPersistence.ts
+    ]);
+
+    // Reset player store state
+    usePlayerStore.getState().cleanup();
+  } catch (error) {
+    console.error('Error clearing stored data:', error);
+    throw error;
+  }
 }
 
 export async function refreshData(): Promise<void> {

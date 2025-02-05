@@ -15,7 +15,7 @@ interface BackButtonProps {
 export const BackButton: React.FC<BackButtonProps> = ({
   onPress,
   style,
-  iconSize = 20,
+  iconSize = 24,
 }) => {
   const {theme} = useTheme();
   const navigation = useNavigation();
@@ -35,8 +35,8 @@ export const BackButton: React.FC<BackButtonProps> = ({
       style={[styles.backButton, style, {marginLeft: insets.left}]}
       onPress={handlePress}>
       <Icon
-        name="chevron-thin-left"
-        type="entypo"
+        name="arrow-left"
+        type="feather"
         color={theme.colors.text}
         size={moderateScale(iconSize)}
       />

@@ -25,11 +25,12 @@ import AdditionalControls from '@/components/player/AdditionalControls';
 import {useTrackPlayerFavorite} from '@/hooks/usePlayerFavorite';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import SurahSummary from '@/components/player/SurahSummary';
-import {useQueueManagement} from '@/hooks/useQueueManagement';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {LinearGradient} from 'expo-linear-gradient';
 import {usePlayerBackground} from '@/hooks/usePlayerBackground';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
+import QueueModal from '@/components/player/QueueModal';
+import Color from 'color';
 
 type SurahInfo = {
   [key: string]: {
@@ -79,10 +80,10 @@ const PlayerScreen = () => {
   const {isFavorite, toggleFavorite} = useTrackPlayerFavorite();
   const [, setIsSpeedModalVisible] = useState(false);
   const [isFavoriteTrack, setIsFavoriteTrack] = useState(false);
-  useQueueManagement();
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const playbackSpeedBottomSheetRef = useRef<BottomSheet>(null);
+  const queueBottomSheetRef = useRef<BottomSheet>(null);
 
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
 
@@ -136,7 +137,11 @@ const PlayerScreen = () => {
   };
 
   const handleOpenQueue = () => {
-    router.push('/player/queue');
+    queueBottomSheetRef.current?.expand();
+  };
+
+  const handleCloseQueue = () => {
+    queueBottomSheetRef.current?.close();
   };
 
   const handleSleepTimerPress = () => {
@@ -175,12 +180,13 @@ const PlayerScreen = () => {
     updateCurrentTrack();
   }, [updateCurrentTrack]);
 
-  const surahNumber = currentTrack?.id
-    ? parseInt(currentTrack.id, 10)
+  const surahNumber = currentTrack?.surahId
+    ? parseInt(currentTrack.surahId, 10)
     : undefined;
-  const surahGlyph = surahNumber
-    ? surahGlyphMap[surahNumber] + surahGlyphMap[0]
-    : '';
+  const surahGlyph =
+    surahNumber && surahGlyphMap[surahNumber]
+      ? surahGlyphMap[surahNumber] + surahGlyphMap[0]
+      : '';
 
   const handleReciterPress = useCallback(() => {
     if (currentTrack) {
@@ -188,29 +194,44 @@ const PlayerScreen = () => {
     }
   }, [currentTrack, navigateToReciterProfile]);
 
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const baseColor = Color(gradientColors[0]);
+  const contrastColor = baseColor.isLight()
+    ? baseColor.darken(0.8).saturate(0.2)
+    : baseColor.lighten(4.8).saturate(0.2);
+
+  const styles = useMemo(
+    () => createStyles(theme, contrastColor.string()),
+    [theme, contrastColor],
+  );
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      <View style={styles.header}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={styles.closeButton}
-          onPress={handleClose}>
-          <Icon
-            name="chevron-thin-down"
-            type="entypo"
-            size={moderateScale(22)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
-        <Text style={styles.arabicSurahName}>{surahGlyph}</Text>
-      </View>
+      <LinearGradient
+        colors={gradientColors as [string, string, ...string[]]}
+        style={StyleSheet.absoluteFill}
+      />
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         bounces={false}
         showsVerticalScrollIndicator={false}>
+        <View style={[styles.header, {marginTop: moderateScale(20)}]}>
+          <TouchableOpacity
+            activeOpacity={0.99}
+            style={styles.closeButton}
+            onPress={handleClose}>
+            <Icon
+              name="chevron-thin-down"
+              type="entypo"
+              size={moderateScale(22)}
+              color={contrastColor.string()}
+            />
+          </TouchableOpacity>
+          <Text
+            style={[styles.arabicSurahName, {color: contrastColor.string()}]}>
+            {surahGlyph}
+          </Text>
+        </View>
         <View style={styles.contentContainer}>
           <View style={styles.albumArtContainer}>
             <ReciterImage
@@ -268,15 +289,22 @@ const PlayerScreen = () => {
         remainingTime={remainingTime}
         currentTimer={sleepTimerEnd}
       />
+      <QueueModal
+        bottomSheetRef={queueBottomSheetRef}
+        onClose={handleCloseQueue}
+      />
     </View>
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, textColor: string) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: 'transparent',
+      borderTopLeftRadius: moderateScale(40),
+      borderTopRightRadius: moderateScale(40),
+      overflow: 'hidden',
     },
     header: {
       flexDirection: 'row',
@@ -293,7 +321,7 @@ const createStyles = (theme: Theme) =>
     arabicSurahName: {
       fontFamily: 'SurahNames',
       fontSize: moderateScale(24),
-      color: theme.colors.text,
+      color: textColor,
     },
     scrollContent: {
       flexGrow: 1,
@@ -312,14 +340,6 @@ const createStyles = (theme: Theme) =>
       aspectRatio: 1,
       maxWidth: MAX_PLAYER_CONTENT_HEIGHT,
       maxHeight: MAX_PLAYER_CONTENT_HEIGHT,
-      shadowColor: theme.colors.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 5,
       marginTop: moderateScale(5),
       borderRadius: moderateScale(20),
     },
@@ -329,7 +349,6 @@ const createStyles = (theme: Theme) =>
     },
     controlsContainer: {
       width: '100%',
-      marginTop: moderateScale(16),
     },
     additionalControlsContainer: {
       alignItems: 'center',

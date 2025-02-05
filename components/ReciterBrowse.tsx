@@ -14,7 +14,6 @@ import {ReciterItem} from '@/components/ReciterItem';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
 import {usePlayerStore} from '@/store/playerStore';
-import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 import {usePlayback} from '@/hooks/usePlayback';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -56,6 +55,17 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
   const applyFilters = useCallback(
     (query: string, showFavorites: boolean) => {
       let filtered = RECITERS;
+
+      // Filter by surah if surahId is provided
+      if (surahId) {
+        const surahNumber = parseInt(surahId, 10);
+        if (!isNaN(surahNumber)) {
+          filtered = filtered.filter(reciter =>
+            reciter.surah_list?.includes(surahNumber),
+          );
+        }
+      }
+
       if (showFavorites) {
         filtered = filtered.filter(reciter =>
           favoriteReciters.some(fav => fav.id === reciter.id),
@@ -68,7 +78,7 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
       }
       setFilteredReciters(filtered);
     },
-    [favoriteReciters],
+    [favoriteReciters, surahId],
   );
 
   const handleSearch = useCallback(
@@ -87,7 +97,6 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
     [applyFilters, searchQuery],
   );
 
-  const {navigateToPlayer} = usePlayerNavigation();
   const {playTrack} = usePlayback();
 
   const handleReciterSelect = useCallback(
@@ -96,10 +105,17 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
         console.error('Missing surahId');
         return;
       }
-      playTrack(reciter, surahId);
-      navigateToPlayer(reciter.image_url);
+
+      const surahNumber = parseInt(surahId, 10);
+      if (!reciter.surah_list?.includes(surahNumber)) {
+        console.error('Reciter does not have this surah');
+        return;
+      }
+
+      playTrack(reciter, surahNumber);
+      router.back();
     },
-    [surahId, playTrack, navigateToPlayer],
+    [surahId, playTrack, router],
   );
 
   return (
@@ -117,9 +133,9 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
           onPress={() => router.back()}
           style={createStyles(theme).backButton}>
           <Icon
-            name="chevron-thin-left"
-            type="entypo"
-            size={moderateScale(20)}
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(24)}
             color={theme.colors.text}
           />
         </TouchableOpacity>

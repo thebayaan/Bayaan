@@ -1,95 +1,82 @@
 import {create} from 'zustand';
-import TrackPlayer, {Track} from 'react-native-track-player';
+import {persist, createJSONStorage} from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import TrackPlayer from 'react-native-track-player';
+import {Track, ensureTrackFields} from '@/types/audio';
+import {Reciter} from '@/data/reciterData';
+import {Surah} from '@/data/surahData';
 
 interface QueueState {
   queue: Track[];
-  addToQueue: (tracks: Track | Track[]) => Promise<void>;
-  addNext: (track: Track) => Promise<void>;
+  nextLoadIndex: number;
+  allSurahs: Surah[];
+  currentReciter: Reciter | null;
+  addToQueue: (track: Track) => Promise<void>;
   removeFromQueue: (index: number) => Promise<void>;
   clearQueue: () => Promise<void>;
-  shuffleQueue: () => Promise<void>;
   getQueue: () => Promise<Track[]>;
-  skipToTrack: (index: number) => Promise<Track>;
+  setQueueContext: (context: {
+    nextLoadIndex: number;
+    allSurahs: Surah[];
+    currentReciter: Reciter;
+  }) => void;
 }
 
-export const useQueueStore = create<QueueState>(set => ({
-  queue: [],
+export const useQueueStore = create<QueueState>()(
+  persist(
+    (set, get) => ({
+      queue: [],
+      nextLoadIndex: 0,
+      allSurahs: [],
+      currentReciter: null,
 
-  addToQueue: async (tracks: Track | Track[]) => {
-    const tracksToAdd = Array.isArray(tracks) ? tracks : [tracks];
-    await TrackPlayer.add(tracksToAdd);
-    const updatedQueue = await TrackPlayer.getQueue();
-    set({queue: updatedQueue});
-  },
+      addToQueue: async (track: Track) => {
+        const {queue} = get();
+        const newQueue = [...queue, track];
+        await TrackPlayer.add(track);
+        set({queue: newQueue});
+      },
 
-  addNext: async (track: Track) => {
-    const currentIndex = await TrackPlayer.getActiveTrackIndex();
-    if (currentIndex !== undefined) {
-      await TrackPlayer.add(track, currentIndex + 1);
-    } else {
-      await TrackPlayer.add(track);
-    }
-    const updatedQueue = await TrackPlayer.getQueue();
-    set({queue: updatedQueue});
-  },
+      removeFromQueue: async (index: number) => {
+        const {queue} = get();
+        const newQueue = queue.filter((_, i) => i !== index);
+        await TrackPlayer.remove(index);
+        set({queue: newQueue});
+      },
 
-  removeFromQueue: async (index: number) => {
-    await TrackPlayer.remove(index);
-    const updatedQueue = await TrackPlayer.getQueue();
-    set({queue: updatedQueue});
-  },
+      clearQueue: async () => {
+        await TrackPlayer.reset();
+        set({
+          queue: [],
+          nextLoadIndex: 0,
+          allSurahs: [],
+          currentReciter: null,
+        });
+      },
 
-  clearQueue: async () => {
-    await TrackPlayer.reset();
-    set({queue: []});
-  },
+      getQueue: async () => {
+        const currentQueue = await TrackPlayer.getQueue();
+        return currentQueue.map(queueTrack => ensureTrackFields(queueTrack));
+      },
 
-  shuffleQueue: async () => {
-    const currentQueue = await TrackPlayer.getQueue();
-    const currentTrack = await TrackPlayer.getActiveTrackIndex();
-
-    let shuffledQueue = [...currentQueue];
-    for (let i = shuffledQueue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledQueue[i], shuffledQueue[j]] = [
-        shuffledQueue[j],
-        shuffledQueue[i],
-      ];
-    }
-
-    if (currentTrack !== undefined) {
-      const currentTrackItem = shuffledQueue.find(
-        track => track.id === currentQueue[currentTrack].id,
-      );
-      if (currentTrackItem) {
-        shuffledQueue = [
-          currentTrackItem,
-          ...shuffledQueue.filter(track => track.id !== currentTrackItem.id),
-        ];
-      }
-    }
-
-    await TrackPlayer.reset();
-    await TrackPlayer.add(shuffledQueue);
-    if (currentTrack !== null) {
-      await TrackPlayer.skip(0);
-    }
-    set({queue: shuffledQueue});
-  },
-
-  getQueue: async () => {
-    const queue = await TrackPlayer.getQueue();
-    set({queue});
-    return queue;
-  },
-
-  skipToTrack: async (index: number): Promise<Track> => {
-    await TrackPlayer.skip(index);
-    const currentTrack = await TrackPlayer.getTrack(index);
-    if (!currentTrack) {
-      throw new Error('Failed to skip to track: Track not found');
-    }
-    set(state => ({...state, currentTrackIndex: index}));
-    return currentTrack;
-  },
-}));
+      setQueueContext: context => {
+        set({
+          nextLoadIndex: context.nextLoadIndex,
+          allSurahs: context.allSurahs,
+          currentReciter: context.currentReciter,
+        });
+      },
+    }),
+    {
+      name: 'queue-storage',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: state => ({
+        queue: state.queue,
+        // We don't persist these as they should be reset on app restart
+        nextLoadIndex: 0,
+        allSurahs: [],
+        currentReciter: null,
+      }),
+    },
+  ),
+);

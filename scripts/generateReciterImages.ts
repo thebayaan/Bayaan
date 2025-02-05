@@ -1,5 +1,10 @@
+import {fileURLToPath} from 'url';
+import {dirname} from 'path';
 import * as fs from 'fs';
 import * as path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const reciterImagesDir = path.join(__dirname, '..', 'assets', 'reciter-images');
 const outputFile = path.join(__dirname, '..', 'utils', 'reciterImages.ts');
@@ -21,11 +26,10 @@ function generateReciterImagesFile(): void {
   images.forEach((image: string) => {
     const extension = path.extname(image).toLowerCase();
     if (supportedExtensions.includes(extension)) {
-      const normalizedFileName = normalizeFileName(image);
       const normalizedName = normalizeFileName(path.parse(image).name);
       try {
         imageMap[normalizedName] =
-          `require('@/assets/reciter-images/${normalizedFileName}')`;
+          `require('@/assets/reciter-images/${image}')`;
       } catch (error: unknown) {
         if (error instanceof Error) {
           console.error(`Error processing image ${image}: ${error.message}`);

@@ -20,9 +20,14 @@ export const createTheme = (
     primary: primaryColors[primaryColor],
   },
   fonts: {
-    regular: 'AvenirNextLTPro-Regular',
-    bold: 'AvenirNextLTPro-Bold',
-    heading: 'AvenirNextLTPro-Bold',
+    regular: 'Manrope-Regular',
+    bold: 'Manrope-Bold',
+    heading: 'Manrope-Bold',
+    medium: 'Manrope-Medium',
+    semiBold: 'Manrope-SemiBold',
+    light: 'Manrope-Light',
+    extraLight: 'Manrope-ExtraLight',
+    extraBold: 'Manrope-ExtraBold',
   },
   typography: {
     headingSize: scale(30),

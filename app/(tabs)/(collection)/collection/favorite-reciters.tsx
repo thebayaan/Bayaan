@@ -38,7 +38,6 @@ export default function FavoriteRecitersScreen() {
   const insets = useSafeAreaInsets();
   const {favoriteReciters} = useFavoriteReciters();
   const router = useRouter();
-  const gradientColors = [theme.colors.primary, theme.colors.background];
 
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -86,7 +85,6 @@ export default function FavoriteRecitersScreen() {
       <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
       <ScrollView
         ref={scrollViewRef}
-        bounces={false}
         onScroll={Animated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {
@@ -99,7 +97,9 @@ export default function FavoriteRecitersScreen() {
         )}
         scrollEventThrottle={16}>
         <LinearGradient
-          colors={gradientColors}
+          colors={
+            [theme.colors.primary, theme.colors.background] as [string, string]
+          }
           style={[
             styles.gradientContainer,
             {paddingTop: insets.top + moderateScale(20)},
@@ -174,7 +174,9 @@ export default function FavoriteRecitersScreen() {
           },
         ]}>
         <LinearGradient
-          colors={gradientColors}
+          colors={
+            [theme.colors.primary, theme.colors.background] as [string, string]
+          }
           style={StyleSheet.absoluteFill}
         />
         <Text style={styles.stickyHeaderTitle}>Favorite Reciters</Text>
@@ -196,9 +198,9 @@ export default function FavoriteRecitersScreen() {
               }),
             }}>
             <Icon
-              name="chevron-thin-left"
-              type="entypo"
-              size={moderateScale(20)}
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
               color="white"
             />
           </Animated.View>
@@ -208,9 +210,9 @@ export default function FavoriteRecitersScreen() {
               opacity: headerOpacity,
             }}>
             <Icon
-              name="chevron-thin-left"
-              type="entypo"
-              size={moderateScale(20)}
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
               color={theme.colors.text}
             />
           </Animated.View>

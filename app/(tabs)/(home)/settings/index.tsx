@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, TouchableOpacity, ScrollView, View} from 'react-native';
+import {Text, TouchableOpacity, ScrollView, View, Alert} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -11,6 +11,8 @@ import {signOut} from '@/services/auth';
 import {ScreenHeader} from '@/components/ScreenHeader';
 import {primaryColors} from '@/styles/colorSchemes';
 import {useAuthStore} from '@/store/authStore';
+import {clearRecentRecitersStorage} from '@/utils/storage';
+import {useRecentRecitersStore} from '@/store/recentRecitersStore';
 
 const formatColorName = (colorName: string): string => {
   return colorName
@@ -22,6 +24,7 @@ const formatColorName = (colorName: string): string => {
 };
 
 const themeOptions: {label: string; value: ThemeMode}[] = [
+  {label: 'System', value: 'system'},
   {label: 'Light', value: 'light'},
   {label: 'Dark', value: 'dark'},
 ];
@@ -29,6 +32,7 @@ const themeOptions: {label: string; value: ThemeMode}[] = [
 const settingsItems = [
   {title: 'Default Reciter', type: 'defaultReciter'},
   {title: 'Reciter Choice', type: 'reciterChoice'},
+  {title: 'Clear Cache', type: 'clearCache'},
 ];
 
 export default function SettingsScreen() {
@@ -51,6 +55,38 @@ export default function SettingsScreen() {
       console.error('Logout error:', error);
     } finally {
       setSigningOut(false);
+    }
+  };
+
+  const handleSettingPress = async (type: string) => {
+    switch (type) {
+      case 'defaultReciter':
+        router.push('/settings/default-reciter');
+        break;
+      case 'reciterChoice':
+        router.push('/settings/reciter-choice');
+        break;
+      case 'clearCache':
+        Alert.alert(
+          'Clear Cache',
+          'This will clear all cached data including recent reciters. Are you sure?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Clear',
+              style: 'destructive',
+              onPress: async () => {
+                await clearRecentRecitersStorage();
+                useRecentRecitersStore.getState().reset();
+                Alert.alert('Success', 'Cache cleared successfully');
+              },
+            },
+          ],
+        );
+        break;
     }
   };
 
@@ -119,7 +155,7 @@ export default function SettingsScreen() {
               activeOpacity={0.99}
               key={index}
               style={styles.settingItem}
-              onPress={() => router.push(`/settings/${item.type}`)}>
+              onPress={() => handleSettingPress(item.type)}>
               <Text style={styles.settingTitle}>{item.title}</Text>
               <Icon
                 name="chevron-right"
@@ -251,7 +287,7 @@ const createStyles = (theme: Theme) =>
     },
     logoutButtonText: {
       color: 'white',
-      fontWeight: 'bold',
-      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.bold,
+      fontSize: moderateScale(16),
     },
   });

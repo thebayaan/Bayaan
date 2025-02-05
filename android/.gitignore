@@ -14,5 +14,3 @@ local.properties
 
 # Bundle artifacts
 *.jsbundle
-
-gradle.properties

@@ -5,11 +5,21 @@ import {useTheme} from '@/hooks/useTheme';
 import TrackPlayer, {usePlaybackState, State} from 'react-native-track-player';
 import {PlayIcon, PauseIcon, PreviousIcon, NextIcon} from '@/components/Icons';
 import {Theme} from '@/utils/themeUtils';
+import {usePlayerBackground} from '@/hooks/usePlayerBackground';
+import Color from 'color';
 
 const PlaybackControls: React.FC = () => {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const {gradientColors} = usePlayerBackground(theme, theme.isDarkMode);
   const playbackState = usePlaybackState();
+
+  // Calculate contrasting colors based on background
+  const baseColor = Color(gradientColors[0]);
+  const contrastColor = baseColor.isLight()
+    ? baseColor.darken(0.7).saturate(0.2)
+    : baseColor.lighten(3.9).saturate(0.9);
+
+  const styles = createStyles(theme, contrastColor.string());
 
   const handlePlayPause = () => {
     if (playbackState.state === State.Playing) {
@@ -47,7 +57,10 @@ const PlaybackControls: React.FC = () => {
           onPress={handlePrevious}
           style={styles.sideButton}
           activeOpacity={0.99}>
-          <PreviousIcon color={theme.colors.text} size={moderateScale(28)} />
+          <PreviousIcon
+            color={contrastColor.string()}
+            size={moderateScale(28)}
+          />
         </TouchableOpacity>
         <View style={styles.playPauseContainer}>
           <TouchableOpacity
@@ -55,9 +68,15 @@ const PlaybackControls: React.FC = () => {
             onPress={handlePlayPause}
             style={styles.playPauseButton}>
             {playbackState.state === State.Playing ? (
-              <PauseIcon color={theme.colors.text} size={moderateScale(36)} />
+              <PauseIcon
+                color={contrastColor.string()}
+                size={moderateScale(36)}
+              />
             ) : (
-              <PlayIcon color={theme.colors.text} size={moderateScale(36)} />
+              <PlayIcon
+                color={contrastColor.string()}
+                size={moderateScale(36)}
+              />
             )}
           </TouchableOpacity>
         </View>
@@ -65,18 +84,17 @@ const PlaybackControls: React.FC = () => {
           onPress={handleNext}
           style={styles.sideButton}
           activeOpacity={0.99}>
-          <NextIcon color={theme.colors.text} size={moderateScale(28)} />
+          <NextIcon color={contrastColor.string()} size={moderateScale(28)} />
         </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={handleSeekForward} activeOpacity={0.99}>
+      <TouchableOpacity onPress={handleSeekForward} activeOpacity={0.7}>
         <Text style={styles.seekText}>15+</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-// Styles remain unchanged
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, textColor: string) =>
   ScaledSheet.create({
     container: {
       flexDirection: 'row',
@@ -98,20 +116,22 @@ const createStyles = (theme: Theme) =>
       marginHorizontal: moderateScale(25),
     },
     playPauseButton: {
-      backgroundColor: 'transparent',
       borderRadius: moderateScale(32),
       width: moderateScale(64),
       height: moderateScale(64),
       justifyContent: 'center',
       alignItems: 'center',
+      transform: [{scale: 1.1}],
     },
     sideButton: {
       marginHorizontal: moderateScale(8),
+      transform: [{scale: 1.05}],
     },
     seekText: {
       fontSize: moderateScale(15),
       fontWeight: 'bold',
-      color: theme.colors.text,
+      color: textColor,
+      opacity: 0.9,
     },
   });
 

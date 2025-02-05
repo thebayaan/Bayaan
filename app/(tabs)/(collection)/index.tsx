@@ -13,8 +13,6 @@ import {TrackItem} from '@/components/TrackItem';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {Theme} from '@/utils/themeUtils';
 import {usePlayback} from '@/hooks/usePlayback';
-import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
-import {getReciterById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 
 const collectionItems = [
@@ -32,7 +30,6 @@ export default function CollectionScreen() {
   const router = useRouter();
   const {favoriteTrackIds} = usePlayerStore();
   const {favoriteReciters} = useFavoriteReciters();
-  const {navigateToPlayer} = usePlayerNavigation();
   const {playLovedTrack} = usePlayback();
 
   // Get first 3 items for preview
@@ -112,9 +109,6 @@ export default function CollectionScreen() {
 
   const handleLovedTrackPress = async (trackId: string) => {
     try {
-      const [reciterId] = trackId.split(':');
-      const reciter = getReciterById(reciterId);
-      navigateToPlayer(reciter?.image_url);
       playLovedTrack(trackId, favoriteTrackIds);
     } catch (error) {
       console.error('Error playing loved track:', error);

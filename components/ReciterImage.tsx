@@ -1,6 +1,5 @@
 import React, {useMemo} from 'react';
 import {View, StyleSheet, ViewStyle, StyleProp, Image} from 'react-native';
-import FastImage from 'react-native-fast-image';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {ProfileIcon} from '@/components/Icons';
@@ -13,14 +12,14 @@ interface ReciterImageProps {
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({imageUrl, reciterName, style}) => {
+  ({reciterName, style}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
       () =>
         StyleSheet.create({
           container: {
-            borderRadius: moderateScale(10),
+            borderRadius: moderateScale(20),
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.card,
             justifyContent: 'center',
@@ -36,18 +35,17 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
     );
 
     const formattedName = useMemo(() => {
-      return reciterName.toLowerCase().replace(/\s+/g, '-');
+      const formatted = reciterName
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      return formatted;
     }, [reciterName]);
 
     const localImageSource = useMemo(() => {
-      return reciterImages[formattedName];
+      const source = reciterImages[formattedName];
+      return source;
     }, [formattedName]);
-
-    const remoteImageUrl = useMemo(() => {
-      return imageUrl
-        ? imageUrl.replace(reciterName, formattedName)
-        : undefined;
-    }, [imageUrl, formattedName, reciterName]);
 
     return (
       <View style={[styles.container, style]}>
@@ -56,12 +54,6 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             source={localImageSource}
             style={styles.image}
             resizeMode="cover"
-          />
-        ) : remoteImageUrl ? (
-          <FastImage
-            source={{uri: remoteImageUrl}}
-            style={styles.image}
-            resizeMode={FastImage.resizeMode.cover}
           />
         ) : (
           <ProfileIcon color={theme.colors.light} size={moderateScale(60)} />
