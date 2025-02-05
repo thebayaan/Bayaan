@@ -34,14 +34,13 @@ interface FavoriteTrack {
 }
 
 export default function LovedScreen() {
+  const router = useRouter();
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
   const {favoriteTrackIds} = usePlayerStore();
   const {playLovedTrack} = usePlayback();
   const {navigateToPlayer} = usePlayerNavigation();
-  const router = useRouter();
-  const gradientColors = ['purple', theme.colors.background];
 
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -144,7 +143,7 @@ export default function LovedScreen() {
       <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
       <ScrollView
         ref={scrollViewRef}
-        bounces={false}
+        bounces={true}
         onScroll={Animated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {
@@ -157,7 +156,7 @@ export default function LovedScreen() {
         )}
         scrollEventThrottle={16}>
         <LinearGradient
-          colors={gradientColors}
+          colors={['purple', theme.colors.background] as [string, string]}
           style={[
             styles.gradientContainer,
             {paddingTop: insets.top + moderateScale(20)},
@@ -208,7 +207,7 @@ export default function LovedScreen() {
           },
         ]}>
         <LinearGradient
-          colors={gradientColors}
+          colors={['purple', theme.colors.background] as [string, string]}
           style={StyleSheet.absoluteFill}
         />
         <Text style={styles.stickyHeaderTitle}>Loved Surahs</Text>
@@ -230,9 +229,9 @@ export default function LovedScreen() {
               }),
             }}>
             <Icon
-              name="chevron-thin-left"
-              type="entypo"
-              size={moderateScale(20)}
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
               color="white"
             />
           </Animated.View>
@@ -242,9 +241,9 @@ export default function LovedScreen() {
               opacity: headerOpacity,
             }}>
             <Icon
-              name="chevron-thin-left"
-              type="entypo"
-              size={moderateScale(20)}
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
               color={theme.colors.text}
             />
           </Animated.View>

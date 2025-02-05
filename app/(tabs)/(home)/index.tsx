@@ -47,8 +47,11 @@ export default function HomeScreen() {
     (surah: Surah) => {
       if (askEveryTime) {
         router.push({
-          pathname: '(modals)/select-reciter',
-          params: {surahId: surah.id},
+          pathname: '/(modals)/select-reciter',
+          params: {
+            surahId: surah.id.toString(),
+            source: 'home',
+          },
         });
       } else {
         switch (defaultReciterSelection) {
@@ -66,22 +69,28 @@ export default function HomeScreen() {
             break;
           case 'useDefault':
             if (defaultReciter) {
-              playTrack(defaultReciter, surah.id.toString());
+              playTrack(defaultReciter, surah.id);
               router.push({
                 pathname: '/player',
                 params: {reciterImageUrl: defaultReciter.image_url},
               });
             } else {
               router.push({
-                pathname: '(modals)/select-reciter',
-                params: {surahId: surah.id},
+                pathname: '/(modals)/select-reciter',
+                params: {
+                  surahId: surah.id.toString(),
+                  source: 'home',
+                },
               });
             }
             break;
           default:
             router.push({
-              pathname: '(modals)/select-reciter',
-              params: {surahId: surah.id},
+              pathname: '/(modals)/select-reciter',
+              params: {
+                surahId: surah.id.toString(),
+                source: 'home',
+              },
             });
         }
       }

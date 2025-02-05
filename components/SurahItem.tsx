@@ -1,16 +1,11 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  GestureResponderEvent,
-} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
-import {MakkahIcon, MadinahIcon, PlayIcon} from '@/components/Icons';
+import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 
 interface SurahItemProps {
   item: Surah;
@@ -20,7 +15,7 @@ interface SurahItemProps {
 }
 
 export const SurahItem: React.FC<SurahItemProps> = React.memo(
-  ({item, onPress, showPlayButton = false, onPlayPress}) => {
+  ({item, onPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const revelationPlace = item.revelation_place.toLowerCase() as
@@ -28,13 +23,6 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       | 'madinah';
 
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
-    const handlePlayPress = React.useCallback(
-      (e: GestureResponderEvent) => {
-        e.stopPropagation();
-        onPlayPress && onPlayPress(item);
-      },
-      [item, onPlayPress],
-    );
 
     const IconComponent =
       revelationPlace === 'makkah' ? MakkahIcon : MadinahIcon;
@@ -58,14 +46,6 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             {item.translated_name_english}
           </Text>
         </View>
-        {showPlayButton && (
-          <TouchableOpacity
-            activeOpacity={0.99}
-            style={styles.playButton}
-            onPress={handlePlayPress}>
-            <PlayIcon color={theme.colors.text} size={moderateScale(24)} />
-          </TouchableOpacity>
-        )}
         <View style={styles.iconOverlay}>
           <IconComponent
             size={moderateScale(80)}
@@ -88,6 +68,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(15),
       backgroundColor: theme.colors.background,
       position: 'relative',
       overflow: 'hidden',

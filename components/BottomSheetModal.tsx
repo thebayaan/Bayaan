@@ -52,7 +52,11 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       index={isVisible ? 0 : -1}
       snapPoints={snapPoints}
       backdropComponent={renderBackdrop}
-      backgroundStyle={{backgroundColor: theme.colors.background}}
+      backgroundStyle={{
+        backgroundColor: theme.colors.background,
+        borderTopLeftRadius: moderateScale(25),
+        borderTopRightRadius: moderateScale(25),
+      }}
       enablePanDownToClose={true}
       handleComponent={BottomSheetHandle}
       handleIndicatorStyle={{backgroundColor: theme.colors.background}}

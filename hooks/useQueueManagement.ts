@@ -1,79 +1,58 @@
 import {useCallback} from 'react';
-import {useQueueStore} from '@/store/queueStore';
-import {Reciter} from '@/data/reciterData';
-import {Surah} from '@/data/surahData';
 import {Track} from '@/types/audio';
-import {generateAudioUrl} from '@/utils/audioUtils';
+import {QueueManager} from '@/services/QueueManager';
+import {usePlayerStore} from '@/store/playerStore';
 
 export const useQueueManagement = () => {
-  const {
-    queue,
-    addToQueue: addToQueueStore,
-    addNext,
-    clearQueue,
-    shuffleQueue,
-    getQueue,
-    skipToTrack,
-    removeFromQueue,
-  } = useQueueStore();
-
-  const createTrack = (reciter: Reciter, surah: Surah): Track => ({
-    id: surah.id.toString(),
-    url: generateAudioUrl(reciter, surah.id.toString()),
-    title: surah.name,
-    artist: reciter.name,
-    reciterId: reciter.id,
-    artwork: reciter.image_url || undefined,
-  });
+  const queueManager = QueueManager.getInstance();
+  const queue = usePlayerStore(state => state.queue);
 
   const addToQueue = useCallback(
-    async (reciter: Reciter, surah: Surah) => {
-      const track = createTrack(reciter, surah);
-      await addToQueueStore(track);
+    async (track: Track) => {
+      await queueManager.addToQueue(track);
     },
-    [addToQueueStore],
+    [queueManager],
   );
 
-  const refreshQueue = useCallback(async () => {
-    await getQueue();
-  }, [getQueue]);
-
-  const handleQueuePress = useCallback(async () => {
-    await refreshQueue();
-  }, [refreshQueue]);
-
-  const handleTrackPress = useCallback(
-    async (trackId: string) => {
-      const index = queue.findIndex(track => track.id === trackId);
-      if (index !== -1) {
-        await skipToTrack(index);
-      }
+  const removeFromQueue = useCallback(
+    async (index: number) => {
+      await queueManager.removeFromQueue(index);
     },
-    [queue, skipToTrack],
+    [queueManager],
   );
 
-  const handleRemoveTrack = useCallback(
-    async (trackId: string) => {
-      const index = queue.findIndex(track => track.id === trackId);
-      if (index !== -1) {
-        await removeFromQueue(index);
-      }
+  const clearQueue = useCallback(async () => {
+    await queueManager.clearQueue();
+  }, [queueManager]);
+
+  const skipToTrack = useCallback(
+    async (index: number) => {
+      await queueManager.skipToTrack(index);
     },
-    [queue, removeFromQueue],
+    [queueManager],
+  );
+
+  const playTrack = useCallback(
+    async (track: Track, startPosition?: number) => {
+      await queueManager.playTrackWithOptions(track, {startPosition});
+    },
+    [queueManager],
+  );
+
+  const playMultipleTracks = useCallback(
+    async (tracks: Track[], startIndex = 0) => {
+      await queueManager.playMultipleTracksWithOptions(tracks, {startIndex});
+    },
+    [queueManager],
   );
 
   return {
     queue,
     addToQueue,
-    addNext,
-    clearQueue,
-    shuffleQueue,
-    getQueue,
-    skipToTrack,
     removeFromQueue,
-    handleQueuePress,
-    handleTrackPress,
-    handleRemoveTrack,
-    refreshQueue,
+    clearQueue,
+    skipToTrack,
+    playTrack,
+    playMultipleTracks,
   };
 };

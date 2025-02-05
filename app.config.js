@@ -35,6 +35,21 @@ export default {
       resizeMode: 'cover',
       backgroundColor: '#000000',
     },
+    fonts: [
+      'assets/fonts/Manrope-Regular.ttf',
+      'assets/fonts/Manrope-Bold.ttf',
+      'assets/fonts/Manrope-Medium.ttf',
+      'assets/fonts/Manrope-SemiBold.ttf',
+      'assets/fonts/Manrope-Light.ttf',
+      'assets/fonts/Manrope-ExtraLight.ttf',
+      'assets/fonts/Manrope-ExtraBold.ttf',
+      'assets/fonts/surah_names.ttf',
+      'assets/fonts/surah_names_2.ttf',
+      'assets/fonts/ScheherazadeNew-Regular.ttf',
+      'assets/fonts/ScheherazadeNew-Medium.ttf',
+      'assets/fonts/ScheherazadeNew-Bold.ttf',
+      'assets/fonts/ScheherazadeNew-SemiBold.ttf',
+    ],
     extra: {
       // Add your environment variables here
       supabaseUrl: process.env.SUPABASE_URL,
@@ -70,5 +85,6 @@ export default {
       fallbackToCacheTimeout: 2000,
       url: 'https://u.expo.dev/e31ace41-2d1b-4777-8230-8c8264277d59',
     },
+    plugins: ['expo-router'],
   },
 };

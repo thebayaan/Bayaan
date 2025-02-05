@@ -26,7 +26,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {usePlayerStore} from '@/store/playerStore';
 import {ReciterImage} from '@/components/ReciterImage';
-import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 import {usePlayback} from '@/hooks/usePlayback';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet} from 'react-native-size-matters';
@@ -38,6 +37,9 @@ import {useTrackPlayerFavorite} from '@/hooks/usePlayerFavorite';
 import {useQueueManagement} from '@/hooks/useQueueManagement';
 import {SurahActionsBottomSheet} from '@/components/modals/SurahActionsBottomSheet';
 import BottomSheet from '@gorhom/bottom-sheet';
+import {reciterImages} from '@/utils/reciterImages';
+import {Asset} from 'expo-asset';
+import {useImageColors} from '@/hooks/useImageColors';
 
 Dimensions.get('window');
 
@@ -46,7 +48,7 @@ interface ReciterProfileProps {
   showFavorites?: boolean;
 }
 
-const ReciterProfile: React.FC<ReciterProfileProps> = ({
+export const ReciterProfile: React.FC<ReciterProfileProps> = ({
   id,
   showFavorites = false,
 }) => {
@@ -58,19 +60,21 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const {favoriteTrackIds} = usePlayerStore();
-  usePlayerStore();
-
+  const {favoriteTrackIds, isLoading} = usePlayerStore(state => ({
+    favoriteTrackIds: state.favoriteTrackIds,
+    isLoading: state.isLoading,
+  }));
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
-  const [isStatusBarDark, setIsStatusBarDark] = useState(false);
+  const [, setIsStatusBarDark] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(showFavorites);
   const scrollViewRef = useRef<ScrollView>(null);
-  const {addToQueue} = useQueueManagement();
+  const {addToQueue} = usePlayback();
   const {toggleFavorite} = useTrackPlayerFavorite();
+
   const headerOpacity = scrollY.interpolate({
-    inputRange: [200, 250],
+    inputRange: [200, 300],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
@@ -110,22 +114,27 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   useEffect(() => {
     const fetchData = async () => {
-      const fetchedReciter = await getReciterById(id);
-      console.log('Fetched reciter:', fetchedReciter);
-      if (fetchedReciter) {
-        setReciter(fetchedReciter);
-        if (fetchedReciter.image_url) {
-          console.log('Reciter image URL:', fetchedReciter.image_url);
-        } else {
-          console.log('No image URL found for reciter');
+      try {
+        // Fetch reciter and surahs in parallel
+        const [fetchedReciter, allSurahs] = await Promise.all([
+          getReciterById(id),
+          getAllSurahs(),
+        ]);
+
+        if (fetchedReciter) {
+          setReciter(fetchedReciter);
+
+          // Filter surahs efficiently using Set
+          const surahSet = new Set(fetchedReciter.surah_list);
+          const surahsMatchingReciter =
+            fetchedReciter.surah_total === 114
+              ? allSurahs
+              : allSurahs.filter(surah => surahSet.has(surah.id));
+
+          setSurahs(surahsMatchingReciter);
         }
-        const allSurahs = await getAllSurahs();
-        const surahsMatchingReciter = allSurahs.filter(
-          surah =>
-            fetchedReciter.surah_list?.includes(surah.id) ||
-            fetchedReciter.surah_total === 114,
-        );
-        setSurahs(surahsMatchingReciter);
+      } catch (error) {
+        console.error('Error fetching reciter data:', error);
       }
     };
     fetchData();
@@ -147,7 +156,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     setSearchQuery(query);
   };
 
-  const {navigateToPlayer} = usePlayerNavigation();
   const {playAll, playFromSurah} = usePlayback();
 
   useTrackPlayerFavorite();
@@ -156,26 +164,26 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const handleSurahPress = useCallback(
     async (surah: Surah) => {
       if (reciter) {
-        navigateToPlayer(reciter.image_url);
-        playFromSurah(reciter, surah, surahs);
+        // Remove navigation, just play the track
+        await playFromSurah(reciter, surah, surahs);
       }
     },
-    [reciter, playFromSurah, surahs, navigateToPlayer],
+    [reciter, playFromSurah, surahs],
   );
 
   const handlePlayAll = useCallback(() => {
     if (reciter) {
-      navigateToPlayer(reciter.image_url);
+      // Remove navigation, just play all
       playAll(reciter, filteredSurahs);
     }
-  }, [reciter, filteredSurahs, playAll, navigateToPlayer]);
+  }, [reciter, filteredSurahs, playAll]);
 
   const handleShuffleAll = useCallback(() => {
     if (reciter) {
-      navigateToPlayer(reciter.image_url);
+      // Remove navigation, just shuffle and play
       playAll(reciter, filteredSurahs, true);
     }
-  }, [reciter, filteredSurahs, playAll, navigateToPlayer]);
+  }, [reciter, filteredSurahs, playAll]);
 
   const {toggleFavoriteReciter, isFavoriteReciter} = useFavoriteReciters();
 
@@ -236,7 +244,35 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     [handleSurahPress, handlePlaySurahPress],
   );
 
-  if (!reciter) {
+  const dominantColors = useImageColors(reciter?.name);
+  const isLoadingColors =
+    !dominantColors.primary || dominantColors.primary === theme.colors.primary;
+  const [isImagePreloaded, setIsImagePreloaded] = useState(false);
+
+  // Add preloading effect
+  useEffect(() => {
+    if (reciter?.name) {
+      // Preload the image and extract colors
+      const formattedName = reciter.name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      const localImageSource = reciterImages[formattedName];
+      if (localImageSource) {
+        Asset.fromModule(localImageSource as number)
+          .downloadAsync()
+          .then(() => setIsImagePreloaded(true))
+          .catch(error => {
+            console.error('Error preloading image:', error);
+            setIsImagePreloaded(true); // Set to true even on error to not block UI
+          });
+      } else {
+        setIsImagePreloaded(true); // No image to preload
+      }
+    }
+  }, [reciter?.name]);
+
+  if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
         <LoadingIndicator />
@@ -246,87 +282,102 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
-      <ScrollView
-        ref={scrollViewRef}
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <LinearGradient
+        colors={[
+          dominantColors.primary,
+          dominantColors.secondary,
+          theme.colors.background,
+        ]}
+        style={styles.absoluteGradient}
+        locations={[0, 0.6, 1]}
+      />
+      <Animated.FlatList
         bounces={false}
+        data={filteredSurahs}
+        renderItem={renderItem}
+        keyExtractor={item => item.id.toString()}
+        ListHeaderComponent={
+          <>
+            <LinearGradient
+              colors={[
+                dominantColors.primary,
+                dominantColors.secondary,
+                theme.colors.background,
+              ]}
+              style={styles.gradientContainer}
+              locations={[0, 0.6, 1]}>
+              <View
+                style={[
+                  styles.headerContainer,
+                  {paddingTop: insets.top + moderateScale(50)},
+                ]}>
+                <ReciterImage
+                  imageUrl={reciter?.image_url}
+                  reciterName={reciter?.name}
+                  style={styles.reciterImage}
+                />
+                <View style={styles.reciterInfo}>
+                  <Text style={styles.reciterName}>{reciter?.name}</Text>
+                  <Text style={styles.reciterMoshafName}>
+                    {reciter?.moshaf_name}
+                  </Text>
+                </View>
+              </View>
+            </LinearGradient>
+            <View style={styles.contentContainer}>
+              <ReciterProfileActionButtons
+                onFavoritePress={handleToggleFavoriteReciter}
+                onShufflePress={handleShuffleAll}
+                onPlayPress={handlePlayAll}
+                isFavoriteReciter={
+                  reciter ? isFavoriteReciter(reciter.id) : false
+                }
+              />
+              {showSearch && (
+                <View style={styles.searchBarContainer}>
+                  <SearchBar
+                    placeholder="Search Surahs"
+                    onChangeText={handleSearch}
+                    value={searchQuery}
+                  />
+                </View>
+              )}
+              <View style={styles.toggleContainer}>
+                <Text style={styles.toggleLabel}>Show Loved Only</Text>
+                <Switch
+                  value={showFavoritesOnly}
+                  onValueChange={setShowFavoritesOnly}
+                  trackColor={{
+                    false: theme.colors.border,
+                    true: theme.colors.primary,
+                  }}
+                  thumbColor={
+                    showFavoritesOnly
+                      ? theme.colors.background
+                      : theme.colors.text
+                  }
+                />
+              </View>
+            </View>
+          </>
+        }
         onScroll={Animated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {
-            useNativeDriver: false,
+            useNativeDriver: true,
             listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
               const offsetY = event.nativeEvent.contentOffset.y;
               setIsStatusBarDark(offsetY > 100);
             },
           },
         )}
-        scrollEventThrottle={16}>
-        <LinearGradient
-          colors={[theme.colors.primary, theme.colors.background]}
-          style={styles.gradientContainer}>
-          <View
-            style={[
-              styles.headerContainer,
-              {paddingTop: insets.top + moderateScale(50)},
-            ]}>
-            <ReciterImage
-              imageUrl={reciter?.image_url}
-              reciterName={reciter?.name}
-              style={styles.reciterImage}
-            />
-            <View style={styles.reciterInfo}>
-              <Text style={styles.reciterName}>{reciter?.name}</Text>
-              <Text style={styles.reciterMoshafName}>
-                {reciter?.moshaf_name}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-        <View style={styles.contentContainer}>
-          <ReciterProfileActionButtons
-            onFavoritePress={handleToggleFavoriteReciter}
-            onShufflePress={handleShuffleAll}
-            onPlayPress={handlePlayAll}
-            isFavoriteReciter={reciter ? isFavoriteReciter(reciter.id) : false}
-          />
-          {showSearch && (
-            <View style={styles.searchBarContainer}>
-              <SearchBar
-                placeholder="Search Surahs"
-                onChangeText={handleSearch}
-                value={searchQuery}
-              />
-            </View>
-          )}
-          <View style={styles.toggleContainer}>
-            <Text style={styles.toggleLabel}>Show Loved Only</Text>
-            <Switch
-              value={showFavoritesOnly}
-              onValueChange={setShowFavoritesOnly}
-              trackColor={{
-                false: theme.colors.border,
-                true: theme.colors.primary,
-              }}
-              thumbColor={
-                showFavoritesOnly ? theme.colors.background : theme.colors.text
-              }
-            />
-          </View>
-          <Animated.FlatList
-            data={filteredSurahs}
-            renderItem={renderItem}
-            keyExtractor={item => item.id.toString()}
-            contentContainerStyle={[
-              styles.listContentContainer,
-              {paddingBottom: 65},
-            ]}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No surahs available</Text>
-            }
-            scrollEnabled={false}
-          />
-        </View>
-      </ScrollView>
+        scrollEventThrottle={1}
+        contentContainerStyle={styles.listContentContainer}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No surahs available</Text>
+        }
+      />
       <SurahActionsBottomSheet
         ref={bottomSheetRef}
         surah={selectedSurah}
@@ -348,10 +399,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           },
         ]}>
         <LinearGradient
-          colors={[theme.colors.primary, theme.colors.background]}
+          colors={[dominantColors.primary, dominantColors.secondary]}
           style={StyleSheet.absoluteFill}
+          start={{x: 0, y: 0}}
+          end={{x: 0, y: 1}}
         />
-        <Text style={styles.stickyHeaderTitle}>{reciter?.name}</Text>
+        <Text style={[styles.stickyHeaderTitle, {color: 'white'}]}>
+          {reciter?.name}
+        </Text>
       </Animated.View>
       <Animated.View
         style={[
@@ -362,32 +417,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           },
         ]}>
         <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Icon
-              name="chevron-thin-left"
-              type="entypo"
-              size={moderateScale(20)}
-              color="white"
-            />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Icon
-              name="chevron-thin-left"
-              type="entypo"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Animated.View>
+          <Icon
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(24)}
+            color="white"
+          />
         </TouchableOpacity>
       </Animated.View>
       <Animated.View
@@ -406,32 +441,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
               scrollViewRef.current?.scrollTo({y: 0, animated: true});
             }
           }}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(20)}
-              color="white"
-            />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Animated.View>
+          <Icon
+            name="search"
+            type="feather"
+            size={moderateScale(20)}
+            color="white"
+          />
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -446,16 +461,23 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    absoluteGradient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '40%',
+    },
     gradientContainer: {
       paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(10),
-      alignItems: 'center', // Center items horizontally
+      alignItems: 'center',
     },
     headerContainer: {},
     reciterImage: {
       width: moderateScale(200),
       height: moderateScale(200),
-      borderRadius: moderateScale(5),
+      borderRadius: moderateScale(20),
       marginBottom: moderateScale(10), // Add margin below the image
       alignSelf: 'center',
     },

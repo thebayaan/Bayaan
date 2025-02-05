@@ -25,25 +25,14 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   revelationPlace,
   onPress,
 }) => {
-  const {theme, isDarkMode} = useTheme();
-  const baseColor = theme.colors.primary;
+  const {theme} = useTheme();
 
-  const getGradientColors = () => {
-    const startColor = Color(baseColor)
-      .mix(
-        Color(isDarkMode ? theme.colors.card : theme.colors.background),
-        0.85,
-      )
-      .rgb()
-      .string();
-    const endColor = Color(startColor)
-      .mix(
-        Color(isDarkMode ? theme.colors.card : theme.colors.background),
-        0.95,
-      )
-      .rgb()
-      .string();
-    return [startColor, endColor];
+  const getGradientColors = (): [string, string] => {
+    const baseColor = theme.colors.primary;
+    return [
+      Color(baseColor).alpha(0.1).toString(),
+      Color(baseColor).alpha(0.05).toString(),
+    ];
   };
 
   const styles = StyleSheet.create({

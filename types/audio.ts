@@ -1,24 +1,33 @@
-export interface Track extends Omit<TrackPlayerTrack, 'reciterId'> {
+import type {Track as RNTrackPlayerTrack} from 'react-native-track-player';
+
+// Our base track type that extends the library's track type
+export interface Track extends RNTrackPlayerTrack {
   reciterId: string;
+  reciterName: string;
+  surahId?: string;
 }
 
-export interface TrackPlayerTrack {
-  id: string;
-  url: string;
-  title: string;
-  artist: string;
-  reciterId: string;
-  artwork?: string;
-  duration?: number;
-}
+// Helper type for track conversion
+export type TrackWithOptionalFields = Partial<Track>;
 
-export function toTrackPlayerTrack(track: Track): TrackPlayerTrack {
+// Helper function to safely convert library track to our track type
+export function ensureTrackFields(track: TrackWithOptionalFields): Track {
   return {
-    id: track.id,
-    url: track.url,
+    // Required fields from RNTrackPlayerTrack with defaults
+    url: track.url || '',
     title: track.title || '',
     artist: track.artist || '',
-    reciterId: track.reciterId,
-    artwork: track.artwork ?? undefined,
+    id: track.id || '',
+
+    // Optional fields from RNTrackPlayerTrack
+    artwork: track.artwork || '',
+    duration: track.duration,
+
+    // Our required fields
+    reciterId: track.reciterId || '',
+    reciterName: track.reciterName || '',
+
+    // Our optional fields
+    surahId: track.surahId,
   };
 }

@@ -26,9 +26,9 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({title}) => {
         onPress={() => router.back()}
         style={styles.backButton}>
         <Icon
-          name="chevron-thin-left"
-          type="entypo"
-          size={moderateScale(20)}
+          name="arrow-left"
+          type="feather"
+          size={moderateScale(24)}
           color={theme.colors.text}
         />
       </TouchableOpacity>

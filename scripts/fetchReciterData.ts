@@ -10,10 +10,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function fetchReciterData() {
-  const {data, error} = await supabase
-    .from('reciters_temp')
-    .select('*')
-    .order('id');
+  const {data, error} = await supabase.from('reciters').select('*').order('id');
 
   if (error) {
     console.error('Error fetching reciter data:', error);

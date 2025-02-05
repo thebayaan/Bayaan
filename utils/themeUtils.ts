@@ -4,27 +4,32 @@ import {
   primaryColors,
   PrimaryColor,
 } from '@/styles/colorSchemes';
-import {Dimensions} from 'react-native';
+import {Dimensions, ColorSchemeName} from 'react-native';
 
 const {width} = Dimensions.get('window');
 const scale = (size: number) => (width / 375) * size;
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'system';
 export type {PrimaryColor} from '@/styles/colorSchemes';
 
 export const createTheme = (
-  colorScheme: 'light' | 'dark',
+  colorScheme: ColorSchemeName | ThemeMode,
   primaryColor: PrimaryColor,
 ) => ({
   colors: {
-    ...(colorScheme === 'light' ? lightColors : darkColors),
+    ...(colorScheme === 'dark' ? darkColors : lightColors),
     primary: primaryColors[primaryColor],
   },
   isDarkMode: colorScheme === 'dark',
   fonts: {
-    regular: 'AvenirNextLTPro-Regular',
-    bold: 'AvenirNextLTPro-Bold',
-    heading: 'AvenirNextLTPro-Bold',
+    regular: 'Manrope-Regular',
+    bold: 'Manrope-Bold',
+    heading: 'Manrope-Bold',
+    medium: 'Manrope-Medium',
+    semiBold: 'Manrope-SemiBold',
+    light: 'Manrope-Light',
+    extraLight: 'Manrope-ExtraLight',
+    extraBold: 'Manrope-ExtraBold',
   },
   typography: {
     headingSize: scale(30),

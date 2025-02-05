@@ -2,7 +2,6 @@ import React, {useEffect, useState} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
 import {useAuthStore} from '@/store/authStore';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import TrackPlayer, {Event} from 'react-native-track-player';
@@ -13,11 +12,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {View, Text} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-
-// Prevent auto hiding of splash screen
-SplashScreen.preventAutoHideAsync().catch(() => {
-  /* reloading the app might trigger this */
-});
+import {PlayerBottomSheet} from '@/components/player/PlayerBottomSheet';
 
 // Register playback service
 TrackPlayer.registerPlaybackService(() => playbackService);
@@ -31,8 +26,19 @@ export default function RootLayout() {
   useTheme();
 
   const [fontsLoaded, fontError] = useFonts({
+    'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
+    'Manrope-Bold': require('@/assets/fonts/Manrope-Bold.ttf'),
+    'Manrope-Medium': require('@/assets/fonts/Manrope-Medium.ttf'),
+    'Manrope-SemiBold': require('@/assets/fonts/Manrope-SemiBold.ttf'),
+    'Manrope-Light': require('@/assets/fonts/Manrope-Light.ttf'),
+    'Manrope-ExtraLight': require('@/assets/fonts/Manrope-ExtraLight.ttf'),
+    'Manrope-ExtraBold': require('@/assets/fonts/Manrope-ExtraBold.ttf'),
     SurahNames: require('@/assets/fonts/surah_names.ttf'),
     SurahNames2: require('@/assets/fonts/surah_names_2.ttf'),
+    'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
+    'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
+    'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
+    'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
   });
 
   // Initialize app
@@ -66,7 +72,6 @@ export default function RootLayout() {
 
     const handleNavigation = async () => {
       try {
-        await SplashScreen.hideAsync();
         const route = session ? '/(tabs)/(home)' : '/(auth)/welcome';
         router.replace(route);
       } catch (error) {
@@ -144,15 +149,6 @@ export default function RootLayout() {
             />
             <Stack.Screen name="(tabs)" options={{headerShown: false}} />
             <Stack.Screen
-              name="player"
-              options={{
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-                gestureEnabled: true,
-                gestureDirection: 'vertical',
-              }}
-            />
-            <Stack.Screen
               name="(modals)/add-favorite-reciters"
               options={{
                 presentation: 'transparentModal',
@@ -161,6 +157,7 @@ export default function RootLayout() {
               }}
             />
           </Stack>
+          <PlayerBottomSheet />
         </GestureHandlerRootView>
       </SafeAreaProvider>
     </ErrorBoundary>

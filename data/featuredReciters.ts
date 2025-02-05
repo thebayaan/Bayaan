@@ -1,6 +1,7 @@
 import {RECITERS, Reciter} from './reciterData';
 
 const FEATURED_RECITER_NAMES = [
+  'Albaraa Basfar',
   'Mishari Rashid Al-Afasy',
   'Abdul Basit Abdul Samad',
   'Mahmoud Khalil Al-Hussary',
@@ -43,24 +44,12 @@ export function getFeaturedReciters(count = 10): Reciter[] {
 }
 
 export function getFeaturedReciterOfTheDay(): Reciter {
-  const today = new Date();
-  const startOfYear = new Date(today.getFullYear(), 0, 0);
-  const diff = today.getTime() - startOfYear.getTime();
-  const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-  // Get reciter for today
-  const index = dayOfYear % FEATURED_RECITER_NAMES.length;
-  const reciter = findReciterByName(FEATURED_RECITER_NAMES[index]);
-
-  // Fallback to first available featured reciter if undefined
-  if (!reciter) {
-    const fallbackReciter = FEATURED_RECITER_NAMES.map(findReciterByName).find(
-      (r): r is Reciter => r !== undefined,
-    );
-
-    // Final fallback to first reciter in RECITERS array
-    return fallbackReciter || RECITERS[0];
+  // Always return Albaraa Basfar as the featured reciter
+  const albaraa = findReciterByName('Albaraa Basfar');
+  if (!albaraa) {
+    // Fallback to random selection if Albaraa is not found
+    const featuredReciters = getFeaturedReciters(1);
+    return featuredReciters[0];
   }
-
-  return reciter;
+  return albaraa;
 }

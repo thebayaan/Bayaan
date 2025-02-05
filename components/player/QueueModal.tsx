@@ -1,89 +1,132 @@
-import React from 'react';
-import {View, Text, TouchableOpacity, FlatList} from 'react-native';
+import React, {useCallback} from 'react';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, ScaledSheet} from 'react-native-size-matters';
+import {usePlayback} from '@/hooks/usePlayback';
+import {
+  moderateScale,
+  ScaledSheet,
+  verticalScale,
+} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
-import BottomSheetModal from '@/components/BottomSheetModal';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
-import {Track} from 'react-native-track-player';
-import {useQueueStore} from '@/store/queueStore';
+import {usePlayerStore} from '@/store/playerStore';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
+import {BottomSheetDefaultBackdropProps} from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types';
+
 interface QueueModalProps {
-  isVisible: boolean;
+  bottomSheetRef: React.RefObject<BottomSheet>;
   onClose: () => void;
-  queue: Track[];
-  currentTrackId: string | undefined;
-  onTrackPress: (trackId: string) => void;
-  onRemoveTrack: (trackId: string) => void;
 }
 
-const QueueModal: React.FC<QueueModalProps> = ({
-  isVisible,
-  onClose,
-  queue,
-  currentTrackId,
-  onTrackPress,
-  onRemoveTrack,
-}) => {
+const QueueModal: React.FC<QueueModalProps> = ({bottomSheetRef, onClose}) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {shuffleQueue} = useQueueStore();
+  const {skipTrack, removeTrack} = usePlayback();
+  const queue = usePlayerStore(state => state.queue);
+  const currentTrack = usePlayerStore(state => state.currentTrack);
 
-  const handleShuffle = () => {
-    shuffleQueue();
-  };
-
-  const renderItem = ({item}: {item: Track}) => (
-    <TouchableOpacity
-      activeOpacity={0.99}
-      style={[
-        styles.trackItem,
-        item.id === currentTrackId && styles.currentTrack,
-      ]}
-      onPress={() => onTrackPress(item.id)}>
-      <View style={styles.trackInfo}>
-        <Text style={styles.trackTitle}>{item.title}</Text>
-        <Text style={styles.trackArtist}>{item.artist}</Text>
-      </View>
-      <TouchableOpacity
-        activeOpacity={0.99}
-        style={styles.removeButton}
-        onPress={() => onRemoveTrack(item.id)}>
-        <MaterialCommunityIcons
-          name="close"
-          size={moderateScale(20)}
-          color={theme.colors.text}
-        />
-      </TouchableOpacity>
-    </TouchableOpacity>
+  const renderBackdrop = useCallback(
+    (
+      props: React.JSX.IntrinsicAttributes & BottomSheetDefaultBackdropProps,
+    ) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+      />
+    ),
+    [],
   );
 
+  const handleTrackPress = async (index: number) => {
+    try {
+      await skipTrack(index);
+    } catch (error) {
+      console.error('Error skipping to track:', error);
+    }
+  };
+
+  const handleRemoveTrack = async (index: number) => {
+    try {
+      await removeTrack(index);
+    } catch (error) {
+      console.error('Error removing track:', error);
+    }
+  };
+
+  const renderQueueItems = () => {
+    if (queue.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>Queue is empty</Text>
+        </View>
+      );
+    }
+
+    return queue.map((item, index) => (
+      <TouchableOpacity
+        key={`${item.id}-${index}`}
+        activeOpacity={0.7}
+        style={[
+          styles.trackItem,
+          item.id === currentTrack?.id && styles.currentTrack,
+        ]}
+        onPress={() => handleTrackPress(index)}>
+        <View style={styles.trackInfo}>
+          <Text style={styles.trackTitle} numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text style={styles.trackArtist} numberOfLines={1}>
+            {item.artist}
+          </Text>
+        </View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.removeButton}
+          onPress={() => handleRemoveTrack(index)}>
+          <MaterialCommunityIcons
+            name="close"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    ));
+  };
+
   return (
-    <BottomSheetModal
-      isVisible={isVisible}
-      onClose={onClose}
-      snapPoints={['80%']}>
+    <BottomSheet
+      ref={bottomSheetRef}
+      index={-1}
+      snapPoints={['80%']}
+      enablePanDownToClose={true}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={{backgroundColor: theme.colors.card}}
+      handleIndicatorStyle={{backgroundColor: theme.colors.card}}
+      onChange={index => {
+        if (index === -1) {
+          onClose();
+        }
+      }}>
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Queue</Text>
-          <TouchableOpacity
-            activeOpacity={0.99}
-            onPress={handleShuffle}
-            style={styles.shuffleButton}>
-            <MaterialCommunityIcons
-              name="shuffle-variant"
-              size={moderateScale(24)}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <Text style={styles.queueCount}>{queue.length} tracks</Text>
+          </View>
         </View>
-        <FlatList
-          data={queue}
-          renderItem={renderItem}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-        />
+        <BottomSheetScrollView
+          contentContainerStyle={[
+            styles.listContent,
+            queue.length === 0 && styles.emptyList,
+          ]}>
+          {renderQueueItems()}
+        </BottomSheetScrollView>
       </View>
-    </BottomSheetModal>
+    </BottomSheet>
   );
 };
 
@@ -91,22 +134,40 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.card,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: verticalScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     title: {
       fontSize: moderateScale(20),
       fontWeight: 'bold',
       color: theme.colors.text,
-      marginBottom: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
+    },
+    queueCount: {
+      fontSize: moderateScale(14),
+      color: theme.colors.textSecondary,
     },
     listContent: {
       paddingHorizontal: moderateScale(16),
     },
+    emptyList: {
+      flex: 1,
+    },
     trackItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(12),
+      paddingVertical: verticalScale(12),
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.border,
     },
@@ -115,27 +176,31 @@ const createStyles = (theme: Theme) =>
     },
     trackInfo: {
       flex: 1,
+      marginRight: moderateScale(16),
     },
     trackTitle: {
       fontSize: moderateScale(16),
-      fontWeight: 'bold',
+      fontWeight: '500',
       color: theme.colors.text,
     },
     trackArtist: {
       fontSize: moderateScale(14),
       color: theme.colors.textSecondary,
+      marginTop: verticalScale(4),
     },
     removeButton: {
       padding: moderateScale(8),
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
+    emptyContainer: {
+      flex: 1,
+      justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: moderateScale(10),
+      paddingBottom: verticalScale(100),
     },
-    shuffleButton: {
-      padding: moderateScale(5),
+    emptyText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.textSecondary,
+      marginTop: verticalScale(16),
     },
   });
 

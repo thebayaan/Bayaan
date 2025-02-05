@@ -14,9 +14,6 @@ export const isValidEmail = (email: string): boolean => {
  * @param minLength The minimum required length (default is 8).
  * @returns True if the password meets the minimum length, false otherwise.
  */
-export const isValidPassword = (
-  password: string,
-  minLength: number = 8,
-): boolean => {
+export const isValidPassword = (password: string, minLength = 8): boolean => {
   return password.length >= minLength;
 };

@@ -53,12 +53,20 @@ export default function SearchScreen() {
         getAllSurahs(),
       ]);
 
+      console.log('Loaded reciter data:', reciterData.length, 'reciters');
+      console.log('Sample reciter:', reciterData[0]);
+      console.log(
+        'Albaraa present?',
+        reciterData.some(r => r.name.includes('Albaraa')),
+      );
+
       setReciterFuse(
         new Fuse(reciterData, {
-          keys: ['name'],
-          threshold: 0.3,
+          keys: ['name', 'moshaf_name'],
+          threshold: 0.4,
           distance: 100,
-          minMatchCharLength: 2,
+          minMatchCharLength: 1,
+          useExtendedSearch: true,
         }),
       );
       setSurahFuse(
@@ -133,7 +141,10 @@ export default function SearchScreen() {
       if (askEveryTime) {
         router.push({
           pathname: '(modals)/select-reciter',
-          params: {surahId: surah.id},
+          params: {
+            surahId: surah.id.toString(),
+            source: 'search',
+          },
         });
       } else {
         switch (defaultReciterSelection) {
@@ -151,7 +162,7 @@ export default function SearchScreen() {
             break;
           case 'useDefault':
             if (defaultReciter) {
-              playTrack(defaultReciter, surah.id.toString());
+              playTrack(defaultReciter, surah.id);
               router.push({
                 pathname: '/player',
                 params: {reciterImageUrl: defaultReciter.image_url},
@@ -159,14 +170,20 @@ export default function SearchScreen() {
             } else {
               router.push({
                 pathname: '(modals)/select-reciter',
-                params: {surahId: surah.id},
+                params: {
+                  surahId: surah.id.toString(),
+                  source: 'search',
+                },
               });
             }
             break;
           default:
             router.push({
               pathname: '(modals)/select-reciter',
-              params: {surahId: surah.id},
+              params: {
+                surahId: surah.id.toString(),
+                source: 'search',
+              },
             });
         }
       }

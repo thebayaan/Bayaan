@@ -4,23 +4,33 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export interface RecentReciterItem {
+export interface RecentReciter {
   reciter: Reciter;
   surah: Surah;
   progress: number;
+  duration: number;
   timestamp: number;
 }
 
 interface RecentRecitersState {
-  recentReciters: RecentReciterItem[];
+  recentReciters: RecentReciter[];
   progressMap: Record<string, number>;
-  addRecentReciter: (reciter: Reciter, surah: Surah, progress: number) => void;
+  durationMap: Record<string, number>;
+  addRecentReciter: (
+    reciter: Reciter,
+    surah: Surah,
+    progress: number,
+    duration: number,
+  ) => void;
   updateProgress: (
     reciterId: string,
     surahId: number,
     progress: number,
+    duration: number,
   ) => void;
   getProgress: (reciterId: string, surahId: number) => number;
+  getDuration: (reciterId: string, surahId: number) => number;
+  reset: () => void;
 }
 
 export const useRecentRecitersStore = create<RecentRecitersState>()(
@@ -28,62 +38,94 @@ export const useRecentRecitersStore = create<RecentRecitersState>()(
     (set, get) => ({
       recentReciters: [],
       progressMap: {},
+      durationMap: {},
 
-      addRecentReciter: (reciter, surah, progress) => {
+      addRecentReciter: (reciter, surah, progress, duration) => {
         set(state => {
-          const newItem = {
-            reciter,
-            surah,
-            timestamp: Date.now(),
-            progress,
+          const key = `${reciter.id}:${surah.id}`;
+          const timestamp = Date.now();
+
+          // Batch all updates
+          const updates = {
+            recentReciters: [] as RecentReciter[],
+            progressMap: {...state.progressMap},
+            durationMap: {...state.durationMap},
           };
 
-          // Remove existing entry for this reciter/surah combo
-          const filtered = state.recentReciters.filter(
+          // Update maps first
+          updates.progressMap[key] = progress;
+          updates.durationMap[key] = duration;
+
+          // Update reciter list
+          const existingIndex = state.recentReciters.findIndex(
             item =>
-              !(item.reciter.id === reciter.id && item.surah.id === surah.id),
+              item.reciter.id === reciter.id && item.surah.id === surah.id,
           );
 
-          // Add new item at the beginning
-          const updatedReciters = [newItem, ...filtered].slice(0, 10);
+          if (existingIndex !== -1) {
+            updates.recentReciters = [
+              {
+                ...state.recentReciters[existingIndex],
+                progress,
+                duration,
+                timestamp,
+              },
+              ...state.recentReciters.slice(0, existingIndex),
+              ...state.recentReciters.slice(existingIndex + 1),
+            ];
+          } else {
+            updates.recentReciters = [
+              {reciter, surah, progress, duration, timestamp},
+              ...state.recentReciters,
+            ].slice(0, 7);
+          }
 
-          return {
-            recentReciters: updatedReciters,
-            progressMap: {
-              ...state.progressMap,
-              [`${reciter.id}:${surah.id}`]: progress,
-            },
-          };
+          return updates;
         });
       },
 
-      updateProgress: (reciterId, surahId, progress) => {
+      updateProgress: (reciterId, surahId, progress, duration) => {
         set(state => {
           const key = `${reciterId}:${surahId}`;
-          const updatedReciters = state.recentReciters.map(item => {
-            if (item.reciter.id === reciterId && item.surah.id === surahId) {
-              return {
-                ...item,
-                progress,
-                timestamp: Date.now(),
-              };
+          const newProgressMap = {...state.progressMap, [key]: progress};
+          const newDurationMap = {...state.durationMap, [key]: duration};
+
+          // Update the most recent reciter's progress if it matches
+          const updatedReciters = state.recentReciters.map((item, index) => {
+            if (
+              index === 0 &&
+              item.reciter.id === reciterId &&
+              item.surah.id === surahId
+            ) {
+              return {...item, progress, duration};
             }
             return item;
           });
 
           return {
             recentReciters: updatedReciters,
-            progressMap: {
-              ...state.progressMap,
-              [key]: progress,
-            },
+            progressMap: newProgressMap,
+            durationMap: newDurationMap,
           };
         });
       },
 
       getProgress: (reciterId, surahId) => {
+        const state = get();
         const key = `${reciterId}:${surahId}`;
-        return get().progressMap[key] || 0;
+        return state.progressMap[key] || 0;
+      },
+
+      getDuration: (reciterId, surahId) => {
+        return get().durationMap[`${reciterId}:${surahId}`] || 0;
+      },
+
+      reset: () => {
+        set({
+          recentReciters: [],
+          progressMap: {},
+          durationMap: {},
+        });
       },
     }),
     {

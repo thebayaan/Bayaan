@@ -17,10 +17,8 @@ import {RecentReciterCard} from '@/components/cards/RecentReciterCard';
 import {usePlayerStore} from '@/store/playerStore';
 import {
   useRecentRecitersStore,
-  RecentReciterItem,
+  RecentReciter,
 } from '@/store/recentRecitersStore';
-import {usePlayback} from '@/hooks/usePlayback';
-import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 import Color from 'color';
 import {ReciterImage} from '@/components/ReciterImage';
 import {
@@ -96,7 +94,7 @@ const HeroSection = ({
         />
       </View>
       <View style={styles.content}>
-        <Text style={styles.label}>FEATURED RECITER</Text>
+        <Text style={styles.label}>RECITER OF THE DAY</Text>
         <Text style={styles.name} numberOfLines={1}>
           {reciter.name}
         </Text>
@@ -108,25 +106,19 @@ const HeroSection = ({
   );
 };
 
-// Add this before the RecitersView component
 const ItemSeparator = () => <View style={{width: moderateScale(12)}} />;
 
-type SectionItem = Reciter | RecentReciterItem;
+type SectionItem = Reciter | RecentReciter;
 
-// Add this before the RecitersView component, after ItemSeparator
 const RenderSectionItem = React.memo(
   ({
     item,
     variant,
     onReciterPress,
-    playTrack,
-    navigateToPlayer,
   }: {
     item: SectionItem;
     variant: 'recent' | 'circular' | 'default';
     onReciterPress: (reciter: Reciter) => void;
-    playTrack: (reciter: Reciter, surahId: string) => void;
-    navigateToPlayer: (imageUrl: string) => void;
   }) => {
     const progress = useRecentRecitersStore(state =>
       'timestamp' in item
@@ -134,18 +126,28 @@ const RenderSectionItem = React.memo(
         : 0,
     );
 
+    const duration = useRecentRecitersStore(state =>
+      'timestamp' in item
+        ? state.getDuration(item.reciter.id, item.surah.id)
+        : 0,
+    );
+
     if (variant === 'recent' && 'timestamp' in item) {
+      // Only render if we have valid reciter data
+      if (!item.reciter?.name || !item.surah?.name) {
+        return null;
+      }
+
       return (
         <RecentReciterCard
           imageUrl={item.reciter.image_url}
           reciterName={item.reciter.name}
           surahName={item.surah.name}
           trackId={`${item.reciter.id}:${item.surah.id}`}
+          reciterId={item.reciter.id}
+          surahId={item.surah.id}
+          duration={duration}
           progress={progress}
-          onPress={() => {
-            playTrack(item.reciter, item.surah.id.toString());
-            navigateToPlayer(item.reciter.image_url);
-          }}
         />
       );
     }
@@ -178,8 +180,6 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
   const {recentReciters} = useRecentRecitersStore();
   const {favoriteReciters} = useFavoriteReciters();
   const {favoriteTrackIds} = usePlayerStore();
-  const {playTrack} = usePlayback();
-  const {navigateToPlayer} = usePlayerNavigation();
 
   // Random favorite reciters for the favorites section
   const randomFavoriteReciters = useMemo(() => {
@@ -258,8 +258,6 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
             item={item}
             variant={variant}
             onReciterPress={onReciterPress}
-            playTrack={playTrack}
-            navigateToPlayer={navigateToPlayer}
           />
         )}
         keyExtractor={(item: SectionItem) =>

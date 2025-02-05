@@ -12,79 +12,90 @@ import TrackPlayer, {
 } from 'react-native-track-player';
 import {getReciterById} from '@/services/dataService';
 import {useRecentRecitersStore} from '@/store/recentRecitersStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {QueueManager} from '@/services/QueueManager';
 
 export const usePlayback = () => {
-  const {setActiveTrack} = usePlayerStore();
   const {getQueue} = useQueueStore();
   const {addRecentReciter, updateProgress} = useRecentRecitersStore();
+  const queueManager = QueueManager.getInstance();
+  const loadTrack = usePlayerStore(state => state.loadAndPlayTrack);
 
-  // Set up progress tracking at the hook level
-  useTrackPlayerEvents([Event.PlaybackProgressUpdated], async event => {
-    if (event.type === Event.PlaybackProgressUpdated) {
-      const {position, duration} = event;
-      if (duration > 0) {
-        const progressValue = position / duration;
+  // Constants for queue management
+  const INITIAL_BATCH_SIZE = 3; // Load first 3 tracks initially
+  const NEXT_BATCH_SIZE = 5; // Load 5 tracks in subsequent batches
+  const LOAD_THRESHOLD = 2; // Start loading more when 2 tracks remain
+
+  // Keep existing progress tracking
+  useTrackPlayerEvents(
+    [
+      Event.PlaybackProgressUpdated,
+      Event.PlaybackState,
+      Event.PlaybackTrackChanged,
+    ],
+    async event => {
+      if (event.type === Event.PlaybackProgressUpdated) {
+        const {position} = event;
         const currentTrack = await TrackPlayer.getCurrentTrack();
-        if (currentTrack) {
+        if (currentTrack !== null) {
           const track = await TrackPlayer.getTrack(currentTrack);
           if (track && track.reciterId) {
-            updateProgress(
-              track.reciterId,
-              parseInt(track.id, 10),
-              progressValue,
-            );
+            const duration = await TrackPlayer.getDuration();
+            if (duration > 0) {
+              const progressValue = position / duration;
+              updateProgress(
+                track.reciterId,
+                parseInt(track.surahId || '0', 10),
+                progressValue,
+                duration,
+              );
+            }
           }
         }
-      }
-    }
-  });
+      } else if (event.type === Event.PlaybackTrackChanged) {
+        // Check if we need to load more tracks
+        const queue = await TrackPlayer.getQueue();
+        const currentIndex = await TrackPlayer.getCurrentTrack();
 
-  const playTrack = async (reciter: Reciter, surahId: string) => {
+        if (
+          currentIndex !== null &&
+          queue.length - currentIndex <= LOAD_THRESHOLD
+        ) {
+          await loadNextBatch();
+        }
+      }
+    },
+  );
+
+  const playTrack = async (reciter: Reciter, surahId: number) => {
     try {
-      const surah = await getSurahById(parseInt(surahId, 10));
-      if (!surah) {
-        throw new Error('Failed to fetch surah data');
-      }
+      const [surah, storedDuration] = await Promise.all([
+        getSurahById(surahId),
+        AsyncStorage.getItem(`progress_${reciter.id}_${surahId}`),
+        AsyncStorage.getItem(`duration_${reciter.id}_${surahId}`),
+      ]);
 
-      // Create the track first
-      const audioUrl = generateAudioUrl(reciter, surahId);
+      if (!surah) throw new Error('Surah not found');
+
       const track: Track = {
-        id: surahId,
-        url: audioUrl,
+        id: `${reciter.id}:${surah.id}`,
+        url: generateAudioUrl(reciter, surah.id.toString()),
         title: surah.name,
         artist: reciter.name,
-        reciterId: reciter.id,
         artwork: reciter.image_url || undefined,
+        reciterId: reciter.id,
+        reciterName: reciter.name,
+        surahId: surah.id.toString(),
+        duration: storedDuration ? parseFloat(storedDuration) : undefined,
       };
 
-      // Reset player and add track
-      await TrackPlayer.reset();
-      await TrackPlayer.add([track]);
-      await TrackPlayer.play();
-      await setActiveTrack(track);
-      usePlayerStore.getState().setIsPlaying(true);
+      await loadTrack(track);
 
-      // Add to recent reciters AFTER successful playback start
-      addRecentReciter(reciter, surah, 0);
-
-      await getQueue();
+      return track;
     } catch (error) {
       console.error('Error in playTrack:', error);
+      throw error;
     }
-  };
-
-  const createTracksFromSurahs = (
-    reciter: Reciter,
-    surahs: Surah[],
-  ): Track[] => {
-    return surahs.map(surah => ({
-      id: surah.id.toString(),
-      url: generateAudioUrl(reciter, surah.id.toString()),
-      title: surah.name,
-      artist: reciter.name,
-      reciterId: reciter.id,
-      artwork: reciter.image_url || undefined,
-    }));
   };
 
   const playAll = async (
@@ -94,38 +105,18 @@ export const usePlayback = () => {
   ) => {
     if (surahs.length === 0) return;
 
-    const tracks = shuffle
-      ? [...surahs].sort(() => Math.random() - 0.5)
-      : surahs;
-
-    // Create and play first track immediately
-    const firstTrack = {
-      id: tracks[0].id.toString(),
-      url: generateAudioUrl(reciter, tracks[0].id.toString()),
-      title: tracks[0].name,
-      artist: reciter.name,
-      reciterId: reciter.id,
-      artwork: reciter.image_url || undefined,
-    };
-
-    await TrackPlayer.reset();
-    await TrackPlayer.add([firstTrack]);
-    await TrackPlayer.play();
-    await setActiveTrack(firstTrack);
-    usePlayerStore.getState().setIsPlaying(true);
-
-    // Add remaining tracks asynchronously
-    if (tracks.length > 1) {
-      const remainingTracks = createTracksFromSurahs(reciter, tracks.slice(1));
-      await TrackPlayer.add(remainingTracks);
-      await getQueue(); // Update queue
-    }
+    const tracks = createTracksFromSurahs(reciter, surahs);
+    await queueManager.playMultipleTracksWithOptions(tracks, {
+      shuffle,
+      clearQueue: true,
+    });
   };
 
   const playFromSurah = async (
     reciter: Reciter,
     surah: Surah,
     allSurahs: Surah[],
+    startPosition?: number,
   ) => {
     try {
       const startIndex = allSurahs.findIndex(s => s.id === surah.id);
@@ -133,82 +124,175 @@ export const usePlayback = () => {
         throw new Error('Surah not found in the list');
       }
 
-      // Create track for the selected surah first
-      const initialTrack = {
-        id: surah.id.toString(),
-        url: generateAudioUrl(reciter, surah.id.toString()),
-        title: surah.name,
-        artist: reciter.name,
-        reciterId: reciter.id,
-        artwork: reciter.image_url || undefined,
-      };
+      // Get initial batch of tracks
+      const initialTracks = createTracksFromSurahs(
+        reciter,
+        allSurahs.slice(startIndex, startIndex + INITIAL_BATCH_SIZE),
+      );
 
-      // Reset and play the selected surah immediately
-      await TrackPlayer.reset();
-      await TrackPlayer.add([initialTrack]);
-      await TrackPlayer.play();
-      await setActiveTrack(initialTrack);
-      usePlayerStore.getState().setIsPlaying(true);
+      // Add to recently played
+      await addRecentReciter(reciter, surah, 0, 0);
 
-      // Add to recent reciters AFTER successful playback start
-      addRecentReciter(reciter, surah, 0);
+      // Play the first track with the start position
+      if (initialTracks.length > 0) {
+        const [firstTrack, ...remainingInitialTracks] = initialTracks;
+        await queueManager.playTrackWithOptions(firstTrack, {
+          startPosition,
+          clearQueue: true,
+        });
 
-      // Add remaining surahs to queue asynchronously
-      const remainingSurahs = allSurahs.slice(startIndex + 1);
-      if (remainingSurahs.length > 0) {
-        const remainingTracks = createTracksFromSurahs(
-          reciter,
-          remainingSurahs,
-        );
-        await TrackPlayer.add(remainingTracks);
-        await getQueue();
+        // Queue the remaining initial tracks if any
+        if (remainingInitialTracks.length > 0) {
+          await queueManager.addToQueue(remainingInitialTracks);
+        }
+
+        // Store queue state for lazy loading
+        useQueueStore.getState().setQueueContext({
+          nextLoadIndex: startIndex + INITIAL_BATCH_SIZE,
+          allSurahs,
+          currentReciter: reciter,
+        });
       }
     } catch (error) {
       console.error('Error in playFromSurah:', error);
+      throw error;
+    }
+  };
+
+  // Add new function to load next batch of tracks
+  const loadNextBatch = async () => {
+    const {nextLoadIndex, allSurahs, currentReciter} = useQueueStore.getState();
+    const currentTrack = usePlayerStore.getState().currentTrack;
+
+    // Safety checks
+    if (!currentReciter || nextLoadIndex >= allSurahs.length) return;
+    if (!currentTrack) return;
+
+    // Verify we're still playing from the same reciter
+    if (currentTrack.reciterId !== currentReciter.id) {
+      // If reciter changed, don't load more tracks
+      return;
+    }
+
+    const nextTracks = createTracksFromSurahs(
+      currentReciter,
+      allSurahs.slice(nextLoadIndex, nextLoadIndex + NEXT_BATCH_SIZE),
+    );
+
+    if (nextTracks.length > 0) {
+      // Only add to queue if we're still playing from the same sequence
+      const queue = await TrackPlayer.getQueue();
+      const lastTrack = queue[queue.length - 1];
+
+      if (lastTrack && lastTrack.reciterId === currentReciter.id) {
+        await queueManager.addToQueue(nextTracks);
+        useQueueStore.getState().setQueueContext({
+          nextLoadIndex: nextLoadIndex + NEXT_BATCH_SIZE,
+          allSurahs,
+          currentReciter,
+        });
+      }
     }
   };
 
   const playLovedTrack = async (trackId: string, lovedTrackIds: string[]) => {
-    const [reciterId, surahId] = trackId.split(':');
-    const reciter = getReciterById(reciterId);
-    const surah = getSurahById(parseInt(surahId, 10));
+    try {
+      const currentIndex = lovedTrackIds.indexOf(trackId);
+      if (currentIndex === -1) return;
 
-    if (!reciter || !surah) {
-      throw new Error('Failed to fetch reciter or surah data');
-    }
+      const [reciterId, surahId] = trackId.split(':');
+      const reciter = await getReciterById(reciterId);
+      const surah = await getSurahById(parseInt(surahId, 10));
 
-    await playTrack(reciter, surahId);
+      if (!reciter || !surah) {
+        console.error('Could not find reciter or surah');
+        return;
+      }
 
-    const startIndex = lovedTrackIds.indexOf(trackId);
-    if (startIndex === -1) {
-      throw new Error('Track not found in loved tracks');
-    }
-
-    const tracksToQueue = lovedTrackIds
-      .slice(startIndex + 1)
-      .map(id => {
-        const [nextReciterId, nextSurahId] = id.split(':');
-        const nextReciter = getReciterById(nextReciterId);
-        const nextSurah = getSurahById(parseInt(nextSurahId, 10));
-        if (nextReciter && nextSurah) {
-          return {
-            id: nextSurahId,
-            url: generateAudioUrl(nextReciter, nextSurahId),
-            title: nextSurah.name,
-            artist: nextReciter.name,
-            reciterId: nextReciter.id,
-            artwork: nextReciter.image_url,
-          } as Track;
-        }
-        return null;
-      })
-      .filter((track): track is Track => track !== null);
-
-    if (tracksToQueue.length > 0) {
-      await TrackPlayer.add(tracksToQueue);
+      await playTrack(reciter, surah.id);
       await getQueue(); // Update queue
+    } catch (error) {
+      console.error('Error in playLovedTrack:', error);
+      const store = usePlayerStore.getState();
+      store.setIsPlaying(false);
+      store.setIsLoading(false);
+      store.setCurrentTrack(null);
+      throw error;
     }
   };
 
-  return {playTrack, playAll, playFromSurah, playLovedTrack};
+  const addToQueue = async (reciter: Reciter, surah: Surah) => {
+    const store = usePlayerStore.getState();
+    store.setIsLoading(true);
+
+    try {
+      // First add to recent history
+      await addRecentReciter(reciter, surah, 0, 0);
+
+      const track: Track = {
+        id: `${reciter.id}:${surah.id}`,
+        url: generateAudioUrl(reciter, surah.id.toString()),
+        title: surah.name,
+        artist: reciter.name,
+        artwork: reciter.image_url || undefined,
+        reciterId: reciter.id,
+        reciterName: reciter.name,
+        surahId: surah.id.toString(),
+      };
+
+      // Then play the track
+      await queueManager.playTrackWithOptions(track, {clearQueue: true});
+      store.setIsLoading(false);
+    } catch (error) {
+      console.error('Error in addToQueue:', error);
+      store.setIsLoading(false);
+      throw error;
+    }
+  };
+
+  const skipTrack = async (index: number) => {
+    try {
+      await queueManager.skipToTrack(index);
+      await TrackPlayer.play();
+    } catch (error) {
+      console.error('Error in skipTrack:', error);
+      throw error;
+    }
+  };
+
+  const removeTrack = async (index: number) => {
+    try {
+      await queueManager.removeFromQueue(index);
+    } catch (error) {
+      console.error('Error in removeTrack:', error);
+      throw error;
+    }
+  };
+
+  // Keep existing helper functions
+  const createTracksFromSurahs = (
+    reciter: Reciter,
+    surahs: Surah[],
+  ): Track[] => {
+    return surahs.map(surah => ({
+      id: `${reciter.id}:${surah.id}`,
+      url: generateAudioUrl(reciter, surah.id.toString()),
+      title: surah.name,
+      artist: reciter.name,
+      reciterId: reciter.id,
+      artwork: reciter.image_url || undefined,
+      surahId: surah.id.toString(),
+      reciterName: reciter.name,
+    }));
+  };
+
+  return {
+    playTrack,
+    playAll,
+    playFromSurah,
+    addToQueue,
+    skipTrack,
+    removeTrack,
+    playLovedTrack,
+  };
 };

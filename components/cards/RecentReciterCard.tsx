@@ -8,14 +8,23 @@ import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {usePlayerStore} from '@/store/playerStore';
 import {useProgress} from 'react-native-track-player';
+import {Slider} from '@miblanchard/react-native-slider';
+import {usePlayback} from '@/hooks/usePlayback';
+import {
+  getReciterById,
+  getAllSurahs,
+  getSurahById,
+} from '@/services/dataService';
 
 interface RecentReciterCardProps {
   imageUrl: string;
   reciterName: string;
   surahName: string;
   trackId: string;
-  onPress: () => void;
-  progress?: number;
+  reciterId: string;
+  surahId: number;
+  progress: number;
+  duration: number;
 }
 
 export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
@@ -23,37 +32,86 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
   reciterName,
   surahName,
   trackId,
-  onPress,
-  progress = 0,
+  reciterId,
+  surahId,
+  progress,
+  duration,
 }) => {
   const {theme} = useTheme();
   const {activeTrackId} = usePlayerStore();
-  const isPlaying = activeTrackId === trackId;
+  const isCurrentTrack = activeTrackId === trackId;
 
-  // Use TrackPlayer progress for live updates
-  const {position = 0, duration = 0} = useProgress(100);
+  // Only subscribe to progress updates for current track
+  const trackProgress = useProgress(isCurrentTrack ? 100 : undefined);
 
-  // Calculate progress percentage
-  const progressPercentage =
-    isPlaying && activeTrackId === trackId
-      ? duration > 0
-        ? (position / duration) * 100
-        : 0
-      : progress * 100;
-
-  // Calculate time remaining
-  const timeRemaining =
-    isPlaying && activeTrackId === trackId
-      ? duration > 0
-        ? duration - position
-        : 0
-      : 0;
-
-  const formatTimeRemaining = (seconds: number): string => {
-    if (seconds >= 3600) {
-      return `${Math.round(seconds / 3600)}h`;
+  // Calculate progress value (0-1)
+  const progressValue = React.useMemo(() => {
+    if (isCurrentTrack && trackProgress.duration > 0) {
+      return trackProgress.position / trackProgress.duration;
     }
-    return `${Math.round(seconds / 60)}m`;
+    // Progress from store is already a ratio between 0-1
+    return progress;
+  }, [
+    isCurrentTrack,
+    trackProgress.position,
+    trackProgress.duration,
+    progress,
+  ]);
+
+  // Calculate time remaining in minutes/hours
+  const getTimeRemaining = React.useCallback(() => {
+    const effectiveDuration = isCurrentTrack
+      ? trackProgress.duration
+      : duration;
+
+    let remainingSeconds = effectiveDuration;
+
+    if (effectiveDuration > 0) {
+      if (isCurrentTrack) {
+        remainingSeconds = effectiveDuration - trackProgress.position;
+      } else {
+        remainingSeconds = effectiveDuration * (1 - progress);
+      }
+    }
+
+    if (remainingSeconds <= 0) return '0m';
+
+    const totalMinutes = Math.round(remainingSeconds / 60);
+    if (totalMinutes >= 60) {
+      const hours = Math.round(totalMinutes / 60);
+      return `${hours}h`;
+    }
+    return `${totalMinutes}m`;
+  }, [
+    isCurrentTrack,
+    trackProgress.duration,
+    trackProgress.position,
+    duration,
+    progress,
+  ]);
+
+  const {playFromSurah} = usePlayback();
+
+  // Calculate the position to start playback from and play the track
+  const handlePress = async () => {
+    try {
+      const [reciter, surah, allSurahs] = await Promise.all([
+        getReciterById(reciterId),
+        getSurahById(surahId),
+        getAllSurahs(),
+      ]);
+
+      if (!reciter || !surah) {
+        console.error('Could not find reciter or surah');
+        return;
+      }
+
+      // Calculate start position based on progress
+      const startPosition = isCurrentTrack ? 0 : duration * progress;
+      await playFromSurah(reciter, surah, allSurahs, startPosition);
+    } catch (error) {
+      console.error('Error playing from recent reciter:', error);
+    }
   };
 
   const styles = StyleSheet.create({
@@ -112,16 +170,9 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
       width: moderateScale(100),
       alignSelf: 'flex-start',
     },
-    progressContainer: {
-      width: moderateScale(25),
+    sliderContainer: {
       height: moderateScale(6),
-      backgroundColor: Color(theme.colors.primary).alpha(0.2).toString(),
-      borderRadius: moderateScale(3),
-    },
-    progressBar: {
-      height: '100%',
-      backgroundColor: theme.colors.primary,
-      borderRadius: moderateScale(3),
+      flex: 1,
     },
     timeRemaining: {
       fontSize: moderateScale(12),
@@ -136,7 +187,7 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
     <TouchableOpacity
       activeOpacity={0.99}
       style={styles.container}
-      onPress={onPress}>
+      onPress={handlePress}>
       <LinearGradient
         colors={[
           Color(theme.colors.primary).alpha(0.03).toString(),
@@ -151,13 +202,6 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
             reciterName={reciterName}
             style={styles.image}
           />
-          {progress > 0 && (
-            <View style={styles.progressContainer}>
-              <View
-                style={[styles.progressBar, {width: `${progressPercentage}%`}]}
-              />
-            </View>
-          )}
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.reciterName} numberOfLines={1}>
@@ -170,21 +214,28 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
             <TouchableOpacity
               activeOpacity={0.99}
               style={styles.playButton}
-              onPress={onPress}>
+              onPress={handlePress}>
               <PlayIcon
                 color={theme.colors.text}
                 size={moderateScale(20)}
-                filled={isPlaying}
+                filled={isCurrentTrack}
               />
             </TouchableOpacity>
-            <View style={styles.progressContainer}>
-              <View
-                style={[styles.progressBar, {width: `${progressPercentage}%`}]}
-              />
-            </View>
-            <Text style={styles.timeRemaining}>
-              {formatTimeRemaining(timeRemaining)}
-            </Text>
+            <Slider
+              value={progressValue}
+              disabled={true}
+              minimumTrackTintColor={theme.colors.primary}
+              maximumTrackTintColor={Color(theme.colors.primary)
+                .alpha(0.2)
+                .toString()}
+              trackStyle={{
+                height: moderateScale(6),
+                borderRadius: moderateScale(3),
+              }}
+              thumbStyle={{height: 0, width: 0}}
+              containerStyle={styles.sliderContainer}
+            />
+            <Text style={styles.timeRemaining}>{getTimeRemaining()}</Text>
           </View>
         </View>
       </View>

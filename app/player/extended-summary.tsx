@@ -39,9 +39,9 @@ const ExtendedSurahSummary = () => {
           style={styles.closeButton}
           onPress={router.back}>
           <Icon
-            name="chevron-thin-left"
-            type="entypo"
-            size={moderateScale(20)}
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(24)}
             color={theme.colors.text}
           />
         </TouchableOpacity>
