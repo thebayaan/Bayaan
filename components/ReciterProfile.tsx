@@ -40,6 +40,7 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import {reciterImages} from '@/utils/reciterImages';
 import {Asset} from 'expo-asset';
 import {useImageColors} from '@/hooks/useImageColors';
+import {RewayatIcon} from '@/components/Icons';
 
 Dimensions.get('window');
 
@@ -49,7 +50,7 @@ interface ReciterProfileProps {
 }
 
 export const ReciterProfile: React.FC<ReciterProfileProps> = ({
-  id,
+  id: reciterId, // Rename to avoid shadowing
   showFavorites = false,
 }) => {
   const router = useRouter();
@@ -60,9 +61,12 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const {favoriteTrackIds, isLoading} = usePlayerStore(state => ({
+  const [selectedRewayatId, setSelectedRewayatId] = useState<
+    string | undefined
+  >(undefined);
+  const {favoriteTrackIds} = usePlayerStore(state => ({
+    // Remove unused isLoading
     favoriteTrackIds: state.favoriteTrackIds,
-    isLoading: state.isLoading,
   }));
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -79,19 +83,36 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
     extrapolate: 'clamp',
   });
 
+  const selectedRewayat = useMemo(() => {
+    if (!reciter) return undefined;
+    if (!selectedRewayatId) return reciter.rewayat[0];
+    return (
+      reciter.rewayat.find(r => r.id === selectedRewayatId) ||
+      reciter.rewayat[0]
+    );
+  }, [reciter, selectedRewayatId]);
+
+  const availableSurahs = useMemo(() => {
+    if (!selectedRewayat?.surah_list) return surahs;
+    const validSurahs = selectedRewayat.surah_list.filter(
+      (id): id is number => id !== null,
+    );
+    return surahs.filter(surah => validSurahs.includes(surah.id));
+  }, [surahs, selectedRewayat]);
+
   const filteredSurahsMemo = useMemo(() => {
-    if (!surahs.length) return [];
+    if (!availableSurahs.length) return [];
 
     if (!searchQuery && !showFavoritesOnly) {
-      return surahs;
+      return availableSurahs;
     }
 
     // Convert favoriteTrackIds to Set for O(1) lookup
     const favoriteSet = new Set(favoriteTrackIds);
 
-    return surahs.filter(surah => {
+    return availableSurahs.filter(surah => {
       // First check favorites if needed
-      if (showFavoritesOnly && !favoriteSet.has(`${id}:${surah.id}`)) {
+      if (showFavoritesOnly && !favoriteSet.has(`${reciterId}:${surah.id}`)) {
         return false;
       }
 
@@ -100,45 +121,42 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
         const lowercaseQuery = searchQuery.toLowerCase().trim();
         return (
           surah.name.toLowerCase().includes(lowercaseQuery) ||
-          surah.name_arabic.includes(searchQuery) ||
           surah.translated_name_english
             .toLowerCase()
             .includes(lowercaseQuery) ||
-          surah.id.toString().includes(lowercaseQuery)
+          surah.id.toString() === lowercaseQuery
         );
       }
 
       return true;
     });
-  }, [surahs, searchQuery, showFavoritesOnly, favoriteTrackIds, id]);
+  }, [
+    availableSurahs,
+    searchQuery,
+    showFavoritesOnly,
+    favoriteTrackIds,
+    reciterId,
+  ]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch reciter and surahs in parallel
-        const [fetchedReciter, allSurahs] = await Promise.all([
-          getReciterById(id),
-          getAllSurahs(),
-        ]);
-
-        if (fetchedReciter) {
-          setReciter(fetchedReciter);
-
-          // Filter surahs efficiently using Set
-          const surahSet = new Set(fetchedReciter.surah_list);
-          const surahsMatchingReciter =
-            fetchedReciter.surah_total === 114
-              ? allSurahs
-              : allSurahs.filter(surah => surahSet.has(surah.id));
-
-          setSurahs(surahsMatchingReciter);
+        const reciterData = await getReciterById(reciterId);
+        if (reciterData) {
+          setReciter(reciterData);
+          // Set initial rewayat ID to the first one
+          if (reciterData.rewayat.length > 0) {
+            setSelectedRewayatId(reciterData.rewayat[0].id);
+          }
         }
+        const surahsData = await getAllSurahs();
+        setSurahs(surahsData);
       } catch (error) {
-        console.error('Error fetching reciter data:', error);
+        console.error('Error fetching data:', error);
       }
     };
     fetchData();
-  }, [id]);
+  }, [reciterId]);
 
   useEffect(() => {
     const listener = headerOpacity.addListener(({value}) => {
@@ -272,6 +290,41 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }
   }, [reciter?.name]);
 
+  const handleStyleChange = useCallback(() => {
+    if (!reciter) return;
+
+    // Find current style index
+    const currentIndex = reciter.rewayat.findIndex(
+      r => r.id === selectedRewayat?.id,
+    );
+    // Get next rewayat, or wrap around to first
+    const nextIndex = (currentIndex + 1) % reciter.rewayat.length;
+    setSelectedRewayatId(reciter.rewayat[nextIndex].id);
+  }, [reciter, selectedRewayat]);
+
+  const renderStyleIndicator = () => {
+    if (!reciter || !selectedRewayat) return null;
+
+    return (
+      <TouchableOpacity
+        style={styles.styleButton}
+        onPress={handleStyleChange}
+        activeOpacity={0.7}>
+        <View style={styles.styleIconContainer}>
+          <RewayatIcon size={moderateScale(26)} color={theme.colors.primary} />
+        </View>
+        <View style={styles.styleTextContainer}>
+          <Text style={styles.styleText} numberOfLines={2}>
+            {selectedRewayat.name}
+          </Text>
+          <Text style={styles.styleSubText} numberOfLines={1}>
+            {selectedRewayat.style}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -313,15 +366,13 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
                   {paddingTop: insets.top + moderateScale(50)},
                 ]}>
                 <ReciterImage
-                  imageUrl={reciter?.image_url}
-                  reciterName={reciter?.name}
+                  reciterName={reciter.name}
+                  imageUrl={reciter.image_url || undefined}
                   style={styles.reciterImage}
                 />
                 <View style={styles.reciterInfo}>
-                  <Text style={styles.reciterName}>{reciter?.name}</Text>
-                  <Text style={styles.reciterMoshafName}>
-                    {reciter?.moshaf_name}
-                  </Text>
+                  <Text style={styles.reciterName}>{reciter.name}</Text>
+                  {renderStyleIndicator()}
                 </View>
               </View>
             </LinearGradient>
@@ -383,7 +434,7 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
         surah={selectedSurah}
         isLoved={
           selectedSurah
-            ? favoriteTrackIds.includes(`${reciter.id}:${selectedSurah.id}`)
+            ? favoriteTrackIds.includes(`${reciterId}:${selectedSurah.id}`)
             : false
         }
         onAddToQueue={handleAddToQueue}
@@ -405,7 +456,7 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
           end={{x: 0, y: 1}}
         />
         <Text style={[styles.stickyHeaderTitle, {color: 'white'}]}>
-          {reciter?.name}
+          {reciter.name}
         </Text>
       </Animated.View>
       <Animated.View
@@ -413,7 +464,7 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
           styles.backButton,
           {
             top: insets.top,
-            left: moderateScale(20),
+            left: moderateScale(15),
           },
         ]}>
         <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
@@ -548,10 +599,40 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       textAlign: 'center',
     },
-    reciterMoshafName: {
-      fontSize: moderateScale(14),
+    styleButton: {
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(12),
+      marginTop: moderateScale(12),
+      marginHorizontal: moderateScale(15),
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
+    styleIconContainer: {
+      width: moderateScale(40),
+      height: moderateScale(40),
+      borderRadius: moderateScale(12),
+      backgroundColor: `${theme.colors.primary}15`,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: moderateScale(6),
+    },
+    styleTextContainer: {
+      flex: 1,
+      marginLeft: moderateScale(12),
+      marginRight: moderateScale(4),
+    },
+    styleText: {
+      color: theme.colors.text,
+      fontSize: moderateScale(16),
+      fontWeight: '600',
+      lineHeight: moderateScale(20),
+    },
+    styleSubText: {
       color: theme.colors.textSecondary,
-      marginTop: moderateScale(5),
-      textAlign: 'center',
+      fontSize: moderateScale(13),
+      marginTop: moderateScale(2),
+      textTransform: 'capitalize',
+      opacity: 0.8,
     },
   });

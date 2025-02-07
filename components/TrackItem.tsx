@@ -1,13 +1,13 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Icon} from '@rneui/themed';
 import {ReciterImage} from '@/components/ReciterImage';
-import {getSurahById} from '@/services/dataService';
-import {getReciterById} from '@/services/dataService';
+import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import {Reciter} from '@/data/reciterData';
 
 interface TrackItemProps {
   reciterId: string;
@@ -20,10 +20,27 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
   ({reciterId, surahId, onPress, onPlayPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
+    const [reciter, setReciter] = useState<Reciter | null>(null);
+
+    useEffect(() => {
+      let mounted = true;
+      const loadReciter = async () => {
+        try {
+          const data = await getReciterById(reciterId);
+          if (mounted && data) {
+            setReciter(data);
+          }
+        } catch (error) {
+          console.error('Error loading reciter:', error);
+        }
+      };
+      loadReciter();
+      return () => {
+        mounted = false;
+      };
+    }, [reciterId]);
 
     const surah = getSurahById(parseInt(surahId, 10));
-    const reciter = getReciterById(reciterId);
-
     if (!surah || !reciter) return null;
 
     const surahGlyph = surahGlyphMap[surah.id];
@@ -35,8 +52,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         onPress={onPress}>
         <View style={styles.imageContainer}>
           <ReciterImage
-            imageUrl={reciter.image_url}
-            reciterName={reciter.name}
+            reciterName={reciter?.name || ''}
+            imageUrl={reciter?.image_url || undefined}
             style={styles.reciterImage}
           />
         </View>

@@ -157,8 +157,6 @@ export const NextIcon: React.FC<IconProps> = ({color, size}) => (
   </Svg>
 );
 
-// ... existing code ...
-
 export const SeekForward15Icon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -209,8 +207,6 @@ export const SeekBackward15Icon: React.FC<IconProps> = ({color, size}) => (
   </Svg>
 );
 
-// ... existing code ...
-
 export const PauseIcon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -219,8 +215,6 @@ export const PauseIcon: React.FC<IconProps> = ({color, size}) => (
     />
   </Svg>
 );
-
-// ... rest of the existing code ...
 
 export const TimerIcon: React.FC<IconProps> = ({color, size, filled}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -364,6 +358,7 @@ export const RepeatOneIcon: React.FC<IconProps> = ({color, size}) => (
     />
   </Svg>
 );
+
 export const QueueIcon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
     <Path
@@ -457,5 +452,82 @@ export const LogoIcon: React.FC<IconProps> = ({size, isDarkMode}) => (
         transform="rotate(-45 420.945 370.635)"
       />
     </G>
+  </Svg>
+);
+
+export const RewayatIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="-50 -50 100 100">
+    {/* Largest pair */}
+    <Rect
+      x="-35"
+      y="-35"
+      width="70"
+      height="70"
+      rx="8"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+    />
+    <Rect
+      x="-35"
+      y="-35"
+      width="70"
+      height="70"
+      rx="8"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      transform="rotate(45)"
+    />
+
+    {/* Medium pair */}
+    <Rect
+      x="-25"
+      y="-25"
+      width="50"
+      height="50"
+      rx="6"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      transform="rotate(90)"
+    />
+    <Rect
+      x="-25"
+      y="-25"
+      width="50"
+      height="50"
+      rx="6"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      transform="rotate(135)"
+    />
+
+    {/* Smallest pair */}
+    <Rect
+      x="-15"
+      y="-15"
+      width="30"
+      height="30"
+      rx="4"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+    />
+    <Rect
+      x="-15"
+      y="-15"
+      width="30"
+      height="30"
+      rx="4"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      transform="rotate(45)"
+    />
+
+    {/* Center circle */}
+    <Circle r="8" fill="none" stroke={color} strokeWidth="2" />
   </Svg>
 );

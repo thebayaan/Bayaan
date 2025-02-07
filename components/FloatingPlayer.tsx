@@ -13,15 +13,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
-import {usePlayerBackground} from '@/hooks/usePlayerBackground';
+import {usePlayerColors} from '@/hooks/usePlayerColors';
 import {LinearGradient} from 'expo-linear-gradient';
 import {StyleSheet} from 'react-native';
 import {usePlayerStore} from '@/store/playerStore';
-import Color from 'color';
 import {usePrevious} from '@/hooks/usePrevious';
 
 export const FloatingPlayer: React.FC = () => {
-  const {theme, isDarkMode} = useTheme();
+  const {theme} = useTheme();
   const playbackState = usePlaybackState();
   const currentTrack = usePlayerStore(state => state.currentTrack);
   const isLoading = usePlayerStore(state => state.isLoading);
@@ -30,21 +29,19 @@ export const FloatingPlayer: React.FC = () => {
   const displayTrack = currentTrack || previousTrack;
 
   const styles = createStyles(theme);
-  const {gradientColors} = usePlayerBackground(theme, isDarkMode);
+  const playerColors = usePlayerColors();
 
   // Animation values
   const translateY = useSharedValue(100);
-  const opacity = useSharedValue(1);
+  const opacity = useSharedValue(0);
+  const isVisible = useSharedValue(false);
 
-  // Calculate contrasting colors based on background
-  const baseColor = Color(gradientColors[0]);
-  const contrastColor = baseColor.isLight()
-    ? baseColor.darken(0.7).saturate(0.2)
-    : baseColor.lighten(3.9).saturate(0.9);
-
-  const secondaryColor = baseColor.isLight()
-    ? baseColor.darken(0.8).saturate(0.2)
-    : baseColor.lighten(2.2).saturate(1.2);
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{translateY: translateY.value}],
+      opacity: opacity.value,
+    };
+  }, []);
 
   const setPlayerSheetVisible = usePlayerStore(
     state => state.setPlayerSheetVisible,
@@ -86,49 +83,59 @@ export const FloatingPlayer: React.FC = () => {
     }
   }, [currentTrack, updateCurrentTrack]);
 
+  const showPlayer = useCallback(() => {
+    'worklet';
+    translateY.value = withSpring(0, {
+      damping: 15,
+      stiffness: 100,
+    });
+    opacity.value = withTiming(1, {
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+    });
+    isVisible.value = true;
+  }, [translateY, opacity, isVisible]);
+
+  const hidePlayer = useCallback(() => {
+    'worklet';
+    translateY.value = withSpring(100, {
+      damping: 15,
+      stiffness: 100,
+    });
+    opacity.value = withTiming(0, {
+      duration: 150,
+      easing: Easing.in(Easing.ease),
+    });
+    isVisible.value = false;
+  }, [translateY, opacity, isVisible]);
+
   // Handle visibility animations
   useEffect(() => {
     if (displayTrack) {
-      translateY.value = withSpring(0, {
-        damping: 15,
-        stiffness: 100,
-      });
-      opacity.value = withTiming(1, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      });
+      showPlayer();
     } else {
-      translateY.value = withSpring(100, {
-        damping: 15,
-        stiffness: 100,
-      });
-      opacity.value = withTiming(0, {
-        duration: 150,
-        easing: Easing.in(Easing.ease),
-      });
+      hidePlayer();
     }
-  }, [displayTrack, translateY, opacity]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{translateY: translateY.value}],
-    opacity: opacity.value,
-  }));
+  }, [displayTrack, showPlayer, hidePlayer]);
 
   const surahGlyph = useMemo(() => {
     if (!displayTrack?.surahId) return '';
     return surahGlyphMap[parseInt(displayTrack.surahId, 10)] || '';
   }, [displayTrack?.surahId]);
 
-  // Only hide when we've never had a track
-  if (!displayTrack && !previousTrack) return null;
+  // Only hide when animation has completed
+  if (!displayTrack && !isVisible.value) {
+    return null;
+  }
 
-  return (
+  return displayTrack ? (
     <Animated.View style={[styles.container, animatedStyle]}>
       <LinearGradient
         colors={
-          gradientColors?.length === 2
-            ? (gradientColors as [string, string])
-            : ['#000000', '#000000']
+          (playerColors?.gradient as [string, string]) || [
+            theme.colors.background,
+            theme.colors.background,
+          ]
         }
         style={StyleSheet.absoluteFill}
       />
@@ -143,15 +150,17 @@ export const FloatingPlayer: React.FC = () => {
             onPress={togglePlayback}
             disabled={isLoading}>
             {isLoading ? (
-              <ActivityIndicator color={contrastColor.string()} />
+              <ActivityIndicator
+                color={playerColors?.text || theme.colors.text}
+              />
             ) : playbackState.state === State.Playing ? (
               <PauseIcon
-                color={contrastColor.string()}
+                color={playerColors?.text || theme.colors.text}
                 size={moderateScale(26)}
               />
             ) : (
               <PlayIcon
-                color={contrastColor.string()}
+                color={playerColors?.text || theme.colors.text}
                 size={moderateScale(30)}
               />
             )}
@@ -161,7 +170,7 @@ export const FloatingPlayer: React.FC = () => {
           <Text
             style={[
               styles.title,
-              {color: contrastColor.string()},
+              {color: playerColors?.text || theme.colors.text},
               isLoading && styles.loadingText,
             ]}
             numberOfLines={1}>
@@ -170,19 +179,23 @@ export const FloatingPlayer: React.FC = () => {
           <Text
             style={[
               styles.artist,
-              {color: secondaryColor.string()},
+              {color: playerColors?.text || theme.colors.text, opacity: 0.7},
               isLoading && styles.loadingText,
             ]}
             numberOfLines={1}>
             {displayTrack?.artist || previousTrack?.artist}
           </Text>
         </View>
-        <Text style={[styles.surahName, {color: contrastColor.string()}]}>
+        <Text
+          style={[
+            styles.surahName,
+            {color: playerColors?.text || theme.colors.text},
+          ]}>
           {surahGlyph}
         </Text>
       </TouchableOpacity>
     </Animated.View>
-  );
+  ) : null;
 };
 
 const createStyles = (theme: Theme) =>
@@ -192,7 +205,7 @@ const createStyles = (theme: Theme) =>
       bottom: 105,
       left: moderateScale(10),
       right: moderateScale(10),
-      borderRadius: moderateScale(15),
+      borderRadius: moderateScale(22),
       paddingHorizontal: moderateScale(15),
       paddingVertical: moderateScale(6),
       shadowColor: theme.colors.shadow,

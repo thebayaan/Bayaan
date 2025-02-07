@@ -12,7 +12,7 @@ interface ReciterImageProps {
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({reciterName, style}) => {
+  ({reciterName = '', style}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
@@ -35,16 +35,13 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
     );
 
     const formattedName = useMemo(() => {
-      const formatted = reciterName
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
-      return formatted;
+      if (!reciterName) return '';
+      return reciterName.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-');
     }, [reciterName]);
 
     const localImageSource = useMemo(() => {
-      const source = reciterImages[formattedName];
-      return source;
+      if (!formattedName) return null;
+      return reciterImages[formattedName];
     }, [formattedName]);
 
     return (

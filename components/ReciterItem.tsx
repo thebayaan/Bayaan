@@ -18,7 +18,9 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
-    const [moshafName1, moshafName2] = item.moshaf_name.split(' - ');
+
+    const defaultRewayat = item.rewayat[0];
+    const [rewayatName, style] = [defaultRewayat.name, defaultRewayat.style];
 
     return (
       <TouchableOpacity
@@ -31,7 +33,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
             isSelected && styles.selectedImageContainer,
           ]}>
           <ReciterImage
-            imageUrl={item.image_url}
+            imageUrl={item.image_url || undefined}
             reciterName={item.name}
             style={styles.reciterImage}
           />
@@ -46,21 +48,20 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
               color={theme.colors.textSecondary}
             />
             <View style={styles.moshafNameContainer}>
-              <Text style={styles.moshafName}>{moshafName1}</Text>
-              {moshafName2 && (
-                <Text style={styles.moshafName}>{moshafName2}</Text>
-              )}
+              <Text style={styles.moshafName}>{rewayatName}</Text>
+              <Text style={styles.moshafName}>{style}</Text>
             </View>
           </View>
         </View>
         {isSelected && (
-          <Icon
-            name="check-circle"
-            type="feather"
-            size={moderateScale(24)}
-            color={theme.colors.primary}
-            style={{marginLeft: moderateScale(10)}}
-          />
+          <View style={styles.checkmarkContainer}>
+            <Icon
+              name="check"
+              type="material"
+              size={moderateScale(24)}
+              color={theme.colors.primary}
+            />
+          </View>
         )}
       </TouchableOpacity>
     );
@@ -118,7 +119,7 @@ const createStyles = (theme: Theme) =>
     selectedImageContainer: {
       borderColor: theme.colors.primary,
     },
-    checkIcon: {
+    checkmarkContainer: {
       marginLeft: moderateScale(10),
     },
   });

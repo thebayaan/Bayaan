@@ -3,14 +3,12 @@ import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import Color from 'color';
 import {
   TimerIcon,
   RepeatIcon,
   RepeatOneIcon,
   QueueIcon,
 } from '@/components/Icons';
-import {usePlayerBackground} from '@/hooks/usePlayerBackground';
 
 interface PlayerControlButtonsProps {
   playbackSpeed: number;
@@ -34,162 +32,136 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
   onQueuePress,
 }) => {
   const {theme} = useTheme();
-  const {gradientColors} = usePlayerBackground(theme, theme.isDarkMode);
 
-  // Calculate contrasting colors based on background
-  const baseColor = Color(gradientColors[0]);
-
-  // Create more contrast by increasing the color difference
-  const contrastColor = baseColor.isLight()
-    ? baseColor.darken(0.8).saturate(0.2)
-    : baseColor.lighten(2.2).saturate(1.2);
-
-  // Create a subtle background color for the buttons
-  const buttonBgColor = baseColor.isLight()
-    ? baseColor.darken(0.2).alpha(0.2)
-    : baseColor.lighten(0.4).alpha(0.2);
-
-  // Create a high contrast version for active states (using TrackInfo.tsx calculations)
-  const activeButtonBg = baseColor.isLight()
-    ? baseColor.darken(0.8).saturate(0.2) // Match TrackInfo.tsx contrast
-    : baseColor.lighten(4.8).saturate(0.2); // Match TrackInfo.tsx contrast
-
-  // Create a contrasting text color for active states
-  const activeTextColor = baseColor.isLight()
-    ? Color('white').alpha(0.95) // For light bg (dark button), use white text
-    : Color('black').alpha(0.95); // For dark bg (light button), use black text
-
-  const styles = createStyles(
-    theme,
-    contrastColor.string(),
-    buttonBgColor.string(),
-    activeButtonBg.string(),
-    activeTextColor.string(),
-  );
+  const styles = createStyles(theme);
 
   return (
     <View style={styles.container}>
-      <View style={styles.buttonWrapper}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          onPress={onSpeedPress}
-          style={[styles.button, playbackSpeed !== 1 && styles.activeButton]}>
-          <Text
-            style={[
-              styles.speedButtonText,
-              playbackSpeed !== 1 && styles.activeText,
-            ]}>
-            {`${playbackSpeed}`}
-            <Text style={styles.speedX}>x</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonWrapper}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          onPress={onRepeatPress}
-          style={[styles.button, repeatMode !== 'off' && styles.activeButton]}>
-          {repeatMode === 'off' && (
-            <RepeatIcon
-              size={moderateScale(20)}
-              color={contrastColor.string()}
-            />
-          )}
-          {repeatMode === 'all' && (
-            <RepeatIcon
-              size={moderateScale(20)}
-              color={activeTextColor.string()}
-            />
-          )}
-          {repeatMode === 'once' && (
-            <RepeatOneIcon
-              size={moderateScale(20)}
-              color={activeTextColor.string()}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.buttonWrapper}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          onPress={onSleepTimerPress}
+      <TouchableOpacity
+        activeOpacity={0.99}
+        onPress={onSpeedPress}
+        style={[
+          styles.button,
+          styles.speedButton,
+          playbackSpeed !== 1 && styles.activeButton,
+          (playbackSpeed === 0.5 || playbackSpeed === 1.5) &&
+            styles.mediumButton,
+          (playbackSpeed === 0.75 ||
+            playbackSpeed === 1.25 ||
+            playbackSpeed === 1.75) &&
+            styles.expandedButton,
+        ]}>
+        <Text
           style={[
-            styles.button,
-            (sleepTimer || isEndOfSurahTimer) && styles.activeButton,
+            styles.speedButtonText,
+            playbackSpeed !== 1 && styles.activeText,
           ]}>
-          <TimerIcon
-            color={
-              sleepTimer || isEndOfSurahTimer
-                ? activeTextColor.string()
-                : contrastColor.string()
-            }
-            size={moderateScale(22)}
-            filled={!!(sleepTimer || isEndOfSurahTimer)}
-          />
-        </TouchableOpacity>
-      </View>
+          {`${playbackSpeed}`}
+          <Text style={styles.speedX}>x</Text>
+        </Text>
+      </TouchableOpacity>
 
-      <View style={styles.buttonWrapper}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          onPress={onQueuePress}
-          style={[styles.button, styles.queueButton]}>
-          <QueueIcon size={moderateScale(20)} color={contrastColor.string()} />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        activeOpacity={0.99}
+        onPress={onRepeatPress}
+        style={[
+          styles.button,
+          styles.middleButton,
+          repeatMode !== 'off' && styles.activeButton,
+        ]}>
+        {repeatMode === 'off' && (
+          <RepeatIcon size={moderateScale(20)} color={theme.colors.text} />
+        )}
+        {repeatMode === 'all' && (
+          <RepeatIcon size={moderateScale(20)} color={theme.colors.card} />
+        )}
+        {repeatMode === 'once' && (
+          <RepeatOneIcon size={moderateScale(20)} color={theme.colors.card} />
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.99}
+        onPress={onSleepTimerPress}
+        style={[
+          styles.button,
+          styles.middleButton,
+          (sleepTimer !== null || isEndOfSurahTimer) && styles.activeButton,
+        ]}>
+        <TimerIcon
+          color={
+            sleepTimer !== null || isEndOfSurahTimer
+              ? theme.colors.card
+              : theme.colors.text
+          }
+          size={moderateScale(22)}
+          filled={!!(sleepTimer !== null || isEndOfSurahTimer)}
+        />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.99}
+        onPress={onQueuePress}
+        style={[styles.button, styles.queueButton]}>
+        <QueueIcon size={moderateScale(20)} color={theme.colors.text} />
+      </TouchableOpacity>
     </View>
   );
 };
 
-const createStyles = (
-  theme: Theme,
-  textColor: string,
-  buttonBgColor: string,
-  activeButtonBg: string,
-  activeTextColor: string,
-) =>
+const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
       flexDirection: 'row',
-      justifyContent: 'space-evenly',
-      width: '100%',
-      paddingVertical: moderateScale(16),
-    },
-    buttonWrapper: {
+      justifyContent: 'space-between',
       alignItems: 'center',
-      width: moderateScale(60),
-      height: moderateScale(40),
+      backgroundColor: theme.colors.card,
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(6),
+      borderRadius: moderateScale(25),
+      marginHorizontal: moderateScale(80),
     },
     button: {
-      backgroundColor: buttonBgColor,
-      padding: moderateScale(3.5),
-      borderRadius: moderateScale(9),
+      width: moderateScale(28),
+      height: moderateScale(28),
+      borderRadius: moderateScale(20),
+      backgroundColor: 'transparent',
       justifyContent: 'center',
       alignItems: 'center',
     },
+    speedButton: {
+      borderTopRightRadius: moderateScale(8),
+      borderBottomRightRadius: moderateScale(8),
+      borderTopLeftRadius: moderateScale(20),
+      borderBottomLeftRadius: moderateScale(20),
+    },
+    middleButton: {
+      borderRadius: moderateScale(8),
+    },
+    activeButton: {
+      backgroundColor: theme.colors.text,
+    },
     speedButtonText: {
-      color: textColor,
       fontSize: moderateScale(16),
-      fontWeight: '500',
-      opacity: 0.9,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    activeText: {
+      color: theme.colors.card,
     },
     speedX: {
       fontSize: moderateScale(14),
-      fontWeight: '600',
     },
-    activeText: {
-      color: activeTextColor,
-      opacity: 1,
-      fontWeight: '600',
+    mediumButton: {
+      width: moderateScale(42),
+      paddingHorizontal: moderateScale(3),
     },
-    activeButton: {
-      // transform: [{scale: 1.05}],
-      backgroundColor: activeButtonBg,
+    expandedButton: {
+      width: moderateScale(50),
+      paddingHorizontal: moderateScale(4),
     },
     queueButton: {
-      opacity: 0.9,
+      marginLeft: moderateScale(4),
     },
   });
 

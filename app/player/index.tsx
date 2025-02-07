@@ -27,10 +27,9 @@ import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import SurahSummary from '@/components/player/SurahSummary';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {LinearGradient} from 'expo-linear-gradient';
-import {usePlayerBackground} from '@/hooks/usePlayerBackground';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import QueueModal from '@/components/player/QueueModal';
-import Color from 'color';
+import {usePlayerColors} from '@/hooks/usePlayerColors';
 
 type SurahInfo = {
   [key: string]: {
@@ -45,10 +44,10 @@ const surahInfo: SurahInfo = require('@/data/surahInfo.json');
 
 const PlayerScreen = () => {
   const router = useRouter();
-  const {theme, isDarkMode} = useTheme();
+  const {theme} = useTheme();
   const currentTrack = usePlayerStore(state => state.currentTrack);
   const updateCurrentTrack = usePlayerStore(state => state.updateCurrentTrack);
-  const {gradientColors} = usePlayerBackground(theme, isDarkMode);
+  const playerColors = usePlayerColors();
   const {
     setSleepTimer,
     clearSleepTimer,
@@ -194,20 +193,20 @@ const PlayerScreen = () => {
     }
   }, [currentTrack, navigateToReciterProfile]);
 
-  const baseColor = Color(gradientColors[0]);
-  const contrastColor = baseColor.isLight()
-    ? baseColor.darken(0.8).saturate(0.2)
-    : baseColor.lighten(4.8).saturate(0.2);
-
   const styles = useMemo(
-    () => createStyles(theme, contrastColor.string()),
-    [theme, contrastColor],
+    () => createStyles(theme, playerColors?.text || theme.colors.text),
+    [theme, playerColors?.text],
   );
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={gradientColors as [string, string, ...string[]]}
+        colors={
+          (playerColors?.gradient as [string, string]) || [
+            theme.colors.background,
+            theme.colors.background,
+          ]
+        }
         style={StyleSheet.absoluteFill}
       />
 
@@ -224,11 +223,14 @@ const PlayerScreen = () => {
               name="chevron-thin-down"
               type="entypo"
               size={moderateScale(22)}
-              color={contrastColor.string()}
+              color={playerColors?.text || theme.colors.text}
             />
           </TouchableOpacity>
           <Text
-            style={[styles.arabicSurahName, {color: contrastColor.string()}]}>
+            style={[
+              styles.arabicSurahName,
+              {color: playerColors?.text || theme.colors.text},
+            ]}>
             {surahGlyph}
           </Text>
         </View>

@@ -7,14 +7,12 @@ import {ReciterImage} from '@/components/ReciterImage';
 interface ReciterCardProps {
   imageUrl?: string;
   name: string;
-  moshafName: string;
   onPress: () => void;
 }
 
 export const ReciterCard: React.FC<ReciterCardProps> = ({
   imageUrl,
   name,
-  moshafName,
   onPress,
 }) => {
   const {theme} = useTheme();
@@ -34,10 +32,6 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
       fontSize: moderateScale(14),
       fontWeight: 'bold',
       color: theme.colors.text,
-    },
-    moshafName: {
-      fontSize: moderateScale(12),
-      color: theme.colors.textSecondary,
     },
     reciterImage: {
       width: moderateScale(120),
@@ -59,9 +53,6 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
       </View>
       <Text style={styles.name} numberOfLines={1}>
         {name}
-      </Text>
-      <Text style={styles.moshafName} numberOfLines={1}>
-        {moshafName}
       </Text>
     </TouchableOpacity>
   );

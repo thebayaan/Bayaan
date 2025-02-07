@@ -10,6 +10,7 @@ import {usePlayerStore} from '@/store/playerStore';
 import {useProgress} from 'react-native-track-player';
 import {Slider} from '@miblanchard/react-native-slider';
 import {usePlayback} from '@/hooks/usePlayback';
+import {useSharedValue} from 'react-native-reanimated';
 import {
   getReciterById,
   getAllSurahs,
@@ -17,7 +18,7 @@ import {
 } from '@/services/dataService';
 
 interface RecentReciterCardProps {
-  imageUrl: string;
+  imageUrl?: string;
   reciterName: string;
   surahName: string;
   trackId: string;
@@ -41,21 +42,32 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
   const {activeTrackId} = usePlayerStore();
   const isCurrentTrack = activeTrackId === trackId;
 
-  // Only subscribe to progress updates for current track
-  const trackProgress = useProgress(isCurrentTrack ? 100 : undefined);
+  // Create animated shared value for progress
+  const animatedProgress = useSharedValue(progress);
 
-  // Calculate progress value (0-1)
-  const progressValue = React.useMemo(() => {
+  // Only subscribe to progress updates for current track
+  const trackProgress = useProgress(isCurrentTrack ? 1000 : undefined);
+
+  // Update animated progress when needed
+  React.useEffect(() => {
     if (isCurrentTrack && trackProgress.duration > 0) {
-      return trackProgress.position / trackProgress.duration;
+      requestAnimationFrame(() => {
+        'worklet';
+        animatedProgress.value =
+          trackProgress.position / trackProgress.duration;
+      });
+    } else {
+      requestAnimationFrame(() => {
+        'worklet';
+        animatedProgress.value = progress;
+      });
     }
-    // Progress from store is already a ratio between 0-1
-    return progress;
   }, [
     isCurrentTrack,
     trackProgress.position,
     trackProgress.duration,
     progress,
+    animatedProgress,
   ]);
 
   // Calculate time remaining in minutes/hours
@@ -106,11 +118,12 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
         return;
       }
 
-      // Calculate start position based on progress
-      const startPosition = isCurrentTrack ? 0 : duration * progress;
+      const startPosition = isCurrentTrack
+        ? trackProgress.position
+        : progress * duration;
       await playFromSurah(reciter, surah, allSurahs, startPosition);
     } catch (error) {
-      console.error('Error playing from recent reciter:', error);
+      console.error('Error playing surah:', error);
     }
   };
 
@@ -222,7 +235,7 @@ export const RecentReciterCard: React.FC<RecentReciterCardProps> = ({
               />
             </TouchableOpacity>
             <Slider
-              value={progressValue}
+              value={animatedProgress.value}
               disabled={true}
               minimumTrackTintColor={theme.colors.primary}
               maximumTrackTintColor={Color(theme.colors.primary)

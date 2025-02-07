@@ -3,15 +3,15 @@ import {
   View,
   Text,
   ScrollView,
-  FlatList,
   StyleSheet,
+  FlatList,
   TouchableOpacity,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {Reciter, RECITERS} from '@/data/reciterData';
 import {ReciterCard} from './cards/ReciterCard';
 import {CircularReciterCard} from './cards/CircularReciterCard';
-import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {RecentReciterCard} from '@/components/cards/RecentReciterCard';
 import {usePlayerStore} from '@/store/playerStore';
@@ -88,7 +88,7 @@ const HeroSection = ({
       onPress={handlePress}>
       <View style={styles.imageContainer}>
         <ReciterImage
-          imageUrl={reciter.image_url}
+          imageUrl={reciter.image_url || undefined}
           reciterName={reciter.name}
           style={styles.image}
         />
@@ -97,9 +97,6 @@ const HeroSection = ({
         <Text style={styles.label}>RECITER OF THE DAY</Text>
         <Text style={styles.name} numberOfLines={1}>
           {reciter.name}
-        </Text>
-        <Text style={styles.moshafName} numberOfLines={1}>
-          {reciter.moshaf_name}
         </Text>
       </View>
     </TouchableOpacity>
@@ -140,7 +137,7 @@ const RenderSectionItem = React.memo(
 
       return (
         <RecentReciterCard
-          imageUrl={item.reciter.image_url}
+          imageUrl={item.reciter.image_url ?? undefined}
           reciterName={item.reciter.name}
           surahName={item.surah.name}
           trackId={`${item.reciter.id}:${item.surah.id}`}
@@ -153,21 +150,22 @@ const RenderSectionItem = React.memo(
     }
 
     if (variant === 'circular') {
+      const reciter = item as Reciter;
       return (
         <CircularReciterCard
-          imageUrl={(item as Reciter).image_url}
-          name={(item as Reciter).name}
-          onPress={() => onReciterPress(item as Reciter)}
+          imageUrl={reciter.image_url ?? undefined}
+          name={reciter.name}
+          onPress={() => onReciterPress(reciter)}
         />
       );
     }
 
+    const reciter = item as Reciter;
     return (
       <ReciterCard
-        imageUrl={(item as Reciter).image_url}
-        name={(item as Reciter).name}
-        moshafName={(item as Reciter).moshaf_name}
-        onPress={() => onReciterPress(item as Reciter)}
+        imageUrl={reciter.image_url ?? undefined}
+        name={reciter.name}
+        onPress={() => onReciterPress(reciter)}
       />
     );
   },
@@ -215,6 +213,39 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
     return shuffled.slice(0, 5);
   }, [favoriteReciters, favoriteTrackIds]);
 
+  // Helper functions for filtering reciters
+  const otherRewayatReciters = useMemo(() => {
+    return RECITERS.filter(
+      reciter =>
+        reciter.rewayat.some(
+          r => r.name.toLowerCase() !== "hafs a'n assem".toLowerCase(),
+        ) &&
+        !featuredReciters.some(f => f.id === reciter.id) &&
+        !newReciters.some(n => n.id === reciter.id),
+    ).slice(0, 10);
+  }, [featuredReciters, newReciters]);
+
+  const mojawwadReciters = useMemo(() => {
+    return RECITERS.filter(
+      reciter =>
+        reciter.rewayat.some(r => r.style.toLowerCase() === 'mojawwad') &&
+        !featuredReciters.some(f => f.id === reciter.id) &&
+        !newReciters.some(n => n.id === reciter.id) &&
+        !otherRewayatReciters.some(o => o.id === reciter.id),
+    ).slice(0, 10);
+  }, [featuredReciters, newReciters, otherRewayatReciters]);
+
+  const molimReciters = useMemo(() => {
+    return RECITERS.filter(
+      reciter =>
+        reciter.rewayat.some(r => r.style.toLowerCase() === 'molim') &&
+        !featuredReciters.some(f => f.id === reciter.id) &&
+        !newReciters.some(n => n.id === reciter.id) &&
+        !otherRewayatReciters.some(o => o.id === reciter.id) &&
+        !mojawwadReciters.some(m => m.id === reciter.id),
+    ).slice(0, 10);
+  }, [featuredReciters, newReciters, otherRewayatReciters, mojawwadReciters]);
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -241,15 +272,11 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
   const renderSection = (
     title: string,
     data: SectionItem[],
-    description?: string,
     variant: 'recent' | 'circular' | 'default' = 'default',
   ) => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        {description && (
-          <Text style={styles.sectionDescription}>{description}</Text>
-        )}
       </View>
       <FlatList
         data={data}
@@ -292,28 +319,18 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
       showsVerticalScrollIndicator={false}>
       <HeroSection reciter={featuredReciter} onPress={onReciterPress} />
       {recentReciters.length > 0 &&
-        renderSection(
-          'Recently Played',
-          recentReciters,
-          'Continue listening where you left off',
-          'recent',
-        )}
+        renderSection('Recently Played', recentReciters, 'recent')}
       {randomFavoriteReciters.length > 0 &&
-        renderSection(
-          'Your Favorites',
-          randomFavoriteReciters,
-          'Your most loved reciters',
-          'circular',
-        )}
-      {renderSection('Featured', featuredReciters, 'Discover popular reciters')}
-      {renderSection('New', newReciters, 'Recently added to our collection')}
+        renderSection('Your Favorites', randomFavoriteReciters, 'circular')}
+      {renderSection('Featured', featuredReciters)}
+      {renderSection('New', newReciters)}
+      {otherRewayatReciters.length > 0 &&
+        renderSection('Other Rewayat', otherRewayatReciters)}
+      {mojawwadReciters.length > 0 &&
+        renderSection('Mojawwad', mojawwadReciters)}
+      {molimReciters.length > 0 && renderSection("Mo'lim", molimReciters)}
       {collectionReciters.length > 0 &&
-        renderSection(
-          'From your Collection',
-          collectionReciters,
-          'Reciters from your liked tracks',
-          'default',
-        )}
+        renderSection('From your Collection', collectionReciters)}
     </ScrollView>
   );
 }

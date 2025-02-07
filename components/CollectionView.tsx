@@ -40,16 +40,15 @@ export default function CollectionView({
         const reciter = favoriteReciters.find(r => r.id === item.reciterId);
         return (
           <ReciterCard
-            imageUrl={reciter?.image_url || ''}
+            imageUrl={reciter?.image_url || undefined}
             name={reciter?.name || ''}
-            moshafName={reciter?.moshaf_name || ''}
             onPress={() => onTrackPress(item)}
           />
         );
       } else {
         return (
           <CircularReciterCard
-            imageUrl={item.image_url}
+            imageUrl={item.image_url || undefined}
             name={item.name}
             onPress={() => onReciterPress(item)}
           />

@@ -53,16 +53,9 @@ export default function SearchScreen() {
         getAllSurahs(),
       ]);
 
-      console.log('Loaded reciter data:', reciterData.length, 'reciters');
-      console.log('Sample reciter:', reciterData[0]);
-      console.log(
-        'Albaraa present?',
-        reciterData.some(r => r.name.includes('Albaraa')),
-      );
-
       setReciterFuse(
         new Fuse(reciterData, {
-          keys: ['name', 'moshaf_name'],
+          keys: ['name', 'rewayat.name', 'rewayat.style'],
           threshold: 0.4,
           distance: 100,
           minMatchCharLength: 1,

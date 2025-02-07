@@ -5,8 +5,10 @@ import TrackPlayer, {RepeatMode} from 'react-native-track-player';
 import {saveLastTrack, saveLastPosition} from '@/utils/trackPersistence';
 import {Track, ensureTrackFields} from '@/types/audio';
 import {QueueManager} from '@/services/QueueManager';
+import {PlayerColorState, PlayerColorActions} from '@/types/playerColors';
+import {PlayerColors, CachedReciterColors} from '@/utils/playerColorUtils';
 
-interface PlayerState {
+interface PlayerState extends PlayerColorState {
   activeTrackId: string | null;
   activeTrack: Track | null;
   progress: number;
@@ -44,9 +46,14 @@ interface PlayerState {
   cleanup: () => Promise<void>;
   isPlayerSheetVisible: boolean;
   setPlayerSheetVisible: (visible: boolean) => void;
+  colors: PlayerColors | null;
+  cachedColors: {[reciterName: string]: CachedReciterColors};
+  setColors: (colors: PlayerColors) => void;
+  setCachedColors: (reciterName: string, colors: CachedReciterColors) => void;
+  clearCachedColors: () => void;
 }
 
-export const usePlayerStore = create<PlayerState>()(
+export const usePlayerStore = create<PlayerState & PlayerColorActions>()(
   persist(
     (set, get) => ({
       activeTrackId: null,
@@ -64,6 +71,8 @@ export const usePlayerStore = create<PlayerState>()(
       favoriteTrackIds: [],
       currentTrack: null,
       isPlayerSheetVisible: false,
+      colors: null,
+      cachedColors: {},
 
       setQueue: (queue: Track[]) => set({queue}),
 
@@ -361,6 +370,23 @@ export const usePlayerStore = create<PlayerState>()(
       },
       setPlayerSheetVisible: (visible: boolean) =>
         set({isPlayerSheetVisible: visible}),
+
+      setColors: (colors: PlayerColors) => {
+        set({colors});
+      },
+
+      setCachedColors: (reciterName: string, colors: CachedReciterColors) => {
+        set(state => ({
+          cachedColors: {
+            ...state.cachedColors,
+            [reciterName]: colors,
+          },
+        }));
+      },
+
+      clearCachedColors: () => {
+        set({cachedColors: {}});
+      },
     }),
     {
       name: 'player-storage',

@@ -23,17 +23,29 @@ export default function DefaultReciterSettings() {
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
   const router = useRouter();
 
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query);
-    if (query.trim() === '') {
-      setSearchResults([]);
-    } else {
-      const filtered = RECITERS.filter(reciter =>
-        reciter.name.toLowerCase().includes(query.toLowerCase()),
-      );
-      setSearchResults(filtered);
-    }
+  // Helper function to check if a reciter has complete Quran
+  const hasCompleteQuran = useCallback((reciter: Reciter) => {
+    return reciter.rewayat.some(
+      r => r.surah_list?.filter(id => id !== null).length === 114,
+    );
   }, []);
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      setSearchQuery(query);
+      if (query.trim() === '') {
+        setSearchResults([]);
+      } else {
+        const filtered = RECITERS.filter(
+          reciter =>
+            hasCompleteQuran(reciter) &&
+            reciter.name.toLowerCase().includes(query.toLowerCase()),
+        );
+        setSearchResults(filtered);
+      }
+    },
+    [hasCompleteQuran],
+  );
 
   const handleReciterSelect = useCallback(
     (reciter: Reciter) => {
@@ -43,13 +55,30 @@ export default function DefaultReciterSettings() {
     [router, setDefaultReciter],
   );
 
+  const renderItem = useCallback(
+    ({item}: {item: Reciter}) => {
+      if (!hasCompleteQuran(item)) {
+        return null;
+      }
+
+      return (
+        <ReciterItem
+          item={item}
+          onPress={() => handleReciterSelect(item)}
+          isSelected={defaultReciter?.id === item.id}
+        />
+      );
+    },
+    [handleReciterSelect, hasCompleteQuran, defaultReciter],
+  );
+
   return (
     <View style={styles.container}>
       {defaultReciter && (
         <View style={styles.currentReciterContainer}>
           <View style={styles.currentReciterContent}>
             <ReciterImage
-              imageUrl={defaultReciter.image_url}
+              imageUrl={defaultReciter.image_url || undefined}
               reciterName={defaultReciter.name}
               style={styles.currentReciterImage}
             />
@@ -58,7 +87,8 @@ export default function DefaultReciterSettings() {
                 {defaultReciter.name}
               </Text>
               <Text style={styles.currentReciterMoshaf}>
-                {defaultReciter.moshaf_name}
+                {defaultReciter.rewayat[0].name} (
+                {defaultReciter.rewayat[0].style})
               </Text>
             </View>
           </View>
@@ -78,13 +108,7 @@ export default function DefaultReciterSettings() {
 
       <FlatList
         data={searchResults}
-        renderItem={({item}) => (
-          <ReciterItem
-            item={item}
-            onPress={handleReciterSelect}
-            isSelected={defaultReciter?.id === item.id}
-          />
-        )}
+        renderItem={renderItem}
         keyExtractor={item => item.id}
         style={styles.reciterList}
         ListEmptyComponent={
