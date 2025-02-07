@@ -71,7 +71,7 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     summaryCard: {
       backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(20),
       padding: moderateScale(16),
       width: '100%',
       shadowColor: theme.colors.shadow,

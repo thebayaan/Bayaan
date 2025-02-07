@@ -5,22 +5,12 @@ import {usePlayerStore} from '@/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {useProgress} from 'react-native-track-player';
-import Color from 'color';
-import {usePlayerBackground} from '@/hooks/usePlayerBackground';
+import {usePlayerColors} from '@/hooks/usePlayerColors';
 
 const PlayerProgressBar: React.FC = React.memo(() => {
   const {seekTo} = usePlayerStore();
   const {theme} = useTheme();
-  const {gradientColors} = usePlayerBackground(theme, theme.isDarkMode);
-
-  // Calculate contrasting colors based on background
-  const baseColor = Color(gradientColors[0]);
-  const contrastColor = baseColor.isLight()
-    ? baseColor.darken(0.7)
-    : baseColor.lighten(3.9);
-  const secondaryColor = baseColor.isLight()
-    ? baseColor.darken(0.3)
-    : baseColor.lighten(1.2);
+  const playerColors = usePlayerColors();
 
   // Reduce update frequency to 500ms
   const progress = useProgress(500);
@@ -79,10 +69,18 @@ const PlayerProgressBar: React.FC = React.memo(() => {
   return (
     <View style={styles.container}>
       <View style={styles.timeContainer}>
-        <Text style={[styles.timeText, {color: contrastColor.string()}]}>
+        <Text
+          style={[
+            styles.timeText,
+            {color: playerColors?.text || theme.colors.text},
+          ]}>
           {formatTime(displayPosition)}
         </Text>
-        <Text style={[styles.timeText, {color: contrastColor.string()}]}>
+        <Text
+          style={[
+            styles.timeText,
+            {color: playerColors?.text || theme.colors.text},
+          ]}>
           {'-'} {formatTime(progress.duration - displayPosition)}
         </Text>
       </View>
@@ -90,8 +88,8 @@ const PlayerProgressBar: React.FC = React.memo(() => {
         value={progress.duration > 0 ? displayPosition / progress.duration : 0}
         onValueChange={handleValueChange}
         onSlidingComplete={handleSlidingComplete}
-        minimumTrackTintColor={contrastColor.string()}
-        maximumTrackTintColor={secondaryColor.alpha(0.3).string()}
+        minimumTrackTintColor={playerColors?.text || theme.colors.text}
+        maximumTrackTintColor={`${playerColors?.text || theme.colors.text}4D`}
         trackStyle={{
           height: moderateScale(8),
           borderRadius: moderateScale(4),

@@ -8,6 +8,7 @@ import {
   NativeSyntheticEvent,
   StyleSheet,
   ScrollView,
+  FlatList,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './styles';
@@ -15,7 +16,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {TrackItem} from '@/components/TrackItem';
 import {usePlayerStore} from '@/store/playerStore';
 import {usePlayback} from '@/hooks/usePlayback';
-import {usePlayerNavigation} from '@/hooks/usePlayerNavigation';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
@@ -27,20 +27,21 @@ import {CollectionCard} from '@/components/CollectionCard';
 import SearchBar from '@/components/SearchBar';
 import {shuffleArray} from '@/utils/arrayUtils';
 import {CollectionActionButtons} from '@/components/CollectionActionButtons';
+import {Reciter} from '@/data/reciterData';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 
 interface FavoriteTrack {
   reciterId: string;
   surahId: string;
 }
 
-export default function LovedScreen() {
+const LovedScreen = () => {
   const router = useRouter();
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
   const {favoriteTrackIds} = usePlayerStore();
   const {playLovedTrack} = usePlayback();
-  const {navigateToPlayer} = usePlayerNavigation();
 
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -67,29 +68,58 @@ export default function LovedScreen() {
     return () => headerOpacity.removeListener(listener);
   }, [headerOpacity, isHeaderVisible]);
 
-  const handleTrackPress = async (trackId: string) => {
-    try {
-      const [reciterId] = trackId.split(':');
-      const reciter = getReciterById(reciterId);
-      navigateToPlayer(reciter?.image_url);
-      playLovedTrack(trackId, favoriteTrackIds);
-    } catch (error) {
-      console.error('Error playing loved track:', error);
-    }
-  };
+  const [reciters, setReciters] = useState<Record<string, Reciter>>({});
 
-  const renderItem = ({item}: {item: FavoriteTrack}) => (
-    <TrackItem
-      reciterId={item.reciterId}
-      surahId={item.surahId}
-      onPress={() => handleTrackPress(`${item.reciterId}:${item.surahId}`)}
-    />
+  const handleTrackPress = useCallback(
+    async (trackId: string) => {
+      try {
+        playLovedTrack(trackId, favoriteTrackIds);
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    [favoriteTrackIds, playLovedTrack],
   );
 
-  // Prepare data for FlatList
+  const ReciterTrackItem = useCallback(
+    ({item}: {item: FavoriteTrack}) => {
+      const reciter = reciters[item.reciterId];
+
+      if (!reciter) {
+        return <LoadingIndicator />;
+      }
+
+      return (
+        <TrackItem
+          reciterId={item.reciterId}
+          surahId={item.surahId}
+          onPress={() => handleTrackPress(`${item.reciterId}:${item.surahId}`)}
+        />
+      );
+    },
+    [reciters, handleTrackPress],
+  );
+
+  useEffect(() => {
+    const loadReciters = async () => {
+      const reciterMap: Record<string, Reciter> = {};
+      for (const track of favoriteTrackIds) {
+        const [reciterId] = track.split(':');
+        if (!reciterMap[reciterId]) {
+          const reciter = await getReciterById(reciterId);
+          if (reciter) {
+            reciterMap[reciterId] = reciter;
+          }
+        }
+      }
+      setReciters(reciterMap);
+    };
+    loadReciters();
+  }, [favoriteTrackIds]);
+
   const data = favoriteTrackIds.map(id => {
     const [reciterId, surahId] = id.split(':');
-    const reciter = getReciterById(reciterId);
+    const reciter = reciters[reciterId];
     const surah = getSurahById(parseInt(surahId, 10));
     return {
       reciterId,
@@ -111,32 +141,22 @@ export default function LovedScreen() {
 
   const handlePlayAll = useCallback(() => {
     if (filteredData.length > 0) {
-      playLovedTrack(
-        filteredData[0].reciterId + ':' + filteredData[0].surahId,
-        filteredData.map(item => item.reciterId + ':' + item.surahId),
+      const trackIds = filteredData.map(
+        item => `${item.reciterId}:${item.surahId}`,
       );
-      const firstTrack = filteredData[0];
-      const reciter = getReciterById(firstTrack.reciterId);
-      if (reciter) {
-        navigateToPlayer(reciter.image_url);
-      }
+      playLovedTrack(trackIds[0], trackIds);
     }
-  }, [filteredData, playLovedTrack, navigateToPlayer]);
+  }, [filteredData, playLovedTrack]);
 
   const handleShuffleAll = useCallback(() => {
     if (filteredData.length > 0) {
       const shuffledData = shuffleArray([...filteredData]);
-      playLovedTrack(
-        shuffledData[0].reciterId + ':' + shuffledData[0].surahId,
-        shuffledData.map(item => item.reciterId + ':' + item.surahId),
+      const trackIds = shuffledData.map(
+        item => `${item.reciterId}:${item.surahId}`,
       );
-      const firstTrack = shuffledData[0];
-      const reciter = getReciterById(firstTrack.reciterId);
-      if (reciter) {
-        navigateToPlayer(reciter.image_url);
-      }
+      playLovedTrack(trackIds[0], trackIds);
     }
-  }, [filteredData, playLovedTrack, navigateToPlayer]);
+  }, [filteredData, playLovedTrack]);
 
   return (
     <View style={styles.container}>
@@ -183,9 +203,9 @@ export default function LovedScreen() {
               />
             </View>
           )}
-          <Animated.FlatList
+          <FlatList
             data={filteredData}
-            renderItem={renderItem}
+            renderItem={ReciterTrackItem}
             keyExtractor={item => `${item.reciterId}:${item.surahId}`}
             contentContainerStyle={[
               styles.listContentContainer,
@@ -194,7 +214,6 @@ export default function LovedScreen() {
             ListEmptyComponent={
               <Text style={styles.emptyText}>No loved surahs yet</Text>
             }
-            scrollEnabled={false}
           />
         </View>
       </ScrollView>
@@ -295,4 +314,6 @@ export default function LovedScreen() {
       </Animated.View>
     </View>
   );
-}
+};
+
+export default LovedScreen;

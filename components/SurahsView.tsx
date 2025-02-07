@@ -145,10 +145,7 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       color: theme.colors.text,
       marginBottom: verticalScale(4),
     },
-    sectionDescription: {
-      fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
-    },
+
     sectionContent: {
       paddingHorizontal: moderateScale(15),
       paddingVertical: verticalScale(8),
@@ -195,17 +192,10 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
     setRefreshing(false);
   };
 
-  const renderSection = (
-    title: string,
-    data: Surah[],
-    description?: string,
-  ) => (
+  const renderSection = (title: string, data: Surah[]) => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        {description && (
-          <Text style={styles.sectionDescription}>{description}</Text>
-        )}
       </View>
       <FlatList
         data={data}
@@ -248,19 +238,11 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       }>
       <HeroSection surah={surahOfTheDay} onPress={onSurahPress} />
       {recentSurahs.length > 0 &&
-        renderSection(
-          'Recently Played',
-          recentSurahs,
-          'Continue where you left off',
-        )}
+        renderSection('Recently Played', recentSurahs)}
       {mostPlayedSurahs.length > 0 &&
-        renderSection('Most Played', mostPlayedSurahs, 'Your favorite surahs')}
+        renderSection('Most Played', mostPlayedSurahs)}
       {lovedSurahs.length > 0 &&
-        renderSection(
-          'From your Collection',
-          lovedSurahs,
-          "Surahs you've loved",
-        )}
+        renderSection('From your Collection', lovedSurahs)}
     </ScrollView>
   );
 }

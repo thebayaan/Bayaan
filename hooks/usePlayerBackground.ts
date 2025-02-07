@@ -10,9 +10,9 @@ export const usePlayerBackground = (theme: Theme, isDarkMode: boolean) => {
   const extractedColors = useImageColors(currentTrack?.reciterName);
 
   const gradientColors = useMemo(() => {
-    const baseColor = extractedColors.secondary;
-    const DARKEST_COLOR = extractedColors.primary;
-    const LIGHTEST_COLOR = extractedColors.primary;
+    const baseColor = extractedColors.primary;
+    const DARKEST_COLOR = extractedColors.secondary;
+    const LIGHTEST_COLOR = extractedColors.secondary;
 
     const startColor = Color(baseColor)
       .mix(Color(isDarkMode ? DARKEST_COLOR : LIGHTEST_COLOR), 0.1)

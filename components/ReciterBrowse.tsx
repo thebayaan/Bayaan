@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {View, Text, TouchableOpacity, FlatList} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -13,7 +13,6 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import {usePlayerStore} from '@/store/playerStore';
 import {usePlayback} from '@/hooks/usePlayback';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -23,19 +22,48 @@ interface ReciterBrowseProps {
   surahId?: string;
 }
 
-const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
-  initialView = 'all',
-  surahId,
-}) => {
+const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
   const router = useRouter();
   const {theme} = useTheme();
   const [activeView, setActiveView] = useState(initialView);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredReciters, setFilteredReciters] = useState<Reciter[]>(RECITERS);
-  const [, setSurahName] = useState<string>('');
-  usePlayerStore();
-  const {favoriteReciters} = useFavoriteReciters();
+  const {isFavoriteReciter} = useFavoriteReciters();
   const insets = useSafeAreaInsets();
+  const [_surahName, setSurahName] = useState<string>('');
+
+  const filteredReciters = useMemo(() => {
+    let filtered = RECITERS;
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        reciter =>
+          reciter.name.toLowerCase().includes(query) ||
+          reciter.rewayat.some(
+            rewayat =>
+              rewayat.name.toLowerCase().includes(query) ||
+              rewayat.style.toLowerCase().includes(query),
+          ),
+      );
+    }
+
+    if (surahId) {
+      const surahNumber = parseInt(surahId, 10);
+      if (!isNaN(surahNumber)) {
+        filtered = filtered.filter(reciter =>
+          reciter.rewayat.some(rewayat =>
+            rewayat.surah_list?.includes(surahNumber),
+          ),
+        );
+      }
+    }
+
+    if (activeView === 'favorites') {
+      filtered = filtered.filter(reciter => isFavoriteReciter(reciter.id));
+    }
+
+    return filtered;
+  }, [activeView, isFavoriteReciter, searchQuery, surahId]);
 
   useEffect(() => {
     const fetchSurahName = async () => {
@@ -52,50 +80,13 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
     fetchSurahName();
   }, [surahId]);
 
-  const applyFilters = useCallback(
-    (query: string, showFavorites: boolean) => {
-      let filtered = RECITERS;
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
-      // Filter by surah if surahId is provided
-      if (surahId) {
-        const surahNumber = parseInt(surahId, 10);
-        if (!isNaN(surahNumber)) {
-          filtered = filtered.filter(reciter =>
-            reciter.surah_list?.includes(surahNumber),
-          );
-        }
-      }
-
-      if (showFavorites) {
-        filtered = filtered.filter(reciter =>
-          favoriteReciters.some(fav => fav.id === reciter.id),
-        );
-      }
-      if (query) {
-        filtered = filtered.filter(reciter =>
-          reciter.name.toLowerCase().includes(query.toLowerCase()),
-        );
-      }
-      setFilteredReciters(filtered);
-    },
-    [favoriteReciters, surahId],
-  );
-
-  const handleSearch = useCallback(
-    (query: string) => {
-      setSearchQuery(query);
-      applyFilters(query, activeView === 'favorites');
-    },
-    [applyFilters, activeView],
-  );
-
-  const handleToggleView = useCallback(
-    (view: string) => {
-      setActiveView(view);
-      applyFilters(searchQuery, view === 'favorites');
-    },
-    [applyFilters, searchQuery],
-  );
+  const handleToggleView = useCallback((view: string) => {
+    setActiveView(view);
+  }, []);
 
   const {playTrack} = usePlayback();
 
@@ -107,7 +98,11 @@ const ReciterBrowse: React.FC<ReciterBrowseProps> = ({
       }
 
       const surahNumber = parseInt(surahId, 10);
-      if (!reciter.surah_list?.includes(surahNumber)) {
+      if (
+        !reciter.rewayat.some(rewayat =>
+          rewayat.surah_list?.includes(surahNumber),
+        )
+      ) {
         console.error('Reciter does not have this surah');
         return;
       }

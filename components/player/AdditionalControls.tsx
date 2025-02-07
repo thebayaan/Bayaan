@@ -3,8 +3,7 @@ import {View, TouchableOpacity, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {HeartIcon} from '@/components/Icons';
-import {usePlayerBackground} from '@/hooks/usePlayerBackground';
-import Color from 'color';
+import {usePlayerColors} from '@/hooks/usePlayerColors';
 
 interface AdditionalControlsProps {
   isFavorite: boolean;
@@ -16,20 +15,14 @@ const AdditionalControls: React.FC<AdditionalControlsProps> = ({
   onToggleFavorite,
 }) => {
   const {theme} = useTheme();
-  const {gradientColors} = usePlayerBackground(theme, theme.isDarkMode);
+  const playerColors = usePlayerColors();
 
-  // Calculate contrasting colors based on background
-  const baseColor = Color(gradientColors[0]);
-  const contrastColor = baseColor.isLight()
-    ? baseColor.darken(0.8).saturate(0.2)
-    : baseColor.lighten(0.8).saturate(0.2);
-
-  // Calculate heart color based on favorite state and background
+  // Use theme-aware heart colors
   const heartColor = isFavorite
-    ? baseColor.isLight()
-      ? '#e01b24' // Darker red for light backgrounds
-      : '#ff7a80' // Lighter red for dark backgrounds
-    : contrastColor.string();
+    ? theme.isDarkMode
+      ? '#ff7a80' // Lighter red for dark mode
+      : '#e01b24' // Darker red for light mode
+    : playerColors?.text || theme.colors.text;
 
   return (
     <View style={styles.container}>
