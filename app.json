@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "scheme": "bayaan",
     "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
     "icon": "./assets/app-icon/icon.png",
     "splash": {
       "android": {
@@ -21,7 +22,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bayaan.app",
-      "icon": "./assets/app-icon/icon.png",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses the microphone to play audio.",
         "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio.",
@@ -31,10 +31,8 @@
     },
     "android": {
       "package": "com.bayaan.app",
-      "icon": "./assets/app-icon/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon/icon.png",
-        "backgroundImage": "./assets/app-icon/icon.png",
         "backgroundColor": "#8dc9d6"
       },
       "permissions": [
