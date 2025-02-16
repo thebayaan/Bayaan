@@ -1,13 +1,12 @@
-import {fileURLToPath} from 'url';
-import {dirname} from 'path';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const fs = require('fs');
+const path = require('path');
 
 const reciterImagesDir = path.join(__dirname, '..', 'assets', 'reciter-images');
 const outputFile = path.join(__dirname, '..', 'utils', 'reciterImages.ts');
+
+interface ImageMap {
+  [key: string]: string;
+}
 
 function normalizeFileName(fileName: string): string {
   return fileName
@@ -20,7 +19,7 @@ function normalizeFileName(fileName: string): string {
 
 function generateReciterImagesFile(): void {
   const images = fs.readdirSync(reciterImagesDir);
-  const imageMap: {[key: string]: string} = {};
+  const imageMap: ImageMap = {};
   const supportedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
   images.forEach((image: string) => {
@@ -34,7 +33,7 @@ function generateReciterImagesFile(): void {
         if (error instanceof Error) {
           console.error(`Error processing image ${image}: ${error.message}`);
         } else {
-          console.error(`Unknown error processing image ${image}`);
+          console.error(`Error processing image ${image}: Unknown error`);
         }
       }
     }

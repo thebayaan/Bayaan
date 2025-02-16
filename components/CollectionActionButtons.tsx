@@ -36,16 +36,13 @@ export const CollectionActionButtons: React.FC<
           activeOpacity={0.99}
           style={styles.actionButton}
           onPress={onShufflePress}>
-          <ShuffleIcon
-            color={theme.colors.textSecondary}
-            size={moderateScale(28)}
-          />
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(32)} />
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.99}
           style={styles.playButton}
           onPress={onPlayPress}>
-          <PlayIcon color={'white'} size={moderateScale(28)} />
+          <PlayIcon color={'white'} size={moderateScale(18)} />
         </TouchableOpacity>
       </View>
     </View>
@@ -81,5 +78,6 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginLeft: moderateScale(10),
+      paddingLeft: moderateScale(5),
     },
   });

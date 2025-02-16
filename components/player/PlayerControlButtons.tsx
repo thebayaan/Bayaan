@@ -70,13 +70,13 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
           repeatMode !== 'off' && styles.activeButton,
         ]}>
         {repeatMode === 'off' && (
-          <RepeatIcon size={moderateScale(20)} color={theme.colors.text} />
+          <RepeatIcon size={moderateScale(25)} color={theme.colors.text} />
         )}
         {repeatMode === 'all' && (
-          <RepeatIcon size={moderateScale(20)} color={theme.colors.card} />
+          <RepeatIcon size={moderateScale(25)} color={theme.colors.card} />
         )}
         {repeatMode === 'once' && (
-          <RepeatOneIcon size={moderateScale(20)} color={theme.colors.card} />
+          <RepeatOneIcon size={moderateScale(25)} color={theme.colors.card} />
         )}
       </TouchableOpacity>
 
@@ -103,7 +103,7 @@ const PlayerControlButtons: React.FC<PlayerControlButtonsProps> = ({
         activeOpacity={0.99}
         onPress={onQueuePress}
         style={[styles.button, styles.queueButton]}>
-        <QueueIcon size={moderateScale(20)} color={theme.colors.text} />
+        <QueueIcon size={moderateScale(25)} color={theme.colors.text} />
       </TouchableOpacity>
     </View>
   );
@@ -117,7 +117,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       backgroundColor: theme.colors.card,
       paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(6),
+      paddingVertical: moderateScale(8),
       borderRadius: moderateScale(25),
       marginHorizontal: moderateScale(80),
     },

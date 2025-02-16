@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, TouchableOpacity, Platform, Image} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Button} from '@/components/Button';
@@ -9,8 +9,6 @@ import {createStyles} from './styles';
 import {isValidEmail} from '@/utils/validation';
 import {useTheme} from '@/hooks/useTheme';
 import {signIn} from '@/services/auth';
-const AppleLogo = require('@/assets/images/apple-logo.png');
-const GoogleIcon = require('@/assets/images/google-icon.png');
 
 export default function LoginScreen() {
   const {theme} = useTheme();
@@ -44,11 +42,6 @@ export default function LoginScreen() {
 
   const handleForgotPassword = () => {
     router.push('/password-reset/forgot-password');
-  };
-
-  const handleSocialSignIn = (provider: string) => {
-    // Implement social sign-in functionality
-    console.log(`${provider} sign-in clicked`);
   };
 
   const handleBackButton = () => {
@@ -110,34 +103,6 @@ export default function LoginScreen() {
           loading={isLoading}
           textColor={theme.colors.background}
         />
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {Platform.OS === 'ios' && (
-          <TouchableOpacity
-            activeOpacity={0.99}
-            style={[styles.socialButton]}
-            onPress={() => handleSocialSignIn('Apple')}>
-            <View style={styles.socialButtonContent}>
-              <Image source={AppleLogo} style={styles.appleIcon} />
-              <Text style={styles.socialButtonText}>Continue with Apple</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={[styles.socialButton]}
-          onPress={() => handleSocialSignIn('Google')}>
-          <View style={styles.socialButtonContent}>
-            <Image source={GoogleIcon} style={styles.googleIcon} />
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
-          </View>
-        </TouchableOpacity>
 
         <View style={styles.linkContainer}>
           <Text style={styles.linkText}>DON&apos;T HAVE AN ACCOUNT? </Text>

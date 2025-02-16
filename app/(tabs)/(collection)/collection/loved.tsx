@@ -7,15 +7,11 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
-  ScrollView,
   FlatList,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {TrackItem} from '@/components/TrackItem';
-import {usePlayerStore} from '@/store/playerStore';
-import {usePlayback} from '@/hooks/usePlayback';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
@@ -29,8 +25,13 @@ import {shuffleArray} from '@/utils/arrayUtils';
 import {CollectionActionButtons} from '@/components/CollectionActionButtons';
 import {Reciter} from '@/data/reciterData';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {useLoved} from '@/hooks/useLoved';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {createTracksForReciter} from '@/utils/track';
+import {QueueContext} from '@/services/queue/QueueContext';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
-interface FavoriteTrack {
+interface LovedTrack {
   reciterId: string;
   surahId: string;
 }
@@ -38,17 +39,75 @@ interface FavoriteTrack {
 const LovedScreen = () => {
   const router = useRouter();
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    headerContainer: {
+      width: '100%',
+      overflow: 'hidden',
+    },
+    gradientContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingBottom: moderateScale(20),
+      overflow: 'hidden',
+      backgroundColor: 'purple',
+    },
+    contentContainer: {
+      paddingHorizontal: moderateScale(16),
+      paddingBottom: moderateScale(10),
+    },
+    listContentContainer: {
+      flexGrow: 1,
+      paddingBottom: moderateScale(65),
+    },
+    stickyHeader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: moderateScale(100),
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1,
+    },
+    stickyHeaderTitle: {
+      fontSize: moderateScale(24),
+      fontWeight: 'bold',
+      color: 'white',
+    },
+    backButton: {
+      position: 'absolute',
+      zIndex: 10,
+    },
+    searchButton: {
+      position: 'absolute',
+      zIndex: 10,
+    },
+    searchBarContainer: {
+      marginTop: moderateScale(16),
+    },
+    emptyText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginTop: moderateScale(32),
+    },
+  });
   const insets = useSafeAreaInsets();
-  const {favoriteTrackIds} = usePlayerStore();
-  const {playLovedTrack} = usePlayback();
+  const {lovedTracks} = useLoved();
+  const {updateQueue, play} = useUnifiedPlayer();
+  const queueContext = QueueContext.getInstance();
+  const {addRecentTrack} = useRecentlyPlayedStore();
 
-  const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
+  const scrollY = useRef(new Animated.Value(0)).current;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   const [isStatusBarDark, setIsStatusBarDark] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const scrollViewRef = useRef<ScrollView>(null);
+  const [reciters, setReciters] = useState<Record<string, Reciter>>({});
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [150, 200],
@@ -68,21 +127,68 @@ const LovedScreen = () => {
     return () => headerOpacity.removeListener(listener);
   }, [headerOpacity, isHeaderVisible]);
 
-  const [reciters, setReciters] = useState<Record<string, Reciter>>({});
-
   const handleTrackPress = useCallback(
     async (trackId: string) => {
       try {
-        playLovedTrack(trackId, favoriteTrackIds);
+        const [reciterId, surahId] = trackId.split(':');
+        const reciter = await getReciterById(reciterId);
+        const surah = await getSurahById(parseInt(surahId, 10));
+
+        if (!reciter || !surah) return;
+
+        // Get all loved tracks for the queue
+        const trackPromises = lovedTracks.map(async item => {
+          const itemReciter = await getReciterById(item.reciterId);
+          const itemSurah = await getSurahById(parseInt(item.surahId, 10));
+          if (!itemReciter || !itemSurah) return null;
+          const tracks = await createTracksForReciter(
+            itemReciter,
+            [itemSurah],
+            itemReciter.rewayat[0]?.id,
+          );
+          return tracks[0] || null;
+        });
+
+        // Filter out any null tracks
+        const validTracks = (await Promise.all(trackPromises)).filter(
+          (track): track is NonNullable<typeof track> => track !== null,
+        );
+
+        if (validTracks.length === 0) return;
+
+        // Find the index of the selected track
+        const selectedIndex = validTracks.findIndex(
+          track =>
+            track.reciterId === reciterId &&
+            track.surahId === surahId.toString(),
+        );
+
+        if (selectedIndex === -1) return;
+
+        // Reorder tracks to start from the selected track
+        const reorderedTracks = [
+          ...validTracks.slice(selectedIndex),
+          ...validTracks.slice(0, selectedIndex),
+        ];
+
+        // Update queue and start playing
+        await updateQueue(reorderedTracks, 0);
+        await play();
+
+        // Add to recently played list
+        await addRecentTrack(reciter, surah, 0, 0);
+
+        // Set current reciter for batch loading
+        queueContext.setCurrentReciter(reciter);
       } catch (error) {
-        console.error(error);
+        console.error('Error playing track:', error);
       }
     },
-    [favoriteTrackIds, playLovedTrack],
+    [lovedTracks, updateQueue, play, queueContext, addRecentTrack],
   );
 
   const ReciterTrackItem = useCallback(
-    ({item}: {item: FavoriteTrack}) => {
+    ({item}: {item: LovedTrack}) => {
       const reciter = reciters[item.reciterId];
 
       if (!reciter) {
@@ -103,27 +209,25 @@ const LovedScreen = () => {
   useEffect(() => {
     const loadReciters = async () => {
       const reciterMap: Record<string, Reciter> = {};
-      for (const track of favoriteTrackIds) {
-        const [reciterId] = track.split(':');
-        if (!reciterMap[reciterId]) {
-          const reciter = await getReciterById(reciterId);
+      for (const track of lovedTracks) {
+        if (!reciterMap[track.reciterId]) {
+          const reciter = await getReciterById(track.reciterId);
           if (reciter) {
-            reciterMap[reciterId] = reciter;
+            reciterMap[track.reciterId] = reciter;
           }
         }
       }
       setReciters(reciterMap);
     };
     loadReciters();
-  }, [favoriteTrackIds]);
+  }, [lovedTracks]);
 
-  const data = favoriteTrackIds.map(id => {
-    const [reciterId, surahId] = id.split(':');
-    const reciter = reciters[reciterId];
-    const surah = getSurahById(parseInt(surahId, 10));
+  const data = lovedTracks.map(track => {
+    const reciter = reciters[track.reciterId];
+    const surah = getSurahById(parseInt(track.surahId, 10));
     return {
-      reciterId,
-      surahId,
+      reciterId: track.reciterId,
+      surahId: track.surahId,
       reciterName: reciter?.name,
       surahName: surah?.name,
     };
@@ -139,42 +243,111 @@ const LovedScreen = () => {
         item.surahName.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
-  const handlePlayAll = useCallback(() => {
-    if (filteredData.length > 0) {
-      const trackIds = filteredData.map(
-        item => `${item.reciterId}:${item.surahId}`,
-      );
-      playLovedTrack(trackIds[0], trackIds);
-    }
-  }, [filteredData, playLovedTrack]);
+  const handlePlayAll = useCallback(async () => {
+    if (filteredData.length === 0) return;
 
-  const handleShuffleAll = useCallback(() => {
-    if (filteredData.length > 0) {
-      const shuffledData = shuffleArray([...filteredData]);
-      const trackIds = shuffledData.map(
-        item => `${item.reciterId}:${item.surahId}`,
-      );
-      playLovedTrack(trackIds[0], trackIds);
-    }
-  }, [filteredData, playLovedTrack]);
+    try {
+      // Create tracks for all loved tracks
+      const trackPromises = filteredData.map(async item => {
+        const reciter = await getReciterById(item.reciterId);
+        const surah = await getSurahById(parseInt(item.surahId, 10));
+        if (!reciter || !surah) return null;
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          reciter.rewayat[0]?.id,
+        );
+        return tracks[0] || null;
+      });
 
-  return (
-    <View style={styles.container}>
-      <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
-      <ScrollView
-        ref={scrollViewRef}
-        bounces={true}
-        onScroll={Animated.event(
-          [{nativeEvent: {contentOffset: {y: scrollY}}}],
-          {
-            useNativeDriver: false,
-            listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-              const offsetY = event.nativeEvent.contentOffset.y;
-              setIsStatusBarDark(offsetY > 100);
-            },
-          },
-        )}
-        scrollEventThrottle={16}>
+      // Filter out any null tracks
+      const validTracks = (await Promise.all(trackPromises)).filter(
+        (track): track is NonNullable<typeof track> => track !== null,
+      );
+
+      if (validTracks.length === 0) return;
+
+      // Update queue and start playing
+      await updateQueue(validTracks, 0);
+      await play();
+
+      // Add first track to recently played
+      const firstTrack = validTracks[0];
+      if (!firstTrack?.reciterId || !firstTrack?.surahId) return;
+
+      const firstReciter = await getReciterById(firstTrack.reciterId);
+      const firstSurah = await getSurahById(parseInt(firstTrack.surahId, 10));
+
+      if (firstReciter && firstSurah) {
+        await addRecentTrack(firstReciter, firstSurah, 0, 0);
+        queueContext.setCurrentReciter(firstReciter);
+      }
+    } catch (error) {
+      console.error('Error playing all tracks:', error);
+    }
+  }, [filteredData, updateQueue, play, queueContext, addRecentTrack]);
+
+  const handleShuffleAll = useCallback(async () => {
+    if (filteredData.length === 0) return;
+
+    try {
+      // Create tracks for all loved tracks
+      const trackPromises = filteredData.map(async item => {
+        const reciter = await getReciterById(item.reciterId);
+        const surah = await getSurahById(parseInt(item.surahId, 10));
+        if (!reciter || !surah) return null;
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          reciter.rewayat[0]?.id,
+        );
+        return tracks[0] || null;
+      });
+
+      // Filter out any null tracks
+      const validTracks = (await Promise.all(trackPromises)).filter(
+        (track): track is NonNullable<typeof track> => track !== null,
+      );
+
+      if (validTracks.length === 0) return;
+
+      // Shuffle the tracks
+      const shuffledTracks = shuffleArray([...validTracks]);
+
+      // Update queue and start playing
+      await updateQueue(shuffledTracks, 0);
+      await play();
+
+      // Add first track to recently played
+      const firstTrack = shuffledTracks[0];
+      if (!firstTrack?.reciterId || !firstTrack?.surahId) return;
+
+      const firstReciter = await getReciterById(firstTrack.reciterId);
+      const firstSurah = await getSurahById(parseInt(firstTrack.surahId, 10));
+
+      if (firstReciter && firstSurah) {
+        await addRecentTrack(firstReciter, firstSurah, 0, 0);
+        queueContext.setCurrentReciter(firstReciter);
+      }
+    } catch (error) {
+      console.error('Error shuffling tracks:', error);
+    }
+  }, [filteredData, updateQueue, play, queueContext, addRecentTrack]);
+
+  const handleScroll = Animated.event(
+    [{nativeEvent: {contentOffset: {y: scrollY}}}],
+    {
+      useNativeDriver: false,
+      listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        setIsStatusBarDark(offsetY > 100);
+      },
+    },
+  );
+
+  const ListHeaderComponent = useCallback(() => {
+    return (
+      <View style={styles.headerContainer}>
         <LinearGradient
           colors={['purple', theme.colors.background] as [string, string]}
           style={[
@@ -183,10 +356,14 @@ const LovedScreen = () => {
           ]}>
           <CollectionCard
             icon={
-              <HeartIcon color={theme.colors.text} size={moderateScale(80)} />
+              <HeartIcon
+                color={theme.colors.text}
+                size={moderateScale(80)}
+                filled={true}
+              />
             }
             title="Loved Surahs"
-            subtitle={`${favoriteTrackIds.length} surahs`}
+            subtitle={`${lovedTracks.length} surahs`}
           />
         </LinearGradient>
         <View style={styles.contentContainer}>
@@ -203,20 +380,41 @@ const LovedScreen = () => {
               />
             </View>
           )}
-          <FlatList
-            data={filteredData}
-            renderItem={ReciterTrackItem}
-            keyExtractor={item => `${item.reciterId}:${item.surahId}`}
-            contentContainerStyle={[
-              styles.listContentContainer,
-              {paddingBottom: 65},
-            ]}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No loved surahs yet</Text>
-            }
-          />
         </View>
-      </ScrollView>
+      </View>
+    );
+  }, [
+    styles.headerContainer,
+    styles.gradientContainer,
+    styles.contentContainer,
+    styles.searchBarContainer,
+    theme.colors.background,
+    theme.colors.text,
+    insets.top,
+    lovedTracks.length,
+    handleShuffleAll,
+    handlePlayAll,
+    showSearch,
+    searchQuery,
+  ]);
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
+      <FlatList
+        data={filteredData}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        renderItem={ReciterTrackItem}
+        keyExtractor={item => `${item.reciterId}:${item.surahId}`}
+        ListHeaderComponent={ListHeaderComponent}
+        contentContainerStyle={styles.listContentContainer}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No loved surahs yet</Text>
+        }
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      />
       <Animated.View
         style={[
           styles.stickyHeader,
@@ -235,8 +433,8 @@ const LovedScreen = () => {
         style={[
           styles.backButton,
           {
-            top: insets.top,
-            left: moderateScale(20),
+            top: insets.top + moderateScale(10),
+            left: moderateScale(15),
           },
         ]}>
         <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
@@ -272,18 +470,13 @@ const LovedScreen = () => {
         style={[
           styles.searchButton,
           {
-            top: insets.top,
-            right: moderateScale(20),
+            top: insets.top + moderateScale(10),
+            right: moderateScale(15),
           },
         ]}>
         <TouchableOpacity
           activeOpacity={0.99}
-          onPress={() => {
-            setShowSearch(!showSearch);
-            if (!showSearch) {
-              scrollViewRef.current?.scrollTo({y: 0, animated: true});
-            }
-          }}>
+          onPress={() => setShowSearch(!showSearch)}>
           <Animated.View
             style={{
               opacity: headerOpacity.interpolate({

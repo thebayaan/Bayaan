@@ -1,7 +1,7 @@
 // services/auth.ts
 
 import {supabase} from './supabase';
-import {usePlayerStore} from '@/store/playerStore';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 
 export async function signUp(email: string) {
   try {
@@ -58,19 +58,27 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
-    // Clean up player state before signing out
-    await usePlayerStore.getState().cleanup();
+    console.log('[Auth] Starting sign out process...');
 
+    // Clean up player state before signing out
+    console.log('[Auth] Cleaning up player state...');
+    const store = usePlayerStore.getState();
+    await store.cleanup();
+    console.log('[Auth] Player state cleaned up');
+
+    // Sign out from Supabase
+    console.log('[Auth] Signing out from Supabase...');
     const {error} = await supabase.auth.signOut();
 
     if (error) {
-      console.error('Sign out error:', error);
+      console.error('[Auth] Sign out error:', error);
       return {success: false, error: error.message};
     }
 
+    console.log('[Auth] Sign out completed successfully');
     return {success: true};
   } catch (error) {
-    console.error('Unexpected sign out error:', error);
+    console.error('[Auth] Unexpected sign out error:', error);
     return {
       success: false,
       error:

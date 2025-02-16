@@ -19,9 +19,6 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
 
-    const defaultRewayat = item.rewayat[0];
-    const [rewayatName, style] = [defaultRewayat.name, defaultRewayat.style];
-
     return (
       <TouchableOpacity
         activeOpacity={0.99}
@@ -40,18 +37,6 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
-          <View style={styles.moshafInfo}>
-            <Icon
-              name="book"
-              type="entypo"
-              size={moderateScale(16)}
-              color={theme.colors.textSecondary}
-            />
-            <View style={styles.moshafNameContainer}>
-              <Text style={styles.moshafName}>{rewayatName}</Text>
-              <Text style={styles.moshafName}>{style}</Text>
-            </View>
-          </View>
         </View>
         {isSelected && (
           <View style={styles.checkmarkContainer}>
@@ -100,18 +85,6 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(16),
       fontWeight: 'bold',
       color: theme.colors.text,
-    },
-    moshafInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: moderateScale(5),
-    },
-    moshafNameContainer: {
-      marginLeft: moderateScale(5),
-    },
-    moshafName: {
-      fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
     },
     selectedReciterItem: {
       borderRadius: moderateScale(12),

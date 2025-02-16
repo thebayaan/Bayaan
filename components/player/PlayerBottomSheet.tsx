@@ -1,30 +1,55 @@
 import React, {useCallback, useMemo, useRef, useEffect} from 'react';
 import BottomSheet, {BottomSheetBackdrop} from '@gorhom/bottom-sheet';
-import {usePlayerStore} from '@/store/playerStore';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {PlayerContent} from './PlayerContent';
 import {useTheme} from '@/hooks/useTheme';
-import {usePlayerBackground} from '@/hooks/usePlayerBackground';
+import {usePlayerColors} from '@/hooks/usePlayerColors';
+import type {BottomSheetBackdropProps} from '@gorhom/bottom-sheet';
 
 export const PlayerBottomSheet = () => {
-  const {theme, isDarkMode} = useTheme();
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const isVisible = usePlayerStore(state => state.isPlayerSheetVisible);
-  const currentTrack = usePlayerStore(state => state.currentTrack);
-  const setVisible = usePlayerStore(state => state.setPlayerSheetVisible);
-  const {gradientColors} = usePlayerBackground(theme, isDarkMode);
+  console.log('[PlayerBottomSheet] Rendering');
 
-  // Only one snap point at full screen height
+  const {theme} = useTheme();
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const {queue, loading, sheetMode, setSheetMode} = useUnifiedPlayer();
+  const colors = usePlayerColors();
+
+  const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
+  const shouldShow = !loading?.stateRestoring && !!currentTrack;
+
+  console.log('[PlayerBottomSheet] State:', {
+    sheetMode,
+    shouldShow,
+    hasCurrentTrack: !!currentTrack,
+    isLoading: loading?.stateRestoring,
+  });
+
   const snapPoints = useMemo(() => ['100%'], []);
 
   const handleSheetChanges = useCallback(
     (index: number) => {
-      setVisible(index === 0);
+      console.log('[PlayerBottomSheet] Sheet index changed:', {
+        index,
+        currentMode: sheetMode,
+      });
+
+      // Only update if the mode would actually change
+      const newMode = index === 0 ? 'full' : 'hidden';
+      if (sheetMode !== newMode) {
+        console.log('[PlayerBottomSheet] Updating sheet mode:', newMode);
+        setSheetMode(newMode);
+      }
     },
-    [setVisible],
+    [setSheetMode, sheetMode],
   );
 
+  // Debug effect to track sheetMode changes
+  useEffect(() => {
+    console.log('[PlayerBottomSheet] sheetMode changed:', sheetMode);
+  }, [sheetMode]);
+
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -35,27 +60,27 @@ export const PlayerBottomSheet = () => {
     [],
   );
 
-  useEffect(() => {
-    // Ensure we start with the sheet closed on mount
-    bottomSheetRef.current?.close();
-  }, []);
+  const gradientColors = colors?.primary
+    ? [colors.primary, colors.secondary]
+    : [theme.colors.card, theme.colors.card];
 
-  useEffect(() => {
-    if (isVisible && currentTrack) {
-      bottomSheetRef.current?.expand();
-    } else {
-      bottomSheetRef.current?.close();
-    }
-  }, [isVisible, currentTrack]);
+  if (!shouldShow) {
+    console.log('[PlayerBottomSheet] Not showing sheet');
+    return null;
+  }
+
+  const currentIndex = sheetMode === 'full' ? 0 : -1;
+  console.log('[PlayerBottomSheet] Rendering sheet with index:', currentIndex);
 
   return (
     <BottomSheet
       ref={bottomSheetRef}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
-      enablePanDownToClose={true}
+      enablePanDownToClose
       backdropComponent={renderBackdrop}
-      index={-1}
+      index={currentIndex}
+      animateOnMount={false}
       handleIndicatorStyle={{
         display: 'none',
       }}

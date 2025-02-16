@@ -7,11 +7,13 @@ import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
 import {getSurahById} from '@/services/dataService';
-import {usePlayerStore} from '@/store/playerStore';
 import BottomSheetModal from '@/components/BottomSheetModal';
-import {usePlayback} from '@/hooks/usePlayback';
 import {useSettings} from '@/hooks/useSettings';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {createTracksForReciter} from '@/utils/track';
+import {QueueContext} from '@/services/queue/QueueContext';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 export default function SelectReciterModal() {
   const router = useRouter();
@@ -23,8 +25,12 @@ export default function SelectReciterModal() {
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const [, setSurahName] = useState<string>('');
   const insets = useSafeAreaInsets();
+
   const {askEveryTime, setAskEveryTime, setDefaultReciterSelection} =
     useSettings();
+  const {updateQueue, play} = useUnifiedPlayer();
+  const queueContext = QueueContext.getInstance();
+  const {addRecentTrack} = useRecentlyPlayedStore();
 
   useEffect(() => {
     const fetchSurahName = async () => {
@@ -43,16 +49,43 @@ export default function SelectReciterModal() {
 
   const snapPoints = useMemo(() => ['40%'], []);
 
-  usePlayerStore();
-
-  const {playTrack} = usePlayback();
-
-  const handleUseDefaultReciter = useCallback(() => {
+  const handleUseDefaultReciter = useCallback(async () => {
     if (!surahId || !defaultReciter) return;
 
-    playTrack(defaultReciter, parseInt(surahId, 10));
-    router.back();
-  }, [defaultReciter, surahId, playTrack, router]);
+    try {
+      const surah = await getSurahById(parseInt(surahId, 10));
+      if (!surah) return;
+
+      // Create track for the selected surah
+      const tracks = await createTracksForReciter(
+        defaultReciter,
+        [surah],
+        defaultReciter.rewayat[0]?.id,
+      );
+
+      // Update queue and start playing
+      await updateQueue(tracks, 0);
+      await play();
+
+      // Add to recently played list
+      await addRecentTrack(defaultReciter, surah, 0, 0);
+
+      // Set current reciter for batch loading
+      queueContext.setCurrentReciter(defaultReciter);
+
+      router.back();
+    } catch (error) {
+      console.error('Error playing surah:', error);
+    }
+  }, [
+    defaultReciter,
+    surahId,
+    updateQueue,
+    play,
+    queueContext,
+    router,
+    addRecentTrack,
+  ]);
 
   const handleBrowseAllReciters = useCallback(() => {
     if (!surahId) return;

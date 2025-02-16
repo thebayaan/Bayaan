@@ -2,6 +2,7 @@
 import {usePlayerStore} from '@/store/playerStore';
 import {useQueueStore} from '@/store/queueStore';
 import {generateAudioUrl} from '@/utils/audioUtils';
+import {getReciterArtwork} from '@/utils/artworkUtils';
 import {Track} from '@/types/audio';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
@@ -14,6 +15,21 @@ import {getReciterById} from '@/services/dataService';
 import {useRecentRecitersStore} from '@/store/recentRecitersStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {QueueManager} from '@/services/QueueManager';
+import debounce from 'lodash/debounce';
+
+// Queue state management
+const QueueState = {
+  INITIALIZING: 'initializing',
+  READY: 'ready',
+  LOADING_BATCH: 'loading_batch',
+} as const;
+
+type QueueStateType = (typeof QueueState)[keyof typeof QueueState];
+
+// Debug counters
+let playFromSurahCount = 0;
+let loadNextBatchCount = 0;
+let trackChangedCount = 0;
 
 export const usePlayback = () => {
   const {getQueue} = useQueueStore();
@@ -21,12 +37,134 @@ export const usePlayback = () => {
   const queueManager = QueueManager.getInstance();
   const loadTrack = usePlayerStore(state => state.loadAndPlayTrack);
 
-  // Constants for queue management
-  const INITIAL_BATCH_SIZE = 3; // Load first 3 tracks initially
-  const NEXT_BATCH_SIZE = 5; // Load 5 tracks in subsequent batches
-  const LOAD_THRESHOLD = 2; // Start loading more when 2 tracks remain
+  // Queue state management
+  let queueState: QueueStateType = QueueState.READY;
+  let isLoadingBatch = false;
 
-  // Keep existing progress tracking
+  // Constants for queue management
+  const INITIAL_BATCH_SIZE = 3;
+  const NEXT_BATCH_SIZE = 5;
+  const LOAD_THRESHOLD = 2;
+
+  // Helper function to check if a surah is available for a reciter
+  const isSurahAvailable = (reciter: Reciter, surahId: number): boolean => {
+    const rewayat = reciter.rewayat[0];
+    if (!rewayat || !rewayat.surah_list) return false;
+
+    // Check if the surah exists in the list
+    return rewayat.surah_list.includes(surahId);
+  };
+
+  // Helper function to get next available surahs up to a limit
+  const getNextAvailableSurahs = (
+    reciter: Reciter,
+    allSurahs: Surah[],
+    startIndex: number,
+    limit: number,
+  ): Surah[] => {
+    const result: Surah[] = [];
+    let currentIndex = startIndex;
+
+    while (result.length < limit && currentIndex < allSurahs.length) {
+      if (isSurahAvailable(reciter, allSurahs[currentIndex].id)) {
+        result.push(allSurahs[currentIndex]);
+      }
+      currentIndex++;
+    }
+
+    return result;
+  };
+
+  // Debounced loadNextBatch to prevent rapid consecutive calls
+  const debouncedLoadNextBatch = debounce(async () => {
+    if (queueState !== QueueState.READY) {
+      console.log(
+        `[DEBUG] Skipping loadNextBatch - Queue state: ${queueState}`,
+      );
+      return;
+    }
+
+    if (isLoadingBatch) {
+      console.log('[DEBUG] loadNextBatch - Skipped: Already loading a batch');
+      return;
+    }
+
+    loadNextBatchCount++;
+    console.log(`[DEBUG] loadNextBatch called #${loadNextBatchCount}`);
+
+    try {
+      queueState = QueueState.LOADING_BATCH;
+      isLoadingBatch = true;
+
+      const {nextLoadIndex, allSurahs, currentReciter} =
+        useQueueStore.getState();
+      const currentTrack = usePlayerStore.getState().currentTrack;
+      console.log(
+        `[DEBUG] Current state - nextLoadIndex: ${nextLoadIndex}, currentReciter: ${currentReciter?.name}`,
+      );
+
+      // Safety checks
+      if (!currentReciter || nextLoadIndex >= allSurahs.length) {
+        console.log(
+          '[DEBUG] loadNextBatch - Early return: no reciter or at end of surahs',
+        );
+        return;
+      }
+      if (!currentTrack) {
+        console.log('[DEBUG] loadNextBatch - Early return: no current track');
+        return;
+      }
+
+      // Verify we're still playing from the same reciter
+      if (currentTrack.reciterId !== currentReciter.id) {
+        console.log('[DEBUG] loadNextBatch - Early return: reciter changed');
+        return;
+      }
+
+      // Get next batch of available surahs
+      const nextSurahs = getNextAvailableSurahs(
+        currentReciter,
+        allSurahs,
+        nextLoadIndex,
+        NEXT_BATCH_SIZE,
+      );
+
+      if (nextSurahs.length > 0) {
+        const nextTracks = createTracksFromSurahs(currentReciter, nextSurahs);
+        console.log(`[DEBUG] Next batch size: ${nextTracks.length} tracks`);
+
+        // Only add to queue if we're still playing from the same sequence
+        const queue = await TrackPlayer.getQueue();
+        const lastTrack = queue[queue.length - 1];
+        console.log(
+          `[DEBUG] Current queue length before adding: ${queue.length}`,
+        );
+
+        if (lastTrack && lastTrack.reciterId === currentReciter.id) {
+          await queueManager.addToQueue(nextTracks);
+          useQueueStore.getState().setQueueContext({
+            nextLoadIndex: nextLoadIndex + nextSurahs.length,
+            allSurahs,
+            currentReciter,
+          });
+          console.log(
+            `[DEBUG] Added ${nextTracks.length} tracks to queue. New nextLoadIndex: ${nextLoadIndex + nextSurahs.length}`,
+          );
+        } else {
+          console.log(
+            '[DEBUG] loadNextBatch - Skipped adding tracks: reciter mismatch',
+          );
+        }
+      } else {
+        console.log('[DEBUG] loadNextBatch - No next surahs available');
+      }
+    } finally {
+      isLoadingBatch = false;
+      queueState = QueueState.READY;
+    }
+  }, 500); // 500ms debounce
+
+  // Keep existing progress tracking but add queue state checks
   useTrackPlayerEvents(
     [
       Event.PlaybackProgressUpdated,
@@ -35,6 +173,8 @@ export const usePlayback = () => {
     ],
     async event => {
       if (event.type === Event.PlaybackProgressUpdated) {
+        if (queueState === QueueState.INITIALIZING) return;
+
         const {position} = event;
         const currentTrack = await TrackPlayer.getCurrentTrack();
         if (currentTrack !== null) {
@@ -53,15 +193,27 @@ export const usePlayback = () => {
           }
         }
       } else if (event.type === Event.PlaybackTrackChanged) {
+        if (queueState === QueueState.INITIALIZING) {
+          console.log('[DEBUG] Ignoring track change during initialization');
+          return;
+        }
+
+        trackChangedCount++;
+        console.log(`[DEBUG] Track Changed Event #${trackChangedCount}`);
+
         // Check if we need to load more tracks
         const queue = await TrackPlayer.getQueue();
         const currentIndex = await TrackPlayer.getCurrentTrack();
+        console.log(
+          `[DEBUG] Current queue length: ${queue.length}, Current track index: ${currentIndex}`,
+        );
 
         if (
           currentIndex !== null &&
           queue.length - currentIndex <= LOAD_THRESHOLD
         ) {
-          await loadNextBatch();
+          console.log(`[DEBUG] Load threshold reached, calling loadNextBatch`);
+          await debouncedLoadNextBatch();
         }
       }
     },
@@ -82,7 +234,7 @@ export const usePlayback = () => {
         url: generateAudioUrl(reciter, surah.id.toString()),
         title: surah.name,
         artist: reciter.name,
-        artwork: reciter.image_url || undefined,
+        artwork: getReciterArtwork(reciter),
         reciterId: reciter.id,
         reciterName: reciter.name,
         surahId: surah.id.toString(),
@@ -105,10 +257,30 @@ export const usePlayback = () => {
   ) => {
     if (surahs.length === 0) return;
 
-    const tracks = createTracksFromSurahs(reciter, surahs);
+    // Get initial batch of available surahs
+    const availableSurahs = getNextAvailableSurahs(
+      reciter,
+      surahs,
+      0,
+      INITIAL_BATCH_SIZE,
+    );
+
+    if (availableSurahs.length === 0) {
+      console.warn('No available surahs found for this reciter');
+      return;
+    }
+
+    const tracks = createTracksFromSurahs(reciter, availableSurahs);
     await queueManager.playMultipleTracksWithOptions(tracks, {
       shuffle,
       clearQueue: true,
+    });
+
+    // Store queue state for lazy loading of remaining surahs
+    useQueueStore.getState().setQueueContext({
+      nextLoadIndex: availableSurahs.length,
+      allSurahs: surahs,
+      currentReciter: reciter,
     });
   };
 
@@ -118,17 +290,45 @@ export const usePlayback = () => {
     allSurahs: Surah[],
     startPosition?: number,
   ) => {
+    playFromSurahCount++;
+    console.log(`[DEBUG] playFromSurah called #${playFromSurahCount}`);
+    console.log(`[DEBUG] Playing ${surah.name} from ${reciter.name}`);
+
     try {
+      queueState = QueueState.INITIALIZING;
+
       const startIndex = allSurahs.findIndex(s => s.id === surah.id);
       if (startIndex === -1) {
         throw new Error('Surah not found in the list');
       }
 
-      // Get initial batch of tracks
-      const initialTracks = createTracksFromSurahs(
-        reciter,
-        allSurahs.slice(startIndex, startIndex + INITIAL_BATCH_SIZE),
+      // Verify the starting surah is available
+      if (!isSurahAvailable(reciter, surah.id)) {
+        throw new Error(
+          `Surah ${surah.id} is not available for reciter ${reciter.name}`,
+        );
+      }
+
+      // Set queue context BEFORE any track operations
+      useQueueStore.getState().setQueueContext({
+        nextLoadIndex: startIndex + INITIAL_BATCH_SIZE,
+        allSurahs,
+        currentReciter: reciter,
+      });
+      console.log(
+        `[DEBUG] Queue context set, nextLoadIndex: ${startIndex + INITIAL_BATCH_SIZE}`,
       );
+
+      // Get initial batch of available tracks
+      const initialSurahs = getNextAvailableSurahs(
+        reciter,
+        allSurahs,
+        startIndex,
+        INITIAL_BATCH_SIZE,
+      );
+
+      const initialTracks = createTracksFromSurahs(reciter, initialSurahs);
+      console.log(`[DEBUG] Initial batch size: ${initialTracks.length} tracks`);
 
       // Add to recently played
       await addRecentReciter(reciter, surah, 0, 0);
@@ -136,6 +336,9 @@ export const usePlayback = () => {
       // Play the first track with the start position
       if (initialTracks.length > 0) {
         const [firstTrack, ...remainingInitialTracks] = initialTracks;
+        console.log(`[DEBUG] Playing first track: ${firstTrack.title}`);
+
+        // Wait for the track to be played before queueing more
         await queueManager.playTrackWithOptions(firstTrack, {
           startPosition,
           clearQueue: true,
@@ -143,55 +346,19 @@ export const usePlayback = () => {
 
         // Queue the remaining initial tracks if any
         if (remainingInitialTracks.length > 0) {
+          console.log(
+            `[DEBUG] Queueing ${remainingInitialTracks.length} remaining initial tracks`,
+          );
           await queueManager.addToQueue(remainingInitialTracks);
         }
 
-        // Store queue state for lazy loading
-        useQueueStore.getState().setQueueContext({
-          nextLoadIndex: startIndex + INITIAL_BATCH_SIZE,
-          allSurahs,
-          currentReciter: reciter,
-        });
+        // Set queue state to ready after initial setup is complete
+        queueState = QueueState.READY;
       }
     } catch (error) {
       console.error('Error in playFromSurah:', error);
+      queueState = QueueState.READY; // Reset state even if there's an error
       throw error;
-    }
-  };
-
-  // Add new function to load next batch of tracks
-  const loadNextBatch = async () => {
-    const {nextLoadIndex, allSurahs, currentReciter} = useQueueStore.getState();
-    const currentTrack = usePlayerStore.getState().currentTrack;
-
-    // Safety checks
-    if (!currentReciter || nextLoadIndex >= allSurahs.length) return;
-    if (!currentTrack) return;
-
-    // Verify we're still playing from the same reciter
-    if (currentTrack.reciterId !== currentReciter.id) {
-      // If reciter changed, don't load more tracks
-      return;
-    }
-
-    const nextTracks = createTracksFromSurahs(
-      currentReciter,
-      allSurahs.slice(nextLoadIndex, nextLoadIndex + NEXT_BATCH_SIZE),
-    );
-
-    if (nextTracks.length > 0) {
-      // Only add to queue if we're still playing from the same sequence
-      const queue = await TrackPlayer.getQueue();
-      const lastTrack = queue[queue.length - 1];
-
-      if (lastTrack && lastTrack.reciterId === currentReciter.id) {
-        await queueManager.addToQueue(nextTracks);
-        useQueueStore.getState().setQueueContext({
-          nextLoadIndex: nextLoadIndex + NEXT_BATCH_SIZE,
-          allSurahs,
-          currentReciter,
-        });
-      }
     }
   };
 
@@ -234,7 +401,7 @@ export const usePlayback = () => {
         url: generateAudioUrl(reciter, surah.id.toString()),
         title: surah.name,
         artist: reciter.name,
-        artwork: reciter.image_url || undefined,
+        artwork: getReciterArtwork(reciter),
         reciterId: reciter.id,
         reciterName: reciter.name,
         surahId: surah.id.toString(),
@@ -280,7 +447,7 @@ export const usePlayback = () => {
       title: surah.name,
       artist: reciter.name,
       reciterId: reciter.id,
-      artwork: reciter.image_url || undefined,
+      artwork: getReciterArtwork(reciter),
       surahId: surah.id.toString(),
       reciterName: reciter.name,
     }));

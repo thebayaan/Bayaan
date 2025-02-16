@@ -24,13 +24,12 @@ export default function WelcomeScreen() {
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <LogoIcon
-            size={45}
+            size={75}
             color={theme.colors.primary}
             isDarkMode={theme.isDarkMode}
           />
-          <Text style={styles.appName}>Bayaan</Text>
         </View>
-        <Text style={styles.subText}>Connect with the Quran</Text>
+        <Text style={styles.subText}>Assalamu Alaikum</Text>
 
         <Button
           title="Sign up with Email"

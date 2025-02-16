@@ -87,8 +87,7 @@ export default function DefaultReciterSettings() {
                 {defaultReciter.name}
               </Text>
               <Text style={styles.currentReciterMoshaf}>
-                {defaultReciter.rewayat[0].name} (
-                {defaultReciter.rewayat[0].style})
+                {defaultReciter.rewayat[0].name}
               </Text>
             </View>
           </View>
@@ -114,7 +113,7 @@ export default function DefaultReciterSettings() {
         ListEmptyComponent={
           <Text style={styles.emptyText}>
             {searchQuery.trim() === ''
-              ? 'Start typing to search for reciters'
+              ? 'Only reciters with complete Quran are shown'
               : 'No reciters found'}
           </Text>
         }
@@ -132,7 +131,6 @@ const createStyles = (theme: Theme) =>
     currentReciterContainer: {
       padding: moderateScale(20),
       marginBottom: verticalScale(20),
-      backgroundColor: theme.colors.card,
       borderRadius: moderateScale(12),
       marginHorizontal: moderateScale(15),
       marginTop: moderateScale(15),
@@ -144,7 +142,7 @@ const createStyles = (theme: Theme) =>
     currentReciterImage: {
       width: moderateScale(80),
       height: moderateScale(80),
-      borderRadius: moderateScale(40),
+      borderRadius: moderateScale(10),
       marginRight: moderateScale(15),
     },
     currentReciterInfo: {
@@ -178,7 +176,7 @@ const createStyles = (theme: Theme) =>
     },
     emptyText: {
       fontSize: moderateScale(16),
-      color: theme.colors.text,
+      color: theme.colors.textSecondary,
       textAlign: 'center',
       paddingVertical: moderateScale(15),
     },

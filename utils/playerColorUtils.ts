@@ -6,6 +6,9 @@ export interface PlayerColors {
   secondary: string;
   text: string;
   gradient: string[];
+  gradientStart: string;
+  gradientMiddle: string;
+  gradientEnd: string;
 }
 
 export interface CachedReciterColors {
@@ -77,14 +80,19 @@ export const calculatePlayerColors = (
     secondary: ensureMinBrightness(secondary),
   };
 
+  const gradient = calculateGradient(
+    safeColors.primary,
+    safeColors.secondary,
+    isDarkMode,
+  );
+
   return {
     primary: safeColors.primary,
     secondary: safeColors.secondary,
     text: calculateContrastColor(safeColors.primary),
-    gradient: calculateGradient(
-      safeColors.primary,
-      safeColors.secondary,
-      isDarkMode,
-    ),
+    gradient,
+    gradientStart: gradient[0],
+    gradientMiddle: gradient[1],
+    gradientEnd: gradient[1],
   };
 };

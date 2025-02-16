@@ -33,7 +33,7 @@ const AdditionalControls: React.FC<AdditionalControlsProps> = ({
           style={[styles.heartButton, isFavorite && styles.activeHeartButton]}>
           <HeartIcon
             color={heartColor}
-            size={moderateScale(28)}
+            size={moderateScale(33)}
             filled={isFavorite}
           />
         </TouchableOpacity>

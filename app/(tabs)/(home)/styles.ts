@@ -13,7 +13,6 @@ export const createStyles = (theme: Theme) =>
     },
     headerContainer: {
       backgroundColor: theme.colors.background,
-      paddingBottom: verticalScale(5),
     },
     contentContainer: {
       flex: 1,
@@ -23,7 +22,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: moderateScale(15),
-      paddingVertical: verticalScale(5),
+      paddingTop: verticalScale(5),
     },
     headerTitle: {
       fontSize: moderateScale(24),

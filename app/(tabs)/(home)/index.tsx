@@ -13,7 +13,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Toggle from '@/components/Toggle';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {usePlayback} from '@/hooks/usePlayback';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 
 export default function HomeScreen() {
@@ -40,7 +39,6 @@ export default function HomeScreen() {
   );
 
   const {askEveryTime, defaultReciterSelection} = useSettings();
-  const {playTrack} = usePlayback();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
 
   const handleSurahPress = useCallback(
@@ -69,7 +67,6 @@ export default function HomeScreen() {
             break;
           case 'useDefault':
             if (defaultReciter) {
-              playTrack(defaultReciter, surah.id);
               router.push({
                 pathname: '/player',
                 params: {reciterImageUrl: defaultReciter.image_url},
@@ -95,7 +92,7 @@ export default function HomeScreen() {
         }
       }
     },
-    [router, askEveryTime, defaultReciterSelection, defaultReciter, playTrack],
+    [router, askEveryTime, defaultReciterSelection, defaultReciter],
   );
 
   const handleSettingsPress = () => {
@@ -105,6 +102,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingBottom: TOTAL_BOTTOM_PADDING,
         }}>

@@ -19,27 +19,22 @@ const getEffectiveTheme = (
   const systemTheme = Appearance.getColorScheme();
 
   if (mode === 'system') {
-    return createTheme(systemTheme || 'light', primaryColor);
+    const effectiveTheme = systemTheme === 'dark' ? 'dark' : 'light';
+    return createTheme(effectiveTheme, primaryColor);
   }
   return createTheme(mode, primaryColor);
 };
 
 // Subscribe to system theme changes outside of the store
 Appearance.addChangeListener(({colorScheme}) => {
-  console.log('[Theme Debug] System theme changed to:', colorScheme);
   const state = useThemeStore.getState();
-  console.log('[Theme Debug] Current theme mode:', state.themeMode);
 
   if (state.themeMode === 'system') {
-    console.log('[Theme Debug] Updating theme to match system');
-    const newTheme = createTheme(colorScheme || 'light', state.primaryColor);
-    useThemeStore.setState({...state, theme: newTheme});
+    const effectiveTheme = colorScheme === 'dark' ? 'dark' : 'light';
+    const newTheme = createTheme(effectiveTheme, state.primaryColor);
+    useThemeStore.setState({theme: newTheme});
   }
 });
-
-// Get initial system theme
-const initialSystemTheme = Appearance.getColorScheme();
-console.log('[Theme Debug] Initial system theme:', initialSystemTheme);
 
 export const useThemeStore = create<ThemeState>()(
   persist(
@@ -50,7 +45,6 @@ export const useThemeStore = create<ThemeState>()(
 
       setThemeMode: mode =>
         set(state => {
-          console.log('[Theme Debug] Setting theme mode to:', mode);
           const newTheme = getEffectiveTheme(mode, state.primaryColor);
           return {
             themeMode: mode,
@@ -60,7 +54,6 @@ export const useThemeStore = create<ThemeState>()(
 
       setPrimaryColor: color =>
         set(state => {
-          console.log('[Theme Debug] Setting primary color to:', color);
           const newTheme = getEffectiveTheme(state.themeMode, color);
           return {
             primaryColor: color,
@@ -77,7 +70,6 @@ export const useThemeStore = create<ThemeState>()(
       }),
       onRehydrateStorage: () => state => {
         if (state) {
-          console.log('[Theme Debug] Rehydrating store with state:', state);
           const theme = getEffectiveTheme(state.themeMode, state.primaryColor);
           useThemeStore.setState({...state, theme});
         }
