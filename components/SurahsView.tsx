@@ -12,11 +12,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {SurahCard} from './cards/SurahCard';
 import {SURAHS, Surah} from '@/data/surahData';
-import {useRecentRecitersStore} from '@/store/recentRecitersStore';
-import {usePlayerStore} from '@/store/playerStore';
-import {usePlayCountStore} from '@/store/playCountStore';
 import Color from 'color';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
@@ -124,9 +123,8 @@ const ItemSeparator = () => <View style={{width: moderateScale(12)}} />;
 
 export default function SurahsView({onSurahPress}: SurahsViewProps) {
   const {theme} = useTheme();
-  const {recentReciters} = useRecentRecitersStore();
-  const {favoriteTrackIds} = usePlayerStore();
-  const {getMostPlayed} = usePlayCountStore();
+  const {recentTracks} = useRecentlyPlayedStore();
+  const {queue} = useUnifiedPlayer();
 
   const styles = StyleSheet.create({
     container: {
@@ -145,7 +143,6 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       color: theme.colors.text,
       marginBottom: verticalScale(4),
     },
-
     sectionContent: {
       paddingHorizontal: moderateScale(15),
       paddingVertical: verticalScale(8),
@@ -154,7 +151,7 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
 
   const recentSurahs = useMemo(() => {
     const seen = new Set();
-    return recentReciters
+    return recentTracks
       .map(item => item.surah)
       .filter(surah => {
         if (seen.has(surah.id)) {
@@ -164,25 +161,43 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
         return true;
       })
       .slice(0, 5);
-  }, [recentReciters]);
+  }, [recentTracks]);
 
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
 
   const lovedSurahs = useMemo(() => {
-    const surahIds = favoriteTrackIds.map(id => parseInt(id.split(':')[1], 10));
+    const tracks = queue.tracks.filter(track => track.isLoved);
+    const surahIds = tracks.map(track => parseInt(track.surahId || '0', 10));
     const uniqueSurahIds = [...new Set(surahIds)];
     return uniqueSurahIds
       .map(id => SURAHS.find(surah => surah.id === id))
       .filter((surah): surah is Surah => surah !== undefined)
       .slice(0, 5);
-  }, [favoriteTrackIds]);
+  }, [queue.tracks]);
 
   const mostPlayedSurahs = useMemo(() => {
-    const mostPlayed = getMostPlayed(5);
-    return mostPlayed
-      .map(item => SURAHS.find(surah => surah.id === item.surahId))
+    // Get play counts from queue tracks
+    const playCounts = new Map<number, number>();
+    queue.tracks.forEach(track => {
+      const surahId = parseInt(track.surahId || '0', 10);
+      if (surahId) {
+        playCounts.set(
+          surahId,
+          (playCounts.get(surahId) || 0) + (track.playCount || 0),
+        );
+      }
+    });
+
+    // Sort by play count and get top 5
+    const sortedSurahIds = Array.from(playCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([id]) => id);
+
+    return sortedSurahIds
+      .map(id => SURAHS.find(surah => surah.id === id))
       .filter((surah): surah is Surah => surah !== undefined);
-  }, [getMostPlayed]);
+  }, [queue.tracks]);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -237,10 +252,13 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
         />
       }>
       <HeroSection surah={surahOfTheDay} onPress={onSurahPress} />
+
       {recentSurahs.length > 0 &&
         renderSection('Recently Played', recentSurahs)}
+
       {mostPlayedSurahs.length > 0 &&
         renderSection('Most Played', mostPlayedSurahs)}
+
       {lovedSurahs.length > 0 &&
         renderSection('From your Collection', lovedSurahs)}
     </ScrollView>

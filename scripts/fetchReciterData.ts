@@ -1,7 +1,34 @@
-import {createClient} from '@supabase/supabase-js';
-import fs from 'fs';
-import * as dotenv from 'dotenv';
-import {Rewayat} from '../data/reciterData';
+const {createClient} = require('@supabase/supabase-js');
+const fs = require('fs');
+const dotenv = require('dotenv');
+
+// Define interfaces for our data structures
+interface Reciter {
+  id: string;
+  name: string;
+  date: string;
+  image_url: string | null;
+}
+
+interface RewayatDB {
+  id: string;
+  reciter_id: string;
+  name: string;
+  style: string;
+  server: string;
+  surah_total: number;
+  surah_list: string; // From database as string
+  source_type: string;
+  created_at: string;
+}
+
+interface RewayatTransformed extends Omit<RewayatDB, 'surah_list'> {
+  surah_list: number[] | null; // Transformed to number array
+}
+
+interface ReciterWithRewayat extends Reciter {
+  rewayat: RewayatTransformed[];
+}
 
 // Load environment variables from .env file
 dotenv.config();
@@ -16,10 +43,10 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-async function fetchReciterData() {
+async function fetchReciterData(): Promise<ReciterWithRewayat[] | null> {
   // Fetch reciters with their rewayat
   const {data: reciters, error: reciterError} = await supabase
-    .from('reciters_new')
+    .from('reciters')
     .select('*')
     .order('name');
 
@@ -47,54 +74,40 @@ async function fetchReciterData() {
 
   // Group rewayat by reciter_id
   const rewayatByReciter = rewayat.reduce(
-    (acc, r) => {
+    (acc: Record<string, RewayatTransformed[]>, r: RewayatDB) => {
       if (!acc[r.reciter_id]) {
         acc[r.reciter_id] = [];
       }
       acc[r.reciter_id].push({
         ...r,
-        // Convert comma-separated string to array of numbers
         surah_list: r.surah_list ? r.surah_list.split(',').map(Number) : null,
       });
       return acc;
     },
-    {} as Record<string, Rewayat[]>,
+    {},
   );
 
   // Combine reciters with their rewayat
-  return reciters.map(reciter => ({
-    id: reciter.id,
-    name: reciter.name,
-    date: reciter.date,
-    image_url: reciter.image_url,
-    rewayat: rewayatByReciter[reciter.id] || [],
-  }));
-}
-
-async function main() {
-  const reciterData = await fetchReciterData();
-
-  if (!reciterData) {
-    console.error('Failed to fetch reciter data');
-    return;
-  }
-
-  fs.writeFileSync('data/reciters.json', JSON.stringify(reciterData, null, 2));
-  console.log('Reciter data has been written to data/reciters.json');
-
-  // Print some stats
-  console.log(`\nStats:`);
-  console.log(`Total reciters: ${reciterData.length}`);
-  console.log(
-    `Total rewayat: ${reciterData.reduce((sum, r) => sum + r.rewayat.length, 0)}`,
+  const result = reciters.map(
+    (reciter: Reciter): ReciterWithRewayat => ({
+      id: reciter.id,
+      name: reciter.name,
+      date: reciter.date,
+      image_url: reciter.image_url,
+      rewayat: rewayatByReciter[reciter.id] || [],
+    }),
   );
 
-  // Print reciters with no rewayat
-  const recitersNoRewayat = reciterData.filter(r => r.rewayat.length === 0);
-  if (recitersNoRewayat.length > 0) {
-    console.log('\nReciters with no rewayat:');
-    recitersNoRewayat.forEach(r => console.log(`- ${r.name}`));
-  }
+  // Write the result to the JSON file
+  fs.writeFileSync(
+    './data/reciters.json',
+    JSON.stringify(result, null, 2),
+    'utf8',
+  );
+
+  console.log('Successfully updated reciters.json');
+  return result;
 }
 
-main().catch(console.error);
+// Execute the function
+fetchReciterData().catch(console.error);

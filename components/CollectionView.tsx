@@ -6,7 +6,7 @@ import {CircularReciterCard} from './cards/CircularReciterCard';
 import {ReciterCard} from './cards/ReciterCard';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {Reciter} from '@/data/reciterData';
-import {usePlayerStore} from '@/store/playerStore';
+import {useLoved} from '@/hooks/useLoved';
 
 interface CollectionViewProps {
   onReciterPress: (reciter: Reciter) => void;
@@ -19,7 +19,7 @@ export default function CollectionView({
 }: CollectionViewProps) {
   const {theme} = useTheme();
   const {favoriteReciters} = useFavoriteReciters();
-  const {favoriteTrackIds} = usePlayerStore();
+  const {lovedTracks} = useLoved();
 
   const styles = StyleSheet.create({
     container: {
@@ -35,14 +35,19 @@ export default function CollectionView({
   });
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter | {reciterId: string; surahId: number}}) => {
+    ({item}: {item: Reciter | {reciterId: string; surahId: string}}) => {
       if ('surahId' in item) {
         const reciter = favoriteReciters.find(r => r.id === item.reciterId);
         return (
           <ReciterCard
             imageUrl={reciter?.image_url || undefined}
             name={reciter?.name || ''}
-            onPress={() => onTrackPress(item)}
+            onPress={() =>
+              onTrackPress({
+                reciterId: item.reciterId,
+                surahId: parseInt(item.surahId, 10),
+              })
+            }
           />
         );
       } else {
@@ -58,18 +63,18 @@ export default function CollectionView({
     [onReciterPress, onTrackPress, favoriteReciters],
   );
 
-  const favoriteItems = [
+  const collectionItems = [
     ...favoriteReciters,
-    ...favoriteTrackIds.map(id => {
-      const [reciterId, surahId] = id.split(':');
-      return {reciterId, surahId: parseInt(surahId, 10)};
-    }),
+    ...lovedTracks.map(track => ({
+      reciterId: track.reciterId,
+      surahId: track.surahId,
+    })),
   ];
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={favoriteItems}
+        data={collectionItems}
         renderItem={renderItem}
         keyExtractor={item =>
           'id' in item ? item.id : `${item.reciterId}-${item.surahId}`

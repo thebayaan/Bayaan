@@ -2,23 +2,23 @@ import {DefaultTheme} from '@react-navigation/native';
 
 export const lightColors = {
   ...DefaultTheme.colors,
-  background: '#ffffff',
+  background: '#f4f3ec',
   backgroundSecondary: '#f4f4f4',
-  text: '#1a1a1a',
+  text: '#3d3929',
   secondary: '#f0f0f0',
   accent: '#5645a1',
-  textSecondary: '#6e6e6e',
+  textSecondary: '#6e684d',
   light: '#f4f4f4',
   border: '#a4a4a4',
   shadow: '#000000',
   error: '#DC2626',
-  card: '#ececec',
+  card: '#e4e2d8',
   tertiary: '#5645a1',
 };
 
 export const darkColors = {
   ...DefaultTheme.colors,
-  background: '#121212',
+  background: '#1c1b1a',
   backgroundSecondary: '#1c1a1e',
   text: '#e8e8e8',
   secondary: '#1c1a1e',
@@ -28,7 +28,7 @@ export const darkColors = {
   border: '#332f38',
   shadow: '#000000',
   error: '#EF4444',
-  card: '#1c1b1d',
+  card: '#2b2b29',
   tertiary: '#ba5b37',
 };
 

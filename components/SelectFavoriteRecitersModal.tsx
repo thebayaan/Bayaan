@@ -9,7 +9,6 @@ import SearchBar from '@/components/SearchBar';
 import BottomSheetModal from '@/components/BottomSheetModal';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
-import {LinearGradient} from 'expo-linear-gradient';
 
 interface SelectFavoriteRecitersModalProps {
   isVisible: boolean;
@@ -20,7 +19,7 @@ export const SelectFavoriteRecitersModal: React.FC<
   SelectFavoriteRecitersModalProps
 > = ({isVisible, onClose}) => {
   const {theme} = useTheme();
-  const {toggleFavoriteReciter, favoriteReciters} = useFavoriteReciters();
+  const {toggleFavorite, favoriteReciters} = useFavoriteReciters();
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredReciters = RECITERS.filter(reciter =>
@@ -29,14 +28,14 @@ export const SelectFavoriteRecitersModal: React.FC<
 
   const handleReciterPress = useCallback(
     (reciter: Reciter) => {
-      toggleFavoriteReciter(reciter.id);
+      toggleFavorite(reciter);
     },
-    [toggleFavoriteReciter],
+    [toggleFavorite],
   );
 
   const renderItem = ({item}: {item: Reciter}) => (
     <CircularReciterCard
-      imageUrl={item.image_url}
+      imageUrl={item.image_url || undefined}
       name={item.name}
       onPress={() => handleReciterPress(item)}
       isSelected={favoriteReciters.some(reciter => reciter.id === item.id)}
@@ -68,13 +67,7 @@ export const SelectFavoriteRecitersModal: React.FC<
           columnWrapperStyle={styles(theme).columnWrapper}
         />
         <View style={styles(theme).footerContainer}>
-          <LinearGradient
-            colors={[
-              'transparent',
-              theme.colors.background + '80',
-              theme.colors.background,
-            ]}
-            style={styles(theme).footerGradient}>
+          <View style={styles(theme).buttonContainer}>
             <Button
               title="Finish"
               onPress={onClose}
@@ -82,7 +75,7 @@ export const SelectFavoriteRecitersModal: React.FC<
               textStyle={styles(theme).buttonText}
               size="medium"
             />
-          </LinearGradient>
+          </View>
         </View>
       </View>
     </BottomSheetModal>
@@ -117,7 +110,7 @@ const styles = (theme: Theme) =>
       left: 0,
       right: 0,
     },
-    footerGradient: {
+    buttonContainer: {
       paddingTop: moderateScale(30),
       paddingBottom: moderateScale(20),
       alignItems: 'center',

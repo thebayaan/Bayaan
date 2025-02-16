@@ -59,10 +59,14 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         </View>
         <View style={styles.trackInfo}>
           <View style={styles.surahNameContainer}>
-            <Text style={styles.surahName}>{surah.id + '. ' + surah.name}</Text>
+            <View style={styles.surahTextContainer}>
+              <Text style={styles.surahName}>
+                {surah.id + '. ' + surah.name}
+              </Text>
+              <Text style={styles.reciterName}>{reciter.name}</Text>
+            </View>
             <Text style={styles.surahGlyph}>{surahGlyph}</Text>
           </View>
-          <Text style={styles.reciterName}>{reciter.name}</Text>
         </View>
         {onPlayPress && (
           <TouchableOpacity onPress={onPlayPress}>
@@ -87,13 +91,17 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(10),
+      marginHorizontal: moderateScale(15),
+      borderRadius: moderateScale(8),
+      marginVertical: moderateScale(4),
     },
     imageContainer: {
-      marginRight: moderateScale(10),
+      marginRight: moderateScale(12),
     },
     reciterImage: {
       width: moderateScale(50),
       height: moderateScale(50),
+      borderRadius: moderateScale(10),
     },
     trackInfo: {
       flex: 1,
@@ -101,21 +109,27 @@ const createStyles = (theme: Theme) =>
     surahNameContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    surahTextContainer: {
+      flex: 1,
+      marginRight: moderateScale(12),
     },
     surahName: {
       fontSize: moderateScale(16),
-      fontWeight: 'bold',
+      fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
-      marginRight: moderateScale(8),
     },
     surahGlyph: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(24),
       fontFamily: 'SurahNames',
       color: theme.colors.text,
+      textAlign: 'right',
     },
     reciterName: {
       fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.text,
       marginTop: moderateScale(2),
     },
   });

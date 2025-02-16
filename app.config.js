@@ -3,7 +3,11 @@ export default {
     name: 'Bayaan',
     slug: 'Bayaan',
     scheme: 'bayaan',
-    version: '1.0.0',
+    version: '0.1.0',
+    cli: {
+      appVersionSource: 'remote',
+      version: '>= 5.9.1',
+    },
     ios: {
       bundleIdentifier: 'com.bayaan.app',
       buildNumber: '1',
@@ -29,11 +33,11 @@ export default {
         NSPrivacyPolicyURL:
           'https://osmansaeday.github.io/bayaan-privacy-policy',
       },
-    },
-    splash: {
-      image: './assets/images/splash.png',
-      resizeMode: 'cover',
-      backgroundColor: '#000000',
+      icon: {
+        dark: './assets/images/ios-dark.png',
+        light: './assets/images/ios-light.png',
+        tinted: './assets/images/ios-tinted.png',
+      },
     },
     fonts: [
       'assets/fonts/Manrope-Regular.ttf',
@@ -85,6 +89,21 @@ export default {
       fallbackToCacheTimeout: 2000,
       url: 'https://u.expo.dev/e31ace41-2d1b-4777-8230-8c8264277d59',
     },
-    plugins: ['expo-router'],
+    plugins: [
+      'expo-router',
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/images/splash-icon.png',
+          resizeMode: 'contain',
+          backgroundColor: '#f4f4f4',
+          imageResizeMode: 'contain',
+          dark: {
+            image: './assets/images/splash-icon-dark.png',
+            backgroundColor: '#1c1a1e',
+          },
+        },
+      ],
+    ],
   },
 };

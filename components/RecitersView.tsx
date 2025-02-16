@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useRef, useEffect, useCallback, useState} from 'react';
 import {
   View,
   Text,
@@ -14,98 +14,119 @@ import {ReciterCard} from './cards/ReciterCard';
 import {CircularReciterCard} from './cards/CircularReciterCard';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {RecentReciterCard} from '@/components/cards/RecentReciterCard';
-import {usePlayerStore} from '@/store/playerStore';
+import {useLoved} from '@/hooks/useLoved';
 import {
-  useRecentRecitersStore,
-  RecentReciter,
-} from '@/store/recentRecitersStore';
-import Color from 'color';
+  useRecentlyPlayedStore,
+  RecentlyPlayedTrack,
+} from '@/services/player/store/recentlyPlayedStore';
 import {ReciterImage} from '@/components/ReciterImage';
-import {
-  getFeaturedReciters,
-  getFeaturedReciterOfTheDay,
-} from '@/data/featuredReciters';
+import {getFeaturedReciters} from '@/data/featuredReciters';
+import Carousel from 'react-native-reanimated-carousel';
+import {Dimensions} from 'react-native';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
 }
 
 const HeroSection = ({
-  reciter,
+  reciters,
   onPress,
 }: {
-  reciter: Reciter;
+  reciters: Reciter[];
   onPress: (reciter: Reciter) => void;
 }) => {
   const {theme} = useTheme();
-  const handlePress = React.useCallback(
-    () => onPress(reciter),
-    [reciter, onPress],
-  );
+  const width = Dimensions.get('window').width;
+  const PAGE_WIDTH = width - moderateScale(10);
+  const PAGE_HEIGHT = moderateScale(240);
 
   const styles = StyleSheet.create({
+    container: {
+      marginBottom: verticalScale(12),
+    },
     hero: {
-      marginHorizontal: moderateScale(15),
-      marginBottom: verticalScale(24),
-      padding: moderateScale(20),
-      borderRadius: moderateScale(24),
-      backgroundColor: Color(theme.colors.primary).alpha(0.1).toString(),
-      flexDirection: 'row',
+      padding: moderateScale(10),
+      borderRadius: moderateScale(5),
       alignItems: 'center',
+      width: PAGE_WIDTH,
+      height: PAGE_HEIGHT,
+      justifyContent: 'center',
     },
     imageContainer: {
-      marginRight: moderateScale(16),
+      flex: 1,
+      justifyContent: 'center',
     },
     image: {
-      width: moderateScale(100),
-      height: moderateScale(100),
-      borderRadius: moderateScale(10),
-    },
-    content: {
-      flex: 1,
-    },
-    label: {
-      fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
-      marginBottom: verticalScale(4),
-    },
-    name: {
-      fontSize: moderateScale(20),
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      marginBottom: verticalScale(4),
-    },
-    moshafName: {
-      fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
+      width: moderateScale(240),
+      height: moderateScale(240),
+      borderRadius: moderateScale(5),
     },
   });
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.99}
-      style={styles.hero}
-      onPress={handlePress}>
-      <View style={styles.imageContainer}>
-        <ReciterImage
-          imageUrl={reciter.image_url || undefined}
-          reciterName={reciter.name}
-          style={styles.image}
-        />
-      </View>
-      <View style={styles.content}>
-        <Text style={styles.label}>RECITER OF THE DAY</Text>
-        <Text style={styles.name} numberOfLines={1}>
-          {reciter.name}
-        </Text>
-      </View>
-    </TouchableOpacity>
+    <View style={styles.container}>
+      <Carousel
+        loop
+        width={PAGE_WIDTH}
+        height={PAGE_HEIGHT}
+        autoPlay
+        autoPlayReverse={true}
+        autoPlayInterval={1000}
+        data={reciters}
+        scrollAnimationDuration={1000}
+        onSnapToItem={() => {
+          // Intentionally empty
+        }}
+        mode="horizontal-stack"
+        modeConfig={{
+          snapDirection: 'right',
+          stackInterval: 15,
+          scaleInterval: 0.07,
+          rotateZDeg: 0,
+          showLength: 6,
+        }}
+        style={{
+          width: PAGE_WIDTH,
+          height: PAGE_HEIGHT,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+        renderItem={({item: reciter}) => {
+          return (
+            <TouchableOpacity
+              activeOpacity={0.99}
+              style={[
+                styles.hero,
+                {
+                  shadowColor: theme.colors.text,
+                  shadowOffset: {
+                    width: 0,
+                    height: 2,
+                  },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 3.84,
+                  elevation: 5,
+                },
+              ]}
+              onPress={() => onPress(reciter)}>
+              <View style={styles.imageContainer}>
+                <ReciterImage
+                  imageUrl={reciter.image_url || undefined}
+                  reciterName={reciter.name}
+                  style={styles.image}
+                />
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </View>
   );
 };
 
 const ItemSeparator = () => <View style={{width: moderateScale(12)}} />;
 
-type SectionItem = Reciter | RecentReciter;
+type SectionItem = Reciter | RecentlyPlayedTrack;
 
 const RenderSectionItem = React.memo(
   ({
@@ -117,13 +138,13 @@ const RenderSectionItem = React.memo(
     variant: 'recent' | 'circular' | 'default';
     onReciterPress: (reciter: Reciter) => void;
   }) => {
-    const progress = useRecentRecitersStore(state =>
+    const progress = useRecentlyPlayedStore(state =>
       'timestamp' in item
         ? state.getProgress(item.reciter.id, item.surah.id)
         : 0,
     );
 
-    const duration = useRecentRecitersStore(state =>
+    const duration = useRecentlyPlayedStore(state =>
       'timestamp' in item
         ? state.getDuration(item.reciter.id, item.surah.id)
         : 0,
@@ -175,29 +196,46 @@ RenderSectionItem.displayName = 'RenderSectionItem';
 
 export default function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
-  const {recentReciters} = useRecentRecitersStore();
+  const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
-  const {favoriteTrackIds} = usePlayerStore();
+  const {lovedTracks} = useLoved();
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Random favorite reciters for the favorites section
-  const randomFavoriteReciters = useMemo(() => {
-    if (!favoriteReciters.length) return [];
-    const shuffled = [...favoriteReciters].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 10);
+  // Use refs for all randomly sorted lists to maintain stability
+  const favoriteRecitersRef = useRef<Reciter[]>([]);
+  const newRecitersRef = useRef<Reciter[]>([]);
+  const collectionRecitersRef = useRef<Reciter[]>([]);
+  const featuredRecitersRef = useRef<Reciter[]>([]);
+
+  // Initialize random lists once
+  useEffect(() => {
+    // Initialize featured reciters first
+    featuredRecitersRef.current = getFeaturedReciters(10);
+
+    // Initialize new reciters
+    const shuffled = [...RECITERS].sort(() => 0.5 - Math.random());
+    newRecitersRef.current = shuffled.slice(0, 10);
+
+    // Mark initialization as complete
+    setIsInitialized(true);
+  }, []); // Only run once on mount
+
+  // Update favorite reciters when they change
+  useEffect(() => {
+    if (
+      favoriteReciters.length !== favoriteRecitersRef.current.length ||
+      favoriteReciters.some(
+        (r, i) => r.id !== favoriteRecitersRef.current[i]?.id,
+      )
+    ) {
+      const shuffled = [...favoriteReciters].sort(() => 0.5 - Math.random());
+      favoriteRecitersRef.current = shuffled.slice(0, 10);
+    }
   }, [favoriteReciters]);
 
-  // Random reciters for Featured section
-  const featuredReciters = useMemo(() => getFeaturedReciters(10), []);
-
-  // Different random reciters for New section
-  const newReciters = useMemo(() => {
-    const shuffled = [...RECITERS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 10);
-  }, []);
-
-  // Collection reciters (combining favorites and reciters from loved tracks)
-  const collectionReciters = useMemo(() => {
-    const reciterIdsFromLoved = favoriteTrackIds.map(id => id.split(':')[0]);
+  // Update collection reciters when dependencies change
+  useEffect(() => {
+    const reciterIdsFromLoved = lovedTracks.map(track => track.reciterId);
     const uniqueReciterIds = new Set([
       ...favoriteReciters.map(r => r.id),
       ...reciterIdsFromLoved,
@@ -210,41 +248,44 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
     const shuffled = [...recitersFromCollection].sort(
       () => 0.5 - Math.random(),
     );
-    return shuffled.slice(0, 5);
-  }, [favoriteReciters, favoriteTrackIds]);
+    collectionRecitersRef.current = shuffled.slice(0, 5);
+  }, [favoriteReciters, lovedTracks]);
 
-  // Helper functions for filtering reciters
-  const otherRewayatReciters = useMemo(() => {
-    return RECITERS.filter(
-      reciter =>
-        reciter.rewayat.some(
-          r => r.name.toLowerCase() !== "hafs a'n assem".toLowerCase(),
-        ) &&
-        !featuredReciters.some(f => f.id === reciter.id) &&
-        !newReciters.some(n => n.id === reciter.id),
-    ).slice(0, 10);
-  }, [featuredReciters, newReciters]);
+  // Memoize the filtered reciter lists
+  const {otherRewayatReciters, mojawwadReciters, molimReciters} =
+    useMemo(() => {
+      const others = RECITERS.filter(
+        reciter =>
+          reciter.rewayat.some(
+            r => r.name.toLowerCase() !== "hafs a'n assem".toLowerCase(),
+          ) &&
+          !featuredRecitersRef.current.some(f => f.id === reciter.id) &&
+          !newRecitersRef.current.some(n => n.id === reciter.id),
+      ).slice(0, 10);
 
-  const mojawwadReciters = useMemo(() => {
-    return RECITERS.filter(
-      reciter =>
-        reciter.rewayat.some(r => r.style.toLowerCase() === 'mojawwad') &&
-        !featuredReciters.some(f => f.id === reciter.id) &&
-        !newReciters.some(n => n.id === reciter.id) &&
-        !otherRewayatReciters.some(o => o.id === reciter.id),
-    ).slice(0, 10);
-  }, [featuredReciters, newReciters, otherRewayatReciters]);
+      const mojawwad = RECITERS.filter(
+        reciter =>
+          reciter.rewayat.some(r => r.style.toLowerCase() === 'mojawwad') &&
+          !featuredRecitersRef.current.some(f => f.id === reciter.id) &&
+          !newRecitersRef.current.some(n => n.id === reciter.id) &&
+          !others.some(o => o.id === reciter.id),
+      ).slice(0, 10);
 
-  const molimReciters = useMemo(() => {
-    return RECITERS.filter(
-      reciter =>
-        reciter.rewayat.some(r => r.style.toLowerCase() === 'molim') &&
-        !featuredReciters.some(f => f.id === reciter.id) &&
-        !newReciters.some(n => n.id === reciter.id) &&
-        !otherRewayatReciters.some(o => o.id === reciter.id) &&
-        !mojawwadReciters.some(m => m.id === reciter.id),
-    ).slice(0, 10);
-  }, [featuredReciters, newReciters, otherRewayatReciters, mojawwadReciters]);
+      const molim = RECITERS.filter(
+        reciter =>
+          reciter.rewayat.some(r => r.style.toLowerCase() === 'molim') &&
+          !featuredRecitersRef.current.some(f => f.id === reciter.id) &&
+          !newRecitersRef.current.some(n => n.id === reciter.id) &&
+          !others.some(o => o.id === reciter.id) &&
+          !mojawwad.some(m => m.id === reciter.id),
+      ).slice(0, 10);
+
+      return {
+        otherRewayatReciters: others,
+        mojawwadReciters: mojawwad,
+        molimReciters: molim,
+      };
+    }, []); // Empty dependency array since we're using refs
 
   const styles = StyleSheet.create({
     container: {
@@ -269,68 +310,83 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
     },
   });
 
-  const renderSection = (
-    title: string,
-    data: SectionItem[],
-    variant: 'recent' | 'circular' | 'default' = 'default',
-  ) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+  // Memoize the renderSection function
+  const renderSection = useCallback(
+    (
+      title: string,
+      data: SectionItem[],
+      variant: 'recent' | 'circular' | 'default' = 'default',
+    ) => (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        <FlatList
+          data={data}
+          renderItem={({item}) => (
+            <RenderSectionItem
+              item={item}
+              variant={variant}
+              onReciterPress={onReciterPress}
+            />
+          )}
+          keyExtractor={(item: SectionItem) =>
+            'timestamp' in item
+              ? `${item.reciter.id}-${item.timestamp}`
+              : item.id
+          }
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: moderateScale(15),
+            paddingVertical: verticalScale(8),
+          }}
+          snapToInterval={
+            variant === 'circular'
+              ? moderateScale(100)
+              : variant === 'recent'
+                ? moderateScale(200)
+                : moderateScale(180)
+          }
+          decelerationRate="fast"
+          snapToAlignment="start"
+          ItemSeparatorComponent={ItemSeparator}
+        />
       </View>
-      <FlatList
-        data={data}
-        renderItem={({item}) => (
-          <RenderSectionItem
-            item={item}
-            variant={variant}
-            onReciterPress={onReciterPress}
-          />
-        )}
-        keyExtractor={(item: SectionItem) =>
-          'timestamp' in item ? `${item.reciter.id}-${item.timestamp}` : item.id
-        }
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: moderateScale(15),
-          paddingVertical: verticalScale(8),
-        }}
-        snapToInterval={
-          variant === 'circular'
-            ? moderateScale(100)
-            : variant === 'recent'
-              ? moderateScale(200)
-              : moderateScale(180)
-        }
-        decelerationRate="fast"
-        snapToAlignment="start"
-        ItemSeparatorComponent={ItemSeparator}
-      />
-    </View>
+    ),
+    [onReciterPress, styles.section, styles.sectionHeader, styles.sectionTitle],
   );
 
-  const featuredReciter = useMemo(() => getFeaturedReciterOfTheDay(), []);
+  // Don't render anything until initialization is complete
+  if (!isInitialized) {
+    return null;
+  }
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{paddingVertical: verticalScale(20)}}
       showsVerticalScrollIndicator={false}>
-      <HeroSection reciter={featuredReciter} onPress={onReciterPress} />
-      {recentReciters.length > 0 &&
-        renderSection('Recently Played', recentReciters, 'recent')}
-      {randomFavoriteReciters.length > 0 &&
-        renderSection('Your Favorites', randomFavoriteReciters, 'circular')}
-      {renderSection('Featured', featuredReciters)}
-      {renderSection('New', newReciters)}
+      <HeroSection
+        reciters={featuredRecitersRef.current}
+        onPress={onReciterPress}
+      />
+      {recentTracks.length > 0 &&
+        renderSection('Continue Listening', recentTracks, 'recent')}
+      {favoriteRecitersRef.current.length > 0 &&
+        renderSection(
+          'Your Favorites',
+          favoriteRecitersRef.current,
+          'circular',
+        )}
+      {renderSection('New', newRecitersRef.current)}
       {otherRewayatReciters.length > 0 &&
         renderSection('Other Rewayat', otherRewayatReciters)}
       {mojawwadReciters.length > 0 &&
         renderSection('Mojawwad', mojawwadReciters)}
       {molimReciters.length > 0 && renderSection("Mo'lim", molimReciters)}
-      {collectionReciters.length > 0 &&
-        renderSection('From your Collection', collectionReciters)}
+      {collectionRecitersRef.current.length > 0 &&
+        renderSection('From your Collection', collectionRecitersRef.current)}
     </ScrollView>
   );
 }

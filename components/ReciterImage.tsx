@@ -19,7 +19,6 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
       () =>
         StyleSheet.create({
           container: {
-            borderRadius: moderateScale(20),
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.card,
             justifyContent: 'center',

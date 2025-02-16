@@ -52,9 +52,14 @@ export function searchSurahs(query: string): Surah[] {
 // Reciter-related functions
 export async function getAllReciters(): Promise<Reciter[]> {
   const storedReciters = await getStoredData<Reciter[]>(RECITERS_KEY);
-  if (storedReciters) return storedReciters;
-  setStoredData(RECITERS_KEY, RECITERS);
-  return RECITERS;
+
+  // If stored count doesn't match RECITERS count, update storage
+  if (!storedReciters || storedReciters.length !== RECITERS.length) {
+    await setStoredData(RECITERS_KEY, RECITERS);
+    return RECITERS;
+  }
+
+  return storedReciters;
 }
 
 export async function getReciterById(id: string): Promise<Reciter | undefined> {
@@ -189,14 +194,8 @@ export async function searchReciters(query: string): Promise<Reciter[]> {
   const reciters = await getAllReciters();
   const normalizedQuery = query.toLowerCase();
 
-  return reciters.filter(
-    reciter =>
-      reciter.name.toLowerCase().includes(normalizedQuery) ||
-      reciter.rewayat.some(
-        r =>
-          r.name.toLowerCase().includes(normalizedQuery) ||
-          r.style.toLowerCase().includes(normalizedQuery),
-      ),
+  return reciters.filter(reciter =>
+    reciter.name.toLowerCase().includes(normalizedQuery),
   );
 }
 

@@ -26,21 +26,24 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {usePlayerStore} from '@/store/playerStore';
 import {ReciterImage} from '@/components/ReciterImage';
-import {usePlayback} from '@/hooks/usePlayback';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Dimensions} from 'react-native';
 import {ReciterProfileActionButtons} from '@/components/ReciterProfileActionButtons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {StatusBar} from 'expo-status-bar';
-import {useTrackPlayerFavorite} from '@/hooks/usePlayerFavorite';
-import {useQueueManagement} from '@/hooks/useQueueManagement';
 import {SurahActionsBottomSheet} from '@/components/modals/SurahActionsBottomSheet';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {reciterImages} from '@/utils/reciterImages';
 import {Asset} from 'expo-asset';
 import {useImageColors} from '@/hooks/useImageColors';
 import {RewayatIcon} from '@/components/Icons';
+import {useLoved} from '@/hooks/useLoved';
+import {useUnifiedPlayer} from '@/services/player/store/playerStore';
+import {createTracksForReciter} from '@/utils/track';
+import {QueueContext} from '@/services/queue/QueueContext';
+import {shuffleArray} from '@/utils/arrayUtils';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 Dimensions.get('window');
 
@@ -72,10 +75,10 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   const [, setIsStatusBarDark] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(showFavorites);
+  const [showLovedOnly, setShowLovedOnly] = useState(showFavorites);
   const scrollViewRef = useRef<ScrollView>(null);
-  const {addToQueue} = usePlayback();
-  const {toggleFavorite} = useTrackPlayerFavorite();
+  const {isLoved, toggleLoved} = useLoved();
+  const {addRecentTrack} = useRecentlyPlayedStore();
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [200, 300],
@@ -103,16 +106,13 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const filteredSurahsMemo = useMemo(() => {
     if (!availableSurahs.length) return [];
 
-    if (!searchQuery && !showFavoritesOnly) {
+    if (!searchQuery && !showLovedOnly) {
       return availableSurahs;
     }
 
-    // Convert favoriteTrackIds to Set for O(1) lookup
-    const favoriteSet = new Set(favoriteTrackIds);
-
     return availableSurahs.filter(surah => {
-      // First check favorites if needed
-      if (showFavoritesOnly && !favoriteSet.has(`${reciterId}:${surah.id}`)) {
+      // First check loved status if needed
+      if (showLovedOnly && !isLoved(reciterId, surah.id.toString())) {
         return false;
       }
 
@@ -130,13 +130,7 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
       return true;
     });
-  }, [
-    availableSurahs,
-    searchQuery,
-    showFavoritesOnly,
-    favoriteTrackIds,
-    reciterId,
-  ]);
+  }, [availableSurahs, searchQuery, showLovedOnly, isLoved, reciterId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,72 +168,157 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
     setSearchQuery(query);
   };
 
-  const {playAll, playFromSurah} = usePlayback();
-
-  useTrackPlayerFavorite();
-  useQueueManagement();
+  const {updateQueue, play} = useUnifiedPlayer();
+  const queueContext = QueueContext.getInstance();
+  const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
   const handleSurahPress = useCallback(
     async (surah: Surah) => {
-      if (reciter) {
-        // Remove navigation, just play the track
-        await playFromSurah(reciter, surah, surahs);
+      if (!reciter || !selectedRewayat) return;
+      try {
+        // Get the index of the tapped surah in the filtered list
+        const startIndex = filteredSurahs.findIndex(s => s.id === surah.id);
+        if (startIndex === -1) return;
+
+        // Create tracks for all filtered surahs
+        const tracks = await createTracksForReciter(
+          reciter,
+          filteredSurahs,
+          selectedRewayat.id,
+        );
+
+        // Reorder tracks to start from the tapped surah
+        const reorderedTracks = [
+          ...tracks.slice(startIndex), // Tracks from tapped surah to end
+          ...tracks.slice(0, startIndex), // Tracks from beginning to tapped surah
+        ];
+
+        await updateQueue(reorderedTracks, 0);
+        await play();
+
+        // Add to recently played list
+        await addRecentTrack(reciter, surah, 0, 0);
+
+        queueContext.setCurrentReciter(reciter);
+      } catch (error) {
+        console.error('Error playing surah:', error);
       }
     },
-    [reciter, playFromSurah, surahs],
+    [
+      reciter,
+      filteredSurahs,
+      selectedRewayat,
+      updateQueue,
+      play,
+      queueContext,
+      addRecentTrack,
+    ],
   );
 
-  const handlePlayAll = useCallback(() => {
-    if (reciter) {
-      // Remove navigation, just play all
-      playAll(reciter, filteredSurahs);
-    }
-  }, [reciter, filteredSurahs, playAll]);
+  // handlePlaySurahPress can reuse handleSurahPress since they do the same thing
+  const handlePlaySurahPress = handleSurahPress;
 
-  const handleShuffleAll = useCallback(() => {
-    if (reciter) {
-      // Remove navigation, just shuffle and play
-      playAll(reciter, filteredSurahs, true);
-    }
-  }, [reciter, filteredSurahs, playAll]);
+  const handlePlayAll = useCallback(async () => {
+    if (!reciter || !selectedRewayat) return;
+    try {
+      const tracks = await createTracksForReciter(
+        reciter,
+        filteredSurahs,
+        selectedRewayat.id,
+      );
+      await updateQueue(tracks, 0);
+      await play();
 
-  const {toggleFavoriteReciter, isFavoriteReciter} = useFavoriteReciters();
-
-  const handleToggleFavoriteReciter = useCallback(() => {
-    if (reciter) {
-      toggleFavoriteReciter(reciter.id);
-    }
-  }, [reciter, toggleFavoriteReciter]);
-
-  const handlePlaySurahPress = useCallback(
-    async (surah: Surah) => {
-      if (reciter) {
-        await playFromSurah(reciter, surah, surahs);
+      // Add first surah to recently played list
+      if (filteredSurahs.length > 0) {
+        await addRecentTrack(reciter, filteredSurahs[0], 0, 0);
       }
-    },
-    [reciter, playFromSurah, surahs],
-  );
 
-  useEffect(() => {
-    setFilteredSurahs(filteredSurahsMemo);
-  }, [filteredSurahsMemo]);
+      queueContext.setCurrentReciter(reciter);
+    } catch (error) {
+      console.error('Error playing all surahs:', error);
+    }
+  }, [
+    reciter,
+    filteredSurahs,
+    selectedRewayat,
+    updateQueue,
+    play,
+    queueContext,
+    addRecentTrack,
+  ]);
+
+  const handleShuffleAll = useCallback(async () => {
+    if (!reciter || !selectedRewayat) return;
+    try {
+      const tracks = await createTracksForReciter(
+        reciter,
+        filteredSurahs,
+        selectedRewayat.id,
+      );
+      const shuffledTracks = shuffleArray([...tracks]);
+      await updateQueue(shuffledTracks, 0);
+      await play();
+
+      // Add first shuffled track's surah to recently played list
+      if (filteredSurahs.length > 0) {
+        const firstTrackSurahId = shuffledTracks[0].surahId;
+        if (firstTrackSurahId) {
+          const firstSurah = filteredSurahs.find(
+            s => s.id === parseInt(firstTrackSurahId, 10),
+          );
+          if (firstSurah) {
+            await addRecentTrack(reciter, firstSurah, 0, 0);
+          }
+        }
+      }
+
+      queueContext.setCurrentReciter(reciter);
+    } catch (error) {
+      console.error('Error shuffling surahs:', error);
+    }
+  }, [
+    reciter,
+    filteredSurahs,
+    selectedRewayat,
+    updateQueue,
+    play,
+    queueContext,
+    addRecentTrack,
+  ]);
+
+  const handleToggleFavorite = useCallback(() => {
+    if (reciter) {
+      toggleFavorite(reciter);
+    }
+  }, [reciter, toggleFavorite]);
 
   const handleAddToQueue = useCallback(
     async (surah: Surah) => {
-      if (reciter) {
-        await addToQueue(reciter, surah);
+      if (!reciter || !selectedRewayat) return;
+      try {
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          selectedRewayat.id,
+        );
+        await updateQueue(tracks, 0);
+        await play();
+        queueContext.setCurrentReciter(reciter);
+      } catch (error) {
+        console.error('Error adding to queue:', error);
       }
     },
-    [reciter, addToQueue],
+    [reciter, selectedRewayat, updateQueue, play, queueContext],
   );
 
   const handleToggleLove = useCallback(
     (surah: Surah) => {
       if (reciter) {
-        toggleFavorite(reciter.id, surah.id.toString());
+        toggleLoved(reciter.id, surah.id.toString());
       }
     },
-    [reciter, toggleFavorite],
+    [reciter, toggleLoved],
   );
 
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -325,6 +404,10 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
     );
   };
 
+  useEffect(() => {
+    setFilteredSurahs(filteredSurahsMemo);
+  }, [filteredSurahsMemo]);
+
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -347,6 +430,7 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
       />
       <Animated.FlatList
         bounces={false}
+        showsVerticalScrollIndicator={false}
         data={filteredSurahs}
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
@@ -378,7 +462,7 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
             </LinearGradient>
             <View style={styles.contentContainer}>
               <ReciterProfileActionButtons
-                onFavoritePress={handleToggleFavoriteReciter}
+                onFavoritePress={handleToggleFavorite}
                 onShufflePress={handleShuffleAll}
                 onPlayPress={handlePlayAll}
                 isFavoriteReciter={
@@ -397,16 +481,14 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
               <View style={styles.toggleContainer}>
                 <Text style={styles.toggleLabel}>Show Loved Only</Text>
                 <Switch
-                  value={showFavoritesOnly}
-                  onValueChange={setShowFavoritesOnly}
+                  value={showLovedOnly}
+                  onValueChange={setShowLovedOnly}
                   trackColor={{
                     false: theme.colors.border,
                     true: theme.colors.primary,
                   }}
                   thumbColor={
-                    showFavoritesOnly
-                      ? theme.colors.background
-                      : theme.colors.text
+                    showLovedOnly ? theme.colors.background : theme.colors.text
                   }
                 />
               </View>
@@ -556,6 +638,7 @@ const createStyles = (theme: Theme) =>
     },
     listContentContainer: {
       paddingTop: moderateScale(10),
+      paddingBottom: moderateScale(80),
     },
     emptyText: {
       fontSize: moderateScale(16),

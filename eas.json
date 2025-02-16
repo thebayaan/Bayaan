@@ -1,63 +1,42 @@
 {
   "cli": {
-    "version": ">= 12.3.0",
-    "appVersionSource": "remote"
+    "version": ">= 5.9.1"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": true,
-        "resourceClass": "m-medium",
-        "image": "latest"
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-dev.bayaan.app"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "buildConfiguration": "Release",
-        "image": "latest"
+        "simulator": false,
+        "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.example.com"
-      },
-      "channel": "preview"
+        "EXPO_PUBLIC_API_URL": "https://api-staging.bayaan.app"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "android": {
-        "buildType": "app-bundle",
-        "gradleCommand": ":app:bundleRelease"
-      },
-      "ios": {
-        "resourceClass": "m-medium",
-        "buildConfiguration": "Release",
-        "credentialsSource": "remote",
-        "image": "latest"
-      },
-      "channel": "production"
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.bayaan.app"
+      }
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "ozmame2@gmail.com",
-        "ascAppId": "6648769980",
-        "appleTeamId": "S4W5Q2L53W"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./path-to-your-service-account.json",
-        "track": "production"
-      }
-    },
-    "preview": {
-      "ios": {
-        "appleId": "ozmame2@gmail.com",
-        "ascAppId": "6648769980",
-        "appleTeamId": "S4W5Q2L53W"
-      }
-    }
+    "production": {}
   }
 }

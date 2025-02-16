@@ -1,0 +1,142 @@
+import {create} from 'zustand';
+import {persist, createJSONStorage} from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {Track} from '@/types/audio';
+
+const STORAGE_KEY = 'loved-tracks-store';
+
+interface LovedTrack {
+  reciterId: string;
+  surahId: string;
+  timestamp: number;
+}
+
+interface LovedTracksState {
+  // State
+  tracks: LovedTrack[];
+  loading: boolean;
+  error: Error | null;
+  syncStatus: 'idle' | 'syncing' | 'error';
+  lastSynced: number | null;
+
+  // Actions
+  toggleLoved: (reciterId: string, surahId: string) => void;
+  isLoved: (reciterId: string, surahId: string) => boolean;
+  getLovedTracks: () => LovedTrack[];
+  clearLoved: () => void;
+  
+  // Future sync methods
+  sync: () => Promise<void>;
+  setSyncStatus: (status: 'idle' | 'syncing' | 'error') => void;
+  setError: (error: Error | null) => void;
+}
+
+export const useLovedStore = create<LovedTracksState>()(
+  persist(
+    (set, get) => ({
+      // Initial state
+      tracks: [],
+      loading: false,
+      error: null,
+      syncStatus: 'idle',
+      lastSynced: null,
+
+      // Core actions
+      toggleLoved: (reciterId: string, surahId: string) => {
+        set(state => {
+          const trackKey = `${reciterId}:${surahId}`;
+          const existingIndex = state.tracks.findIndex(
+            t => `${t.reciterId}:${t.surahId}` === trackKey,
+          );
+
+          let newTracks: LovedTrack[];
+          if (existingIndex >= 0) {
+            // Remove if exists
+            newTracks = state.tracks.filter((_, i) => i !== existingIndex);
+          } else {
+            // Add if doesn't exist
+            newTracks = [
+              ...state.tracks,
+              {reciterId, surahId, timestamp: Date.now()},
+            ];
+          }
+
+          return {tracks: newTracks};
+        });
+      },
+
+      isLoved: (reciterId: string, surahId: string) => {
+        const {tracks} = get();
+        return tracks.some(
+          t => t.reciterId === reciterId && t.surahId === surahId,
+        );
+      },
+
+      getLovedTracks: () => get().tracks,
+
+      clearLoved: () => {
+        set({tracks: []});
+      },
+
+      // Future sync methods (placeholders for now)
+      sync: async () => {
+        const state = get();
+        if (state.syncStatus === 'syncing') return;
+
+        try {
+          set({syncStatus: 'syncing'});
+          // TODO: Implement sync with backend
+          set({
+            syncStatus: 'idle',
+            lastSynced: Date.now(),
+            error: null,
+          });
+        } catch (error) {
+          set({
+            syncStatus: 'error',
+            error: error instanceof Error ? error : new Error('Sync failed'),
+          });
+        }
+      },
+
+      setSyncStatus: (status: 'idle' | 'syncing' | 'error') => {
+        set({syncStatus: status});
+      },
+
+      setError: (error: Error | null) => {
+        set({error});
+      },
+    }),
+    {
+      name: STORAGE_KEY,
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: state => ({
+        tracks: state.tracks,
+        lastSynced: state.lastSynced,
+      }),
+    },
+  ),
+);
+
+// Hook for easy access to loved track functionality
+export const useLoved = () => {
+  const store = useLovedStore();
+  return {
+    // State
+    lovedTracks: store.tracks,
+    loading: store.loading,
+    error: store.error,
+    syncStatus: store.syncStatus,
+    lastSynced: store.lastSynced,
+
+    // Actions
+    toggleLoved: store.toggleLoved,
+    isLoved: store.isLoved,
+    getLovedTracks: store.getLovedTracks,
+    clearLoved: store.clearLoved,
+    sync: store.sync,
+  };
+};
+
+// Export singleton instance
+export const lovedStore = useLovedStore; 

@@ -27,6 +27,7 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
       height: moderateScale(120),
       marginBottom: verticalScale(5),
       overflow: 'hidden',
+      borderRadius: moderateScale(15),
     },
     name: {
       fontSize: moderateScale(14),

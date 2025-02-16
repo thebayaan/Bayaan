@@ -85,6 +85,8 @@ export default function FavoriteRecitersScreen() {
       <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
       <ScrollView
         ref={scrollViewRef}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {
@@ -102,11 +104,18 @@ export default function FavoriteRecitersScreen() {
           }
           style={[
             styles.gradientContainer,
-            {paddingTop: insets.top + moderateScale(20)},
+            {
+              paddingTop: insets.top + moderateScale(20),
+              backgroundColor: theme.colors.primary,
+            },
           ]}>
           <CollectionCard
             icon={
-              <StarIcon color={theme.colors.text} size={moderateScale(80)} />
+              <StarIcon
+                color={theme.colors.text}
+                size={moderateScale(80)}
+                filled={true}
+              />
             }
             title="Favorite Reciters"
             subtitle={`${favoriteReciters.length} reciters`}
@@ -139,9 +148,12 @@ export default function FavoriteRecitersScreen() {
                 ...filteredReciters,
               ] as ReciterListItem[]
             }
+            showsVerticalScrollIndicator={false}
             renderItem={({item}: {item: ReciterListItem}) => (
               <CircularReciterCard
-                imageUrl={'image_url' in item ? item.image_url : undefined}
+                imageUrl={
+                  'image_url' in item ? item.image_url || undefined : undefined
+                }
                 name={item.name}
                 onPress={() =>
                   'type' in item && item.type === 'add'
@@ -157,7 +169,10 @@ export default function FavoriteRecitersScreen() {
             keyExtractor={item => item.id}
             numColumns={3}
             contentContainerStyle={[styles.gridContainer, {paddingBottom: 65}]}
-            columnWrapperStyle={styles.columnWrapper}
+            columnWrapperStyle={[
+              styles.columnWrapper,
+              {justifyContent: 'flex-start'},
+            ]}
             ListEmptyComponent={
               <Text style={styles.emptyText}>No favorite reciters yet</Text>
             }

@@ -1,27 +1,53 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import {useAuthStore} from '@/store/authStore';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import TrackPlayer, {Event} from 'react-native-track-player';
-import {playbackService} from '@/services/playbackService';
-import {usePlayerStore} from '@/store/playerStore';
-import {setupTrackPlayer} from '@/utils/trackPlayerSetup';
+import TrackPlayer from 'react-native-track-player';
+import playbackService from '@/services/player/events/playbackService';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {setupTrackPlayer} from '@/services/player/utils/setup';
+import {restorePlayerState} from '@/services/player/utils/stateRecovery';
+import {setupEventBridge} from '@/services/player/events/bridge';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {View, Text} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayerBottomSheet} from '@/components/player/PlayerBottomSheet';
+import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
+import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from 'react-native-reanimated';
+
+// Configure Reanimated logger
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
+
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* reloading the app might trigger some race conditions, ignore them */
+});
 
 // Register playback service
 TrackPlayer.registerPlaybackService(() => playbackService);
 
+// Track initialization attempts to prevent loops
+let initializationAttempts = 0;
+const MAX_INITIALIZATION_ATTEMPTS = 2;
+
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
   const {session, isLoading, initializeAuth, isInitialized} = useAuthStore();
+  const store = usePlayerStore();
+  const initializationRef = useRef(false);
 
   useTheme();
 
@@ -39,23 +65,110 @@ export default function RootLayout() {
     'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
     'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
     'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
+    Uthmani: require('@/assets/fonts/Uthmani.otf'),
   });
+
+  const onLayoutRootView = useCallback(async () => {
+    try {
+      if (
+        appIsReady &&
+        fontsLoaded &&
+        isPlayerReady &&
+        isInitialized &&
+        !isLoading
+      ) {
+        // Only hide the splash screen after everything is ready
+        await SplashScreen.hideAsync();
+      }
+    } catch (e) {
+      console.warn('Error hiding splash screen:', e);
+    }
+  }, [appIsReady, fontsLoaded, isPlayerReady, isInitialized, isLoading]);
 
   // Initialize app
   useEffect(() => {
+    if (initializationRef.current) {
+      return;
+    }
+
     async function prepare() {
       try {
+        // Prevent multiple initialization attempts
+        if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS) {
+          console.error('[App] Max initialization attempts reached');
+          setSetupError(new Error('Max initialization attempts reached'));
+          return;
+        }
+        initializationAttempts++;
+
+        console.log(
+          '[App] Starting initialization attempt:',
+          initializationAttempts,
+        );
+
+        // Initialize auth first
+        console.log('[App] Initializing auth...');
         await initializeAuth();
-        await setupTrackPlayer();
+        console.log('[App] Auth initialized');
+
+        // Setup player with error handling
+        console.log('[App] Setting up player...');
+        const setupStatus = await setupTrackPlayer();
+        console.log('[App] Player setup status:', setupStatus);
+
+        if (!setupStatus.isInitialized) {
+          if (setupStatus.error) {
+            console.error('[App] Player setup error:', setupStatus.error);
+            store.setError('system', setupStatus.error);
+            setSetupError(setupStatus.error);
+          }
+          return;
+        }
+
+        console.log('[App] Player setup complete');
+
+        // Restore player state
+        console.log('[App] Restoring player state...');
+        await restorePlayerState();
+        console.log('[App] Player state restored');
+
         setIsPlayerReady(true);
         setAppIsReady(true);
+        initializationRef.current = true;
+        console.log('[App] Initialization complete');
       } catch (error) {
-        console.error('Preparation error:', error);
+        console.error('[App] Preparation error:', error);
+        setSetupError(
+          error instanceof Error ? error : new Error('Setup failed'),
+        );
+        store.setError(
+          'system',
+          error instanceof Error ? error : new Error('Setup failed'),
+        );
       }
     }
 
     prepare();
-  }, [initializeAuth]);
+  }, [initializeAuth, store]);
+
+  // Setup event listeners
+  useEffect(() => {
+    if (!isPlayerReady) {
+      return;
+    }
+
+    const handleSetupError = (error: Error) => {
+      console.error('[App] Player setup error:', error);
+      setSetupError(error);
+      store.setError('system', error);
+    };
+
+    setupEventBridge.on('setupError', handleSetupError);
+
+    return () => {
+      setupEventBridge.off('setupError', handleSetupError);
+    };
+  }, [isPlayerReady, store]);
 
   // Handle navigation after initialization
   useEffect(() => {
@@ -70,16 +183,8 @@ export default function RootLayout() {
       return;
     }
 
-    const handleNavigation = async () => {
-      try {
-        const route = session ? '/(tabs)/(home)' : '/(auth)/welcome';
-        router.replace(route);
-      } catch (error) {
-        console.error('Navigation error:', error);
-      }
-    };
-
-    handleNavigation();
+    const route = session ? '/(tabs)/(home)' : '/(auth)/welcome';
+    router.replace(route);
   }, [
     appIsReady,
     fontsLoaded,
@@ -91,28 +196,20 @@ export default function RootLayout() {
     router,
   ]);
 
-  // Setup TrackPlayer event listeners
-  useEffect(() => {
-    if (!isPlayerReady) return;
-
-    const listeners = [
-      TrackPlayer.addEventListener(Event.PlaybackTrackChanged, async () => {
-        await usePlayerStore.getState().updateCurrentTrack();
-      }),
-      TrackPlayer.addEventListener(Event.PlaybackError, error => {
-        console.error('Playback error:', error);
-      }),
-    ];
-
-    return () => {
-      listeners.forEach(listener => listener.remove());
-    };
-  }, [isPlayerReady]);
-
   if (fontError) {
+    SplashScreen.hideAsync();
     return (
       <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
         <Text>Error loading fonts</Text>
+      </View>
+    );
+  }
+
+  if (setupError) {
+    SplashScreen.hideAsync();
+    return (
+      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+        <Text>Error initializing player: {setupError.message}</Text>
       </View>
     );
   }
@@ -124,13 +221,13 @@ export default function RootLayout() {
     !isInitialized ||
     isLoading
   ) {
-    return <LoadingIndicator />;
+    return null;
   }
 
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <GestureHandlerRootView style={{flex: 1}}>
+        <GestureHandlerRootView style={{flex: 1}} onLayout={onLayoutRootView}>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -157,7 +254,8 @@ export default function RootLayout() {
               }}
             />
           </Stack>
-          <PlayerBottomSheet />
+          <PlayerSheet />
+          <FloatingPlayer />
         </GestureHandlerRootView>
       </SafeAreaProvider>
     </ErrorBoundary>

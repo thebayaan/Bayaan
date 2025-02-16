@@ -2,26 +2,30 @@
   "expo": {
     "name": "Bayaan",
     "slug": "Bayaan",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "bayaan",
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
-    "icon": "./assets/app-icon/icon.png",
+    "icon": "./assets/images/icon.png",
     "splash": {
-      "android": {
-        "image": "./assets/splash_background_light.png",
-        "resizeMode": "cover",
-        "backgroundColor": "#ffffff",
-        "dark": {
-          "image": "./assets/splash_background_dark.png",
-          "backgroundColor": "#000000"
-        }
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f4f4f4",
+      "imageResizeMode": "contain",
+      "dark": {
+        "image": "./assets/images/splash-icon-dark.png",
+        "backgroundColor": "#1c1a1e"
       }
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bayaan.app",
+      "icon": {
+        "dark": "./assets/images/ios-dark.png",
+        "light": "./assets/images/ios-light.png",
+        "tinted": "./assets/images/ios-tinted.png"
+      },
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses the microphone to play audio.",
         "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio.",
@@ -32,7 +36,7 @@
     "android": {
       "package": "com.bayaan.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/app-icon/icon.png",
+        "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#8dc9d6"
       },
       "permissions": [
@@ -44,7 +48,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router"

@@ -18,7 +18,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {usePlayback} from '@/hooks/usePlayback';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 5;
@@ -35,7 +34,7 @@ export default function SearchScreen() {
   const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
 
   const searchSuggestions = useMemo(
-    () => ['الرحمن', 'Ar-Rahman', 'The Merciful', '55', 'Mishari'],
+    () => ['الرحمن', 'Ar-Rahman', 'The Merciful', '55', 'Mishari', 'Alsudais'],
     [],
   );
 
@@ -43,7 +42,6 @@ export default function SearchScreen() {
   const styles = createStyles(theme);
 
   const {askEveryTime, defaultReciterSelection} = useSettings();
-  const {playTrack} = usePlayback();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
 
   useEffect(() => {
@@ -55,10 +53,10 @@ export default function SearchScreen() {
 
       setReciterFuse(
         new Fuse(reciterData, {
-          keys: ['name', 'rewayat.name', 'rewayat.style'],
-          threshold: 0.4,
+          keys: ['name'],
+          threshold: 0.3,
           distance: 100,
-          minMatchCharLength: 1,
+          minMatchCharLength: 2,
           useExtendedSearch: true,
         }),
       );
@@ -155,7 +153,6 @@ export default function SearchScreen() {
             break;
           case 'useDefault':
             if (defaultReciter) {
-              playTrack(defaultReciter, surah.id);
               router.push({
                 pathname: '/player',
                 params: {reciterImageUrl: defaultReciter.image_url},
@@ -186,7 +183,6 @@ export default function SearchScreen() {
       askEveryTime,
       defaultReciterSelection,
       defaultReciter,
-      playTrack,
       query,
       addToRecentSearches,
     ],
@@ -283,7 +279,7 @@ export default function SearchScreen() {
       </View>
       <View style={styles.contentContainer}>
         {query.length === 0 ? (
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.emptyContainer}>
               <View style={styles.suggestionsContainer}>
                 <FlatList
@@ -299,6 +295,7 @@ export default function SearchScreen() {
                   renderItem={renderSuggestionRow}
                   keyExtractor={(_, index) => `row-${index}`}
                   scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
                 />
               </View>
               {recentSearches.length > 0 && (
@@ -318,6 +315,7 @@ export default function SearchScreen() {
                     renderItem={renderSearchItem}
                     keyExtractor={item => item}
                     scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
                   />
                 </View>
               )}
@@ -326,6 +324,7 @@ export default function SearchScreen() {
         ) : (
           <ScrollView
             style={styles.resultsContainer}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={{paddingBottom: 70}}>
             {filteredSurahs.length > 0 && (
               <View>

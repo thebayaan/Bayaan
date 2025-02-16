@@ -13,9 +13,12 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
 import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
-import {usePlayback} from '@/hooks/usePlayback';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {createTracksForReciter} from '@/utils/track';
+import {QueueContext} from '@/services/queue/QueueContext';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 interface ReciterBrowseProps {
   initialView?: string;
@@ -30,6 +33,9 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
   const {isFavoriteReciter} = useFavoriteReciters();
   const insets = useSafeAreaInsets();
   const [_surahName, setSurahName] = useState<string>('');
+  const {updateQueue, play} = useUnifiedPlayer();
+  const queueContext = QueueContext.getInstance();
+  const {addRecentTrack} = useRecentlyPlayedStore();
 
   const filteredReciters = useMemo(() => {
     let filtered = RECITERS;
@@ -88,8 +94,6 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
     setActiveView(view);
   }, []);
 
-  const {playTrack} = usePlayback();
-
   const handleReciterSelect = useCallback(
     async (reciter: Reciter) => {
       if (!surahId) {
@@ -107,10 +111,33 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         return;
       }
 
-      playTrack(reciter, surahNumber);
-      router.back();
+      try {
+        const surah = await getSurahById(surahNumber);
+        if (!surah) return;
+
+        // Create track for the selected surah
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          reciter.rewayat[0]?.id,
+        );
+
+        // Update queue and start playing
+        await updateQueue(tracks, 0);
+        await play();
+
+        // Add to recently played list
+        await addRecentTrack(reciter, surah, 0, 0);
+
+        // Set current reciter for batch loading
+        queueContext.setCurrentReciter(reciter);
+
+        router.back();
+      } catch (error) {
+        console.error('Error playing surah:', error);
+      }
     },
-    [surahId, playTrack, router],
+    [surahId, updateQueue, play, queueContext, router, addRecentTrack],
   );
 
   return (

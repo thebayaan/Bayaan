@@ -21,14 +21,6 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
     container: {
       flexDirection: 'row',
       backgroundColor: theme.colors.background,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: -1,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 5,
       paddingBottom: insets.bottom,
     },
     content: {

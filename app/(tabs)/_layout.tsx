@@ -4,7 +4,7 @@ import React from 'react';
 import {Tabs} from 'expo-router';
 import BottomTabBar from '@/components/BottomTabBar';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
-import {FloatingPlayer} from '@/components/FloatingPlayer';
+// import {FloatingPlayer} from '@/components/FloatingPlayer';
 import {StatusBar} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 const tabBarComponent = (props: BottomTabBarProps) => (
@@ -27,7 +27,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="(search)" options={{title: 'Search'}} />
         <Tabs.Screen name="(collection)" options={{title: 'Your Collection'}} />
       </Tabs>
-      <FloatingPlayer />
+      {/* <FloatingPlayer /> */}
     </>
   );
 }

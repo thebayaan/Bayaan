@@ -7,15 +7,26 @@ import {useRouter} from 'expo-router';
 import {Icon} from '@rneui/themed';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
 import {HeartIcon, StarIcon} from '@/components/Icons';
-import {usePlayerStore} from '@/store/playerStore';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {TrackItem} from '@/components/TrackItem';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {Theme} from '@/utils/themeUtils';
-import {usePlayback} from '@/hooks/usePlayback';
 import {Reciter} from '@/data/reciterData';
+import {useLoved} from '@/hooks/useLoved';
+import type {IconProps} from '@/components/Icons';
+import {getReciterById, getSurahById} from '@/services/dataService';
+import {useUnifiedPlayer} from '@/services/player/store/playerStore';
+import {createTracksForReciter} from '@/utils/track';
+import {QueueContext} from '@/services/queue/QueueContext';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
-const collectionItems = [
+interface CollectionItem {
+  id: string;
+  title: string;
+  icon: React.FC<IconProps>;
+}
+
+const collectionItems: CollectionItem[] = [
   {id: 'loved', title: 'Loved Surahs', icon: HeartIcon},
   {id: 'favorite-reciters', title: 'Favorite Reciters', icon: StarIcon},
   // {id: 'playlists', title: 'Playlists', icon: PlaylistIcon},
@@ -28,33 +39,27 @@ export default function CollectionScreen() {
   const previewStyles = createPreviewStyles(theme);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {favoriteTrackIds} = usePlayerStore();
+  const {lovedTracks} = useLoved();
   const {favoriteReciters} = useFavoriteReciters();
-  const {playLovedTrack} = usePlayback();
+  const {updateQueue, play} = useUnifiedPlayer();
+  const queueContext = QueueContext.getInstance();
+  const {addRecentTrack} = useRecentlyPlayedStore();
 
   // Get first 3 items for preview
-  const previewLoved = favoriteTrackIds.slice(0, 3);
+  const previewLoved = lovedTracks.slice(0, 3);
   const previewReciters = favoriteReciters.slice(0, 3);
 
-  const renderCollectionItem = ({
-    item,
-  }: {
-    item: {
-      id: string;
-      icon: React.FC<{color: string; size: number}>;
-      title: string;
-    };
-  }) => {
+  const renderCollectionItem = ({item}: {item: CollectionItem}) => {
     const renderPreviewItems = () => {
-      if (item.id === 'loved' && favoriteTrackIds.length > 0) {
+      if (item.id === 'loved' && lovedTracks.length > 0) {
         return (
           <View style={previewStyles.previewContainer}>
-            {previewLoved.map(trackId => (
+            {previewLoved.map(track => (
               <TrackItem
-                key={trackId}
-                reciterId={trackId.split(':')[0]}
-                surahId={trackId.split(':')[1]}
-                onPress={() => handleLovedTrackPress(trackId)}
+                key={`${track.reciterId}:${track.surahId}`}
+                reciterId={track.reciterId}
+                surahId={track.surahId}
+                onPress={() => handleLovedTrackPress(track)}
               />
             ))}
           </View>
@@ -71,7 +76,7 @@ export default function CollectionScreen() {
             {previewReciters.map(reciter => (
               <CircularReciterCard
                 key={reciter.id}
-                imageUrl={reciter.image_url}
+                imageUrl={reciter.image_url || undefined}
                 name={reciter.name}
                 onPress={() => handleReciterPress(reciter)}
                 size="small"
@@ -91,15 +96,16 @@ export default function CollectionScreen() {
           style={styles.listItem}
           onPress={() => router.push(`/collection/${item.id}`)}>
           <item.icon
-            color={theme.colors.textSecondary}
+            color={theme.colors.text}
             size={moderateScale(35)}
+            filled={true}
           />
           <Text style={styles.listItemText}>{item.title}</Text>
           <Icon
             name="chevron-right"
             type="feather"
             size={moderateScale(30)}
-            color={theme.colors.textSecondary}
+            color={theme.colors.text}
           />
         </TouchableOpacity>
         {renderPreviewItems()}
@@ -107,9 +113,36 @@ export default function CollectionScreen() {
     );
   };
 
-  const handleLovedTrackPress = async (trackId: string) => {
+  const handleLovedTrackPress = async (track: {
+    reciterId: string;
+    surahId: string;
+  }) => {
     try {
-      playLovedTrack(trackId, favoriteTrackIds);
+      const [reciter, surah] = await Promise.all([
+        getReciterById(track.reciterId),
+        getSurahById(parseInt(track.surahId, 10)),
+      ]);
+
+      if (!reciter || !surah) {
+        throw new Error('Reciter or surah not found');
+      }
+
+      // Create track for the selected surah
+      const tracks = await createTracksForReciter(
+        reciter,
+        [surah],
+        reciter.rewayat[0]?.id,
+      );
+
+      // Update queue and start playing
+      await updateQueue(tracks, 0);
+      await play();
+
+      // Add to recently played list
+      await addRecentTrack(reciter, surah, 0, 0);
+
+      // Set current reciter for batch loading
+      queueContext.setCurrentReciter(reciter);
     } catch (error) {
       console.error('Error playing loved track:', error);
     }
@@ -172,8 +205,6 @@ const createPreviewStyles = (theme: Theme) =>
       marginVertical: moderateScale(20),
     },
     previewContainer: {
-      paddingHorizontal: moderateScale(20),
-      paddingVertical: moderateScale(10),
       opacity: 0.8,
       gap: moderateScale(8),
     },
