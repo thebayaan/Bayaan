@@ -3,6 +3,7 @@ import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TrackPlayer, {
   State as TrackPlayerState,
+  RepeatMode,
 } from 'react-native-track-player';
 import {Track} from '@/types/audio';
 import {
@@ -396,13 +397,28 @@ export const usePlayerStore = create<PlayerStoreState>()(
         }
       },
 
-      setRepeatMode: (mode: PlaybackSettings['repeatMode']) => {
-        set(state => ({
-          settings: {
-            ...state.settings,
-            repeatMode: mode,
-          },
-        }));
+      setRepeatMode: async (mode: PlaybackSettings['repeatMode']) => {
+        try {
+          // Map our repeat mode to TrackPlayer's repeat mode
+          const trackPlayerMode = {
+            none: RepeatMode.Off,
+            queue: RepeatMode.Queue,
+            track: RepeatMode.Track,
+          }[mode];
+
+          // Update TrackPlayer's repeat mode
+          await TrackPlayer.setRepeatMode(trackPlayerMode);
+
+          // Update store state
+          set(state => ({
+            settings: {
+              ...state.settings,
+              repeatMode: mode,
+            },
+          }));
+        } catch (error) {
+          console.error('Error setting repeat mode:', error);
+        }
       },
 
       toggleShuffle: () => {
