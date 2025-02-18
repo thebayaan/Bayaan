@@ -15,8 +15,8 @@ export const setupTrackPlayer = async () => {
     try {
       await TrackPlayer.setupPlayer({
         waitForBuffer: false,
-        minBuffer: 15, // 15 seconds minimum buffer
-        maxBuffer: 50, // 50 seconds maximum buffer
+        minBuffer: 15,
+        maxBuffer: 50,
         autoHandleInterruptions: true,
         iosCategory: IOSCategory.Playback,
         iosCategoryMode: IOSCategoryMode.SpokenAudio,
@@ -57,7 +57,7 @@ export const setupTrackPlayer = async () => {
           Capability.SkipToNext,
           Capability.SkipToPrevious,
         ],
-        progressUpdateEventInterval: 2, // Reduced from 1 to 2 seconds
+        progressUpdateEventInterval: 0.5,
         alwaysPauseOnInterruption: true,
       });
 
