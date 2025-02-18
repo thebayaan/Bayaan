@@ -1,4 +1,4 @@
-import TrackPlayer, {Event, State} from 'react-native-track-player';
+import TrackPlayer, {Event, State, RepeatMode} from 'react-native-track-player';
 import {usePlayerStore} from '../store/playerStore';
 import {useRecentlyPlayedStore} from '../store/recentlyPlayedStore';
 
@@ -20,7 +20,15 @@ useRecentlyPlayedStore.subscribe(newState => {
  */
 async function restorePlayerState() {
   try {
-    const {queue, playback} = store;
+    const {queue, playback, settings} = store;
+
+    // Restore repeat mode
+    const repeatMode = {
+      none: RepeatMode.Off,
+      queue: RepeatMode.Queue,
+      track: RepeatMode.Track,
+    }[settings.repeatMode];
+    await TrackPlayer.setRepeatMode(repeatMode);
 
     console.log('[PlaybackService] Attempting to restore state:', {
       hasQueue: !!queue,
