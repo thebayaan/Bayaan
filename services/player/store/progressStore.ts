@@ -21,7 +21,7 @@ export const useProgressStore = create<ProgressState>(set => ({
   position: 0,
   duration: 0,
   buffered: 0,
-  updateInterval: 250,
+  updateInterval: 100,
   isSeeking: false,
   seekPosition: null,
   setPosition: (position: number) => set({position}),
@@ -60,20 +60,14 @@ export function useProgress() {
 
           const progress = await TrackPlayer.getProgress();
 
-          // Batch updates to reduce re-renders
-          const updates: Partial<ProgressState> = {};
-
-          // Only update if the difference is significant
-          if (Math.abs(progress.position - (seekPosition ?? position)) > 0.5) {
-            updates.position = progress.position;
+          // Only update position if not seeking
+          if (mounted && !isSeeking) {
+            setPosition(progress.position);
           }
 
-          if (progress.buffered !== buffered) {
-            updates.buffered = progress.buffered;
-          }
-
-          if (Object.keys(updates).length > 0) {
-            useProgressStore.setState(updates);
+          // Update buffered only if changed significantly
+          if (Math.abs(progress.buffered - buffered) > 1) {
+            setBuffered(progress.buffered);
           }
         } catch (error) {
           console.error('Error updating progress:', error);
@@ -89,25 +83,18 @@ export function useProgress() {
           data => {
             if (!mounted || isSeeking) return;
 
-            // Batch updates to reduce re-renders
-            const updates: Partial<ProgressState> = {};
-
-            if (data.duration > 0 && data.duration !== duration) {
-              updates.duration = data.duration;
+            // Update duration if changed
+            if (data.duration > 0 && Math.abs(data.duration - duration) > 0.1) {
+              setDuration(data.duration);
             }
 
-            // Only update position if not seeking and difference is significant
-            if (!seekPosition && Math.abs(data.position - position) > 0.5) {
-              updates.position = data.position;
-            }
-
-            if (Object.keys(updates).length > 0) {
-              useProgressStore.setState(updates);
+            // Update position if not seeking and changed significantly
+            if (!seekPosition && Math.abs(data.position - position) > 0.1) {
+              setPosition(data.position);
             }
           },
         );
 
-        // Start progress updates
         startProgressUpdates();
       } catch (error) {
         console.error('Error setting up progress listeners:', error);
@@ -139,6 +126,7 @@ export function useProgress() {
     buffered,
     isSeeking,
     seekPosition,
+    setPosition,
     setIsSeeking,
     setSeekPosition,
   };
