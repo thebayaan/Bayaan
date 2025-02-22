@@ -3,7 +3,7 @@ import {View, StyleSheet, ScrollView, useWindowDimensions} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from '../Modals/BaseModal';
+import {BaseModal} from '@/components/modals/BaseModal';
 import RenderHtml from 'react-native-render-html';
 
 interface ExtendedSummaryModalProps {
@@ -80,11 +80,12 @@ export const ExtendedSummaryModal: React.FC<ExtendedSummaryModalProps> = ({
       snapPoints={['80%']}>
       <ScrollView
         style={styles.scrollView}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        bounces={false}>
         <View style={styles.content}>
           <RenderHtml
             {...renderHtmlDefaultProps}
-            contentWidth={width - moderateScale(40)}
+            contentWidth={width - moderateScale(72)}
             source={source}
             tagsStyles={tagsStyles}
           />
@@ -99,7 +100,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: moderateScale(20),
     paddingBottom: moderateScale(20),
   },
 }); 

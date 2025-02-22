@@ -28,7 +28,6 @@ import SurahSummary from '@/components/player/SurahSummary';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {LinearGradient} from 'expo-linear-gradient';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
-import QueueModal from '@/components/player/QueueModal';
 import {usePlayerColors} from '@/hooks/usePlayerColors';
 
 type SurahInfo = {
@@ -137,10 +136,6 @@ const PlayerScreen = () => {
 
   const handleOpenQueue = () => {
     queueBottomSheetRef.current?.expand();
-  };
-
-  const handleCloseQueue = () => {
-    queueBottomSheetRef.current?.close();
   };
 
   const handleSleepTimerPress = () => {
@@ -290,10 +285,6 @@ const PlayerScreen = () => {
         sleepTimer={sleepTimer}
         remainingTime={remainingTime}
         currentTimer={sleepTimerEnd}
-      />
-      <QueueModal
-        bottomSheetRef={queueBottomSheetRef}
-        onClose={handleCloseQueue}
       />
     </View>
   );

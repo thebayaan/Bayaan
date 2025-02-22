@@ -3,7 +3,7 @@ import {TouchableOpacity, Text, StyleSheet, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from './BaseModal';
+import {BaseModal} from '@/components/modals/BaseModal';
 
 interface SleepTimerModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -33,17 +33,17 @@ export const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
     onTurnOffTimer();
     bottomSheetRef.current?.close();
   };
-
   return (
     <BaseModal
       bottomSheetRef={bottomSheetRef}
-      title={
-        remainingTime
-          ? `Sleep Timer - ${remainingTime} min left`
-          : 'Sleep Timer'
-      }
+      title="Sleep Timer"
       snapPoints={['50%']}>
       <View style={styles.container}>
+        {remainingTime !== null && (
+          <Text style={[styles.remainingTime, {color: theme.colors.text}]}>
+            {Math.ceil(remainingTime / 60)} minutes remaining
+          </Text>
+        )}
         <View style={styles.optionsContainer}>
           {TIMER_OPTIONS.map(minutes => (
             <TouchableOpacity
@@ -51,17 +51,16 @@ export const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
               style={[
                 styles.option,
                 {borderColor: theme.colors.text},
-                typeof sleepTimer === 'number' &&
-                  sleepTimer === minutes && [
-                    styles.selectedOption,
-                    {backgroundColor: theme.colors.text},
-                  ],
+                sleepTimer === minutes && [
+                  styles.selectedTimer,
+                  {backgroundColor: theme.colors.text},
+                ],
               ]}
               onPress={() => handleTimerSelect(minutes)}
               activeOpacity={0.7}>
               <Text
                 style={[
-                  styles.optionText,
+                  styles.timerText,
                   {color: theme.colors.text},
                   typeof sleepTimer === 'number' &&
                     sleepTimer === minutes && {
@@ -91,38 +90,40 @@ export const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
   },
   remainingTime: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(14),
     fontFamily: 'Manrope-Medium',
-    marginBottom: moderateScale(24),
+    textAlign: 'center',
+    marginBottom: moderateScale(16),
   },
   optionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: moderateScale(12),
-    marginBottom: moderateScale(24),
   },
   option: {
     paddingVertical: moderateScale(8),
     paddingHorizontal: moderateScale(16),
     borderRadius: moderateScale(20),
   },
-  selectedOption: {
+  selectedTimer: {
     borderColor: 'transparent',
   },
-  optionText: {
+  timerText: {
     fontSize: moderateScale(16),
     fontFamily: 'Manrope-SemiBold',
   },
   turnOffButton: {
+    marginTop: moderateScale(24),
     paddingVertical: moderateScale(12),
+    paddingHorizontal: moderateScale(24),
+    borderRadius: moderateScale(25),
+    alignSelf: 'center',
   },
   turnOffText: {
     fontSize: moderateScale(16),
     fontFamily: 'Manrope-SemiBold',
-    opacity: 0.7,
   },
 });

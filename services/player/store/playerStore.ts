@@ -560,7 +560,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
       partialize: state => ({
         queue: state.queue,
         settings: state.settings,
-        sheetMode: state.sheetMode,
       }),
     },
   ),

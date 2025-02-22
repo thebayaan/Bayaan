@@ -1,17 +1,20 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import {Text, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
+  BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import {useTheme} from '@/hooks/useTheme';
 
 interface BaseModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
-  title: string;
+  title?: string;
   children: React.ReactNode;
   snapPoints?: string[];
+  titleAlign?: 'left' | 'center';
+  onChange?: (index: number) => void;
 }
 
 export const BaseModal: React.FC<BaseModalProps> = ({
@@ -19,11 +22,13 @@ export const BaseModal: React.FC<BaseModalProps> = ({
   title,
   children,
   snapPoints = ['40%'],
+  titleAlign = 'center',
+  onChange,
 }) => {
   const {theme} = useTheme();
 
   const renderBackdrop = React.useCallback(
-    (props: any) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -41,12 +46,24 @@ export const BaseModal: React.FC<BaseModalProps> = ({
       enablePanDownToClose
       backdropComponent={renderBackdrop}
       index={-1}
+      onChange={onChange}
+      style={styles.modal}
+      handleStyle={styles.handle}
       backgroundStyle={[
         styles.background,
-        {backgroundColor: theme.colors.card},
+        {backgroundColor: theme.colors.backgroundSecondary},
       ]}>
       <BottomSheetView style={styles.container}>
-        <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
+        {title && (
+          <Text
+            style={[
+              styles.title,
+              {color: theme.colors.text},
+              {textAlign: titleAlign},
+            ]}>
+            {title}
+          </Text>
+        )}
         {children}
       </BottomSheetView>
     </BottomSheet>
@@ -54,9 +71,17 @@ export const BaseModal: React.FC<BaseModalProps> = ({
 };
 
 const styles = StyleSheet.create({
+  modal: {
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  handle: {
+    zIndex: 1001,
+    elevation: 1001,
+  },
   background: {
-    borderTopLeftRadius: moderateScale(20),
-    borderTopRightRadius: moderateScale(20),
+    borderTopLeftRadius: moderateScale(45),
+    borderTopRightRadius: moderateScale(45),
   },
   container: {
     flex: 1,
@@ -66,6 +91,5 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(22),
     fontFamily: 'Manrope-Bold',
     marginBottom: moderateScale(16),
-    textAlign: 'center',
   },
 });

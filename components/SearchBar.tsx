@@ -164,7 +164,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.light,
+      backgroundColor: theme.colors.card,
       borderRadius: moderateScale(20),
       paddingHorizontal: moderateScale(15),
       borderWidth: 1,

@@ -4,7 +4,6 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import {useAuthStore} from '@/store/authStore';
-import {LoadingIndicator} from '@/components/LoadingIndicator';
 import TrackPlayer from 'react-native-track-player';
 import playbackService from '@/services/player/events/playbackService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -17,6 +16,7 @@ import {View, Text} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
+import {ModalProvider} from '@/components/providers/ModalProvider';
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -228,34 +228,36 @@ export default function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{flex: 1}} onLayout={onLayoutRootView}>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: {
-                paddingTop: 0,
-              },
-              animation: 'fade',
-            }}>
-            <Stack.Screen name="(auth)" options={{headerShown: false}} />
-            <Stack.Screen
-              name="(modals)/select-reciter"
-              options={{
-                presentation: 'transparentModal',
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-            <Stack.Screen
-              name="(modals)/add-favorite-reciters"
-              options={{
-                presentation: 'transparentModal',
-                animation: 'fade',
+          <ModalProvider>
+            <Stack
+              screenOptions={{
                 headerShown: false,
-              }}
-            />
-          </Stack>
-          <PlayerSheet />
-          <FloatingPlayer />
+                contentStyle: {
+                  paddingTop: 0,
+                },
+                animation: 'fade',
+              }}>
+              <Stack.Screen name="(auth)" options={{headerShown: false}} />
+              <Stack.Screen
+                name="(modals)/select-reciter"
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen name="(tabs)" options={{headerShown: false}} />
+              <Stack.Screen
+                name="(modals)/add-favorite-reciters"
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'fade',
+                  headerShown: false,
+                }}
+              />
+            </Stack>
+            <PlayerSheet />
+            <FloatingPlayer />
+          </ModalProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>
     </ErrorBoundary>

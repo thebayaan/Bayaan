@@ -1,7 +1,14 @@
 import React from 'react';
-import {View, Text, FlatList, TouchableOpacity, ScrollView} from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Icon} from '@rneui/themed';
@@ -33,6 +40,15 @@ const collectionItems: CollectionItem[] = [
   // {id: 'downloads', title: 'Downloads', icon: DownloadIcon},
 ];
 
+function calculatePreviewItemWidth(width: number, columns: number) {
+  const screenMargin = moderateScale(20) * 2; // Left and right screen margins
+  const gapWidth = moderateScale(8); // Gap between items
+  const totalGapWidth = gapWidth * (columns - 1);
+
+  const availableWidth = width - screenMargin - totalGapWidth;
+  return availableWidth / columns;
+}
+
 export default function CollectionScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -44,10 +60,11 @@ export default function CollectionScreen() {
   const {updateQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
+  const {width} = useWindowDimensions();
 
-  // Get first 3 items for preview
+  // Get first 4 items for preview (changed from 3)
   const previewLoved = lovedTracks.slice(0, 3);
-  const previewReciters = favoriteReciters.slice(0, 3);
+  const previewReciters = favoriteReciters.slice(0, 4); // Changed from 3 to 4
 
   const renderCollectionItem = ({item}: {item: CollectionItem}) => {
     const renderPreviewItems = () => {
@@ -67,22 +84,32 @@ export default function CollectionScreen() {
       }
 
       if (item.id === 'favorite-reciters' && favoriteReciters.length > 0) {
+        const previewColumns = 4; // Fixed to 4 columns for preview
+        const previewItemWidth = calculatePreviewItemWidth(
+          width,
+          previewColumns,
+        );
+
         return (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={previewStyles.horizontalScroll}
-            contentContainerStyle={previewStyles.horizontalScrollContent}>
-            {previewReciters.map(reciter => (
-              <CircularReciterCard
-                key={reciter.id}
-                imageUrl={reciter.image_url || undefined}
-                name={reciter.name}
-                onPress={() => handleReciterPress(reciter)}
-                size="small"
-              />
-            ))}
-          </ScrollView>
+          <View style={previewStyles.gridContainer}>
+            <View style={previewStyles.gridRow}>
+              {previewReciters.map(reciter => (
+                <View
+                  key={reciter.id}
+                  style={{
+                    width: previewItemWidth,
+                    alignItems: 'center',
+                  }}>
+                  <CircularReciterCard
+                    imageUrl={reciter.image_url || undefined}
+                    name={reciter.name}
+                    onPress={() => handleReciterPress(reciter)}
+                    size="small"
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
         );
       }
 
@@ -206,6 +233,15 @@ const createPreviewStyles = (theme: Theme) =>
     },
     previewContainer: {
       opacity: 0.8,
+      marginTop: moderateScale(4),
+    },
+    gridContainer: {
+      marginTop: moderateScale(4),
+      paddingHorizontal: moderateScale(20),
+    },
+    gridRow: {
+      flexDirection: 'row',
       gap: moderateScale(8),
+      justifyContent: 'flex-start',
     },
   });

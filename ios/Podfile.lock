@@ -260,7 +260,7 @@ PODS:
     - Yoga
   - ExpoSplashScreen (0.29.22):
     - ExpoModulesCore
-  - ExpoSQLite (15.0.6):
+  - ExpoSQLite (15.1.2):
     - ExpoModulesCore
   - ExpoSystemUI (4.0.7):
     - ExpoModulesCore
@@ -2358,7 +2358,7 @@ SPEC CHECKSUMS:
   ExpoLinking: 4a09f2f0dc1132607c20f5628ba30d94795ea73d
   ExpoModulesCore: 94a213fe8b031258659e941bbf725365860aa3f3
   ExpoSplashScreen: cb4e3d3ee646ed59810f7776cca0ae5c03ab4285
-  ExpoSQLite: a2f485c918e16f4d77a1c208b36754d73663b43e
+  ExpoSQLite: fab1425f90f593057ab439dbf2fef7d42a83abdd
   ExpoSystemUI: 36f50ee42da3e814bffd01ee38edcf3c7cc0015d
   ExpoWebBrowser: a212e6b480d8857d3e441fba51e0c968333803b3
   EXStructuredHeaders: 09c70347b282e3d2507e25fb4c747b1b885f87f6

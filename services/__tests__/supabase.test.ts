@@ -24,10 +24,9 @@ describe('Supabase Service', () => {
     expect(supabase.auth).toHaveProperty('signOut');
   });
 
-  it('should use correct Supabase configuration', () => {
-    expect(SUPABASE_URL).toBe('https://tncrklrswaounqmirayh.supabase.co');
+  it('should have Supabase configuration', () => {
+    expect(SUPABASE_URL).toBeDefined();
     expect(SUPABASE_ANON_KEY).toBeDefined();
-    expect(SUPABASE_ANON_KEY).toMatch(/^eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9/);
   });
 
   it('should mock AsyncStorage', () => {

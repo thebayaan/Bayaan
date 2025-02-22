@@ -13,13 +13,11 @@ import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {PlaybackSpeedModal} from '../../Modals/PlaybackSpeedModal';
 import {SleepTimerModal} from '../../Modals/SleepTimerModal';
-import {QueueModal} from '../../Modals/QueueModal';
 import {
   TimerIcon,
   RepeatIcon,
   RepeatOneIcon,
   QueueIcon,
-  QuranIcon,
 } from '@/components/Icons';
 
 interface ControlButtonsProps {
@@ -28,8 +26,8 @@ interface ControlButtonsProps {
   queueBottomSheetRef: React.RefObject<BottomSheet>;
   onQueuePress: () => void;
   showQueue: boolean;
-  onQuranPress: () => void;
-  showQuran: boolean;
+  onQuranPress?: () => void;
+  showQuran?: boolean;
 }
 
 interface Styles {
@@ -53,11 +51,8 @@ interface Styles {
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
   speedBottomSheetRef,
   sleepBottomSheetRef,
-  queueBottomSheetRef,
   onQueuePress,
   showQueue,
-  onQuranPress,
-  showQuran,
 }) => {
   const {theme} = useTheme();
   const {playback, setRate, settings, updateSettings} = useUnifiedPlayer();
@@ -92,33 +87,11 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     updateSettings({sleepTimer: 0});
   };
 
-  const handleQueueClose = () => {
-    queueBottomSheetRef.current?.close();
-  };
-
   const sleepTimerValue =
     typeof settings.sleepTimer === 'number' ? settings.sleepTimer : 0;
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.quranButton}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          onPress={onQuranPress}
-          style={[
-            styles.button,
-            showQuran && [
-              styles.activeButton,
-              {backgroundColor: theme.colors.text},
-            ],
-          ]}>
-          <QuranIcon
-            size={moderateScale(24)}
-            color={showQuran ? theme.colors.card : theme.colors.text}
-          />
-        </TouchableOpacity>
-      </View>
-
       <View
         style={[
           styles.controlsContainer,
@@ -226,11 +199,6 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         onTurnOffTimer={handleTurnOffTimer}
         sleepTimer={sleepTimerValue}
         remainingTime={null}
-      />
-
-      <QueueModal
-        bottomSheetRef={queueBottomSheetRef}
-        onClose={handleQueueClose}
       />
     </View>
   );

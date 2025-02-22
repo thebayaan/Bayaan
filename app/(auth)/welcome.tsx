@@ -5,7 +5,7 @@ import {useRouter} from 'expo-router';
 import {Button} from '@/components/Button';
 import {Icon} from '@rneui/themed';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from '@/app/(auth)/styles';
+import {createStyles} from '@/app/(auth)/_styles';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Alert} from 'react-native';
 import {signInWithGoogle, signInWithApple} from '@/services/auth';

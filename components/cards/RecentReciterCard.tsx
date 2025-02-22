@@ -179,73 +179,94 @@ export const RecentReciterCard = React.memo(
       () =>
         StyleSheet.create({
           container: {
-            width: moderateScale(200),
-            height: moderateScale(280),
-            borderRadius: moderateScale(20),
+            width: moderateScale(130),
+            height: moderateScale(180),
+            borderRadius: moderateScale(16),
             shadowColor: theme.colors.shadow,
+            shadowOffset: {
+              width: 0,
+              height: moderateScale(8),
+            },
+            shadowOpacity: 0.15,
+            shadowRadius: moderateScale(12),
             overflow: 'hidden',
-            backgroundColor: theme.colors.background,
+            backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
+            borderWidth: 1,
+            borderColor: Color(theme.colors.border).alpha(0.1).toString(),
           },
           gradient: {
             ...StyleSheet.absoluteFillObject,
+            opacity: 0.8,
           },
           content: {
             flex: 1,
-            padding: moderateScale(16),
+            padding: moderateScale(8),
+            gap: moderateScale(4),
           },
           imageContainer: {
             width: '100%',
-            height: moderateScale(160),
-            borderRadius: moderateScale(16),
-            marginBottom: verticalScale(12),
+            height: moderateScale(90),
+            borderRadius: moderateScale(12),
+            marginBottom: verticalScale(4),
             overflow: 'hidden',
             shadowColor: theme.colors.shadow,
-            shadowOffset: {width: 0, height: 4},
+            shadowOffset: {width: 0, height: moderateScale(4)},
             shadowOpacity: 0.2,
-            shadowRadius: 8,
+            shadowRadius: moderateScale(8),
+            backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+            borderWidth: 1,
+            borderColor: Color(theme.colors.border).alpha(0.1).toString(),
           },
           image: {
             width: '100%',
             height: '100%',
-            borderRadius: moderateScale(16),
+            borderRadius: moderateScale(12),
           },
           textContainer: {
             flex: 1,
+            gap: moderateScale(2),
           },
           reciterName: {
-            fontSize: moderateScale(18),
-            fontWeight: '700',
+            fontSize: moderateScale(13),
+            fontFamily: 'Manrope-SemiBold',
             color: theme.colors.text,
-            marginBottom: verticalScale(4),
+            letterSpacing: -0.3,
           },
           surahName: {
-            fontSize: moderateScale(14),
-            color: theme.colors.textSecondary,
+            fontSize: moderateScale(10),
+            fontFamily: 'Manrope-Medium',
+            color: Color(theme.colors.textSecondary).alpha(0.8).toString(),
+            letterSpacing: -0.2,
           },
           progressSection: {
             flexDirection: 'row',
             alignItems: 'center',
-            marginTop: moderateScale(8),
-            backgroundColor: Color(theme.colors.primary).alpha(0.1).toString(),
+            marginTop: 'auto',
+            paddingTop: moderateScale(4),
+            backgroundColor: Color(theme.colors.primary).alpha(0.08).toString(),
             borderRadius: moderateScale(20),
-            paddingVertical: moderateScale(4),
-            paddingHorizontal: moderateScale(8),
-            gap: moderateScale(8),
-            width: moderateScale(100),
+            paddingVertical: moderateScale(3),
+            paddingHorizontal: moderateScale(6),
+            gap: moderateScale(6),
+            width: moderateScale(75),
             alignSelf: 'flex-start',
+            borderWidth: 1,
+            borderColor: Color(theme.colors.primary).alpha(0.1).toString(),
           },
           sliderContainer: {
-            height: moderateScale(6),
+            height: moderateScale(3),
             flex: 1,
+            marginHorizontal: moderateScale(4),
           },
           timeRemaining: {
-            fontSize: moderateScale(12),
-            color: theme.colors.text,
-            minWidth: moderateScale(30),
-            fontWeight: 'bold',
+            fontSize: moderateScale(8),
+            fontFamily: 'Manrope-Bold',
+            color: Color(theme.colors.text).alpha(0.9).toString(),
+            minWidth: moderateScale(16),
+            textAlign: 'right',
           },
           playButton: {
-            marginLeft: moderateScale(2),
+            marginLeft: 0,
           },
         }),
       [theme],
@@ -258,9 +279,12 @@ export const RecentReciterCard = React.memo(
         onPress={handlePress}>
         <LinearGradient
           colors={[
-            Color(theme.colors.primary).alpha(0.03).toString(),
-            Color(theme.colors.primary).alpha(0.01).toString(),
+            Color(theme.colors.primary).alpha(0.05).toString(),
+            Color(theme.colors.background).alpha(0.02).toString(),
+            Color(theme.colors.primary).alpha(0.08).toString(),
           ]}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 1}}
           style={styles.gradient}
         />
         <View style={styles.content}>
@@ -285,20 +309,22 @@ export const RecentReciterCard = React.memo(
                 onPress={handlePress}>
                 <PlayIcon
                   color={theme.colors.text}
-                  size={moderateScale(16)}
+                  size={moderateScale(12)}
                   filled={isCurrentTrack}
                 />
               </TouchableOpacity>
               <Slider
                 value={animatedProgress.value}
                 disabled={true}
-                minimumTrackTintColor={theme.colors.primary}
+                minimumTrackTintColor={Color(theme.colors.primary)
+                  .alpha(0.9)
+                  .toString()}
                 maximumTrackTintColor={Color(theme.colors.primary)
-                  .alpha(0.2)
+                  .alpha(0.1)
                   .toString()}
                 trackStyle={{
-                  height: moderateScale(6),
-                  borderRadius: moderateScale(3),
+                  height: moderateScale(2.5),
+                  borderRadius: moderateScale(2),
                 }}
                 thumbStyle={{height: 0, width: 0}}
                 containerStyle={styles.sliderContainer}

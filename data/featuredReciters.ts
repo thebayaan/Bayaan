@@ -21,6 +21,7 @@ const FEATURED_RECITER_NAMES = [
   'Mahmoud Ali Albanna',
   'Yasser Al-Dosari',
   'Ayyub Asif',
+  'Haitham Aldukhain',
 ];
 
 function normalizeReciterName(name: string): string {

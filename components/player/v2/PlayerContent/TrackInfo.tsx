@@ -4,6 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
+import {ReciterImage} from '@/components/ReciterImage';
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
@@ -22,17 +23,31 @@ export const TrackInfo = () => {
 
   return (
     <View style={styles.container}>
-      <Text
-        style={[styles.surahName, {color: theme.colors.text}]}
-        numberOfLines={1}>
-        {currentTrack?.title || ''}
-      </Text>
-      <TouchableOpacity activeOpacity={0.7} onPress={handleReciterPress}>
-        <Text
-          style={[styles.reciterName, {color: theme.colors.text}]}
-          numberOfLines={1}>
-          {currentTrack?.artist || ''}
-        </Text>
+      <TouchableOpacity
+        style={styles.trackItem}
+        activeOpacity={0.7}
+        onPress={handleReciterPress}>
+        <View style={styles.imageContainer}>
+          <ReciterImage
+            imageUrl={currentTrack?.artwork}
+            reciterName={currentTrack?.artist || ''}
+            style={styles.reciterImage}
+          />
+        </View>
+        <View style={styles.trackInfo}>
+          <View style={styles.textContainer}>
+            <Text
+              style={[styles.surahName, {color: theme.colors.text}]}
+              numberOfLines={1}>
+              {currentTrack?.title || ''}
+            </Text>
+            <Text
+              style={[styles.reciterName, {color: theme.colors.text}]}
+              numberOfLines={1}>
+              {currentTrack?.artist || ''}
+            </Text>
+          </View>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -41,19 +56,36 @@ export const TrackInfo = () => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    alignItems: 'center',
     marginBottom: moderateScale(10),
   },
+  trackItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(4),
+  },
+  imageContainer: {
+    marginRight: moderateScale(12),
+  },
+  reciterImage: {
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(10),
+  },
+  trackInfo: {
+    flex: 1,
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   surahName: {
-    fontSize: moderateScale(18),
+    fontSize: moderateScale(16),
     fontFamily: 'Manrope-Bold',
-    marginBottom: moderateScale(4),
-    textAlign: 'center',
+    marginBottom: moderateScale(2),
   },
   reciterName: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(14),
     fontFamily: 'Manrope-Medium',
     opacity: 0.7,
-    textAlign: 'center',
   },
 });

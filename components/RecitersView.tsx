@@ -1,12 +1,5 @@
 import React, {useMemo, useRef, useEffect, useCallback, useState} from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-} from 'react-native';
+import {View, Text, ScrollView, StyleSheet, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Reciter, RECITERS} from '@/data/reciterData';
@@ -19,112 +12,14 @@ import {
   useRecentlyPlayedStore,
   RecentlyPlayedTrack,
 } from '@/services/player/store/recentlyPlayedStore';
-import {ReciterImage} from '@/components/ReciterImage';
 import {getFeaturedReciters} from '@/data/featuredReciters';
-import Carousel from 'react-native-reanimated-carousel';
-import {Dimensions} from 'react-native';
+import {ScrollingHero} from '@/components/ScrollingHero';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
 }
 
-const HeroSection = ({
-  reciters,
-  onPress,
-}: {
-  reciters: Reciter[];
-  onPress: (reciter: Reciter) => void;
-}) => {
-  const {theme} = useTheme();
-  const width = Dimensions.get('window').width;
-  const PAGE_WIDTH = width - moderateScale(10);
-  const PAGE_HEIGHT = moderateScale(240);
-
-  const styles = StyleSheet.create({
-    container: {
-      marginBottom: verticalScale(12),
-    },
-    hero: {
-      padding: moderateScale(10),
-      borderRadius: moderateScale(5),
-      alignItems: 'center',
-      width: PAGE_WIDTH,
-      height: PAGE_HEIGHT,
-      justifyContent: 'center',
-    },
-    imageContainer: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    image: {
-      width: moderateScale(240),
-      height: moderateScale(240),
-      borderRadius: moderateScale(5),
-    },
-  });
-
-  return (
-    <View style={styles.container}>
-      <Carousel
-        loop
-        width={PAGE_WIDTH}
-        height={PAGE_HEIGHT}
-        autoPlay
-        autoPlayReverse={true}
-        autoPlayInterval={1000}
-        data={reciters}
-        scrollAnimationDuration={1000}
-        onSnapToItem={() => {
-          // Intentionally empty
-        }}
-        mode="horizontal-stack"
-        modeConfig={{
-          snapDirection: 'right',
-          stackInterval: 15,
-          scaleInterval: 0.07,
-          rotateZDeg: 0,
-          showLength: 6,
-        }}
-        style={{
-          width: PAGE_WIDTH,
-          height: PAGE_HEIGHT,
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-        renderItem={({item: reciter}) => {
-          return (
-            <TouchableOpacity
-              activeOpacity={0.99}
-              style={[
-                styles.hero,
-                {
-                  shadowColor: theme.colors.text,
-                  shadowOffset: {
-                    width: 0,
-                    height: 2,
-                  },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 3.84,
-                  elevation: 5,
-                },
-              ]}
-              onPress={() => onPress(reciter)}>
-              <View style={styles.imageContainer}>
-                <ReciterImage
-                  imageUrl={reciter.image_url || undefined}
-                  reciterName={reciter.name}
-                  style={styles.image}
-                />
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
-    </View>
-  );
-};
-
-const ItemSeparator = () => <View style={{width: moderateScale(12)}} />;
+const ItemSeparator = () => <View style={{width: moderateScale(8)}} />;
 
 type SectionItem = Reciter | RecentlyPlayedTrack;
 
@@ -245,10 +140,19 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
       .map(id => RECITERS.find(r => r.id === id))
       .filter((r): r is Reciter => r !== undefined);
 
-    const shuffled = [...recitersFromCollection].sort(
-      () => 0.5 - Math.random(),
-    );
-    collectionRecitersRef.current = shuffled.slice(0, 5);
+    // Only update if the collection has actually changed
+    const currentIds = new Set(collectionRecitersRef.current.map(r => r.id));
+    const newIds = new Set(recitersFromCollection.map(r => r.id));
+
+    if (
+      recitersFromCollection.length !== collectionRecitersRef.current.length ||
+      ![...currentIds].every(id => newIds.has(id))
+    ) {
+      const shuffled = [...recitersFromCollection].sort(
+        () => 0.5 - Math.random(),
+      );
+      collectionRecitersRef.current = shuffled.slice(0, 5);
+    }
   }, [favoriteReciters, lovedTracks]);
 
   // Memoize the filtered reciter lists
@@ -300,13 +204,21 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
     },
     sectionTitle: {
       fontSize: moderateScale(22),
-      fontWeight: 'bold',
+      fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       marginBottom: verticalScale(4),
     },
     sectionDescription: {
       fontSize: moderateScale(14),
+      fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
+    },
+    emptyText: {
+      color: theme.colors.textSecondary,
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-Medium',
+      textAlign: 'center',
+      marginVertical: moderateScale(20),
     },
   });
 
@@ -338,12 +250,12 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
-            paddingHorizontal: moderateScale(15),
+            paddingHorizontal: moderateScale(8),
             paddingVertical: verticalScale(8),
           }}
           snapToInterval={
             variant === 'circular'
-              ? moderateScale(100)
+              ? moderateScale(91)
               : variant === 'recent'
                 ? moderateScale(200)
                 : moderateScale(180)
@@ -357,6 +269,11 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
     [onReciterPress, styles.section, styles.sectionHeader, styles.sectionTitle],
   );
 
+  const handleBrowseAll = useCallback(() => {
+    // TODO: Implement browse all navigation
+    console.log('Browse all pressed');
+  }, []);
+
   // Don't render anything until initialization is complete
   if (!isInitialized) {
     return null;
@@ -367,10 +284,7 @@ export default function RecitersView({onReciterPress}: RecitersViewProps) {
       style={styles.container}
       contentContainerStyle={{paddingVertical: verticalScale(20)}}
       showsVerticalScrollIndicator={false}>
-      <HeroSection
-        reciters={featuredRecitersRef.current}
-        onPress={onReciterPress}
-      />
+      <ScrollingHero onBrowseAll={handleBrowseAll} />
       {recentTracks.length > 0 &&
         renderSection('Continue Listening', recentTracks, 'recent')}
       {favoriteRecitersRef.current.length > 0 &&

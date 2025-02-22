@@ -22,6 +22,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {playback, queue, loading, play, pause, sheetMode, setSheetMode} =
     useUnifiedPlayer();
   const {isTrackLoved, toggleTrackLoved} = useLoved();
+  const scale = useSharedValue(1);
+  const heartScale = useSharedValue(1);
 
   const currentTrack = useMemo(
     () => queue?.tracks?.[queue.currentIndex],
@@ -66,7 +68,6 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   // Animation values
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
-  const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{translateY: translateY.value}, {scale: scale.value}],
@@ -151,9 +152,18 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
 
   const handleLovePress = useCallback(() => {
     if (currentTrack) {
+      // Animate the heart
+      heartScale.value = withSpring(1.2, {}, () => {
+        heartScale.value = withSpring(1);
+      });
+
       toggleTrackLoved(currentTrack);
     }
-  }, [currentTrack, toggleTrackLoved]);
+  }, [currentTrack, toggleTrackLoved, heartScale]);
+
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: heartScale.value}],
+  }));
 
   if (!currentTrack) {
     return null;
@@ -195,11 +205,13 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
               onPress={handleLovePress}
               style={styles.loveButton}
               activeOpacity={0.7}>
-              <HeartIcon
-                color={textColor}
-                size={moderateScale(24)}
-                filled={isTrackLoved(currentTrack)}
-              />
+              <Animated.View style={heartAnimatedStyle}>
+                <HeartIcon
+                  color={textColor}
+                  size={moderateScale(24)}
+                  filled={isTrackLoved(currentTrack)}
+                />
+              </Animated.View>
             </TouchableOpacity>
             <Text style={[styles.surahGlyph, {color: textColor}]}>
               {surahGlyph}

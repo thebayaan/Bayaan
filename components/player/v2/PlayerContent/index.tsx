@@ -2,7 +2,6 @@ import React, {useState, useCallback} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 import {Header} from './Header';
-import {ArtworkSection} from './ArtworkSection';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
@@ -32,17 +31,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   summaryBottomSheetRef,
 }) => {
   const [showQueue, setShowQueue] = useState(false);
-  const [showQuran, setShowQuran] = useState(false);
   const {queue, updateQueue, removeFromQueue, play} = useUnifiedPlayer();
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
-    setShowQuran(false);
-  }, []);
-
-  const handleQuranPress = useCallback(() => {
-    setShowQuran(prev => !prev);
-    setShowQueue(false);
   }, []);
 
   const handleQueueItemPress = useCallback(
@@ -82,14 +74,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     : 1;
 
   const renderContent = () => {
-    if (showQuran) {
-      return (
-        <QuranView
-          currentSurah={currentSurah}
-          onVersePress={handleVersePress}
-        />
-      );
-    }
     if (showQueue) {
       return (
         <QueueList
@@ -98,7 +82,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         />
       );
     }
-    return <ArtworkSection />;
+    return (
+      <QuranView currentSurah={currentSurah} onVersePress={handleVersePress} />
+    );
   };
 
   return (
@@ -121,8 +107,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 queueBottomSheetRef={queueBottomSheetRef}
                 onQueuePress={handleQueuePress}
                 showQueue={showQueue}
-                onQuranPress={handleQuranPress}
-                showQuran={showQuran}
               />
             </View>
             <SurahSummary

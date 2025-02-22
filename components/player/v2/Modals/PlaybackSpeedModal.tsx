@@ -4,7 +4,7 @@ import {TouchableOpacity, Text, StyleSheet, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from './BaseModal';
+import {BaseModal} from '@/components/modals/BaseModal';
 
 interface PlaybackSpeedModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;

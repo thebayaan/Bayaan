@@ -10,7 +10,6 @@ import PlayerContent from './PlayerContent';
 import Color from 'color';
 import {PlaybackSpeedModal} from './Modals/PlaybackSpeedModal';
 import {SleepTimerModal} from './Modals/SleepTimerModal';
-import {QueueModal} from './Modals/QueueModal';
 import {ExtendedSummaryModal} from './SurahSummary/ExtendedSummaryModal';
 
 // Import surah info data
@@ -174,11 +173,6 @@ export const PlayerSheet = () => {
         onTurnOffTimer={handleTurnOffTimer}
         sleepTimer={settings.sleepTimer}
         remainingTime={remainingTime}
-      />
-
-      <QueueModal
-        bottomSheetRef={queueBottomSheetRef}
-        onClose={() => queueBottomSheetRef.current?.close()}
       />
 
       {currentSurahInfo && (

@@ -31,7 +31,7 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
     },
     name: {
       fontSize: moderateScale(14),
-      fontWeight: 'bold',
+      fontFamily: 'Manrope-Regular',
       color: theme.colors.text,
     },
     reciterImage: {
