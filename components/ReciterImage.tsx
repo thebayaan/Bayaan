@@ -29,6 +29,15 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             width: '100%',
             height: '100%',
           },
+          squircleMask: {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: theme.colors.card,
+            borderRadius: moderateScale(12),
+          },
         }),
       [theme],
     );
@@ -45,6 +54,7 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
 
     return (
       <View style={[styles.container, style]}>
+        <View style={styles.squircleMask} />
         {localImageSource ? (
           <Image
             source={localImageSource}

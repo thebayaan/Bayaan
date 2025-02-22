@@ -6,7 +6,7 @@ import {supabase} from '@/services/supabase';
 import {Button} from '@/components/Button';
 import {BackButton} from '@/components/BackButton';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 
 interface AuthError {
   message: string;

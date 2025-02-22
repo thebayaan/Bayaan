@@ -3,7 +3,7 @@ import {View, TouchableOpacity, ScrollView} from 'react-native';
 import {Icon} from '@rneui/themed';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';

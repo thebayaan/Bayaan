@@ -24,7 +24,6 @@ import SearchBar from '@/components/SearchBar';
 import {SurahItem} from '@/components/SurahItem';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import {usePlayerStore} from '@/store/playerStore';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet} from 'react-native-size-matters';
@@ -32,18 +31,16 @@ import {Dimensions} from 'react-native';
 import {ReciterProfileActionButtons} from '@/components/ReciterProfileActionButtons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {StatusBar} from 'expo-status-bar';
-import {SurahActionsBottomSheet} from '@/components/modals/SurahActionsBottomSheet';
-import BottomSheet from '@gorhom/bottom-sheet';
 import {reciterImages} from '@/utils/reciterImages';
 import {Asset} from 'expo-asset';
 import {useImageColors} from '@/hooks/useImageColors';
-import {RewayatIcon} from '@/components/Icons';
 import {useLoved} from '@/hooks/useLoved';
 import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {shuffleArray} from '@/utils/arrayUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useModal} from '@/components/providers/ModalProvider';
 
 Dimensions.get('window');
 
@@ -67,18 +64,16 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [selectedRewayatId, setSelectedRewayatId] = useState<
     string | undefined
   >(undefined);
-  const {favoriteTrackIds} = usePlayerStore(state => ({
-    // Remove unused isLoading
-    favoriteTrackIds: state.favoriteTrackIds,
-  }));
+
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   const [, setIsStatusBarDark] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showLovedOnly, setShowLovedOnly] = useState(showFavorites);
   const scrollViewRef = useRef<ScrollView>(null);
-  const {isLoved, toggleLoved} = useLoved();
+  const {isLoved} = useLoved();
   const {addRecentTrack} = useRecentlyPlayedStore();
+  const {showSurahOptions, showRewayatInfo} = useModal();
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [200, 300],
@@ -215,9 +210,6 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
     ],
   );
 
-  // handlePlaySurahPress can reuse handleSurahPress since they do the same thing
-  const handlePlaySurahPress = handleSurahPress;
-
   const handlePlayAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
     try {
@@ -293,52 +285,77 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }
   }, [reciter, toggleFavorite]);
 
-  const handleAddToQueue = useCallback(
-    async (surah: Surah) => {
-      if (!reciter || !selectedRewayat) return;
-      try {
-        const tracks = await createTracksForReciter(
-          reciter,
-          [surah],
-          selectedRewayat.id,
-        );
-        await updateQueue(tracks, 0);
-        await play();
-        queueContext.setCurrentReciter(reciter);
-      } catch (error) {
-        console.error('Error adding to queue:', error);
-      }
-    },
-    [reciter, selectedRewayat, updateQueue, play, queueContext],
-  );
-
-  const handleToggleLove = useCallback(
-    (surah: Surah) => {
-      if (reciter) {
-        toggleLoved(reciter.id, surah.id.toString());
-      }
-    },
-    [reciter, toggleLoved],
-  );
-
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  const [selectedSurah, setSelectedSurah] = useState<Surah | null>(null);
-
-  const handleCloseBottomSheet = useCallback(() => {
-    bottomSheetRef.current?.close();
-    setSelectedSurah(null);
+  const handleRewayatSelect = useCallback((rewayatId: string) => {
+    setSelectedRewayatId(rewayatId);
   }, []);
+
+  const handleRewayatInfoPress = useCallback(() => {
+    if (!reciter) return;
+    showRewayatInfo(reciter.rewayat, selectedRewayatId, handleRewayatSelect);
+  }, [reciter, selectedRewayatId, handleRewayatSelect, showRewayatInfo]);
+
+  const handleStyleChange = useCallback(() => {
+    if (!reciter) return;
+
+    // Find current style index
+    const currentIndex = reciter.rewayat.findIndex(
+      r => r.id === selectedRewayat?.id,
+    );
+    // Get next rewayat, or wrap around to first
+    const nextIndex = (currentIndex + 1) % reciter.rewayat.length;
+    setSelectedRewayatId(reciter.rewayat[nextIndex].id);
+  }, [reciter, selectedRewayat]);
+
+  const renderStyleIndicator = () => {
+    if (!reciter || !selectedRewayat) return null;
+
+    return (
+      <View style={styles.styleContainer}>
+        <TouchableOpacity
+          style={styles.styleButton}
+          onPress={handleStyleChange}
+          activeOpacity={0.7}>
+          <View style={styles.styleTextContainer}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: moderateScale(4),
+              }}>
+              <Text style={styles.styleText} numberOfLines={1}>
+                {selectedRewayat.name}
+              </Text>
+              <TouchableOpacity
+                onPress={handleRewayatInfoPress}
+                activeOpacity={0.7}>
+                <Icon
+                  name="info"
+                  type="feather"
+                  size={moderateScale(14)}
+                  color={theme.colors.text}
+                />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.styleSubText} numberOfLines={1}>
+              {selectedRewayat.style}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderItem = useCallback(
     ({item}: {item: Surah}) => (
       <SurahItem
         item={item}
         onPress={handleSurahPress}
-        showPlayButton
-        onPlayPress={handlePlaySurahPress}
+        reciterId={reciterId}
+        isLoved={isLoved(reciterId, item.id.toString())}
+        onOptionsPress={surah => showSurahOptions(surah, reciterId)}
       />
     ),
-    [handleSurahPress, handlePlaySurahPress],
+    [handleSurahPress, reciterId, isLoved, showSurahOptions],
   );
 
   const dominantColors = useImageColors(reciter?.name);
@@ -368,41 +385,6 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
       }
     }
   }, [reciter?.name]);
-
-  const handleStyleChange = useCallback(() => {
-    if (!reciter) return;
-
-    // Find current style index
-    const currentIndex = reciter.rewayat.findIndex(
-      r => r.id === selectedRewayat?.id,
-    );
-    // Get next rewayat, or wrap around to first
-    const nextIndex = (currentIndex + 1) % reciter.rewayat.length;
-    setSelectedRewayatId(reciter.rewayat[nextIndex].id);
-  }, [reciter, selectedRewayat]);
-
-  const renderStyleIndicator = () => {
-    if (!reciter || !selectedRewayat) return null;
-
-    return (
-      <TouchableOpacity
-        style={styles.styleButton}
-        onPress={handleStyleChange}
-        activeOpacity={0.7}>
-        <View style={styles.styleIconContainer}>
-          <RewayatIcon size={moderateScale(26)} color={theme.colors.primary} />
-        </View>
-        <View style={styles.styleTextContainer}>
-          <Text style={styles.styleText} numberOfLines={2}>
-            {selectedRewayat.name}
-          </Text>
-          <Text style={styles.styleSubText} numberOfLines={1}>
-            {selectedRewayat.style}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
-  };
 
   useEffect(() => {
     setFilteredSurahs(filteredSurahsMemo);
@@ -511,18 +493,6 @@ export const ReciterProfile: React.FC<ReciterProfileProps> = ({
           <Text style={styles.emptyText}>No surahs available</Text>
         }
       />
-      <SurahActionsBottomSheet
-        ref={bottomSheetRef}
-        surah={selectedSurah}
-        isLoved={
-          selectedSurah
-            ? favoriteTrackIds.includes(`${reciterId}:${selectedSurah.id}`)
-            : false
-        }
-        onAddToQueue={handleAddToQueue}
-        onToggleLove={handleToggleLove}
-        onClose={handleCloseBottomSheet}
-      />
       <Animated.View
         style={[
           styles.stickyHeader,
@@ -602,21 +572,70 @@ const createStyles = (theme: Theme) =>
       height: '40%',
     },
     gradientContainer: {
-      paddingHorizontal: moderateScale(20),
+      paddingHorizontal: moderateScale(5),
       paddingBottom: moderateScale(10),
-      alignItems: 'center',
-    },
-    headerContainer: {},
-    reciterImage: {
-      width: moderateScale(200),
-      height: moderateScale(200),
-      borderRadius: moderateScale(20),
-      marginBottom: moderateScale(10), // Add margin below the image
-      alignSelf: 'center',
     },
     contentContainer: {
       backgroundColor: theme.colors.background,
+      paddingHorizontal: moderateScale(20),
+      paddingTop: moderateScale(10),
+    },
+    headerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: moderateScale(15),
+      gap: moderateScale(15),
+    },
+    reciterImage: {
+      width: moderateScale(100),
+      height: moderateScale(100),
+      borderRadius: moderateScale(12),
+      alignSelf: 'flex-start',
+    },
+    reciterInfo: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    reciterName: {
+      fontSize: moderateScale(22),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
+    styleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+      marginTop: moderateScale(4),
+    },
+    styleButton: {
+      flex: 1,
+      paddingVertical: moderateScale(4),
+      paddingHorizontal: moderateScale(0),
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+    },
+    styleTextContainer: {
+      flex: 1,
+    },
+    styleText: {
+      color: theme.colors.text,
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      lineHeight: moderateScale(20),
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    styleSubText: {
+      color: theme.colors.textSecondary,
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      marginTop: moderateScale(2),
+      textTransform: 'capitalize',
+      opacity: 0.8,
+    },
+    infoButton: {
+      padding: moderateScale(4),
     },
     searchBarContainer: {
       backgroundColor: theme.colors.background,
@@ -632,16 +651,16 @@ const createStyles = (theme: Theme) =>
     },
     toggleLabel: {
       fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      fontWeight: 'bold',
       marginRight: moderateScale(10),
     },
     listContentContainer: {
-      paddingTop: moderateScale(10),
       paddingBottom: moderateScale(80),
     },
     emptyText: {
       fontSize: moderateScale(16),
+      fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
       textAlign: 'center',
       marginTop: moderateScale(20),
@@ -660,7 +679,7 @@ const createStyles = (theme: Theme) =>
     },
     stickyHeaderTitle: {
       fontSize: moderateScale(18),
-      fontWeight: 'bold',
+      fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
@@ -672,50 +691,5 @@ const createStyles = (theme: Theme) =>
     searchButton: {
       position: 'absolute',
       zIndex: 10,
-    },
-    reciterInfo: {
-      alignItems: 'center', // Center text horizontally
-    },
-    reciterName: {
-      fontSize: moderateScale(20),
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      textAlign: 'center',
-    },
-    styleButton: {
-      paddingVertical: moderateScale(10),
-      paddingHorizontal: moderateScale(12),
-      marginTop: moderateScale(12),
-      marginHorizontal: moderateScale(15),
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: 'transparent',
-    },
-    styleIconContainer: {
-      width: moderateScale(40),
-      height: moderateScale(40),
-      borderRadius: moderateScale(12),
-      backgroundColor: `${theme.colors.primary}15`,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: moderateScale(6),
-    },
-    styleTextContainer: {
-      flex: 1,
-      marginLeft: moderateScale(12),
-      marginRight: moderateScale(4),
-    },
-    styleText: {
-      color: theme.colors.text,
-      fontSize: moderateScale(16),
-      fontWeight: '600',
-      lineHeight: moderateScale(20),
-    },
-    styleSubText: {
-      color: theme.colors.textSecondary,
-      fontSize: moderateScale(13),
-      marginTop: moderateScale(2),
-      textTransform: 'capitalize',
-      opacity: 0.8,
     },
   });

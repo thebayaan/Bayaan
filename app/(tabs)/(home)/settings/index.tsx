@@ -11,8 +11,7 @@ import {signOut} from '@/services/auth';
 import {ScreenHeader} from '@/components/ScreenHeader';
 import {primaryColors} from '@/styles/colorSchemes';
 import {useAuthStore} from '@/store/authStore';
-import {clearRecentRecitersStorage} from '@/utils/storage';
-import {useRecentRecitersStore} from '@/store/recentRecitersStore';
+import {clearPlayerCache} from '@/services/player/utils/storage';
 
 const formatColorName = (colorName: string): string => {
   return colorName
@@ -69,7 +68,7 @@ export default function SettingsScreen() {
       case 'clearCache':
         Alert.alert(
           'Clear Cache',
-          'This will clear all cached data including recent reciters. Are you sure?',
+          'This will clear all cached data including player state, recent tracks, and settings. Are you sure?',
           [
             {
               text: 'Cancel',
@@ -79,9 +78,16 @@ export default function SettingsScreen() {
               text: 'Clear',
               style: 'destructive',
               onPress: async () => {
-                await clearRecentRecitersStorage();
-                useRecentRecitersStore.getState().reset();
-                Alert.alert('Success', 'Cache cleared successfully');
+                try {
+                  await clearPlayerCache();
+                  Alert.alert('Success', 'Cache cleared successfully');
+                } catch (error) {
+                  console.error('Error clearing cache:', error);
+                  Alert.alert(
+                    'Error',
+                    'Failed to clear cache. Please try again.',
+                  );
+                }
               },
             },
           ],

@@ -69,7 +69,7 @@ export const useFavoriteRecitersStore = create<FavoriteRecitersState>()(
 
       getFavoriteReciters: () => {
         const state = get();
-        return state.favoriteReciterIds.map(id => state.favoriteReciters[id]);
+        return Object.values(state.favoriteReciters);
       },
 
       reset: () => {

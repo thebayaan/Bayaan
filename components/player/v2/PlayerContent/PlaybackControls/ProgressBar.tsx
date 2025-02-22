@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useRef} from 'react';
+import React, {useCallback, useMemo} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {Slider} from '@miblanchard/react-native-slider';
 import {moderateScale} from 'react-native-size-matters';

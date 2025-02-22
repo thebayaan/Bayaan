@@ -5,7 +5,7 @@ import {useRouter} from 'expo-router';
 import {Button} from '@/components/Button';
 import {Input} from '@/components/Input';
 import {BackButton} from '@/components/BackButton';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 import {isValidEmail} from '@/utils/validation';
 import {useTheme} from '@/hooks/useTheme';
 import {signIn} from '@/services/auth';

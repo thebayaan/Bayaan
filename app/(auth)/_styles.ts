@@ -94,7 +94,7 @@ export const createStyles = (theme: Theme) =>
       placeholderTextColor: theme.colors.light,
       borderColor: theme.colors.border,
       iconColor: theme.colors.light,
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.card,
       // borderWidth: moderateScale(0.3),
     },
     forgotPassword: {

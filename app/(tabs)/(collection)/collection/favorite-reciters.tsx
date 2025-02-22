@@ -8,9 +8,10 @@ import {
   NativeSyntheticEvent,
   StyleSheet,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
@@ -32,12 +33,37 @@ type ReciterListItem =
       type: 'add';
     };
 
+function calculateColumns(width: number) {
+  const screenMargin = moderateScale(20) * 2; // Left and right screen margins
+  const itemMinWidth = moderateScale(75); // Minimum width we want for each item
+  const gapWidth = moderateScale(8); // Gap between items
+
+  const availableWidth = width - screenMargin;
+  const maxColumns = Math.floor(
+    (availableWidth + gapWidth) / (itemMinWidth + gapWidth),
+  );
+
+  return Math.max(3, Math.min(maxColumns, 5)); // Minimum 3, maximum 5 columns
+}
+
+function calculateItemWidth(width: number, columns: number) {
+  const screenMargin = moderateScale(20) * 2; // Left and right screen margins
+  const gapWidth = moderateScale(8); // Gap between items
+  const totalGapWidth = gapWidth * (columns - 1);
+
+  const availableWidth = width - screenMargin - totalGapWidth;
+  return availableWidth / columns;
+}
+
 export default function FavoriteRecitersScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
   const {favoriteReciters} = useFavoriteReciters();
   const router = useRouter();
+  const {width} = useWindowDimensions();
+  const columns = calculateColumns(width);
+  const itemWidth = calculateItemWidth(width, columns);
 
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -150,29 +176,39 @@ export default function FavoriteRecitersScreen() {
             }
             showsVerticalScrollIndicator={false}
             renderItem={({item}: {item: ReciterListItem}) => (
-              <CircularReciterCard
-                imageUrl={
-                  'image_url' in item ? item.image_url || undefined : undefined
-                }
-                name={item.name}
-                onPress={() =>
-                  'type' in item && item.type === 'add'
-                    ? handleOpenSelectReciters()
-                    : handleReciterPress(item.id)
-                }
-                size="medium"
-                variant={
-                  'type' in item && item.type === 'add' ? 'add' : 'default'
-                }
-              />
+              <View
+                style={{
+                  width: itemWidth,
+                  marginBottom: moderateScale(8),
+                  alignItems: 'center',
+                }}>
+                <CircularReciterCard
+                  imageUrl={
+                    'image_url' in item
+                      ? item.image_url || undefined
+                      : undefined
+                  }
+                  name={item.name}
+                  onPress={() =>
+                    'type' in item && item.type === 'add'
+                      ? handleOpenSelectReciters()
+                      : handleReciterPress(item.id)
+                  }
+                  size="medium"
+                  variant={
+                    'type' in item && item.type === 'add' ? 'add' : 'default'
+                  }
+                />
+              </View>
             )}
             keyExtractor={item => item.id}
-            numColumns={3}
+            numColumns={columns}
             contentContainerStyle={[styles.gridContainer, {paddingBottom: 65}]}
-            columnWrapperStyle={[
-              styles.columnWrapper,
-              {justifyContent: 'flex-start'},
-            ]}
+            columnWrapperStyle={{
+              gap: moderateScale(8),
+              flex: 1,
+              justifyContent: 'flex-start',
+            }}
             ListEmptyComponent={
               <Text style={styles.emptyText}>No favorite reciters yet</Text>
             }

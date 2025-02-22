@@ -34,9 +34,9 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   const {theme} = useTheme();
 
   const sizeMap = {
-    small: 80,
-    medium: 100,
-    large: 120,
+    small: 60,
+    medium: 75,
+    large: 90,
   };
 
   const imageSize = sizeMap[size];
@@ -44,27 +44,31 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   const styles = StyleSheet.create({
     container: {
       alignItems: 'center',
-      marginRight: moderateScale(15),
+      marginRight: moderateScale(8),
     },
     imageContainer: {
-      width: moderateScale(imageSize),
-      height: moderateScale(imageSize),
-      borderRadius: moderateScale(imageSize / 2),
+      width: imageSize,
+      height: imageSize,
+      borderRadius: imageSize / 2,
       overflow: 'hidden',
-      marginBottom: verticalScale(5),
-      borderWidth: variant === 'add' ? 0 : isSelected ? 4 : 0,
-      borderColor:
-        variant === 'add' ? theme.colors.border : theme.colors.primary,
-      backgroundColor: variant === 'add' ? theme.colors.card : undefined,
-      justifyContent: variant === 'add' ? 'center' : undefined,
-      alignItems: variant === 'add' ? 'center' : undefined,
+      marginBottom: verticalScale(4),
+    },
+    reciterImage: {
+      width: '100%',
+      height: '100%',
+    },
+    selectedOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     name: {
-      fontSize: moderateScale(size === 'small' ? 10 : 12),
-      fontWeight: 'bold',
       color: theme.colors.text,
+      fontSize: moderateScale(size === 'small' ? 10 : 12),
+      fontFamily: 'Manrope-SemiBold',
       textAlign: 'center',
-      width: moderateScale(imageSize),
+      width: imageSize,
     },
     addText: {
       fontSize: moderateScale(size === 'small' ? 10 : 12),
@@ -72,15 +76,6 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
       color: theme.colors.text,
       textAlign: 'center',
       width: moderateScale(imageSize),
-    },
-    reciterImage: {
-      width: moderateScale(imageSize),
-      height: moderateScale(imageSize),
-    },
-    selectedOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.colors.primary,
-      opacity: 0.3,
     },
   });
 

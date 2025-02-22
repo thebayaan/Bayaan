@@ -25,6 +25,8 @@ export default {
         UIRequiresFullScreen: true,
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'This app does not use the camera.',
+        BGTaskSchedulerPermittedIdentifiers: ['com.bayaan.app.audio'],
+        UIBackgroundModes: ['audio'],
         CFBundleURLTypes: [
           {
             CFBundleURLSchemes: ['bayaan'],
@@ -58,7 +60,6 @@ export default {
       // Add your environment variables here
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-      supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
       postmarkApiKey: process.env.POSTMARK_API_KEY,
       postmarkFromEmail: process.env.POSTMARK_FROM_EMAIL,
       eas: {
@@ -91,17 +92,19 @@ export default {
     },
     plugins: [
       'expo-router',
+      'expo-sqlite',
       [
         'expo-splash-screen',
         {
           image: './assets/images/splash-icon.png',
           resizeMode: 'contain',
-          backgroundColor: '#f4f4f4',
+          backgroundColor: '#e8e8e8',
           imageResizeMode: 'contain',
           dark: {
             image: './assets/images/splash-icon-dark.png',
-            backgroundColor: '#1c1a1e',
+            backgroundColor: '#05151c',
           },
+          userInterfaceStyle: 'automatic',
         },
       ],
     ],

@@ -6,7 +6,7 @@ import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 import Fuse from 'fuse.js';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 import SearchBar from '@/components/SearchBar';
 import {Icon} from '@rneui/themed';
 import {ReciterItem} from '@/components/ReciterItem';

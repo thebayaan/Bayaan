@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './styles';
+import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ReciterCard} from '@/components/cards/ReciterCard';
 import {useRouter} from 'expo-router';
@@ -44,7 +44,6 @@ export default function PlaylistsScreen() {
     <ReciterCard
       imageUrl={item.imageUrl}
       name={item.name}
-      moshafName="" // We don't need moshaf name for playlists
       onPress={() => handlePlaylistPress(item.id)}
     />
   );

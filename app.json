@@ -8,16 +8,6 @@
     "userInterfaceStyle": "automatic",
     "platforms": ["ios", "android"],
     "icon": "./assets/images/icon.png",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f4f4f4",
-      "imageResizeMode": "contain",
-      "dark": {
-        "image": "./assets/images/splash-icon-dark.png",
-        "backgroundColor": "#1c1a1e"
-      }
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bayaan.app",

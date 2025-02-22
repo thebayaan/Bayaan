@@ -415,19 +415,21 @@ export const RepeatOneIcon: React.FC<IconProps> = ({color, size}) => (
   </Svg>
 );
 
-export const QueueIcon: React.FC<IconProps> = ({color, size}) => (
+export const QueueIcon: React.FC<IconProps> = ({color, size, filled}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {/* Top curved bar with inner empty space */}
     <Path
       d="M12 4.5q3.2-.03 6.3.41c1.17.16.93.95.94 2.06c.01 1.02.27 1.89-1.13 2.07q-3.1.48-6.08.51q-3.2.03-6.3-.41c-1.17-.16-.93-.95-.94-2.06c-.01-1.02-.27-1.89 1.13-2.07q3.1-.48 6.08-.51z"
-      fill="none"
+      fill={filled ? color : 'none'}
       stroke={color}
       strokeWidth="1.5"
     />
-    <Path
-      d="M12 6q3.17-.03 5.54.36q.12.02.13.14q.02.26.02.5q0.01.28-.02.54q-.01.12-.12.13q-2.35.42-5.52.44q-3.17.02-5.54-.36q-.12-.02-.13-.14q-.02-.26-.02-.5q-.01-.28.02-.54q.01-.12.12-.13q2.35-.42 5.52-.44z"
-      fill="none"
-    />
+    {!filled && (
+      <Path
+        d="M12 6q3.17-.03 5.54.36q.12.02.13.14q.02.26.02.5q0.01.28-.02.54q-.01.12-.12.13q-2.35.42-5.52.44q-3.17.02-5.54-.36q-.12-.02-.13-.14q-.02-.26-.02-.5q-.01-.28.02-.54q.01-.12.12-.13q2.35-.42 5.52-.44z"
+        fill="none"
+      />
+    )}
 
     {/* Middle and bottom bars */}
     <Rect x="4" y="13" width="16" height="1.5" rx="0.5" fill={color} />
