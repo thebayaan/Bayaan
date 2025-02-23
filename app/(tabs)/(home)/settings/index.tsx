@@ -29,6 +29,7 @@ const themeOptions: {label: string; value: ThemeMode}[] = [
 ];
 
 const settingsItems = [
+  {title: 'Account', type: 'account'},
   {title: 'Default Reciter', type: 'defaultReciter'},
   {title: 'Reciter Choice', type: 'reciterChoice'},
   {title: 'Clear Cache', type: 'clearCache'},
@@ -59,6 +60,9 @@ export default function SettingsScreen() {
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
+      case 'account':
+        router.push('/settings/account');
+        break;
       case 'defaultReciter':
         router.push('/settings/default-reciter');
         break;
