@@ -248,3 +248,86 @@ export async function signInWithApple() {
     };
   }
 }
+
+export async function deleteAccount(password: string) {
+  try {
+    console.log('[Auth] Starting account deletion process...');
+
+    // Get current user and session
+    const {
+      data: {session},
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      return {success: false, error: 'No active session'};
+    }
+
+    // Re-authenticate user before deletion
+    console.log('[Auth] Re-authenticating user...');
+    const email = session.user.email;
+    if (!email) {
+      return {success: false, error: 'No email associated with account'};
+    }
+
+    const {data: authData, error: authError} =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+    if (authError || !authData.user) {
+      console.error('[Auth] Re-authentication failed:', authError);
+      return {success: false, error: 'Invalid password'};
+    }
+
+    // Clean up player state
+    console.log('[Auth] Cleaning up player state...');
+    const store = usePlayerStore.getState();
+    await store.cleanup();
+    console.log('[Auth] Player state cleaned up');
+
+    // Call the delete-user Edge Function with proper headers and body
+    console.log('[Auth] Calling delete-user function...');
+    const {error: functionError} = await supabase.functions.invoke(
+      'delete-user',
+      {
+        body: JSON.stringify({
+          user_id: session.user.id,
+        }),
+      },
+    );
+
+    if (functionError) {
+      console.error('[Auth] Delete account error:', functionError);
+      return {
+        success: false,
+        error: functionError.message || 'Failed to delete account',
+      };
+    }
+
+    // Force sign out after successful deletion
+    console.log('[Auth] Forcing sign out...');
+    try {
+      // Sign out and invalidate all sessions
+      await supabase.auth.signOut({
+        scope: 'global',
+      });
+    } catch (signOutError) {
+      console.warn(
+        '[Auth] Error during sign out after deletion:',
+        signOutError,
+      );
+      // Don't return error here as the account was successfully deleted
+    }
+
+    console.log('[Auth] Account deleted successfully');
+    return {success: true};
+  } catch (error) {
+    console.error('[Auth] Unexpected delete account error:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
+    };
+  }
+}
