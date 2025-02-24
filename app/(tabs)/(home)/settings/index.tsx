@@ -29,16 +29,6 @@ const themeOptions: {label: string; value: ThemeMode}[] = [
 
 const settingsItems = [
   {
-    section: 'Account',
-    items: [
-      {
-        title: 'Account',
-        type: 'account',
-        description: 'Manage your account settings',
-      },
-    ],
-  },
-  {
     section: 'Audio & Playback',
     items: [
       {
@@ -116,9 +106,6 @@ export default function SettingsScreen() {
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
-      case 'account':
-        router.push('/settings/account');
-        break;
       case 'defaultReciter':
         router.push('/settings/default-reciter');
         break;

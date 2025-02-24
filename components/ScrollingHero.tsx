@@ -1,11 +1,14 @@
 import React, {useMemo, useState, useCallback} from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   Pressable,
-  Text,
   TouchableOpacity,
   InteractionManager,
+  ViewStyle,
+  ImageStyle,
+  TextStyle,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import Animated, {
@@ -129,108 +132,182 @@ function useDistributedReciters(reciters: Reciter[]) {
 interface ColumnProps {
   config: ColumnConfig;
   styles: ReturnType<typeof createStyles>;
+  theme: Theme;
 }
 
-// Optimized Column component with virtualization
-const Column: React.FC<ColumnProps> = React.memo(({config, styles}) => {
-  const scrollY = useSharedValue(config.startOffset);
-  const isAnimating = useSharedValue(true);
-  const itemSize = SECTION_HEIGHT / 2;
+interface StylesType {
+  wrapper: ViewStyle;
+  container: ViewStyle;
+  columnsContainer: ViewStyle;
+  column: ViewStyle;
+  imageContainer: ViewStyle;
+  image: ImageStyle;
+  overlay: ViewStyle;
+  contentOverlay: ViewStyle;
+  browseButton: ViewStyle;
+  buttonText: TextStyle;
+}
 
-  // Create duplicated array for seamless looping
-  const duplicatedReciters = useMemo(() => {
-    if (config.reciters.length === 0) return [];
-    // Duplicate the array 3 times to ensure smooth looping
-    return [...config.reciters, ...config.reciters, ...config.reciters];
-  }, [config.reciters]);
+interface BrowseButtonProps {
+  onPress?: () => void;
+  theme: Theme;
+  styles: StylesType;
+}
 
-  // Calculate content height for a single set of items
-  const singleSetHeight =
-    config.reciters.length * (itemSize + moderateScale(4));
+// Memoize the browse button component
+const BrowseButton = React.memo(
+  ({onPress, theme, styles}: BrowseButtonProps) => (
+    <TouchableOpacity
+      style={[styles.browseButton, {backgroundColor: theme.colors.card}]}
+      onPress={onPress}
+      activeOpacity={0.8}>
+      <Text style={[styles.buttonText, {color: theme.colors.text}]}>
+        Browse All
+      </Text>
+    </TouchableOpacity>
+  ),
+  (prevProps, nextProps) =>
+    prevProps.onPress === nextProps.onPress &&
+    prevProps.theme === nextProps.theme,
+);
 
-  React.useEffect(() => {
-    if (config.reciters.length === 0) return;
+BrowseButton.displayName = 'BrowseButton';
 
-    const startAnimation = () => {
-      'worklet';
-      // Animate through one complete set of items
-      scrollY.value = withRepeat(
-        withTiming(singleSetHeight, {
-          duration: config.speed,
-          easing: Easing.linear,
-        }),
-        -1,
-        false,
-      );
-    };
+interface OverlayProps {
+  isRevealed: boolean;
+  theme: Theme;
+  styles: StylesType;
+}
 
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (isAnimating.value) {
-        startAnimation();
-      }
-    });
+// Memoize the overlay component
+const Overlay = React.memo(
+  ({isRevealed, theme, styles}: OverlayProps) => (
+    <Animated.View
+      style={[
+        styles.overlay,
+        {
+          backgroundColor: theme.colors.primary,
+          opacity: isRevealed ? 0 : 0.25,
+        },
+      ]}
+    />
+  ),
+  (prevProps, nextProps) =>
+    prevProps.isRevealed === nextProps.isRevealed &&
+    prevProps.theme === nextProps.theme,
+);
 
-    return () => {
-      isAnimating.value = false;
-      cancelAnimation(scrollY);
-      scrollY.value = config.startOffset;
-      task.cancel();
-    };
-  }, [
-    config.reciters.length,
-    singleSetHeight,
-    config.speed,
-    config.startOffset,
-    scrollY,
-    isAnimating,
-  ]);
+Overlay.displayName = 'Overlay';
 
-  const animatedStyle = useAnimatedStyle(() => {
-    // Calculate the wrapped position to create seamless loop
-    const wrappedPosition = scrollY.value % singleSetHeight;
-    return {
-      transform: [{translateY: wrappedPosition * config.direction}],
-    };
-  });
+// Optimize Column component
+const Column = React.memo(
+  ({config, styles}: ColumnProps) => {
+    const scrollY = useSharedValue(config.startOffset);
+    const isAnimating = useSharedValue(true);
+    const itemSize = SECTION_HEIGHT / 2;
+    const isComponentMounted = React.useRef(true);
 
-  if (config.reciters.length === 0) return null;
+    // Create duplicated array for seamless looping
+    const duplicatedReciters = useMemo(() => {
+      if (config.reciters.length === 0) return [];
+      return [...config.reciters, ...config.reciters, ...config.reciters];
+    }, [config.reciters]);
 
-  // Calculate visible range based on wrapped position
-  const getVisibleRange = (scrollPosition: number) => {
-    const wrappedPosition = scrollPosition % singleSetHeight;
-    const start = Math.floor(Math.abs(wrappedPosition) / itemSize) - 1;
-    const end = start + Math.ceil(SECTION_HEIGHT / itemSize) + 2;
-    return {start: Math.max(0, start), end};
-  };
+    // Calculate content height for a single set of items
+    const singleSetHeight = useMemo(
+      () => config.reciters.length * (itemSize + moderateScale(4)),
+      [config.reciters.length, itemSize],
+    );
 
-  return (
-    <Animated.View style={[styles.column, animatedStyle]}>
-      {duplicatedReciters.map((reciter, index) => {
-        const {start, end} = getVisibleRange(scrollY.value);
+    // Memoize the animation style
+    const animatedStyle = useAnimatedStyle(() => {
+      const wrappedPosition = scrollY.value % singleSetHeight;
+      return {
+        transform: [{translateY: wrappedPosition * config.direction}],
+      };
+    }, [singleSetHeight, config.direction]);
 
-        // Only render items that are currently visible
-        if (index < start || index > end + config.reciters.length) {
-          return (
-            <View
-              key={`${reciter.id}-${index}`}
-              style={styles.imageContainer}
-            />
-          );
-        }
+    React.useEffect(() => {
+      if (config.reciters.length === 0) return;
 
-        return (
-          <View key={`${reciter.id}-${index}`} style={styles.imageContainer}>
-            <MemoizedReciterImage
-              imageUrl={reciter.image_url || undefined}
-              reciterName={reciter.name}
-              style={styles.image}
-            />
-          </View>
+      const startAnimation = () => {
+        'worklet';
+        scrollY.value = withRepeat(
+          withTiming(singleSetHeight, {
+            duration: config.speed,
+            easing: Easing.linear,
+          }),
+          -1,
+          false,
         );
-      })}
-    </Animated.View>
-  );
-});
+      };
+
+      const task = InteractionManager.runAfterInteractions(() => {
+        if (isAnimating.value && isComponentMounted.current) {
+          startAnimation();
+        }
+      });
+
+      return () => {
+        isComponentMounted.current = false;
+        isAnimating.value = false;
+        cancelAnimation(scrollY);
+        scrollY.value = config.startOffset;
+        task.cancel();
+      };
+    }, [
+      config.reciters.length,
+      singleSetHeight,
+      config.speed,
+      config.startOffset,
+      scrollY,
+      isAnimating,
+    ]);
+
+    // Memoize visible range calculation
+    const getVisibleRange = useCallback(
+      (scrollPosition: number) => {
+        const wrappedPosition = scrollPosition % singleSetHeight;
+        const start = Math.floor(Math.abs(wrappedPosition) / itemSize) - 1;
+        const end = start + Math.ceil(SECTION_HEIGHT / itemSize) + 2;
+        return {start: Math.max(0, start), end};
+      },
+      [singleSetHeight, itemSize],
+    );
+
+    if (config.reciters.length === 0) return null;
+
+    return (
+      <Animated.View style={[styles.column, animatedStyle]}>
+        {duplicatedReciters.map((reciter, index) => {
+          const {start, end} = getVisibleRange(scrollY.value);
+
+          if (index < start || index > end + config.reciters.length) {
+            return (
+              <View
+                key={`${reciter.id}-${index}`}
+                style={styles.imageContainer}
+              />
+            );
+          }
+
+          return (
+            <View key={`${reciter.id}-${index}`} style={styles.imageContainer}>
+              <MemoizedReciterImage
+                imageUrl={reciter.image_url || undefined}
+                reciterName={reciter.name}
+                style={styles.image}
+              />
+            </View>
+          );
+        })}
+      </Animated.View>
+    );
+  },
+  (prevProps, nextProps) =>
+    prevProps.config === nextProps.config &&
+    prevProps.theme === nextProps.theme,
+);
 
 Column.displayName = 'Column';
 
@@ -299,34 +376,25 @@ function createStyles(theme: Theme) {
   });
 }
 
-export const ScrollingHero: React.FC<ScrollingHeroProps> = React.memo(
-  ({onBrowseAll}) => {
+export const ScrollingHero = React.memo(
+  ({onBrowseAll}: ScrollingHeroProps) => {
     const [isRevealed, setIsRevealed] = useState(false);
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const distributedReciters = useDistributedReciters(RECITERS);
-    const columnConfigs = useMemo(() => {
-      return COLUMNS.map((config, index) => ({
-        ...config,
-        reciters: distributedReciters[index],
-      }));
-    }, [distributedReciters]);
+    const columnConfigs = useMemo(
+      () =>
+        COLUMNS.map((config, index) => ({
+          ...config,
+          reciters: distributedReciters[index],
+        })),
+      [distributedReciters],
+    );
 
     const handleReveal = useCallback(() => {
       setIsRevealed(prev => !prev);
     }, []);
-
-    const overlayStyle = useMemo(
-      () => [
-        styles.overlay,
-        {
-          backgroundColor: theme.colors.primary,
-          opacity: isRevealed ? 0 : 0.25,
-        },
-      ],
-      [isRevealed, theme.colors.primary, styles.overlay],
-    );
 
     return (
       <ScrollingHeroErrorBoundary>
@@ -334,28 +402,28 @@ export const ScrollingHero: React.FC<ScrollingHeroProps> = React.memo(
           <Pressable style={styles.container} onPress={handleReveal}>
             <View style={styles.columnsContainer}>
               {columnConfigs.map((config, index) => (
-                <Column key={index} config={config} styles={styles} />
+                <Column
+                  key={index}
+                  config={config}
+                  styles={styles}
+                  theme={theme}
+                />
               ))}
             </View>
-            <Animated.View style={overlayStyle} />
+            <Overlay isRevealed={isRevealed} theme={theme} styles={styles} />
             <View style={styles.contentOverlay} pointerEvents="box-none">
-              <TouchableOpacity
-                style={[
-                  styles.browseButton,
-                  {backgroundColor: theme.colors.card},
-                ]}
+              <BrowseButton
                 onPress={onBrowseAll}
-                activeOpacity={0.8}>
-                <Text style={[styles.buttonText, {color: theme.colors.text}]}>
-                  Browse All
-                </Text>
-              </TouchableOpacity>
+                theme={theme}
+                styles={styles}
+              />
             </View>
           </Pressable>
         </View>
       </ScrollingHeroErrorBoundary>
     );
   },
+  (prevProps, nextProps) => prevProps.onBrowseAll === nextProps.onBrowseAll,
 );
 
 ScrollingHero.displayName = 'ScrollingHero';
