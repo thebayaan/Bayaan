@@ -71,7 +71,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
 
   const handleCloseRewayatInfo = useCallback(() => {
     rewayatInfoRef.current?.close();
-    setRewayatInfo(null);
   }, []);
 
   return (

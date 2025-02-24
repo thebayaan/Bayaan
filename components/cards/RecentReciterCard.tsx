@@ -15,6 +15,7 @@ import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {QueueContext} from '@/services/queue/QueueContext';
 import TrackPlayer from 'react-native-track-player';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {BlurView} from 'expo-blur';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -187,12 +188,15 @@ export const RecentReciterCard = React.memo(
               width: 0,
               height: moderateScale(8),
             },
-            shadowOpacity: 0.15,
+            shadowOpacity: 0.25,
             shadowRadius: moderateScale(12),
             overflow: 'hidden',
-            backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
-            borderWidth: 1,
-            borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+            borderWidth: 0.5,
+            borderColor: Color(theme.colors.border).alpha(0.15).toString(),
+          },
+          overlay: {
+            ...StyleSheet.absoluteFillObject,
+            opacity: 0.75,
           },
           gradient: {
             ...StyleSheet.absoluteFillObject,
@@ -277,6 +281,11 @@ export const RecentReciterCard = React.memo(
         activeOpacity={0.99}
         style={styles.container}
         onPress={handlePress}>
+        <BlurView
+          intensity={40}
+          tint={theme.isDarkMode ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFill}
+        />
         <LinearGradient
           colors={[
             Color(theme.colors.primary).alpha(0.05).toString(),
@@ -287,6 +296,7 @@ export const RecentReciterCard = React.memo(
           end={{x: 1, y: 1}}
           style={styles.gradient}
         />
+        <View style={[styles.overlay, {backgroundColor: theme.colors.card}]} />
         <View style={styles.content}>
           <View style={styles.imageContainer}>
             <ReciterImage

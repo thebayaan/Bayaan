@@ -139,12 +139,12 @@ const createStyles = (theme: Theme) =>
       gap: moderateScale(6),
     },
     surahName: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
     surahSecondaryInfo: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
       marginBottom: moderateScale(4),
@@ -168,7 +168,7 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
     },
     locationText: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(10),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
     },

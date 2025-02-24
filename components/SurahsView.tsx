@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  RefreshControl,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -14,12 +13,148 @@ import {SurahCard} from './cards/SurahCard';
 import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {LinearGradient} from 'expo-linear-gradient';
+import {BlurView} from '@react-native-community/blur';
+import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
 }
+
+interface SurahCollection {
+  id: string;
+  title: string;
+  surahs: number[];
+  description?: string;
+  color: string;
+}
+
+const FEATURED_COLLECTIONS: SurahCollection[] = [
+  {
+    id: 'juz-amma',
+    title: 'Juz Amma',
+    description: 'Last 37 Surahs',
+    surahs: Array.from({length: 37}, (_, i) => 78 + i),
+    color: '#1E40AF', // Deep Blue
+  },
+  {
+    id: 'seven-long',
+    title: 'The Seven Long Surahs',
+    description: "Al-Sab' Al-Tiwal",
+    surahs: [2, 3, 4, 5, 6, 7, 9],
+    color: '#DC2626', // Red
+  },
+  {
+    id: 'heart-of-quran',
+    title: 'Heart of Quran',
+    surahs: [36, 55, 56, 67, 18],
+    color: '#059669', // Emerald
+  },
+  {
+    id: 'daily-adhkar',
+    title: 'Daily Adhkar Surahs',
+    surahs: [112, 113, 114, 1],
+    color: '#7C3AED', // Purple
+  },
+];
+
+const BY_THEME: SurahCollection[] = [
+  {
+    id: 'prophets',
+    title: 'Stories of the Prophets',
+    surahs: [12, 19, 28, 71, 21, 14],
+    color: '#EA580C', // Orange
+  },
+  {
+    id: 'mercy',
+    title: 'Mercy and Forgiveness',
+    surahs: [55, 40, 39, 9],
+    color: '#0891B2', // Cyan
+  },
+  {
+    id: 'faith',
+    title: 'Faith and Belief',
+    surahs: [112, 109, 103, 2],
+    color: '#BE185D', // Pink
+  },
+];
+
+const BY_LENGTH: SurahCollection[] = [
+  {
+    id: 'short',
+    title: 'Short Surahs',
+    description: 'Less than 20 verses',
+    surahs: [108, 112, 103, 110],
+    color: '#4F46E5', // Indigo
+  },
+  {
+    id: 'medium',
+    title: 'Medium Surahs',
+    description: '20-100 verses',
+    surahs: [36, 55, 56],
+    color: '#B45309', // Amber
+  },
+  {
+    id: 'long',
+    title: 'Long Surahs',
+    description: 'More than 100 verses',
+    surahs: [2, 3, 4],
+    color: '#047857', // Dark Emerald
+  },
+];
+
+const BY_PERIOD: SurahCollection[] = [
+  {
+    id: 'meccan',
+    title: 'Notable Meccan Surahs',
+    surahs: [96, 74, 73, 93],
+    color: '#9333EA', // Bright Purple
+  },
+  {
+    id: 'medinan',
+    title: 'Notable Medinan Surahs',
+    surahs: [2, 8, 24, 49],
+    color: '#EA580C', // Orange
+  },
+];
+
+const SPECIAL_CATEGORIES: SurahCollection[] = [
+  {
+    id: 'most-recited',
+    title: 'Most Recited',
+    surahs: [1, 2, 36, 67, 18],
+    color: '#1E40AF', // Deep Blue
+  },
+  {
+    id: 'most-loved',
+    title: 'Most Loved by Community',
+    surahs: [55, 36, 18, 56, 67],
+    color: '#DC2626', // Red
+  },
+];
+
+const GRADIENT_COLORS = [
+  '#7C3AED', // Purple
+  '#2563EB', // Blue
+  '#059669', // Emerald
+  '#DC2626', // Red
+  '#EA580C', // Orange
+  '#0891B2', // Cyan
+  '#BE185D', // Pink
+  '#4F46E5', // Indigo
+  '#B45309', // Amber
+  '#047857', // Dark Emerald
+] as const;
+
+const getRandomColors = (): readonly [string, string, string] => {
+  // Fisher-Yates shuffle
+  const shuffled = [...GRADIENT_COLORS];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return [shuffled[0], shuffled[1], shuffled[2]] as const;
+};
 
 function getSurahOfTheDay(): Surah {
   const today = new Date();
@@ -41,179 +176,224 @@ const HeroSection = ({
   const {theme} = useTheme();
   const handlePress = React.useCallback(() => onPress(surah), [surah, onPress]);
 
+  // Use useMemo to keep the same colors during re-renders but change on restart
+  const gradientColors = React.useMemo((): readonly [
+    string,
+    string,
+    string,
+  ] => {
+    const colors = getRandomColors();
+    return [
+      Color(colors[0]).alpha(0.9).toString(),
+      Color(colors[1]).alpha(0.8).toString(),
+      Color(colors[2]).alpha(0.7).toString(),
+    ] as const;
+  }, []);
+
   const styles = StyleSheet.create({
     hero: {
       marginHorizontal: moderateScale(15),
-      marginBottom: verticalScale(24),
-      padding: moderateScale(20),
-      borderRadius: moderateScale(24),
-      backgroundColor: Color(theme.colors.primary).alpha(0.1).toString(),
+      marginBottom: verticalScale(16),
+      borderRadius: moderateScale(16),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
     },
-    heroTitle: {
-      fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
-      marginBottom: verticalScale(8),
+    content: {
+      padding: moderateScale(16),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(16),
     },
-    heroSurahName: {
-      fontSize: moderateScale(28),
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      marginBottom: verticalScale(4),
+    leftSection: {
+      alignItems: 'flex-start',
+      justifyContent: 'center',
     },
     heroGlyph: {
-      fontSize: moderateScale(40),
+      fontSize: moderateScale(48),
       fontFamily: 'SurahNames',
-      color: theme.colors.primary,
-      marginBottom: verticalScale(12),
+      color: '#e8e8e8',
+      textShadowColor: 'rgba(0, 0, 0, 0.2)',
+      textShadowOffset: {width: 0, height: 1},
+      textShadowRadius: 4,
+    },
+    rightSection: {
+      flex: 1,
+    },
+    topRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: verticalScale(4),
+    },
+    heroTitle: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Bold',
+      color: '#e8e8e8',
+      letterSpacing: 1,
+    },
+    revelationPlace: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      backgroundColor: Color('#e8e8e8').alpha(0.1).toString(),
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(4),
+      borderRadius: moderateScale(6),
+    },
+    revelationText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Bold',
+      color: '#e8e8e8',
+      textTransform: 'uppercase',
+    },
+    heroSurahName: {
+      fontSize: moderateScale(20),
+      fontFamily: 'Manrope-Bold',
+      color: '#e8e8e8',
+      marginBottom: verticalScale(2),
+    },
+    translatedName: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: '#e8e8e8',
+      marginBottom: verticalScale(8),
     },
     statsRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: verticalScale(12),
-      paddingTop: verticalScale(12),
+      gap: moderateScale(16),
     },
     stat: {
+      flexDirection: 'row',
       alignItems: 'center',
+      backgroundColor: Color('#e8e8e8').alpha(0.1).toString(),
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(4),
+      borderRadius: moderateScale(6),
     },
     statValue: {
-      fontSize: moderateScale(16),
-      fontWeight: '600',
-      color: theme.colors.text,
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Bold',
+      color: '#e8e8e8',
+      marginRight: moderateScale(4),
     },
     statLabel: {
-      fontSize: moderateScale(12),
-      color: theme.colors.textSecondary,
-      marginTop: verticalScale(4),
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Medium',
+      color: '#e8e8e8',
+      textTransform: 'uppercase',
     },
-    translatedName: {
-      fontSize: moderateScale(14),
-      color: theme.colors.textSecondary,
-      marginBottom: verticalScale(8),
+    blurOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: Color(theme.colors.background).alpha(0.05).toString(),
     },
   });
 
+  const revelationPlace = surah.revelation_place.toLowerCase();
+
   return (
     <TouchableOpacity
-      activeOpacity={0.99}
+      activeOpacity={0.7}
       style={styles.hero}
       onPress={handlePress}>
-      <Text style={styles.heroTitle}>SURAH OF THE DAY</Text>
-      <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>
-      <Text style={styles.heroSurahName}>{surah.name}</Text>
-      <Text style={styles.translatedName}>{surah.translated_name_english}</Text>
-      <View style={styles.statsRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{surah.verses_count}</Text>
-          <Text style={styles.statLabel}>Verses</Text>
+      <LinearGradient
+        colors={gradientColors}
+        start={{x: 0, y: 0.8}}
+        end={{x: 1, y: 0.2}}
+        style={StyleSheet.absoluteFill}
+      />
+      <BlurView
+        style={styles.blurOverlay}
+        blurType={theme.isDarkMode ? 'dark' : 'light'}
+        blurAmount={20}
+      />
+      <View style={styles.content}>
+        <View style={styles.leftSection}>
+          <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{surah.revelation_place}</Text>
-          <Text style={styles.statLabel}>Revealed</Text>
-        </View>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{surah.id}</Text>
-          <Text style={styles.statLabel}>Number</Text>
+        <View style={styles.rightSection}>
+          <View style={styles.topRow}>
+            <Text style={styles.heroTitle}>SURAH OF THE DAY</Text>
+            <View style={styles.revelationPlace}>
+              {revelationPlace === 'makkah' ? (
+                <MakkahIcon size={moderateScale(12)} color="#e8e8e8" />
+              ) : (
+                <MadinahIcon size={moderateScale(12)} color="#e8e8e8" />
+              )}
+            </View>
+          </View>
+          <Text style={styles.heroSurahName}>{surah.name}</Text>
+          <Text style={styles.translatedName}>
+            {surah.translated_name_english}
+          </Text>
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{surah.verses_count}</Text>
+              <Text style={styles.statLabel}>Verses</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{surah.id}</Text>
+              <Text style={styles.statLabel}>Number</Text>
+            </View>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-const ItemSeparator = () => <View style={{width: moderateScale(12)}} />;
+const ItemSeparator = () => <View style={{width: moderateScale(8)}} />;
 
-export default function SurahsView({onSurahPress}: SurahsViewProps) {
+const CollectionSection = ({
+  title,
+  collection,
+  onSurahPress,
+}: {
+  title: string;
+  collection: SurahCollection;
+  onSurahPress: (surah: Surah) => void;
+}) => {
   const {theme} = useTheme();
-  const {recentTracks} = useRecentlyPlayedStore();
-  const {queue} = useUnifiedPlayer();
-
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-    },
     section: {
-      marginBottom: verticalScale(10),
+      marginBottom: verticalScale(16),
     },
     sectionHeader: {
-      marginBottom: verticalScale(5),
+      marginBottom: verticalScale(8),
       paddingHorizontal: moderateScale(15),
     },
     sectionTitle: {
-      fontSize: moderateScale(22),
-      fontWeight: 'bold',
+      fontSize: moderateScale(18),
+      fontFamily: 'Manrope-Bold',
+      color: Color(collection.color).isDark()
+        ? theme.colors.text
+        : collection.color,
+      marginBottom: verticalScale(2),
+    },
+    description: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
-      marginBottom: verticalScale(4),
+      marginTop: verticalScale(2),
     },
     sectionContent: {
       paddingHorizontal: moderateScale(15),
-      paddingVertical: verticalScale(8),
+      paddingVertical: verticalScale(4),
     },
   });
 
-  const recentSurahs = useMemo(() => {
-    const seen = new Set();
-    return recentTracks
-      .map(item => item.surah)
-      .filter(surah => {
-        if (seen.has(surah.id)) {
-          return false;
-        }
-        seen.add(surah.id);
-        return true;
-      })
-      .slice(0, 5);
-  }, [recentTracks]);
+  const surahs = collection.surahs.map(id => SURAHS[id - 1]);
 
-  const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
-
-  const lovedSurahs = useMemo(() => {
-    const tracks = queue.tracks.filter(track => track.isLoved);
-    const surahIds = tracks.map(track => parseInt(track.surahId || '0', 10));
-    const uniqueSurahIds = [...new Set(surahIds)];
-    return uniqueSurahIds
-      .map(id => SURAHS.find(surah => surah.id === id))
-      .filter((surah): surah is Surah => surah !== undefined)
-      .slice(0, 5);
-  }, [queue.tracks]);
-
-  const mostPlayedSurahs = useMemo(() => {
-    // Get play counts from queue tracks
-    const playCounts = new Map<number, number>();
-    queue.tracks.forEach(track => {
-      const surahId = parseInt(track.surahId || '0', 10);
-      if (surahId) {
-        playCounts.set(
-          surahId,
-          (playCounts.get(surahId) || 0) + (track.playCount || 0),
-        );
-      }
-    });
-
-    // Sort by play count and get top 5
-    const sortedSurahIds = Array.from(playCounts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([id]) => id);
-
-    return sortedSurahIds
-      .map(id => SURAHS.find(surah => surah.id === id))
-      .filter((surah): surah is Surah => surah !== undefined);
-  }, [queue.tracks]);
-
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Refresh your data here
-    setRefreshing(false);
-  };
-
-  const renderSection = (title: string, data: Surah[]) => (
+  return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{title}</Text>
+        {collection.description && (
+          <Text style={styles.description}>{collection.description}</Text>
+        )}
       </View>
       <FlatList
-        data={data}
+        data={surahs}
         renderItem={({item}) => (
           <SurahCard
             id={item.id}
@@ -222,6 +402,7 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
             versesCount={item.verses_count}
             revelationPlace={item.revelation_place}
             onPress={() => onSurahPress(item)}
+            color={collection.color}
           />
         )}
         keyExtractor={item => item.id.toString()}
@@ -229,38 +410,80 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={[
           styles.sectionContent,
-          {paddingRight: moderateScale(15) + moderateScale(12)},
+          {paddingRight: moderateScale(15) + moderateScale(8)},
         ]}
-        snapToInterval={moderateScale(172)}
+        snapToInterval={moderateScale(148)}
         decelerationRate="fast"
         snapToAlignment="start"
         ItemSeparatorComponent={ItemSeparator}
       />
     </View>
   );
+};
+
+export default function SurahsView({onSurahPress}: SurahsViewProps) {
+  useTheme();
+  const surahOfTheDay = React.useMemo(() => getSurahOfTheDay(), []);
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+  });
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{paddingVertical: verticalScale(20)}}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor={theme.colors.text}
-        />
-      }>
+      contentContainerStyle={{
+        paddingVertical: verticalScale(16),
+      }}
+      showsVerticalScrollIndicator={false}>
       <HeroSection surah={surahOfTheDay} onPress={onSurahPress} />
 
-      {recentSurahs.length > 0 &&
-        renderSection('Recently Played', recentSurahs)}
+      {FEATURED_COLLECTIONS.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={onSurahPress}
+        />
+      ))}
 
-      {mostPlayedSurahs.length > 0 &&
-        renderSection('Most Played', mostPlayedSurahs)}
+      {BY_THEME.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={onSurahPress}
+        />
+      ))}
 
-      {lovedSurahs.length > 0 &&
-        renderSection('From your Collection', lovedSurahs)}
+      {BY_LENGTH.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={onSurahPress}
+        />
+      ))}
+
+      {BY_PERIOD.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={onSurahPress}
+        />
+      ))}
+
+      {SPECIAL_CATEGORIES.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={onSurahPress}
+        />
+      ))}
     </ScrollView>
   );
 }

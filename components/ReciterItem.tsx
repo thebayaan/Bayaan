@@ -69,7 +69,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
       borderColor: 'transparent',
     },

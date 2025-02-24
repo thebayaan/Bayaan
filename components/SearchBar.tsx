@@ -88,9 +88,7 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
               name="search"
               type="feather"
               size={moderateScale(20)}
-              color={
-                isFocused ? theme.colors.primary : theme.colors.textSecondary
-              }
+              color={isFocused ? theme.colors.text : theme.colors.textSecondary}
               onPress={() => inputRef.current?.focus()}
             />
           </Animated.View>
@@ -165,15 +163,16 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(12),
       paddingHorizontal: moderateScale(15),
       borderWidth: 1,
       borderColor: 'transparent',
       height: moderateScale(45),
     },
     inputContainerFocused: {
-      borderColor: theme.colors.primary,
-      shadowColor: theme.colors.primary,
+      borderWidth: 0.1,
+      borderColor: theme.colors.textSecondary,
+      shadowColor: theme.colors.textSecondary,
       shadowOffset: {
         width: 0,
         height: 2,
@@ -198,7 +197,7 @@ const createStyles = (theme: Theme) =>
       marginLeft: moderateScale(10),
     },
     cancelButtonText: {
-      color: theme.colors.primary,
+      color: theme.colors.text,
       fontSize: theme.typography.bodySize,
       fontFamily: theme.fonts.regular,
     },

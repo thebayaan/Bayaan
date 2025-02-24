@@ -1,6 +1,6 @@
 import React from 'react';
 import {useLocalSearchParams} from 'expo-router';
-import ReciterProfile from '@/components/ReciterProfile';
+import ReciterProfile from '@/components/reciter-profile/ReciterProfile';
 
 const CollectionReciterProfile: React.FC = () => {
   const {id, showFavorites} = useLocalSearchParams<{
