@@ -1,17 +1,16 @@
 import React from 'react';
-import {Text, TouchableOpacity, ScrollView, View, Alert} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {Text, TouchableOpacity, ScrollView, View, Linking} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme, ThemeMode, PrimaryColor} from '@/utils/themeUtils';
 import {Icon} from '@rneui/base';
-import {Button} from '@/components/Button';
-import {signOut} from '@/services/auth';
-import {ScreenHeader} from '@/components/ScreenHeader';
 import {primaryColors} from '@/styles/colorSchemes';
-import {useAuthStore} from '@/store/authStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
+import Animated, {FadeInDown} from 'react-native-reanimated';
+import {BlurView} from '@react-native-community/blur';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Color from 'color';
 
 const formatColorName = (colorName: string): string => {
   return colorName
@@ -29,34 +28,91 @@ const themeOptions: {label: string; value: ThemeMode}[] = [
 ];
 
 const settingsItems = [
-  {title: 'Account', type: 'account'},
-  {title: 'Default Reciter', type: 'defaultReciter'},
-  {title: 'Reciter Choice', type: 'reciterChoice'},
-  {title: 'Clear Cache', type: 'clearCache'},
+  {
+    section: 'Account',
+    items: [
+      {
+        title: 'Account',
+        type: 'account',
+        description: 'Manage your account settings',
+      },
+    ],
+  },
+  {
+    section: 'Audio & Playback',
+    items: [
+      {
+        title: 'Default Reciter',
+        type: 'defaultReciter',
+        description: 'Choose your preferred reciter',
+      },
+      {
+        title: 'Reciter Choice',
+        type: 'reciterChoice',
+        description: 'Customize reciter selection',
+      },
+    ],
+  },
+  {
+    section: 'Storage & Data',
+    items: [
+      {
+        title: 'Clear Cache',
+        type: 'clearCache',
+        description: 'Clear app data and cache',
+      },
+    ],
+  },
+  {
+    section: 'Support & Legal',
+    items: [
+      {
+        title: 'Help & Support',
+        type: 'support',
+        description: 'Get help and contact support',
+      },
+      {
+        title: 'Feature Requests',
+        type: 'featureRequest',
+        description: 'Submit feature requests and feedback',
+      },
+      {
+        title: 'Terms of Service',
+        type: 'terms',
+        description: 'Read our terms of service',
+      },
+      {
+        title: 'Privacy Policy',
+        type: 'privacy',
+        description: 'View our privacy policy',
+      },
+    ],
+  },
+  {
+    section: 'About',
+    items: [
+      {
+        title: 'About Bayaan',
+        type: 'about',
+        description: 'Learn more about Bayaan',
+      },
+      {
+        title: 'Credits',
+        type: 'credits',
+        description: 'View contributors and acknowledgments',
+      },
+    ],
+  },
 ];
+
+// Add your App Store ID here once available
 
 export default function SettingsScreen() {
   const router = useRouter();
   const {theme, themeMode, setThemeMode, primaryColor, setPrimaryColor} =
     useTheme();
-  const {isSigningOut, setSigningOut} = useAuthStore();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
-
-  const handleLogout = async () => {
-    try {
-      setSigningOut(true);
-      const {success, error} = await signOut();
-
-      if (!success) {
-        console.error('Logout failed:', error);
-        return;
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setSigningOut(false);
-    }
-  };
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
@@ -70,126 +126,230 @@ export default function SettingsScreen() {
         router.push('/settings/reciter-choice');
         break;
       case 'clearCache':
-        Alert.alert(
-          'Clear Cache',
-          'This will clear all cached data including player state, recent tracks, and settings. Are you sure?',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-            {
-              text: 'Clear',
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  await clearPlayerCache();
-                  Alert.alert('Success', 'Cache cleared successfully');
-                } catch (error) {
-                  console.error('Error clearing cache:', error);
-                  Alert.alert(
-                    'Error',
-                    'Failed to clear cache. Please try again.',
-                  );
-                }
-              },
-            },
-          ],
-        );
+        await clearPlayerCache();
+        break;
+      case 'support':
+        await Linking.openURL('https://thebayaan.com/support');
+        break;
+      case 'featureRequest':
+        await Linking.openURL('https://thebayaan.com/feedback');
+        break;
+      case 'terms':
+        await Linking.openURL('https://thebayaan.com/terms');
+        break;
+      case 'privacy':
+        await Linking.openURL('https://thebayaan.com/privacy');
+        break;
+      case 'about':
+        router.push('/settings/about');
+        break;
+      case 'credits':
+        router.push('/settings/credits');
+        break;
+      default:
         break;
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Settings" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Theme</Text>
+    <View style={styles.container}>
+      <Animated.View style={[styles.header, {paddingTop: insets.top}]}>
+        <BlurView
+          blurAmount={10}
+          blurType={theme.isDarkMode ? 'dark' : 'light'}
+          style={[styles.blurContainer]}>
+          <View
+            style={[
+              styles.overlay,
+              {
+                backgroundColor: theme.colors.background,
+              },
+            ]}
+          />
+        </BlurView>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.7}
+            onPress={() => router.back()}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
+            Settings
+          </Text>
+        </View>
+      </Animated.View>
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {paddingTop: insets.top + moderateScale(56)},
+        ]}
+        showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInDown.delay(100)} style={styles.section}>
+          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+            Theme
+          </Text>
           <View style={styles.themeContainer}>
-            {themeOptions.map(option => (
+            {themeOptions.map((option, index) => (
               <TouchableOpacity
-                activeOpacity={0.99}
+                activeOpacity={0.7}
                 key={option.value}
                 style={[
                   styles.themeOption,
-                  themeMode === option.value && styles.selectedThemeOption,
+                  {
+                    backgroundColor:
+                      themeMode === option.value
+                        ? theme.colors.primary
+                        : Color(theme.colors.card).alpha(0.5).toString(),
+                  },
+                  index === 0 && styles.firstThemeOption,
+                  index === themeOptions.length - 1 && styles.lastThemeOption,
                 ]}
                 onPress={() => setThemeMode(option.value)}>
                 <Text
                   style={[
-                    styles.themeOptionText,
-                    themeMode === option.value &&
-                      styles.selectedThemeOptionText,
+                    styles.themeText,
+                    {
+                      color:
+                        themeMode === option.value
+                          ? theme.colors.background
+                          : theme.colors.text,
+                      fontFamily:
+                        themeMode === option.value
+                          ? theme.fonts.semiBold
+                          : theme.fonts.regular,
+                    },
                   ]}>
                   {option.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+        </Animated.View>
 
-        <View style={[styles.section, styles.colorSection]}>
-          <Text style={styles.sectionTitle}>Color</Text>
+        <Animated.View
+          entering={FadeInDown.delay(200)}
+          style={[styles.section, styles.colorSection]}>
+          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+            Accent Color
+          </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.colorScrollContent}>
-            {Object.entries(primaryColors).map(([color, value]) => (
-              <View key={color} style={styles.colorOptionContainer}>
+            {Object.entries(primaryColors).map(([color, value]) => {
+              return (
                 <TouchableOpacity
-                  activeOpacity={0.99}
-                  style={[
-                    styles.colorOption,
-                    {backgroundColor: value},
-                    primaryColor === color && styles.selectedColorOption,
-                  ]}
-                  onPress={() => setPrimaryColor(color as PrimaryColor)}
-                />
-                <Text
-                  style={[
-                    styles.colorLabel,
-                    primaryColor === color && styles.selectedColorLabel,
-                  ]}>
-                  {formatColorName(color)}
-                </Text>
-              </View>
-            ))}
+                  activeOpacity={0.7}
+                  key={color}
+                  style={styles.colorOptionContainer}
+                  onPress={() => setPrimaryColor(color as PrimaryColor)}>
+                  <View
+                    style={[
+                      styles.colorOption,
+                      {
+                        backgroundColor: value,
+                        borderColor:
+                          primaryColor === color
+                            ? theme.colors.text
+                            : 'transparent',
+                        shadowColor: value,
+                        shadowOffset: {width: 0, height: 2},
+                        shadowOpacity: 0.25,
+                        shadowRadius: 3.84,
+                        elevation: 5,
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.colorLabel,
+                      {
+                        color:
+                          primaryColor === color
+                            ? theme.colors.text
+                            : theme.colors.textSecondary,
+                        fontFamily:
+                          primaryColor === color
+                            ? theme.fonts.medium
+                            : theme.fonts.regular,
+                      },
+                    ]}>
+                    {formatColorName(color)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
-        </View>
+        </Animated.View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Other Settings</Text>
-          {settingsItems.map((item, index) => (
-            <TouchableOpacity
-              activeOpacity={0.99}
-              key={index}
-              style={styles.settingItem}
-              onPress={() => handleSettingPress(item.type)}>
-              <Text style={styles.settingTitle}>{item.title}</Text>
-              <Icon
-                name="chevron-right"
-                type="feather"
-                color={theme.colors.textSecondary}
-                size={moderateScale(20)}
-              />
-            </TouchableOpacity>
-          ))}
-        </View>
+        {settingsItems.map((section, sectionIndex) => (
+          <Animated.View
+            key={section.section}
+            entering={FadeInDown.delay(300 + sectionIndex * 100)}
+            style={styles.section}>
+            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+              {section.section}
+            </Text>
+            <View style={styles.settingsGroup}>
+              {section.items.map((item, index) => (
+                <TouchableOpacity
+                  key={item.type}
+                  style={[
+                    styles.settingItem,
+                    {
+                      backgroundColor: theme.colors.card,
+                      borderTopLeftRadius: index === 0 ? moderateScale(12) : 0,
+                      borderTopRightRadius: index === 0 ? moderateScale(12) : 0,
+                      borderBottomLeftRadius:
+                        index === section.items.length - 1
+                          ? moderateScale(12)
+                          : 0,
+                      borderBottomRightRadius:
+                        index === section.items.length - 1
+                          ? moderateScale(12)
+                          : 0,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => handleSettingPress(item.type)}>
+                  <View style={styles.settingContent}>
+                    <View style={styles.settingTexts}>
+                      <Text
+                        style={[
+                          styles.settingTitle,
+                          {color: theme.colors.text},
+                        ]}>
+                        {item.title}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.settingDescription,
+                          {color: theme.colors.textSecondary},
+                        ]}>
+                        {item.description}
+                      </Text>
+                    </View>
+                    <Icon
+                      name="arrow-right"
+                      type="feather"
+                      size={moderateScale(20)}
+                      color={theme.colors.textSecondary}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
+        ))}
       </ScrollView>
-
-      <View style={styles.logoutButtonContainer}>
-        <Button
-          title="Logout"
-          onPress={handleLogout}
-          loading={isSigningOut}
-          disabled={isSigningOut}
-          style={styles.logoutButton}
-          textStyle={styles.logoutButtonText}
-          size="medium"
-        />
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -199,105 +359,132 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    },
+    blurContainer: {
+      overflow: 'hidden',
+      borderWidth: 0.1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      opacity: 0.85,
+    },
+    headerContent: {
+      height: moderateScale(56),
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+    },
+    backButton: {
+      marginRight: moderateScale(16),
+    },
+    headerTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: theme.fonts.semiBold,
+      flex: 1,
+      textAlign: 'center',
+      marginRight: moderateScale(40), // To center the title accounting for back button
+    },
     scrollContent: {
-      paddingHorizontal: moderateScale(20),
+      paddingHorizontal: moderateScale(16),
+      paddingBottom: moderateScale(40),
     },
     section: {
-      marginBottom: moderateScale(30),
+      marginBottom: moderateScale(24),
     },
     sectionTitle: {
-      fontSize: moderateScale(18),
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      marginBottom: moderateScale(15),
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.medium,
+      marginBottom: moderateScale(8),
+      marginLeft: moderateScale(4),
     },
     themeContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      gap: moderateScale(10),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      gap: moderateScale(8),
     },
     themeOption: {
       flex: 1,
-      padding: moderateScale(12),
-      borderRadius: moderateScale(12),
-      backgroundColor: theme.colors.card,
+      paddingVertical: moderateScale(12),
       alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: moderateScale(12),
     },
-    selectedThemeOption: {
-      backgroundColor: theme.colors.textSecondary,
-    },
-    themeOptionText: {
+    themeText: {
       fontSize: moderateScale(14),
-      color: theme.colors.text,
-      fontWeight: '500',
-    },
-    selectedThemeOptionText: {
-      color: theme.colors.background,
     },
     colorSection: {
-      marginBottom: moderateScale(30),
+      marginBottom: moderateScale(32),
     },
     colorScrollContent: {
       paddingHorizontal: moderateScale(4),
-      gap: moderateScale(12),
+      gap: moderateScale(16),
+      flexDirection: 'row',
     },
     colorOptionContainer: {
       alignItems: 'center',
-      width: moderateScale(50),
+      width: moderateScale(48),
     },
     colorOption: {
-      width: moderateScale(40),
-      height: moderateScale(40),
-      borderRadius: moderateScale(12),
-      borderWidth: moderateScale(2),
-      borderColor: 'transparent',
-      marginBottom: moderateScale(8),
-      shadowColor: theme.colors.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
-      elevation: 3,
-    },
-    selectedColorOption: {
-      borderColor: theme.colors.text,
-      shadowOpacity: 0.4,
-      shadowRadius: 4.65,
-      elevation: 6,
+      width: moderateScale(32),
+      height: moderateScale(32),
+      borderRadius: moderateScale(16),
+      borderWidth: 2,
+      marginBottom: moderateScale(4),
     },
     colorLabel: {
       fontSize: moderateScale(10),
-      color: theme.colors.textSecondary,
       textAlign: 'center',
     },
-    selectedColorLabel: {
-      color: theme.colors.text,
-      fontWeight: '500',
+    settingsGroup: {
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      gap: moderateScale(1),
     },
     settingItem: {
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
+    },
+    settingContent: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: moderateScale(15),
+      justifyContent: 'space-between',
+    },
+    settingTexts: {
+      flex: 1,
+      marginRight: moderateScale(16),
     },
     settingTitle: {
       fontSize: moderateScale(16),
-      color: theme.colors.text,
+      fontFamily: theme.fonts.medium,
+      marginBottom: moderateScale(2),
     },
-    logoutButtonContainer: {
-      alignItems: 'center',
-      marginBottom: moderateScale(50),
+    settingDescription: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.regular,
     },
-    logoutButton: {
-      backgroundColor: theme.colors.error,
-      paddingHorizontal: moderateScale(20),
-      borderRadius: moderateScale(30),
+    firstThemeOption: {
+      borderTopLeftRadius: moderateScale(12),
+      borderBottomLeftRadius: moderateScale(12),
     },
-    logoutButtonText: {
-      color: 'white',
-      fontFamily: theme.fonts.bold,
-      fontSize: moderateScale(16),
+    lastThemeOption: {
+      borderTopRightRadius: moderateScale(12),
+      borderBottomRightRadius: moderateScale(12),
     },
   });

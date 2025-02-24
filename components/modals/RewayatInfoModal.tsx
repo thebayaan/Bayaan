@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {View, Text, TouchableOpacity, ScrollView} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -32,12 +32,12 @@ export const RewayatInfoModal: React.FC<RewayatInfoModalProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+  const [, setIsExpanded] = useState(false);
 
   const handleRewayatSelect = (rewayatId: string) => {
     if (onRewayatSelect) {
       onRewayatSelect(rewayatId);
     }
-    bottomSheetRef.current?.close();
   };
 
   const explanationText = `A Rewayah (رواية, plural: Rewayat رِوَايَات) is a specific method of reciting the Quran that represents a particular transmission route within a larger Qira'at (قِرَاءَة, plural: Qira'at قِرَاءَات) tradition.
@@ -55,7 +55,12 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
     <BaseModal
       bottomSheetRef={bottomSheetRef}
       snapPoints={['90%']}
-      title="About Rewayat">
+      title="About Rewayat"
+      onChange={index => {
+        if (index === -1) {
+          setIsExpanded(false);
+        }
+      }}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -71,13 +76,15 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
             seeMoreText="read more"
             seeLessText="show less"
             seeMoreStyle={[styles.readMoreText, {color: theme.colors.text}]}
-            seeLessStyle={[styles.readMoreText, {color: theme.colors.text}]}>
+            seeLessStyle={[styles.readMoreText, {color: theme.colors.text}]}
+            onCollapse={() => setIsExpanded(false)}
+            onExpand={() => setIsExpanded(true)}>
             {explanationText}
           </ReadMore>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Available Styles</Text>
+          <Text style={styles.sectionTitle}>Available Rewayat</Text>
           <View style={styles.rewayatList}>
             {availableRewayat.map(rewayat => (
               <TouchableOpacity

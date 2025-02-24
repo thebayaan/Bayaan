@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Icon} from '@rneui/themed';
@@ -26,6 +25,7 @@ import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {BlurView} from '@react-native-community/blur';
 
 interface CollectionItem {
   id: string;
@@ -129,9 +129,9 @@ export default function CollectionScreen() {
           />
           <Text style={styles.listItemText}>{item.title}</Text>
           <Icon
-            name="chevron-right"
+            name="arrow-right"
             type="feather"
-            size={moderateScale(30)}
+            size={moderateScale(24)}
             color={theme.colors.text}
           />
         </TouchableOpacity>
@@ -180,16 +180,32 @@ export default function CollectionScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={[styles.headerContainer, {paddingTop: insets.top}]} />
-      <FlatList
-        data={collectionItems}
-        renderItem={renderCollectionItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        scrollEnabled={false}
-      />
-    </ScrollView>
+    <View style={styles.container}>
+      <View style={[styles.header, {paddingTop: insets.top}]}>
+        <BlurView
+          blurAmount={10}
+          blurType={theme.isDarkMode ? 'dark' : 'light'}
+          style={[styles.blurContainer]}>
+          <View
+            style={[
+              styles.overlay,
+              {
+                backgroundColor: theme.colors.background,
+              },
+            ]}
+          />
+        </BlurView>
+      </View>
+      <ScrollView style={[styles.content, {paddingTop: insets.top}]}>
+        <FlatList
+          data={collectionItems}
+          renderItem={renderCollectionItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+          scrollEnabled={false}
+        />
+      </ScrollView>
+    </View>
   );
 }
 
@@ -243,5 +259,57 @@ const createPreviewStyles = (theme: Theme) =>
       flexDirection: 'row',
       gap: moderateScale(8),
       justifyContent: 'flex-start',
+    },
+  });
+
+const createStyles = (theme: Theme) =>
+  ScaledSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: moderateScale(56),
+      zIndex: 100,
+    },
+    blurContainer: {
+      overflow: 'hidden',
+      borderWidth: 0.1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      opacity: 0.85,
+    },
+    content: {
+      flex: 1,
+    },
+    listContainer: {
+      paddingHorizontal: moderateScale(15),
+      paddingTop: moderateScale(20),
+    },
+    listItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(15),
+    },
+    listItemText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.text,
+      marginLeft: moderateScale(15),
+      flex: 1,
     },
   });

@@ -1,13 +1,24 @@
 import React, {useState} from 'react';
-import {View, Text, Alert, TextInput} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  Alert,
+  TextInput,
+  Pressable,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
 import {signOut, deleteAccount} from '@/services/auth';
-import {ScreenHeader} from '@/components/ScreenHeader';
 import {useAuthStore} from '@/store/authStore';
+import {Icon} from '@rneui/base';
+import Animated, {FadeInDown, FadeIn, FadeOut} from 'react-native-reanimated';
+import {useRouter} from 'expo-router';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {BlurView} from '@react-native-community/blur';
 
 export default function AccountScreen() {
   const {theme} = useTheme();
@@ -15,7 +26,15 @@ export default function AccountScreen() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [password, setPassword] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
+
+  // Custom colors for different levels of danger
+  const dangerColors = {
+    warning: '#FF6B6B', // Softer red for less dangerous actions
+    critical: '#FF0000', // Bright red for critical actions
+  };
 
   const handleLogout = async () => {
     try {
@@ -81,31 +100,76 @@ export default function AccountScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Account" />
-      <View style={styles.content}>
-        <View style={styles.section}>
+    <View style={styles.container}>
+      <View style={[styles.header, {paddingTop: insets.top}]}>
+        <BlurView
+          blurAmount={10}
+          blurType={theme.isDarkMode ? 'dark' : 'light'}
+          style={[styles.blurContainer]}>
+          <View
+            style={[
+              styles.overlay,
+              {
+                backgroundColor: theme.colors.background,
+              },
+            ]}
+          />
+        </BlurView>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.7}
+            onPress={() => router.back()}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
+            Account
+          </Text>
+        </View>
+      </View>
+      <ScrollView
+        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
+        contentContainerStyle={styles.scrollContent}>
+        <Animated.View entering={FadeInDown.delay(100)} style={styles.section}>
           <Text style={styles.sectionTitle}>Account Management</Text>
           <Text style={styles.description}>
             Manage your account settings and preferences
           </Text>
-        </View>
+        </Animated.View>
 
         {showPasswordInput ? (
-          <View style={styles.passwordSection}>
+          <Animated.View
+            entering={FadeIn}
+            exiting={FadeOut}
+            style={styles.passwordSection}>
             <Text style={styles.passwordLabel}>
               Please enter your password to confirm account deletion
             </Text>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Enter your password"
-              placeholderTextColor={theme.colors.textSecondary}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter your password"
+                placeholderTextColor={theme.colors.textSecondary}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <View style={styles.iconWrapper}>
+                <Icon
+                  name="lock"
+                  type="feather"
+                  size={20}
+                  color={theme.colors.textSecondary}
+                />
+              </View>
+            </View>
             <View style={styles.passwordButtons}>
               <Button
                 title="Cancel"
@@ -127,32 +191,44 @@ export default function AccountScreen() {
                 size="medium"
               />
             </View>
-          </View>
+          </Animated.View>
         ) : (
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Logout"
+          <Animated.View
+            entering={FadeInDown.delay(200)}
+            style={styles.buttonContainer}>
+            <Pressable
+              style={({pressed}) => [
+                styles.actionButton,
+                {backgroundColor: dangerColors.warning},
+                pressed && styles.buttonPressed,
+              ]}
               onPress={handleLogout}
-              loading={isSigningOut}
-              disabled={isSigningOut}
-              style={styles.logoutButton}
-              textStyle={styles.buttonText}
-              size="medium"
-            />
+              disabled={isSigningOut}>
+              <View style={styles.iconWrapper}>
+                <Icon name="log-out" type="feather" size={20} color="white" />
+              </View>
+              <Text style={styles.actionButtonText}>
+                {isSigningOut ? 'Signing out...' : 'Sign Out'}
+              </Text>
+            </Pressable>
 
-            <Button
-              title="Delete Account"
+            <Pressable
+              style={({pressed}) => [
+                styles.actionButton,
+                {backgroundColor: dangerColors.critical},
+                pressed && styles.buttonPressed,
+              ]}
               onPress={handleDeleteAccount}
-              loading={isDeletingAccount}
-              disabled={isDeletingAccount}
-              style={styles.deleteButton}
-              textStyle={styles.buttonText}
-              size="medium"
-            />
-          </View>
+              disabled={isDeletingAccount}>
+              <View style={styles.iconWrapper}>
+                <Icon name="trash-2" type="feather" size={20} color="white" />
+              </View>
+              <Text style={styles.actionButtonText}>Delete Account</Text>
+            </Pressable>
+          </Animated.View>
         )}
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -162,73 +238,173 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    },
+    blurContainer: {
+      overflow: 'hidden',
+      borderWidth: 0.1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      opacity: 0.85,
+    },
+    headerContent: {
+      height: moderateScale(56),
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+    },
+    backButton: {
+      marginRight: moderateScale(16),
+    },
+    headerTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: theme.fonts.semiBold,
+      flex: 1,
+      textAlign: 'center',
+      marginRight: moderateScale(40),
+    },
     content: {
       flex: 1,
-      paddingHorizontal: moderateScale(20),
     },
     section: {
       marginVertical: moderateScale(20),
+      backgroundColor: theme.colors.card,
+      padding: moderateScale(20),
+      borderRadius: moderateScale(15),
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     sectionTitle: {
-      fontSize: moderateScale(18),
+      fontSize: moderateScale(24),
       fontWeight: 'bold',
       color: theme.colors.text,
       marginBottom: moderateScale(8),
+      fontFamily: theme.fonts.bold,
     },
     description: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(16),
       color: theme.colors.textSecondary,
-      marginBottom: moderateScale(20),
+      marginBottom: moderateScale(10),
+      fontFamily: theme.fonts.regular,
     },
     buttonContainer: {
-      gap: moderateScale(15),
-    },
-    logoutButton: {
-      backgroundColor: theme.colors.error,
+      gap: moderateScale(12),
+      marginTop: moderateScale(20),
       paddingHorizontal: moderateScale(20),
-      borderRadius: moderateScale(30),
     },
-    deleteButton: {
-      backgroundColor: theme.colors.error,
-      paddingHorizontal: moderateScale(20),
-      borderRadius: moderateScale(30),
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: moderateScale(12),
+      borderRadius: moderateScale(12),
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.15,
+      shadowRadius: 3.84,
+      elevation: 3,
+      maxWidth: '100%',
+      alignSelf: 'center',
+      minWidth: moderateScale(200),
+    },
+    buttonPressed: {
       opacity: 0.8,
+      transform: [{scale: 0.98}],
     },
-    buttonText: {
+    iconWrapper: {
+      marginRight: moderateScale(8),
+    },
+    actionButtonText: {
       color: 'white',
+      fontSize: moderateScale(14),
+      fontWeight: '600',
       fontFamily: theme.fonts.bold,
-      fontSize: moderateScale(16),
     },
     passwordSection: {
       marginTop: moderateScale(20),
+      backgroundColor: theme.colors.card,
+      padding: moderateScale(20),
+      borderRadius: moderateScale(15),
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 3.84,
+      elevation: 5,
     },
     passwordLabel: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(16),
       color: theme.colors.text,
-      marginBottom: moderateScale(10),
+      marginBottom: moderateScale(15),
+      fontFamily: theme.fonts.medium,
+    },
+    passwordInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+      borderRadius: moderateScale(12),
+      marginBottom: moderateScale(20),
+      paddingHorizontal: moderateScale(15),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
     },
     passwordInput: {
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(8),
-      padding: moderateScale(12),
+      flex: 1,
       color: theme.colors.text,
       fontSize: moderateScale(16),
-      marginBottom: moderateScale(15),
+      padding: moderateScale(12),
+      fontFamily: theme.fonts.regular,
     },
     passwordButtons: {
       flexDirection: 'row',
-      gap: moderateScale(10),
+      gap: moderateScale(8),
     },
     cancelButton: {
       flex: 1,
       backgroundColor: theme.colors.card,
-      paddingHorizontal: moderateScale(20),
-      borderRadius: moderateScale(30),
+      borderRadius: moderateScale(10),
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: moderateScale(10),
     },
     confirmDeleteButton: {
       flex: 1,
       backgroundColor: theme.colors.error,
-      paddingHorizontal: moderateScale(20),
-      borderRadius: moderateScale(30),
+      borderRadius: moderateScale(10),
+      padding: moderateScale(10),
+    },
+    buttonText: {
+      fontFamily: theme.fonts.bold,
+      fontSize: moderateScale(14),
+    },
+    scrollContent: {
+      padding: moderateScale(20),
     },
   });

@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo} from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {State as TrackPlayerState} from 'react-native-track-player';
@@ -16,6 +16,7 @@ import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon} from '@/components/Icons';
 import {TouchableOpacity} from 'react-native';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {BlurView} from 'expo-blur';
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
@@ -173,7 +174,11 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
-      <View style={[styles.background, {backgroundColor: theme.colors.card}]}>
+      <BlurView
+        intensity={80}
+        tint={theme.isDarkMode ? 'dark' : 'light'}
+        style={styles.background}>
+        <View style={[styles.overlay, {backgroundColor: theme.colors.card}]} />
         <Pressable
           onPress={handlePress}
           style={styles.content}
@@ -218,7 +223,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             </Text>
           </View>
         </Pressable>
-      </View>
+      </BlurView>
     </Animated.View>
   );
 });
@@ -229,10 +234,24 @@ const styles = ScaledSheet.create({
     bottom: moderateScale(90),
     left: moderateScale(10),
     right: moderateScale(10),
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   background: {
     borderRadius: moderateScale(12),
     overflow: 'hidden',
+    borderWidth: 0.1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.85,
   },
   content: {
     flexDirection: 'row',
