@@ -1,12 +1,19 @@
-import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import React, {useMemo, useCallback} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {PlayIcon} from '@/components/Icons';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
-import {useProgress} from 'react-native-track-player';
+import {useProgress, Progress} from 'react-native-track-player';
 import {Slider} from '@miblanchard/react-native-slider';
 import {useSharedValue} from 'react-native-reanimated';
 import {getReciterById, getSurahById} from '@/services/dataService';
@@ -16,6 +23,7 @@ import {QueueContext} from '@/services/queue/QueueContext';
 import TrackPlayer from 'react-native-track-player';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {BlurView} from 'expo-blur';
+import {Theme} from '@/utils/themeUtils';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -28,6 +36,173 @@ interface RecentReciterCardProps {
   duration: number;
   isRecent?: boolean;
 }
+
+interface StylesType {
+  container: ViewStyle;
+  overlay: ViewStyle;
+  gradient: ViewStyle;
+  content: ViewStyle;
+  imageContainer: ViewStyle;
+  image: ViewStyle;
+  textContainer: ViewStyle;
+  reciterName: TextStyle;
+  surahName: TextStyle;
+  progressSection: ViewStyle;
+  sliderContainer: ViewStyle;
+  timeRemaining: TextStyle;
+  playButton: ViewStyle;
+}
+
+interface MemoizedReciterImageProps {
+  imageUrl?: string;
+  reciterName: string;
+  styles: StylesType;
+}
+
+// Memoize the ReciterImage component wrapper
+const MemoizedReciterImage = React.memo(
+  ({imageUrl, reciterName, styles}: MemoizedReciterImageProps) => (
+    <View style={styles.imageContainer}>
+      <ReciterImage
+        imageUrl={imageUrl}
+        reciterName={reciterName}
+        style={styles.image}
+      />
+    </View>
+  ),
+  (prevProps, nextProps) =>
+    prevProps.imageUrl === nextProps.imageUrl &&
+    prevProps.reciterName === nextProps.reciterName,
+);
+
+MemoizedReciterImage.displayName = 'MemoizedReciterImage';
+
+interface ProgressSectionProps {
+  progress: number;
+  duration: number;
+  isCurrentTrack: boolean;
+  trackProgress: Progress;
+  theme: Theme;
+  styles: StylesType;
+  onPress: () => void;
+}
+
+// Memoize the progress section component
+const ProgressSection = React.memo(
+  ({
+    progress,
+    duration,
+    isCurrentTrack,
+    trackProgress,
+    theme,
+    styles,
+    onPress,
+  }: ProgressSectionProps) => {
+    const animatedProgress = useSharedValue(progress);
+    const isVisible = React.useRef(true);
+
+    // Memoize time remaining calculation
+    const timeRemaining = useMemo(() => {
+      const effectiveDuration = isCurrentTrack
+        ? trackProgress.duration
+        : duration;
+      let remainingSeconds = effectiveDuration;
+
+      if (effectiveDuration > 0) {
+        if (isCurrentTrack) {
+          remainingSeconds = effectiveDuration - trackProgress.position;
+        } else {
+          remainingSeconds = effectiveDuration * (1 - progress);
+        }
+      }
+
+      if (remainingSeconds <= 0) return '0m';
+
+      const totalMinutes = Math.round(remainingSeconds / 60);
+      if (totalMinutes >= 60) {
+        const hours = Math.round(totalMinutes / 60);
+        return `${hours}h`;
+      }
+      return `${totalMinutes}m`;
+    }, [
+      isCurrentTrack,
+      trackProgress.duration,
+      trackProgress.position,
+      duration,
+      progress,
+    ]);
+
+    // Optimize animation frame updates
+    React.useEffect(() => {
+      if (!isCurrentTrack) {
+        animatedProgress.value = progress;
+        return;
+      }
+
+      let frameId: number;
+
+      if (trackProgress.duration > 0 && isVisible.current) {
+        frameId = requestAnimationFrame(() => {
+          'worklet';
+          animatedProgress.value =
+            trackProgress.position / trackProgress.duration;
+        });
+      }
+
+      return () => {
+        if (frameId) {
+          cancelAnimationFrame(frameId);
+        }
+      };
+    }, [
+      isCurrentTrack,
+      trackProgress.position,
+      trackProgress.duration,
+      progress,
+      animatedProgress,
+    ]);
+
+    return (
+      <View style={styles.progressSection}>
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.playButton}
+          onPress={onPress}>
+          <PlayIcon
+            color={theme.colors.text}
+            size={moderateScale(12)}
+            filled={isCurrentTrack}
+          />
+        </TouchableOpacity>
+        <Slider
+          value={animatedProgress.value}
+          disabled={true}
+          minimumTrackTintColor={Color(theme.colors.primary)
+            .alpha(0.9)
+            .toString()}
+          maximumTrackTintColor={Color(theme.colors.primary)
+            .alpha(0.1)
+            .toString()}
+          trackStyle={{
+            height: moderateScale(2.5),
+            borderRadius: moderateScale(2),
+          }}
+          thumbStyle={{height: 0, width: 0}}
+          containerStyle={styles.sliderContainer}
+        />
+        <Text style={styles.timeRemaining}>{timeRemaining}</Text>
+      </View>
+    );
+  },
+  (prevProps, nextProps) =>
+    prevProps.progress === nextProps.progress &&
+    prevProps.duration === nextProps.duration &&
+    prevProps.isCurrentTrack === nextProps.isCurrentTrack &&
+    prevProps.trackProgress === nextProps.trackProgress &&
+    prevProps.onPress === nextProps.onPress,
+);
+
+ProgressSection.displayName = 'ProgressSection';
 
 export const RecentReciterCard = React.memo(
   ({
@@ -47,136 +222,12 @@ export const RecentReciterCard = React.memo(
     const {addRecentTrack} = useRecentlyPlayedStore();
     const isCurrentTrack = queue.tracks[queue.currentIndex]?.id === trackId;
 
-    // Create animated shared value for progress
-    const animatedProgress = useSharedValue(progress);
-    const isVisible = React.useRef(true);
-
-    // Only subscribe to progress updates for current track if it's the most recent card
     const trackProgress = useProgress(
       isCurrentTrack && isRecent ? 10000 : undefined,
     );
 
-    // Memoize time remaining calculation
-    const timeRemaining = React.useMemo(() => {
-      const effectiveDuration = isCurrentTrack
-        ? trackProgress.duration
-        : duration;
-      let remainingSeconds = effectiveDuration;
-
-      if (effectiveDuration > 0) {
-        if (isCurrentTrack && isRecent) {
-          remainingSeconds = effectiveDuration - trackProgress.position;
-        } else {
-          remainingSeconds = effectiveDuration * (1 - progress);
-        }
-      }
-
-      if (remainingSeconds <= 0) return '0m';
-
-      const totalMinutes = Math.round(remainingSeconds / 60);
-      if (totalMinutes >= 60) {
-        const hours = Math.round(totalMinutes / 60);
-        return `${hours}h`;
-      }
-      return `${totalMinutes}m`;
-    }, [
-      isCurrentTrack,
-      isRecent,
-      trackProgress.duration,
-      trackProgress.position,
-      duration,
-      progress,
-    ]);
-
-    // Optimize animation frame updates - only animate for current & recent track
-    React.useEffect(() => {
-      // Skip animation frames for non-recent cards unless they're the current track
-      if (!isRecent && !isCurrentTrack) {
-        animatedProgress.value = progress;
-        return;
-      }
-
-      let frameId: number;
-
-      if (isCurrentTrack && trackProgress.duration > 0 && isVisible.current) {
-        frameId = requestAnimationFrame(() => {
-          'worklet';
-          animatedProgress.value =
-            trackProgress.position / trackProgress.duration;
-        });
-      } else {
-        frameId = requestAnimationFrame(() => {
-          'worklet';
-          animatedProgress.value = progress;
-        });
-      }
-
-      return () => {
-        if (frameId) {
-          cancelAnimationFrame(frameId);
-        }
-      };
-    }, [
-      isCurrentTrack,
-      isRecent,
-      trackProgress.position,
-      trackProgress.duration,
-      progress,
-      animatedProgress,
-    ]);
-
-    // Memoize press handler
-    const handlePress = React.useCallback(async () => {
-      try {
-        const [reciter, surah] = await Promise.all([
-          getReciterById(reciterId),
-          getSurahById(surahId),
-        ]);
-
-        if (!reciter || !surah) {
-          console.error('Could not find reciter or surah');
-          return;
-        }
-
-        const tracks = await createTracksForReciter(
-          reciter,
-          [surah],
-          reciter.rewayat[0]?.id,
-        );
-
-        const startPosition = isCurrentTrack
-          ? trackProgress.position
-          : progress * duration;
-
-        await updateQueue(tracks, 0);
-        await play();
-        await addRecentTrack(reciter, surah, progress, duration);
-
-        queueContext.setCurrentReciter(reciter);
-
-        if (startPosition > 0) {
-          await TrackPlayer.seekTo(startPosition);
-        }
-
-        queueContext.batchLoader.loadNextBatchIfNeeded(reciter);
-      } catch (error) {
-        console.error('Error playing surah:', error);
-      }
-    }, [
-      reciterId,
-      surahId,
-      isCurrentTrack,
-      trackProgress.position,
-      progress,
-      duration,
-      updateQueue,
-      play,
-      addRecentTrack,
-      queueContext,
-    ]);
-
     // Memoize styles
-    const styles = React.useMemo(
+    const styles = useMemo(
       () =>
         StyleSheet.create({
           container: {
@@ -276,6 +327,56 @@ export const RecentReciterCard = React.memo(
       [theme],
     );
 
+    // Memoize press handler
+    const handlePress = useCallback(async () => {
+      try {
+        const [reciter, surah] = await Promise.all([
+          getReciterById(reciterId),
+          getSurahById(surahId),
+        ]);
+
+        if (!reciter || !surah) {
+          console.error('Could not find reciter or surah');
+          return;
+        }
+
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          reciter.rewayat[0]?.id,
+        );
+
+        const startPosition = isCurrentTrack
+          ? trackProgress.position
+          : progress * duration;
+
+        await updateQueue(tracks, 0);
+        await play();
+        await addRecentTrack(reciter, surah, progress, duration);
+
+        queueContext.setCurrentReciter(reciter);
+
+        if (startPosition > 0) {
+          await TrackPlayer.seekTo(startPosition);
+        }
+
+        queueContext.batchLoader.loadNextBatchIfNeeded(reciter);
+      } catch (error) {
+        console.error('Error playing surah:', error);
+      }
+    }, [
+      reciterId,
+      surahId,
+      isCurrentTrack,
+      trackProgress.position,
+      progress,
+      duration,
+      updateQueue,
+      play,
+      addRecentTrack,
+      queueContext,
+    ]);
+
     return (
       <TouchableOpacity
         activeOpacity={0.99}
@@ -298,13 +399,11 @@ export const RecentReciterCard = React.memo(
         />
         <View style={[styles.overlay, {backgroundColor: theme.colors.card}]} />
         <View style={styles.content}>
-          <View style={styles.imageContainer}>
-            <ReciterImage
-              imageUrl={imageUrl}
-              reciterName={reciterName}
-              style={styles.image}
-            />
-          </View>
+          <MemoizedReciterImage
+            imageUrl={imageUrl}
+            reciterName={reciterName}
+            styles={styles}
+          />
           <View style={styles.textContainer}>
             <Text style={styles.reciterName} numberOfLines={1}>
               {reciterName}
@@ -312,35 +411,15 @@ export const RecentReciterCard = React.memo(
             <Text style={styles.surahName} numberOfLines={1}>
               {surahName}
             </Text>
-            <View style={styles.progressSection}>
-              <TouchableOpacity
-                activeOpacity={0.99}
-                style={styles.playButton}
-                onPress={handlePress}>
-                <PlayIcon
-                  color={theme.colors.text}
-                  size={moderateScale(12)}
-                  filled={isCurrentTrack}
-                />
-              </TouchableOpacity>
-              <Slider
-                value={animatedProgress.value}
-                disabled={true}
-                minimumTrackTintColor={Color(theme.colors.primary)
-                  .alpha(0.9)
-                  .toString()}
-                maximumTrackTintColor={Color(theme.colors.primary)
-                  .alpha(0.1)
-                  .toString()}
-                trackStyle={{
-                  height: moderateScale(2.5),
-                  borderRadius: moderateScale(2),
-                }}
-                thumbStyle={{height: 0, width: 0}}
-                containerStyle={styles.sliderContainer}
-              />
-              <Text style={styles.timeRemaining}>{timeRemaining}</Text>
-            </View>
+            <ProgressSection
+              progress={progress}
+              duration={duration}
+              isCurrentTrack={isCurrentTrack}
+              trackProgress={trackProgress}
+              theme={theme}
+              styles={styles}
+              onPress={handlePress}
+            />
           </View>
         </View>
       </TouchableOpacity>

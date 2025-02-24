@@ -3,7 +3,6 @@ import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import {useAuthStore} from '@/store/authStore';
 import TrackPlayer from 'react-native-track-player';
 import playbackService from '@/services/player/events/playbackService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -45,7 +44,6 @@ export default function RootLayout() {
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
-  const {session, isLoading, initializeAuth, isInitialized} = useAuthStore();
   const store = usePlayerStore();
   const initializationRef = useRef(false);
 
@@ -70,20 +68,14 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     try {
-      if (
-        appIsReady &&
-        fontsLoaded &&
-        isPlayerReady &&
-        isInitialized &&
-        !isLoading
-      ) {
+      if (appIsReady && fontsLoaded && isPlayerReady) {
         // Only hide the splash screen after everything is ready
         await SplashScreen.hideAsync();
       }
     } catch (e) {
       console.warn('Error hiding splash screen:', e);
     }
-  }, [appIsReady, fontsLoaded, isPlayerReady, isInitialized, isLoading]);
+  }, [appIsReady, fontsLoaded, isPlayerReady]);
 
   // Initialize app
   useEffect(() => {
@@ -105,11 +97,6 @@ export default function RootLayout() {
           '[App] Starting initialization attempt:',
           initializationAttempts,
         );
-
-        // Initialize auth first
-        console.log('[App] Initializing auth...');
-        await initializeAuth();
-        console.log('[App] Auth initialized');
 
         // Setup player with error handling
         console.log('[App] Setting up player...');
@@ -149,7 +136,7 @@ export default function RootLayout() {
     }
 
     prepare();
-  }, [initializeAuth, store]);
+  }, [store]);
 
   // Setup event listeners
   useEffect(() => {
@@ -172,29 +159,13 @@ export default function RootLayout() {
 
   // Handle navigation after initialization
   useEffect(() => {
-    if (
-      !appIsReady ||
-      !fontsLoaded ||
-      isLoading ||
-      !isPlayerReady ||
-      !isInitialized ||
-      fontError
-    ) {
+    if (!appIsReady || !fontsLoaded || !isPlayerReady || fontError) {
       return;
     }
 
-    const route = session ? '/(tabs)/(home)' : '/(auth)/welcome';
-    router.replace(route);
-  }, [
-    appIsReady,
-    fontsLoaded,
-    fontError,
-    isLoading,
-    isPlayerReady,
-    isInitialized,
-    session,
-    router,
-  ]);
+    // Go directly to main app
+    router.replace('/(tabs)/(home)');
+  }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
 
   if (fontError) {
     SplashScreen.hideAsync();
@@ -214,13 +185,7 @@ export default function RootLayout() {
     );
   }
 
-  if (
-    !fontsLoaded ||
-    !isPlayerReady ||
-    !appIsReady ||
-    !isInitialized ||
-    isLoading
-  ) {
+  if (!fontsLoaded || !isPlayerReady || !appIsReady) {
     return null;
   }
 
@@ -237,7 +202,6 @@ export default function RootLayout() {
                 },
                 animation: 'fade',
               }}>
-              <Stack.Screen name="(auth)" options={{headerShown: false}} />
               <Stack.Screen
                 name="(modals)/select-reciter"
                 options={{
@@ -251,12 +215,11 @@ export default function RootLayout() {
                 options={{
                   presentation: 'transparentModal',
                   animation: 'fade',
-                  headerShown: false,
                 }}
               />
             </Stack>
-            <PlayerSheet />
             <FloatingPlayer />
+            <PlayerSheet />
           </ModalProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

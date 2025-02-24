@@ -7,7 +7,6 @@ export default function HomeLayout() {
       <Stack.Screen name="reciter/[id]" options={{headerShown: false}} />
       <Stack.Screen name="reciter/browse" options={{headerShown: false}} />
       <Stack.Screen name="settings/index" options={{headerShown: false}} />
-      <Stack.Screen name="settings/[type]" options={{headerShown: false}} />
     </Stack>
   );
 }

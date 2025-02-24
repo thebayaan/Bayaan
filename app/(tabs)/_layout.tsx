@@ -7,6 +7,7 @@ import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 // import {FloatingPlayer} from '@/components/FloatingPlayer';
 import {StatusBar} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+
 const tabBarComponent = (props: BottomTabBarProps) => (
   <BottomTabBar {...props} />
 );
@@ -21,6 +22,7 @@ export default function TabsLayout() {
         initialRouteName="(home)"
         screenOptions={{
           headerShown: false,
+          lazy: true,
         }}
         tabBar={tabBarComponent}>
         <Tabs.Screen name="(home)" options={{title: 'Home'}} />
