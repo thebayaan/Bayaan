@@ -12,6 +12,10 @@ interface SearchBarProps {
   onChangeText: (text: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
+  keyboardAppearance?: 'default' | 'light' | 'dark';
+  autoCorrect?: boolean;
+  autoComplete?: 'off' | 'name' | 'email' | 'password';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 }
 
 export interface SearchBarRef {
@@ -19,7 +23,20 @@ export interface SearchBarRef {
 }
 
 const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
-  ({placeholder, value, onChangeText, onFocus, onBlur}, ref) => {
+  (
+    {
+      placeholder,
+      value,
+      onChangeText,
+      onFocus,
+      onBlur,
+      keyboardAppearance,
+      autoCorrect = false,
+      autoComplete = 'off',
+      autoCapitalize = 'none',
+    },
+    ref,
+  ) => {
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<TextInput>(null);
     const {theme} = useTheme();
@@ -106,12 +123,14 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
             }}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            autoComplete="off"
-            autoCorrect={false}
-            autoCapitalize="none"
             returnKeyType="search"
             maxLength={100}
-            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+            keyboardAppearance={
+              keyboardAppearance || (theme.isDarkMode ? 'dark' : 'light')
+            }
+            autoCorrect={autoCorrect}
+            autoComplete={autoComplete}
+            autoCapitalize={autoCapitalize}
           />
           {value.length > 0 && (
             <MotiView

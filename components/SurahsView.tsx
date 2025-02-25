@@ -176,7 +176,6 @@ const HeroSection = ({
   const {theme} = useTheme();
   const handlePress = React.useCallback(() => onPress(surah), [surah, onPress]);
 
-  // Use useMemo to keep the same colors during re-renders but change on restart
   const gradientColors = React.useMemo((): readonly [
     string,
     string,
@@ -192,9 +191,9 @@ const HeroSection = ({
 
   const styles = StyleSheet.create({
     hero: {
-      marginHorizontal: moderateScale(15),
-      marginBottom: verticalScale(16),
-      borderRadius: moderateScale(16),
+      marginHorizontal: moderateScale(16),
+      marginBottom: moderateScale(16),
+      borderRadius: moderateScale(25),
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: Color(theme.colors.border).alpha(0.1).toString(),
@@ -356,11 +355,11 @@ const CollectionSection = ({
   const {theme} = useTheme();
   const styles = StyleSheet.create({
     section: {
-      marginBottom: verticalScale(16),
+      marginBottom: moderateScale(16),
     },
     sectionHeader: {
-      marginBottom: verticalScale(8),
-      paddingHorizontal: moderateScale(15),
+      marginBottom: moderateScale(8),
+      paddingHorizontal: moderateScale(16),
     },
     sectionTitle: {
       fontSize: moderateScale(18),
@@ -377,8 +376,8 @@ const CollectionSection = ({
       marginTop: verticalScale(2),
     },
     sectionContent: {
-      paddingHorizontal: moderateScale(15),
-      paddingVertical: verticalScale(4),
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(4),
     },
   });
 
@@ -435,7 +434,7 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
     <ScrollView
       style={styles.container}
       contentContainerStyle={{
-        paddingVertical: verticalScale(16),
+        paddingBottom: verticalScale(32),
       }}
       showsVerticalScrollIndicator={false}>
       <HeroSection surah={surahOfTheDay} onPress={onSurahPress} />

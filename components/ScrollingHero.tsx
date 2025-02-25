@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   TouchableOpacity,
   InteractionManager,
   ViewStyle,
@@ -14,6 +13,7 @@ import {moderateScale} from 'react-native-size-matters';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
+  withSpring,
   withRepeat,
   withTiming,
   Easing,
@@ -24,6 +24,9 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {reciterImages} from '@/utils/reciterImages';
 import {Theme} from '@/utils/themeUtils';
+import {Icon} from '@rneui/base';
+import Color from 'color';
+import {useRouter} from 'expo-router';
 
 // Error Boundary for ScrollingHero
 class ScrollingHeroErrorBoundary extends React.Component<{
@@ -146,6 +149,9 @@ interface StylesType {
   contentOverlay: ViewStyle;
   browseButton: ViewStyle;
   buttonText: TextStyle;
+  buttonIcon: ImageStyle;
+  buttonWrapper: ViewStyle;
+  buttonInnerWrapper: ViewStyle;
 }
 
 interface BrowseButtonProps {
@@ -154,18 +160,35 @@ interface BrowseButtonProps {
   styles: StylesType;
 }
 
-// Memoize the browse button component
+// Add color palettes
+
+// Update BrowseButton component
 const BrowseButton = React.memo(
-  ({onPress, theme, styles}: BrowseButtonProps) => (
-    <TouchableOpacity
-      style={[styles.browseButton, {backgroundColor: theme.colors.card}]}
-      onPress={onPress}
-      activeOpacity={0.8}>
-      <Text style={[styles.buttonText, {color: theme.colors.text}]}>
-        Browse All
-      </Text>
-    </TouchableOpacity>
-  ),
+  ({onPress, theme, styles}: BrowseButtonProps) => {
+    return (
+      <TouchableOpacity
+        style={[
+          styles.browseButton,
+          {
+            backgroundColor: Color(theme.colors.card).alpha(0.95).toString(),
+            borderWidth: 1,
+            borderColor: Color(theme.colors.border).alpha(0.2).toString(),
+            borderRadius: moderateScale(25),
+          },
+        ]}
+        onPress={onPress}
+        activeOpacity={0.8}>
+        <Text style={styles.buttonText}>Browse All</Text>
+        <Icon
+          name="arrow-right"
+          type="feather"
+          size={moderateScale(18)}
+          color={theme.colors.text}
+          style={styles.buttonIcon}
+        />
+      </TouchableOpacity>
+    );
+  },
   (prevProps, nextProps) =>
     prevProps.onPress === nextProps.onPress &&
     prevProps.theme === nextProps.theme,
@@ -311,17 +334,13 @@ const Column = React.memo(
 
 Column.displayName = 'Column';
 
-interface ScrollingHeroProps {
-  onBrowseAll?: () => void;
-}
-
 const SECTION_HEIGHT = moderateScale(200); // Reduced from 400
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
     wrapper: {
-      paddingBottom: moderateScale(10),
-      paddingHorizontal: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
+      marginBottom: moderateScale(16),
     },
     container: {
       height: SECTION_HEIGHT,
@@ -356,31 +375,70 @@ function createStyles(theme: Theme) {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    buttonWrapper: {
+      position: 'relative',
+      borderRadius: moderateScale(25),
+      padding: moderateScale(1.5),
+      backgroundColor: 'transparent',
+    },
+    buttonInnerWrapper: {
+      borderRadius: moderateScale(25),
+      overflow: 'hidden',
+      backgroundColor: Color(theme.colors.card).alpha(0.95).toString(),
+      borderWidth: 0.5,
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+    },
     browseButton: {
       paddingHorizontal: moderateScale(24),
       paddingVertical: moderateScale(12),
-      borderRadius: moderateScale(25),
-      elevation: 4,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.25,
-      shadowRadius: 3.84,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
     },
     buttonText: {
       fontSize: moderateScale(16),
       fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+      letterSpacing: -0.5,
+    },
+    buttonIcon: {
+      opacity: 0.8,
     },
   });
 }
 
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 export const ScrollingHero = React.memo(
-  ({onBrowseAll}: ScrollingHeroProps) => {
-    const [isRevealed, setIsRevealed] = useState(false);
+  () => {
+    const [isRevealed] = useState(false);
     const {theme} = useTheme();
+    const router = useRouter();
     const styles = useMemo(() => createStyles(theme), [theme]);
+
+    // Animation values
+    const scale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [{scale: scale.value}],
+      };
+    });
+
+    const handlePressIn = () => {
+      scale.value = withSpring(0.98, {
+        damping: 15,
+        stiffness: 300,
+      });
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 300,
+      });
+    };
 
     const distributedReciters = useDistributedReciters(RECITERS);
     const columnConfigs = useMemo(
@@ -392,14 +450,19 @@ export const ScrollingHero = React.memo(
       [distributedReciters],
     );
 
-    const handleReveal = useCallback(() => {
-      setIsRevealed(prev => !prev);
-    }, []);
+    const handleBrowseAllPress = useCallback(() => {
+      router.push('/(tabs)/(home)/browse-all');
+    }, [router]);
 
     return (
       <ScrollingHeroErrorBoundary>
         <View style={styles.wrapper}>
-          <Pressable style={styles.container} onPress={handleReveal}>
+          <AnimatedTouchableOpacity
+            activeOpacity={1}
+            style={[styles.container, animatedStyle]}
+            onPress={handleBrowseAllPress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}>
             <View style={styles.columnsContainer}>
               {columnConfigs.map((config, index) => (
                 <Column
@@ -411,19 +474,37 @@ export const ScrollingHero = React.memo(
               ))}
             </View>
             <Overlay isRevealed={isRevealed} theme={theme} styles={styles} />
-            <View style={styles.contentOverlay} pointerEvents="box-none">
-              <BrowseButton
-                onPress={onBrowseAll}
-                theme={theme}
-                styles={styles}
-              />
+            <View style={styles.contentOverlay} pointerEvents="none">
+              <View
+                style={[
+                  styles.browseButton,
+                  {
+                    backgroundColor: Color(theme.colors.card)
+                      .alpha(0.95)
+                      .toString(),
+                    borderWidth: 1,
+                    borderColor: Color(theme.colors.border)
+                      .alpha(0.2)
+                      .toString(),
+                    borderRadius: moderateScale(25),
+                  },
+                ]}>
+                <Text style={styles.buttonText}>Browse All</Text>
+                <Icon
+                  name="arrow-right"
+                  type="feather"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                  style={styles.buttonIcon}
+                />
+              </View>
             </View>
-          </Pressable>
+          </AnimatedTouchableOpacity>
         </View>
       </ScrollingHeroErrorBoundary>
     );
   },
-  (prevProps, nextProps) => prevProps.onBrowseAll === nextProps.onBrowseAll,
+  () => true,
 );
 
 ScrollingHero.displayName = 'ScrollingHero';

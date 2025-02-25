@@ -1,9 +1,9 @@
-import React, {useMemo, useCallback} from 'react';
+import React, {useMemo} from 'react';
 import {View, Text, ScrollView, StyleSheet, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Reciter, RECITERS} from '@/data/reciterData';
-import {ReciterCard} from './cards/ReciterCard';
+import {BrowseReciterCard} from './browse/BrowseReciterCard';
 import {CircularReciterCard} from './cards/CircularReciterCard';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {RecentReciterCard} from '@/components/cards/RecentReciterCard';
@@ -55,9 +55,9 @@ const MemoizedFlatList = React.memo(
       windowSize={3}
       initialNumToRender={5}
       getItemLayout={(_, index) => ({
-        length: variant === 'circular' ? 80 : variant === 'recent' ? 200 : 180,
+        length: variant === 'circular' ? 80 : variant === 'recent' ? 200 : 140,
         offset:
-          (variant === 'circular' ? 80 : variant === 'recent' ? 200 : 180) *
+          (variant === 'circular' ? 80 : variant === 'recent' ? 200 : 140) *
           index,
         index,
       })}
@@ -82,6 +82,7 @@ const RenderSectionItem = React.memo(
     variant: 'recent' | 'circular' | 'default';
     onReciterPress: (reciter: Reciter) => void;
   }) => {
+    const {theme} = useTheme();
     const progress = useRecentlyPlayedStore(state =>
       'timestamp' in item
         ? state.getProgress(item.reciter.id, item.surah.id)
@@ -126,10 +127,12 @@ const RenderSectionItem = React.memo(
 
     const reciter = item as Reciter;
     return (
-      <ReciterCard
-        imageUrl={reciter.image_url ?? undefined}
-        name={reciter.name}
+      <BrowseReciterCard
+        reciter={reciter}
         onPress={() => onReciterPress(reciter)}
+        width={moderateScale(120)}
+        height={moderateScale(140)}
+        theme={theme}
       />
     );
   },
@@ -216,25 +219,25 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       };
     }, []);
 
-  const handleBrowseAll = useCallback(() => {
-    console.log('Browse all pressed');
-  }, []);
-
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{paddingVertical: verticalScale(20)}}
+      contentContainerStyle={{
+        paddingBottom: verticalScale(32),
+      }}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
-      <ScrollingHero onBrowseAll={handleBrowseAll} />
+      <ScrollingHero />
       {recentTracks.length > 0 && (
-        <Section
-          title="Continue Listening"
-          data={recentTracks}
-          variant="recent"
-          onReciterPress={onReciterPress}
-          theme={theme}
-        />
+        <View style={{marginTop: verticalScale(5)}}>
+          <Section
+            title="Continue Listening"
+            data={recentTracks}
+            variant="recent"
+            onReciterPress={onReciterPress}
+            theme={theme}
+          />
+        </View>
       )}
       {favoriteRecitersSection.length > 0 && (
         <Section
@@ -290,16 +293,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    marginBottom: verticalScale(24),
+    marginBottom: moderateScale(24),
   },
   sectionTitle: {
     fontSize: moderateScale(18),
     fontFamily: 'Manrope-SemiBold',
-    marginBottom: verticalScale(12),
+    marginBottom: moderateScale(16),
     paddingHorizontal: moderateScale(16),
   },
   sectionContent: {
     paddingHorizontal: moderateScale(16),
+    gap: moderateScale(12),
   },
 });
 

@@ -118,16 +118,22 @@ export async function setupTrackPlayer(
     const serviceRunning = await TrackPlayer.isServiceRunning();
     console.log('[Player Setup] Service running status:', serviceRunning);
 
-    // If service is running, try to get player state
+    // If service is running, validate its state
     if (serviceRunning) {
       try {
         const state = await TrackPlayer.getState();
         console.log('[Player Setup] Current player state:', state);
 
-        // If we can get the state, player is already initialized
+        // Try to get current track to further validate state
+        const currentTrack = await TrackPlayer.getCurrentTrack();
+        console.log('[Player Setup] Current track:', currentTrack);
+
+        // If we can get both state and track info, player is properly initialized
         console.log(
           '[Player Setup] Player already initialized, updating capabilities',
         );
+
+        // Update options even if initialized
         await TrackPlayer.updateOptions({
           ...DEFAULT_CONFIG.options,
           ...config?.options,
@@ -142,15 +148,19 @@ export async function setupTrackPlayer(
         setupEventBridge.emit('setupComplete');
         return {isInitialized: true};
       } catch (stateError) {
-        // If we can't get state, service might be in an inconsistent state
+        // If we can't get state or track, service is in an inconsistent state
         console.log(
-          '[Player Setup] Service running but state check failed, resetting player',
+          '[Player Setup] Service state validation failed:',
+          stateError,
         );
+        console.log('[Player Setup] Attempting to reset and reinitialize...');
+
         try {
           await TrackPlayer.reset();
+          await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
         } catch (resetError) {
           console.log(
-            '[Player Setup] Reset failed, proceeding with setup',
+            '[Player Setup] Reset failed, continuing with setup:',
             resetError,
           );
         }
@@ -159,6 +169,16 @@ export async function setupTrackPlayer(
 
     // Proceed with fresh setup
     console.log('[Player Setup] Proceeding with fresh setup');
+
+    // Ensure clean state
+    try {
+      await TrackPlayer.reset();
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+    } catch (resetError) {
+      console.log('[Player Setup] Initial reset failed:', resetError);
+    }
+
+    // Setup player with all configurations
     await TrackPlayer.setupPlayer({
       ...DEFAULT_CONFIG.player,
       ...config?.player,
@@ -172,6 +192,7 @@ export async function setupTrackPlayer(
       ],
     });
 
+    // Update options after setup
     await TrackPlayer.updateOptions({
       ...DEFAULT_CONFIG.options,
       ...config?.options,
@@ -181,15 +202,26 @@ export async function setupTrackPlayer(
       },
     });
 
+    // Verify setup was successful
+    const verifyState = await TrackPlayer.getState();
+    if (!verifyState) {
+      throw new Error('Player setup verification failed');
+    }
+
     isSetup = true;
     setupEventBridge.emit('setupComplete');
     return {isInitialized: true};
   } catch (error) {
     console.error('[Player Setup] Setup failed:', error);
-    // Only reset isSetup if we actually failed to initialize
-    if (!(await TrackPlayer.isServiceRunning())) {
-      isSetup = false;
+
+    // Cleanup on error
+    try {
+      await TrackPlayer.reset();
+    } catch (cleanupError) {
+      console.error('[Player Setup] Cleanup after error failed:', cleanupError);
     }
+
+    isSetup = false;
     const setupError = new PlayerSetupError(
       error instanceof Error ? error.message : 'Failed to setup TrackPlayer',
     );

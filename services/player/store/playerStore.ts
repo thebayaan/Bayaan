@@ -56,10 +56,6 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   setError: (type: keyof ErrorState, error: Error | null) => void;
   reset: () => void;
 
-  // Persistence
-  getPersistedState: () => Promise<Partial<PlayerStoreState>>;
-  persistState: (state: Partial<PlayerStoreState>) => Promise<void>;
-
   // Cleanup
   cleanup: () => Promise<void>;
 }
@@ -510,37 +506,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
         set(defaultState);
       },
 
-      // Persistence methods
-      getPersistedState: async () => {
-        try {
-          const storedData = await AsyncStorage.getItem(STORAGE_KEY);
-          if (storedData) {
-            return JSON.parse(storedData);
-          }
-          return {};
-        } catch (error) {
-          console.error('[PlayerStore] Error getting persisted state:', error);
-          return {};
-        }
-      },
-
-      persistState: async (state: Partial<PlayerStoreState>) => {
-        try {
-          const currentState = get();
-          const persistedState = {
-            ...currentState,
-            ...state,
-          };
-          await AsyncStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify(persistedState),
-          );
-        } catch (error) {
-          console.error('[PlayerStore] Error persisting state:', error);
-          throw error;
-        }
-      },
-
       // Cleanup method
       cleanup: async () => {
         const state = get();
@@ -558,8 +523,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
       name: STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: state => ({
-        queue: state.queue,
-        settings: state.settings,
+        settings: state.settings, // Only persist settings, not queue state
       }),
     },
   ),

@@ -1,19 +1,19 @@
 import React, {useCallback, useMemo, useEffect, useState} from 'react';
-import {View, Text, Switch} from 'react-native';
+import {View, Text, Switch, StyleSheet} from 'react-native';
 import {useRouter, useLocalSearchParams} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, ScaledSheet} from 'react-native-size-matters';
+import {moderateScale} from 'react-native-size-matters';
 import {useReciterStore} from '@/store/reciterStore';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
 import {getSurahById} from '@/services/dataService';
 import BottomSheetModal from '@/components/BottomSheetModal';
 import {useSettings} from '@/hooks/useSettings';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import Color from 'color';
 
 export default function SelectReciterModal() {
   const router = useRouter();
@@ -24,7 +24,6 @@ export default function SelectReciterModal() {
   const {theme} = useTheme();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const [, setSurahName] = useState<string>('');
-  const insets = useSafeAreaInsets();
 
   const {askEveryTime, setAskEveryTime, setDefaultReciterSelection} =
     useSettings();
@@ -126,54 +125,55 @@ export default function SelectReciterModal() {
   }, [askEveryTime, setAskEveryTime]);
 
   const createStyles = (_theme: Theme) =>
-    ScaledSheet.create({
+    StyleSheet.create({
       container: {
         flex: 1,
+        backgroundColor: theme.colors.background,
       },
       headerContainer: {
+        paddingHorizontal: moderateScale(16),
+        paddingVertical: moderateScale(16),
+        borderBottomWidth: 1,
+        borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
         backgroundColor: theme.colors.background,
       },
       contentContainer: {
         flex: 1,
-        padding: moderateScale(5),
+        padding: moderateScale(16),
         backgroundColor: theme.colors.background,
-        paddingBottom: insets.bottom,
       },
       title: {
-        fontSize: moderateScale(24),
-        fontWeight: 'bold',
-        fontFamily: theme.fonts.bold,
+        fontSize: moderateScale(18),
+        fontFamily: theme.fonts.semiBold,
+        color: theme.colors.text,
       },
       button: {
-        padding: moderateScale(15),
-        borderRadius: moderateScale(20),
-        marginTop: moderateScale(10),
-        backgroundColor: 'transparent',
-        borderWidth: moderateScale(0.4),
-        borderColor: theme.colors.border,
-        size: 'small',
+        paddingVertical: moderateScale(12),
+        paddingHorizontal: moderateScale(16),
+        borderRadius: moderateScale(12),
+        marginTop: moderateScale(8),
+        backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+        borderWidth: 1,
+        borderColor: Color(theme.colors.border).alpha(0.1).toString(),
       },
       buttonText: {
         fontSize: moderateScale(16),
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.fonts.regular,
         textAlign: 'center',
-        color: theme.colors.text,
+        color: theme.colors.textSecondary,
       },
       defaultButton: {
-        padding: moderateScale(15),
-        borderRadius: moderateScale(20),
-        marginVertical: moderateScale(5),
-        backgroundColor: theme.colors.text,
-        borderWidth: moderateScale(0.4),
-        borderColor: theme.colors.border,
-        textColor: theme.colors.background,
-        textWeight: 'bold',
-        size: 'small',
+        paddingVertical: moderateScale(12),
+        paddingHorizontal: moderateScale(16),
+        borderRadius: moderateScale(12),
+        marginTop: moderateScale(8),
+        backgroundColor: Color(theme.colors.text).alpha(0.9).toString(),
+        borderWidth: 1,
+        borderColor: Color(theme.colors.border).alpha(0.1).toString(),
       },
       defaultButtonText: {
         fontSize: moderateScale(16),
-        fontWeight: 'bold',
-        fontFamily: theme.fonts.bold,
+        fontFamily: theme.fonts.semiBold,
         textAlign: 'center',
         color: theme.colors.background,
       },
@@ -181,11 +181,14 @@ export default function SelectReciterModal() {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: moderateScale(15),
-        paddingHorizontal: moderateScale(20),
+        paddingVertical: moderateScale(16),
+        marginTop: moderateScale(16),
+        borderTopWidth: 1,
+        borderTopColor: Color(theme.colors.border).alpha(0.1).toString(),
       },
       askEveryTimeText: {
         fontSize: moderateScale(16),
+        fontFamily: theme.fonts.regular,
         color: theme.colors.text,
       },
     });
@@ -197,30 +200,28 @@ export default function SelectReciterModal() {
       snapPoints={snapPoints}>
       <View style={createStyles(theme).container}>
         <View style={createStyles(theme).headerContainer}>
-          <Text style={[createStyles(theme).title, {color: theme.colors.text}]}>
-            Select Reciter
-          </Text>
+          <Text style={createStyles(theme).title}>Select Reciter</Text>
         </View>
         <View style={createStyles(theme).contentContainer}>
           <Button
             title="Browse All Reciters"
-            style={[createStyles(theme).button]}
+            style={createStyles(theme).button}
             textStyle={createStyles(theme).buttonText}
             onPress={() =>
               handleReciterSelection(handleBrowseAllReciters, 'browseAll')
             }>
-            <Text style={[createStyles(theme).buttonText]}>
+            <Text style={createStyles(theme).buttonText}>
               Browse All Reciters
             </Text>
           </Button>
           <Button
             title="Use Default Reciter"
-            style={[createStyles(theme).defaultButton]}
+            style={createStyles(theme).defaultButton}
             textStyle={createStyles(theme).defaultButtonText}
             onPress={() =>
               handleReciterSelection(handleUseDefaultReciter, 'useDefault')
             }>
-            <Text style={[createStyles(theme).defaultButtonText]}>
+            <Text style={createStyles(theme).defaultButtonText}>
               Use Default Reciter
             </Text>
           </Button>
@@ -232,10 +233,10 @@ export default function SelectReciterModal() {
               value={askEveryTime}
               onValueChange={handleAskEveryTimeToggle}
               trackColor={{
-                false: theme.colors.border,
-                true: theme.colors.primary,
+                false: Color(theme.colors.border).alpha(0.3).toString(),
+                true: Color(theme.colors.text).alpha(0.3).toString(),
               }}
-              thumbColor={theme.colors.background}
+              thumbColor={theme.colors.text}
             />
           </View>
         </View>

@@ -6,6 +6,11 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 interface SurahCardProps {
   id: number;
@@ -17,6 +22,9 @@ interface SurahCardProps {
   onPress: () => void;
 }
 
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 export const SurahCard: React.FC<SurahCardProps> = ({
   id,
   name,
@@ -26,6 +34,29 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   onPress,
 }) => {
   const {theme} = useTheme();
+
+  // Animation values
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{scale: scale.value}],
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
 
   const getGradientColors = (): [string, string] => {
     const baseColor = Color(color);
@@ -78,12 +109,14 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   });
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      style={styles.container}
-      onPress={onPress}>
+    <AnimatedTouchableOpacity
+      activeOpacity={1}
+      style={[styles.container, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}>
       <LinearGradient
-        colors={getGradientColors() as readonly string[]}
+        colors={getGradientColors() as [string, string]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={StyleSheet.absoluteFill}
@@ -102,6 +135,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           <Text style={styles.translatedName}>{translatedName}</Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedTouchableOpacity>
   );
 };

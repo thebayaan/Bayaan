@@ -7,7 +7,6 @@ import TrackPlayer from 'react-native-track-player';
 import playbackService from '@/services/player/events/playbackService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {setupTrackPlayer} from '@/services/player/utils/setup';
-import {restorePlayerState} from '@/services/player/utils/stateRecovery';
 import {setupEventBridge} from '@/services/player/events/bridge';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
@@ -37,7 +36,8 @@ TrackPlayer.registerPlaybackService(() => playbackService);
 
 // Track initialization attempts to prevent loops
 let initializationAttempts = 0;
-const MAX_INITIALIZATION_ATTEMPTS = 2;
+const MAX_INITIALIZATION_ATTEMPTS = 3;
+const RETRY_DELAY = 1000;
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
@@ -98,9 +98,20 @@ export default function RootLayout() {
           initializationAttempts,
         );
 
-        // Setup player with error handling
+        // Setup player with error handling and retry
         console.log('[App] Setting up player...');
-        const setupStatus = await setupTrackPlayer();
+        let setupStatus = await setupTrackPlayer();
+
+        // If setup fails, retry after delay
+        if (
+          !setupStatus.isInitialized &&
+          initializationAttempts < MAX_INITIALIZATION_ATTEMPTS
+        ) {
+          console.log('[App] Setup failed, retrying after delay...');
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+          setupStatus = await setupTrackPlayer();
+        }
+
         console.log('[App] Player setup status:', setupStatus);
 
         if (!setupStatus.isInitialized) {
@@ -114,17 +125,21 @@ export default function RootLayout() {
 
         console.log('[App] Player setup complete');
 
-        // Restore player state
-        console.log('[App] Restoring player state...');
-        await restorePlayerState();
-        console.log('[App] Player state restored');
-
+        // Mark app as ready without state restoration
         setIsPlayerReady(true);
         setAppIsReady(true);
         initializationRef.current = true;
         console.log('[App] Initialization complete');
       } catch (error) {
         console.error('[App] Preparation error:', error);
+
+        // Clear any partial initialization
+        try {
+          await TrackPlayer.reset();
+        } catch (resetError) {
+          console.error('[App] Reset after error failed:', resetError);
+        }
+
         setSetupError(
           error instanceof Error ? error : new Error('Setup failed'),
         );
@@ -132,6 +147,11 @@ export default function RootLayout() {
           'system',
           error instanceof Error ? error : new Error('Setup failed'),
         );
+
+        // Reset initialization state
+        setIsPlayerReady(false);
+        setAppIsReady(false);
+        initializationRef.current = false;
       }
     }
 

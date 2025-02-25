@@ -8,7 +8,11 @@ import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import type {RewayatStyle} from '@/types/reciter';
 
 interface ModalContextType {
-  showSurahOptions: (surah: Surah, reciterId?: string) => void;
+  showSurahOptions: (
+    surah: Surah,
+    reciterId?: string,
+    onAddToQueue?: (surah: Surah) => Promise<void>,
+  ) => void;
   showRewayatInfo: (
     rewayat: RewayatStyle[],
     selectedId?: string,
@@ -45,11 +49,23 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     onSelect?: (id: string) => void;
   } | null>(null);
 
-  const showSurahOptions = useCallback((surah: Surah, reciterId?: string) => {
-    setCurrentSurah(surah);
-    setCurrentReciterId(reciterId);
-    surahOptionsRef.current?.expand();
-  }, []);
+  const [queueHandler, setQueueHandler] = React.useState<
+    ((surah: Surah) => Promise<void>) | undefined
+  >();
+
+  const showSurahOptions = useCallback(
+    (
+      surah: Surah,
+      reciterId?: string,
+      onAddToQueue?: (surah: Surah) => Promise<void>,
+    ) => {
+      setCurrentSurah(surah);
+      setCurrentReciterId(reciterId);
+      setQueueHandler(() => onAddToQueue);
+      surahOptionsRef.current?.expand();
+    },
+    [],
+  );
 
   const showRewayatInfo = useCallback(
     (
@@ -67,6 +83,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
     setCurrentReciterId(undefined);
+    setQueueHandler(undefined);
   }, []);
 
   const handleCloseRewayatInfo = useCallback(() => {
@@ -83,6 +100,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             surah={currentSurah}
             reciterId={currentReciterId}
             onClose={handleCloseSurahOptions}
+            onAddToQueue={queueHandler}
           />
         )}
         {rewayatInfo && (

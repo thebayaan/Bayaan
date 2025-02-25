@@ -37,6 +37,11 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
+          <Text style={styles.reciterRewayat} numberOfLines={1}>
+            {item.rewayat.length > 1
+              ? `${item.rewayat.length} rewayat available`
+              : item.rewayat[0]?.name || ''}
+          </Text>
         </View>
         {isSelected && (
           <View style={styles.checkmarkContainer}>
@@ -61,6 +66,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
     },
     imageContainer: {
       width: moderateScale(60),
@@ -83,8 +89,14 @@ const createStyles = (theme: Theme) =>
     },
     reciterName: {
       fontSize: moderateScale(16),
-      fontWeight: 'bold',
+      fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
+      marginBottom: moderateScale(2),
+    },
+    reciterRewayat: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
     },
     selectedReciterItem: {
       borderRadius: moderateScale(12),

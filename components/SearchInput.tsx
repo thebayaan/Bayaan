@@ -35,6 +35,10 @@ export interface SearchInputProps extends TextInputProps {
   iconOpacity?: number;
   backgroundColor: string;
   borderColor: string;
+  keyboardAppearance?: 'default' | 'light' | 'dark';
+  autoCorrect?: boolean;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
 }
 
 export const SearchInput = forwardRef<TextInput, SearchInputProps>(
@@ -60,6 +64,9 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
       backgroundColor,
       borderColor,
       style,
+      keyboardAppearance,
+      autoCorrect = false,
+      autoCapitalize = 'none',
       ...props
     },
     ref,
@@ -113,9 +120,11 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
               placeholderTextColor || Color(textColor).alpha(0.6).toString()
             }
             returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-            clearButtonMode="while-editing"
+            keyboardAppearance={
+              keyboardAppearance || (theme.isDarkMode ? 'dark' : 'light')
+            }
+            autoCorrect={autoCorrect}
+            autoCapitalize={autoCapitalize}
             {...props}
           />
         </View>
