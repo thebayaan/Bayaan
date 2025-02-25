@@ -7,7 +7,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": true
+        "resourceClass": "m-medium"
       },
       "android": {
         "buildType": "apk"
@@ -19,8 +19,7 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "simulator": false,
-        "buildConfiguration": "Release"
+        "resourceClass": "m-medium"
       },
       "android": {
         "buildType": "apk"
@@ -31,12 +30,21 @@
     },
     "production": {
       "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium",
+        "credentialsSource": "remote"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.bayaan.app"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+      }
+    }
   }
 }

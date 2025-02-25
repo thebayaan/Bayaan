@@ -285,6 +285,7 @@ const createStyles = (theme: Theme) =>
     scrollContent: {
       paddingHorizontal: moderateScale(16),
       paddingVertical: moderateScale(20),
+      paddingBottom: moderateScale(160),
     },
     logoContainer: {
       alignItems: 'center',

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bayaan",
     "slug": "Bayaan",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "bayaan",
     "userInterfaceStyle": "automatic",
@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bayaan.app",
+      "buildNumber": "1",
       "icon": {
         "dark": "./assets/images/ios-dark.png",
         "light": "./assets/images/ios-light.png",

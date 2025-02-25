@@ -1,0 +1,191 @@
+import React, {useMemo} from 'react';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {moderateScale} from 'react-native-size-matters';
+import {Reciter} from '@/data/reciterData';
+import {Theme} from '@/utils/themeUtils';
+import {ReciterImage} from '@/components/ReciterImage';
+import {BlurView} from '@react-native-community/blur';
+import Color from 'color';
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+} from 'react-native-reanimated';
+
+interface BrowseReciterCardProps {
+  reciter: Reciter;
+  onPress: () => void;
+  width: number;
+  height: number;
+  theme: Theme;
+}
+
+// Remove or comment out the unused type
+// type StylesType = ReturnType<typeof createStyles>;
+
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
+function createStyles(theme: Theme, width: number, height: number) {
+  return StyleSheet.create({
+    container: {
+      width,
+      height,
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      borderWidth: 0.5,
+      borderColor: Color(theme.colors.border).alpha(0.15).toString(),
+    },
+    backgroundImageContainer: {
+      position: 'absolute',
+      top: -10,
+      left: -10,
+      right: -10,
+      bottom: -10,
+      overflow: 'hidden',
+    },
+    backgroundImage: {
+      width: '100%',
+      height: '100%',
+      transform: [{scale: 1.2}],
+    },
+    foregroundImageContainer: {
+      width: '100%',
+      height: '70%', // Take up top 70% of the card
+      justifyContent: 'flex-start',
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    foregroundImage: {
+      width: '100%',
+      height: '100%',
+    },
+    contentContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '30%', // Bottom 30% of the card
+      paddingHorizontal: moderateScale(12),
+      paddingVertical: moderateScale(12),
+      justifyContent: 'center',
+    },
+    blurContainer: {
+      ...StyleSheet.absoluteFillObject,
+      overflow: 'hidden',
+    },
+    overlay: {
+      // ...StyleSheet.absoluteFillObject,
+      // backgroundColor: theme.colors.card,
+      // opacity: 0.9,
+    },
+    imageOverlay: {
+      // ...StyleSheet.absoluteFillObject,
+      // // backgroundColor: theme.colors.background,
+      // opacity: 0.5,
+    },
+    reciterName: {
+      fontSize: moderateScale(12),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
+      marginBottom: moderateScale(2),
+    },
+    reciterInfo: {
+      fontSize: moderateScale(10),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+    },
+  });
+}
+
+const BrowseReciterCard = React.memo(
+  ({reciter, onPress, width, height, theme}: BrowseReciterCardProps) => {
+    const styles = useMemo(
+      () => createStyles(theme, width, height),
+      [theme, width, height],
+    );
+
+    // Animation values
+    const scale = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => {
+      return {
+        transform: [{scale: scale.value}],
+      };
+    });
+
+    const handlePressIn = () => {
+      scale.value = withSpring(0.95, {
+        damping: 15,
+        stiffness: 300,
+      });
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 300,
+      });
+    };
+
+    return (
+      <AnimatedTouchableOpacity
+        activeOpacity={1}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        style={[styles.container, animatedStyle]}>
+        {/* Background blurred image */}
+        <View style={styles.backgroundImageContainer}>
+          <ReciterImage
+            imageUrl={reciter.image_url || undefined}
+            reciterName={reciter.name}
+            style={styles.backgroundImage}
+          />
+          <BlurView
+            blurAmount={20}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}>
+            <View style={styles.imageOverlay} />
+          </BlurView>
+        </View>
+
+        {/* Foreground clear image */}
+        <View style={styles.foregroundImageContainer}>
+          <ReciterImage
+            imageUrl={reciter.image_url || undefined}
+            reciterName={reciter.name}
+            style={styles.foregroundImage}
+          />
+        </View>
+
+        {/* Content Overlay */}
+        <View style={styles.contentContainer}>
+          <BlurView
+            blurAmount={10}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={styles.blurContainer}>
+            <View style={styles.overlay} />
+          </BlurView>
+          <Text style={styles.reciterName} numberOfLines={1}>
+            {reciter.name}
+          </Text>
+          <Text style={styles.reciterInfo} numberOfLines={1}>
+            {reciter.rewayat.length > 1
+              ? `${reciter.rewayat.length} rewayat available`
+              : reciter.rewayat[0]?.name || ''}
+          </Text>
+        </View>
+      </AnimatedTouchableOpacity>
+    );
+  },
+  (prevProps, nextProps) =>
+    prevProps.reciter === nextProps.reciter &&
+    prevProps.width === nextProps.width &&
+    prevProps.height === nextProps.height &&
+    prevProps.theme === nextProps.theme,
+);
+
+BrowseReciterCard.displayName = 'BrowseReciterCard';
+
+export {BrowseReciterCard};

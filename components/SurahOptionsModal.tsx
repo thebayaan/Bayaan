@@ -25,12 +25,14 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+import Color from 'color';
 
 interface SurahOptionsModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
   surah: Surah;
   reciterId?: string;
   onClose: () => void;
+  onAddToQueue?: (surah: Surah) => Promise<void>;
 }
 
 // Import surah info data
@@ -60,6 +62,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   surah,
   reciterId,
   onClose,
+  onAddToQueue,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -107,14 +110,13 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   );
 
   const handleAddToQueue = useCallback(() => {
-    // TODO: Implement add to queue functionality
     onClose();
-  }, [onClose]);
-
-  const handlePlayNext = useCallback(() => {
-    // TODO: Implement play next functionality
-    onClose();
-  }, [onClose]);
+    if (onAddToQueue) {
+      onAddToQueue(surah).catch(error => {
+        console.error('Error adding to queue:', error);
+      });
+    }
+  }, [onAddToQueue, surah, onClose]);
 
   const handleViewInfo = useCallback(() => {
     setShowSummary(true);
@@ -122,12 +124,9 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
 
   const handleToggleLove = useCallback(() => {
     if (!reciterId) return;
-
-    // Animate the heart
     scale.value = withSpring(1.2, {}, () => {
       scale.value = withSpring(1);
     });
-
     toggleLoved(reciterId, surah.id.toString());
   }, [reciterId, surah.id, toggleLoved, scale]);
 
@@ -144,7 +143,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   return (
     <BaseModal
       bottomSheetRef={bottomSheetRef}
-      snapPoints={showSummary ? ['80%'] : ['50%']}
+      snapPoints={showSummary ? ['80%'] : ['40%']}
       title={showSummary ? `About ${surah.name}` : undefined}
       onChange={handleSheetChange}>
       {showSummary ? (
@@ -192,21 +191,9 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.option}
-              onPress={handlePlayNext}
-              activeOpacity={0.7}>
-              <QueueIcon
-                color={theme.colors.text}
-                size={moderateScale(20)}
-                filled={true}
-              />
-              <Text style={styles.optionText}>Play Next</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.option}
+              style={[styles.option, !onAddToQueue && styles.optionDisabled]}
               onPress={handleAddToQueue}
-              activeOpacity={0.7}>
+              activeOpacity={onAddToQueue ? 0.7 : 1}>
               <View style={styles.rotatedIcon}>
                 <QueueIcon
                   color={theme.colors.text}
@@ -214,7 +201,13 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
                   filled={true}
                 />
               </View>
-              <Text style={styles.optionText}>Add to Queue</Text>
+              <Text
+                style={[
+                  styles.optionText,
+                  !onAddToQueue && styles.optionTextDisabled,
+                ]}>
+                Add to Queue
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -240,14 +233,15 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
       flex: 1,
+      paddingHorizontal: moderateScale(20),
     },
     header: {
       alignItems: 'center',
       marginBottom: moderateScale(24),
-      gap: moderateScale(8),
+      gap: moderateScale(4),
     },
     surahName: {
-      fontSize: moderateScale(18),
+      fontSize: moderateScale(20),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
@@ -264,16 +258,20 @@ const createStyles = (theme: Theme) =>
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(8),
-      gap: moderateScale(12),
+      paddingVertical: moderateScale(16),
+      paddingHorizontal: moderateScale(16),
+      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      borderRadius: moderateScale(12),
     },
     optionDisabled: {
       opacity: 0.5,
     },
     optionText: {
-      fontSize: moderateScale(14),
+      flex: 1,
+      fontSize: moderateScale(15),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
+      marginLeft: moderateScale(12),
     },
     optionTextDisabled: {
       color: theme.colors.textSecondary,
@@ -285,6 +283,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     content: {
+      paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(20),
     },
   });

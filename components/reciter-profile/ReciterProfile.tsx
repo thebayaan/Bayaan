@@ -153,7 +153,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     setSearchQuery(query);
   };
 
-  const {updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, play, addToQueue} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
@@ -332,6 +332,26 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     },
   );
 
+  const handleAddToQueue = useCallback(
+    async (surah: Surah) => {
+      if (!reciter || !selectedRewayat) return;
+      try {
+        // Create track for just this surah
+        const tracks = await createTracksForReciter(
+          reciter,
+          [surah],
+          selectedRewayat.id,
+        );
+
+        // Add to queue
+        await addToQueue(tracks);
+      } catch (error) {
+        console.error('Error adding surah to queue:', error);
+      }
+    },
+    [reciter, selectedRewayat, addToQueue],
+  );
+
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -358,7 +378,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           onSurahPress={handleSurahPress}
           reciterId={reciterId}
           isLoved={isLoved}
-          onOptionsPress={(surah: Surah) => showSurahOptions(surah, reciterId)}
+          onOptionsPress={(surah: Surah) =>
+            showSurahOptions(surah, reciterId, handleAddToQueue)
+          }
           searchQuery={searchQuery}
           onSearchChange={handleSearch}
           onCloseSearch={() => {
@@ -381,7 +403,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
             reciterId={reciterId}
             isLoved={isLoved}
             onOptionsPress={(surah: Surah) =>
-              showSurahOptions(surah, reciterId)
+              showSurahOptions(surah, reciterId, handleAddToQueue)
             }
             onScroll={handleScroll}
             ListHeaderComponent={

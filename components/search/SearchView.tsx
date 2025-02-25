@@ -6,6 +6,7 @@ import {
   ScrollView,
   FlatList,
   TextInput,
+  Keyboard,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -516,11 +517,19 @@ export function SearchView({onClose, visible}: SearchViewProps) {
             placeholder="Search surahs, reciters, or keywords"
             value={query}
             onChangeText={setQuery}
-            onCancel={onClose}
+            onCancel={() => {
+              Keyboard.dismiss();
+              setQuery('');
+              onClose();
+            }}
             iconColor={theme.colors.text}
             textColor={theme.colors.text}
             backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
             borderColor={Color(theme.colors.border).alpha(0.2).toString()}
+            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+            autoCorrect={false}
+            autoComplete="off"
+            autoCapitalize="none"
           />
         </View>
       </View>
@@ -529,7 +538,8 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contentContainer}>
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled">
           <Animated.View entering={FadeIn.delay(100)}>
             {renderSuggestionRow(SEARCH_SUGGESTIONS.surahs, 'Surahs')}
             {renderSuggestionRow(SEARCH_SUGGESTIONS.reciters, 'Reciters')}
@@ -545,7 +555,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                   activeOpacity={0.7}
                   onPress={clearRecentSearches}>
                   <Text
-                    style={[styles.clearButton, {color: theme.colors.primary}]}>
+                    style={[styles.clearButton, {color: theme.colors.text}]}>
                     Clear
                   </Text>
                 </TouchableOpacity>
@@ -556,6 +566,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                 keyExtractor={item => item}
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               />
             </Animated.View>
           )}
@@ -567,6 +578,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           keyExtractor={(item, index) => `${item.type}-${index}`}
           contentContainerStyle={styles.resultsContainer}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             searching ? (
               <View style={styles.loadingContainer}>

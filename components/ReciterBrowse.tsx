@@ -171,6 +171,10 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
           placeholder="Search reciters..."
           onChangeText={handleSearch}
           value={searchQuery}
+          keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+          autoCorrect={false}
+          autoComplete="off"
+          autoCapitalize="none"
         />
       </View>
       <View style={createStyles(theme).toggleContainer}>
@@ -215,6 +219,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         )}
         keyExtractor={item => item.id}
         style={createStyles(theme).reciterList}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <Text
             style={[

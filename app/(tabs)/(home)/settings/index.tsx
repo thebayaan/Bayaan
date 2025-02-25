@@ -53,6 +53,7 @@ const settingsItems = [
       },
     ],
   },
+  /* Temporarily removed for link updates
   {
     section: 'Support & Legal',
     items: [
@@ -78,6 +79,7 @@ const settingsItems = [
       },
     ],
   },
+  */
   {
     section: 'About',
     items: [

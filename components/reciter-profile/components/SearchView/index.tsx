@@ -99,6 +99,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
             backgroundColor={Color('white').alpha(0.15).toString()}
             borderColor={Color('white').alpha(0.2).toString()}
             iconSize={moderateScale(18)}
+            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+            autoCorrect={false}
+            autoCapitalize="none"
+            keyboardShouldPersistTaps="handled"
           />
 
           <FlatList
@@ -106,6 +110,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.rewayatList}
+            keyboardShouldPersistTaps="handled"
             renderItem={({item}) => (
               <TouchableOpacity
                 style={[
@@ -145,6 +150,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
           renderItem={renderSurahItem}
           keyExtractor={item => item.id.toString()}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.surahList,
             {paddingBottom: insets.bottom + moderateScale(70)},

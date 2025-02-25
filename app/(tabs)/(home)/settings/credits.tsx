@@ -1,13 +1,14 @@
 import React from 'react';
 import {View, Text, ScrollView, TouchableOpacity, Linking} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/base';
 import Color from 'color';
 import Animated, {FadeIn} from 'react-native-reanimated';
-import {ScreenHeader} from '@/components/ScreenHeader';
 import {Theme} from '@/utils/themeUtils';
+import {BlurView} from '@react-native-community/blur';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface Credit {
   title: string;
@@ -107,10 +108,22 @@ const CREDITS: {
       },
     ],
   },
+  {
+    section: 'Design & Art',
+    items: [
+      {
+        title: 'Dr. Naoki Yamamoto',
+        description: 'Custom designed splash screen calligraphy',
+        link: 'https://twitter.com/NaokiQYamamoto',
+      },
+    ],
+  },
 ];
 
 export default function CreditsScreen() {
   const {theme} = useTheme();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
 
   const handleLinkPress = async (url?: string) => {
@@ -120,10 +133,40 @@ export default function CreditsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScreenHeader title="Credits" />
+    <View style={styles.container}>
+      <View style={[styles.header, {paddingTop: insets.top}]}>
+        <BlurView
+          blurAmount={10}
+          blurType={theme.isDarkMode ? 'dark' : 'light'}
+          style={[styles.blurContainer]}>
+          <View
+            style={[
+              styles.overlay,
+              {
+                backgroundColor: theme.colors.background,
+              },
+            ]}
+          />
+        </BlurView>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            activeOpacity={0.7}
+            onPress={() => router.back()}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
+            Credits
+          </Text>
+        </View>
+      </View>
       <ScrollView
-        style={styles.scrollView}
+        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeIn.delay(100)}>
@@ -192,7 +235,7 @@ export default function CreditsScreen() {
           </Text>
         </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -202,12 +245,54 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    scrollView: {
+    header: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    },
+    blurContainer: {
+      overflow: 'hidden',
+      borderWidth: 0.1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      opacity: 0.85,
+    },
+    headerContent: {
+      height: moderateScale(56),
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+    },
+    backButton: {
+      marginRight: moderateScale(16),
+    },
+    headerTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: theme.fonts.semiBold,
+      flex: 1,
+      textAlign: 'center',
+      marginRight: moderateScale(40),
+    },
+    content: {
       flex: 1,
     },
     scrollContent: {
       paddingHorizontal: moderateScale(16),
       paddingVertical: moderateScale(20),
+      paddingBottom: moderateScale(140),
     },
     introText: {
       fontSize: moderateScale(16),

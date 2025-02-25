@@ -1,7 +1,7 @@
 import React, {useState, useCallback} from 'react';
 import {View, Text, FlatList, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale} from 'react-native-size-matters';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
@@ -9,6 +9,7 @@ import SearchBar from '@/components/SearchBar';
 import BottomSheetModal from '@/components/BottomSheetModal';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
+import Color from 'color';
 
 interface SelectFavoriteRecitersModalProps {
   isVisible: boolean;
@@ -48,9 +49,9 @@ export const SelectFavoriteRecitersModal: React.FC<
       onClose={onClose}
       snapPoints={['92%']}>
       <View style={styles(theme).container}>
-        <Text style={[styles(theme).title, {color: theme.colors.text}]}>
-          Edit Favorite Reciters
-        </Text>
+        <View style={styles(theme).header}>
+          <Text style={styles(theme).title}>Edit Favorite Reciters</Text>
+        </View>
         <View style={styles(theme).searchContainer}>
           <SearchBar
             placeholder="Search reciters..."
@@ -67,14 +68,14 @@ export const SelectFavoriteRecitersModal: React.FC<
           columnWrapperStyle={styles(theme).columnWrapper}
         />
         <View style={styles(theme).footerContainer}>
-          <View style={styles(theme).buttonContainer}>
+          <View style={styles(theme).footer}>
             <Button
-              title="Finish"
+              title="Done"
               onPress={onClose}
               style={styles(theme).button}
-              textStyle={styles(theme).buttonText}
-              size="medium"
-            />
+              textStyle={styles(theme).buttonText}>
+              <Text style={styles(theme).buttonText}>Done</Text>
+            </Button>
           </View>
         </View>
       </View>
@@ -88,41 +89,51 @@ const styles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    header: {
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      backgroundColor: theme.colors.background,
+    },
     title: {
-      fontSize: moderateScale(24),
-      fontWeight: 'bold',
-      marginBottom: verticalScale(16),
+      fontSize: moderateScale(18),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
     },
     searchContainer: {
-      paddingBottom: moderateScale(15),
+      padding: moderateScale(16),
+      backgroundColor: theme.colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
     },
     gridContainer: {
-      paddingHorizontal: moderateScale(5),
-      paddingBottom: moderateScale(100),
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(8),
     },
     columnWrapper: {
       justifyContent: 'space-evenly',
-      marginBottom: verticalScale(15),
+      marginBottom: moderateScale(16),
     },
     footerContainer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
+      backgroundColor: theme.colors.background,
+      borderTopWidth: 1,
+      borderTopColor: Color(theme.colors.border).alpha(0.1).toString(),
     },
-    buttonContainer: {
-      paddingTop: moderateScale(30),
-      paddingBottom: moderateScale(20),
-      alignItems: 'center',
+    footer: {
+      padding: moderateScale(16),
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
     },
     button: {
-      width: '35%',
-      backgroundColor: theme.colors.text,
-      borderRadius: moderateScale(30),
+      backgroundColor: Color(theme.colors.text).alpha(0.9).toString(),
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(24),
+      borderRadius: moderateScale(12),
     },
     buttonText: {
       color: theme.colors.background,
-      fontWeight: 'bold',
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.semiBold,
     },
   });
