@@ -1,11 +1,22 @@
 import React from 'react';
-import {View, TouchableOpacity} from 'react-native';
+import {View, TouchableOpacity, Text} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
 import {StarIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ActionButtonsProps} from '@/components/reciter-profile/types';
+import Color from 'color';
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+} from 'react-native-reanimated';
+
+// Animated TouchableOpacity for button animations
+
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
 
 /**
  * ActionButtons component for the ReciterProfile
@@ -24,35 +35,88 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   const {theme} = useTheme();
   const styles = createStyles(theme);
 
+  // Animation values for button press feedback
+  const favoriteScale = useSharedValue(1);
+  const shuffleScale = useSharedValue(1);
+  const playScale = useSharedValue(1);
+
+  const favoriteAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: favoriteScale.value}],
+  }));
+
+  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: shuffleScale.value}],
+  }));
+
+  const playAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: playScale.value}],
+  }));
+
+  const handlePressIn = (button: 'favorite' | 'shuffle' | 'play') => {
+    const scale =
+      button === 'favorite'
+        ? favoriteScale
+        : button === 'shuffle'
+          ? shuffleScale
+          : playScale;
+
+    scale.value = withSpring(0.92, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handlePressOut = (button: 'favorite' | 'shuffle' | 'play') => {
+    const scale =
+      button === 'favorite'
+        ? favoriteScale
+        : button === 'shuffle'
+          ? shuffleScale
+          : playScale;
+
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
   return (
     <View style={styles.actionButtons}>
-      <TouchableOpacity
-        activeOpacity={0.99}
-        style={styles.actionButton}
-        onPress={onFavoritePress}>
+      <AnimatedTouchableOpacity
+        activeOpacity={0.7}
+        style={[styles.favoriteButton, favoriteAnimatedStyle]}
+        onPress={onFavoritePress}
+        onPressIn={() => handlePressIn('favorite')}
+        onPressOut={() => handlePressOut('favorite')}>
         <StarIcon
           color={
             isFavoriteReciter
               ? theme.colors.primary
               : theme.colors.textSecondary
           }
-          size={isFavoriteReciter ? moderateScale(38) : moderateScale(28)}
+          size={isFavoriteReciter ? moderateScale(40) : moderateScale(28)}
           filled={isFavoriteReciter}
         />
-      </TouchableOpacity>
+      </AnimatedTouchableOpacity>
       <View style={styles.rightAlignedButtons}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={styles.actionButton}
-          onPress={onShufflePress}>
-          <ShuffleIcon color={theme.colors.text} size={moderateScale(32)} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={styles.playButton}
-          onPress={onPlayPress}>
-          <PlayIcon color={'white'} size={moderateScale(18)} />
-        </TouchableOpacity>
+        <AnimatedTouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.shuffleButton, shuffleAnimatedStyle]}
+          onPress={onShufflePress}
+          onPressIn={() => handlePressIn('shuffle')}
+          onPressOut={() => handlePressOut('shuffle')}>
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(22)} />
+          <Text style={styles.buttonText}>Shuffle</Text>
+        </AnimatedTouchableOpacity>
+        <AnimatedTouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.playButton, playAnimatedStyle]}
+          onPress={onPlayPress}
+          onPressIn={() => handlePressIn('play')}
+          onPressOut={() => handlePressOut('play')}>
+          <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
+          <Text style={styles.playButtonText}>Play All</Text>
+        </AnimatedTouchableOpacity>
       </View>
     </View>
   );
@@ -64,29 +128,58 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(20),
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(5),
     },
     rightAlignedButtons: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: moderateScale(10),
     },
-    actionButton: {
-      width: moderateScale(56),
-      height: moderateScale(56),
+    favoriteButton: {
+      width: moderateScale(50),
+      height: moderateScale(50),
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: moderateScale(28),
-      marginHorizontal: moderateScale(5),
+      borderRadius: moderateScale(25),
+      backgroundColor: 'transparent',
+    },
+    favoriteButtonActive: {
+      backgroundColor: theme.colors.card,
+      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
+    },
+    shuffleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(16),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      gap: moderateScale(8),
     },
     playButton: {
-      backgroundColor: theme.colors.primary,
-      width: moderateScale(45),
-      height: moderateScale(45),
-      borderRadius: moderateScale(28),
-      justifyContent: 'center',
+      flexDirection: 'row',
       alignItems: 'center',
-      marginLeft: moderateScale(10),
-      paddingLeft: moderateScale(5),
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(16),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
+      gap: moderateScale(8),
+    },
+    buttonText: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.text,
+    },
+    playButtonText: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
     },
   });

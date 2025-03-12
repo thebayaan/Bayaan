@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bayaan",
     "slug": "Bayaan",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "bayaan",
     "userInterfaceStyle": "automatic",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bayaan.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "icon": {
         "dark": "./assets/images/ios-dark.png",
         "light": "./assets/images/ios-light.png",
@@ -20,8 +20,8 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses the microphone to play audio.",
         "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio.",
-        "UILaunchStoryboardName": "LaunchScreen",
-        "UIBackgroundModes": ["audio", "processing"]
+        "UILaunchStoryboardName": "SplashScreen",
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
@@ -42,7 +42,22 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "native",
+          "backgroundColor": "#ffffff",
+          "imageResizeMode": "native",
+          "imageWidth": 1000,
+          "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
+            "backgroundColor": "#000000"
+          },
+          "userInterfaceStyle": "automatic"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

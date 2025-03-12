@@ -1,5 +1,5 @@
 import React, {useState, useCallback} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, Platform} from 'react-native';
 import {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 import {Header} from './Header';
 import {QueueList} from './QueueList';
@@ -92,7 +92,8 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
       <BottomSheetScrollView
         contentContainerStyle={styles.scrollContent}
         bounces={false}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={Platform.OS === 'android'}>
         <View style={styles.contentContainer}>
           <Header />
           <View style={styles.mainContent}>
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: moderateScale(60),
+    paddingTop: moderateScale(10),
   },
   contentContainer: {
     alignItems: 'center',

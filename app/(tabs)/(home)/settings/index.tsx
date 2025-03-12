@@ -8,9 +8,12 @@ import {Icon} from '@rneui/base';
 import {primaryColors} from '@/styles/colorSchemes';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import Animated, {FadeInDown} from 'react-native-reanimated';
-import {BlurView} from '@react-native-community/blur';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
+import Header from '@/components/Header';
+import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
+
+// App Store IDs - Replace with your actual IDs
 
 const formatColorName = (colorName: string): string => {
   return colorName
@@ -21,10 +24,24 @@ const formatColorName = (colorName: string): string => {
     .join(' ');
 };
 
-const themeOptions: {label: string; value: ThemeMode}[] = [
-  {label: 'System', value: 'system'},
-  {label: 'Light', value: 'light'},
-  {label: 'Dark', value: 'dark'},
+// Helper function to determine if a setting is an external link
+const isExternalLink = (type: string): boolean => {
+  return ['support', 'featureRequest', 'terms', 'privacy', 'rateApp'].includes(
+    type,
+  );
+};
+
+interface ThemeOption {
+  label: string;
+  value: ThemeMode;
+  icon: string;
+  iconType: string;
+}
+
+const themeOptions: ThemeOption[] = [
+  {label: 'System', value: 'system', icon: 'smartphone', iconType: 'feather'},
+  {label: 'Light', value: 'light', icon: 'sun', iconType: 'feather'},
+  {label: 'Dark', value: 'dark', icon: 'moon', iconType: 'ionicon'},
 ];
 
 const settingsItems = [
@@ -35,69 +52,92 @@ const settingsItems = [
         title: 'Default Reciter',
         type: 'defaultReciter',
         description: 'Choose your preferred reciter',
+        icon: 'user',
+        iconType: 'feather',
       },
       {
         title: 'Reciter Choice',
         type: 'reciterChoice',
         description: 'Customize reciter selection',
+        icon: 'users',
+        iconType: 'feather',
       },
+      // Add more audio settings here as needed
     ],
   },
   {
-    section: 'Storage & Data',
+    section: 'App & Data',
     items: [
       {
         title: 'Clear Cache',
         type: 'clearCache',
-        description: 'Clear app data and cache',
+        description: 'Free up storage space',
+        icon: 'trash-2',
+        iconType: 'feather',
       },
+      // Add more app settings here as needed
     ],
   },
-  /* Temporarily removed for link updates
   {
-    section: 'Support & Legal',
+    section: 'Feedback',
     items: [
       {
-        title: 'Help & Support',
-        type: 'support',
-        description: 'Get help and contact support',
+        title: 'Write a Review',
+        type: 'rateApp',
+        description: 'Share your experience with others',
+        icon: 'star',
+        iconType: 'feather',
       },
       {
         title: 'Feature Requests',
         type: 'featureRequest',
-        description: 'Submit feature requests and feedback',
+        description: 'Suggest improvements and new features',
+        icon: 'lightbulb-outline',
+        iconType: 'material',
       },
       {
-        title: 'Terms of Service',
-        type: 'terms',
-        description: 'Read our terms of service',
-      },
-      {
-        title: 'Privacy Policy',
-        type: 'privacy',
-        description: 'View our privacy policy',
+        title: 'Help & Support',
+        type: 'support',
+        description: 'Get assistance with using Bayaan',
+        icon: 'help-circle',
+        iconType: 'feather',
       },
     ],
   },
-  */
   {
-    section: 'About',
+    section: 'About Bayaan',
     items: [
       {
         title: 'About Bayaan',
         type: 'about',
-        description: 'Learn more about Bayaan',
+        description: 'Learn more about our mission',
+        icon: 'info',
+        iconType: 'feather',
       },
       {
         title: 'Credits',
         type: 'credits',
         description: 'View contributors and acknowledgments',
+        icon: 'award',
+        iconType: 'feather',
+      },
+      {
+        title: 'Terms of Service',
+        type: 'terms',
+        description: 'Read our terms of service',
+        icon: 'file-text',
+        iconType: 'feather',
+      },
+      {
+        title: 'Privacy Policy',
+        type: 'privacy',
+        description: 'View our privacy policy',
+        icon: 'shield',
+        iconType: 'feather',
       },
     ],
   },
 ];
-
-// Add your App Store ID here once available
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -117,11 +157,17 @@ export default function SettingsScreen() {
       case 'clearCache':
         await clearPlayerCache();
         break;
+      case 'rateApp':
+        // Mark that the user has manually chosen to rate the app
+        await markAsRated();
+        // Open the app store for review
+        await openAppStoreForReview();
+        break;
       case 'support':
         await Linking.openURL('https://thebayaan.com/support');
         break;
       case 'featureRequest':
-        await Linking.openURL('https://thebayaan.com/feedback');
+        await Linking.openURL('https://thebayaan.com/support');
         break;
       case 'terms':
         await Linking.openURL('https://thebayaan.com/terms');
@@ -142,37 +188,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.header, {paddingTop: insets.top}]}>
-        <BlurView
-          blurAmount={10}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={[styles.blurContainer]}>
-          <View
-            style={[
-              styles.overlay,
-              {
-                backgroundColor: theme.colors.background,
-              },
-            ]}
-          />
-        </BlurView>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.7}
-            onPress={() => router.back()}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Settings
-          </Text>
-        </View>
-      </Animated.View>
+      <Header title="Settings" onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={[
@@ -201,22 +217,34 @@ export default function SettingsScreen() {
                   index === themeOptions.length - 1 && styles.lastThemeOption,
                 ]}
                 onPress={() => setThemeMode(option.value)}>
-                <Text
-                  style={[
-                    styles.themeText,
-                    {
-                      color:
-                        themeMode === option.value
-                          ? theme.colors.background
-                          : theme.colors.text,
-                      fontFamily:
-                        themeMode === option.value
-                          ? theme.fonts.semiBold
-                          : theme.fonts.regular,
-                    },
-                  ]}>
-                  {option.label}
-                </Text>
+                <View style={styles.themeContent}>
+                  <View style={[styles.iconContainer]}>
+                    <Icon
+                      name={option.icon}
+                      type={option.iconType}
+                      size={moderateScale(20)}
+                      color={
+                        themeMode === option.value ? 'white' : theme.colors.text
+                      }
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.themeText,
+                      {
+                        color:
+                          themeMode === option.value
+                            ? 'white'
+                            : theme.colors.text,
+                        fontFamily:
+                          themeMode === option.value
+                            ? theme.fonts.semiBold
+                            : theme.fonts.regular,
+                      },
+                    ]}>
+                    {option.label}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -309,6 +337,16 @@ export default function SettingsScreen() {
                   activeOpacity={0.7}
                   onPress={() => handleSettingPress(item.type)}>
                   <View style={styles.settingContent}>
+                    {item.icon && (
+                      <View style={styles.settingIconContainer}>
+                        <Icon
+                          name={item.icon}
+                          type={item.iconType}
+                          size={moderateScale(20)}
+                          color={theme.colors.textSecondary}
+                        />
+                      </View>
+                    )}
                     <View style={styles.settingTexts}>
                       <Text
                         style={[
@@ -326,7 +364,11 @@ export default function SettingsScreen() {
                       </Text>
                     </View>
                     <Icon
-                      name="arrow-right"
+                      name={
+                        isExternalLink(item.type)
+                          ? 'external-link'
+                          : 'arrow-right'
+                      }
                       type="feather"
                       size={moderateScale(20)}
                       color={theme.colors.textSecondary}
@@ -347,47 +389,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-    },
-    header: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
-    },
-    blurContainer: {
-      overflow: 'hidden',
-      borderWidth: 0.1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      opacity: 0.85,
-    },
-    headerContent: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-    },
-    backButton: {
-      marginRight: moderateScale(16),
-    },
-    headerTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      flex: 1,
-      textAlign: 'center',
-      marginRight: moderateScale(40), // To center the title accounting for back button
     },
     scrollContent: {
       paddingHorizontal: moderateScale(16),
@@ -410,16 +411,35 @@ const createStyles = (theme: Theme) =>
     },
     themeOption: {
       flex: 1,
-      paddingVertical: moderateScale(12),
+      paddingVertical: moderateScale(14),
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: moderateScale(12),
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    themeContent: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: moderateScale(4),
+    },
+    iconContainer: {
+      width: moderateScale(42),
+      height: moderateScale(42),
+      borderRadius: moderateScale(21),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderColor: 'transparent',
     },
     themeText: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(11),
+      fontWeight: '500',
     },
     colorSection: {
-      marginBottom: moderateScale(32),
+      marginBottom: moderateScale(14),
     },
     colorScrollContent: {
       paddingHorizontal: moderateScale(4),
@@ -475,5 +495,12 @@ const createStyles = (theme: Theme) =>
     lastThemeOption: {
       borderTopRightRadius: moderateScale(12),
       borderBottomRightRadius: moderateScale(12),
+    },
+    settingIconContainer: {
+      marginRight: moderateScale(12),
+      width: moderateScale(24),
+      height: moderateScale(24),
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });

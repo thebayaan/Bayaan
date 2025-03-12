@@ -307,6 +307,11 @@ const createStyles = (theme: Theme, textColor: string, insets: any) =>
       position: 'absolute',
       left: moderateScale(16),
       zIndex: 1,
+      padding: moderateScale(10),
+      width: moderateScale(44),
+      height: moderateScale(44),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     arabicSurahName: {
       fontFamily: 'SurahNames',

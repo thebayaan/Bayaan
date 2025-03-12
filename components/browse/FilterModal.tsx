@@ -6,8 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  ViewStyle,
-  TextStyle,
+  Platform,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/base';
@@ -28,36 +27,6 @@ export interface FilterOptions {
   styles: string[];
   rewayat: string[];
   sortBy: 'alphabetical' | 'featured' | 'favorites';
-}
-
-interface StylesType {
-  container: ViewStyle;
-  modalContent: ViewStyle;
-  innerContent: ViewStyle;
-  scrollContainer: ViewStyle;
-  scrollContent: ViewStyle;
-  header: ViewStyle;
-  headerTitle: TextStyle;
-  closeButton: ViewStyle;
-  section: ViewStyle;
-  sectionTitle: TextStyle;
-  optionsContainer: ViewStyle;
-  optionChip: ViewStyle;
-  optionChipSelected: ViewStyle;
-  optionText: TextStyle;
-  optionTextSelected: TextStyle;
-  footer: ViewStyle;
-  applyButton: ViewStyle;
-  applyButtonText: TextStyle;
-  resetButton: ViewStyle;
-  resetButtonText: TextStyle;
-  sortOptionContainer: ViewStyle;
-  sortOption: ViewStyle;
-  sortOptionSelected: ViewStyle;
-  sortOptionText: TextStyle;
-  sortOptionTextSelected: TextStyle;
-  contentWrapper: ViewStyle;
-  footerContainer: ViewStyle;
 }
 
 // Define the style options
@@ -128,7 +97,11 @@ function createStyles(theme: Theme) {
       color: theme.colors.text,
     },
     closeButton: {
-      padding: moderateScale(4),
+      padding: moderateScale(10),
+      width: moderateScale(44),
+      height: moderateScale(44),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     section: {
       paddingHorizontal: moderateScale(16),
@@ -176,6 +149,11 @@ function createStyles(theme: Theme) {
     },
     footerContainer: {
       backgroundColor: theme.colors.background,
+      position: Platform.OS === 'android' ? 'absolute' : 'relative',
+      bottom: Platform.OS === 'android' ? 0 : undefined,
+      left: 0,
+      right: 0,
+      zIndex: 1,
     },
     applyButton: {
       flex: 2,
@@ -201,32 +179,6 @@ function createStyles(theme: Theme) {
     resetButtonText: {
       color: theme.colors.text,
       fontSize: moderateScale(16),
-      fontFamily: theme.fonts.medium,
-    },
-    sortOptionContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: moderateScale(16),
-    },
-    sortOption: {
-      flex: 1,
-      paddingVertical: moderateScale(10),
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-    },
-    sortOptionSelected: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
-    },
-    sortOptionText: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-    },
-    sortOptionTextSelected: {
-      color: theme.colors.text,
       fontFamily: theme.fonts.medium,
     },
   });
@@ -300,13 +252,6 @@ export default function FilterModal({
     });
   };
 
-  const setSortOption = (option: 'alphabetical' | 'featured' | 'favorites') => {
-    setFilters(prev => ({
-      ...prev,
-      sortBy: option,
-    }));
-  };
-
   const handleReset = () => {
     setFilters(defaultFilters);
   };
@@ -349,74 +294,15 @@ export default function FilterModal({
 
               <ScrollView
                 style={styles.scrollContainer}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}>
-                {/* Sort Options */}
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Sort By</Text>
-                  <View style={styles.sortOptionContainer}>
-                    <TouchableOpacity
-                      style={[
-                        styles.sortOption,
-                        filters.sortBy === 'featured' &&
-                          styles.sortOptionSelected,
-                        {
-                          borderTopLeftRadius: moderateScale(8),
-                          borderBottomLeftRadius: moderateScale(8),
-                        },
-                      ]}
-                      onPress={() => setSortOption('featured')}
-                      activeOpacity={0.7}>
-                      <Text
-                        style={[
-                          styles.sortOptionText,
-                          filters.sortBy === 'featured' &&
-                            styles.sortOptionTextSelected,
-                        ]}>
-                        Featured
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.sortOption,
-                        filters.sortBy === 'alphabetical' &&
-                          styles.sortOptionSelected,
-                      ]}
-                      onPress={() => setSortOption('alphabetical')}
-                      activeOpacity={0.7}>
-                      <Text
-                        style={[
-                          styles.sortOptionText,
-                          filters.sortBy === 'alphabetical' &&
-                            styles.sortOptionTextSelected,
-                        ]}>
-                        A-Z
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.sortOption,
-                        filters.sortBy === 'favorites' &&
-                          styles.sortOptionSelected,
-                        {
-                          borderTopRightRadius: moderateScale(8),
-                          borderBottomRightRadius: moderateScale(8),
-                        },
-                      ]}
-                      onPress={() => setSortOption('favorites')}
-                      activeOpacity={0.7}>
-                      <Text
-                        style={[
-                          styles.sortOptionText,
-                          filters.sortBy === 'favorites' &&
-                            styles.sortOptionTextSelected,
-                        ]}>
-                        Favorites
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  Platform.OS === 'android' && {
+                    paddingBottom: insets.bottom + moderateScale(100),
+                  },
+                ]}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={Platform.OS === 'android'}
+                scrollEventThrottle={16}>
                 {/* Recitation Styles */}
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Recitation Styles</Text>
@@ -475,7 +361,7 @@ export default function FilterModal({
               <View
                 style={[
                   styles.footerContainer,
-                  {paddingBottom: insets.bottom},
+                  {paddingBottom: insets.bottom + moderateScale(30)},
                 ]}>
                 <View style={styles.footer}>
                   <TouchableOpacity

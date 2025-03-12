@@ -87,8 +87,18 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     updateSettings({sleepTimer: 0});
   };
 
-  const sleepTimerValue =
-    typeof settings.sleepTimer === 'number' ? settings.sleepTimer : 0;
+  // Check if timer is active based on sleepTimerEnd
+  const isTimerActive =
+    settings.sleepTimerEnd !== null && settings.sleepTimerEnd > Date.now();
+
+  // Calculate remaining time for display
+  const remainingTime =
+    isTimerActive && settings.sleepTimerEnd
+      ? Math.ceil((settings.sleepTimerEnd - Date.now()) / (60 * 1000))
+      : null;
+
+  // Create subtle active background color with opacity
+  const activeBackgroundColor = `${theme.colors.text}20`; // 20% opacity
 
   return (
     <View style={styles.wrapper}>
@@ -108,7 +118,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             styles.speedButton,
             playback.rate !== 1 && [
               styles.activeButton,
-              {backgroundColor: theme.colors.text},
+              {backgroundColor: activeBackgroundColor},
             ],
             (playback.rate === 0.5 || playback.rate === 1.5) &&
               styles.mediumButton,
@@ -121,7 +131,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             style={[
               styles.speedButtonText,
               {color: theme.colors.text},
-              playback.rate !== 1 && {color: theme.colors.card},
+              playback.rate !== 1 && {fontWeight: '700'},
             ]}>
             {`${playback.rate}`}
             <Text style={styles.speedX}>x</Text>
@@ -136,17 +146,17 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             styles.middleButton,
             settings.repeatMode !== 'none' && [
               styles.activeButton,
-              {backgroundColor: theme.colors.text},
+              {backgroundColor: activeBackgroundColor},
             ],
           ]}>
           {settings.repeatMode === 'none' && (
             <RepeatIcon size={moderateScale(25)} color={theme.colors.text} />
           )}
           {settings.repeatMode === 'queue' && (
-            <RepeatIcon size={moderateScale(25)} color={theme.colors.card} />
+            <RepeatIcon size={moderateScale(25)} color={theme.colors.text} />
           )}
           {settings.repeatMode === 'track' && (
-            <RepeatOneIcon size={moderateScale(25)} color={theme.colors.card} />
+            <RepeatOneIcon size={moderateScale(25)} color={theme.colors.text} />
           )}
         </TouchableOpacity>
 
@@ -156,15 +166,15 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
           style={[
             styles.button,
             styles.sleepButton,
-            sleepTimerValue > 0 && [
+            isTimerActive && [
               styles.activeButton,
-              {backgroundColor: theme.colors.text},
+              {backgroundColor: activeBackgroundColor},
             ],
           ]}>
           <TimerIcon
-            color={sleepTimerValue > 0 ? theme.colors.card : theme.colors.text}
+            color={theme.colors.text}
             size={moderateScale(22)}
-            filled={sleepTimerValue > 0}
+            filled={!!isTimerActive}
           />
         </TouchableOpacity>
       </View>
@@ -177,13 +187,10 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             styles.button,
             showQueue && [
               styles.activeButton,
-              {backgroundColor: theme.colors.text},
+              {backgroundColor: activeBackgroundColor},
             ],
           ]}>
-          <QueueIcon
-            size={moderateScale(25)}
-            color={showQueue ? theme.colors.card : theme.colors.text}
-          />
+          <QueueIcon size={moderateScale(25)} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -197,8 +204,8 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         bottomSheetRef={sleepBottomSheetRef}
         onTimerChange={handleSleepTimerChange}
         onTurnOffTimer={handleTurnOffTimer}
-        sleepTimer={sleepTimerValue}
-        remainingTime={null}
+        sleepTimer={remainingTime || 0}
+        remainingTime={remainingTime}
       />
     </View>
   );
@@ -209,7 +216,7 @@ const styles = StyleSheet.create<Styles>({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: moderateScale(8),
+    paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(16),
     width: '100%',
   },
@@ -217,9 +224,9 @@ const styles = StyleSheet.create<Styles>({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: moderateScale(10),
-    paddingVertical: moderateScale(7),
-    borderRadius: moderateScale(25),
+    paddingHorizontal: moderateScale(8),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(16),
     shadowOffset: {
       width: 0,
       height: 2,
@@ -230,10 +237,10 @@ const styles = StyleSheet.create<Styles>({
   },
   quranButton: {
     position: 'absolute',
-    left: moderateScale(15),
-    paddingHorizontal: moderateScale(7),
-    paddingVertical: moderateScale(7),
-    borderRadius: moderateScale(25),
+    left: moderateScale(16),
+    paddingHorizontal: moderateScale(6),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(12),
     shadowOffset: {
       width: 0,
       height: 2,
@@ -245,46 +252,35 @@ const styles = StyleSheet.create<Styles>({
   },
   queueButton: {
     position: 'absolute',
-    right: moderateScale(15),
-    paddingHorizontal: moderateScale(7),
-    paddingVertical: moderateScale(7),
-    borderRadius: moderateScale(25),
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 1,
+    right: moderateScale(16),
+    paddingHorizontal: moderateScale(6),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(12),
   },
   button: {
     width: moderateScale(32),
     height: moderateScale(32),
-    borderRadius: moderateScale(20),
+    borderRadius: moderateScale(12),
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
   speedButton: {
-    borderTopRightRadius: moderateScale(8),
-    borderBottomRightRadius: moderateScale(8),
-    borderTopLeftRadius: moderateScale(20),
-    borderBottomLeftRadius: moderateScale(20),
+    borderRadius: moderateScale(12),
   },
   middleButton: {
-    borderRadius: moderateScale(8),
-    marginHorizontal: moderateScale(3),
+    borderRadius: moderateScale(12),
+    marginHorizontal: moderateScale(6),
   },
   activeButton: {
-    backgroundColor: 'transparent', // Will be overridden inline
+    // Now using a subtle background with opacity defined inline
   },
   speedButtonText: {
     fontSize: moderateScale(16),
     fontWeight: '600',
   },
   activeText: {
-    color: 'transparent', // Will be overridden inline
+    // No longer needed as we're not changing text color
   },
   speedX: {
     fontSize: moderateScale(14),
@@ -294,15 +290,12 @@ const styles = StyleSheet.create<Styles>({
     paddingHorizontal: moderateScale(3),
   },
   expandedButton: {
-    width: moderateScale(50),
+    width: moderateScale(48),
     paddingHorizontal: moderateScale(4),
   },
   sleepButton: {
     marginLeft: 0,
-    borderTopRightRadius: moderateScale(15),
-    borderBottomRightRadius: moderateScale(15),
-    borderTopLeftRadius: moderateScale(8),
-    borderBottomLeftRadius: moderateScale(8),
+    borderRadius: moderateScale(12),
   },
   sideButtonsContainer: {
     flexDirection: 'row',

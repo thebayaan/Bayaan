@@ -112,6 +112,11 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       position: 'absolute',
       top: moderateScale(16),
       left: moderateScale(16),
+      padding: moderateScale(10),
+      width: moderateScale(44),
+      height: moderateScale(44),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     header: {
       flexDirection: 'row',

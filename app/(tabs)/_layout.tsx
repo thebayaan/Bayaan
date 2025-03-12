@@ -5,7 +5,7 @@ import {Tabs} from 'expo-router';
 import BottomTabBar from '@/components/BottomTabBar';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 // import {FloatingPlayer} from '@/components/FloatingPlayer';
-import {StatusBar} from 'react-native';
+import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
 
 const tabBarComponent = (props: BottomTabBarProps) => (
@@ -17,7 +17,11 @@ export default function TabsLayout() {
 
   return (
     <>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+      <StatusBar
+        style={isDarkMode ? 'light' : 'dark'}
+        translucent
+        backgroundColor="transparent"
+      />
       <Tabs
         initialRouteName="(home)"
         screenOptions={{

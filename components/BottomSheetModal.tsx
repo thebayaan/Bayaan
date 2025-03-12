@@ -1,11 +1,43 @@
 import React, {useCallback, useRef, useEffect} from 'react';
-import {View, StyleProp, ViewStyle} from 'react-native';
-import BottomSheet, {BottomSheetBackdrop} from '@gorhom/bottom-sheet';
+import {View, StyleProp, ViewStyle, Platform} from 'react-native';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetHandleProps,
+} from '@gorhom/bottom-sheet';
 import {BottomSheetDefaultBackdropProps} from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types';
-import {BottomSheetHandle} from '@gorhom/bottom-sheet';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
+import Color from 'color';
+
+// Custom handle component for the bottom sheet
+const CustomHandle = (_props: BottomSheetHandleProps) => {
+  const {theme} = useTheme();
+  return (
+    <View style={handleStyles.container}>
+      <View
+        style={[
+          handleStyles.handle,
+          {backgroundColor: Color(theme.colors.text).alpha(0.2).toString()},
+        ]}
+      />
+    </View>
+  );
+};
+
+// Separate styles for the handle to avoid theme dependency issues
+const handleStyles = ScaledSheet.create({
+  container: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+  },
+});
 
 interface BottomSheetModalProps {
   isVisible: boolean;
@@ -58,8 +90,8 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
         borderTopRightRadius: moderateScale(25),
       }}
       enablePanDownToClose={true}
-      handleComponent={BottomSheetHandle}
-      handleIndicatorStyle={{backgroundColor: theme.colors.background}}
+      handleComponent={CustomHandle}
+      enableContentPanningGesture={Platform.OS === 'ios'}
       onClose={onClose}>
       <View style={[styles(theme).contentContainer, contentContainerStyle]}>
         {children}

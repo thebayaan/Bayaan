@@ -1,15 +1,13 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
+import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
-import {useSettings} from '@/hooks/useSettings';
-import {Switch} from 'react-native-gesture-handler';
-import {Icon} from '@rneui/themed';
-import Color from 'color';
-import {BlurView} from '@react-native-community/blur';
+import {Icon} from '@rneui/base';
+import {useReciterChoice} from '@/hooks/useReciterChoice';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useRouter} from 'expo-router';
+import Header from '@/components/Header';
 
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
@@ -40,37 +38,7 @@ export default function ReciterChoiceScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, {paddingTop: insets.top}]}>
-        <BlurView
-          blurAmount={10}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={[styles.blurContainer]}>
-          <View
-            style={[
-              styles.overlay,
-              {
-                backgroundColor: theme.colors.background,
-              },
-            ]}
-          />
-        </BlurView>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.7}
-            onPress={() => router.back()}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Reciter Choice
-          </Text>
-        </View>
-      </View>
+      <Header title="Reciter Choice" onBack={() => router.back()} />
 
       <View style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
         <View style={styles.header}>
@@ -177,50 +145,16 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    content: {
+      flex: 1,
+      paddingHorizontal: moderateScale(16),
+    },
     header: {
       position: 'absolute',
       top: 0,
       left: 0,
       right: 0,
       zIndex: 100,
-    },
-    blurContainer: {
-      overflow: 'hidden',
-      borderWidth: 0.1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      opacity: 0.85,
-    },
-    headerContent: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-    },
-    backButton: {
-      marginRight: moderateScale(16),
-    },
-    headerTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      flex: 1,
-      textAlign: 'center',
-      marginRight: moderateScale(40),
-    },
-    content: {
-      flex: 1,
-      padding: moderateScale(16),
     },
     subtitle: {
       fontSize: moderateScale(14),

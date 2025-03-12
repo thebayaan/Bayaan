@@ -33,7 +33,9 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       (e: GestureResponderEvent) => {
         e.stopPropagation();
         if (onOptionsPress) {
-          onOptionsPress(item);
+          requestAnimationFrame(() => {
+            onOptionsPress(item);
+          });
         }
       },
       [item, onOptionsPress],

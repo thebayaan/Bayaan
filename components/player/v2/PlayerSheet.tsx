@@ -1,8 +1,9 @@
 import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
-import {StyleSheet, StatusBar} from 'react-native';
+import {StyleSheet, StatusBar, View, Platform} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
+  BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useTheme} from '@/hooks/useTheme';
@@ -11,9 +12,26 @@ import Color from 'color';
 import {PlaybackSpeedModal} from './Modals/PlaybackSpeedModal';
 import {SleepTimerModal} from './Modals/SleepTimerModal';
 import {ExtendedSummaryModal} from './SurahSummary/ExtendedSummaryModal';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
+
+// Custom handle component for the bottom sheet
+const CustomHandle = (_props: BottomSheetHandleProps) => {
+  const {theme} = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.handleContainer, {paddingTop: insets.top + 12}]}>
+      <View
+        style={[
+          styles.handle,
+          {backgroundColor: Color(theme.colors.text).alpha(0.2).toString()},
+        ]}
+      />
+    </View>
+  );
+};
 
 export const PlayerSheet = () => {
   const {theme} = useTheme();
@@ -38,17 +56,27 @@ export const PlayerSheet = () => {
   // Effect to handle sleep timer remaining time
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (typeof settings.sleepTimer === 'object') {
+    if (settings.sleepTimerEnd) {
       interval = setInterval(() => {
-        // Access the internal timer value safely
-        const timer = settings.sleepTimer as unknown as {
-          _idleTimeout?: number;
-        };
-        const remaining = timer._idleTimeout
-          ? Math.ceil(timer._idleTimeout / 1000 / 60)
+        // Calculate remaining time based on the end timestamp
+        const now = Date.now();
+        const timeRemaining = settings.sleepTimerEnd
+          ? settings.sleepTimerEnd - now
           : 0;
-        setRemainingTime(remaining);
-      }, 1000);
+
+        if (timeRemaining > 0) {
+          // For very short timers (less than 1 minute), display seconds
+          if (timeRemaining < 60 * 1000) {
+            const remainingSeconds = Math.ceil(timeRemaining / 1000);
+            setRemainingTime(remainingSeconds / 60); // Convert to fractional minutes
+          } else {
+            const remainingMinutes = Math.ceil(timeRemaining / (60 * 1000));
+            setRemainingTime(remainingMinutes);
+          }
+        } else {
+          setRemainingTime(null);
+        }
+      }, 500); // Update more frequently for short timers
     } else {
       setRemainingTime(null);
     }
@@ -58,7 +86,7 @@ export const PlayerSheet = () => {
         clearInterval(interval);
       }
     };
-  }, [settings.sleepTimer]);
+  }, [settings.sleepTimerEnd]);
 
   // Effect to handle sheet mode changes
   useEffect(() => {
@@ -147,7 +175,8 @@ export const PlayerSheet = () => {
         backdropComponent={renderBackdrop}
         index={currentIndex}
         animateOnMount={false}
-        handleComponent={null}
+        handleComponent={CustomHandle}
+        enableContentPanningGesture={Platform.OS === 'ios'}
         style={styles.sheet}
         backgroundStyle={[
           styles.background,
@@ -171,7 +200,7 @@ export const PlayerSheet = () => {
         bottomSheetRef={sleepBottomSheetRef}
         onTimerChange={handleSleepTimerChange}
         onTurnOffTimer={handleTurnOffTimer}
-        sleepTimer={settings.sleepTimer}
+        sleepTimer={remainingTime || 0}
         remainingTime={remainingTime}
       />
 
@@ -192,5 +221,13 @@ const styles = StyleSheet.create({
   background: {
     borderTopLeftRadius: 45,
     borderTopRightRadius: 45,
+  },
+  handleContainer: {
+    alignItems: 'center',
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
   },
 });

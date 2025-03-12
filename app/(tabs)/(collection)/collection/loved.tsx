@@ -34,6 +34,7 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 interface LovedTrack {
   reciterId: string;
   surahId: string;
+  rewayatId?: string;
 }
 
 const LovedScreen = () => {
@@ -130,7 +131,7 @@ const LovedScreen = () => {
   const handleTrackPress = useCallback(
     async (trackId: string) => {
       try {
-        const [reciterId, surahId] = trackId.split(':');
+        const [reciterId, surahId, rewayatId] = trackId.split(':');
         const reciter = await getReciterById(reciterId);
         const surah = await getSurahById(parseInt(surahId, 10));
 
@@ -141,10 +142,14 @@ const LovedScreen = () => {
           const itemReciter = await getReciterById(item.reciterId);
           const itemSurah = await getSurahById(parseInt(item.surahId, 10));
           if (!itemReciter || !itemSurah) return null;
+
+          // Use the stored rewayatId if available, otherwise fallback to the first rewayat
+          const itemRewayatId = item.rewayatId || itemReciter.rewayat[0]?.id;
+
           const tracks = await createTracksForReciter(
             itemReciter,
             [itemSurah],
-            itemReciter.rewayat[0]?.id,
+            itemRewayatId,
           );
           return tracks[0] || null;
         });
@@ -160,7 +165,8 @@ const LovedScreen = () => {
         const selectedIndex = validTracks.findIndex(
           track =>
             track.reciterId === reciterId &&
-            track.surahId === surahId.toString(),
+            track.surahId === surahId.toString() &&
+            (rewayatId ? track.rewayatId === rewayatId : true),
         );
 
         if (selectedIndex === -1) return;
@@ -175,8 +181,14 @@ const LovedScreen = () => {
         await updateQueue(reorderedTracks, 0);
         await play();
 
-        // Add to recently played list
-        await addRecentTrack(reciter, surah, 0, 0);
+        // Add to recently played list with the correct rewayatId
+        await addRecentTrack(
+          reciter,
+          surah,
+          0,
+          0,
+          rewayatId || reciter.rewayat[0]?.id,
+        );
 
         // Set current reciter for batch loading
         queueContext.setCurrentReciter(reciter);
@@ -195,11 +207,17 @@ const LovedScreen = () => {
         return <LoadingIndicator />;
       }
 
+      const handlePress = () => {
+        const trackId = `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
+        handleTrackPress(trackId);
+      };
+
       return (
         <TrackItem
           reciterId={item.reciterId}
           surahId={item.surahId}
-          onPress={() => handleTrackPress(`${item.reciterId}:${item.surahId}`)}
+          rewayatId={item.rewayatId}
+          onPress={handlePress}
         />
       );
     },
@@ -228,6 +246,7 @@ const LovedScreen = () => {
     return {
       reciterId: track.reciterId,
       surahId: track.surahId,
+      rewayatId: track.rewayatId,
       reciterName: reciter?.name,
       surahName: surah?.name,
     };
@@ -243,6 +262,9 @@ const LovedScreen = () => {
         item.surahName.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
+  const getItemKey = (item: any) =>
+    `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
+
   const handlePlayAll = useCallback(async () => {
     if (filteredData.length === 0) return;
 
@@ -252,10 +274,19 @@ const LovedScreen = () => {
         const reciter = await getReciterById(item.reciterId);
         const surah = await getSurahById(parseInt(item.surahId, 10));
         if (!reciter || !surah) return null;
+
+        // Find the loved track to get its rewayatId
+        const lovedTrack = lovedTracks.find(
+          track =>
+            track.reciterId === item.reciterId &&
+            track.surahId === item.surahId,
+        );
+        const rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
+
         const tracks = await createTracksForReciter(
           reciter,
           [surah],
-          reciter.rewayat[0]?.id,
+          rewayatId,
         );
         return tracks[0] || null;
       });
@@ -279,13 +310,27 @@ const LovedScreen = () => {
       const firstSurah = await getSurahById(parseInt(firstTrack.surahId, 10));
 
       if (firstReciter && firstSurah) {
-        await addRecentTrack(firstReciter, firstSurah, 0, 0);
+        // Use the rewayatId from the track
+        await addRecentTrack(
+          firstReciter,
+          firstSurah,
+          0,
+          0,
+          firstTrack.rewayatId || firstReciter.rewayat[0]?.id,
+        );
         queueContext.setCurrentReciter(firstReciter);
       }
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  }, [filteredData, updateQueue, play, queueContext, addRecentTrack]);
+  }, [
+    filteredData,
+    lovedTracks,
+    updateQueue,
+    play,
+    queueContext,
+    addRecentTrack,
+  ]);
 
   const handleShuffleAll = useCallback(async () => {
     if (filteredData.length === 0) return;
@@ -296,10 +341,19 @@ const LovedScreen = () => {
         const reciter = await getReciterById(item.reciterId);
         const surah = await getSurahById(parseInt(item.surahId, 10));
         if (!reciter || !surah) return null;
+
+        // Find the loved track to get its rewayatId
+        const lovedTrack = lovedTracks.find(
+          track =>
+            track.reciterId === item.reciterId &&
+            track.surahId === item.surahId,
+        );
+        const rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
+
         const tracks = await createTracksForReciter(
           reciter,
           [surah],
-          reciter.rewayat[0]?.id,
+          rewayatId,
         );
         return tracks[0] || null;
       });
@@ -326,13 +380,27 @@ const LovedScreen = () => {
       const firstSurah = await getSurahById(parseInt(firstTrack.surahId, 10));
 
       if (firstReciter && firstSurah) {
-        await addRecentTrack(firstReciter, firstSurah, 0, 0);
+        // Use the rewayatId from the track
+        await addRecentTrack(
+          firstReciter,
+          firstSurah,
+          0,
+          0,
+          firstTrack.rewayatId || firstReciter.rewayat[0]?.id,
+        );
         queueContext.setCurrentReciter(firstReciter);
       }
     } catch (error) {
       console.error('Error shuffling tracks:', error);
     }
-  }, [filteredData, updateQueue, play, queueContext, addRecentTrack]);
+  }, [
+    filteredData,
+    lovedTracks,
+    updateQueue,
+    play,
+    queueContext,
+    addRecentTrack,
+  ]);
 
   const handleScroll = Animated.event(
     [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -406,7 +474,7 @@ const LovedScreen = () => {
         bounces={false}
         showsVerticalScrollIndicator={false}
         renderItem={ReciterTrackItem}
-        keyExtractor={item => `${item.reciterId}:${item.surahId}`}
+        keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
         ListEmptyComponent={
@@ -499,7 +567,7 @@ const LovedScreen = () => {
             <Icon
               name="search"
               type="feather"
-              size={moderateScale(20)}
+              size={moderateScale(25)}
               color={theme.colors.text}
             />
           </Animated.View>

@@ -53,8 +53,9 @@ const DEFAULT_CONFIG: SetupConfig = {
     ],
     progressUpdateEventInterval: 2,
     android: {
-      appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
-      alwaysPauseOnInterruption: false,
+      appKilledPlaybackBehavior:
+        AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
+      alwaysPauseOnInterruption: true,
       notification: {
         channelId: 'com.bayaan.player',
         channelName: 'Bayaan Player',
@@ -139,8 +140,8 @@ export async function setupTrackPlayer(
           ...config?.options,
           android: {
             appKilledPlaybackBehavior:
-              AppKilledPlaybackBehavior.ContinuePlayback,
-            alwaysPauseOnInterruption: false,
+              AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
+            alwaysPauseOnInterruption: true,
           },
         });
 
@@ -197,8 +198,9 @@ export async function setupTrackPlayer(
       ...DEFAULT_CONFIG.options,
       ...config?.options,
       android: {
-        appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
-        alwaysPauseOnInterruption: false,
+        appKilledPlaybackBehavior:
+          AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
+        alwaysPauseOnInterruption: true,
       },
     });
 

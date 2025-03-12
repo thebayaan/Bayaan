@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
+import {View, TouchableOpacity, Text, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {HomeIcon, SearchIcon, CollectionIcon} from '@/components/Icons';
@@ -14,14 +14,17 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
-  const iconSize = moderateScale(28, 0.2);
-  const tabTextSize = moderateScale(12, 0.2);
+  const iconSize = moderateScale(26, 0.2);
+  const tabTextSize = moderateScale(10, 0.2);
+
+  // Only apply bottom padding on iOS
+  const bottomPadding = Platform.OS === 'ios' ? insets.bottom : 0;
 
   const styles = StyleSheet.create({
     container: {
       flexDirection: 'row',
       backgroundColor: theme.colors.background,
-      paddingBottom: insets.bottom,
+      paddingBottom: bottomPadding,
     },
     content: {
       flexDirection: 'row',
@@ -32,6 +35,8 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
       alignItems: 'center',
       justifyContent: 'center',
       paddingTop: moderateScale(10),
+      paddingBottom:
+        Platform.OS === 'android' ? moderateScale(10) : moderateScale(5),
     },
     tabText: {
       fontSize: tabTextSize,

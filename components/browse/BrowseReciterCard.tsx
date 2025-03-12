@@ -128,6 +128,10 @@ const BrowseReciterCard = React.memo(
       });
     };
 
+    // Reduced blur amounts for better performance
+    const backgroundBlurAmount = 15; // Reduced from 20
+    const contentBlurAmount = 8; // Reduced from 10
+
     return (
       <AnimatedTouchableOpacity
         activeOpacity={1}
@@ -143,7 +147,7 @@ const BrowseReciterCard = React.memo(
             style={styles.backgroundImage}
           />
           <BlurView
-            blurAmount={20}
+            blurAmount={backgroundBlurAmount}
             blurType={theme.isDarkMode ? 'dark' : 'light'}
             style={StyleSheet.absoluteFill}>
             <View style={styles.imageOverlay} />
@@ -162,7 +166,7 @@ const BrowseReciterCard = React.memo(
         {/* Content Overlay */}
         <View style={styles.contentContainer}>
           <BlurView
-            blurAmount={10}
+            blurAmount={contentBlurAmount}
             blurType={theme.isDarkMode ? 'dark' : 'light'}
             style={styles.blurContainer}>
             <View style={styles.overlay} />

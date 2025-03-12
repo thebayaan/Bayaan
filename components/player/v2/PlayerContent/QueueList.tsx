@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -51,7 +52,10 @@ export const QueueList: React.FC<QueueListProps> = ({
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
-        overScrollMode="never">
+        overScrollMode="never"
+        nestedScrollEnabled={Platform.OS === 'android'}
+        disableScrollViewPanResponder={Platform.OS === 'android'}
+        scrollEventThrottle={16}>
         {/* Header */}
         <View style={[styles.header, {borderBottomColor: theme.colors.border}]}>
           <View style={styles.headerLeft}>

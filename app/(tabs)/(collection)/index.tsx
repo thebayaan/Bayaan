@@ -73,9 +73,10 @@ export default function CollectionScreen() {
           <View style={previewStyles.previewContainer}>
             {previewLoved.map(track => (
               <TrackItem
-                key={`${track.reciterId}:${track.surahId}`}
+                key={`${track.reciterId}:${track.surahId}:${track.rewayatId || ''}`}
                 reciterId={track.reciterId}
                 surahId={track.surahId}
+                rewayatId={track.rewayatId}
                 onPress={() => handleLovedTrackPress(track)}
               />
             ))}
@@ -143,6 +144,7 @@ export default function CollectionScreen() {
   const handleLovedTrackPress = async (track: {
     reciterId: string;
     surahId: string;
+    rewayatId?: string;
   }) => {
     try {
       const [reciter, surah] = await Promise.all([
@@ -154,19 +156,25 @@ export default function CollectionScreen() {
         throw new Error('Reciter or surah not found');
       }
 
+      // If track already has a rewayatId, use it
+      // Otherwise, find the loved track to get its rewayatId
+      let rewayatId = track.rewayatId;
+      if (!rewayatId) {
+        const lovedTrack = lovedTracks.find(
+          t => t.reciterId === track.reciterId && t.surahId === track.surahId,
+        );
+        rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
+      }
+
       // Create track for the selected surah
-      const tracks = await createTracksForReciter(
-        reciter,
-        [surah],
-        reciter.rewayat[0]?.id,
-      );
+      const tracks = await createTracksForReciter(reciter, [surah], rewayatId);
 
       // Update queue and start playing
       await updateQueue(tracks, 0);
       await play();
 
-      // Add to recently played list
-      await addRecentTrack(reciter, surah, 0, 0);
+      // Add to recently played list with the rewayatId
+      await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
       // Set current reciter for batch loading
       queueContext.setCurrentReciter(reciter);
@@ -181,7 +189,7 @@ export default function CollectionScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, {paddingTop: insets.top}]}>
+      <View style={[styles.header, {paddingTop: 0}]}>
         <BlurView
           blurAmount={10}
           blurType={theme.isDarkMode ? 'dark' : 'light'}
@@ -196,7 +204,8 @@ export default function CollectionScreen() {
           />
         </BlurView>
       </View>
-      <ScrollView style={[styles.content, {paddingTop: insets.top}]}>
+      <ScrollView style={styles.content}>
+        <View style={{paddingTop: insets.top}} />
         <FlatList
           data={collectionItems}
           renderItem={renderCollectionItem}

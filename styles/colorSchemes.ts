@@ -34,32 +34,32 @@ export const darkColors = {
 
 export const primaryColors = {
   // Core colors (most commonly used)
-  Purple: '#5645a1',
-  Blue: '#1976d2',
-  Green: '#2e7d32',
-  Red: '#d32f2f',
-  Orange: '#f57c00',
+  Blue: '#2196F3',
+  Green: '#4CAF50',
+  Red: '#F44336',
+  Orange: '#FF9800',
+  Purple: '#673AB7',
 
   // Cool tones
-  DeepBlue: '#0d47a1',
-  Teal: '#00796b',
-  Cyan: '#0097a7',
-  Indigo: '#283593',
+  DeepBlue: '#1565C0',
+  Teal: '#009688',
+  Cyan: '#00BCD4',
+  Indigo: '#3F51B5',
 
   // Warm tones
-  DeepOrange: '#e64a19',
-  Rose: '#c2185b',
-  Amber: '#ffa000',
-  Brown: '#5d4037',
+  DeepOrange: '#FF5722',
+  Rose: '#E91E63',
+  Amber: '#FFC107',
+  Brown: '#795548',
 
   // Vibrant accents
-  Pink: '#d81b60',
-  Lime: '#689f38',
-  DeepPurple: '#4527a0',
+  Pink: '#FF4081',
+  Lime: '#CDDC39',
+  DeepPurple: '#7E57C2',
 
   // Neutral
-  Slate: '#455a64',
-  Steel: '#37474f',
+  Slate: '#607D8B',
+  Steel: '#455A64',
 };
 
 export type ColorScheme = typeof lightColors & {primary: string};

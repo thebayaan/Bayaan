@@ -8,9 +8,19 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {Reciter} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
 
+interface TrackItem {
+  reciterId: string;
+  surahId: string;
+  rewayatId?: string;
+}
+
 interface CollectionViewProps {
   onReciterPress: (reciter: Reciter) => void;
-  onTrackPress: (track: {reciterId: string; surahId: number}) => void;
+  onTrackPress: (track: {
+    reciterId: string;
+    surahId: number;
+    rewayatId?: string;
+  }) => void;
 }
 
 export default function CollectionView({
@@ -35,7 +45,7 @@ export default function CollectionView({
   });
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter | {reciterId: string; surahId: string}}) => {
+    ({item}: {item: Reciter | TrackItem}) => {
       if ('surahId' in item) {
         const reciter = favoriteReciters.find(r => r.id === item.reciterId);
         return (
@@ -46,6 +56,7 @@ export default function CollectionView({
               onTrackPress({
                 reciterId: item.reciterId,
                 surahId: parseInt(item.surahId, 10),
+                rewayatId: item.rewayatId,
               })
             }
           />
@@ -68,17 +79,23 @@ export default function CollectionView({
     ...lovedTracks.map(track => ({
       reciterId: track.reciterId,
       surahId: track.surahId,
+      rewayatId: track.rewayatId,
     })),
   ];
+
+  const getItemKey = (item: Reciter | TrackItem) => {
+    if ('id' in item) {
+      return item.id;
+    }
+    return `${item.reciterId}-${item.surahId}${item.rewayatId ? `-${item.rewayatId}` : ''}`;
+  };
 
   return (
     <View style={styles.container}>
       <FlatList
         data={collectionItems}
         renderItem={renderItem}
-        keyExtractor={item =>
-          'id' in item ? item.id : `${item.reciterId}-${item.surahId}`
-        }
+        keyExtractor={getItemKey}
         numColumns={3}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{paddingHorizontal: moderateScale(15)}}

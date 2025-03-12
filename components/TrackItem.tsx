@@ -7,20 +7,23 @@ import {Icon} from '@rneui/themed';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {Reciter} from '@/data/reciterData';
+import {Reciter, Rewayat} from '@/data/reciterData';
+import Color from 'color';
 
 interface TrackItemProps {
   reciterId: string;
   surahId: string;
+  rewayatId?: string;
   onPress: () => void;
   onPlayPress?: () => void;
 }
 
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
-  ({reciterId, surahId, onPress, onPlayPress}) => {
+  ({reciterId, surahId, rewayatId, onPress, onPlayPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const [reciter, setReciter] = useState<Reciter | null>(null);
+    const [rewayat, setRewayat] = useState<Rewayat | null>(null);
 
     useEffect(() => {
       let mounted = true;
@@ -29,6 +32,13 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           const data = await getReciterById(reciterId);
           if (mounted && data) {
             setReciter(data);
+            // Find the rewayat if rewayatId is provided
+            if (rewayatId && data.rewayat) {
+              const foundRewayat = data.rewayat.find(r => r.id === rewayatId);
+              if (foundRewayat) {
+                setRewayat(foundRewayat);
+              }
+            }
           }
         } catch (error) {
           console.error('Error loading reciter:', error);
@@ -38,12 +48,23 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       return () => {
         mounted = false;
       };
-    }, [reciterId]);
+    }, [reciterId, rewayatId]);
 
     const surah = getSurahById(parseInt(surahId, 10));
     if (!surah || !reciter) return null;
 
     const surahGlyph = surahGlyphMap[surah.id];
+
+    // Create a compact badge for the rewayat if available
+    const renderRewayatBadge = () => {
+      if (!rewayat) return null;
+      return (
+        <Text style={styles.rewayatText}>
+          {rewayat.name}
+          {rewayat.style ? ` • ${rewayat.style}` : ''}
+        </Text>
+      );
+    };
 
     return (
       <TouchableOpacity
@@ -64,6 +85,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 {surah.id + '. ' + surah.name}
               </Text>
               <Text style={styles.reciterName}>{reciter.name}</Text>
+              {renderRewayatBadge()}
             </View>
             <Text style={styles.surahGlyph}>{surahGlyph}</Text>
           </View>
@@ -116,7 +138,7 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateScale(12),
     },
     surahName: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
@@ -127,9 +149,26 @@ const createStyles = (theme: Theme) =>
       textAlign: 'right',
     },
     reciterName: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-Medium',
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginTop: moderateScale(2),
+      marginVertical: moderateScale(2),
+    },
+    rewayatBadge: {
+      marginTop: moderateScale(4),
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(2),
+      borderRadius: moderateScale(4),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      alignSelf: 'flex-start',
+    },
+    rewayatText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+      textTransform: 'capitalize',
     },
   });

@@ -82,7 +82,7 @@ const SEARCH_SUGGESTIONS = {
     {id: 'alafasi', name: 'Mishary Alafasi'},
     {id: 'sudais', name: 'Abdulrahman Alsudaes'},
     {id: 'shuraim', name: 'Saud Al-Shuraim'},
-    {id: 'muaiqly', name: 'Maher Al Meaqly'},
+    {id: 'muaiqly', name: 'Maher Al Meaqli'},
     {id: 'juhany', name: 'Abdullah Al-Johany'},
     {id: 'minshawi', name: 'Mohammed Siddiq Al-Minshawi'},
   ],

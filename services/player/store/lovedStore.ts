@@ -1,13 +1,13 @@
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Track} from '@/types/audio';
 
 const STORAGE_KEY = 'loved-tracks-store';
 
 interface LovedTrack {
   reciterId: string;
   surahId: string;
+  rewayatId: string;
   timestamp: number;
 }
 
@@ -20,11 +20,16 @@ interface LovedTracksState {
   lastSynced: number | null;
 
   // Actions
-  toggleLoved: (reciterId: string, surahId: string) => void;
+  toggleLoved: (reciterId: string, surahId: string, rewayatId: string) => void;
   isLoved: (reciterId: string, surahId: string) => boolean;
+  isLovedWithRewayat: (
+    reciterId: string,
+    surahId: string,
+    rewayatId: string,
+  ) => boolean;
   getLovedTracks: () => LovedTrack[];
   clearLoved: () => void;
-  
+
   // Future sync methods
   sync: () => Promise<void>;
   setSyncStatus: (status: 'idle' | 'syncing' | 'error') => void;
@@ -42,22 +47,29 @@ export const useLovedStore = create<LovedTracksState>()(
       lastSynced: null,
 
       // Core actions
-      toggleLoved: (reciterId: string, surahId: string) => {
+      toggleLoved: (reciterId: string, surahId: string, rewayatId: string) => {
         set(state => {
-          const trackKey = `${reciterId}:${surahId}`;
-          const existingIndex = state.tracks.findIndex(
-            t => `${t.reciterId}:${t.surahId}` === trackKey,
+          // Check if a track exists with either the new format (with rewayatId)
+          // or the old format (without rewayatId)
+          const existingTrack = state.tracks.find(
+            t =>
+              (t.reciterId === reciterId &&
+                t.surahId === surahId &&
+                t.rewayatId === rewayatId) ||
+              (t.reciterId === reciterId &&
+                t.surahId === surahId &&
+                !t.rewayatId),
           );
 
           let newTracks: LovedTrack[];
-          if (existingIndex >= 0) {
+          if (existingTrack) {
             // Remove if exists
-            newTracks = state.tracks.filter((_, i) => i !== existingIndex);
+            newTracks = state.tracks.filter(t => t !== existingTrack);
           } else {
             // Add if doesn't exist
             newTracks = [
               ...state.tracks,
-              {reciterId, surahId, timestamp: Date.now()},
+              {reciterId, surahId, rewayatId, timestamp: Date.now()},
             ];
           }
 
@@ -70,6 +82,36 @@ export const useLovedStore = create<LovedTracksState>()(
         return tracks.some(
           t => t.reciterId === reciterId && t.surahId === surahId,
         );
+      },
+
+      isLovedWithRewayat: (
+        reciterId: string,
+        surahId: string,
+        rewayatId: string,
+      ) => {
+        const {tracks} = get();
+
+        // Check for exact match with rewayatId
+        const hasExactMatch = tracks.some(
+          track =>
+            track.reciterId === reciterId &&
+            track.surahId === surahId &&
+            track.rewayatId === rewayatId,
+        );
+
+        if (hasExactMatch) {
+          return true;
+        }
+
+        // If no exact match, check for old format without rewayatId
+        const hasOldFormatMatch = tracks.some(
+          track =>
+            track.reciterId === reciterId &&
+            track.surahId === surahId &&
+            !track.rewayatId,
+        );
+
+        return hasOldFormatMatch;
       },
 
       getLovedTracks: () => get().tracks,
@@ -132,6 +174,7 @@ export const useLoved = () => {
     // Actions
     toggleLoved: store.toggleLoved,
     isLoved: store.isLoved,
+    isLovedWithRewayat: store.isLovedWithRewayat,
     getLovedTracks: store.getLovedTracks,
     clearLoved: store.clearLoved,
     sync: store.sync,
@@ -139,4 +182,4 @@ export const useLoved = () => {
 };
 
 // Export singleton instance
-export const lovedStore = useLovedStore; 
+export const lovedStore = useLovedStore;

@@ -3,18 +3,8 @@ import {Animated, TouchableOpacity} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {Icon, IconProps} from '@rneui/themed';
+import {Icon} from '@rneui/themed';
 import {useRouter} from 'expo-router';
-
-// Create a forwardRef wrapper for the Icon component
-const ForwardedIcon = React.forwardRef<typeof Icon, IconProps>((props, ref) => (
-  <Icon {...props} ref={ref} />
-));
-
-ForwardedIcon.displayName = 'ForwardedIcon';
-
-// Create the animated component from the forwarded icon
-const AnimatedIcon = Animated.createAnimatedComponent(ForwardedIcon);
 
 interface NavigationButtonsProps {
   insets: {
@@ -44,12 +34,12 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
   const router = useRouter();
   const {theme} = useTheme();
 
-  // Create a smoother color transition with more steps
-  const iconColor = scrollY.interpolate({
+  // Create a header opacity animation similar to the loved.tsx screen
+  const headerOpacity = scrollY.interpolate({
     inputRange: [100, 200],
-    outputRange: [theme.colors.text, 'white'],
+    outputRange: [0, 1],
     extrapolate: 'clamp',
-  }) as unknown as string;
+  });
 
   return (
     <>
@@ -64,12 +54,32 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
           },
         ]}>
         <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
-          <AnimatedIcon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color={iconColor}
-          />
+          <Animated.View
+            style={{
+              opacity: headerOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0],
+              }),
+            }}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Animated.View>
+          <Animated.View
+            style={{
+              position: 'absolute',
+              opacity: headerOpacity,
+            }}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color="white"
+            />
+          </Animated.View>
         </TouchableOpacity>
       </Animated.View>
       <Animated.View
@@ -83,12 +93,32 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
           },
         ]}>
         <TouchableOpacity activeOpacity={0.99} onPress={onSearchPress}>
-          <AnimatedIcon
-            name="search"
-            type="feather"
-            size={moderateScale(20)}
-            color={iconColor}
-          />
+          <Animated.View
+            style={{
+              opacity: headerOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 0],
+              }),
+            }}>
+            <Icon
+              name="search"
+              type="feather"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Animated.View>
+          <Animated.View
+            style={{
+              position: 'absolute',
+              opacity: headerOpacity,
+            }}>
+            <Icon
+              name="search"
+              type="feather"
+              size={moderateScale(20)}
+              color="white"
+            />
+          </Animated.View>
         </TouchableOpacity>
       </Animated.View>
     </>
@@ -98,7 +128,6 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
 const styles = ScaledSheet.create({
   backButton: {
     position: 'absolute',
-    left: moderateScale(15),
     zIndex: 10,
   },
   searchButton: {

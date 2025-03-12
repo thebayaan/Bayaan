@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, ScrollView} from 'react-native';
+import {View, Text, TouchableOpacity, ScrollView, Platform} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -64,7 +64,10 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        bounces={false}>
+        bounces={false}
+        nestedScrollEnabled={Platform.OS === 'android'}
+        disableScrollViewPanResponder={Platform.OS === 'android'}
+        scrollEventThrottle={16}>
         <View style={styles.content}>
           <View style={styles.iconContainer}>
             <RewayatIcon color={theme.colors.text} size={moderateScale(60)} />

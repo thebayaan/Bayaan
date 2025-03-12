@@ -46,10 +46,11 @@ export const BackButton: React.FC<BackButtonProps> = ({
 
 const styles = ScaledSheet.create({
   backButton: {
-    width: moderateScale(32),
-    height: moderateScale(32),
-    borderRadius: moderateScale(16),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: moderateScale(22),
     justifyContent: 'center',
     alignItems: 'center',
+    padding: moderateScale(10),
   },
 });

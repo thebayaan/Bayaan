@@ -14,7 +14,6 @@ export class StateValidationError extends Error {
 }
 
 import {Track} from '@/types/audio';
-import {State as TrackPlayerState} from 'react-native-track-player';
 
 export type PlayerState =
   | 'none'
@@ -94,7 +93,11 @@ export interface PlaybackSettings {
   /** Whether shuffle is enabled */
   shuffle: boolean;
   /** Sleep timer duration in minutes (0 = disabled) */
-  sleepTimer: number | NodeJS.Timeout;
+  sleepTimer: number;
+  /** Timestamp when the sleep timer should end (null if disabled) */
+  sleepTimerEnd: number | null;
+  /** Interval for updating the sleep timer */
+  sleepTimerInterval?: NodeJS.Timeout | null;
   /** Whether to skip silence */
   skipSilence: boolean;
 }

@@ -9,10 +9,11 @@ interface SleepTimerModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
   onTimerChange: (minutes: number) => void;
   onTurnOffTimer: () => void;
-  sleepTimer: number | NodeJS.Timeout;
+  sleepTimer: number;
   remainingTime: number | null;
 }
 
+// Reverted back to original timer options
 const TIMER_OPTIONS = [5, 15, 30, 45, 60];
 
 export const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
@@ -33,46 +34,59 @@ export const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
     onTurnOffTimer();
     bottomSheetRef.current?.close();
   };
+
   return (
     <BaseModal
       bottomSheetRef={bottomSheetRef}
       title="Sleep Timer"
       snapPoints={['50%']}>
       <View style={styles.container}>
-        {remainingTime !== null && (
+        {remainingTime !== null && remainingTime > 0 && (
           <Text style={[styles.remainingTime, {color: theme.colors.text}]}>
-            {Math.ceil(remainingTime / 60)} minutes remaining
+            {remainingTime < 1
+              ? `${Math.round(remainingTime * 60)} seconds`
+              : `${Math.round(remainingTime)} ${remainingTime === 1 ? 'minute' : 'minutes'}`}{' '}
+            remaining
           </Text>
         )}
         <View style={styles.optionsContainer}>
-          {TIMER_OPTIONS.map(minutes => (
-            <TouchableOpacity
-              key={minutes}
-              style={[
-                styles.option,
-                {borderColor: theme.colors.text},
-                sleepTimer === minutes && [
-                  styles.selectedTimer,
-                  {backgroundColor: theme.colors.text},
-                ],
-              ]}
-              onPress={() => handleTimerSelect(minutes)}
-              activeOpacity={0.7}>
-              <Text
+          {TIMER_OPTIONS.map(minutes => {
+            const timeToCompare =
+              remainingTime !== null && remainingTime > 0
+                ? remainingTime
+                : sleepTimer;
+
+            const isSelected =
+              timeToCompare > 0 && Math.abs(timeToCompare - minutes) <= 2;
+
+            return (
+              <TouchableOpacity
+                key={minutes}
                 style={[
-                  styles.timerText,
-                  {color: theme.colors.text},
-                  typeof sleepTimer === 'number' &&
-                    sleepTimer === minutes && {
-                      color: theme.colors.card,
-                    },
-                ]}>
-                {minutes} min
-              </Text>
-            </TouchableOpacity>
-          ))}
+                  styles.option,
+                  {borderColor: theme.colors.text},
+                  isSelected
+                    ? [
+                        styles.selectedTimer,
+                        {backgroundColor: theme.colors.text},
+                      ]
+                    : undefined,
+                ]}
+                onPress={() => handleTimerSelect(minutes)}
+                activeOpacity={0.7}>
+                <Text
+                  style={[
+                    styles.timerText,
+                    {color: theme.colors.text},
+                    isSelected ? {color: theme.colors.card} : undefined,
+                  ]}>
+                  {minutes} min
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-        {(typeof sleepTimer === 'object' || sleepTimer > 0) && (
+        {(sleepTimer > 0 || remainingTime !== null) && (
           <TouchableOpacity
             style={styles.turnOffButton}
             onPress={handleTurnOff}

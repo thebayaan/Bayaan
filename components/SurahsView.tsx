@@ -16,6 +16,11 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import {BlurView} from '@react-native-community/blur';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
@@ -31,6 +36,18 @@ interface SurahCollection {
 
 const FEATURED_COLLECTIONS: SurahCollection[] = [
   {
+    id: 'heart-of-quran',
+    title: 'Heart of Quran',
+    surahs: [36, 55, 56, 67, 18],
+    color: '#059669', // Emerald
+  },
+  {
+    id: 'daily-adhkar',
+    title: 'Daily Adhkar Surahs',
+    surahs: [112, 113, 114, 1],
+    color: '#7C3AED', // Purple
+  },
+  {
     id: 'juz-amma',
     title: 'Juz Amma',
     description: 'Last 37 Surahs',
@@ -43,18 +60,6 @@ const FEATURED_COLLECTIONS: SurahCollection[] = [
     description: "Al-Sab' Al-Tiwal",
     surahs: [2, 3, 4, 5, 6, 7, 9],
     color: '#DC2626', // Red
-  },
-  {
-    id: 'heart-of-quran',
-    title: 'Heart of Quran',
-    surahs: [36, 55, 56, 67, 18],
-    color: '#059669', // Emerald
-  },
-  {
-    id: 'daily-adhkar',
-    title: 'Daily Adhkar Surahs',
-    surahs: [112, 113, 114, 1],
-    color: '#7C3AED', // Purple
   },
 ];
 
@@ -120,16 +125,16 @@ const BY_PERIOD: SurahCollection[] = [
 
 const SPECIAL_CATEGORIES: SurahCollection[] = [
   {
-    id: 'most-recited',
-    title: 'Most Recited',
-    surahs: [1, 2, 36, 67, 18],
-    color: '#1E40AF', // Deep Blue
-  },
-  {
     id: 'most-loved',
     title: 'Most Loved by Community',
     surahs: [55, 36, 18, 56, 67],
     color: '#DC2626', // Red
+  },
+  {
+    id: 'most-recited',
+    title: 'Most Recited',
+    surahs: [1, 2, 36, 67, 18],
+    color: '#1E40AF', // Deep Blue
   },
 ];
 
@@ -166,6 +171,9 @@ function getSurahOfTheDay(): Surah {
   return SURAHS[surahIndex];
 }
 
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 const HeroSection = ({
   surah,
   onPress,
@@ -175,6 +183,29 @@ const HeroSection = ({
 }) => {
   const {theme} = useTheme();
   const handlePress = React.useCallback(() => onPress(surah), [surah, onPress]);
+
+  // Animation values
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{scale: scale.value}],
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
 
   const gradientColors = React.useMemo((): readonly [
     string,
@@ -291,10 +322,12 @@ const HeroSection = ({
   const revelationPlace = surah.revelation_place.toLowerCase();
 
   return (
-    <TouchableOpacity
+    <AnimatedTouchableOpacity
       activeOpacity={0.7}
-      style={styles.hero}
-      onPress={handlePress}>
+      style={[styles.hero, animatedStyle]}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}>
       <LinearGradient
         colors={gradientColors}
         start={{x: 0, y: 0.8}}
@@ -337,7 +370,7 @@ const HeroSection = ({
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedTouchableOpacity>
   );
 };
 
@@ -439,6 +472,15 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       showsVerticalScrollIndicator={false}>
       <HeroSection surah={surahOfTheDay} onPress={onSurahPress} />
 
+      {SPECIAL_CATEGORIES.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={onSurahPress}
+        />
+      ))}
+
       {FEATURED_COLLECTIONS.map(collection => (
         <CollectionSection
           key={collection.id}
@@ -467,15 +509,6 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       ))}
 
       {BY_PERIOD.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      ))}
-
-      {SPECIAL_CATEGORIES.map(collection => (
         <CollectionSection
           key={collection.id}
           title={collection.title}

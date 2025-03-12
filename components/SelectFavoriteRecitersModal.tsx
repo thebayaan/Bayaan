@@ -1,15 +1,16 @@
-import React, {useState, useCallback} from 'react';
-import {View, Text, FlatList, StyleSheet} from 'react-native';
+import React, {useState, useCallback, useRef} from 'react';
+import {View, Text, FlatList, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import SearchBar from '@/components/SearchBar';
-import BottomSheetModal from '@/components/BottomSheetModal';
+import {BaseModal} from '@/components/modals/BaseModal';
 import {Theme} from '@/utils/themeUtils';
 import {Button} from '@/components/Button';
 import Color from 'color';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 interface SelectFavoriteRecitersModalProps {
   isVisible: boolean;
@@ -22,6 +23,16 @@ export const SelectFavoriteRecitersModal: React.FC<
   const {theme} = useTheme();
   const {toggleFavorite, favoriteReciters} = useFavoriteReciters();
   const [searchQuery, setSearchQuery] = useState('');
+  const bottomSheetRef = useRef<BottomSheet>(null);
+
+  // Effect to control the modal visibility
+  React.useEffect(() => {
+    if (isVisible) {
+      bottomSheetRef.current?.expand();
+    } else {
+      bottomSheetRef.current?.close();
+    }
+  }, [isVisible]);
 
   const filteredReciters = RECITERS.filter(reciter =>
     reciter.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -44,14 +55,16 @@ export const SelectFavoriteRecitersModal: React.FC<
   );
 
   return (
-    <BottomSheetModal
-      isVisible={isVisible}
-      onClose={onClose}
-      snapPoints={['92%']}>
+    <BaseModal
+      bottomSheetRef={bottomSheetRef}
+      snapPoints={['92%']}
+      title="Edit Favorite Reciters"
+      onChange={index => {
+        if (index === -1) {
+          onClose();
+        }
+      }}>
       <View style={styles(theme).container}>
-        <View style={styles(theme).header}>
-          <Text style={styles(theme).title}>Edit Favorite Reciters</Text>
-        </View>
         <View style={styles(theme).searchContainer}>
           <SearchBar
             placeholder="Search reciters..."
@@ -66,6 +79,8 @@ export const SelectFavoriteRecitersModal: React.FC<
           numColumns={3}
           contentContainerStyle={styles(theme).gridContainer}
           columnWrapperStyle={styles(theme).columnWrapper}
+          nestedScrollEnabled={Platform.OS === 'android'}
+          scrollEventThrottle={16}
         />
         <View style={styles(theme).footerContainer}>
           <View style={styles(theme).footer}>
@@ -79,7 +94,7 @@ export const SelectFavoriteRecitersModal: React.FC<
           </View>
         </View>
       </View>
-    </BottomSheetModal>
+    </BaseModal>
   );
 };
 
@@ -88,18 +103,6 @@ const styles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-    },
-    header: {
-      paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
-      backgroundColor: theme.colors.background,
-    },
-    title: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      color: theme.colors.text,
     },
     searchContainer: {
       padding: moderateScale(16),

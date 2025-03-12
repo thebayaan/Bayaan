@@ -1,7 +1,6 @@
 import React from 'react';
 import {TouchableOpacity, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon} from '@/components/Icons';
@@ -10,10 +9,11 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-
+import {useTheme} from '@/hooks/useTheme';
 export const LoveButton = () => {
-  const {theme} = useTheme();
   const {queue} = useUnifiedPlayer();
+  const {theme} = useTheme();
+
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const scale = useSharedValue(1);
@@ -43,7 +43,7 @@ export const LoveButton = () => {
       <Animated.View style={animatedStyle}>
         <HeartIcon
           size={moderateScale(32)}
-          color={theme.colors.text}
+          color={isLoved ? 'red' : theme.colors.text}
           filled={isLoved}
         />
       </Animated.View>
