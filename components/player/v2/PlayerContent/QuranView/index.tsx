@@ -1,5 +1,5 @@
-import React, {useCallback} from 'react';
-import {View, ScrollView, StyleSheet, Text} from 'react-native';
+import React, {useCallback, useRef, useEffect} from 'react';
+import {View, ScrollView, StyleSheet, Text, Platform} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
@@ -20,6 +20,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   onVersePress,
 }) => {
   const {theme} = useTheme();
+  const scrollViewRef = useRef<ScrollView>(null);
   const surah = surahData.find(s => s.id === currentSurah);
 
   // Safely get verses for the current surah
@@ -39,6 +40,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [currentSurah]);
 
+  // Reset scroll position when currentSurah changes
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({x: 0, y: 0, animated: false});
+    }
+  }, [currentSurah]);
+
   const verses = getVersesForSurah();
 
   if (!surah || !verses.length) {
@@ -48,11 +56,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
-        overScrollMode="never">
+        overScrollMode="never"
+        nestedScrollEnabled={Platform.OS === 'android'}
+        disableScrollViewPanResponder={Platform.OS === 'android'}
+        scrollEventThrottle={16}>
         {/* Bismillah Header */}
         {surah.id !== 9 && (
           <View style={styles.bismillahContainer}>

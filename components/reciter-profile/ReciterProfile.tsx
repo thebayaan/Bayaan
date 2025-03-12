@@ -20,6 +20,7 @@ import {Asset} from 'expo-asset';
 import {useImageColors} from '@/hooks/useImageColors';
 import {useLoved} from '@/hooks/useLoved';
 import {useUnifiedPlayer} from '@/services/player/store/playerStore';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {shuffleArray} from '@/utils/arrayUtils';
@@ -64,7 +65,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [showSearch, setShowSearch] = useState(false);
   const [showLovedOnly, setShowLovedOnly] = useState(showFavorites);
   const flatListRef = useRef<Animated.FlatList>(null);
-  const {isLoved} = useLoved();
+  const {isLovedWithRewayat} = useLoved();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {showSurahOptions, showRewayatInfo} = useModal();
 
@@ -99,8 +100,17 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }
 
     return availableSurahs.filter(surah => {
-      if (showLovedOnly && !isLoved(reciterId, surah.id.toString())) {
-        return false;
+      if (showLovedOnly) {
+        if (!selectedRewayat) return false;
+        if (
+          !isLovedWithRewayat(
+            reciterId,
+            surah.id.toString(),
+            selectedRewayat.id,
+          )
+        ) {
+          return false;
+        }
       }
 
       if (searchQuery) {
@@ -116,7 +126,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
       return true;
     });
-  }, [availableSurahs, searchQuery, showLovedOnly, isLoved, reciterId]);
+  }, [
+    availableSurahs,
+    searchQuery,
+    showLovedOnly,
+    isLovedWithRewayat,
+    reciterId,
+    selectedRewayat,
+  ]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -154,6 +171,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   };
 
   const {updateQueue, play, addToQueue} = useUnifiedPlayer();
+  const playerStore = usePlayerStore();
   const queueContext = QueueContext.getInstance();
   const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
@@ -176,7 +194,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
         await updateQueue(reorderedTracks, 0);
         await play();
-        await addRecentTrack(reciter, surah, 0, 0);
+        await addRecentTrack(reciter, surah, 0, 0, selectedRewayat.id);
         queueContext.setCurrentReciter(reciter);
       } catch (error) {
         console.error('Error playing surah:', error);
@@ -205,7 +223,13 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       await play();
 
       if (filteredSurahs.length > 0) {
-        await addRecentTrack(reciter, filteredSurahs[0], 0, 0);
+        await addRecentTrack(
+          reciter,
+          filteredSurahs[0],
+          0,
+          0,
+          selectedRewayat.id,
+        );
       }
 
       queueContext.setCurrentReciter(reciter);
@@ -232,6 +256,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       );
       const shuffledTracks = shuffleArray([...tracks]);
       await updateQueue(shuffledTracks, 0);
+
+      // Enable shuffle mode in player settings
+      if (!playerStore.settings.shuffle) {
+        playerStore.toggleShuffle();
+      }
+
       await play();
 
       if (filteredSurahs.length > 0) {
@@ -241,7 +271,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
             s => s.id === parseInt(firstTrackSurahId, 10),
           );
           if (firstSurah) {
-            await addRecentTrack(reciter, firstSurah, 0, 0);
+            await addRecentTrack(reciter, firstSurah, 0, 0, selectedRewayat.id);
           }
         }
       }
@@ -258,6 +288,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     play,
     queueContext,
     addRecentTrack,
+    playerStore,
   ]);
 
   const handleToggleFavorite = useCallback(() => {
@@ -283,9 +314,11 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   const handleRewayatInfoPress = useCallback(() => {
     if (!rewayatList.length) return;
-    // Use requestAnimationFrame to ensure UI is ready
+    // Use double requestAnimationFrame to ensure UI is fully ready
     requestAnimationFrame(() => {
-      showRewayatInfo(rewayatList, selectedRewayatId, handleRewayatSelect);
+      requestAnimationFrame(() => {
+        showRewayatInfo(rewayatList, selectedRewayatId, handleRewayatSelect);
+      });
     });
   }, [rewayatList, selectedRewayatId, handleRewayatSelect, showRewayatInfo]);
 
@@ -352,6 +385,15 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     [reciter, selectedRewayat, addToQueue],
   );
 
+  // Create a custom isLoved function that checks for the specific rewayatId
+  const isLovedWithCurrentRewayat = useCallback(
+    (reciterId: string, surahId: string | number) => {
+      if (!selectedRewayat) return false;
+      return isLovedWithRewayat(reciterId, surahId, selectedRewayat.id);
+    },
+    [isLovedWithRewayat, selectedRewayat],
+  );
+
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -377,9 +419,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           surahs={filteredSurahs}
           onSurahPress={handleSurahPress}
           reciterId={reciterId}
-          isLoved={isLoved}
+          isLoved={isLovedWithCurrentRewayat}
           onOptionsPress={(surah: Surah) =>
-            showSurahOptions(surah, reciterId, handleAddToQueue)
+            showSurahOptions(
+              surah,
+              reciterId,
+              handleAddToQueue,
+              selectedRewayat?.id,
+            )
           }
           searchQuery={searchQuery}
           onSearchChange={handleSearch}
@@ -401,9 +448,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
             surahs={filteredSurahs}
             onSurahPress={handleSurahPress}
             reciterId={reciterId}
-            isLoved={isLoved}
+            isLoved={isLovedWithCurrentRewayat}
             onOptionsPress={(surah: Surah) =>
-              showSurahOptions(surah, reciterId, handleAddToQueue)
+              showSurahOptions(
+                surah,
+                reciterId,
+                handleAddToQueue,
+                selectedRewayat?.id,
+              )
             }
             onScroll={handleScroll}
             ListHeaderComponent={

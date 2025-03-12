@@ -31,6 +31,7 @@ interface SurahOptionsModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
   surah: Surah;
   reciterId?: string;
+  rewayatId?: string;
   onClose: () => void;
   onAddToQueue?: (surah: Surah) => Promise<void>;
 }
@@ -61,19 +62,22 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   bottomSheetRef,
   surah,
   reciterId,
+  rewayatId,
   onClose,
   onAddToQueue,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {isLoved, toggleLoved} = useLoved();
+  const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
   const scale = useSharedValue(1);
   const {width} = useWindowDimensions();
   const [showSummary, setShowSummary] = useState(false);
 
-  // Calculate loved state
+  // Calculate loved state - use isLovedWithRewayat if rewayatId is provided, otherwise use isLoved
   const isLovedState = reciterId
-    ? isLoved(reciterId, surah.id.toString())
+    ? rewayatId
+      ? isLovedWithRewayat(reciterId, surah.id.toString(), rewayatId)
+      : isLoved(reciterId, surah.id.toString())
     : false;
 
   // Get surah info
@@ -127,8 +131,10 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
     scale.value = withSpring(1.2, {}, () => {
       scale.value = withSpring(1);
     });
-    toggleLoved(reciterId, surah.id.toString());
-  }, [reciterId, surah.id, toggleLoved, scale]);
+
+    // Use the provided rewayatId if available, otherwise use an empty string
+    toggleLoved(reciterId, surah.id.toString(), rewayatId || '');
+  }, [reciterId, surah.id, toggleLoved, scale, rewayatId]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{scale: scale.value}],

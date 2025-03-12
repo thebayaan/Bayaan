@@ -138,7 +138,7 @@ const Content = React.memo(
     const contentStyles = StyleSheet.create({
       contentContainer: {
         flex: 1,
-        marginTop: insets.top + moderateScale(56),
+        marginTop: moderateScale(56),
         marginBottom: moderateScale(16),
       },
     });
@@ -147,6 +147,7 @@ const Content = React.memo(
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+          paddingTop: insets.top,
           paddingBottom: TOTAL_BOTTOM_PADDING,
         }}>
         <View style={contentStyles.contentContainer}>

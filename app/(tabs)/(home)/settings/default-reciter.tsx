@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale, verticalScale} from 'react-native-size-matters';
@@ -12,6 +12,7 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {BlurView} from '@react-native-community/blur';
 import {Icon} from '@rneui/base';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Header from '@/components/Header';
 
 export default function DefaultReciterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,37 +75,7 @@ export default function DefaultReciterScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, {paddingTop: insets.top}]}>
-        <BlurView
-          blurAmount={10}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={[styles.blurContainer]}>
-          <View
-            style={[
-              styles.overlay,
-              {
-                backgroundColor: theme.colors.background,
-              },
-            ]}
-          />
-        </BlurView>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.7}
-            onPress={() => router.back()}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Default Reciter
-          </Text>
-        </View>
-      </View>
+      <Header title="Default Reciter" onBack={() => router.back()} />
 
       <View style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
         {defaultReciter && (
@@ -164,49 +135,9 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    header: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
-    },
-    blurContainer: {
-      overflow: 'hidden',
-      borderWidth: 0.1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      opacity: 0.85,
-    },
-    headerContent: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-    },
-    backButton: {
-      marginRight: moderateScale(16),
-    },
-    headerTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      flex: 1,
-      textAlign: 'center',
-      marginRight: moderateScale(40),
-    },
     content: {
       flex: 1,
+      paddingHorizontal: moderateScale(16),
     },
     currentReciterContainer: {
       padding: moderateScale(20),

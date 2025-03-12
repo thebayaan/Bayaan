@@ -257,6 +257,19 @@ function validatePlaybackSettings(
       settings.sleepTimer,
     );
   }
+
+  // Validate sleep timer end time
+  if (
+    settings.sleepTimerEnd !== null &&
+    (typeof settings.sleepTimerEnd !== 'number' || settings.sleepTimerEnd < 0)
+  ) {
+    throw new StateValidationError(
+      'Invalid sleepTimerEnd value',
+      'sleepTimerEnd',
+      'positive number or null',
+      settings.sleepTimerEnd,
+    );
+  }
 }
 
 /**
@@ -350,6 +363,8 @@ export function createDefaultUnifiedPlayerState(): UnifiedPlayerState {
       repeatMode: 'none',
       shuffle: false,
       sleepTimer: 0,
+      sleepTimerEnd: null,
+      sleepTimerInterval: null,
       skipSilence: false,
     },
     ui: {

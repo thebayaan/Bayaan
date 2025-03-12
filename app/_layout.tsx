@@ -10,7 +10,7 @@ import {setupTrackPlayer} from '@/services/player/utils/setup';
 import {setupEventBridge} from '@/services/player/events/bridge';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {View, Text} from 'react-native';
+import {View, Text, Platform, StatusBar as RNStatusBar} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
@@ -186,6 +186,30 @@ export default function RootLayout() {
     // Go directly to main app
     router.replace('/(tabs)/(home)');
   }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
+
+  // Configure Android navigation bar to be transparent
+  useEffect(() => {
+    async function setupNavigationBar() {
+      if (Platform.OS === 'android') {
+        try {
+          // Import the module dynamically to prevent errors on iOS
+          const NavigationBar = await import('expo-navigation-bar').then(
+            module => module.default,
+          );
+
+          if (NavigationBar) {
+            await NavigationBar.setBackgroundColorAsync('transparent');
+            await NavigationBar.setButtonStyleAsync('light');
+          }
+          RNStatusBar.setTranslucent(true);
+        } catch (error) {
+          console.warn('Failed to configure navigation bar:', error);
+        }
+      }
+    }
+
+    setupNavigationBar();
+  }, []);
 
   if (fontError) {
     SplashScreen.hideAsync();

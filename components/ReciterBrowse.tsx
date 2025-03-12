@@ -115,19 +115,26 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         const surah = await getSurahById(surahNumber);
         if (!surah) return;
 
+        // Get the rewayat to use
+        const rewayatId = reciter.rewayat[0]?.id;
+        if (!rewayatId) {
+          console.error('No valid rewayat found for reciter');
+          return;
+        }
+
         // Create track for the selected surah
         const tracks = await createTracksForReciter(
           reciter,
           [surah],
-          reciter.rewayat[0]?.id,
+          rewayatId,
         );
 
         // Update queue and start playing
         await updateQueue(tracks, 0);
         await play();
 
-        // Add to recently played list
-        await addRecentTrack(reciter, surah, 0, 0);
+        // Add to recently played list with the rewayatId
+        await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
         // Set current reciter for batch loading
         queueContext.setCurrentReciter(reciter);

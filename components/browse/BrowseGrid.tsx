@@ -1,4 +1,4 @@
-import React, {useMemo, useState, useCallback, useEffect} from 'react';
+import React, {useMemo, useState, useCallback} from 'react';
 import {
   View,
   FlatList,
@@ -10,8 +10,6 @@ import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {BrowseReciterCard} from './BrowseReciterCard';
-import {getFeaturedReciters} from '@/data/featuredReciters';
-import {reciterImages} from '@/utils/reciterImages';
 
 interface BrowseGridProps {
   reciters: Reciter[];
@@ -20,7 +18,7 @@ interface BrowseGridProps {
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
 }
 
-function createStyles(_theme: Theme) {
+function createStyles(theme: Theme) {
   const columnGap = moderateScale(10);
   return StyleSheet.create({
     container: {
@@ -39,60 +37,48 @@ function createStyles(_theme: Theme) {
       padding: moderateScale(20),
       alignItems: 'center',
     },
+    seeMoreButton: {
+      backgroundColor: theme.colors.card,
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      borderRadius: moderateScale(8),
+      alignItems: 'center',
+      marginVertical: moderateScale(20),
+      alignSelf: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    seeMoreText: {
+      color: theme.colors.text,
+      fontFamily: theme.fonts.medium,
+      fontSize: moderateScale(14),
+    },
   });
 }
 
 // Helper function to check if a reciter has an image
-function hasImage(reciter: Reciter): boolean {
-  if (reciter.image_url) return true;
 
-  const formattedName = reciter.name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-
-  return !!reciterImages[formattedName];
-}
-
-// Sort reciters by priority: featured first, then those with images
-function sortReciters(reciters: Reciter[]): Reciter[] {
-  const featuredReciters = getFeaturedReciters(20);
-  const featuredIds = new Set(featuredReciters.map(r => r.id));
-
-  return [...reciters].sort((a, b) => {
-    // Featured reciters come first
-    if (featuredIds.has(a.id) && !featuredIds.has(b.id)) return -1;
-    if (!featuredIds.has(a.id) && featuredIds.has(b.id)) return 1;
-
-    // Then reciters with images
-    const aHasImage = hasImage(a);
-    const bHasImage = hasImage(b);
-    if (aHasImage && !bHasImage) return -1;
-    if (!aHasImage && bHasImage) return 1;
-
-    // Alphabetical order as fallback
-    return a.name.localeCompare(b.name);
-  });
-}
-
-const ITEMS_PER_PAGE = 24;
+const ITEMS_PER_PAGE = 36; // Increased from 24 to show more items initially
 
 const BrowseGrid = React.memo(
   ({reciters, onReciterPress, theme}: BrowseGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
-    const [page, setPage] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
-    const [displayedReciters, setDisplayedReciters] = useState<Reciter[]>([]);
+    const [visibleItems, setVisibleItems] = useState(ITEMS_PER_PAGE);
 
-    // Sort reciters by priority
-    const sortedReciters = useMemo(() => sortReciters(reciters), [reciters]);
+    // Use the reciters as they are, without re-sorting
+    // This respects the sorting already applied in BrowseReciters
+    const sortedReciters = useMemo(() => reciters, [reciters]);
 
-    // Update displayed reciters when the source changes
-    useEffect(() => {
-      // Reset pagination when reciters change
-      setPage(1);
-      setDisplayedReciters(sortedReciters.slice(0, ITEMS_PER_PAGE));
-    }, [sortedReciters]);
+    // The currently visible subset of reciters
+    const displayedReciters = useMemo(() => {
+      return sortedReciters.slice(0, visibleItems);
+    }, [sortedReciters, visibleItems]);
+
+    // Whether there are more items to show
+    const hasMoreItems = useMemo(() => {
+      return visibleItems < sortedReciters.length;
+    }, [visibleItems, sortedReciters.length]);
 
     // Calculate number of columns based on screen width
     const numColumns = useMemo(() => {
@@ -141,30 +127,26 @@ const BrowseGrid = React.memo(
     );
 
     const handleLoadMore = useCallback(() => {
-      if (displayedReciters.length < sortedReciters.length && !isLoading) {
-        setIsLoading(true);
-
-        // Use setTimeout to prevent UI blocking
-        setTimeout(() => {
-          const nextPage = page + 1;
-          const newItems = sortedReciters.slice(0, nextPage * ITEMS_PER_PAGE);
-
-          setPage(nextPage);
-          setDisplayedReciters(newItems);
-          setIsLoading(false);
-        }, 300);
-      }
-    }, [displayedReciters.length, sortedReciters, isLoading, page]);
+      if (isLoading || !hasMoreItems) return;
+      setIsLoading(true);
+      // Use requestAnimationFrame instead of setTimeout for smoother performance
+      requestAnimationFrame(() => {
+        setVisibleItems(prev =>
+          Math.min(prev + ITEMS_PER_PAGE, sortedReciters.length),
+        );
+        setIsLoading(false);
+      });
+    }, [isLoading, hasMoreItems, sortedReciters.length]);
 
     const renderFooter = useCallback(() => {
-      if (!isLoading) return null;
+      if (!hasMoreItems && !isLoading) return null;
 
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.text} />
         </View>
       );
-    }, [isLoading, styles.loadingContainer, theme.colors.text]);
+    }, [isLoading, hasMoreItems, styles.loadingContainer, theme.colors.text]);
 
     return (
       <View style={styles.container}>
@@ -175,19 +157,19 @@ const BrowseGrid = React.memo(
           numColumns={numColumns}
           contentContainerStyle={styles.gridContainer}
           columnWrapperStyle={styles.columnWrapper}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={8}
-          windowSize={5}
-          initialNumToRender={numColumns * 2}
+          removeClippedSubviews={false}
+          maxToRenderPerBatch={12}
+          windowSize={7}
+          initialNumToRender={numColumns * 3}
           getItemLayout={getItemLayout}
           showsVerticalScrollIndicator={false}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
+          keyboardShouldPersistTaps="handled"
+          onEndReachedThreshold={0.5}
+          onEndReached={handleLoadMore}
           maintainVisibleContentPosition={{
             minIndexForVisible: 0,
           }}
-          keyboardShouldPersistTaps="handled"
         />
       </View>
     );

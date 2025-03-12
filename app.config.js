@@ -3,14 +3,15 @@ export default {
     name: 'Bayaan',
     slug: 'Bayaan',
     scheme: 'bayaan',
-    version: '0.1.0',
+    version: '1.0.1',
+    orientation: 'portrait',
     cli: {
       appVersionSource: 'remote',
       version: '>= 5.9.1',
     },
     ios: {
       bundleIdentifier: 'com.bayaan.app',
-      buildNumber: '1',
+      buildNumber: '2',
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
@@ -26,7 +27,7 @@ export default {
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'This app does not use the camera.',
         BGTaskSchedulerPermittedIdentifiers: ['com.bayaan.app.audio'],
-        UIBackgroundModes: ['audio'],
+        UIBackgroundModes: ['audio', 'remote-notification'],
         CFBundleURLTypes: [
           {
             CFBundleURLSchemes: ['bayaan'],
@@ -34,6 +35,10 @@ export default {
         ],
         NSPrivacyPolicyURL:
           'https://osmansaeday.github.io/bayaan-privacy-policy',
+        UISupportedInterfaceOrientations: ['UIInterfaceOrientationPortrait'],
+        'UISupportedInterfaceOrientations~ipad': [
+          'UIInterfaceOrientationPortrait',
+        ],
       },
       icon: {
         dark: './assets/images/ios-dark.png',
@@ -69,6 +74,11 @@ export default {
     },
     android: {
       package: 'com.bayaan.app',
+      adaptiveIcon: {
+        foregroundImage: './assets/images/adaptive-icon.png',
+        backgroundColor: '#8dc9d6',
+      },
+      screenOrientation: 'portrait',
       intentFilters: [
         {
           action: 'VIEW',
@@ -92,19 +102,27 @@ export default {
     },
     plugins: [
       'expo-router',
-      'expo-sqlite',
       [
         'expo-splash-screen',
         {
           image: './assets/images/splash-icon.png',
-          resizeMode: 'contain',
-          backgroundColor: '#e8e8e8',
-          imageResizeMode: 'contain',
+          resizeMode: 'native',
+          backgroundColor: '#ffffff',
+          imageResizeMode: 'native',
+          imageWidth: 1000,
           dark: {
             image: './assets/images/splash-icon-dark.png',
-            backgroundColor: '#05151c',
+            backgroundColor: '#000000',
           },
           userInterfaceStyle: 'automatic',
+        },
+      ],
+      [
+        'expo-notifications',
+        {
+          icon: './assets/images/notification-icon.png',
+          color: '#ffffff',
+          sounds: [],
         },
       ],
     ],

@@ -66,8 +66,14 @@ export default function SelectReciterModal() {
       await updateQueue(tracks, 0);
       await play();
 
-      // Add to recently played list
-      await addRecentTrack(defaultReciter, surah, 0, 0);
+      // Add to recently played list with the rewayatId
+      await addRecentTrack(
+        defaultReciter,
+        surah,
+        0,
+        0,
+        defaultReciter.rewayat[0]?.id,
+      );
 
       // Set current reciter for batch loading
       queueContext.setCurrentReciter(defaultReciter);

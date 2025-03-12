@@ -1,12 +1,29 @@
 import React from 'react';
-import {Text, StyleSheet} from 'react-native';
+import {Text, StyleSheet, Platform, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetView,
   BottomSheetBackdropProps,
+  BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
 import {useTheme} from '@/hooks/useTheme';
+import Color from 'color';
+
+// Custom handle component for the bottom sheet
+const CustomHandle = (_props: BottomSheetHandleProps) => {
+  const {theme} = useTheme();
+  return (
+    <View style={styles.handleContainer}>
+      <View
+        style={[
+          styles.handle,
+          {backgroundColor: Color(theme.colors.text).alpha(0.2).toString()},
+        ]}
+      />
+    </View>
+  );
+};
 
 interface BaseModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -48,7 +65,8 @@ export const BaseModal: React.FC<BaseModalProps> = ({
       index={-1}
       onChange={onChange}
       style={styles.modal}
-      handleStyle={styles.handle}
+      handleComponent={CustomHandle}
+      enableContentPanningGesture={Platform.OS === 'ios'}
       backgroundStyle={[
         styles.background,
         {backgroundColor: theme.colors.backgroundSecondary},
@@ -75,13 +93,19 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 1000,
   },
+  handleContainer: {
+    paddingTop: 12,
+    paddingBottom: 8,
+    alignItems: 'center',
+  },
   handle: {
-    zIndex: 1001,
-    elevation: 1001,
+    width: 40,
+    height: 5,
+    borderRadius: 3,
   },
   background: {
-    borderTopLeftRadius: moderateScale(45),
-    borderTopRightRadius: moderateScale(45),
+    borderTopLeftRadius: moderateScale(20),
+    borderTopRightRadius: moderateScale(20),
   },
   container: {
     flex: 1,

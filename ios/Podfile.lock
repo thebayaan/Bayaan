@@ -3,10 +3,14 @@ PODS:
   - DoubleConversion (1.1.6)
   - EASClient (0.13.2):
     - ExpoModulesCore
-  - EXConstants (17.0.4):
+  - EXApplication (6.0.2):
+    - ExpoModulesCore
+  - EXConstants (17.0.7):
     - ExpoModulesCore
   - EXJSONUtils (0.14.0)
   - EXManifests (0.15.5):
+    - ExpoModulesCore
+  - EXNotifications (0.29.13):
     - ExpoModulesCore
   - Expo (52.0.25):
     - ExpoModulesCore
@@ -219,7 +223,7 @@ PODS:
     - Yoga
   - ExpoAsset (11.0.2):
     - ExpoModulesCore
-  - ExpoBlur (14.0.2):
+  - ExpoBlur (14.0.3):
     - ExpoModulesCore
   - ExpoFileSystem (18.0.7):
     - ExpoModulesCore
@@ -260,7 +264,7 @@ PODS:
     - Yoga
   - ExpoSplashScreen (0.29.22):
     - ExpoModulesCore
-  - ExpoSQLite (15.1.2):
+  - ExpoStoreReview (8.0.1):
     - ExpoModulesCore
   - ExpoSystemUI (4.0.7):
     - ExpoModulesCore
@@ -302,17 +306,17 @@ PODS:
   - hermes-engine (0.76.6):
     - hermes-engine/Pre-built (= 0.76.6)
   - hermes-engine/Pre-built (0.76.6)
-  - libwebp (1.3.2):
-    - libwebp/demux (= 1.3.2)
-    - libwebp/mux (= 1.3.2)
-    - libwebp/sharpyuv (= 1.3.2)
-    - libwebp/webp (= 1.3.2)
-  - libwebp/demux (1.3.2):
+  - libwebp (1.5.0):
+    - libwebp/demux (= 1.5.0)
+    - libwebp/mux (= 1.5.0)
+    - libwebp/sharpyuv (= 1.5.0)
+    - libwebp/webp (= 1.5.0)
+  - libwebp/demux (1.5.0):
     - libwebp/webp
-  - libwebp/mux (1.3.2):
+  - libwebp/mux (1.5.0):
     - libwebp/demux
-  - libwebp/sharpyuv (1.3.2)
-  - libwebp/webp (1.3.2):
+  - libwebp/sharpyuv (1.5.0)
+  - libwebp/webp (1.5.0):
     - libwebp/sharpyuv
   - RCT-Folly (2024.01.01.00):
     - boost
@@ -2020,9 +2024,11 @@ DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
   - EASClient (from `../node_modules/expo-eas-client/ios`)
+  - EXApplication (from `../node_modules/expo-application/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
   - EXManifests (from `../node_modules/expo-manifests/ios`)
+  - EXNotifications (from `../node_modules/expo-notifications/ios`)
   - Expo (from `../node_modules/expo`)
   - expo-dev-client (from `../node_modules/expo-dev-client/ios`)
   - expo-dev-launcher (from `../node_modules/expo-dev-launcher`)
@@ -2039,7 +2045,7 @@ DEPENDENCIES:
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
-  - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
+  - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - EXStructuredHeaders (from `../node_modules/expo-structured-headers/ios`)
@@ -2137,12 +2143,16 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
   EASClient:
     :path: "../node_modules/expo-eas-client/ios"
+  EXApplication:
+    :path: "../node_modules/expo-application/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   EXJSONUtils:
     :path: "../node_modules/expo-json-utils/ios"
   EXManifests:
     :path: "../node_modules/expo-manifests/ios"
+  EXNotifications:
+    :path: "../node_modules/expo-notifications/ios"
   Expo:
     :path: "../node_modules/expo"
   expo-dev-client:
@@ -2175,8 +2185,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
-  ExpoSQLite:
-    :path: "../node_modules/expo-sqlite/ios"
+  ExpoStoreReview:
+    :path: "../node_modules/expo-store-review/ios"
   ExpoSystemUI:
     :path: "../node_modules/expo-system-ui/ios"
   ExpoWebBrowser:
@@ -2339,16 +2349,18 @@ SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
   EASClient: 98a61222936d688d74ec09297b84c18dac478880
-  EXConstants: 6b8c5653492349b3c3fe6b905c556bc45b360405
+  EXApplication: 4c72f6017a14a65e338c5e74fca418f35141e819
+  EXConstants: 30c43b9ca8391c31bab9cc45c97f16eddcf11042
   EXJSONUtils: 01fc7492b66c234e395dcffdd5f53439c5c29c93
   EXManifests: 15142dee1be3ea1cd0039feddef3888c3f0bb057
+  EXNotifications: a762c9647d87682e9822f5798ca6666b5a81e213
   Expo: 63db23579a7a878567185fa0524b8294b4f93b28
   expo-dev-client: 1d6bb1e706bf9843c9e37f9162ebe2629334f9e4
   expo-dev-launcher: 713d4e3716629e98401e1970aa3c94032f118c1a
   expo-dev-menu: ee6a27df2f8d3ba7c5e47a1befe9b8ba8f730e95
   expo-dev-menu-interface: 4baf2f8b3b79ce37cf4b900e4b3ba6df3384f0a1
   ExpoAsset: d2d2cbc6a4efadf51a3da27d85d589935abd0b98
-  ExpoBlur: cb75554318a537db7a65ad589a0a5f32173ca39b
+  ExpoBlur: 392c1207f71d0ecf22371621c1fbd44ba84d9742
   ExpoFileSystem: 818e82dbb71175414d1ca310e926c48ff0d07348
   ExpoFont: 38656978c2a4022fb7e0c43e4968d66340f5e2f3
   ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
@@ -2358,7 +2370,7 @@ SPEC CHECKSUMS:
   ExpoLinking: 4a09f2f0dc1132607c20f5628ba30d94795ea73d
   ExpoModulesCore: 94a213fe8b031258659e941bbf725365860aa3f3
   ExpoSplashScreen: cb4e3d3ee646ed59810f7776cca0ae5c03ab4285
-  ExpoSQLite: fab1425f90f593057ab439dbf2fef7d42a83abdd
+  ExpoStoreReview: 92ad323dd14485e7aa67d5b47248fb22876ffaee
   ExpoSystemUI: 36f50ee42da3e814bffd01ee38edcf3c7cc0015d
   ExpoWebBrowser: a212e6b480d8857d3e441fba51e0c968333803b3
   EXStructuredHeaders: 09c70347b282e3d2507e25fb4c747b1b885f87f6
@@ -2368,7 +2380,7 @@ SPEC CHECKSUMS:
   fmt: 10c6e61f4be25dc963c36bd73fc7b1705fe975be
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
   hermes-engine: 1949ca944b195a8bde7cbf6316b9068e19cf53c6
-  libwebp: 1786c9f4ff8a279e4dac1e8f385004d5fc253009
+  libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: 063fc281b30b7dc944c98fe53a7e266dab1a8706
   RCTRequired: 8eda2a5a745f6081157a4f34baac40b65fe02b31

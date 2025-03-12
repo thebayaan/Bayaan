@@ -200,6 +200,10 @@ const createStyles = (theme: Theme) =>
     },
     closeButton: {
       marginLeft: moderateScale(12),
-      padding: moderateScale(4),
+      padding: moderateScale(10),
+      width: moderateScale(44),
+      height: moderateScale(44),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

@@ -12,6 +12,7 @@ interface ModalContextType {
     surah: Surah,
     reciterId?: string,
     onAddToQueue?: (surah: Surah) => Promise<void>,
+    rewayatId?: string,
   ) => void;
   showRewayatInfo: (
     rewayat: RewayatStyle[],
@@ -42,6 +43,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const [currentReciterId, setCurrentReciterId] = React.useState<
     string | undefined
   >();
+  const [currentRewayatId, setCurrentRewayatId] = React.useState<
+    string | undefined
+  >();
 
   const [rewayatInfo, setRewayatInfo] = React.useState<{
     rewayat: RewayatStyle[];
@@ -58,11 +62,15 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
       surah: Surah,
       reciterId?: string,
       onAddToQueue?: (surah: Surah) => Promise<void>,
+      rewayatId?: string,
     ) => {
       setCurrentSurah(surah);
       setCurrentReciterId(reciterId);
+      setCurrentRewayatId(rewayatId);
       setQueueHandler(() => onAddToQueue);
-      surahOptionsRef.current?.expand();
+      setTimeout(() => {
+        surahOptionsRef.current?.expand();
+      }, 50);
     },
     [],
   );
@@ -74,7 +82,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
       onSelect?: (id: string) => void,
     ) => {
       setRewayatInfo({rewayat, selectedId, onSelect});
-      rewayatInfoRef.current?.expand();
+      setTimeout(() => {
+        rewayatInfoRef.current?.expand();
+      }, 50);
     },
     [],
   );
@@ -83,6 +93,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
     setCurrentReciterId(undefined);
+    setCurrentRewayatId(undefined);
     setQueueHandler(undefined);
   }, []);
 
@@ -99,6 +110,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             bottomSheetRef={surahOptionsRef}
             surah={currentSurah}
             reciterId={currentReciterId}
+            rewayatId={currentRewayatId}
             onClose={handleCloseSurahOptions}
             onAddToQueue={queueHandler}
           />

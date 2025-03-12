@@ -11,6 +11,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Icon} from '@rneui/themed';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface CircularReciterCardProps {
   imageUrl?: string;
@@ -22,6 +27,9 @@ interface CircularReciterCardProps {
   addTextStyle?: StyleProp<TextStyle>;
 }
 
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   imageUrl,
   name,
@@ -32,6 +40,29 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   addTextStyle,
 }) => {
   const {theme} = useTheme();
+
+  // Animation values
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{scale: scale.value}],
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.92, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
 
   const sizeMap = {
     small: 60,
@@ -80,10 +111,12 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   });
 
   return (
-    <TouchableOpacity
+    <AnimatedTouchableOpacity
       activeOpacity={0.99}
-      style={styles.container}
-      onPress={onPress}>
+      style={[styles.container, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}>
       <View style={styles.imageContainer}>
         {variant === 'default' ? (
           <>
@@ -111,6 +144,6 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
         numberOfLines={2}>
         {name}
       </Text>
-    </TouchableOpacity>
+    </AnimatedTouchableOpacity>
   );
 };

@@ -110,6 +110,7 @@ const RenderSectionItem = React.memo(
           surahId={item.surah.id}
           duration={duration}
           progress={progress}
+          rewayatId={item.rewayatId}
         />
       );
     }

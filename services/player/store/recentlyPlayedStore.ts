@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface RecentlyPlayedTrack {
   reciter: Reciter;
   surah: Surah;
+  rewayatId: string;
   progress: number;
   duration: number;
   timestamp: number;
@@ -21,6 +22,7 @@ interface RecentlyPlayedState {
     surah: Surah,
     progress: number,
     duration: number,
+    rewayatId: string,
   ) => void;
   updateProgress: (
     reciterId: string,
@@ -40,7 +42,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
       progressMap: {},
       durationMap: {},
 
-      addRecentTrack: (reciter, surah, progress, duration) => {
+      addRecentTrack: (reciter, surah, progress, duration, rewayatId) => {
         set(state => {
           const key = `${reciter.id}:${surah.id}`;
           const timestamp = Date.now();
@@ -68,6 +70,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
                 ...state.recentTracks[existingIndex],
                 progress,
                 duration,
+                rewayatId,
                 timestamp,
               },
               ...state.recentTracks.slice(0, existingIndex),
@@ -75,7 +78,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             ];
           } else {
             updates.recentTracks = [
-              {reciter, surah, progress, duration, timestamp},
+              {reciter, surah, rewayatId, progress, duration, timestamp},
               ...state.recentTracks,
             ].slice(0, 7); // Keep only last 7 tracks
           }

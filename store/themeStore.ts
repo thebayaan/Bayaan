@@ -40,8 +40,8 @@ export const useThemeStore = create<ThemeState>()(
   persist(
     set => ({
       themeMode: 'system',
-      primaryColor: 'Purple',
-      theme: getEffectiveTheme('system', 'Purple'),
+      primaryColor: 'Blue',
+      theme: getEffectiveTheme('system', 'Blue'),
 
       setThemeMode: mode =>
         set(state => {

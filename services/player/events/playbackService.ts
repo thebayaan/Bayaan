@@ -227,6 +227,39 @@ async function restorePlayerState() {
 
     const {queue, playback, settings} = store;
 
+    // Restore sleep timer if needed
+    if (settings.sleepTimerEnd) {
+      const now = Date.now();
+      const timeRemaining = settings.sleepTimerEnd - now;
+
+      if (timeRemaining > 0) {
+        // Calculate the remaining minutes
+        const remainingMinutes = Math.ceil(timeRemaining / (60 * 1000));
+
+        // Set a new sleep timer with the remaining minutes
+        if (remainingMinutes > 0) {
+          console.log(
+            `[PlaybackService] Restoring sleep timer with ${remainingMinutes} minutes remaining`,
+          );
+          try {
+            usePlayerStore.getState().setSleepTimer(remainingMinutes);
+          } catch (error) {
+            console.error('Error restoring sleep timer:', error);
+          }
+        }
+      } else {
+        // Timer has expired, clear it
+        usePlayerStore.setState(currentState => ({
+          settings: {
+            ...currentState.settings,
+            sleepTimer: 0,
+            sleepTimerEnd: null,
+            sleepTimerInterval: null,
+          },
+        }));
+      }
+    }
+
     // Restore repeat mode
     const repeatMode = {
       none: RepeatMode.Off,
@@ -399,6 +432,159 @@ export async function playbackService() {
       batchTimeout = null;
     }, 100); // Batch updates within 100ms window
   };
+
+  // Sleep Timer - Update active state based on playback state
+  TrackPlayer.addEventListener(Event.PlaybackState, ({state}) => {
+    try {
+      // We don't need to update any active state anymore since we're using a timestamp
+      // Just log the state change for debugging
+      if (state === State.Playing || state === State.Paused) {
+        // Check if we need to restore a sleep timer
+        const sleepTimerEnd = store.settings?.sleepTimerEnd;
+        if (sleepTimerEnd) {
+          const now = Date.now();
+          const timeRemaining = sleepTimerEnd - now;
+
+          if (timeRemaining <= 0 && state === State.Playing) {
+            console.log(
+              '[PlaybackService] Sleep timer expired while playing, pausing playback',
+            );
+
+            // Timer has expired while playing, pause playback
+            try {
+              // Use the store's pause method instead of directly calling TrackPlayer
+              const pauseMethod = store.pause;
+              if (typeof pauseMethod === 'function') {
+                pauseMethod().catch(error => {
+                  console.error(
+                    '[PlaybackService] Error pausing with store method:',
+                    error,
+                  );
+                  // Fallback to direct TrackPlayer call
+                  TrackPlayer.pause().catch(fallbackError => {
+                    console.error(
+                      '[PlaybackService] Fallback pause also failed:',
+                      fallbackError,
+                    );
+                  });
+                });
+              } else {
+                // Fallback to direct TrackPlayer call
+                TrackPlayer.pause().catch(error => {
+                  console.error(
+                    '[PlaybackService] Error pausing directly:',
+                    error,
+                  );
+                });
+              }
+            } catch (error) {
+              console.error('[PlaybackService] Error in pause attempt:', error);
+            }
+
+            // Update the store state
+            try {
+              usePlayerStore.setState(currentState => ({
+                playback: {
+                  ...currentState.playback,
+                  state: State.Paused,
+                },
+                settings: {
+                  ...currentState.settings,
+                  sleepTimer: 0,
+                  sleepTimerEnd: null,
+                  sleepTimerInterval: null,
+                },
+              }));
+              console.log('[PlaybackService] Sleep timer state cleared');
+            } catch (error) {
+              console.error(
+                '[PlaybackService] Error updating store state:',
+                error,
+              );
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        '[PlaybackService] Error in sleep timer event listener:',
+        error,
+      );
+    }
+  });
+
+  // Check if we need to restore a sleep timer
+  if (store.settings?.sleepTimerEnd) {
+    try {
+      const now = Date.now();
+      const timeRemaining = store.settings.sleepTimerEnd - now;
+
+      if (timeRemaining > 0) {
+        // Calculate the remaining minutes
+        const remainingMinutes = Math.ceil(timeRemaining / (60 * 1000));
+
+        // Set a new sleep timer with the remaining minutes
+        if (remainingMinutes > 0) {
+          console.log(
+            `[PlaybackService] Restoring sleep timer with ${remainingMinutes} minutes remaining`,
+          );
+          try {
+            // We need to use setState directly since we're outside the store methods
+            const setSleepTimer = usePlayerStore.getState().setSleepTimer;
+            if (typeof setSleepTimer === 'function') {
+              setSleepTimer(remainingMinutes);
+            } else {
+              console.error(
+                '[PlaybackService] setSleepTimer is not a function',
+              );
+            }
+          } catch (error) {
+            console.error(
+              '[PlaybackService] Error restoring sleep timer:',
+              error,
+            );
+          }
+        } else {
+          console.log(
+            '[PlaybackService] Remaining time too small, clearing timer',
+          );
+          usePlayerStore.setState(currentState => ({
+            settings: {
+              ...currentState.settings,
+              sleepTimer: 0,
+              sleepTimerEnd: null,
+              sleepTimerInterval: null,
+            },
+          }));
+        }
+      } else {
+        // Timer has expired, clear it
+        console.log('[PlaybackService] Timer has expired, clearing it');
+        usePlayerStore.setState(currentState => ({
+          settings: {
+            ...currentState.settings,
+            sleepTimer: 0,
+            sleepTimerEnd: null,
+            sleepTimerInterval: null,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error(
+        '[PlaybackService] Error handling sleep timer restoration:',
+        error,
+      );
+      // Clear the timer on error to prevent further issues
+      usePlayerStore.setState(currentState => ({
+        settings: {
+          ...currentState.settings,
+          sleepTimer: 0,
+          sleepTimerEnd: null,
+          sleepTimerInterval: null,
+        },
+      }));
+    }
+  }
 
   // Playback State
   TrackPlayer.addEventListener(Event.PlaybackState, async ({state}) => {

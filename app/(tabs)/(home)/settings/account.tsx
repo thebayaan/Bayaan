@@ -6,7 +6,6 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -18,7 +17,7 @@ import {Icon} from '@rneui/base';
 import Animated, {FadeInDown, FadeIn, FadeOut} from 'react-native-reanimated';
 import {useRouter} from 'expo-router';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {BlurView} from '@react-native-community/blur';
+import Header from '@/components/Header';
 
 export default function AccountScreen() {
   const {theme} = useTheme();
@@ -101,37 +100,7 @@ export default function AccountScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.header, {paddingTop: insets.top}]}>
-        <BlurView
-          blurAmount={10}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={[styles.blurContainer]}>
-          <View
-            style={[
-              styles.overlay,
-              {
-                backgroundColor: theme.colors.background,
-              },
-            ]}
-          />
-        </BlurView>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.7}
-            onPress={() => router.back()}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-            Account
-          </Text>
-        </View>
-      </View>
+      <Header title="Account" onBack={() => router.back()} />
       <ScrollView
         style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
         contentContainerStyle={styles.scrollContent}>
@@ -238,49 +207,13 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    header: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
-    },
-    blurContainer: {
-      overflow: 'hidden',
-      borderWidth: 0.1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      opacity: 0.85,
-    },
-    headerContent: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-    },
-    backButton: {
-      marginRight: moderateScale(16),
-    },
-    headerTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      flex: 1,
-      textAlign: 'center',
-      marginRight: moderateScale(40),
-    },
     content: {
       flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(20),
+      paddingBottom: moderateScale(160),
     },
     section: {
       marginVertical: moderateScale(20),
@@ -403,8 +336,5 @@ const createStyles = (theme: Theme) =>
     buttonText: {
       fontFamily: theme.fonts.bold,
       fontSize: moderateScale(14),
-    },
-    scrollContent: {
-      padding: moderateScale(20),
     },
   });

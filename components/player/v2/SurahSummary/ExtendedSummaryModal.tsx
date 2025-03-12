@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {View, StyleSheet, ScrollView, useWindowDimensions} from 'react-native';
+import {View, StyleSheet, ScrollView, useWindowDimensions, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -81,7 +81,10 @@ export const ExtendedSummaryModal: React.FC<ExtendedSummaryModalProps> = ({
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        bounces={false}>
+        bounces={false}
+        nestedScrollEnabled={Platform.OS === 'android'}
+        disableScrollViewPanResponder={Platform.OS === 'android'}
+        scrollEventThrottle={16}>
         <View style={styles.content}>
           <RenderHtml
             {...renderHtmlDefaultProps}

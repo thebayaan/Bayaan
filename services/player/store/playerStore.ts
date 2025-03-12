@@ -417,13 +417,35 @@ export const usePlayerStore = create<PlayerStoreState>()(
         }
       },
 
-      toggleShuffle: () => {
-        set(state => ({
+      toggleShuffle: async () => {
+        const state = get();
+        const newShuffleState = !state.settings.shuffle;
+
+        // Update the store state
+        set(prevState => ({
           settings: {
-            ...state.settings,
-            shuffle: !state.settings.shuffle,
+            ...prevState.settings,
+            shuffle: newShuffleState,
           },
         }));
+
+        try {
+          // Apply shuffle mode to TrackPlayer
+          if (newShuffleState) {
+            await TrackPlayer.setRepeatMode(RepeatMode.Queue);
+          } else {
+            // Restore previous repeat mode
+            const repeatMode = {
+              none: RepeatMode.Off,
+              queue: RepeatMode.Queue,
+              track: RepeatMode.Track,
+            }[state.settings.repeatMode];
+
+            await TrackPlayer.setRepeatMode(repeatMode);
+          }
+        } catch (error) {
+          console.error('Error setting shuffle mode:', error);
+        }
       },
 
       setSleepTimer: (minutes: number) => {
@@ -431,27 +453,155 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
         // Clear any existing timer
         if (
-          typeof state.settings.sleepTimer === 'number' &&
-          state.settings.sleepTimer > 0
+          typeof state.settings.sleepTimerInterval === 'object' &&
+          state.settings.sleepTimerInterval
         ) {
-          clearTimeout(state.settings.sleepTimer);
+          clearInterval(state.settings.sleepTimerInterval as NodeJS.Timeout);
         }
 
         if (minutes === 0) {
+          console.log('[PlayerStore] Turning off sleep timer');
           set(currentState => ({
             settings: {
               ...currentState.settings,
               sleepTimer: 0,
+              sleepTimerEnd: null,
+              sleepTimerInterval: null,
             },
           }));
           return;
         }
 
-        // Update state with new timer
+        // Calculate when the timer should end
+        const milliseconds = Math.round(minutes * 60 * 1000);
+        const sleepTimerEnd = Date.now() + milliseconds;
+
+        // Format time display based on duration
+        const timeDisplay =
+          minutes < 1
+            ? `${Math.round(minutes * 60)} seconds`
+            : `${minutes} minute${minutes === 1 ? '' : 's'}`;
+
+        console.log(
+          `[PlayerStore] Setting sleep timer for ${timeDisplay}, ending at ${new Date(sleepTimerEnd).toLocaleTimeString()}`,
+        );
+
+        // Create an interval that checks if the timer has expired
+        const interval = setInterval(async () => {
+          try {
+            const currentState = get();
+            const endTime = currentState.settings.sleepTimerEnd;
+
+            if (!endTime) {
+              console.log(
+                '[PlayerStore] Sleep timer end time is null, clearing interval',
+              );
+              clearInterval(interval);
+              return;
+            }
+
+            // Check if playback is playing
+            const isPlaying =
+              currentState.playback.state === TrackPlayerState.Playing;
+
+            // Check if timer has expired
+            const now = Date.now();
+            const timeRemaining = endTime - now;
+
+            if (timeRemaining <= 0) {
+              console.log(
+                '[PlayerStore] Sleep timer expired, pausing playback',
+              );
+
+              // First, clear the interval to prevent multiple calls
+              clearInterval(
+                currentState.settings.sleepTimerInterval as NodeJS.Timeout,
+              );
+
+              // Only pause if currently playing
+              if (isPlaying) {
+                try {
+                  // Use the store's pause method instead of directly calling TrackPlayer
+                  const pauseMethod = get().pause;
+                  if (typeof pauseMethod === 'function') {
+                    await pauseMethod();
+                    console.log(
+                      '[PlayerStore] Successfully paused playback using store method',
+                    );
+                  } else {
+                    // Fallback to direct TrackPlayer call
+                    await TrackPlayer.pause();
+                    console.log(
+                      '[PlayerStore] Successfully paused playback using TrackPlayer directly',
+                    );
+                  }
+                } catch (pauseError) {
+                  console.error(
+                    '[PlayerStore] Error pausing playback:',
+                    pauseError,
+                  );
+
+                  // Last resort: try to update the state directly
+                  try {
+                    set(prevState => ({
+                      playback: {
+                        ...prevState.playback,
+                        state: TrackPlayerState.Paused,
+                      },
+                    }));
+                    console.log('[PlayerStore] Updated state to paused');
+                  } catch (stateError) {
+                    console.error(
+                      '[PlayerStore] Error updating state:',
+                      stateError,
+                    );
+                  }
+                }
+              } else {
+                console.log(
+                  '[PlayerStore] Playback already paused, no need to pause',
+                );
+              }
+
+              // Update the store state to reflect the timer is off
+              set(prevState => ({
+                settings: {
+                  ...prevState.settings,
+                  sleepTimer: 0,
+                  sleepTimerEnd: null,
+                  sleepTimerInterval: null,
+                },
+              }));
+              console.log('[PlayerStore] Sleep timer state cleared');
+            }
+          } catch (error) {
+            console.error(
+              '[PlayerStore] Error in sleep timer interval:',
+              error,
+            );
+
+            // Clear the interval on error to prevent further issues
+            clearInterval(interval);
+
+            // Update the store state to reflect the timer is off
+            set(prevState => ({
+              settings: {
+                ...prevState.settings,
+                sleepTimer: 0,
+                sleepTimerEnd: null,
+                sleepTimerInterval: null,
+              },
+            }));
+          }
+        }, 500); // Check more frequently (twice per second) for short timers
+
+        // Store the timer end time and interval
         set(currentState => ({
           settings: {
             ...currentState.settings,
             sleepTimer: minutes,
+            sleepTimerEnd: sleepTimerEnd,
+            sleepTimerInterval: interval,
           },
         }));
       },
@@ -510,10 +660,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
       cleanup: async () => {
         const state = get();
         if (
-          typeof state.settings.sleepTimer === 'number' &&
-          state.settings.sleepTimer > 0
+          typeof state.settings.sleepTimerInterval === 'object' &&
+          state.settings.sleepTimerInterval
         ) {
-          clearTimeout(state.settings.sleepTimer);
+          clearInterval(state.settings.sleepTimerInterval as NodeJS.Timeout);
         }
         await TrackPlayer.reset();
         set(createDefaultUnifiedPlayerState());
@@ -523,7 +673,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
       name: STORAGE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: state => ({
-        settings: state.settings, // Only persist settings, not queue state
+        settings: {
+          ...state.settings,
+          // Don't persist the interval object
+          sleepTimerInterval: null,
+        },
       }),
     },
   ),

@@ -54,8 +54,13 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    left: moderateScale(25),
+    left: moderateScale(15),
     zIndex: 1,
+    padding: moderateScale(10),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   arabicSurahName: {
     fontFamily: 'SurahNames',
