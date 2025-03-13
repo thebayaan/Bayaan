@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -190,19 +191,39 @@ export default function CollectionScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, {paddingTop: 0}]}>
-        <BlurView
-          blurAmount={10}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={[styles.blurContainer]}>
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            blurAmount={10}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={[styles.blurContainer]}>
+            <View
+              style={[
+                styles.overlay,
+                {
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            />
+          </BlurView>
+        ) : (
           <View
             style={[
-              styles.overlay,
+              styles.blurContainer,
               {
                 backgroundColor: theme.colors.background,
+                opacity: 0.95,
               },
-            ]}
-          />
-        </BlurView>
+            ]}>
+            <View
+              style={[
+                styles.overlay,
+                {
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            />
+          </View>
+        )}
       </View>
       <ScrollView style={styles.content}>
         <View style={{paddingTop: insets.top}} />

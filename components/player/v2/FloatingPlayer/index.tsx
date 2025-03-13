@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useMemo} from 'react';
-import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {State as TrackPlayerState} from 'react-native-track-player';
@@ -16,7 +16,7 @@ import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon} from '@/components/Icons';
 import {TouchableOpacity} from 'react-native';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import {BlurView} from 'expo-blur';
+import {BlurView} from '@react-native-community/blur';
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
@@ -174,56 +174,116 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
-      <BlurView
-        intensity={80}
-        tint={theme.isDarkMode ? 'dark' : 'light'}
-        style={styles.background}>
-        <View style={[styles.overlay, {backgroundColor: theme.colors.card}]} />
-        <Pressable
-          onPress={handlePress}
-          style={styles.content}
-          android_ripple={{color: 'rgba(0, 0, 0, 0.1)'}}
-          unstable_pressDelay={0}>
-          <View style={styles.playButtonContainer}>
-            {isLoadingNewTrack ? (
-              <LoadingIndicator color={textColor} />
-            ) : (
-              <PlayButton
-                isPlaying={playback.state === TrackPlayerState.Playing}
-                onPlayPause={handlePlayPause}
-                disabled={isLoadingNewTrack}
-              />
-            )}
-          </View>
-          <View style={styles.trackInfo}>
-            <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-              {currentTrack.title}
-            </Text>
-            <Text
-              style={[styles.subtitle, {color: textColor}]}
-              numberOfLines={1}>
-              {currentTrack.artist}
-            </Text>
-          </View>
-          <View style={styles.rightControls}>
-            <TouchableOpacity
-              onPress={handleLovePress}
-              style={styles.loveButton}
-              activeOpacity={0.7}>
-              <Animated.View style={heartAnimatedStyle}>
-                <HeartIcon
-                  color={textColor}
-                  size={moderateScale(24)}
-                  filled={isTrackLoved(currentTrack)}
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          blurAmount={80}
+          blurType={theme.isDarkMode ? 'dark' : 'light'}
+          style={styles.background}>
+          <View
+            style={[styles.overlay, {backgroundColor: theme.colors.card}]}
+          />
+          <Pressable
+            onPress={handlePress}
+            style={styles.content}
+            android_ripple={{color: 'rgba(0, 0, 0, 0.1)'}}
+            unstable_pressDelay={0}>
+            <View style={styles.playButtonContainer}>
+              {isLoadingNewTrack ? (
+                <LoadingIndicator color={textColor} />
+              ) : (
+                <PlayButton
+                  isPlaying={playback.state === TrackPlayerState.Playing}
+                  onPlayPause={handlePlayPause}
+                  disabled={isLoadingNewTrack}
                 />
-              </Animated.View>
-            </TouchableOpacity>
-            <Text style={[styles.surahGlyph, {color: textColor}]}>
-              {surahGlyph}
-            </Text>
-          </View>
-        </Pressable>
-      </BlurView>
+              )}
+            </View>
+            <View style={styles.trackInfo}>
+              <Text
+                style={[styles.title, {color: textColor}]}
+                numberOfLines={1}>
+                {currentTrack.title}
+              </Text>
+              <Text
+                style={[styles.subtitle, {color: textColor}]}
+                numberOfLines={1}>
+                {currentTrack.artist}
+              </Text>
+            </View>
+            <View style={styles.rightControls}>
+              <TouchableOpacity
+                onPress={handleLovePress}
+                style={styles.loveButton}
+                activeOpacity={0.7}>
+                <Animated.View style={heartAnimatedStyle}>
+                  <HeartIcon
+                    color={textColor}
+                    size={moderateScale(24)}
+                    filled={isTrackLoved(currentTrack)}
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+              <Text style={[styles.surahGlyph, {color: textColor}]}>
+                {surahGlyph}
+              </Text>
+            </View>
+          </Pressable>
+        </BlurView>
+      ) : (
+        <View
+          style={[
+            styles.background,
+            styles.androidBackground,
+            {backgroundColor: theme.colors.card},
+          ]}>
+          <Pressable
+            onPress={handlePress}
+            style={styles.content}
+            android_ripple={{color: 'rgba(0, 0, 0, 0.1)'}}
+            unstable_pressDelay={0}>
+            <View style={styles.playButtonContainer}>
+              {isLoadingNewTrack ? (
+                <LoadingIndicator color={textColor} />
+              ) : (
+                <PlayButton
+                  isPlaying={playback.state === TrackPlayerState.Playing}
+                  onPlayPause={handlePlayPause}
+                  disabled={isLoadingNewTrack}
+                />
+              )}
+            </View>
+            <View style={styles.trackInfo}>
+              <Text
+                style={[styles.title, {color: textColor}]}
+                numberOfLines={1}>
+                {currentTrack.title}
+              </Text>
+              <Text
+                style={[styles.subtitle, {color: textColor}]}
+                numberOfLines={1}>
+                {currentTrack.artist}
+              </Text>
+            </View>
+            <View style={styles.rightControls}>
+              <TouchableOpacity
+                onPress={handleLovePress}
+                style={styles.loveButton}
+                activeOpacity={0.7}>
+                <Animated.View style={heartAnimatedStyle}>
+                  <HeartIcon
+                    color={textColor}
+                    size={moderateScale(24)}
+                    filled={isTrackLoved(currentTrack)}
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+              <Text style={[styles.surahGlyph, {color: textColor}]}>
+                {surahGlyph}
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+      )}
     </Animated.View>
   );
 });
@@ -290,5 +350,10 @@ const styles = ScaledSheet.create({
   surahGlyph: {
     fontFamily: 'SurahNames',
     fontSize: moderateScale(20),
+  },
+  androidBackground: {
+    elevation: 10,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
 });

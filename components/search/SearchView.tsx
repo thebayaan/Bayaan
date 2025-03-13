@@ -7,6 +7,7 @@ import {
   FlatList,
   TextInput,
   Keyboard,
+  Platform,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,7 +23,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {BlurView} from 'expo-blur';
+import {BlurView} from '@react-native-community/blur';
 import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
@@ -498,19 +499,33 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       exiting={FadeOut.duration(200)}
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        <BlurView
-          intensity={80}
-          tint={theme.isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}>
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            blurAmount={80}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}>
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: Color(theme.colors.card)
+                    .alpha(0.7)
+                    .toString(),
+                },
+              ]}
+            />
+          </BlurView>
+        ) : (
           <View
             style={[
               StyleSheet.absoluteFill,
               {
-                backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
+                backgroundColor: theme.colors.card,
+                opacity: 0.95,
               },
             ]}
           />
-        </BlurView>
+        )}
         <View style={styles.searchBoxContainer}>
           <SearchInput
             ref={searchInputRef}

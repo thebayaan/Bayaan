@@ -1,5 +1,11 @@
 import React, {useState, useCallback} from 'react';
-import {View, TouchableOpacity, ScrollView, StyleSheet} from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import {Icon} from '@rneui/themed';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -75,19 +81,40 @@ const Header = React.memo(
 
     return (
       <Animated.View style={[headerStyles.container, {paddingTop: insets.top}]}>
-        <BlurView
-          blurAmount={20}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, headerStyles.blurContainer]}>
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            blurAmount={20}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={[StyleSheet.absoluteFill, headerStyles.blurContainer]}>
+            <View
+              style={[
+                headerStyles.overlay,
+                {
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            />
+          </BlurView>
+        ) : (
           <View
             style={[
-              headerStyles.overlay,
+              StyleSheet.absoluteFill,
+              headerStyles.blurContainer,
               {
                 backgroundColor: theme.colors.background,
+                opacity: 0.95,
               },
-            ]}
-          />
-        </BlurView>
+            ]}>
+            <View
+              style={[
+                headerStyles.overlay,
+                {
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            />
+          </View>
+        )}
         <View style={headerStyles.header}>
           <View style={headerStyles.leftPlaceholder} />
           <View style={headerStyles.toggleContainer}>

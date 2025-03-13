@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -334,11 +335,24 @@ const HeroSection = ({
         end={{x: 1, y: 0.2}}
         style={StyleSheet.absoluteFill}
       />
-      <BlurView
-        style={styles.blurOverlay}
-        blurType={theme.isDarkMode ? 'dark' : 'light'}
-        blurAmount={20}
-      />
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          style={styles.blurOverlay}
+          blurType={theme.isDarkMode ? 'dark' : 'light'}
+          blurAmount={20}
+        />
+      ) : (
+        <View
+          style={[
+            styles.blurOverlay,
+            {
+              backgroundColor: theme.isDarkMode
+                ? 'rgba(0,0,0,0.75)'
+                : 'rgba(255,255,255,0.85)',
+            },
+          ]}
+        />
+      )}
       <View style={styles.content}>
         <View style={styles.leftSection}>
           <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>

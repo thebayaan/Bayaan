@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, ViewStyle} from 'react-native';
+import {View, Text, TouchableOpacity, ViewStyle, Platform} from 'react-native';
 import {Icon} from '@rneui/base';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -30,21 +30,40 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <View style={[styles.header, {paddingTop: insets.top}, containerStyle]}>
-      {showBlur && (
-        <BlurView
-          blurAmount={10}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={styles.blurContainer}>
+      {showBlur &&
+        (Platform.OS === 'ios' ? (
+          <BlurView
+            blurAmount={10}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={styles.blurContainer}>
+            <View
+              style={[
+                styles.overlay,
+                {
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            />
+          </BlurView>
+        ) : (
           <View
             style={[
-              styles.overlay,
+              styles.blurContainer,
               {
                 backgroundColor: theme.colors.background,
+                opacity: 0.9,
               },
-            ]}
-          />
-        </BlurView>
-      )}
+            ]}>
+            <View
+              style={[
+                styles.overlay,
+                {
+                  backgroundColor: theme.colors.background,
+                },
+              ]}
+            />
+          </View>
+        ))}
       <View style={styles.headerContent}>
         <TouchableOpacity
           style={[styles.backButton, backButtonStyle]}
