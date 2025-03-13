@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, FlatList} from 'react-native';
+import {View, Text, TouchableOpacity, FlatList, Platform} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -10,7 +10,7 @@ import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SearchInput} from '@/components/SearchInput';
-import {BlurView} from 'expo-blur';
+import {BlurView} from '@react-native-community/blur';
 import {LinearGradient} from 'expo-linear-gradient';
 import {StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
@@ -75,11 +75,25 @@ export const SearchView: React.FC<SearchViewProps> = ({
       style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.headerContainer}>
-        <BlurView
-          intensity={100}
-          tint={isDarkMode ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, {paddingTop: insets.top}]}
-        />
+        {Platform.OS === 'ios' ? (
+          <BlurView
+            blurAmount={100}
+            blurType={isDarkMode ? 'dark' : 'light'}
+            style={[StyleSheet.absoluteFill, {paddingTop: insets.top}]}
+          />
+        ) : (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: isDarkMode
+                  ? 'rgba(0,0,0,0.8)'
+                  : 'rgba(255,255,255,0.9)',
+                paddingTop: insets.top,
+              },
+            ]}
+          />
+        )}
         <LinearGradient
           colors={[dominantColors.primary, dominantColors.secondary]}
           style={[StyleSheet.absoluteFill, styles.gradient]}

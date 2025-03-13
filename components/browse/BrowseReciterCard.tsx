@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
@@ -146,12 +146,26 @@ const BrowseReciterCard = React.memo(
             reciterName={reciter.name}
             style={styles.backgroundImage}
           />
-          <BlurView
-            blurAmount={backgroundBlurAmount}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}>
-            <View style={styles.imageOverlay} />
-          </BlurView>
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              blurAmount={backgroundBlurAmount}
+              blurType={theme.isDarkMode ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}>
+              <View style={styles.imageOverlay} />
+            </BlurView>
+          ) : (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                styles.imageOverlay,
+                {
+                  backgroundColor: theme.isDarkMode
+                    ? 'rgba(0,0,0,0.75)'
+                    : 'rgba(255,255,255,0.8)',
+                },
+              ]}
+            />
+          )}
         </View>
 
         {/* Foreground clear image */}
@@ -165,12 +179,25 @@ const BrowseReciterCard = React.memo(
 
         {/* Content Overlay */}
         <View style={styles.contentContainer}>
-          <BlurView
-            blurAmount={contentBlurAmount}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={styles.blurContainer}>
-            <View style={styles.overlay} />
-          </BlurView>
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              blurAmount={contentBlurAmount}
+              blurType={theme.isDarkMode ? 'dark' : 'light'}
+              style={styles.blurContainer}>
+              <View style={styles.overlay} />
+            </BlurView>
+          ) : (
+            <View
+              style={[
+                styles.blurContainer,
+                styles.overlay,
+                {
+                  backgroundColor: theme.colors.card,
+                  opacity: 0.85,
+                },
+              ]}
+            />
+          )}
           <Text style={styles.reciterName} numberOfLines={1}>
             {reciter.name}
           </Text>
