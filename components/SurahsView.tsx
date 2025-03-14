@@ -6,7 +6,6 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -15,7 +14,6 @@ import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
-import {BlurView} from '@react-native-community/blur';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import Animated, {
   useSharedValue,
@@ -152,13 +150,54 @@ const GRADIENT_COLORS = [
   '#047857', // Dark Emerald
 ] as const;
 
-const getRandomColors = (): readonly [string, string, string] => {
+// Cache for gradient colors to prevent recalculating on every render
+const colorCache = new Map<number, readonly [string, string, string]>();
+
+interface ThemeType {
+  colors: {
+    text: string;
+    textSecondary: string;
+    border: string;
+    background: string;
+    backgroundSecondary: string;
+  };
+  isDarkMode: boolean;
+  fonts: {
+    regular: string;
+    medium: string;
+    bold: string;
+    semiBold: string;
+  };
+}
+
+const getRandomColors = (
+  surahId?: number,
+): readonly [string, string, string] => {
+  // If surahId is provided and we have cached colors, return them
+  if (surahId && colorCache.has(surahId)) {
+    return colorCache.get(surahId) || getRandomColorsInternal();
+  }
+
+  // Generate new colors
+  const colors = getRandomColorsInternal();
+
+  // Cache the result if surahId is provided
+  if (surahId) {
+    colorCache.set(surahId, colors);
+  }
+
+  return colors;
+};
+
+// Helper function to actually generate the colors
+const getRandomColorsInternal = (): readonly [string, string, string] => {
   // Fisher-Yates shuffle
   const shuffled = [...GRADIENT_COLORS];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+
   return [shuffled[0], shuffled[1], shuffled[2]] as const;
 };
 
@@ -172,8 +211,106 @@ function getSurahOfTheDay(): Surah {
   return SURAHS[surahIndex];
 }
 
+// Create the AnimatedTouchableOpacity component once, outside of render functions
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
+
+// Extract HeroSection styles outside of the component
+const createHeroStyles = (theme: ThemeType) =>
+  StyleSheet.create({
+    hero: {
+      marginHorizontal: moderateScale(16),
+      marginBottom: moderateScale(16),
+      borderRadius: moderateScale(25),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.2).toString(),
+    },
+    content: {
+      padding: moderateScale(16),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(16),
+    },
+    leftSection: {
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+    },
+    heroGlyph: {
+      fontSize: moderateScale(48),
+      fontFamily: 'SurahNames',
+      color: theme.colors.text,
+      textShadowColor: 'rgba(0, 0, 0, 0.2)',
+      textShadowOffset: {width: 0, height: 1},
+      textShadowRadius: 4,
+    },
+    rightSection: {
+      flex: 1,
+    },
+    topRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: verticalScale(4),
+    },
+    heroTitle: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+      letterSpacing: 1,
+    },
+    revelationPlace: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(4),
+      borderRadius: moderateScale(6),
+    },
+    revelationText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+      textTransform: 'uppercase',
+    },
+    heroSurahName: {
+      fontSize: moderateScale(20),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+      marginBottom: verticalScale(2),
+    },
+    translatedName: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+      marginBottom: verticalScale(8),
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: moderateScale(16),
+    },
+    stat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(4),
+      borderRadius: moderateScale(6),
+    },
+    statValue: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+      marginRight: moderateScale(4),
+    },
+    statLabel: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+      textTransform: 'uppercase',
+    },
+  });
 
 const HeroSection = ({
   surah,
@@ -213,112 +350,19 @@ const HeroSection = ({
     string,
     string,
   ] => {
-    const colors = getRandomColors();
+    const colors = getRandomColors(surah.id);
+    const alpha1 = theme.isDarkMode ? 0.7 : 0.15;
+    const alpha2 = theme.isDarkMode ? 0.6 : 0.1;
+    const alpha3 = theme.isDarkMode ? 0.5 : 0.05;
     return [
-      Color(colors[0]).alpha(0.9).toString(),
-      Color(colors[1]).alpha(0.8).toString(),
-      Color(colors[2]).alpha(0.7).toString(),
+      Color(colors[0]).alpha(alpha1).toString(),
+      Color(colors[1]).alpha(alpha2).toString(),
+      Color(colors[2]).alpha(alpha3).toString(),
     ] as const;
-  }, []);
+  }, [theme.isDarkMode, surah.id]);
 
-  const styles = StyleSheet.create({
-    hero: {
-      marginHorizontal: moderateScale(16),
-      marginBottom: moderateScale(16),
-      borderRadius: moderateScale(25),
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-    },
-    content: {
-      padding: moderateScale(16),
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(16),
-    },
-    leftSection: {
-      alignItems: 'flex-start',
-      justifyContent: 'center',
-    },
-    heroGlyph: {
-      fontSize: moderateScale(48),
-      fontFamily: 'SurahNames',
-      color: '#e8e8e8',
-      textShadowColor: 'rgba(0, 0, 0, 0.2)',
-      textShadowOffset: {width: 0, height: 1},
-      textShadowRadius: 4,
-    },
-    rightSection: {
-      flex: 1,
-    },
-    topRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: verticalScale(4),
-    },
-    heroTitle: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Bold',
-      color: '#e8e8e8',
-      letterSpacing: 1,
-    },
-    revelationPlace: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-      backgroundColor: Color('#e8e8e8').alpha(0.1).toString(),
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(4),
-      borderRadius: moderateScale(6),
-    },
-    revelationText: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Bold',
-      color: '#e8e8e8',
-      textTransform: 'uppercase',
-    },
-    heroSurahName: {
-      fontSize: moderateScale(20),
-      fontFamily: 'Manrope-Bold',
-      color: '#e8e8e8',
-      marginBottom: verticalScale(2),
-    },
-    translatedName: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      color: '#e8e8e8',
-      marginBottom: verticalScale(8),
-    },
-    statsRow: {
-      flexDirection: 'row',
-      gap: moderateScale(16),
-    },
-    stat: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: Color('#e8e8e8').alpha(0.1).toString(),
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(4),
-      borderRadius: moderateScale(6),
-    },
-    statValue: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Bold',
-      color: '#e8e8e8',
-      marginRight: moderateScale(4),
-    },
-    statLabel: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: '#e8e8e8',
-      textTransform: 'uppercase',
-    },
-    blurOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: Color(theme.colors.background).alpha(0.05).toString(),
-    },
-  });
+  // Use the extracted styles
+  const styles = React.useMemo(() => createHeroStyles(theme), [theme]);
 
   const revelationPlace = surah.revelation_place.toLowerCase();
 
@@ -335,24 +379,6 @@ const HeroSection = ({
         end={{x: 1, y: 0.2}}
         style={StyleSheet.absoluteFill}
       />
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          style={styles.blurOverlay}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          blurAmount={20}
-        />
-      ) : (
-        <View
-          style={[
-            styles.blurOverlay,
-            {
-              backgroundColor: theme.isDarkMode
-                ? 'rgba(0,0,0,0.75)'
-                : 'rgba(255,255,255,0.85)',
-            },
-          ]}
-        />
-      )}
       <View style={styles.content}>
         <View style={styles.leftSection}>
           <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>
@@ -362,9 +388,15 @@ const HeroSection = ({
             <Text style={styles.heroTitle}>SURAH OF THE DAY</Text>
             <View style={styles.revelationPlace}>
               {revelationPlace === 'makkah' ? (
-                <MakkahIcon size={moderateScale(12)} color="#e8e8e8" />
+                <MakkahIcon
+                  size={moderateScale(12)}
+                  color={theme.colors.text}
+                />
               ) : (
-                <MadinahIcon size={moderateScale(12)} color="#e8e8e8" />
+                <MadinahIcon
+                  size={moderateScale(12)}
+                  color={theme.colors.text}
+                />
               )}
             </View>
           </View>
@@ -388,19 +420,9 @@ const HeroSection = ({
   );
 };
 
-const ItemSeparator = () => <View style={{width: moderateScale(8)}} />;
-
-const CollectionSection = ({
-  title,
-  collection,
-  onSurahPress,
-}: {
-  title: string;
-  collection: SurahCollection;
-  onSurahPress: (surah: Surah) => void;
-}) => {
-  const {theme} = useTheme();
-  const styles = StyleSheet.create({
+// Create a function to generate collection styles based on theme and collection color
+const createCollectionStyles = (theme: ThemeType, collectionColor: string) =>
+  StyleSheet.create({
     section: {
       marginBottom: moderateScale(16),
     },
@@ -411,9 +433,9 @@ const CollectionSection = ({
     sectionTitle: {
       fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
-      color: Color(collection.color).isDark()
+      color: Color(collectionColor).isDark()
         ? theme.colors.text
-        : collection.color,
+        : collectionColor,
       marginBottom: verticalScale(2),
     },
     description: {
@@ -428,7 +450,60 @@ const CollectionSection = ({
     },
   });
 
-  const surahs = collection.surahs.map(id => SURAHS[id - 1]);
+const ItemSeparator = () => <View style={{width: moderateScale(8)}} />;
+
+const CollectionSection = ({
+  title,
+  collection,
+  onSurahPress,
+}: {
+  title: string;
+  collection: SurahCollection;
+  onSurahPress: (surah: Surah) => void;
+}) => {
+  const {theme} = useTheme();
+  // Use the extracted styles with memoization
+  const styles = React.useMemo(
+    () => createCollectionStyles(theme, collection.color),
+    [theme, collection.color],
+  );
+
+  // Memoize the surahs array to avoid recreating on each render
+  const surahs = React.useMemo(
+    () => collection.surahs.map(id => SURAHS[id - 1]),
+    [collection.surahs],
+  );
+
+  // Memoize the renderItem function to avoid recreating on each render
+  const renderItem = React.useCallback(
+    ({item}: {item: Surah}) => (
+      <SurahCard
+        id={item.id}
+        name={item.name}
+        translatedName={item.translated_name_english}
+        versesCount={item.verses_count}
+        revelationPlace={item.revelation_place}
+        onPress={() => onSurahPress(item)}
+        color={collection.color}
+      />
+    ),
+    [collection.color, onSurahPress],
+  );
+
+  // Memoize the keyExtractor function
+  const keyExtractor = React.useCallback(
+    (item: Surah) => `surah-${item.id}`,
+    [],
+  );
+
+  // Memoize the content container style
+  const contentContainerStyle = React.useMemo(
+    () => [
+      styles.sectionContent,
+      {paddingRight: moderateScale(15) + moderateScale(8)},
+    ],
+    [styles.sectionContent],
+  );
 
   return (
     <View style={styles.section}>
@@ -440,96 +515,154 @@ const CollectionSection = ({
       </View>
       <FlatList
         data={surahs}
-        renderItem={({item}) => (
-          <SurahCard
-            id={item.id}
-            name={item.name}
-            translatedName={item.translated_name_english}
-            versesCount={item.verses_count}
-            revelationPlace={item.revelation_place}
-            onPress={() => onSurahPress(item)}
-            color={collection.color}
-          />
-        )}
-        keyExtractor={item => item.id.toString()}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.sectionContent,
-          {paddingRight: moderateScale(15) + moderateScale(8)},
-        ]}
+        contentContainerStyle={contentContainerStyle}
         snapToInterval={moderateScale(148)}
         decelerationRate="fast"
         snapToAlignment="start"
         ItemSeparatorComponent={ItemSeparator}
+        removeClippedSubviews={true}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={3}
       />
     </View>
   );
 };
 
+// Main component styles
+const mainStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: verticalScale(32),
+  },
+  sectionHeader: {
+    fontSize: moderateScale(22),
+    fontFamily: 'Manrope-Bold',
+    marginVertical: verticalScale(8),
+    paddingHorizontal: moderateScale(16),
+  },
+});
+
+// Simple section header component
+const SectionHeader = React.memo(({title}: {title: string}) => {
+  const {theme} = useTheme();
+  return (
+    <Text style={[mainStyles.sectionHeader, {color: theme.colors.text}]}>
+      {title}
+    </Text>
+  );
+});
+
+SectionHeader.displayName = 'SectionHeader';
+
 export default function SurahsView({onSurahPress}: SurahsViewProps) {
-  useTheme();
+  // const {theme} = useTheme();
+
+  // Memoize the surah of the day to prevent recalculation
   const surahOfTheDay = React.useMemo(() => getSurahOfTheDay(), []);
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
+  // Memoize the onSurahPress handler to prevent recreation on each render
+  const handleSurahPress = React.useCallback(
+    (surah: Surah) => {
+      onSurahPress(surah);
     },
-  });
+    [onSurahPress],
+  );
+
+  // Memoize the category renderers
+  const renderSpecialCategories = React.useMemo(
+    () =>
+      SPECIAL_CATEGORIES.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={handleSurahPress}
+        />
+      )),
+    [handleSurahPress],
+  );
+
+  const renderFeaturedCollections = React.useMemo(
+    () =>
+      FEATURED_COLLECTIONS.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={handleSurahPress}
+        />
+      )),
+    [handleSurahPress],
+  );
+
+  const renderThemeCollections = React.useMemo(
+    () =>
+      BY_THEME.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={handleSurahPress}
+        />
+      )),
+    [handleSurahPress],
+  );
+
+  const renderLengthCollections = React.useMemo(
+    () =>
+      BY_LENGTH.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={handleSurahPress}
+        />
+      )),
+    [handleSurahPress],
+  );
+
+  const renderPeriodCollections = React.useMemo(
+    () =>
+      BY_PERIOD.map(collection => (
+        <CollectionSection
+          key={collection.id}
+          title={collection.title}
+          collection={collection}
+          onSurahPress={handleSurahPress}
+        />
+      )),
+    [handleSurahPress],
+  );
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={{
-        paddingBottom: verticalScale(32),
-      }}
-      showsVerticalScrollIndicator={false}>
-      <HeroSection surah={surahOfTheDay} onPress={onSurahPress} />
+      style={mainStyles.container}
+      contentContainerStyle={mainStyles.contentContainer}
+      showsVerticalScrollIndicator={false}
+      removeClippedSubviews={true}
+      scrollEventThrottle={16}>
+      <HeroSection surah={surahOfTheDay} onPress={handleSurahPress} />
 
-      {SPECIAL_CATEGORIES.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      ))}
+      {renderSpecialCategories}
 
-      {FEATURED_COLLECTIONS.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      ))}
+      <SectionHeader title="Featured Collections" />
+      {renderFeaturedCollections}
 
-      {BY_THEME.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      ))}
+      <SectionHeader title="By Theme" />
+      {renderThemeCollections}
 
-      {BY_LENGTH.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      ))}
+      <SectionHeader title="By Length" />
+      {renderLengthCollections}
 
-      {BY_PERIOD.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      ))}
+      <SectionHeader title="By Period" />
+      {renderPeriodCollections}
     </ScrollView>
   );
 }

@@ -1,5 +1,5 @@
 import React, {useCallback, useRef, useEffect} from 'react';
-import {View, StyleProp, ViewStyle, Platform} from 'react-native';
+import {View, StyleProp, ViewStyle, Platform, BackHandler} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetHandleProps,
@@ -65,6 +65,26 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
     }
   }, [isVisible]);
 
+  // Add back button handler for Android
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const handleBackPress = () => {
+      if (isVisible) {
+        onClose();
+        return true; // Prevent default behavior
+      }
+      return false; // Let default behavior happen
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress,
+    );
+
+    return () => subscription.remove();
+  }, [isVisible, onClose]);
+
   const renderBackdrop = useCallback(
     (
       props: React.JSX.IntrinsicAttributes & BottomSheetDefaultBackdropProps,
@@ -92,7 +112,11 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       enablePanDownToClose={true}
       handleComponent={CustomHandle}
       enableContentPanningGesture={Platform.OS === 'ios'}
-      onClose={onClose}>
+      onClose={onClose}
+      style={{
+        zIndex: 3000,
+        elevation: 3000,
+      }}>
       <View style={[styles(theme).contentContainer, contentContainerStyle]}>
         {children}
       </View>

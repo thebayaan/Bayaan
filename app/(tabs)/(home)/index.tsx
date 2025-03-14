@@ -16,7 +16,7 @@ import SurahsView from '@/components/SurahsView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Toggle from '@/components/Toggle';
+import TabSelector from '@/components/TabSelector';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
@@ -67,15 +67,22 @@ const Header = React.memo(
         height: moderateScale(56),
       },
       leftPlaceholder: {
-        width: moderateScale(24),
+        width: moderateScale(40),
+        height: moderateScale(40),
+        justifyContent: 'center',
+        alignItems: 'center',
       },
-      toggleContainer: {
+      centerContainer: {
         flex: 1,
         alignItems: 'center',
       },
-      settingsIcon: {
-        width: moderateScale(24),
-        alignItems: 'flex-end',
+      settingsButton: {
+        width: moderateScale(40),
+        height: moderateScale(40),
+        borderRadius: moderateScale(20),
+        backgroundColor: 'transparent',
+        justifyContent: 'center',
+        alignItems: 'center',
       },
     });
 
@@ -116,22 +123,24 @@ const Header = React.memo(
           </View>
         )}
         <View style={headerStyles.header}>
-          <View style={headerStyles.leftPlaceholder} />
-          <View style={headerStyles.toggleContainer}>
-            <Toggle
+          <View style={headerStyles.leftPlaceholder}>
+            {/* You can add a logo or other icon here if needed */}
+          </View>
+          <View style={headerStyles.centerContainer}>
+            <TabSelector
               options={['Reciters', 'Surahs']}
               selectedOption={activeView}
-              onToggle={handleToggle}
+              onSelect={handleToggle}
             />
           </View>
           <TouchableOpacity
-            activeOpacity={0.99}
-            style={headerStyles.settingsIcon}
+            activeOpacity={0.7}
+            style={headerStyles.settingsButton}
             onPress={handleSettingsPress}>
             <Icon
               type="antdesign"
               name="setting"
-              size={moderateScale(24)}
+              size={moderateScale(20)}
               color={theme.colors.textSecondary}
             />
           </TouchableOpacity>
@@ -162,11 +171,35 @@ const Content = React.memo(
     handleSurahPress,
     insets,
   }: ContentProps) => {
+    // Track if each view has been rendered at least once
+    const [hasViewedReciters, setHasViewedReciters] = React.useState(true); // Start with true as it's the default
+    const [hasViewedSurahs, setHasViewedSurahs] = React.useState(true); // Changed to true to load both components immediately
+
+    // Update the viewed state when active view changes
+    React.useEffect(() => {
+      if (activeView === 'Reciters' && !hasViewedReciters) {
+        setHasViewedReciters(true);
+      } else if (activeView === 'Surahs' && !hasViewedSurahs) {
+        setHasViewedSurahs(true);
+      }
+    }, [activeView, hasViewedReciters, hasViewedSurahs]);
+
     const contentStyles = StyleSheet.create({
       contentContainer: {
         flex: 1,
         marginTop: moderateScale(56),
         marginBottom: moderateScale(16),
+      },
+      hiddenView: {
+        display: 'none',
+        position: 'absolute',
+        width: '100%',
+        height: 0,
+        overflow: 'hidden',
+      },
+      visibleView: {
+        flex: 1,
+        width: '100%',
       },
     });
 
@@ -178,10 +211,28 @@ const Content = React.memo(
           paddingBottom: TOTAL_BOTTOM_PADDING,
         }}>
         <View style={contentStyles.contentContainer}>
-          {activeView === 'Reciters' ? (
-            <RecitersView onReciterPress={handleReciterPress} />
-          ) : (
-            <SurahsView onSurahPress={handleSurahPress} />
+          {/* RecitersView - only render if it has been viewed once */}
+          {hasViewedReciters && (
+            <View
+              style={[
+                activeView === 'Reciters'
+                  ? contentStyles.visibleView
+                  : contentStyles.hiddenView,
+              ]}>
+              <RecitersView onReciterPress={handleReciterPress} />
+            </View>
+          )}
+
+          {/* SurahsView - only render if it has been viewed once */}
+          {hasViewedSurahs && (
+            <View
+              style={[
+                activeView === 'Surahs'
+                  ? contentStyles.visibleView
+                  : contentStyles.hiddenView,
+              ]}>
+              <SurahsView onSurahPress={handleSurahPress} />
+            </View>
           )}
         </View>
       </ScrollView>
