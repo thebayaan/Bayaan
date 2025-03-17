@@ -415,11 +415,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: moderateScale(12),
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 1},
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-      elevation: 2,
     },
     themeContent: {
       flexDirection: 'column',

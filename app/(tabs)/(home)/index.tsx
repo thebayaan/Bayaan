@@ -185,9 +185,12 @@ const Content = React.memo(
     }, [activeView, hasViewedReciters, hasViewedSurahs]);
 
     const contentStyles = StyleSheet.create({
+      container: {
+        flex: 1,
+        paddingTop: moderateScale(56) + insets.top,
+      },
       contentContainer: {
         flex: 1,
-        marginTop: moderateScale(56),
         marginBottom: moderateScale(16),
       },
       hiddenView: {
@@ -196,46 +199,57 @@ const Content = React.memo(
         width: '100%',
         height: 0,
         overflow: 'hidden',
+        opacity: 0,
       },
       visibleView: {
         flex: 1,
         width: '100%',
+        opacity: 1,
       },
     });
 
     return (
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingTop: insets.top,
-          paddingBottom: TOTAL_BOTTOM_PADDING,
-        }}>
-        <View style={contentStyles.contentContainer}>
-          {/* RecitersView - only render if it has been viewed once */}
-          {hasViewedReciters && (
-            <View
-              style={[
-                activeView === 'Reciters'
-                  ? contentStyles.visibleView
-                  : contentStyles.hiddenView,
-              ]}>
-              <RecitersView onReciterPress={handleReciterPress} />
-            </View>
-          )}
+      <View style={contentStyles.container}>
+        {/* RecitersView - only render if it has been viewed once */}
+        {hasViewedReciters && (
+          <View
+            style={[
+              activeView === 'Reciters'
+                ? contentStyles.visibleView
+                : contentStyles.hiddenView,
+            ]}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingBottom: TOTAL_BOTTOM_PADDING,
+              }}>
+              <View style={contentStyles.contentContainer}>
+                <RecitersView onReciterPress={handleReciterPress} />
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
-          {/* SurahsView - only render if it has been viewed once */}
-          {hasViewedSurahs && (
-            <View
-              style={[
-                activeView === 'Surahs'
-                  ? contentStyles.visibleView
-                  : contentStyles.hiddenView,
-              ]}>
-              <SurahsView onSurahPress={handleSurahPress} />
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        {/* SurahsView - only render if it has been viewed once */}
+        {hasViewedSurahs && (
+          <View
+            style={[
+              activeView === 'Surahs'
+                ? contentStyles.visibleView
+                : contentStyles.hiddenView,
+            ]}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingBottom: TOTAL_BOTTOM_PADDING,
+              }}>
+              <View style={contentStyles.contentContainer}>
+                <SurahsView onSurahPress={handleSurahPress} />
+              </View>
+            </ScrollView>
+          </View>
+        )}
+      </View>
     );
   },
   (prevProps, nextProps) =>
