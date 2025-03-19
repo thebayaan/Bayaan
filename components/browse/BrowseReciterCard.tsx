@@ -105,6 +105,12 @@ const BrowseReciterCard = React.memo(
       [theme, width, height],
     );
 
+    // Get unique rewayat names to properly display info
+    const uniqueRewayatNames = useMemo(() => {
+      const names = new Set(reciter.rewayat.map(r => r.name));
+      return Array.from(names);
+    }, [reciter.rewayat]);
+
     // Animation values
     const scale = useSharedValue(1);
 
@@ -202,8 +208,8 @@ const BrowseReciterCard = React.memo(
             {reciter.name}
           </Text>
           <Text style={styles.reciterInfo} numberOfLines={1}>
-            {reciter.rewayat.length > 1
-              ? `${reciter.rewayat.length} rewayat available`
+            {uniqueRewayatNames.length > 1
+              ? `${uniqueRewayatNames.length} rewayat available`
               : reciter.rewayat[0]?.name || ''}
           </Text>
         </View>
