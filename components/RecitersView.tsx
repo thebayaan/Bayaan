@@ -14,6 +14,15 @@ import {
 } from '@/services/player/store/recentlyPlayedStore';
 import {ScrollingHero} from '@/components/ScrollingHero';
 import {Theme} from '@/utils/themeUtils';
+import {
+  getTajweedReciters,
+  getMemorizationReciters,
+  getBeginnerFriendlyReciters,
+  getDiverseRewayatReciters,
+  getFeaturedReciters,
+  getTrendingReciters,
+  getBayaanOriginalsReciters,
+} from '@/data/reciterCollections';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
@@ -29,7 +38,7 @@ const MemoizedFlatList = React.memo(
     onReciterPress,
   }: {
     data: SectionItem[];
-    variant: 'recent' | 'circular' | 'default';
+    variant: 'recent' | 'circular' | 'default' | 'featured';
     onReciterPress: (reciter: Reciter) => void;
     theme: Theme;
   }) => (
@@ -55,10 +64,22 @@ const MemoizedFlatList = React.memo(
       windowSize={3}
       initialNumToRender={5}
       getItemLayout={(_, index) => ({
-        length: variant === 'circular' ? 80 : variant === 'recent' ? 200 : 140,
+        length:
+          variant === 'circular'
+            ? 80
+            : variant === 'recent'
+              ? 200
+              : variant === 'featured'
+                ? 180
+                : 140,
         offset:
-          (variant === 'circular' ? 80 : variant === 'recent' ? 200 : 140) *
-          index,
+          (variant === 'circular'
+            ? 80
+            : variant === 'recent'
+              ? 200
+              : variant === 'featured'
+                ? 180
+                : 140) * index,
         index,
       })}
     />
@@ -79,7 +100,7 @@ const RenderSectionItem = React.memo(
     onReciterPress,
   }: {
     item: SectionItem;
-    variant: 'recent' | 'circular' | 'default';
+    variant: 'recent' | 'circular' | 'default' | 'featured';
     onReciterPress: (reciter: Reciter) => void;
   }) => {
     const {theme} = useTheme();
@@ -126,6 +147,19 @@ const RenderSectionItem = React.memo(
       );
     }
 
+    if (variant === 'featured') {
+      const reciter = item as Reciter;
+      return (
+        <BrowseReciterCard
+          reciter={reciter}
+          onPress={() => onReciterPress(reciter)}
+          width={moderateScale(160)}
+          height={moderateScale(180)}
+          theme={theme}
+        />
+      );
+    }
+
     const reciter = item as Reciter;
     return (
       <BrowseReciterCard
@@ -152,7 +186,7 @@ const Section = React.memo(
   }: {
     title: string;
     data: SectionItem[];
-    variant: 'recent' | 'circular' | 'default';
+    variant: 'recent' | 'circular' | 'default' | 'featured';
     onReciterPress: (reciter: Reciter) => void;
     theme: Theme;
   }) => {
@@ -205,20 +239,23 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       .slice(0, 5);
   }, [favoriteReciters, lovedTracks]);
 
-  const {mojawwadReciters, molimReciters, otherRewayatReciters} =
-    useMemo(() => {
-      return {
-        mojawwadReciters: RECITERS.filter(r =>
-          r.rewayat.some(rw => rw.style === 'mojawwad'),
-        ).slice(0, 10),
-        molimReciters: RECITERS.filter(r =>
-          r.rewayat.some(rw => rw.style === 'molim'),
-        ).slice(0, 10),
-        otherRewayatReciters: RECITERS.filter(r =>
-          r.rewayat.some(rw => rw.style !== 'hafs' && rw.style !== 'mujawwad'),
-        ).slice(0, 10),
-      };
-    }, []);
+  // Get specialized reciter collections
+  const featuredReciters = useMemo(() => getFeaturedReciters(8), []);
+  const trendingReciters = useMemo(() => getTrendingReciters(10), []);
+  const bayaanOriginalsReciters = useMemo(
+    () => getBayaanOriginalsReciters(6),
+    [],
+  );
+  const beginnerFriendlyReciters = useMemo(
+    () => getBeginnerFriendlyReciters(10),
+    [],
+  );
+  const tajweedReciters = useMemo(() => getTajweedReciters(10), []);
+  const memorizationReciters = useMemo(() => getMemorizationReciters(10), []);
+  const diverseRewayatReciters = useMemo(
+    () => getDiverseRewayatReciters(10),
+    [],
+  );
 
   return (
     <ScrollView
@@ -229,6 +266,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
       <ScrollingHero />
+
+      {/* Recently played tracks - high priority for immediate access */}
       {recentTracks.length > 0 && (
         <View style={{marginTop: verticalScale(5)}}>
           <Section
@@ -240,6 +279,30 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           />
         </View>
       )}
+
+      {/* Where to start - for new users who need guidance */}
+      {beginnerFriendlyReciters.length > 0 && (
+        <Section
+          title="New to Quran? Start Here"
+          data={beginnerFriendlyReciters}
+          variant="default"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* Featured section - showcase spotlighted content prominently */}
+      {featuredReciters.length > 0 && (
+        <Section
+          title="Featured Reciters"
+          data={featuredReciters}
+          variant="default"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* User favorites - personal relevance section */}
       {favoriteRecitersSection.length > 0 && (
         <Section
           title="Your Favorites"
@@ -249,33 +312,62 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           theme={theme}
         />
       )}
-      {otherRewayatReciters.length > 0 && (
+
+      {/* Bayaan originals - exclusive content showcased prominently */}
+      {bayaanOriginalsReciters.length > 0 && (
         <Section
-          title="Other Rewayat"
-          data={otherRewayatReciters}
+          title="Bayaan Originals"
+          data={bayaanOriginalsReciters}
+          variant="featured"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* Trending - social proof for users */}
+      {trendingReciters.length > 0 && (
+        <Section
+          title="Trending Now"
+          data={trendingReciters}
+          variant="circular"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* Purpose-based collections come next */}
+      {tajweedReciters.length > 0 && (
+        <Section
+          title="Best for Tajweed"
+          data={tajweedReciters}
           variant="default"
           onReciterPress={onReciterPress}
           theme={theme}
         />
       )}
-      {mojawwadReciters.length > 0 && (
+
+      {memorizationReciters.length > 0 && (
         <Section
-          title="Mojawwad"
-          data={mojawwadReciters}
+          title="Best for Memorization"
+          data={memorizationReciters}
           variant="default"
           onReciterPress={onReciterPress}
           theme={theme}
         />
       )}
-      {molimReciters.length > 0 && (
+
+      {/* Style-based collections follow */}
+      {diverseRewayatReciters.length > 0 && (
         <Section
-          title="Mo'lim"
-          data={molimReciters}
+          title="Diverse Rewayat"
+          data={diverseRewayatReciters}
           variant="default"
           onReciterPress={onReciterPress}
           theme={theme}
         />
       )}
+
+      {/* Personal collection at the end */}
       {collectionReciters.length > 0 && (
         <Section
           title="From your Collection"
