@@ -1,13 +1,15 @@
-import React, {useState} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import React from 'react';
+import {View, Text, TouchableOpacity, Switch, ScrollView} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {Icon} from '@rneui/base';
-import {useReciterChoice} from '@/hooks/useReciterChoice';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
+import Color from 'color';
+import {useSettings} from '@/hooks/useSettings';
+import Animated, {FadeIn} from 'react-native-reanimated';
 
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
@@ -27,12 +29,14 @@ export default function ReciterChoiceScreen() {
       action: 'browseAll',
       description: 'Search through our complete collection of reciters',
       icon: 'search1',
+      iconType: 'antdesign',
     },
     {
       label: 'Use Default Reciter',
       action: 'useDefault',
       description: 'Always use your selected default reciter',
       icon: 'user',
+      iconType: 'feather',
     },
   ];
 
@@ -40,101 +44,138 @@ export default function ReciterChoiceScreen() {
     <View style={styles.container}>
       <Header title="Reciter Choice" onBack={() => router.back()} />
 
-      <View style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
-        <View style={styles.header}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          {paddingTop: insets.top + moderateScale(56)},
+        ]}
+        showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeIn.delay(100)}>
           <Text style={[styles.subtitle, {color: theme.colors.textSecondary}]}>
             Choose how you want to select reciters when playing Surahs
           </Text>
-        </View>
 
-        <View style={[styles.toggleCard, {backgroundColor: theme.colors.card}]}>
-          <View style={styles.toggleContent}>
-            <Text style={[styles.toggleTitle, {color: theme.colors.text}]}>
-              Ask Every Time
-            </Text>
-            <Switch
-              value={askEveryTime}
-              onValueChange={() => setAskEveryTime(!askEveryTime)}
-              trackColor={{
-                false: theme.colors.border,
-                true: theme.colors.primary,
-              }}
-              thumbColor={theme.colors.background}
-            />
-          </View>
-        </View>
-
-        {!askEveryTime && (
-          <View style={styles.optionsContainer}>
+          <View style={styles.section}>
             <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-              Default Selection Method
+              Selection Preference
             </Text>
-            {options.map(option => (
-              <TouchableOpacity
-                activeOpacity={0.99}
-                key={option.action}
-                style={[
-                  styles.optionCard,
-                  {backgroundColor: theme.colors.card},
-                  defaultReciterSelection === option.action && [
-                    styles.selectedCard,
-                    {
-                      backgroundColor: Color(theme.colors.primary)
-                        .alpha(0.1)
-                        .toString(),
-                      borderColor: theme.colors.primary,
-                    },
-                  ],
-                ]}
-                onPress={() => setDefaultReciterSelection(option.action)}>
-                <View style={styles.optionContent}>
-                  <View
+            <View style={[styles.card, {backgroundColor: theme.colors.card}]}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <Text
+                    style={[styles.settingTitle, {color: theme.colors.text}]}>
+                    Ask Every Time
+                  </Text>
+                  <Text
                     style={[
-                      styles.iconContainer,
-                      {backgroundColor: theme.colors.background},
+                      styles.settingDescription,
+                      {color: theme.colors.textSecondary},
                     ]}>
-                    {typeof option.icon === 'string' ? (
-                      <Icon
-                        name={option.icon}
-                        type="antdesign"
-                        size={24}
-                        color={
-                          defaultReciterSelection === option.action
-                            ? theme.colors.primary
-                            : theme.colors.text
-                        }
-                      />
-                    ) : (
-                      option.icon
-                    )}
-                  </View>
-                  <View style={styles.optionTextContainer}>
-                    <Text
-                      style={[styles.optionTitle, {color: theme.colors.text}]}>
-                      {option.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.optionDescription,
-                        {color: theme.colors.textSecondary},
-                      ]}>
-                      {option.description}
-                    </Text>
-                  </View>
-                  {defaultReciterSelection === option.action && (
-                    <Icon
-                      name="check-circle"
-                      type="feather"
-                      size={24}
-                      color={theme.colors.primary}
-                    />
-                  )}
+                    Choose a reciter each time you play
+                  </Text>
                 </View>
-              </TouchableOpacity>
-            ))}
+                <Switch
+                  value={askEveryTime}
+                  onValueChange={() => setAskEveryTime(!askEveryTime)}
+                  trackColor={{
+                    false: Color(theme.colors.border).alpha(0.3).toString(),
+                    true: Color(theme.colors.text).alpha(0.6).toString(),
+                  }}
+                  thumbColor={theme.colors.background}
+                  ios_backgroundColor={Color(theme.colors.border)
+                    .alpha(0.3)
+                    .toString()}
+                />
+              </View>
+            </View>
           </View>
-        )}
-      </View>
+
+          {!askEveryTime && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+                Default Selection Method
+              </Text>
+              <View style={styles.optionsContainer}>
+                {options.map(option => (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    key={option.action}
+                    style={[
+                      styles.card,
+                      {backgroundColor: theme.colors.card},
+                      defaultReciterSelection === option.action && [
+                        styles.selectedCard,
+                        {
+                          backgroundColor: Color(theme.colors.text)
+                            .alpha(0.05)
+                            .toString(),
+                          borderColor: Color(theme.colors.text)
+                            .alpha(0.2)
+                            .toString(),
+                        },
+                      ],
+                    ]}
+                    onPress={() => setDefaultReciterSelection(option.action)}>
+                    <View style={styles.optionContent}>
+                      <View
+                        style={[
+                          styles.iconContainer,
+                          {
+                            backgroundColor:
+                              defaultReciterSelection === option.action
+                                ? Color(theme.colors.text)
+                                    .alpha(0.1)
+                                    .toString()
+                                : Color(theme.colors.card)
+                                    .lighten(0.1)
+                                    .toString(),
+                          },
+                        ]}>
+                        <Icon
+                          name={option.icon}
+                          type={option.iconType}
+                          size={moderateScale(20)}
+                          color={theme.colors.text}
+                        />
+                      </View>
+                      <View style={styles.optionTextContainer}>
+                        <Text
+                          style={[
+                            styles.optionTitle,
+                            {
+                              color: theme.colors.text,
+                              fontFamily:
+                                defaultReciterSelection === option.action
+                                  ? theme.fonts.semiBold
+                                  : theme.fonts.medium,
+                            },
+                          ]}>
+                          {option.label}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.optionDescription,
+                            {color: theme.colors.textSecondary},
+                          ]}>
+                          {option.description}
+                        </Text>
+                      </View>
+                      {defaultReciterSelection === option.action && (
+                        <Icon
+                          name="check-circle"
+                          type="feather"
+                          size={24}
+                          color={Color(theme.colors.text).alpha(0.8).toString()}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </Animated.View>
+      </ScrollView>
     </View>
   );
 }
@@ -145,50 +186,51 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    content: {
-      flex: 1,
+    scrollContent: {
       paddingHorizontal: moderateScale(16),
-    },
-    header: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 100,
+      paddingBottom: moderateScale(160),
     },
     subtitle: {
       fontSize: moderateScale(14),
-      marginBottom: moderateScale(16),
+      marginBottom: moderateScale(24),
+      fontFamily: theme.fonts.regular,
+      lineHeight: moderateScale(20),
     },
-    toggleCard: {
+    section: {
+      marginBottom: moderateScale(24),
+    },
+    sectionTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: theme.fonts.semiBold,
+      marginBottom: moderateScale(12),
+    },
+    card: {
       borderRadius: moderateScale(12),
       padding: moderateScale(16),
-      marginBottom: moderateScale(16),
+      marginBottom: moderateScale(8),
+      borderWidth: 1,
+      borderColor: 'transparent',
     },
-    toggleContent: {
+    settingRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-    toggleTitle: {
-      fontSize: moderateScale(16),
-      fontWeight: '600',
-      marginBottom: moderateScale(2),
+    settingInfo: {
       flex: 1,
-      alignSelf: 'center',
+    },
+    settingTitle: {
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.medium,
+      marginBottom: moderateScale(4),
+    },
+    settingDescription: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.regular,
+      lineHeight: moderateScale(20),
     },
     optionsContainer: {
       gap: moderateScale(8),
-    },
-    sectionTitle: {
-      fontSize: moderateScale(18),
-      fontWeight: '600',
-      marginBottom: moderateScale(8),
-    },
-    optionCard: {
-      borderRadius: moderateScale(12),
-      padding: moderateScale(12),
-      marginBottom: moderateScale(8),
     },
     selectedCard: {
       borderWidth: 1,
@@ -198,9 +240,9 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     iconContainer: {
-      width: moderateScale(36),
-      height: moderateScale(36),
-      borderRadius: moderateScale(18),
+      width: moderateScale(40),
+      height: moderateScale(40),
+      borderRadius: moderateScale(20),
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: moderateScale(12),
@@ -210,10 +252,11 @@ const createStyles = (theme: Theme) =>
     },
     optionTitle: {
       fontSize: moderateScale(16),
-      fontWeight: '600',
-      marginBottom: moderateScale(2),
+      marginBottom: moderateScale(4),
     },
     optionDescription: {
       fontSize: moderateScale(14),
+      fontFamily: theme.fonts.regular,
+      lineHeight: moderateScale(18),
     },
   }); 
