@@ -246,21 +246,7 @@ export default function RootLayout() {
                 },
                 animation: 'fade',
               }}>
-              <Stack.Screen
-                name="(modals)/select-reciter"
-                options={{
-                  presentation: 'transparentModal',
-                  animation: 'fade',
-                }}
-              />
               <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-              <Stack.Screen
-                name="(modals)/add-favorite-reciters"
-                options={{
-                  presentation: 'transparentModal',
-                  animation: 'fade',
-                }}
-              />
             </Stack>
             <FloatingPlayer />
             <PlayerSheet />
