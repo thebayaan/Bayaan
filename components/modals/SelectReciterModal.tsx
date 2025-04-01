@@ -32,7 +32,7 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const defaultReciter = useReciterStore(state => state.defaultReciter);
-  const [surahName, setSurahName] = useState<string>('');
+  const [, setSurahName] = useState<string>('');
 
   const {askEveryTime, setAskEveryTime, setDefaultReciterSelection} =
     useSettings();
@@ -153,9 +153,7 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
             onPress={() =>
               handleReciterSelection(handleBrowseAllReciters, 'browseAll')
             }>
-            <Text style={styles.buttonText}>
-              Browse All Reciters
-            </Text>
+            <Text style={styles.buttonText}>Browse All Reciters</Text>
           </Button>
           <Button
             title="Use Default Reciter"
@@ -164,14 +162,10 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
             onPress={() =>
               handleReciterSelection(handleUseDefaultReciter, 'useDefault')
             }>
-            <Text style={styles.defaultButtonText}>
-              Use Default Reciter
-            </Text>
+            <Text style={styles.defaultButtonText}>Use Default Reciter</Text>
           </Button>
           <View style={styles.askEveryTimeContainer}>
-            <Text style={styles.askEveryTimeText}>
-              Ask every time
-            </Text>
+            <Text style={styles.askEveryTimeText}>Ask every time</Text>
             <Switch
               value={askEveryTime}
               onValueChange={handleAskEveryTimeToggle}
@@ -192,12 +186,10 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
     },
     contentContainer: {
       flex: 1,
       padding: moderateScale(16),
-      backgroundColor: theme.colors.background,
     },
     button: {
       paddingVertical: moderateScale(12),
@@ -243,4 +235,4 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       color: theme.colors.text,
     },
-  }); 
+  });

@@ -9,7 +9,6 @@ import Animated, {FadeIn} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import {VersionDisplay} from '@/components/VersionDisplay';
-import {getVersionString, getBuildTypeLabel} from '@/utils/appVersion';
 
 interface FeatureProps {
   title: string;

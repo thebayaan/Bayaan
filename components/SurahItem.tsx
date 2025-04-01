@@ -125,7 +125,7 @@ const createStyles = (theme: Theme) =>
       position: 'relative',
     },
     surahGlyphContainer: {
-      width: moderateScale(60),
+      width: moderateScale(70),
       height: moderateScale(50),
       alignItems: 'center',
       justifyContent: 'center',

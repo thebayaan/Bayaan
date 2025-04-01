@@ -1,5 +1,5 @@
-import React from 'react';
-import {Text, StyleSheet, Platform, View} from 'react-native';
+import React, {useEffect} from 'react';
+import {Text, StyleSheet, Platform, View, BackHandler} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import BottomSheet, {
   BottomSheetBackdrop,
@@ -43,6 +43,31 @@ export const BaseModal: React.FC<BaseModalProps> = ({
   onChange,
 }) => {
   const {theme} = useTheme();
+
+  // Add back button handler for Android
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const handleBackPress = () => {
+      if (bottomSheetRef.current) {
+        // Check if the bottom sheet is open by attempting to close it
+        try {
+          bottomSheetRef.current.close();
+          return true; // Prevent default behavior
+        } catch (error) {
+          console.warn('Error closing bottom sheet:', error);
+        }
+      }
+      return false; // Let default behavior happen
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress,
+    );
+
+    return () => subscription.remove();
+  }, [bottomSheetRef]);
 
   const renderBackdrop = React.useCallback(
     (props: BottomSheetBackdropProps) => (

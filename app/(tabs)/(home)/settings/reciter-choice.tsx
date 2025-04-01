@@ -123,9 +123,7 @@ export default function ReciterChoiceScreen() {
                           {
                             backgroundColor:
                               defaultReciterSelection === option.action
-                                ? Color(theme.colors.text)
-                                    .alpha(0.1)
-                                    .toString()
+                                ? Color(theme.colors.text).alpha(0.1).toString()
                                 : Color(theme.colors.card)
                                     .lighten(0.1)
                                     .toString(),
@@ -259,4 +257,4 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       lineHeight: moderateScale(18),
     },
-  }); 
+  });
