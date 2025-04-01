@@ -1,7 +1,7 @@
 {
   "name": "bayaan",
   "main": "expo-router/entry",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -15,7 +15,10 @@
     "generate-reciter-images": "ts-node scripts/generateReciterImages.ts",
     "generate-icons": "node scripts/generate-icons.js",
     "fetch-reciters": "ts-node scripts/fetchReciterData.ts",
-    "resize-splash-images": "ts-node scripts/resize-splash-images.js"
+    "resize-splash-images": "ts-node scripts/resize-splash-images.js",
+    "version:patch": "node scripts/update-version.js patch",
+    "version:minor": "node scripts/update-version.js minor",
+    "version:major": "node scripts/update-version.js major"
   },
   "jest": {
     "preset": "jest-expo"
@@ -27,6 +30,7 @@
     "@expo/vector-icons": "^14.0.2",
     "@fawazahmed/react-native-read-more": "^3.0.4",
     "@gorhom/bottom-sheet": "^4.6.4",
+    "@legendapp/list": "^1.0.0-beta.26",
     "@miblanchard/react-native-slider": "^2.6.0",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/blur": "^4.4.1",
