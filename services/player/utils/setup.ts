@@ -63,6 +63,14 @@ const DEFAULT_CONFIG: SetupConfig = {
         icon: 'notification_icon',
         largeIcon: true,
         smallIcon: 'notification_icon',
+        clickAction: 'android.intent.action.MAIN',
+        contentIntent: {
+          component: 'com.bayaan.app.MainActivity',
+          package: 'com.bayaan.app',
+          action: 'android.intent.action.MAIN',
+          category: 'android.intent.category.LAUNCHER',
+          flags: ['FLAG_ACTIVITY_CLEAR_TOP', 'FLAG_ACTIVITY_SINGLE_TOP'],
+        },
       },
     },
     ios: {
@@ -139,6 +147,8 @@ export async function setupTrackPlayer(
           ...DEFAULT_CONFIG.options,
           ...config?.options,
           android: {
+            ...DEFAULT_CONFIG.options.android,
+            ...config?.options?.android,
             appKilledPlaybackBehavior:
               AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
             alwaysPauseOnInterruption: true,
@@ -198,6 +208,8 @@ export async function setupTrackPlayer(
       ...DEFAULT_CONFIG.options,
       ...config?.options,
       android: {
+        ...DEFAULT_CONFIG.options.android,
+        ...config?.options?.android,
         appKilledPlaybackBehavior:
           AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
         alwaysPauseOnInterruption: true,

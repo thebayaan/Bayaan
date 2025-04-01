@@ -1,6 +1,18 @@
 import {Capability, AppKilledPlaybackBehavior} from 'react-native-track-player';
 
 /**
+ * Interface for Android notification content intent
+ * @interface AndroidContentIntent
+ */
+export interface AndroidContentIntent {
+  component: string;
+  package: string;
+  action: string;
+  category: string;
+  flags?: string[];
+}
+
+/**
  * Configuration options for the TrackPlayer setup.
  * @interface SetupConfig
  */
@@ -43,6 +55,14 @@ export interface SetupConfig {
         icon?: string;
         largeIcon?: boolean;
         smallIcon?: string;
+        /**
+         * The action to be executed when notification is clicked
+         */
+        clickAction?: string;
+        /**
+         * The content intent configuration for notification click
+         */
+        contentIntent?: AndroidContentIntent;
       };
     };
     ios?: {
