@@ -2,63 +2,59 @@ import {RECITERS, Reciter} from './reciterData';
 
 // Featured Reciters - Spotlight reciters chosen by Bayaan
 const FEATURED_RECITER_NAMES = [
-  'Mishary Rashid Alafasy',
+  'Albaraa Basfar',
+  'Mishary Alafasi',
   'Abdulbasit Abdulsamad',
   'Mahmoud Khalil Al-Hussary',
   'Mohammed Siddiq Al-Minshawi',
-  'Abdullah Basfar',
-  'Maher Al Meaqly',
+  'Abdulrahman Alsudaes',
+  'Saud Al-Shuraim',
   'Mohammed Ayyub',
   'Mohammed Jibreel',
+  'Maher Al Meaqly',
+  'Hazem Hassan',
+  'Mohammed Hamed',
+  'Ahmad Talib bin Humaid',
+  'Idrees Abkr',
+  'Abdullah Al-Johany',
   'Ahmad Al-Ajmy',
-  'Hani Ar-Rifai',
+  'Saad Al-Ghamdi',
+  'Mahmoud Ali Albanna',
+  'Yasser Al-Dosari',
+  'Ayyub Asif',
+  'Haitham Aldukhain',
 ];
 
 // Trending Reciters - Currently popular among users
 const TRENDING_RECITER_NAMES = [
-  'Mishary Rashid Alafasy',
-  'Abu Bakr Al-Shatri',
+  'Ahmad Talib bin Humaid',
+  'Haitham Aldukhain',
   'Yasser Al-Dosari',
-  'Idrees Abkr',
+  'Mohammed Al-Lohaidan',
   'Abdullah Al-Johany',
-  'Salah Al-Budair',
-  'Bandar Balila',
-  'Nasser Al-Qatami',
-  'Ahmed Al-Ajmy',
-  'Raad Al-Kurdi',
 ];
 
 // Bayaan Originals - Exclusive recitations curated by Bayaan
 const BAYAAN_ORIGINALS_RECITER_NAMES = [
   'Albaraa Basfar',
-  'Saad Al-Ghamdi',
-  'Ibrahim Al-Akhdar',
-  'Ali Al-Huzaifi',
-  'Mahmoud Ali Albanna',
-  'Khalid Al-Qahtani',
-  'Salah Al-Budair',
-  'Hani Ar-Rifai',
-  'Maher Al Meaqly',
-  'Abdulrahman Alsudaes',
+  'Hazem Hassan',
+  'Mohammed Hamed',
 ];
 
 // Best for Tajweed - Reciters known for excellent tajweed and correct pronunciation
 const TAJWEED_RECITER_NAMES = [
-  'Mishary Rashid Alafasy',
   'Mahmoud Khalil Al-Hussary',
+  'Mohammed Ayyub',
   'Mohammed Siddiq Al-Minshawi',
   'Abdulbasit Abdulsamad',
-  'Mohammed Ayyub',
-  'Ahmad Al-Ajmy',
-  'Saad Al-Ghamdi',
-  'Ibrahim Al-Akhdar',
-  'Maher Al Meaqly',
-  'Abdullah Basfar',
+  'Mahmoud Ali Albanna',
+  'Mustafa Ismail',
+  'Abdulrasheen Soufi',
 ];
 
 // Best for Memorization - Reciters with clear, measured pace ideal for memorization
 const MEMORIZATION_RECITER_NAMES = [
-  'Hani Ar-Rifai',
+  'Mishary Alafasi',
   'Mahmoud Khalil Al-Hussary',
   'Mohammed Siddiq Al-Minshawi Muallim',
   'Khalifa Al-Tunaiji',
@@ -72,15 +68,16 @@ const MEMORIZATION_RECITER_NAMES = [
 
 // For Beginners - Reciters who are approachable and easy to listen to for first-time listeners
 const BEGINNER_FRIENDLY_RECITER_NAMES = [
-  'Mishary Rashid Alafasy',
-  'Maher Al Meaqly',
-  'Abu Bakr Al-Shatri',
-  'Abdullah Basfar',
+  'Mishary Alafasi',
+  'Maher Al Meaqli',
+  'Shaik Abu Bakr Ak Shatri',
+  'Abdulrahman Alsudaes',
+  'Abdullah Basfer',
   'Saad Al-Ghamdi',
-  'Bandar Balila',
+  'Saud Al-Shuraim',
   'Nasser Al-Qatami',
   'Yasser Al-Dosari',
-  'Idrees Abkr',
+  'Noreen Mohammad Siddiq',
   'Ahmad Al-Ajmy',
 ];
 

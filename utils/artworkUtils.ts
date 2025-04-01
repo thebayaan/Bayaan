@@ -14,11 +14,26 @@ function formatReciterName(name: string): string {
  * 1. Remote URL if available
  * 2. Local asset if available
  * 3. Generated placeholder URL
+ * 
+ * Ensures the URL is valid and accessible for Android notification tray
  */
 export function getReciterArtwork(reciter: Reciter): string {
-  // 1. Try remote URL first
+  // Fail fast if no reciter provided
+  if (!reciter) {
+    return getDefaultArtwork();
+  }
+
+  // 1. Try remote URL first - ensure it's HTTPS for Android compatibility
   if (reciter.image_url) {
-    return reciter.image_url;
+    const url = reciter.image_url;
+    // Ensure URL is HTTPS for Android compatibility
+    if (url.startsWith('https://')) {
+      return url;
+    }
+    // Convert HTTP to HTTPS if possible
+    if (url.startsWith('http://')) {
+      return url.replace('http://', 'https://');
+    }
   }
 
   // 2. Try local asset
@@ -31,8 +46,15 @@ export function getReciterArtwork(reciter: Reciter): string {
     }
   }
 
-  // 3. Return a data URL for a placeholder image
-  // This creates a 1x1 pixel transparent PNG as a minimal fallback
-  // Android requires a valid URL, so we provide this as a last resort
+  // 3. Return default artwork
+  return getDefaultArtwork();
+}
+
+/**
+ * Returns a default artwork image for fallback
+ * This creates a 1x1 pixel transparent PNG as a minimal fallback
+ * Android requires a valid URL, so we provide this as a last resort
+ */
+function getDefaultArtwork(): string {
   return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 }
