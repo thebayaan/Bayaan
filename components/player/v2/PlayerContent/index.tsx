@@ -73,20 +73,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     ? parseInt(currentTrack.surahId, 10)
     : 1;
 
-  const renderContent = () => {
-    if (showQueue) {
-      return (
-        <QueueList
-          onQueueItemPress={handleQueueItemPress}
-          onRemoveQueueItem={handleRemoveQueueItem}
-        />
-      );
-    }
-    return (
-      <QuranView currentSurah={currentSurah} onVersePress={handleVersePress} />
-    );
-  };
-
   return (
     <View style={styles.container}>
       <BottomSheetScrollView
@@ -97,7 +83,29 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         <View style={styles.contentContainer}>
           <Header />
           <View style={styles.mainContent}>
-            {renderContent()}
+            {/* Create a container for the togglable views */}
+            <View style={styles.viewsContainer}>
+              <View
+                style={[
+                  styles.viewWrapper,
+                  showQueue ? styles.hidden : styles.visible,
+                ]}>
+                <QuranView
+                  currentSurah={currentSurah}
+                  onVersePress={handleVersePress}
+                />
+              </View>
+              <View
+                style={[
+                  styles.viewWrapper,
+                  showQueue ? styles.visible : styles.hidden,
+                ]}>
+                <QueueList
+                  onQueueItemPress={handleQueueItemPress}
+                  onRemoveQueueItem={handleRemoveQueueItem}
+                />
+              </View>
+            </View>
             <AdditionalControls />
             <View style={styles.controlsContainer}>
               <TrackInfo />
@@ -142,9 +150,34 @@ const styles = StyleSheet.create({
     paddingBottom: moderateScale(20),
     alignItems: 'center',
   },
+  viewsContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    maxWidth: MAX_PLAYER_CONTENT_HEIGHT,
+    maxHeight: MAX_PLAYER_CONTENT_HEIGHT,
+    marginTop: moderateScale(5),
+    position: 'relative',
+  },
+  viewWrapper: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
   controlsContainer: {
     width: '100%',
     marginTop: moderateScale(10),
+  },
+  visible: {
+    display: 'flex',
+    opacity: 1,
+    zIndex: 1,
+  },
+  hidden: {
+    display: 'none',
+    opacity: 0,
+    zIndex: 0,
   },
 });
 

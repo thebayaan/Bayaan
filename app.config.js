@@ -1,7 +1,10 @@
-// Import the version utility
-import {APP_VERSION, getVersionString} from './utils/appVersion';
+// Import version information from Git-based generator
+const versionInfo = require('./scripts/generate-version');
 
-export default {
+// Get version string
+const getVersionString = () => versionInfo.semanticVersion;
+
+module.exports = {
   expo: {
     name: 'Bayaan',
     slug: 'Bayaan',
@@ -14,7 +17,7 @@ export default {
     },
     ios: {
       bundleIdentifier: 'com.bayaan.app',
-      buildNumber: APP_VERSION.buildNumber,
+      buildNumber: versionInfo.buildNumber,
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
@@ -74,10 +77,19 @@ export default {
         projectId: 'e31ace41-2d1b-4777-8230-8c8264277d59',
       },
       isDevelopmentMode: false,
+      // Add version information for runtime access
+      version: {
+        semanticVersion: versionInfo.semanticVersion,
+        buildNumber: versionInfo.buildNumber,
+        gitHash: versionInfo.gitHash,
+        gitBranch: versionInfo.gitBranch,
+        buildTime: versionInfo.buildTime,
+        fullVersion: versionInfo.fullVersion,
+      },
     },
     android: {
       package: 'com.bayaan.app',
-      versionCode: APP_VERSION.versionCode,
+      versionCode: versionInfo.versionCode,
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#8dc9d6',

@@ -16,9 +16,10 @@
     "generate-icons": "node scripts/generate-icons.js",
     "fetch-reciters": "ts-node scripts/fetchReciterData.ts",
     "resize-splash-images": "ts-node scripts/resize-splash-images.js",
-    "version:patch": "node scripts/update-version.js patch",
-    "version:minor": "node scripts/update-version.js minor",
-    "version:major": "node scripts/update-version.js major"
+    "version:patch": "node scripts/version-bump.js patch",
+    "version:minor": "node scripts/version-bump.js minor",
+    "version:major": "node scripts/version-bump.js major",
+    "version:current": "node scripts/generate-version.js"
   },
   "jest": {
     "preset": "jest-expo"
