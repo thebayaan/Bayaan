@@ -6,11 +6,11 @@ export const APP_VERSION = {
   // Semantic versioning
   major: 1,
   minor: 0,
-  patch: 2,
+  patch: 3,
   
   // Build numbers
-  buildNumber: '5', // iOS build number (string)
-  versionCode: 5, // Android version code (number)
+  buildNumber: '6', // iOS build number (string)
+  versionCode: 6, // Android version code (number)
   
   // Additional info
   buildType: 'release', // 'debug', 'release', 'beta', etc.

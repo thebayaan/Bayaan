@@ -2,16 +2,19 @@
   "expo": {
     "name": "Bayaan",
     "slug": "Bayaan",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "scheme": "bayaan",
     "userInterfaceStyle": "automatic",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "icon": "./assets/images/icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bayaan.app",
-      "buildNumber": "2",
+      "buildNumber": "6",
       "icon": {
         "dark": "./assets/images/ios-dark.png",
         "light": "./assets/images/ios-light.png",
@@ -21,20 +24,23 @@
         "NSMicrophoneUsageDescription": "This app uses the microphone to play audio.",
         "NSAppleMusicUsageDescription": "This app uses Apple Music to play audio.",
         "UILaunchStoryboardName": "SplashScreen",
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
       "package": "com.bayaan.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#8dc9d6"
       },
       "permissions": [
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
-      ]
+      ],
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",
@@ -54,6 +60,12 @@
           "dark": {
             "image": "./assets/images/splash-icon-dark.png",
             "backgroundColor": "#000000"
+          },
+          "android": {
+            "image": "./assets/images/android-splash-icon.png",
+            "dark": {
+              "image": "./assets/images/android-splash-icon-dark.png"
+            }
           },
           "userInterfaceStyle": "automatic"
         }
