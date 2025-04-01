@@ -36,6 +36,10 @@
         "credentialsSource": "remote",
         "enterpriseProvisioning": "universal"
       },
+      "android": {
+        "buildType": "app-bundle",
+        "credentialsSource": "remote"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.bayaan.app"
       }
@@ -46,6 +50,10 @@
       "ios": {
         "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
         "appleTeamId": "YOUR_APPLE_TEAM_ID"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

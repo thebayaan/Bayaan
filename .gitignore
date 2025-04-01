@@ -28,6 +28,7 @@ web-build/
 !.env.example
 
 .cursorrules
+.cursor/
 
 config.ts
 
