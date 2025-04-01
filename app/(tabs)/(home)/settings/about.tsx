@@ -8,6 +8,8 @@ import Color from 'color';
 import Animated, {FadeIn} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
+import {VersionDisplay} from '@/components/VersionDisplay';
+import {getVersionString, getBuildTypeLabel} from '@/utils/appVersion';
 
 interface FeatureProps {
   title: string;
@@ -50,9 +52,7 @@ export default function AboutScreen() {
             />
           </View>
 
-          <Text style={[styles.version, {color: theme.colors.textSecondary}]}>
-            Version 1.0.0
-          </Text>
+          <VersionDisplay showBuildType style={styles.version} />
 
           <Text style={[styles.tagline, {color: theme.colors.text}]}>
             Your Companion for Quranic Recitation

@@ -1,9 +1,12 @@
+// Import the version utility
+import {APP_VERSION, getVersionString} from './utils/appVersion';
+
 export default {
   expo: {
     name: 'Bayaan',
     slug: 'Bayaan',
     scheme: 'bayaan',
-    version: '1.0.1',
+    version: getVersionString(),
     orientation: 'portrait',
     cli: {
       appVersionSource: 'remote',
@@ -11,7 +14,7 @@ export default {
     },
     ios: {
       bundleIdentifier: 'com.bayaan.app',
-      buildNumber: '2',
+      buildNumber: APP_VERSION.buildNumber,
       supportsTablet: true,
       config: {
         usesNonExemptEncryption: false,
@@ -74,6 +77,7 @@ export default {
     },
     android: {
       package: 'com.bayaan.app',
+      versionCode: APP_VERSION.versionCode,
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#8dc9d6',
@@ -113,6 +117,12 @@ export default {
           dark: {
             image: './assets/images/splash-icon-dark.png',
             backgroundColor: '#000000',
+          },
+          android: {
+            image: './assets/images/android-splash-icon.png',
+            dark: {
+              image: './assets/images/android-splash-icon-dark.png',
+            },
           },
           userInterfaceStyle: 'automatic',
         },
