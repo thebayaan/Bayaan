@@ -51,7 +51,7 @@ function createStyles(theme: Theme, width: number, height: number) {
     },
     foregroundImageContainer: {
       width: '100%',
-      height: '70%', // Take up top 70% of the card
+      height: '65%', // Reduced from 70% to give more space to the text
       justifyContent: 'flex-start',
       alignItems: 'center',
       overflow: 'hidden',
@@ -65,9 +65,9 @@ function createStyles(theme: Theme, width: number, height: number) {
       bottom: 0,
       left: 0,
       right: 0,
-      height: '30%', // Bottom 30% of the card
+      height: '35%', // Increased from 30% to give more space to the text
       paddingHorizontal: moderateScale(12),
-      paddingVertical: moderateScale(12),
+      paddingVertical: moderateScale(10),
       justifyContent: 'center',
     },
     blurContainer: {
@@ -88,12 +88,18 @@ function createStyles(theme: Theme, width: number, height: number) {
       fontSize: moderateScale(12),
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
-      marginBottom: moderateScale(2),
+      marginBottom: moderateScale(4),
+      lineHeight: moderateScale(16), // Added line height to ensure text isn't cut off
+      includeFontPadding: false, // Added to fix Android text clipping issues
+      textAlignVertical: 'center', // Helps with vertical alignment on Android
     },
     reciterInfo: {
       fontSize: moderateScale(10),
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
+      lineHeight: moderateScale(14), // Added line height to ensure text isn't cut off
+      includeFontPadding: false, // Added to fix Android text clipping issues
+      textAlignVertical: 'center', // Helps with vertical alignment on Android
     },
   });
 }
@@ -199,19 +205,21 @@ const BrowseReciterCard = React.memo(
                 styles.overlay,
                 {
                   backgroundColor: theme.colors.card,
-                  opacity: 0.85,
+                  opacity: 0.9, // Increased from 0.85 for better text visibility
                 },
               ]}
             />
           )}
-          <Text style={styles.reciterName} numberOfLines={1}>
-            {reciter.name}
-          </Text>
-          <Text style={styles.reciterInfo} numberOfLines={1}>
-            {uniqueRewayatNames.length > 1
-              ? `${uniqueRewayatNames.length} rewayat available`
-              : reciter.rewayat[0]?.name || ''}
-          </Text>
+          <View style={{paddingTop: Platform.OS === 'android' ? 2 : 0}}>
+            <Text style={styles.reciterName} numberOfLines={1}>
+              {reciter.name}
+            </Text>
+            <Text style={styles.reciterInfo} numberOfLines={1}>
+              {uniqueRewayatNames.length > 1
+                ? `${uniqueRewayatNames.length} rewayat available`
+                : reciter.rewayat[0]?.name || ''}
+            </Text>
+          </View>
         </View>
       </AnimatedTouchableOpacity>
     );
