@@ -25,6 +25,8 @@ interface CircularReciterCardProps {
   isSelected?: boolean;
   variant?: 'default' | 'add';
   addTextStyle?: StyleProp<TextStyle>;
+  width?: number;
+  height?: number;
 }
 
 const AnimatedTouchableOpacity =
@@ -38,6 +40,8 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   isSelected = false,
   variant = 'default',
   addTextStyle,
+  width,
+  height,
 }) => {
   const {theme} = useTheme();
 
@@ -64,25 +68,36 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
     });
   };
 
+  // Size mapping for backward compatibility
   const sizeMap = {
     small: 60,
     medium: 75,
     large: 90,
   };
 
-  const imageSize = sizeMap[size];
+  // Use custom dimensions if provided, otherwise fall back to size prop
+  const imageSize = width || sizeMap[size];
+  const calculatedHeight = height || imageSize;
+
+  // Adjust font size based on image size
+  const fontSize = moderateScale(
+    imageSize <= sizeMap.small ? 10 : imageSize <= sizeMap.medium ? 12 : 14,
+  );
 
   const styles = StyleSheet.create({
     container: {
       alignItems: 'center',
       marginRight: moderateScale(8),
+      width: imageSize,
     },
     imageContainer: {
       width: imageSize,
-      height: imageSize,
-      borderRadius: imageSize / 2,
+      height: calculatedHeight,
+      borderRadius: calculatedHeight / 2, // Keep it circular even if custom dimensions
       overflow: 'hidden',
       marginBottom: verticalScale(4),
+      alignItems: 'center', // For the plus icon
+      justifyContent: 'center', // For the plus icon
     },
     reciterImage: {
       width: '100%',
@@ -96,17 +111,19 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
     },
     name: {
       color: theme.colors.text,
-      fontSize: moderateScale(size === 'small' ? 10 : 12),
+      fontSize: fontSize,
       fontFamily: 'Manrope-SemiBold',
       textAlign: 'center',
       width: imageSize,
+      marginTop: verticalScale(4),
     },
     addText: {
-      fontSize: moderateScale(size === 'small' ? 10 : 12),
+      fontSize: fontSize,
       fontWeight: 'bold',
       color: theme.colors.text,
       textAlign: 'center',
-      width: moderateScale(imageSize),
+      width: imageSize,
+      marginTop: verticalScale(4),
     },
   });
 

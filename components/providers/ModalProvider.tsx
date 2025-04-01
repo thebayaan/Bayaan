@@ -3,8 +3,9 @@ import {View, StyleSheet} from 'react-native';
 import {useRef} from 'react';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {Surah} from '@/data/surahData';
-import {SurahOptionsModal} from '@/components/SurahOptionsModal';
+import {SurahOptionsModal} from '@/components/modals/SurahOptionsModal';
 import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
+import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
 import type {RewayatStyle} from '@/types/reciter';
 
 interface ModalContextType {
@@ -19,6 +20,7 @@ interface ModalContextType {
     selectedId?: string,
     onSelect?: (id: string) => void,
   ) => void;
+  showFavoriteReciters: () => void;
 }
 
 const ModalContext = createContext<ModalContextType | null>(null);
@@ -38,6 +40,7 @@ interface ModalProviderProps {
 export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const surahOptionsRef = useRef<BottomSheet>(null);
   const rewayatInfoRef = useRef<BottomSheet>(null);
+  const favoriteRecitersRef = useRef<BottomSheet>(null);
 
   const [currentSurah, setCurrentSurah] = React.useState<Surah | null>(null);
   const [currentReciterId, setCurrentReciterId] = React.useState<
@@ -89,6 +92,12 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     [],
   );
 
+  const showFavoriteReciters = useCallback(() => {
+    setTimeout(() => {
+      favoriteRecitersRef.current?.expand();
+    }, 50);
+  }, []);
+
   const handleCloseSurahOptions = useCallback(() => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
@@ -101,8 +110,13 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     rewayatInfoRef.current?.close();
   }, []);
 
+  const handleCloseFavoriteReciters = useCallback(() => {
+    favoriteRecitersRef.current?.close();
+  }, []);
+
   return (
-    <ModalContext.Provider value={{showSurahOptions, showRewayatInfo}}>
+    <ModalContext.Provider
+      value={{showSurahOptions, showRewayatInfo, showFavoriteReciters}}>
       <View style={StyleSheet.absoluteFill}>{children}</View>
       <View style={styles.modalContainer}>
         {currentSurah && (
@@ -126,6 +140,10 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             }}
           />
         )}
+        <FavoriteRecitersModal
+          bottomSheetRef={favoriteRecitersRef}
+          onClose={handleCloseFavoriteReciters}
+        />
       </View>
     </ModalContext.Provider>
   );

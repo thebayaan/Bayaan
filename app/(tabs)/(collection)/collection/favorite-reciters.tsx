@@ -24,6 +24,7 @@ import {StatusBar} from 'expo-status-bar';
 import {CollectionCard} from '@/components/CollectionCard';
 import SearchBar from '@/components/SearchBar';
 import {Reciter} from '@/data/reciterData';
+import {useModal} from '@/components/providers/ModalProvider';
 
 type ReciterListItem =
   | Reciter
@@ -64,6 +65,7 @@ export default function FavoriteRecitersScreen() {
   const {width} = useWindowDimensions();
   const columns = calculateColumns(width);
   const itemWidth = calculateItemWidth(width, columns);
+  const {showFavoriteReciters} = useModal();
 
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -100,11 +102,8 @@ export default function FavoriteRecitersScreen() {
   );
 
   const handleOpenSelectReciters = useCallback(() => {
-    router.push({
-      pathname: '/(modals)/add-favorite-reciters',
-      params: {isVisible: 'true'},
-    });
-  }, [router]);
+    showFavoriteReciters();
+  }, [showFavoriteReciters]);
 
   return (
     <View style={styles.container}>
@@ -194,7 +193,7 @@ export default function FavoriteRecitersScreen() {
                       ? handleOpenSelectReciters()
                       : handleReciterPress(item.id)
                   }
-                  size="medium"
+                  width={itemWidth * 0.85}
                   variant={
                     'type' in item && item.type === 'add' ? 'add' : 'default'
                   }
