@@ -17,6 +17,80 @@ import {HeartIcon} from '@/components/Icons';
 import {TouchableOpacity} from 'react-native';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {BlurView} from '@react-native-community/blur';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {getFloatingPlayerBottomPosition} from '@/utils/constants';
+
+// Create styles as a function that takes insets
+const createStyles = (bottomInset: number) =>
+  ScaledSheet.create({
+    container: {
+      position: 'absolute',
+      bottom: getFloatingPlayerBottomPosition(bottomInset),
+      left: moderateScale(10),
+      right: moderateScale(10),
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 10,
+    },
+    background: {
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      borderWidth: 0.1,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      opacity: 0.85,
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(15),
+    },
+    playButtonContainer: {
+      width: moderateScale(10),
+      height: moderateScale(10),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: moderateScale(10),
+    },
+    trackInfo: {
+      flex: 1,
+      marginHorizontal: moderateScale(20),
+    },
+    title: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-Bold',
+    },
+    subtitle: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      opacity: 0.85,
+    },
+    rightControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    loveButton: {
+      padding: moderateScale(4),
+    },
+    surahGlyph: {
+      fontFamily: 'SurahNames',
+      fontSize: moderateScale(20),
+    },
+    androidBackground: {
+      elevation: 10,
+      borderWidth: 0.5,
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+  });
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
@@ -25,6 +99,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const scale = useSharedValue(1);
   const heartScale = useSharedValue(1);
+  const insets = useSafeAreaInsets();
+  // Create styles using insets
+  const styles = useMemo(() => createStyles(insets.bottom), [insets.bottom]);
 
   const currentTrack = useMemo(
     () => queue?.tracks?.[queue.currentIndex],
@@ -286,74 +363,4 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
       )}
     </Animated.View>
   );
-});
-
-const styles = ScaledSheet.create({
-  container: {
-    position: 'absolute',
-    bottom: moderateScale(90),
-    left: moderateScale(10),
-    right: moderateScale(10),
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  background: {
-    borderRadius: moderateScale(12),
-    overflow: 'hidden',
-    borderWidth: 0.1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.85,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: moderateScale(10),
-    paddingHorizontal: moderateScale(15),
-  },
-  playButtonContainer: {
-    width: moderateScale(10),
-    height: moderateScale(10),
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: moderateScale(10),
-  },
-  trackInfo: {
-    flex: 1,
-    marginHorizontal: moderateScale(20),
-  },
-  title: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-Bold',
-  },
-  subtitle: {
-    fontSize: moderateScale(12),
-    fontFamily: 'Manrope-Medium',
-    opacity: 0.85,
-  },
-  rightControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: moderateScale(8),
-  },
-  loveButton: {
-    padding: moderateScale(4),
-  },
-  surahGlyph: {
-    fontFamily: 'SurahNames',
-    fontSize: moderateScale(20),
-  },
-  androidBackground: {
-    elevation: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
 });
