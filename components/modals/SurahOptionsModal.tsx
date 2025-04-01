@@ -12,7 +12,7 @@ import {Theme} from '@/utils/themeUtils';
 import {Surah} from '@/data/surahData';
 import {QueueIcon, HeartIcon} from '@/components/Icons';
 import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from './modals/BaseModal';
+import {BaseModal} from './BaseModal';
 import {Icon} from '@rneui/themed';
 import {useLoved} from '@/hooks/useLoved';
 import Animated, {
