@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
-import {StyleSheet, StatusBar, View, Platform} from 'react-native';
+import {StyleSheet, StatusBar, View, Platform, BackHandler} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -52,6 +52,26 @@ export const PlayerSheet = () => {
     settings,
     updateSettings,
   } = useUnifiedPlayer();
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const handleBackPress = () => {
+      if (sheetMode === 'full') {
+        setSheetMode('hidden');
+        return true; // Prevent default behavior
+      }
+      return false; // Let default behavior happen
+    };
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      handleBackPress,
+    );
+
+    return () => subscription.remove();
+  }, [sheetMode, setSheetMode]);
 
   // Effect to handle sleep timer remaining time
   useEffect(() => {
