@@ -29,6 +29,7 @@ import {StyleSheet} from 'react-native';
 import Color from 'color';
 import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useModal} from '@/components/providers/ModalProvider';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -116,6 +117,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
+  const {showSelectReciter} = useModal();
 
   // Focus input when visible
   useEffect(() => {
@@ -274,52 +276,35 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       } else {
         const surah = result.item as Surah;
         if (askEveryTime) {
-          router.push({
-            pathname: '(modals)/select-reciter',
-            params: {
-              surahId: surah.id.toString(),
-              source: 'search',
-            },
-          });
-        } else {
-          switch (defaultReciterSelection) {
-            case 'browseAll':
+          showSelectReciter(surah.id.toString(), 'search');
+          return;
+        }
+
+        switch (defaultReciterSelection) {
+          case 'browseAll':
+            router.push({
+              pathname: '/(tabs)/(search)/reciter/browse',
+              params: {view: 'all', surahId: surah.id},
+            });
+            break;
+          case 'searchFavorites':
+            router.push({
+              pathname: '/(tabs)/(search)/reciter/browse',
+              params: {view: 'favorites', surahId: surah.id},
+            });
+            break;
+          case 'useDefault':
+            if (defaultReciter) {
               router.push({
-                pathname: '/(tabs)/(search)/reciter/browse',
-                params: {view: 'all', surahId: surah.id},
+                pathname: '/player',
+                params: {reciterImageUrl: defaultReciter.image_url},
               });
-              break;
-            case 'searchFavorites':
-              router.push({
-                pathname: '/(tabs)/(search)/reciter/browse',
-                params: {view: 'favorites', surahId: surah.id},
-              });
-              break;
-            case 'useDefault':
-              if (defaultReciter) {
-                router.push({
-                  pathname: '/player',
-                  params: {reciterImageUrl: defaultReciter.image_url},
-                });
-              } else {
-                router.push({
-                  pathname: '(modals)/select-reciter',
-                  params: {
-                    surahId: surah.id.toString(),
-                    source: 'search',
-                  },
-                });
-              }
-              break;
-            default:
-              router.push({
-                pathname: '(modals)/select-reciter',
-                params: {
-                  surahId: surah.id.toString(),
-                  source: 'search',
-                },
-              });
-          }
+            } else {
+              showSelectReciter(surah.id.toString(), 'search');
+            }
+            break;
+          default:
+            showSelectReciter(surah.id.toString(), 'search');
         }
       }
     },
@@ -330,6 +315,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       askEveryTime,
       defaultReciterSelection,
       defaultReciter,
+      showSelectReciter,
     ],
   );
 

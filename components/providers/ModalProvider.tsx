@@ -6,6 +6,7 @@ import {Surah} from '@/data/surahData';
 import {SurahOptionsModal} from '@/components/modals/SurahOptionsModal';
 import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
+import {SelectReciterModal} from '@/components/modals/SelectReciterModal';
 import type {RewayatStyle} from '@/types/reciter';
 
 interface ModalContextType {
@@ -21,6 +22,7 @@ interface ModalContextType {
     onSelect?: (id: string) => void,
   ) => void;
   showFavoriteReciters: () => void;
+  showSelectReciter: (surahId: string, source?: 'search' | 'home') => void;
 }
 
 const ModalContext = createContext<ModalContextType | null>(null);
@@ -41,6 +43,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const surahOptionsRef = useRef<BottomSheet>(null);
   const rewayatInfoRef = useRef<BottomSheet>(null);
   const favoriteRecitersRef = useRef<BottomSheet>(null);
+  const selectReciterRef = useRef<BottomSheet>(null);
 
   const [currentSurah, setCurrentSurah] = React.useState<Surah | null>(null);
   const [currentReciterId, setCurrentReciterId] = React.useState<
@@ -54,6 +57,11 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     rewayat: RewayatStyle[];
     selectedId?: string;
     onSelect?: (id: string) => void;
+  } | null>(null);
+
+  const [selectReciterParams, setSelectReciterParams] = React.useState<{
+    surahId: string;
+    source?: 'search' | 'home';
   } | null>(null);
 
   const [queueHandler, setQueueHandler] = React.useState<
@@ -98,6 +106,23 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     }, 50);
   }, []);
 
+  const showSelectReciter = useCallback(
+    (surahId: string, source?: 'search' | 'home') => {
+      setSelectReciterParams({surahId, source});
+      setTimeout(() => {
+        if (selectReciterRef.current) {
+          selectReciterRef.current.expand();
+        } else {
+          console.warn('Select reciter modal ref is not available');
+          setTimeout(() => {
+            selectReciterRef.current?.expand();
+          }, 100);
+        }
+      }, 150);
+    },
+    [],
+  );
+
   const handleCloseSurahOptions = useCallback(() => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
@@ -114,9 +139,19 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     favoriteRecitersRef.current?.close();
   }, []);
 
+  const handleCloseSelectReciter = useCallback(() => {
+    selectReciterRef.current?.close();
+    setSelectReciterParams(null);
+  }, []);
+
   return (
     <ModalContext.Provider
-      value={{showSurahOptions, showRewayatInfo, showFavoriteReciters}}>
+      value={{
+        showSurahOptions,
+        showRewayatInfo,
+        showFavoriteReciters,
+        showSelectReciter,
+      }}>
       <View style={StyleSheet.absoluteFill}>{children}</View>
       <View style={styles.modalContainer}>
         {currentSurah && (
@@ -144,6 +179,14 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
           bottomSheetRef={favoriteRecitersRef}
           onClose={handleCloseFavoriteReciters}
         />
+        {selectReciterParams && (
+          <SelectReciterModal
+            bottomSheetRef={selectReciterRef}
+            onClose={handleCloseSelectReciter}
+            surahId={selectReciterParams.surahId}
+            source={selectReciterParams.source}
+          />
+        )}
       </View>
     </ModalContext.Provider>
   );

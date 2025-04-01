@@ -24,6 +24,7 @@ import {BlurView} from '@react-native-community/blur';
 import Animated from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
 import {EdgeInsets} from 'react-native-safe-area-context';
+import {useModal} from '@/components/providers/ModalProvider';
 
 interface HeaderProps {
   activeView: 'Reciters' | 'Surahs';
@@ -284,61 +285,54 @@ function HomeScreen() {
     [router],
   );
 
+  const {showSelectReciter} = useModal();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
 
   const handleSurahPress = useCallback(
     (surah: Surah) => {
+      // For consistency and immediate feedback, always use showSelectReciter directly
+      // if askEveryTime is true
       if (askEveryTime) {
-        router.push({
-          pathname: '/(modals)/select-reciter',
-          params: {
-            surahId: surah.id.toString(),
-            source: 'home',
-          },
-        });
-      } else {
-        switch (defaultReciterSelection) {
-          case 'browseAll':
+        showSelectReciter(surah.id.toString(), 'home');
+        return;
+      }
+
+      // Otherwise check the various conditions
+      switch (defaultReciterSelection) {
+        case 'browseAll':
+          router.push({
+            pathname: './reciter/browse',
+            params: {view: 'all', surahId: surah.id},
+          });
+          break;
+        case 'searchFavorites':
+          router.push({
+            pathname: './reciter/browse',
+            params: {view: 'favorites', surahId: surah.id},
+          });
+          break;
+        case 'useDefault':
+          if (defaultReciter) {
             router.push({
-              pathname: './reciter/browse',
-              params: {view: 'all', surahId: surah.id},
+              pathname: '/player',
+              params: {reciterImageUrl: defaultReciter.image_url},
             });
-            break;
-          case 'searchFavorites':
-            router.push({
-              pathname: './reciter/browse',
-              params: {view: 'favorites', surahId: surah.id},
-            });
-            break;
-          case 'useDefault':
-            if (defaultReciter) {
-              router.push({
-                pathname: '/player',
-                params: {reciterImageUrl: defaultReciter.image_url},
-              });
-            } else {
-              router.push({
-                pathname: '/(modals)/select-reciter',
-                params: {
-                  surahId: surah.id.toString(),
-                  source: 'home',
-                },
-              });
-            }
-            break;
-          default:
-            router.push({
-              pathname: '/(modals)/select-reciter',
-              params: {
-                surahId: surah.id.toString(),
-                source: 'home',
-              },
-            });
-        }
+          } else {
+            showSelectReciter(surah.id.toString(), 'home');
+          }
+          break;
+        default:
+          showSelectReciter(surah.id.toString(), 'home');
       }
     },
-    [router, askEveryTime, defaultReciterSelection, defaultReciter],
+    [
+      router,
+      askEveryTime,
+      defaultReciterSelection,
+      defaultReciter,
+      showSelectReciter,
+    ],
   );
 
   const handleSettingsPress = useCallback(() => {
