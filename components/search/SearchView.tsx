@@ -81,12 +81,11 @@ const SEARCH_SUGGESTIONS = {
     },
   ],
   reciters: [
-    {id: 'alafasi', name: 'Mishary Alafasi'},
-    {id: 'sudais', name: 'Abdulrahman Alsudaes'},
-    {id: 'shuraim', name: 'Saud Al-Shuraim'},
-    {id: 'muaiqly', name: 'Maher Al Meaqli'},
+    {id: 'alafasi', name: 'Mishary'},
+    {id: 'hussary', name: 'Hussary'},
+    {id: 'muaiqly', name: 'Maher'},
     {id: 'juhany', name: 'Abdullah Al-Johany'},
-    {id: 'minshawi', name: 'Mohammed Siddiq Al-Minshawi'},
+    {id: 'minshawi', name: 'Minshawi'},
   ],
 };
 
@@ -515,7 +514,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         <View style={styles.searchBoxContainer}>
           <SearchInput
             ref={searchInputRef}
-            placeholder="Search surahs, reciters, or keywords"
+            placeholder="Search surahs or reciters"
             value={query}
             onChangeText={setQuery}
             onCancel={() => {

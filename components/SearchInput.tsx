@@ -189,6 +189,8 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(16),
       fontFamily: theme.fonts.medium,
       paddingVertical: 0,
+      textAlignVertical: 'center',
+      height: moderateScale(40),
     },
     cancelButton: {
       paddingVertical: moderateScale(4),
