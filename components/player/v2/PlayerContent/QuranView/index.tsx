@@ -57,14 +57,18 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const surah = surahData.find(s => s.id === currentSurah);
   const [translationData, setTranslationData] = useState<VerseTranslation[]>([]);
   const [transliterationMap, setTransliterationMap] = useState<TransliterationData>({});
+  const [isTranslationLoaded, setIsTranslationLoaded] = useState(false);
+  const [isTransliterationLoaded, setIsTransliterationLoaded] = useState(false);
 
-  // Load translations if needed
+  // Load translations once on mount
   useEffect(() => {
-    if (showTranslation && translationData.length === 0) {
+    if (!isTranslationLoaded) {
       try {
         const translations = require('@/data/quran-translation.json') as VerseTranslation[];
         if (translations && translations.length > 0) {
           setTranslationData(translations);
+          setIsTranslationLoaded(true); // Mark as loaded
+          console.log('Translation data loaded successfully.');
         } else {
           console.error('Translation data format is unexpected');
         }
@@ -72,15 +76,17 @@ export const QuranView: React.FC<QuranViewProps> = ({
         console.error('Error loading translation data:', error);
       }
     }
-  }, [showTranslation, translationData.length]);
+  }, [isTranslationLoaded]); // Run only when isTranslationLoaded changes (initially false)
 
-  // Load transliterations if needed
+  // Load transliterations once on mount
   useEffect(() => {
-    if (showTransliteration && Object.keys(transliterationMap).length === 0) {
+    if (!isTransliterationLoaded) {
       try {
         const transliterations = require('@/data/Transliteration.json') as TransliterationData;
         if (transliterations) {
           setTransliterationMap(transliterations);
+          setIsTransliterationLoaded(true); // Mark as loaded
+          console.log('Transliteration data loaded successfully.');
         } else {
           console.error('Transliteration data format is unexpected');
         }
@@ -88,9 +94,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
         console.error('Error loading transliteration data:', error);
       }
     }
-  }, [showTransliteration, transliterationMap]);
+  }, [isTransliterationLoaded]); // Run only when isTransliterationLoaded changes (initially false)
 
-  // Safely get verses for the current surah
+  // Safely get verses for the current surah, always merging data if loaded
   const getVersesForSurah = useCallback(() => {
     if (!quranData) {
       console.error('Quran data is not properly loaded');
@@ -102,21 +108,22 @@ export const QuranView: React.FC<QuranViewProps> = ({
         .filter(verse => verse.surah_number === currentSurah)
         .sort((a, b) => a.ayah_number - b.ayah_number);
 
+      // Map verses and *always* try to attach translation/transliteration if loaded
       return verses.map(verse => {
         const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
         let translationText = '';
         let transliterationText = '';
 
-        // Add translation if available and enabled
-        if (showTranslation && translationData.length > 0) {
+        // Add translation if data is loaded
+        if (isTranslationLoaded) {
           const translation = translationData.find(t => t.verse_key === verseKey);
           if (translation && translation.translations && translation.translations.length > 0) {
             translationText = translation.translations[0].text;
           }
         }
 
-        // Add transliteration if available and enabled
-        if (showTransliteration && transliterationMap[verseKey]) {
+        // Add transliteration if data is loaded
+        if (isTransliterationLoaded && transliterationMap[verseKey]) {
           transliterationText = transliterationMap[verseKey].t;
         }
         
@@ -133,10 +140,10 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [
     currentSurah,
-    showTranslation,
-    translationData,
-    showTransliteration,
-    transliterationMap,
+    translationData, // Depend on the data itself
+    transliterationMap, // Depend on the data itself
+    isTranslationLoaded, // Depend on loaded state
+    isTransliterationLoaded, // Depend on loaded state
   ]);
 
   // Reset scroll position when currentSurah changes
@@ -177,12 +184,12 @@ export const QuranView: React.FC<QuranViewProps> = ({
         {verses.map(verse => (
           <VerseItem
             key={verse.verse_key}
-            verse={verse}
+            verse={verse} // Pass the verse object which might have translation/transliteration
             onPress={() => onVersePress(verse.verse_key)}
             textColor={theme.colors.text}
             borderColor={theme.colors.border}
-            showTranslation={showTranslation}
-            showTransliteration={showTransliteration}
+            showTranslation={showTranslation} // Control visibility here
+            showTransliteration={showTransliteration} // Control visibility here
           />
         ))}
       </ScrollView>
