@@ -267,17 +267,18 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       removeClippedSubviews={true}>
       <ScrollingHero />
 
+      {/* Add consistent spacing after hero section */}
+      <View style={styles.heroSpacing} />
+
       {/* Recently played tracks - high priority for immediate access */}
       {recentTracks.length > 0 && (
-        <View style={{marginTop: verticalScale(5)}}>
-          <Section
-            title="Continue Listening"
-            data={recentTracks}
-            variant="recent"
-            onReciterPress={onReciterPress}
-            theme={theme}
-          />
-        </View>
+        <Section
+          title="Continue Listening"
+          data={recentTracks}
+          variant="recent"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
       )}
 
       {/* Where to start - for new users who need guidance */}
@@ -384,6 +385,9 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  heroSpacing: {
+    height: verticalScale(8), // Consistent spacing after hero section (8 units)
   },
   section: {
     marginBottom: moderateScale(24),
