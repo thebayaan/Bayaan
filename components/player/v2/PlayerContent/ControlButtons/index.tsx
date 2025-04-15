@@ -326,14 +326,6 @@ const styles = StyleSheet.create<Styles>({
     paddingHorizontal: moderateScale(6),
     paddingVertical: moderateScale(6),
     borderRadius: moderateScale(12),
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 1,
   },
   queueButton: {
     position: 'absolute',
@@ -401,7 +393,7 @@ const styles = StyleSheet.create<Styles>({
   },
   pulseBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 122, 255, 0.4)',
+    backgroundColor: 'rgba(255, 149, 0, 0.49)',
     zIndex: -1,
   },
 });
