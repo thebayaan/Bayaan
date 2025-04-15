@@ -44,6 +44,9 @@ interface QuranViewProps {
   onVersePress: (verseKey: string) => void;
   showTranslation?: boolean;
   showTransliteration?: boolean;
+  transliterationFontSize: number;
+  translationFontSize: number;
+  arabicFontSize: number;
 }
 
 export const QuranView: React.FC<QuranViewProps> = ({
@@ -51,6 +54,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
   onVersePress,
   showTranslation = false,
   showTransliteration = false,
+  transliterationFontSize,
+  translationFontSize,
+  arabicFontSize,
 }) => {
   const {theme} = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -190,6 +196,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
             borderColor={theme.colors.border}
             showTranslation={showTranslation} // Control visibility here
             showTransliteration={showTransliteration} // Control visibility here
+            transliterationFontSize={transliterationFontSize}
+            translationFontSize={translationFontSize}
+            arabicFontSize={arabicFontSize}
           />
         ))}
       </ScrollView>

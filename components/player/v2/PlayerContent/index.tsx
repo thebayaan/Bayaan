@@ -25,6 +25,9 @@ interface PlayerContentProps {
   mushafLayoutSheetRef: React.RefObject<BottomSheet>;
   showTranslation: boolean;
   showTransliteration: boolean;
+  transliterationFontSize: number;
+  translationFontSize: number;
+  arabicFontSize: number;
 }
 
 const PlayerContent: React.FC<PlayerContentProps> = ({
@@ -34,6 +37,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   mushafLayoutSheetRef,
   showTranslation,
   showTransliteration,
+  transliterationFontSize,
+  translationFontSize,
+  arabicFontSize,
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
@@ -108,6 +114,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                   onVersePress={handleVersePress}
                   showTranslation={showTranslation}
                   showTransliteration={showTransliteration}
+                  transliterationFontSize={transliterationFontSize}
+                  translationFontSize={translationFontSize}
+                  arabicFontSize={arabicFontSize}
                 />
               </View>
               {/* QueueList */}
