@@ -411,8 +411,8 @@ function createStyles(theme: Theme) {
       borderColor: Color(theme.colors.border).alpha(0.1).toString(),
     },
     browseButton: {
-      paddingHorizontal: moderateScale(24),
-      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      paddingVertical: moderateScale(10),
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(8),

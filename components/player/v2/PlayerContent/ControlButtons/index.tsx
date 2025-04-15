@@ -31,7 +31,7 @@ interface ControlButtonsProps {
   sleepBottomSheetRef: React.RefObject<BottomSheet>;
   onQueuePress: () => void;
   showQueue: boolean;
-  onQuranOptionsPress?: () => void;
+  onMushafLayoutPress?: () => void;
 }
 
 interface Styles {
@@ -47,7 +47,7 @@ interface Styles {
   mediumButton: ViewStyle;
   expandedButton: ViewStyle;
   queueButton: ViewStyle;
-  quranButton: ViewStyle;
+  mushafLayoutButton: ViewStyle;
   sideButtonsContainer: ViewStyle;
   controlsContainer: ViewStyle;
   sideButton: ViewStyle;
@@ -59,7 +59,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   sleepBottomSheetRef,
   onQueuePress,
   showQueue,
-  onQuranOptionsPress,
+  onMushafLayoutPress,
 }) => {
   const {theme} = useTheme();
   const {playback, setRate, settings, updateSettings} = useUnifiedPlayer();
@@ -106,9 +106,9 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     return () => pulseAnim.stopAnimation();
   }, [isNewFeature, pulseAnim]);
 
-  const handleQuranOptionsPress = useCallback(async () => {
-    if (onQuranOptionsPress) {
-      onQuranOptionsPress();
+  const handleMushafLayoutPress = useCallback(async () => {
+    if (onMushafLayoutPress) {
+      onMushafLayoutPress();
     }
     if (isNewFeature) {
       setIsNewFeature(false);
@@ -122,7 +122,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         );
       }
     }
-  }, [onQuranOptionsPress, isNewFeature]);
+  }, [onMushafLayoutPress, isNewFeature]);
 
   const handleSpeedPress = () => {
     speedBottomSheetRef.current?.expand();
@@ -173,11 +173,11 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
   return (
     <View style={styles.wrapper}>
-      {onQuranOptionsPress && (
+      {onMushafLayoutPress && (
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={handleQuranOptionsPress}
-          style={[styles.sideButton, styles.quranButton]}>
+          onPress={handleMushafLayoutPress}
+          style={[styles.sideButton, styles.mushafLayoutButton]}>
           {isNewFeature && (
             <Animated.View
               style={[styles.pulseBackground, animatedPulseStyle]}
@@ -320,7 +320,7 @@ const styles = StyleSheet.create<Styles>({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  quranButton: {
+  mushafLayoutButton: {
     position: 'absolute',
     left: moderateScale(16),
     paddingHorizontal: moderateScale(6),

@@ -13,6 +13,7 @@ import {PlaybackSpeedModal} from './Modals/PlaybackSpeedModal';
 import {SleepTimerModal} from './Modals/SleepTimerModal';
 import {ExtendedSummaryModal} from './SurahSummary/ExtendedSummaryModal';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {MushafLayoutModal} from './Modals/MushafLayoutModal';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -40,7 +41,10 @@ export const PlayerSheet = () => {
   const sleepBottomSheetRef = useRef<BottomSheet>(null);
   const queueBottomSheetRef = useRef<BottomSheet>(null);
   const summaryBottomSheetRef = useRef<BottomSheet>(null);
+  const mushafLayoutSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const [showTranslation, setShowTranslation] = useState(false);
+  const [showTransliteration, setShowTransliteration] = useState(false);
 
   const {
     queue,
@@ -168,6 +172,15 @@ export const PlayerSheet = () => {
     sleepBottomSheetRef.current?.close();
   }, [updateSettings]);
 
+  // Callbacks for Mushaf Layout Options
+  const toggleTranslation = useCallback(() => {
+    setShowTranslation(prev => !prev);
+  }, []);
+
+  const toggleTransliteration = useCallback(() => {
+    setShowTransliteration(prev => !prev);
+  }, []);
+
   if (!shouldShow) {
     return null;
   }
@@ -207,6 +220,9 @@ export const PlayerSheet = () => {
           sleepBottomSheetRef={sleepBottomSheetRef}
           queueBottomSheetRef={queueBottomSheetRef}
           summaryBottomSheetRef={summaryBottomSheetRef}
+          mushafLayoutSheetRef={mushafLayoutSheetRef}
+          showTranslation={showTranslation}
+          showTransliteration={showTransliteration}
         />
       </BottomSheet>
 
@@ -230,6 +246,14 @@ export const PlayerSheet = () => {
           surahInfo={currentSurahInfo}
         />
       )}
+
+      <MushafLayoutModal
+        bottomSheetRef={mushafLayoutSheetRef}
+        showTranslation={showTranslation}
+        toggleTranslation={toggleTranslation}
+        showTransliteration={showTransliteration}
+        toggleTransliteration={toggleTransliteration}
+      />
     </>
   );
 };
