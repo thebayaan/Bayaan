@@ -1,25 +1,21 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
   View,
   Text,
   ScrollView,
   FlatList,
   StyleSheet,
-  TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {SurahCard} from './cards/SurahCard';
 import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
-import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {LinearGradient} from 'expo-linear-gradient';
-import {MakkahIcon, MadinahIcon} from '@/components/Icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+
+import {SurahHeroSection} from '@/components/SurahHeroSection';
+import {BrowseAllHeroSection} from '@/components/BrowseAllHeroSection';
+import {getRandomColors} from '@/utils/gradientColors';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
@@ -83,45 +79,6 @@ const BY_THEME: SurahCollection[] = [
   },
 ];
 
-const BY_LENGTH: SurahCollection[] = [
-  {
-    id: 'short',
-    title: 'Short Surahs',
-    description: 'Less than 20 verses',
-    surahs: [108, 112, 103, 110],
-    color: '#4F46E5', // Indigo
-  },
-  {
-    id: 'medium',
-    title: 'Medium Surahs',
-    description: '20-100 verses',
-    surahs: [36, 55, 56],
-    color: '#B45309', // Amber
-  },
-  {
-    id: 'long',
-    title: 'Long Surahs',
-    description: 'More than 100 verses',
-    surahs: [2, 3, 4],
-    color: '#047857', // Dark Emerald
-  },
-];
-
-const BY_PERIOD: SurahCollection[] = [
-  {
-    id: 'meccan',
-    title: 'Notable Meccan Surahs',
-    surahs: [96, 74, 73, 93],
-    color: '#9333EA', // Bright Purple
-  },
-  {
-    id: 'medinan',
-    title: 'Notable Medinan Surahs',
-    surahs: [2, 8, 24, 49],
-    color: '#EA580C', // Orange
-  },
-];
-
 const SPECIAL_CATEGORIES: SurahCollection[] = [
   {
     id: 'most-loved',
@@ -137,21 +94,7 @@ const SPECIAL_CATEGORIES: SurahCollection[] = [
   },
 ];
 
-const GRADIENT_COLORS = [
-  '#7C3AED', // Purple
-  '#2563EB', // Blue
-  '#059669', // Emerald
-  '#DC2626', // Red
-  '#EA580C', // Orange
-  '#0891B2', // Cyan
-  '#BE185D', // Pink
-  '#4F46E5', // Indigo
-  '#B45309', // Amber
-  '#047857', // Dark Emerald
-] as const;
-
 // Cache for gradient colors to prevent recalculating on every render
-const colorCache = new Map<number, readonly [string, string, string]>();
 
 interface ThemeType {
   colors: {
@@ -170,36 +113,7 @@ interface ThemeType {
   };
 }
 
-const getRandomColors = (
-  surahId?: number,
-): readonly [string, string, string] => {
-  // If surahId is provided and we have cached colors, return them
-  if (surahId && colorCache.has(surahId)) {
-    return colorCache.get(surahId) || getRandomColorsInternal();
-  }
-
-  // Generate new colors
-  const colors = getRandomColorsInternal();
-
-  // Cache the result if surahId is provided
-  if (surahId) {
-    colorCache.set(surahId, colors);
-  }
-
-  return colors;
-};
-
 // Helper function to actually generate the colors
-const getRandomColorsInternal = (): readonly [string, string, string] => {
-  // Fisher-Yates shuffle
-  const shuffled = [...GRADIENT_COLORS];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  return [shuffled[0], shuffled[1], shuffled[2]] as const;
-};
 
 function getSurahOfTheDay(): Surah {
   const today = new Date();
@@ -212,213 +126,6 @@ function getSurahOfTheDay(): Surah {
 }
 
 // Create the AnimatedTouchableOpacity component once, outside of render functions
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
-
-// Extract HeroSection styles outside of the component
-const createHeroStyles = (theme: ThemeType) =>
-  StyleSheet.create({
-    hero: {
-      marginHorizontal: moderateScale(16),
-      marginBottom: moderateScale(16),
-      borderRadius: moderateScale(25),
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.2).toString(),
-    },
-    content: {
-      padding: moderateScale(16),
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(16),
-    },
-    leftSection: {
-      alignItems: 'flex-start',
-      justifyContent: 'center',
-    },
-    heroGlyph: {
-      fontSize: moderateScale(48),
-      fontFamily: 'SurahNames',
-      color: theme.colors.text,
-      textShadowColor: 'rgba(0, 0, 0, 0.2)',
-      textShadowOffset: {width: 0, height: 1},
-      textShadowRadius: 4,
-    },
-    rightSection: {
-      flex: 1,
-    },
-    topRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: verticalScale(4),
-    },
-    heroTitle: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-      letterSpacing: 1,
-    },
-    revelationPlace: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(4),
-      borderRadius: moderateScale(6),
-    },
-    revelationText: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-      textTransform: 'uppercase',
-    },
-    heroSurahName: {
-      fontSize: moderateScale(20),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-      marginBottom: verticalScale(2),
-    },
-    translatedName: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-      marginBottom: verticalScale(8),
-    },
-    statsRow: {
-      flexDirection: 'row',
-      gap: moderateScale(16),
-    },
-    stat: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(4),
-      borderRadius: moderateScale(6),
-    },
-    statValue: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-      marginRight: moderateScale(4),
-    },
-    statLabel: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-      textTransform: 'uppercase',
-    },
-  });
-
-const HeroSection = ({
-  surah,
-  onPress,
-}: {
-  surah: Surah;
-  onPress: (surah: Surah) => void;
-}) => {
-  const {theme} = useTheme();
-  const handlePress = React.useCallback(() => onPress(surah), [surah, onPress]);
-
-  // Animation values
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{scale: scale.value}],
-    };
-  });
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const gradientColors = React.useMemo((): readonly [
-    string,
-    string,
-    string,
-  ] => {
-    const colors = getRandomColors(surah.id);
-    const alpha1 = theme.isDarkMode ? 0.7 : 0.15;
-    const alpha2 = theme.isDarkMode ? 0.6 : 0.1;
-    const alpha3 = theme.isDarkMode ? 0.5 : 0.05;
-    return [
-      Color(colors[0]).alpha(alpha1).toString(),
-      Color(colors[1]).alpha(alpha2).toString(),
-      Color(colors[2]).alpha(alpha3).toString(),
-    ] as const;
-  }, [theme.isDarkMode, surah.id]);
-
-  // Use the extracted styles
-  const styles = React.useMemo(() => createHeroStyles(theme), [theme]);
-
-  const revelationPlace = surah.revelation_place.toLowerCase();
-
-  return (
-    <AnimatedTouchableOpacity
-      activeOpacity={0.7}
-      style={[styles.hero, animatedStyle]}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
-      <LinearGradient
-        colors={gradientColors}
-        start={{x: 0, y: 0.8}}
-        end={{x: 1, y: 0.2}}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.content}>
-        <View style={styles.leftSection}>
-          <Text style={styles.heroGlyph}>{surahGlyphMap[surah.id]}</Text>
-        </View>
-        <View style={styles.rightSection}>
-          <View style={styles.topRow}>
-            <Text style={styles.heroTitle}>SURAH OF THE DAY</Text>
-            <View style={styles.revelationPlace}>
-              {revelationPlace === 'makkah' ? (
-                <MakkahIcon
-                  size={moderateScale(12)}
-                  color={theme.colors.text}
-                />
-              ) : (
-                <MadinahIcon
-                  size={moderateScale(12)}
-                  color={theme.colors.text}
-                />
-              )}
-            </View>
-          </View>
-          <Text style={styles.heroSurahName}>{surah.name}</Text>
-          <Text style={styles.translatedName}>
-            {surah.translated_name_english}
-          </Text>
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{surah.verses_count}</Text>
-              <Text style={styles.statLabel}>Verses</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{surah.id}</Text>
-              <Text style={styles.statLabel}>Number</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </AnimatedTouchableOpacity>
-  );
-};
 
 // Create a function to generate collection styles based on theme and collection color
 const createCollectionStyles = (theme: ThemeType, collectionColor: string) =>
@@ -539,7 +246,14 @@ const mainStyles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: verticalScale(32),
+    paddingTop: verticalScale(0),
+    paddingBottom: verticalScale(100),
+  },
+  heroRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    marginBottom: verticalScale(8),
   },
   sectionHeader: {
     fontSize: moderateScale(22),
@@ -561,11 +275,72 @@ const SectionHeader = React.memo(({title}: {title: string}) => {
 
 SectionHeader.displayName = 'SectionHeader';
 
+// Custom function to create subtler gradient colors for both light and dark modes
+function createSubtleGradientColors(
+  baseColors: readonly [string, string, string],
+  isDarkMode: boolean,
+): [string, string, string] {
+  // Use current alpha values for dark mode, but lower them for light mode
+  const alpha1 = isDarkMode ? 0.4 : 0.3; // Light mode: reduced from 0.6 to 0.3
+  const alpha2 = isDarkMode ? 0.25 : 0.2; // Light mode: reduced from 0.4 to 0.2
+  const alpha3 = isDarkMode ? 0.15 : 0.1; // Light mode: reduced from 0.2 to 0.1
+
+  return [
+    Color(baseColors[0]).alpha(alpha1).toString(),
+    Color(baseColors[1]).alpha(alpha2).toString(),
+    Color(baseColors[2]).alpha(alpha3).toString(),
+  ];
+}
+
 export default function SurahsView({onSurahPress}: SurahsViewProps) {
-  // const {theme} = useTheme();
+  const {width: windowWidth} = useWindowDimensions();
+  const {theme} = useTheme();
 
   // Memoize the surah of the day to prevent recalculation
   const surahOfTheDay = React.useMemo(() => getSurahOfTheDay(), []);
+
+  // Generate shared gradient colors for both hero sections
+  const sharedColorsBase = useMemo(() => getRandomColors(), []);
+
+  // Create themed gradient colors for each section with custom alpha values
+  const surahHeroColors = useMemo(
+    () => createSubtleGradientColors(sharedColorsBase, theme.isDarkMode),
+    [sharedColorsBase, theme.isDarkMode],
+  );
+
+  const browseAllColors = useMemo(() => {
+    // Use a slight variation of the same colors for the browse all section
+    // by shifting the hue slightly
+    const shiftedColors = sharedColorsBase.map(colorStr => {
+      const color = Color(colorStr);
+      return color.rotate(30).hex(); // Rotate hue by 30 degrees
+    }) as [string, string, string];
+
+    return createSubtleGradientColors(shiftedColors, theme.isDarkMode);
+  }, [sharedColorsBase, theme.isDarkMode]);
+
+  // Calculate item dimensions based on screen width - similar to BrowseGrid
+  const heroGridDimensions = useMemo(() => {
+    const horizontalPadding = moderateScale(16); // 16px padding on each side
+    const gapBetweenItems = moderateScale(16); // 16px gap between cards
+    const availableWidth =
+      windowWidth - horizontalPadding * 2 - gapBetweenItems;
+    const itemWidth = availableWidth / 2;
+
+    return {
+      width: itemWidth,
+      gap: gapBetweenItems,
+      paddingHorizontal: horizontalPadding,
+    };
+  }, [windowWidth]);
+
+  // Create card style based on calculated dimensions
+  const cardStyle = useMemo(() => {
+    return {
+      width: heroGridDimensions.width,
+      marginBottom: moderateScale(8), // Reduced from 16 for a more compact layout
+    };
+  }, [heroGridDimensions.width]);
 
   // Memoize the onSurahPress handler to prevent recreation on each render
   const handleSurahPress = React.useCallback(
@@ -615,32 +390,6 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
     [handleSurahPress],
   );
 
-  const renderLengthCollections = React.useMemo(
-    () =>
-      BY_LENGTH.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={handleSurahPress}
-        />
-      )),
-    [handleSurahPress],
-  );
-
-  const renderPeriodCollections = React.useMemo(
-    () =>
-      BY_PERIOD.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={handleSurahPress}
-        />
-      )),
-    [handleSurahPress],
-  );
-
   return (
     <ScrollView
       style={mainStyles.container}
@@ -648,7 +397,27 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}
       scrollEventThrottle={16}>
-      <HeroSection surah={surahOfTheDay} onPress={handleSurahPress} />
+      <View
+        style={[
+          mainStyles.heroRow,
+          {
+            paddingHorizontal: heroGridDimensions.paddingHorizontal,
+            gap: heroGridDimensions.gap,
+          },
+        ]}>
+        <SurahHeroSection
+          surah={surahOfTheDay}
+          onPress={handleSurahPress}
+          isCompact={true}
+          style={cardStyle}
+          gradientColors={surahHeroColors}
+        />
+        <BrowseAllHeroSection
+          isCompact={true}
+          style={cardStyle}
+          gradientColors={browseAllColors}
+        />
+      </View>
 
       {renderSpecialCategories}
 
@@ -657,12 +426,6 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
 
       <SectionHeader title="By Theme" />
       {renderThemeCollections}
-
-      <SectionHeader title="By Length" />
-      {renderLengthCollections}
-
-      <SectionHeader title="By Period" />
-      {renderPeriodCollections}
     </ScrollView>
   );
 }
