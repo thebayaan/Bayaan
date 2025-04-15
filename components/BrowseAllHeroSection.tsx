@@ -1,5 +1,11 @@
 import React, {useMemo} from 'react';
-import {Text, StyleSheet, TouchableOpacity, View} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -21,7 +27,7 @@ const AnimatedTouchableOpacity =
 interface BrowseAllHeroSectionProps {
   onPress?: (surah: Surah) => void; // Make onPress optional
   isCompact?: boolean;
-  style?: any;
+  style?: ViewStyle | ViewStyle[]; // Use ViewStyle or an array of styles
   gradientColors?: string[];
 }
 

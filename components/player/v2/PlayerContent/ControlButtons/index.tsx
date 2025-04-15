@@ -24,7 +24,6 @@ import {
 interface ControlButtonsProps {
   speedBottomSheetRef: React.RefObject<BottomSheet>;
   sleepBottomSheetRef: React.RefObject<BottomSheet>;
-  queueBottomSheetRef: React.RefObject<BottomSheet>;
   onQueuePress: () => void;
   showQueue: boolean;
   onQuranOptionsPress?: () => void;
@@ -52,7 +51,6 @@ interface Styles {
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
   speedBottomSheetRef,
   sleepBottomSheetRef,
-  queueBottomSheetRef,
   onQueuePress,
   showQueue,
   onQuranOptionsPress,
