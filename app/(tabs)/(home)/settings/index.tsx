@@ -315,30 +315,19 @@ export default function SettingsScreen() {
               {section.section}
             </Text>
             <View style={styles.settingsGroup}>
-              {section.items.map((item, index) => (
+              {section.items.map((item, itemIndex) => (
                 <TouchableOpacity
                   key={item.type}
                   style={[
-                    styles.settingItem,
-                    {
-                      backgroundColor: theme.colors.card,
-                      borderTopLeftRadius: index === 0 ? moderateScale(12) : 0,
-                      borderTopRightRadius: index === 0 ? moderateScale(12) : 0,
-                      borderBottomLeftRadius:
-                        index === section.items.length - 1
-                          ? moderateScale(12)
-                          : 0,
-                      borderBottomRightRadius:
-                        index === section.items.length - 1
-                          ? moderateScale(12)
-                          : 0,
-                    },
+                    styles.settingsItem,
+                    styles.settingsItemCard,
+                    itemIndex > 0 && styles.settingsItemMarginTop,
                   ]}
-                  activeOpacity={0.7}
-                  onPress={() => handleSettingPress(item.type)}>
-                  <View style={styles.settingContent}>
+                  onPress={() => handleSettingPress(item.type)}
+                  activeOpacity={0.7}>
+                  <View style={styles.settingsItemContent}>
                     {item.icon && (
-                      <View style={styles.settingIconContainer}>
+                      <View style={styles.settingsItemIcon}>
                         <Icon
                           name={item.icon}
                           type={item.iconType}
@@ -347,17 +336,17 @@ export default function SettingsScreen() {
                         />
                       </View>
                     )}
-                    <View style={styles.settingTexts}>
+                    <View style={styles.settingsTextContainer}>
                       <Text
                         style={[
-                          styles.settingTitle,
+                          styles.settingsTitle,
                           {color: theme.colors.text},
                         ]}>
                         {item.title}
                       </Text>
                       <Text
                         style={[
-                          styles.settingDescription,
+                          styles.settingsDescription,
                           {color: theme.colors.textSecondary},
                         ]}>
                         {item.description}
@@ -372,6 +361,7 @@ export default function SettingsScreen() {
                       type="feather"
                       size={moderateScale(20)}
                       color={theme.colors.textSecondary}
+                      containerStyle={{opacity: 0.6}}
                     />
                   </View>
                 </TouchableOpacity>
@@ -461,27 +451,43 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
       gap: moderateScale(1),
     },
-    settingItem: {
-      paddingVertical: moderateScale(12),
-      paddingHorizontal: moderateScale(16),
-    },
-    settingContent: {
+    settingsItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      width: '100%',
     },
-    settingTexts: {
+    settingsItemCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: moderateScale(12),
+      padding: moderateScale(12),
+    },
+    settingsItemMarginTop: {
+      marginTop: moderateScale(8),
+    },
+    settingsItemContent: {
       flex: 1,
-      marginRight: moderateScale(16),
+      flexDirection: 'row',
+      alignItems: 'center',
     },
-    settingTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.medium,
-      marginBottom: moderateScale(2),
+    settingsItemIcon: {
+      marginRight: moderateScale(15),
+      width: moderateScale(24),
+      alignItems: 'center',
     },
-    settingDescription: {
+    settingsTextContainer: {
+      flex: 1,
+      marginRight: moderateScale(10),
+    },
+    settingsTitle: {
       fontSize: moderateScale(14),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.text,
+    },
+    settingsDescription: {
+      fontSize: moderateScale(11),
       fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      marginTop: moderateScale(2),
     },
     firstThemeOption: {
       borderTopLeftRadius: moderateScale(12),
@@ -490,12 +496,5 @@ const createStyles = (theme: Theme) =>
     lastThemeOption: {
       borderTopRightRadius: moderateScale(12),
       borderBottomRightRadius: moderateScale(12),
-    },
-    settingIconContainer: {
-      marginRight: moderateScale(12),
-      width: moderateScale(24),
-      height: moderateScale(24),
-      alignItems: 'center',
-      justifyContent: 'center',
     },
   });
