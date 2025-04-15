@@ -27,6 +27,8 @@ import {Theme} from '@/utils/themeUtils';
 import {Icon} from '@rneui/base';
 import Color from 'color';
 import {useRouter} from 'expo-router';
+import {LinearGradient} from 'expo-linear-gradient';
+import {getRandomColors, getThemedGradientColors} from '@/utils/gradientColors';
 
 // Error Boundary for ScrollingHero
 class ScrollingHeroErrorBoundary extends React.Component<{
@@ -204,17 +206,37 @@ interface OverlayProps {
 
 // Memoize the overlay component
 const Overlay = React.memo(
-  ({isRevealed, theme, styles}: OverlayProps) => (
-    <Animated.View
-      style={[
-        styles.overlay,
-        {
-          backgroundColor: theme.colors.primary,
-          opacity: isRevealed ? 0 : 0.25,
-        },
-      ]}
-    />
-  ),
+  ({isRevealed, theme, styles}: OverlayProps) => {
+    // Use the shared gradient colors utility
+    const baseColors = useMemo(() => getRandomColors(), []);
+    const gradientColors = useMemo(() => {
+      // Custom alpha values for ScrollingHero - higher opacity for light mode
+      const alpha1 = theme.isDarkMode ? 0.4 : 0.3; // Reduced for light mode to match SurahsView
+      const alpha2 = theme.isDarkMode ? 0.25 : 0.2; // Reduced for light mode to match SurahsView
+      const alpha3 = theme.isDarkMode ? 0.15 : 0.1; // Reduced for light mode to match SurahsView
+
+      return [
+        Color(baseColors[0])
+          .alpha(isRevealed ? 0 : alpha1)
+          .toString(),
+        Color(baseColors[1])
+          .alpha(isRevealed ? 0 : alpha2)
+          .toString(),
+        Color(baseColors[2])
+          .alpha(isRevealed ? 0 : alpha3)
+          .toString(),
+      ] as const;
+    }, [baseColors, theme.isDarkMode, isRevealed]);
+
+    return (
+      <LinearGradient
+        colors={gradientColors}
+        start={{x: 0, y: 0.8}}
+        end={{x: 1, y: 0.2}}
+        style={styles.overlay}
+      />
+    );
+  },
   (prevProps, nextProps) =>
     prevProps.isRevealed === nextProps.isRevealed &&
     prevProps.theme === nextProps.theme,
@@ -334,7 +356,7 @@ const Column = React.memo(
 
 Column.displayName = 'Column';
 
-const SECTION_HEIGHT = moderateScale(200); // Reduced from 400
+const SECTION_HEIGHT = moderateScale(150); // Reduced from 400
 
 function createStyles(theme: Theme) {
   return StyleSheet.create({
