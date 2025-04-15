@@ -11,6 +11,9 @@ interface VerseItemProps {
   borderColor: string;
   showTranslation?: boolean;
   showTransliteration?: boolean;
+  transliterationFontSize: number;
+  translationFontSize: number;
+  arabicFontSize: number;
 }
 
 export const VerseItem = memo<VerseItemProps>(
@@ -21,6 +24,9 @@ export const VerseItem = memo<VerseItemProps>(
     borderColor,
     showTranslation = false,
     showTransliteration = false,
+    transliterationFontSize,
+    translationFontSize,
+    arabicFontSize,
   }) => {
     // Create a semi-transparent background color based on the text color
     const bgColor = Color(textColor).alpha(0.08).toString();
@@ -43,16 +49,37 @@ export const VerseItem = memo<VerseItemProps>(
             </Text>
           </View>
         </View>
-        <Text style={[styles.arabicText, {color: textColor}]}>
+        <Text
+          style={[
+            styles.arabicText,
+            {
+              color: textColor,
+              fontSize: moderateScale(arabicFontSize),
+            },
+          ]}>
           {verse.text}
         </Text>
         {showTransliteration && verse.transliteration && (
-          <Text style={[styles.transliterationText, {color: textColor}]}>
+          <Text
+            style={[
+              styles.transliterationText,
+              {
+                color: textColor,
+                fontSize: moderateScale(transliterationFontSize),
+              },
+            ]}>
             {verse.transliteration}
           </Text>
         )}
         {showTranslation && verse.translation && (
-          <Text style={[styles.translationText, {color: textColor}]}>
+          <Text
+            style={[
+              styles.translationText,
+              {
+                color: textColor,
+                fontSize: moderateScale(translationFontSize),
+              },
+            ]}>
             {cleanTranslationText(verse.translation)}
           </Text>
         )}
@@ -89,19 +116,15 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
   transliterationText: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
-    lineHeight: moderateScale(19),
     textAlign: 'left',
-    opacity: 0.7,
   },
   translationText: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
-    lineHeight: moderateScale(20),
     textAlign: 'left',
-    opacity: 0.9,
   },
 });
