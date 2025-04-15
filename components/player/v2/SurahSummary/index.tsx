@@ -1,5 +1,6 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import * as Linking from 'expo-linking';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
@@ -37,6 +38,21 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
     summaryBottomSheetRef.current?.expand();
   };
 
+  const handleLinkPress = async () => {
+    if (!surahNumber) return;
+    const url = `https://quran.com/surah/${surahNumber}/info`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        console.log(`Don't know how to open this URL: ${url}`);
+      }
+    } catch (error) {
+      console.error('An error occurred', error);
+    }
+  };
+
   if (!currentSurahInfo) return null;
 
   return (
@@ -63,6 +79,15 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
           {currentSurahInfo.short_text}
         </ReadMore>
       </TouchableOpacity>
+
+      {surahNumber && (
+        <Text style={[styles.sourceText, {color: theme.colors.textSecondary}]}>
+          Retrieved from{' '}
+          <Text style={styles.linkText} onPress={handleLinkPress}>
+            Quran.com
+          </Text>
+        </Text>
+      )}
     </View>
   );
 };
@@ -91,10 +116,21 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Regular',
     lineHeight: moderateScale(20),
     opacity: 0.8,
+    marginBottom: moderateScale(8),
   },
   readMoreText: {
     fontSize: moderateScale(12),
     fontFamily: 'Manrope-Bold',
     marginTop: moderateScale(4),
+  },
+  sourceText: {
+    fontSize: moderateScale(10),
+    fontFamily: 'Manrope-Regular',
+    marginTop: moderateScale(8),
+    textAlign: 'left',
+  },
+  linkText: {
+    fontFamily: 'Manrope-SemiBold',
+    textDecorationLine: 'underline',
   },
 });
