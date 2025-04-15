@@ -204,7 +204,7 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
       <BottomSheetScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Mushaf Layout Options</Text>
+        <Text style={styles.title}>Mushaf Layout</Text>
 
         {/* Arabic Text Section (Moved to Top) */}
         <Text style={styles.sectionHeader}>Arabic Text</Text>
@@ -265,7 +265,11 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
               style={styles.switchStyle}
             />
           </View>
-          {/* Add Font Size Control */}
+          {/* Add Translation Source Text Here */}
+          <Text style={styles.sourceText}>
+            Using: The Clear Quran by Dr. Mustafa Khattab
+          </Text>
+
           {showTranslation && (
             <>
               <View style={styles.divider} />
@@ -381,5 +385,13 @@ const createStyles = (theme: Theme) =>
     background: {
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+    },
+    sourceText: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+      marginTop: verticalScale(4),
+      marginBottom: verticalScale(8),
+      paddingHorizontal: moderateScale(16),
     },
   });
