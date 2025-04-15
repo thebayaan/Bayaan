@@ -31,7 +31,12 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   summaryBottomSheetRef,
 }) => {
   const [showQueue, setShowQueue] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
   const {queue, updateQueue, removeFromQueue, play} = useUnifiedPlayer();
+
+  const toggleTranslation = useCallback(() => {
+    setShowTranslation(prev => !prev);
+  }, []);
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
@@ -81,7 +86,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={Platform.OS === 'android'}>
         <View style={styles.contentContainer}>
-          <Header />
+          <Header
+            showTranslation={showTranslation}
+            toggleTranslation={toggleTranslation}
+          />
           <View style={styles.mainContent}>
             {/* Create a container for the togglable views */}
             <View style={styles.viewsContainer}>
@@ -93,6 +101,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 <QuranView
                   currentSurah={currentSurah}
                   onVersePress={handleVersePress}
+                  showTranslation={showTranslation}
                 />
               </View>
               <View

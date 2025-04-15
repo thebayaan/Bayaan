@@ -9,12 +9,21 @@ interface VerseItemProps {
   onPress: () => void;
   textColor: string;
   borderColor: string;
+  showTranslation?: boolean;
 }
 
 export const VerseItem = memo<VerseItemProps>(
-  ({verse, onPress, textColor, borderColor}) => {
+  ({verse, onPress, textColor, borderColor, showTranslation = false}) => {
     // Create a semi-transparent background color based on the text color
     const bgColor = Color(textColor).alpha(0.08).toString();
+
+    // Clean translation text by removing footnote tags
+    const cleanTranslationText = (text?: string) => {
+      if (!text) return '';
+      
+      // Remove <sup> tags and their contents
+      return text.replace(/<sup[^>]*>.*?<\/sup>/g, '');
+    };
 
     return (
       <TouchableOpacity
@@ -31,6 +40,11 @@ export const VerseItem = memo<VerseItemProps>(
         <Text style={[styles.arabicText, {color: textColor}]}>
           {verse.text}
         </Text>
+        {showTranslation && verse.translation && (
+          <Text style={[styles.translationText, {color: textColor}]}>
+            {cleanTranslationText(verse.translation)}
+          </Text>
+        )}
       </TouchableOpacity>
     );
   },
@@ -62,5 +76,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Uthmani',
     textAlign: 'right',
     writingDirection: 'rtl',
+  },
+  translationText: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-Regular',
+    marginTop: verticalScale(8),
+    lineHeight: moderateScale(20),
+    textAlign: 'left',
+    opacity: 0.9,
   },
 });
