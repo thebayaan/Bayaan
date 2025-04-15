@@ -3,6 +3,7 @@ import {Text, TouchableOpacity, StyleSheet, View} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Verse} from '@/types/quran';
 import Color from 'color';
+import FormattedTextRenderer from '@/components/utils/FormattedText';
 
 interface VerseItemProps {
   verse: Verse;
@@ -60,16 +61,16 @@ export const VerseItem = memo<VerseItemProps>(
           {verse.text}
         </Text>
         {showTransliteration && verse.transliteration && (
-          <Text
-            style={[
+          <FormattedTextRenderer
+            text={verse.transliteration}
+            baseStyle={[
               styles.transliterationText,
               {
                 color: textColor,
                 fontSize: moderateScale(transliterationFontSize),
               },
-            ]}>
-            {verse.transliteration}
-          </Text>
+            ]}
+          />
         )}
         {showTranslation && verse.translation && (
           <Text

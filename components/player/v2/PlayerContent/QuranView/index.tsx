@@ -1,15 +1,9 @@
 import React, {useCallback, useRef, useEffect, useState} from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Text,
-  Platform,
-} from 'react-native';
+import {View, ScrollView, StyleSheet, Text, Platform} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
-import {Surah, QuranData, Verse} from '@/types/quran';
+import {Surah, QuranData} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 
 // Import data with type safety
@@ -32,7 +26,7 @@ interface VerseTranslation {
 
 // Define transliteration data type
 interface TransliterationVerse {
-  t: string; 
+  t: string;
 }
 
 interface TransliterationData {
@@ -61,8 +55,11 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const {theme} = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const surah = surahData.find(s => s.id === currentSurah);
-  const [translationData, setTranslationData] = useState<VerseTranslation[]>([]);
-  const [transliterationMap, setTransliterationMap] = useState<TransliterationData>({});
+  const [translationData, setTranslationData] = useState<VerseTranslation[]>(
+    [],
+  );
+  const [transliterationMap, setTransliterationMap] =
+    useState<TransliterationData>({});
   const [isTranslationLoaded, setIsTranslationLoaded] = useState(false);
   const [isTransliterationLoaded, setIsTransliterationLoaded] = useState(false);
 
@@ -70,7 +67,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   useEffect(() => {
     if (!isTranslationLoaded) {
       try {
-        const translations = require('@/data/quran-translation.json') as VerseTranslation[];
+        const translations =
+          require('@/data/quran-translation.json') as VerseTranslation[];
         if (translations && translations.length > 0) {
           setTranslationData(translations);
           setIsTranslationLoaded(true); // Mark as loaded
@@ -88,7 +86,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   useEffect(() => {
     if (!isTransliterationLoaded) {
       try {
-        const transliterations = require('@/data/Transliteration.json') as TransliterationData;
+        const transliterations =
+          require('@/data/transliteration.json') as TransliterationData;
         if (transliterations) {
           setTransliterationMap(transliterations);
           setIsTransliterationLoaded(true); // Mark as loaded
@@ -122,8 +121,14 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
         // Add translation if data is loaded
         if (isTranslationLoaded) {
-          const translation = translationData.find(t => t.verse_key === verseKey);
-          if (translation && translation.translations && translation.translations.length > 0) {
+          const translation = translationData.find(
+            t => t.verse_key === verseKey,
+          );
+          if (
+            translation &&
+            translation.translations &&
+            translation.translations.length > 0
+          ) {
             translationText = translation.translations[0].text;
           }
         }
@@ -132,14 +137,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
         if (isTransliterationLoaded && transliterationMap[verseKey]) {
           transliterationText = transliterationMap[verseKey].t;
         }
-        
+
         return {
           ...verse,
           translation: translationText,
           transliteration: transliterationText,
         };
       });
-      
     } catch (error) {
       console.error('Error processing verses:', error);
       return [];
