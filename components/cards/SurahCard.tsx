@@ -1,5 +1,12 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
@@ -20,6 +27,7 @@ interface SurahCardProps {
   revelationPlace: string;
   color: string;
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 const AnimatedTouchableOpacity =
@@ -32,6 +40,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   revelationPlace,
   color,
   onPress,
+  style,
 }) => {
   const {theme} = useTheme();
 
@@ -69,51 +78,106 @@ export const SurahCard: React.FC<SurahCardProps> = ({
 
   const styles = StyleSheet.create({
     container: {
-      width: moderateScale(140),
-      height: moderateScale(140),
-      borderRadius: moderateScale(16),
+      width: moderateScale(120),
+      height: moderateScale(120),
+      borderRadius: moderateScale(12),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: Color(color).alpha(0.2).toString(),
+      borderColor: Color(color).alpha(0.15).toString(),
     },
     content: {
       flex: 1,
-      padding: moderateScale(12),
+      padding: moderateScale(6),
       justifyContent: 'center',
       alignItems: 'center',
     },
     arabicName: {
-      fontSize: moderateScale(32),
+      fontSize: moderateScale(26),
       color: theme.colors.text,
       fontFamily: 'SurahNames',
-      marginBottom: moderateScale(8),
+      marginBottom: moderateScale(2),
+      textShadowColor: 'rgba(0, 0, 0, 0.1)',
+      textShadowOffset: {width: 0, height: 1},
+      textShadowRadius: 2,
     },
     nameContainer: {
       alignItems: 'center',
+      paddingHorizontal: moderateScale(3),
+      width: '100%',
     },
     name: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(12),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
-      marginBottom: moderateScale(2),
+      marginBottom: 0,
+      textAlign: 'center',
+      letterSpacing: 0.2,
     },
     translatedName: {
-      fontSize: moderateScale(11),
+      fontSize: moderateScale(9),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
+      textAlign: 'center',
+      opacity: 0.9,
+      letterSpacing: 0.1,
     },
     placeIcon: {
       position: 'absolute',
-      top: moderateScale(8),
-      right: moderateScale(8),
-      opacity: 0.5,
+      top: moderateScale(4),
+      right: moderateScale(4),
+      opacity: 0.8,
+      padding: moderateScale(3),
+      backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
+        .alpha(0.08)
+        .toString(),
+      borderRadius: moderateScale(10),
+      borderWidth: 0.5,
+      borderColor: Color(color).alpha(0.2).toString(),
+      shadowColor: theme.isDarkMode ? 'transparent' : 'rgba(0,0,0,0.1)',
+      shadowOffset: {width: 0, height: 1},
+      shadowRadius: 2,
+      shadowOpacity: 0.5,
+      elevation: 1,
+    },
+    numberBadge: {
+      position: 'absolute',
+      top: moderateScale(4),
+      left: moderateScale(4),
+      backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
+        .alpha(0.08)
+        .toString(),
+      paddingHorizontal: moderateScale(4),
+      paddingVertical: 0,
+      height: moderateScale(16),
+      minWidth: moderateScale(16),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: moderateScale(8),
+      borderWidth: 0.5,
+      borderColor: Color(color).alpha(0.2).toString(),
+      shadowColor: theme.isDarkMode ? 'transparent' : 'rgba(0,0,0,0.1)',
+      shadowOffset: {width: 0, height: 1},
+      shadowRadius: 2,
+      shadowOpacity: 0.5,
+      elevation: 1,
+    },
+    numberText: {
+      fontSize: moderateScale(8),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
+    divider: {
+      height: 1,
+      width: '30%',
+      backgroundColor: Color(color).alpha(0.15).toString(),
+      marginVertical: moderateScale(2),
     },
   });
 
   return (
     <AnimatedTouchableOpacity
       activeOpacity={1}
-      style={[styles.container, animatedStyle]}
+      style={[styles.container, animatedStyle, style]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}>
@@ -125,16 +189,34 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       />
       <View style={styles.placeIcon}>
         {revelationPlace.toLowerCase() === 'makkah' ? (
-          <MakkahIcon size={moderateScale(16)} color={theme.colors.text} />
+          <MakkahIcon
+            size={moderateScale(15)}
+            color={Color(theme.colors.text).alpha(0.9).toString()}
+            secondaryColor={theme.colors.background}
+          />
         ) : (
-          <MadinahIcon size={moderateScale(16)} color={theme.colors.text} />
+          <MadinahIcon
+            size={moderateScale(15)}
+            color={Color(theme.colors.text).alpha(0.9).toString()}
+          />
         )}
+      </View>
+      <View style={styles.numberBadge}>
+        <Text style={styles.numberText}>{id}</Text>
       </View>
       <View style={styles.content}>
         <Text style={styles.arabicName}>{surahGlyphMap[id]}</Text>
+        <View style={styles.divider} />
         <View style={styles.nameContainer}>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.translatedName}>{translatedName}</Text>
+          <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+            {name}
+          </Text>
+          <Text
+            style={styles.translatedName}
+            numberOfLines={1}
+            ellipsizeMode="tail">
+            {translatedName}
+          </Text>
         </View>
       </View>
     </AnimatedTouchableOpacity>
