@@ -18,6 +18,7 @@ import {
   RepeatIcon,
   RepeatOneIcon,
   QueueIcon,
+  QuranIcon,
 } from '@/components/Icons';
 
 interface ControlButtonsProps {
@@ -26,8 +27,7 @@ interface ControlButtonsProps {
   queueBottomSheetRef: React.RefObject<BottomSheet>;
   onQueuePress: () => void;
   showQueue: boolean;
-  onQuranPress?: () => void;
-  showQuran?: boolean;
+  onQuranOptionsPress?: () => void;
 }
 
 interface Styles {
@@ -46,13 +46,16 @@ interface Styles {
   quranButton: ViewStyle;
   sideButtonsContainer: ViewStyle;
   controlsContainer: ViewStyle;
+  sideButton: ViewStyle;
 }
 
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
   speedBottomSheetRef,
   sleepBottomSheetRef,
+  queueBottomSheetRef,
   onQueuePress,
   showQueue,
+  onQuranOptionsPress,
 }) => {
   const {theme} = useTheme();
   const {playback, setRate, settings, updateSettings} = useUnifiedPlayer();
@@ -102,6 +105,15 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
   return (
     <View style={styles.wrapper}>
+      {onQuranOptionsPress && (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onQuranOptionsPress}
+          style={[styles.sideButton, styles.quranButton]}>
+          <QuranIcon size={moderateScale(22)} color={theme.colors.text} />
+        </TouchableOpacity>
+      )}
+
       <View
         style={[
           styles.controlsContainer,
@@ -111,7 +123,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
           },
         ]}>
         <TouchableOpacity
-          activeOpacity={0.99}
+          activeOpacity={0.9}
           onPress={handleSpeedPress}
           style={[
             styles.button,
@@ -139,7 +151,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          activeOpacity={0.99}
+          activeOpacity={0.9}
           onPress={handleRepeatPress}
           style={[
             styles.button,
@@ -150,18 +162,18 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             ],
           ]}>
           {settings.repeatMode === 'none' && (
-            <RepeatIcon size={moderateScale(25)} color={theme.colors.text} />
+            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
           )}
           {settings.repeatMode === 'queue' && (
-            <RepeatIcon size={moderateScale(25)} color={theme.colors.text} />
+            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
           )}
           {settings.repeatMode === 'track' && (
-            <RepeatOneIcon size={moderateScale(25)} color={theme.colors.text} />
+            <RepeatOneIcon size={moderateScale(24)} color={theme.colors.text} />
           )}
         </TouchableOpacity>
 
         <TouchableOpacity
-          activeOpacity={0.99}
+          activeOpacity={0.9}
           onPress={handleSleepPress}
           style={[
             styles.button,
@@ -181,7 +193,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
       <View style={styles.queueButton}>
         <TouchableOpacity
-          activeOpacity={0.99}
+          activeOpacity={0.9}
           onPress={onQueuePress}
           style={[
             styles.button,
@@ -190,7 +202,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
               {backgroundColor: activeBackgroundColor},
             ],
           ]}>
-          <QueueIcon size={moderateScale(25)} color={theme.colors.text} />
+          <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -219,6 +231,7 @@ const styles = StyleSheet.create<Styles>({
     paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(16),
     width: '100%',
+    position: 'relative',
   },
   controlsContainer: {
     flexDirection: 'row',
@@ -301,5 +314,16 @@ const styles = StyleSheet.create<Styles>({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sideButton: {
+    position: 'absolute',
+    top: moderateScale(10),
+    bottom: moderateScale(10),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: moderateScale(14),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128, 128, 128, 0.05)',
   },
 });

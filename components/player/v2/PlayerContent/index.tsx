@@ -1,6 +1,10 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useRef, useMemo} from 'react';
 import {View, StyleSheet, Platform} from 'react-native';
-import {BottomSheetScrollView} from '@gorhom/bottom-sheet';
+import BottomSheet, {
+  BottomSheetScrollView,
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import {Header} from './Header';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
@@ -9,10 +13,11 @@ import {PlaybackControls} from './PlaybackControls';
 import {AdditionalControls} from './AdditionalControls';
 import {ControlButtons} from './ControlButtons';
 import {SurahSummary} from '../SurahSummary';
+import {QuranViewOptionsMenu} from './QuranViewOptionsMenu';
 import {moderateScale} from 'react-native-size-matters';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
-import type BottomSheet from '@gorhom/bottom-sheet';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {useTheme} from '@/hooks/useTheme';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -30,16 +35,32 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   queueBottomSheetRef,
   summaryBottomSheetRef,
 }) => {
+  const {theme} = useTheme();
   const [showQueue, setShowQueue] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [showTransliteration, setShowTransliteration] = useState(false);
   const {queue, updateQueue, removeFromQueue, play} = useUnifiedPlayer();
+
+  // Ref for the Quran view options bottom sheet
+  const quranOptionsSheetRef = useRef<BottomSheet>(null);
+
+  // Snap points for the bottom sheet
+  const snapPoints = useMemo(() => ['30%', '50%'], []); // Adjust snap points as needed
 
   const toggleTranslation = useCallback(() => {
     setShowTranslation(prev => !prev);
   }, []);
 
+  const toggleTransliteration = useCallback(() => {
+    setShowTransliteration(prev => !prev);
+  }, []);
+
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
+  }, []);
+
+  const handleOpenQuranOptions = useCallback(() => {
+    quranOptionsSheetRef.current?.expand(); // Or snapToIndex(0)
   }, []);
 
   const handleQueueItemPress = useCallback(
@@ -78,6 +99,19 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     ? parseInt(currentTrack.surahId, 10)
     : 1;
 
+  // Custom backdrop for the bottom sheet
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0} // Appear at the first snap point
+        disappearsOnIndex={-1} // Disappear when closed
+        opacity={0.4} // Adjust opacity
+      />
+    ),
+    [],
+  );
+
   return (
     <View style={styles.container}>
       <BottomSheetScrollView
@@ -86,13 +120,11 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={Platform.OS === 'android'}>
         <View style={styles.contentContainer}>
-          <Header
-            showTranslation={showTranslation}
-            toggleTranslation={toggleTranslation}
-          />
+          <Header />
           <View style={styles.mainContent}>
-            {/* Create a container for the togglable views */}
+            {/* Container for QuranView and QueueList */}
             <View style={styles.viewsContainer}>
+              {/* QuranView */}
               <View
                 style={[
                   styles.viewWrapper,
@@ -102,8 +134,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                   currentSurah={currentSurah}
                   onVersePress={handleVersePress}
                   showTranslation={showTranslation}
+                  showTransliteration={showTransliteration}
                 />
               </View>
+              {/* QueueList */}
               <View
                 style={[
                   styles.viewWrapper,
@@ -125,6 +159,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 queueBottomSheetRef={queueBottomSheetRef}
                 onQueuePress={handleQueuePress}
                 showQueue={showQueue}
+                onQuranOptionsPress={handleOpenQuranOptions}
               />
             </View>
             <SurahSummary
@@ -134,6 +169,24 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           </View>
         </View>
       </BottomSheetScrollView>
+
+      {/* Quran View Options Bottom Sheet */}
+      <BottomSheet
+        ref={quranOptionsSheetRef}
+        index={-1} // Start closed
+        snapPoints={snapPoints}
+        enablePanDownToClose={true}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{backgroundColor: theme.colors.card}} // Match theme
+        handleIndicatorStyle={{backgroundColor: theme.colors.border}} // Match theme
+      >
+        <QuranViewOptionsMenu
+          showTranslation={showTranslation}
+          toggleTranslation={toggleTranslation}
+          showTransliteration={showTransliteration}
+          toggleTransliteration={toggleTransliteration}
+        />
+      </BottomSheet>
     </View>
   );
 };

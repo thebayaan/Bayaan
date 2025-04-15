@@ -30,29 +30,39 @@ interface VerseTranslation {
   translations: TranslationItem[];
 }
 
+// Define transliteration data type
+interface TransliterationVerse {
+  t: string; 
+}
+
+interface TransliterationData {
+  [verseKey: string]: TransliterationVerse;
+}
+
 interface QuranViewProps {
   currentSurah: number;
   onVersePress: (verseKey: string) => void;
   showTranslation?: boolean;
+  showTransliteration?: boolean;
 }
 
 export const QuranView: React.FC<QuranViewProps> = ({
   currentSurah,
   onVersePress,
   showTranslation = false,
+  showTransliteration = false,
 }) => {
   const {theme} = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const surah = surahData.find(s => s.id === currentSurah);
   const [translationData, setTranslationData] = useState<VerseTranslation[]>([]);
+  const [transliterationMap, setTransliterationMap] = useState<TransliterationData>({});
 
   // Load translations if needed
   useEffect(() => {
     if (showTranslation && translationData.length === 0) {
       try {
-        // Load the translation data
         const translations = require('@/data/quran-translation.json') as VerseTranslation[];
-        
         if (translations && translations.length > 0) {
           setTranslationData(translations);
         } else {
@@ -63,6 +73,22 @@ export const QuranView: React.FC<QuranViewProps> = ({
       }
     }
   }, [showTranslation, translationData.length]);
+
+  // Load transliterations if needed
+  useEffect(() => {
+    if (showTransliteration && Object.keys(transliterationMap).length === 0) {
+      try {
+        const transliterations = require('@/data/Transliteration.json') as TransliterationData;
+        if (transliterations) {
+          setTransliterationMap(transliterations);
+        } else {
+          console.error('Transliteration data format is unexpected');
+        }
+      } catch (error) {
+        console.error('Error loading transliteration data:', error);
+      }
+    }
+  }, [showTransliteration, transliterationMap]);
 
   // Safely get verses for the current surah
   const getVersesForSurah = useCallback(() => {
@@ -76,34 +102,42 @@ export const QuranView: React.FC<QuranViewProps> = ({
         .filter(verse => verse.surah_number === currentSurah)
         .sort((a, b) => a.ayah_number - b.ayah_number);
 
-      // Add translations if available and enabled
-      if (showTranslation && translationData.length > 0) {
-        const versesWithTranslation = verses.map(verse => {
-          const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
-          
-          // Find matching translation
+      return verses.map(verse => {
+        const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
+        let translationText = '';
+        let transliterationText = '';
+
+        // Add translation if available and enabled
+        if (showTranslation && translationData.length > 0) {
           const translation = translationData.find(t => t.verse_key === verseKey);
-          let translationText = '';
-          
           if (translation && translation.translations && translation.translations.length > 0) {
             translationText = translation.translations[0].text;
           }
-          
-          return {
-            ...verse,
-            translation: translationText,
-          };
-        });
-        
-        return versesWithTranslation;
-      }
+        }
 
-      return verses;
+        // Add transliteration if available and enabled
+        if (showTransliteration && transliterationMap[verseKey]) {
+          transliterationText = transliterationMap[verseKey].t;
+        }
+        
+        return {
+          ...verse,
+          translation: translationText,
+          transliteration: transliterationText,
+        };
+      });
+      
     } catch (error) {
       console.error('Error processing verses:', error);
       return [];
     }
-  }, [currentSurah, showTranslation, translationData]);
+  }, [
+    currentSurah,
+    showTranslation,
+    translationData,
+    showTransliteration,
+    transliterationMap,
+  ]);
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {
@@ -148,6 +182,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
             textColor={theme.colors.text}
             borderColor={theme.colors.border}
             showTranslation={showTranslation}
+            showTransliteration={showTransliteration}
           />
         ))}
       </ScrollView>
