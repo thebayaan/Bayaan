@@ -32,7 +32,6 @@ interface PlayerContentProps {
 const PlayerContent: React.FC<PlayerContentProps> = ({
   speedBottomSheetRef,
   sleepBottomSheetRef,
-  queueBottomSheetRef,
   summaryBottomSheetRef,
 }) => {
   const {theme} = useTheme();
@@ -156,7 +155,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
               <ControlButtons
                 speedBottomSheetRef={speedBottomSheetRef}
                 sleepBottomSheetRef={sleepBottomSheetRef}
-                queueBottomSheetRef={queueBottomSheetRef}
                 onQueuePress={handleQueuePress}
                 showQueue={showQueue}
                 onQuranOptionsPress={handleOpenQuranOptions}

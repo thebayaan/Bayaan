@@ -1,5 +1,11 @@
 import React, {useCallback, useMemo} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ViewStyle,
+} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import Animated, {
   useSharedValue,
@@ -7,6 +13,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
+import {Theme} from '@/utils/themeUtils';
 import {Surah} from '@/data/surahData';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -22,7 +29,7 @@ interface SurahHeroSectionProps {
   onPress: (surah: Surah) => void;
   title?: string;
   isCompact?: boolean;
-  style?: any;
+  style?: ViewStyle | ViewStyle[];
   gradientColors?: string[];
 }
 
@@ -128,7 +135,7 @@ export const SurahHeroSection = ({
   );
 };
 
-const createStyles = (theme: any) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     hero: {
       borderRadius: moderateScale(20),

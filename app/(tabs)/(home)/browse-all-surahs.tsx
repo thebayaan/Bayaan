@@ -22,16 +22,102 @@ import {useModal} from '@/components/providers/ModalProvider';
 type ViewMode = 'card' | 'list';
 type SortOption = 'asc' | 'desc' | 'revelation';
 
+const ItemSeparator = React.memo(() => {
+  const styles = useStyles();
+  return <View style={styles.listSeparator} />;
+});
+ItemSeparator.displayName = 'ItemSeparator';
+
+const useStyles = () => {
+  return ScaledSheet.create({
+    container: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    scrollView: {
+      flex: 1,
+      marginTop: moderateScale(4), // Reduced from 10 to 4
+    },
+    scrollContent: {
+      paddingBottom: verticalScale(100),
+    },
+    optionsRow: {
+      height: moderateScale(40),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: moderateScale(16),
+      marginHorizontal: moderateScale(16),
+      borderRadius: moderateScale(8),
+      marginBottom: moderateScale(2), // Reduced from 5 to 2
+    },
+    surahsContainer: {
+      flex: 1,
+      paddingTop: 0, // Removed padding at top of container
+    },
+    sortOptions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    sortButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(6),
+      borderRadius: moderateScale(16),
+      marginRight: moderateScale(8),
+    },
+    sortButtonText: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-SemiBold',
+      marginLeft: moderateScale(4),
+    },
+    viewModeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(6),
+    },
+    listContent: {
+      paddingHorizontal: moderateScale(16),
+      paddingTop: 0, // Removed padding to bring content closer to options row
+    },
+    listViewContent: {
+      paddingHorizontal: 0, // Remove horizontal padding for list view to match SurahItem styling
+    },
+    columnWrapper: {
+      justifyContent: 'space-between',
+      marginBottom: moderateScale(16), // Space between rows in card view
+    },
+    surahCard: {
+      width: '48%', // Allow some space between cards
+    },
+    listSeparator: {
+      height: moderateScale(4),
+    },
+    viewContainer: {
+      width: '100%',
+    },
+    hiddenView: {
+      display: 'none',
+    },
+  });
+};
+
 export default function BrowseAllSurahsScreen() {
   const router = useRouter();
-  const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {showSelectReciter} = useModal();
 
+  // Define styles *before* callbacks that use them
+  const styles = useStyles();
+  const {theme} = useTheme(); // Keep theme for options row styling
+
   const [searchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('list'); // Default to list view
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [sortOption, setSortOption] = useState<SortOption>('asc');
 
   // Filter and sort surahs
@@ -150,7 +236,7 @@ export default function BrowseAllSurahsScreen() {
         style={styles.surahCard}
       />
     ),
-    [handleSurahPress, getColorForSurah],
+    [handleSurahPress, getColorForSurah, styles.surahCard],
   );
 
   // Render a list item using SurahItem
@@ -318,6 +404,7 @@ export default function BrowseAllSurahsScreen() {
               maxToRenderPerBatch={10}
               windowSize={5}
               removeClippedSubviews={true}
+              ItemSeparatorComponent={ItemSeparator}
             />
           </View>
 
@@ -343,9 +430,7 @@ export default function BrowseAllSurahsScreen() {
               maxToRenderPerBatch={10}
               windowSize={5}
               removeClippedSubviews={true}
-              ItemSeparatorComponent={() => (
-                <View style={styles.listSeparator} />
-              )}
+              ItemSeparatorComponent={ItemSeparator}
             />
           </View>
         </Animated.View>
@@ -353,78 +438,3 @@ export default function BrowseAllSurahsScreen() {
     </View>
   );
 }
-
-const styles = ScaledSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    marginTop: moderateScale(4), // Reduced from 10 to 4
-  },
-  scrollContent: {
-    paddingBottom: verticalScale(100),
-  },
-  optionsRow: {
-    height: moderateScale(40),
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: moderateScale(16),
-    marginHorizontal: moderateScale(16),
-    borderRadius: moderateScale(8),
-    marginBottom: moderateScale(2), // Reduced from 5 to 2
-  },
-  surahsContainer: {
-    flex: 1,
-    paddingTop: 0, // Removed padding at top of container
-  },
-  sortOptions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(6),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(16),
-    marginRight: moderateScale(8),
-  },
-  sortButtonText: {
-    fontSize: moderateScale(12),
-    fontFamily: 'Manrope-SemiBold',
-    marginLeft: moderateScale(4),
-  },
-  viewModeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: moderateScale(6),
-  },
-  listContent: {
-    paddingHorizontal: moderateScale(16),
-    paddingTop: 0, // Removed padding to bring content closer to options row
-  },
-  listViewContent: {
-    paddingHorizontal: 0, // Remove horizontal padding for list view to match SurahItem styling
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    marginBottom: moderateScale(16), // Space between rows in card view
-  },
-  surahCard: {
-    width: '48%', // Allow some space between cards
-  },
-  listSeparator: {
-    height: moderateScale(4), // Reduced from 10 to 4 for more compact list
-  },
-  viewContainer: {
-    width: '100%',
-  },
-  hiddenView: {
-    display: 'none',
-  },
-});
