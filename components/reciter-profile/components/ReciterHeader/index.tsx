@@ -25,7 +25,7 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   insets,
 }) => {
   const {theme} = useTheme();
-  const styles = createStyles(theme, reciter.rewayat.length > 1);
+  const styles = createStyles(theme);
 
   const selectedRewayat =
     reciter.rewayat.find(r => r.id === selectedRewayatId) || reciter.rewayat[0];
@@ -92,7 +92,7 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   );
 };
 
-const createStyles = (theme: Theme, hasMultipleRewayats: boolean) =>
+const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     gradientContainer: {
       paddingHorizontal: moderateScale(5),

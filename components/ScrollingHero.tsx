@@ -28,7 +28,7 @@ import {Icon} from '@rneui/base';
 import Color from 'color';
 import {useRouter} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
-import {getRandomColors, getThemedGradientColors} from '@/utils/gradientColors';
+import {getRandomColors} from '@/utils/gradientColors';
 
 // Error Boundary for ScrollingHero
 class ScrollingHeroErrorBoundary extends React.Component<{

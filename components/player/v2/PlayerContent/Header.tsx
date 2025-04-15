@@ -36,7 +36,7 @@ export const Header = () => {
           color={theme.colors.text}
         />
       </TouchableOpacity>
-      
+
       <Text style={[styles.arabicSurahName, {color: theme.colors.text}]}>
         {surahGlyph}
       </Text>
