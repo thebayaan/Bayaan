@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,13 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
+  Animated,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import BottomSheet from '@gorhom/bottom-sheet';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {PlaybackSpeedModal} from '../../Modals/PlaybackSpeedModal';
 import {SleepTimerModal} from '../../Modals/SleepTimerModal';
 import {
@@ -20,6 +22,9 @@ import {
   QueueIcon,
   QuranIcon,
 } from '@/components/Icons';
+
+// Key for AsyncStorage
+const ASYNC_STORAGE_KEY = 'hasInteractedWithQuranOptions';
 
 interface ControlButtonsProps {
   speedBottomSheetRef: React.RefObject<BottomSheet>;
@@ -46,6 +51,7 @@ interface Styles {
   sideButtonsContainer: ViewStyle;
   controlsContainer: ViewStyle;
   sideButton: ViewStyle;
+  pulseBackground: ViewStyle;
 }
 
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
@@ -57,6 +63,66 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 }) => {
   const {theme} = useTheme();
   const {playback, setRate, settings, updateSettings} = useUnifiedPlayer();
+  const [isNewFeature, setIsNewFeature] = useState(true);
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  // Check AsyncStorage on mount
+  useEffect(() => {
+    const checkInteraction = async () => {
+      try {
+        const value = await AsyncStorage.getItem(ASYNC_STORAGE_KEY);
+        if (value === 'true') {
+          setIsNewFeature(false);
+        }
+      } catch (e) {
+        console.error('Failed to read AsyncStorage key:', ASYNC_STORAGE_KEY, e);
+      }
+    };
+    checkInteraction();
+  }, []);
+
+  // Start/stop animation based on isNewFeature
+  useEffect(() => {
+    if (isNewFeature) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.4,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(0);
+    }
+
+    return () => pulseAnim.stopAnimation();
+  }, [isNewFeature, pulseAnim]);
+
+  const handleQuranOptionsPress = useCallback(async () => {
+    if (onQuranOptionsPress) {
+      onQuranOptionsPress();
+    }
+    if (isNewFeature) {
+      setIsNewFeature(false);
+      try {
+        await AsyncStorage.setItem(ASYNC_STORAGE_KEY, 'true');
+      } catch (e) {
+        console.error(
+          'Failed to write AsyncStorage key:',
+          ASYNC_STORAGE_KEY,
+          e,
+        );
+      }
+    }
+  }, [onQuranOptionsPress, isNewFeature]);
 
   const handleSpeedPress = () => {
     speedBottomSheetRef.current?.expand();
@@ -101,13 +167,22 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   // Create subtle active background color with opacity
   const activeBackgroundColor = `${theme.colors.text}20`; // 20% opacity
 
+  const animatedPulseStyle = {
+    opacity: pulseAnim,
+  };
+
   return (
     <View style={styles.wrapper}>
       {onQuranOptionsPress && (
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={onQuranOptionsPress}
+          onPress={handleQuranOptionsPress}
           style={[styles.sideButton, styles.quranButton]}>
+          {isNewFeature && (
+            <Animated.View
+              style={[styles.pulseBackground, animatedPulseStyle]}
+            />
+          )}
           <QuranIcon size={moderateScale(22)} color={theme.colors.text} />
         </TouchableOpacity>
       )}
@@ -189,20 +264,19 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.queueButton}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={onQueuePress}
-          style={[
-            styles.button,
-            showQueue && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-          ]}>
-          <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={onQueuePress}
+        style={[
+          styles.sideButton,
+          styles.queueButton,
+          showQueue && [
+            styles.activeButton,
+            {backgroundColor: activeBackgroundColor},
+          ],
+        ]}>
+        <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
+      </TouchableOpacity>
 
       <PlaybackSpeedModal
         bottomSheetRef={speedBottomSheetRef}
@@ -284,7 +358,7 @@ const styles = StyleSheet.create<Styles>({
     marginHorizontal: moderateScale(6),
   },
   activeButton: {
-    // Now using a subtle background with opacity defined inline
+    // No specific style needed here anymore, background applied inline
   },
   speedButtonText: {
     fontSize: moderateScale(16),
@@ -323,5 +397,11 @@ const styles = StyleSheet.create<Styles>({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(128, 128, 128, 0.05)',
+    overflow: 'hidden',
+  },
+  pulseBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 122, 255, 0.4)',
+    zIndex: -1,
   },
 });
