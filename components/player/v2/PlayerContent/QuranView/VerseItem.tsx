@@ -10,18 +10,24 @@ interface VerseItemProps {
   textColor: string;
   borderColor: string;
   showTranslation?: boolean;
+  showTransliteration?: boolean;
 }
 
 export const VerseItem = memo<VerseItemProps>(
-  ({verse, onPress, textColor, borderColor, showTranslation = false}) => {
+  ({
+    verse,
+    onPress,
+    textColor,
+    borderColor,
+    showTranslation = false,
+    showTransliteration = false,
+  }) => {
     // Create a semi-transparent background color based on the text color
     const bgColor = Color(textColor).alpha(0.08).toString();
 
     // Clean translation text by removing footnote tags
     const cleanTranslationText = (text?: string) => {
       if (!text) return '';
-      
-      // Remove <sup> tags and their contents
       return text.replace(/<sup[^>]*>.*?<\/sup>/g, '');
     };
 
@@ -40,6 +46,11 @@ export const VerseItem = memo<VerseItemProps>(
         <Text style={[styles.arabicText, {color: textColor}]}>
           {verse.text}
         </Text>
+        {showTransliteration && verse.transliteration && (
+          <Text style={[styles.transliterationText, {color: textColor}]}>
+            {verse.transliteration}
+          </Text>
+        )}
         {showTranslation && verse.translation && (
           <Text style={[styles.translationText, {color: textColor}]}>
             {cleanTranslationText(verse.translation)}
@@ -76,6 +87,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Uthmani',
     textAlign: 'right',
     writingDirection: 'rtl',
+  },
+  transliterationText: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Regular',
+    marginTop: verticalScale(8),
+    lineHeight: moderateScale(19),
+    textAlign: 'left',
+    opacity: 0.7,
   },
   translationText: {
     fontSize: moderateScale(14),

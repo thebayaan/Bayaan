@@ -4,6 +4,8 @@ export interface Verse {
   ayah_number: number;
   verse_key: string;
   text: string;
+  translation?: string;
+  transliteration?: string;
 }
 
 export interface Surah {
