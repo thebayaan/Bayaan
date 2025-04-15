@@ -7,6 +7,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Icon} from '@rneui/themed';
 import {ReciterImage} from '@/components/ReciterImage';
 import {ReciterHeaderProps} from '@/components/reciter-profile/types';
+import Color from 'color';
 
 /**
  * ReciterHeader component for the ReciterProfile
@@ -24,10 +25,11 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   insets,
 }) => {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, reciter.rewayat.length > 1);
 
   const selectedRewayat =
     reciter.rewayat.find(r => r.id === selectedRewayatId) || reciter.rewayat[0];
+  const hasMultipleRewayats = reciter.rewayat.length > 1;
 
   return (
     <View style={styles.gradientContainer}>
@@ -59,13 +61,24 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
                   <Text style={styles.styleText} numberOfLines={1}>
                     {selectedRewayat.name}
                   </Text>
-                  <Icon
-                    name="info"
-                    type="feather"
-                    size={moderateScale(14)}
-                    color={theme.colors.text}
-                    containerStyle={{marginTop: moderateScale(1)}}
-                  />
+                  {hasMultipleRewayats ? (
+                    <View style={styles.iconContainer}>
+                      <Icon
+                        name="chevron-down"
+                        type="feather"
+                        size={moderateScale(14)}
+                        color={theme.colors.text}
+                      />
+                    </View>
+                  ) : (
+                    <Icon
+                      name="info"
+                      type="feather"
+                      size={moderateScale(14)}
+                      color={theme.colors.text}
+                      containerStyle={{marginTop: moderateScale(1)}}
+                    />
+                  )}
                 </View>
                 <Text style={styles.styleSubText} numberOfLines={1}>
                   {selectedRewayat.style}
@@ -79,7 +92,7 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   );
 };
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, hasMultipleRewayats: boolean) =>
   ScaledSheet.create({
     gradientContainer: {
       paddingHorizontal: moderateScale(5),
@@ -138,5 +151,11 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateScale(2),
       textTransform: 'capitalize',
       opacity: 0.8,
+    },
+    iconContainer: {
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
+      borderRadius: moderateScale(4),
+      padding: moderateScale(2),
+      marginLeft: moderateScale(2),
     },
   });
