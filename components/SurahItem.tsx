@@ -79,12 +79,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             ]}>
             {revelationPlace === 'makkah' ? (
               <MakkahIcon
-                size={moderateScale(12)}
+                size={moderateScale(15)}
                 color={theme.colors.textSecondary}
+                secondaryColor={Color(theme.colors.card).alpha(0.8).toString()}
               />
             ) : (
               <MadinahIcon
-                size={moderateScale(12)}
+                size={moderateScale(15)}
                 color={theme.colors.textSecondary}
               />
             )}
