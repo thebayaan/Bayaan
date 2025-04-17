@@ -9,9 +9,9 @@ import {
   Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
-import {Ionicons} from '@expo/vector-icons';
+import {DiscoverIcon} from '@/components/Icons';
 import {getRandomTrack} from '@/utils/randomRecitation';
 import {usePlayerStore} from '@/store/playerStore';
 import * as Haptics from 'expo-haptics';
@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {getRandomColors} from '@/utils/gradientColors';
 import Color from 'color';
+import {Theme} from '@/utils/themeUtils';
 
 // Show toast message with platform awareness
 function showToast(message: string) {
@@ -147,6 +148,9 @@ export function RandomRecitationHero({
     [isCompact],
   );
 
+  // Use the styles with theme
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <AnimatedTouchableOpacity
       onPress={handleRandomPlay}
@@ -157,79 +161,65 @@ export function RandomRecitationHero({
       onPressOut={handlePressOut}>
       <LinearGradient
         colors={gradientColors}
-        style={styles.gradient}
         start={{x: 0, y: 0.8}}
-        end={{x: 1, y: 0.2}}>
+        end={{x: 1, y: 0.2}}
+        style={StyleSheet.absoluteFill}>
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
+          <View style={styles.iconCircle}>
             {isLoading ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={theme.colors.text} size="small" />
             ) : (
-              <Ionicons
-                name="shuffle"
-                size={isCompact ? moderateScale(18) : moderateScale(22)}
-                color="#fff"
+              <DiscoverIcon
+                size={moderateScale(24)}
+                color={theme.colors.text}
               />
             )}
           </View>
-          <Text
-            style={[
-              styles.title,
-              {
-                color: '#fff',
-                fontSize: isCompact ? moderateScale(12) : moderateScale(14),
-              },
-            ]}>
-            Random Recitation
-          </Text>
-          <Text
-            style={[
-              styles.subtitle,
-              {
-                color: 'rgba(255, 255, 255, 0.9)',
-                fontSize: isCompact ? moderateScale(8) : moderateScale(10),
-              },
-            ]}>
-            Discover something new
-          </Text>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>RANDOM RECITATION</Text>
+            <Text style={styles.subtitle}>Discover something new</Text>
+          </View>
         </View>
       </LinearGradient>
     </AnimatedTouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: moderateScale(20),
-    overflow: 'hidden',
-  },
-  gradient: {
-    width: '100%',
-    height: '100%',
-  },
-  content: {
-    flex: 1,
-    padding: moderateScale(12),
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  iconContainer: {
-    width: moderateScale(36),
-    height: moderateScale(36),
-    borderRadius: moderateScale(18),
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: moderateScale(12),
-  },
-  title: {
-    fontFamily: 'Manrope-Bold',
-    marginBottom: moderateScale(2),
-    textAlign: 'left',
-  },
-  subtitle: {
-    fontFamily: 'Manrope-Medium',
-    textAlign: 'left',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      borderRadius: moderateScale(20),
+      overflow: 'hidden',
+    },
+    content: {
+      flex: 1,
+      padding: moderateScale(14),
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    iconCircle: {
+      width: moderateScale(40),
+      height: moderateScale(40),
+      // borderRadius: moderateScale(20),
+      // backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      // marginRight: moderateScale(12),
+    },
+    textContainer: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    title: {
+      fontFamily: 'Manrope-Bold',
+      fontSize: moderateScale(8),
+      letterSpacing: moderateScale(0.5),
+      color: theme.colors.textSecondary,
+      marginBottom: verticalScale(2),
+    },
+    subtitle: {
+      fontFamily: 'Manrope-Medium',
+      fontSize: moderateScale(11),
+      color: theme.colors.text,
+    },
+  });
