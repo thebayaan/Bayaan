@@ -37,7 +37,11 @@ export const getRandomColors = (
 };
 
 // Helper function to actually generate the colors
-export const getRandomColorsInternal = (): readonly [string, string, string] => {
+export const getRandomColorsInternal = (): readonly [
+  string,
+  string,
+  string,
+] => {
   // Fisher-Yates shuffle
   const shuffled = [...GRADIENT_COLORS];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -57,7 +61,7 @@ export const getThemedGradientColors = (
   const alpha1 = isDarkMode ? 0.7 : 0.15;
   const alpha2 = isDarkMode ? 0.6 : 0.1;
   const alpha3 = isDarkMode ? 0.5 : 0.05;
-  
+
   return [
     Color(colors[0])
       .alpha(isRevealed ? 0 : alpha1)
@@ -69,4 +73,4 @@ export const getThemedGradientColors = (
       .alpha(isRevealed ? 0 : alpha3)
       .toString(),
   ] as const;
-}; 
+};

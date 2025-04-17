@@ -1,21 +1,11 @@
-import React, {useMemo} from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  FlatList,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import React from 'react';
+import {View, Text, ScrollView, FlatList, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {SurahCard} from './cards/SurahCard';
 import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
-
-import {SurahHeroSection} from '@/components/SurahHeroSection';
-import {BrowseAllHeroSection} from '@/components/BrowseAllHeroSection';
-import {getRandomColors} from '@/utils/gradientColors';
+import {SurahsHero} from '@/components/hero/SurahsHero';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
@@ -249,12 +239,6 @@ const mainStyles = StyleSheet.create({
     paddingTop: verticalScale(0),
     paddingBottom: verticalScale(100),
   },
-  heroRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'stretch',
-    marginBottom: verticalScale(8),
-  },
   sectionHeader: {
     fontSize: moderateScale(22),
     fontFamily: 'Manrope-Bold',
@@ -276,79 +260,14 @@ const SectionHeader = React.memo(({title}: {title: string}) => {
 SectionHeader.displayName = 'SectionHeader';
 
 // Custom function to create subtler gradient colors for both light and dark modes
-function createSubtleGradientColors(
-  baseColors: readonly [string, string, string],
-  isDarkMode: boolean,
-): [string, string, string] {
-  // Use current alpha values for dark mode, but lower them for light mode
-  const alpha1 = isDarkMode ? 0.4 : 0.3; // Light mode: reduced from 0.6 to 0.3
-  const alpha2 = isDarkMode ? 0.25 : 0.2; // Light mode: reduced from 0.4 to 0.2
-  const alpha3 = isDarkMode ? 0.15 : 0.1; // Light mode: reduced from 0.2 to 0.1
 
-  return [
-    Color(baseColors[0]).alpha(alpha1).toString(),
-    Color(baseColors[1]).alpha(alpha2).toString(),
-    Color(baseColors[2]).alpha(alpha3).toString(),
-  ];
-}
+// Same SECTION_HEIGHT as ScrollingHero for consistency
 
 export default function SurahsView({onSurahPress}: SurahsViewProps) {
-  const {width: windowWidth} = useWindowDimensions();
-  const {theme} = useTheme();
+  useTheme();
 
   // Memoize the surah of the day to prevent recalculation
   const surahOfTheDay = React.useMemo(() => getSurahOfTheDay(), []);
-
-  // Generate shared gradient colors for both hero sections
-  const sharedColorsBase = useMemo(() => getRandomColors(), []);
-
-  // Create themed gradient colors for each section with custom alpha values
-  const surahHeroColors = useMemo(
-    () => createSubtleGradientColors(sharedColorsBase, theme.isDarkMode),
-    [sharedColorsBase, theme.isDarkMode],
-  );
-
-  const browseAllColors = useMemo(() => {
-    // Use a slight variation of the same colors for the browse all section
-    // by shifting the hue slightly
-    const shiftedColors = sharedColorsBase.map(colorStr => {
-      const color = Color(colorStr);
-      return color.rotate(30).hex(); // Rotate hue by 30 degrees
-    }) as [string, string, string];
-
-    return createSubtleGradientColors(shiftedColors, theme.isDarkMode);
-  }, [sharedColorsBase, theme.isDarkMode]);
-
-  // Calculate item dimensions based on screen width - similar to BrowseGrid
-  const heroGridDimensions = useMemo(() => {
-    const horizontalPadding = moderateScale(16); // 16px padding on each side
-    const gapBetweenItems = moderateScale(16); // 16px gap between cards
-    const availableWidth =
-      windowWidth - horizontalPadding * 2 - gapBetweenItems;
-    const itemWidth = availableWidth / 2;
-
-    return {
-      width: itemWidth,
-      gap: gapBetweenItems,
-      paddingHorizontal: horizontalPadding,
-    };
-  }, [windowWidth]);
-
-  // Create card style based on calculated dimensions
-  const cardStyle = useMemo(() => {
-    return {
-      width: heroGridDimensions.width,
-      marginBottom: moderateScale(8), // Reduced from 16 for a more compact layout
-    };
-  }, [heroGridDimensions.width]);
-
-  // Memoize the onSurahPress handler to prevent recreation on each render
-  const handleSurahPress = React.useCallback(
-    (surah: Surah) => {
-      onSurahPress(surah);
-    },
-    [onSurahPress],
-  );
 
   // Memoize the category renderers
   const renderSpecialCategories = React.useMemo(
@@ -358,10 +277,10 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
           key={collection.id}
           title={collection.title}
           collection={collection}
-          onSurahPress={handleSurahPress}
+          onSurahPress={onSurahPress}
         />
       )),
-    [handleSurahPress],
+    [onSurahPress],
   );
 
   const renderFeaturedCollections = React.useMemo(
@@ -371,10 +290,10 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
           key={collection.id}
           title={collection.title}
           collection={collection}
-          onSurahPress={handleSurahPress}
+          onSurahPress={onSurahPress}
         />
       )),
-    [handleSurahPress],
+    [onSurahPress],
   );
 
   const renderThemeCollections = React.useMemo(
@@ -384,10 +303,10 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
           key={collection.id}
           title={collection.title}
           collection={collection}
-          onSurahPress={handleSurahPress}
+          onSurahPress={onSurahPress}
         />
       )),
-    [handleSurahPress],
+    [onSurahPress],
   );
 
   return (
@@ -397,27 +316,7 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}
       scrollEventThrottle={16}>
-      <View
-        style={[
-          mainStyles.heroRow,
-          {
-            paddingHorizontal: heroGridDimensions.paddingHorizontal,
-            gap: heroGridDimensions.gap,
-          },
-        ]}>
-        <SurahHeroSection
-          surah={surahOfTheDay}
-          onPress={handleSurahPress}
-          isCompact={true}
-          style={cardStyle}
-          gradientColors={surahHeroColors}
-        />
-        <BrowseAllHeroSection
-          isCompact={true}
-          style={cardStyle}
-          gradientColors={browseAllColors}
-        />
-      </View>
+      <SurahsHero surahOfTheDay={surahOfTheDay} onSurahPress={onSurahPress} />
 
       {renderSpecialCategories}
 
