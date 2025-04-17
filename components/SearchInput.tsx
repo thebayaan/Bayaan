@@ -49,7 +49,6 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
       onCancel,
       onClose,
       placeholder = 'Search',
-      autoFocus = false,
       showCancelButton = true,
       containerStyle,
       inputStyle,

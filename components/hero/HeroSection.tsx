@@ -17,10 +17,10 @@ export function HeroSection({mainHero, randomHero = true}: HeroSectionProps) {
     <View style={styles.container}>
       {/* Main Hero Content */}
       {mainHero}
-      
+
       {/* Standard spacing between heroes */}
       <View style={styles.spacing} />
-      
+
       {/* Random Recitation Hero */}
       {randomHero && (
         <View style={styles.randomHeroContainer}>
@@ -36,10 +36,9 @@ const styles = StyleSheet.create({
     marginBottom: moderateScale(16),
   },
   spacing: {
-    height: verticalScale(4),
+    height: verticalScale(10),
   },
   randomHeroContainer: {
     paddingHorizontal: moderateScale(16),
-    marginBottom: moderateScale(16),
   },
-}); 
+});

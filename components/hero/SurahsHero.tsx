@@ -20,9 +20,10 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import {getRandomColors, getThemedGradientColors} from '@/utils/gradientColors';
-import {BrowseAllHeroSection} from '@/components/hero/BrowseAllHeroSection';
+import {BrowseAllHeroSection} from '@/components/hero/BrowseAllReciters';
 import Color from 'color';
 import {HeroSection} from './HeroSection';
+import {SurahOfTheDay} from './SurahOfTheDay';
 
 // Create the AnimatedTouchableOpacity component once, outside of render functions
 const AnimatedTouchableOpacity =
@@ -263,12 +264,7 @@ export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
   // Generate shared gradient colors for both hero sections
   const sharedColorsBase = useMemo(() => getRandomColors(), []);
 
-  // Create themed gradient colors for each section
-  const surahHeroColors = useMemo(
-    () => createSubtleGradientColors(sharedColorsBase, theme.isDarkMode),
-    [sharedColorsBase, theme.isDarkMode],
-  );
-
+  // Create themed gradient colors for the browse all section
   const browseAllColors = useMemo(() => {
     // Use a slight variation of the same colors for the browse all section
     const shiftedColors = sharedColorsBase.map(colorStr => {
@@ -282,7 +278,7 @@ export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
   // Calculate item dimensions based on screen width
   const heroGridDimensions = useMemo(() => {
     const horizontalPadding = moderateScale(16);
-    const gapBetweenItems = moderateScale(16);
+    const gapBetweenItems = moderateScale(10);
     const availableWidth =
       windowWidth - horizontalPadding * 2 - gapBetweenItems;
     const itemWidth = availableWidth / 2;
@@ -302,10 +298,6 @@ export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
     };
   }, [heroGridDimensions.width]);
 
-  const handleSurahPress = useMemo(() => {
-    return (surah: Surah) => onSurahPress(surah);
-  }, [onSurahPress]);
-
   return (
     <HeroSection
       mainHero={
@@ -317,12 +309,10 @@ export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
             paddingHorizontal: heroGridDimensions.paddingHorizontal,
             gap: heroGridDimensions.gap,
           }}>
-          <SurahHeroSection
+          <SurahOfTheDay
             surah={surahOfTheDay}
-            onPress={handleSurahPress}
-            isCompact={true}
+            onPress={onSurahPress}
             style={cardStyle}
-            gradientColors={surahHeroColors}
           />
           <BrowseAllHeroSection
             isCompact={true}
