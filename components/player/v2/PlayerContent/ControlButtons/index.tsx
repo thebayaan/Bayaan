@@ -183,7 +183,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
               style={[styles.pulseBackground, animatedPulseStyle]}
             />
           )}
-          <QuranIcon size={moderateScale(22)} color={theme.colors.text} />
+          <QuranIcon size={moderateScale(28)} color={theme.colors.text} />
         </TouchableOpacity>
       )}
 
