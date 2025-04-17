@@ -1,4 +1,4 @@
-import React, {useMemo, useState, useCallback} from 'react';
+import React, {useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -362,7 +362,6 @@ function createStyles(theme: Theme) {
   return StyleSheet.create({
     wrapper: {
       paddingHorizontal: moderateScale(16),
-      marginBottom: moderateScale(16),
     },
     container: {
       height: SECTION_HEIGHT,
@@ -434,7 +433,6 @@ const AnimatedTouchableOpacity =
 
 export const ScrollingHero = React.memo(
   () => {
-    const [isRevealed] = useState(false);
     const {theme} = useTheme();
     const router = useRouter();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -478,51 +476,47 @@ export const ScrollingHero = React.memo(
 
     return (
       <ScrollingHeroErrorBoundary>
-        <View style={styles.wrapper}>
-          <AnimatedTouchableOpacity
-            activeOpacity={1}
-            style={[styles.container, animatedStyle]}
-            onPress={handleBrowseAllPress}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}>
-            <View style={styles.columnsContainer}>
-              {columnConfigs.map((config, index) => (
-                <Column
-                  key={index}
-                  config={config}
-                  styles={styles}
-                  theme={theme}
-                />
-              ))}
+        <AnimatedTouchableOpacity
+          activeOpacity={1}
+          style={[styles.container, animatedStyle]}
+          onPress={handleBrowseAllPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}>
+          <View style={styles.columnsContainer}>
+            {columnConfigs.map((config, index) => (
+              <Column
+                key={index}
+                config={config}
+                styles={styles}
+                theme={theme}
+              />
+            ))}
+          </View>
+          <Overlay isRevealed={false} theme={theme} styles={styles} />
+          <View style={styles.contentOverlay} pointerEvents="none">
+            <View
+              style={[
+                styles.browseButton,
+                {
+                  backgroundColor: Color(theme.colors.card)
+                    .alpha(0.95)
+                    .toString(),
+                  borderWidth: 1,
+                  borderColor: Color(theme.colors.border).alpha(0.2).toString(),
+                  borderRadius: moderateScale(25),
+                },
+              ]}>
+              <Text style={styles.buttonText}>Browse All</Text>
+              <Icon
+                name="arrow-right"
+                type="feather"
+                size={moderateScale(18)}
+                color={theme.colors.text}
+                style={styles.buttonIcon}
+              />
             </View>
-            <Overlay isRevealed={isRevealed} theme={theme} styles={styles} />
-            <View style={styles.contentOverlay} pointerEvents="none">
-              <View
-                style={[
-                  styles.browseButton,
-                  {
-                    backgroundColor: Color(theme.colors.card)
-                      .alpha(0.95)
-                      .toString(),
-                    borderWidth: 1,
-                    borderColor: Color(theme.colors.border)
-                      .alpha(0.2)
-                      .toString(),
-                    borderRadius: moderateScale(25),
-                  },
-                ]}>
-                <Text style={styles.buttonText}>Browse All</Text>
-                <Icon
-                  name="arrow-right"
-                  type="feather"
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                  style={styles.buttonIcon}
-                />
-              </View>
-            </View>
-          </AnimatedTouchableOpacity>
-        </View>
+          </View>
+        </AnimatedTouchableOpacity>
       </ScrollingHeroErrorBoundary>
     );
   },

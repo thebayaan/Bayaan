@@ -12,8 +12,8 @@ import {
   useRecentlyPlayedStore,
   RecentlyPlayedTrack,
 } from '@/services/player/store/recentlyPlayedStore';
-import {ScrollingHero} from '@/components/ScrollingHero';
 import {Theme} from '@/utils/themeUtils';
+import {RecitersHero} from '@/components/hero/RecitersHero';
 import {
   getTajweedReciters,
   getMemorizationReciters,
@@ -257,6 +257,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     [],
   );
 
+  // Get random gradient colors from the utility
+
   return (
     <ScrollView
       style={styles.container}
@@ -265,10 +267,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       }}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
-      <ScrollingHero />
-
-      {/* Add consistent spacing after hero section */}
-      <View style={styles.heroSpacing} />
+      {/* Use the unified RecitersHero component */}
+      <RecitersHero />
 
       {/* Recently played tracks - high priority for immediate access */}
       {recentTracks.length > 0 && (
@@ -385,9 +385,6 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  heroSpacing: {
-    height: verticalScale(8), // Consistent spacing after hero section (8 units)
   },
   section: {
     marginBottom: moderateScale(24),
