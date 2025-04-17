@@ -200,11 +200,8 @@ const createStyles = (theme: Theme) =>
     iconCircle: {
       width: moderateScale(40),
       height: moderateScale(40),
-      // borderRadius: moderateScale(20),
-      // backgroundColor: 'rgba(255, 255, 255, 0.2)',
       justifyContent: 'center',
       alignItems: 'center',
-      // marginRight: moderateScale(12),
     },
     textContainer: {
       flex: 1,
@@ -212,9 +209,9 @@ const createStyles = (theme: Theme) =>
     },
     title: {
       fontFamily: 'Manrope-Bold',
-      fontSize: moderateScale(8),
+      fontSize: moderateScale(9),
       letterSpacing: moderateScale(0.5),
-      color: theme.colors.textSecondary,
+      color: theme.colors.text,
       marginBottom: verticalScale(2),
     },
     subtitle: {

@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, StyleSheet} from 'react-native';
-import {ScrollingHero} from '@/components/hero/ScrollingHero';
+import {ScrollingHero} from '@/components/hero/ScrollingReciters';
 import {HeroSection} from './HeroSection';
 import {moderateScale} from 'react-native-size-matters';
 

@@ -64,6 +64,7 @@ const COLUMNS: ColumnConfig[] = [
   {speed: 220000, direction: -1, reciters: [], startOffset: 100},
   {speed: 230000, direction: -1, reciters: [], startOffset: 200},
   {speed: 210000, direction: -1, reciters: [], startOffset: 250},
+  {speed: 200000, direction: -1, reciters: [], startOffset: 250},
 ];
 
 // Memoized ReciterImage component
@@ -417,7 +418,7 @@ function createStyles(theme: Theme) {
       gap: moderateScale(8),
     },
     buttonText: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       letterSpacing: -0.5,
@@ -510,7 +511,7 @@ export const ScrollingHero = React.memo(
               <Icon
                 name="arrow-right"
                 type="feather"
-                size={moderateScale(18)}
+                size={moderateScale(16)}
                 color={theme.colors.text}
                 style={styles.buttonIcon}
               />
