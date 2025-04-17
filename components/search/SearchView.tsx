@@ -118,16 +118,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const insets = useSafeAreaInsets();
   const {showSelectReciter} = useModal();
 
-  // Focus input when visible
-  useEffect(() => {
-    if (visible) {
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [visible]);
-
   // Clear query when closing
   useEffect(() => {
     if (!visible) {

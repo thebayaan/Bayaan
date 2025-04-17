@@ -74,16 +74,6 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
-    // Focus input on mount if autoFocus is true
-    React.useEffect(() => {
-      if (autoFocus && ref && 'current' in ref && ref.current) {
-        const timeout = setTimeout(() => {
-          ref.current?.focus();
-        }, 100);
-        return () => clearTimeout(timeout);
-      }
-    }, [autoFocus, ref]);
-
     return (
       <View style={[styles.container, containerStyle]}>
         <View
@@ -126,6 +116,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             autoCorrect={autoCorrect}
             autoCapitalize={autoCapitalize}
             {...props}
+            autoFocus={false}
           />
         </View>
         {showCancelButton && onCancel && (

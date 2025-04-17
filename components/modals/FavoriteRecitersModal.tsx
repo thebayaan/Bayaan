@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useMemo, useRef, useEffect} from 'react';
+import React, {useState, useCallback, useMemo, useRef} from 'react';
 import {
   View,
   Text,
@@ -48,17 +48,6 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const searchInputRef = useRef<TextInput>(null);
-
-  // Focus search input when modal opens
-  useEffect(() => {
-    // Add a slight delay to ensure the modal is fully visible
-    const focusTimeout = setTimeout(() => {
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    }, 300);
-    return () => clearTimeout(focusTimeout);
-  }, []);
 
   // Create animated values outside of callbacks
   const allButtonScale = useSharedValue(1);

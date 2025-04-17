@@ -2,9 +2,11 @@ import React from 'react';
 import {View, StyleSheet} from 'react-native';
 import {SearchView} from '@/components/search/SearchView';
 import {useTheme} from '@/hooks/useTheme';
+import {useIsFocused} from '@react-navigation/native';
 
 export default function SearchScreen() {
   const {theme} = useTheme();
+  const isFocused = useIsFocused();
 
   const handleClose = () => {
     // Close functionality can be added here if needed in the future
@@ -14,7 +16,7 @@ export default function SearchScreen() {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <SearchView visible={true} onClose={handleClose} />
+      <SearchView visible={isFocused} onClose={handleClose} />
     </View>
   );
 }
