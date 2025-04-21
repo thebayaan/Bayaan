@@ -10,7 +10,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah} from '@/data/surahData';
-import {Reciter} from '@/data/reciterData';
+import {Reciter, Rewayat} from '@/data/reciterData';
 import {getReciterById, getAllSurahs} from '@/services/dataService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -28,6 +28,8 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {useModal} from '@/components/providers/ModalProvider';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {createSharedStyles} from './styles';
+import {useSettings} from '@/hooks/useSettings';
+import {RewayatStyle} from '@/types/reciter';
 
 // Import components directly
 import {ActionButtons} from './components/ActionButtons';
@@ -68,6 +70,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const {isLovedWithRewayat} = useLoved();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {showSurahOptions, showRewayatInfo} = useModal();
+  const {reciterPreferences, setReciterPreference} = useSettings();
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [100, 200],
@@ -140,8 +143,18 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       try {
         const reciterData = await getReciterById(reciterId);
         if (reciterData) {
+          // Sort rewayat to prioritize Murattal Hafs A'n Assem
+          reciterData.rewayat = sortRewayat(reciterData.rewayat);
           setReciter(reciterData);
-          if (reciterData.rewayat.length > 0) {
+          
+          // Use saved preference or default to first rewayat
+          const savedRewayatId = reciterPreferences[reciterId];
+          const validRewayat = savedRewayatId && 
+            reciterData.rewayat.find(r => r.id === savedRewayatId);
+          
+          if (validRewayat) {
+            setSelectedRewayatId(validRewayat.id);
+          } else if (reciterData.rewayat.length > 0) {
             setSelectedRewayatId(reciterData.rewayat[0].id);
           }
         }
@@ -152,7 +165,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       }
     };
     fetchData();
-  }, [reciterId]);
+  }, [reciterId, reciterPreferences]);
 
   useEffect(() => {
     const listener = headerOpacity.addListener(({value}) => {
@@ -297,9 +310,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }
   }, [reciter, toggleFavorite]);
 
-  const handleRewayatSelect = useCallback((rewayatId: string) => {
+  const handleRewayatChange = (rewayatId: string) => {
     setSelectedRewayatId(rewayatId);
-  }, []);
+    setReciterPreference(reciterId, rewayatId);
+  };
 
   // Memoize the rewayat list to prevent unnecessary re-renders
   const rewayatList = useMemo(() => {
@@ -313,14 +327,22 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   }, [reciter?.rewayat]);
 
   const handleRewayatInfoPress = useCallback(() => {
-    if (!rewayatList.length) return;
-    // Use double requestAnimationFrame to ensure UI is fully ready
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        showRewayatInfo(rewayatList, selectedRewayatId, handleRewayatSelect);
-      });
-    });
-  }, [rewayatList, selectedRewayatId, handleRewayatSelect, showRewayatInfo]);
+    if (!reciter) return;
+    
+    // Convert rewayat array to RewayatStyle array format expected by the modal
+    const rewayatStyles: RewayatStyle[] = reciter.rewayat.map(r => ({
+      id: r.id,
+      name: r.name,
+      style: r.style,
+      surah_list: r.surah_list
+    }));
+    
+    showRewayatInfo(
+      rewayatStyles,
+      selectedRewayatId,
+      handleRewayatChange
+    );
+  }, [reciter, selectedRewayatId, showRewayatInfo]);
 
   const dominantColors = useImageColors(reciter?.name);
   const isLoadingColors =
@@ -394,6 +416,34 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     [isLovedWithRewayat, selectedRewayat],
   );
 
+  // Function to sort rewayat, prioritizing Murattal Hafs A'n Assem
+  const sortRewayat = (rewayat: Rewayat[]): Rewayat[] => {
+    return [...rewayat].sort((a, b) => {
+      // First priority: Hafs A'n Assem with murattal style
+      const aIsHafsMurattal = a.name === "Hafs A'n Assem" && a.style === 'murattal';
+      const bIsHafsMurattal = b.name === "Hafs A'n Assem" && b.style === 'murattal';
+      
+      if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
+      if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
+      
+      // Second priority: Any Hafs A'n Assem
+      const aIsHafs = a.name === "Hafs A'n Assem";
+      const bIsHafs = b.name === "Hafs A'n Assem";
+      
+      if (aIsHafs && !bIsHafs) return -1;
+      if (!aIsHafs && bIsHafs) return 1;
+      
+      // Third priority: Any murattal style
+      const aIsMurattal = a.style === 'murattal';
+      const bIsMurattal = b.style === 'murattal';
+      
+      if (aIsMurattal && !bIsMurattal) return -1;
+      if (!aIsMurattal && bIsMurattal) return 1;
+      
+      return 0;
+    });
+  };
+
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -436,7 +486,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           }}
           availableRewayat={rewayatList}
           selectedRewayatId={selectedRewayatId}
-          onRewayatSelect={handleRewayatSelect}
+          onRewayatSelect={handleRewayatChange}
           dominantColors={dominantColors}
           isDarkMode={theme.isDarkMode}
           reciterName={reciter.name}
