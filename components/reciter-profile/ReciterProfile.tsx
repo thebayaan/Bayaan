@@ -45,7 +45,7 @@ interface ReciterProfileProps {
 }
 
 const ReciterProfile: React.FC<ReciterProfileProps> = ({
-  id: reciterId,
+  id: currentReciterId,
   showFavorites = false,
 }) => {
   const {theme} = useTheme();
@@ -107,7 +107,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         if (!selectedRewayat) return false;
         if (
           !isLovedWithRewayat(
-            reciterId,
+            currentReciterId,
             surah.id.toString(),
             selectedRewayat.id,
           )
@@ -134,24 +134,25 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     searchQuery,
     showLovedOnly,
     isLovedWithRewayat,
-    reciterId,
+    currentReciterId,
     selectedRewayat,
   ]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const reciterData = await getReciterById(reciterId);
+        const reciterData = await getReciterById(currentReciterId);
         if (reciterData) {
           // Sort rewayat to prioritize Murattal Hafs A'n Assem
           reciterData.rewayat = sortRewayat(reciterData.rewayat);
           setReciter(reciterData);
-          
+
           // Use saved preference or default to first rewayat
-          const savedRewayatId = reciterPreferences[reciterId];
-          const validRewayat = savedRewayatId && 
+          const savedRewayatId = reciterPreferences[currentReciterId];
+          const validRewayat =
+            savedRewayatId &&
             reciterData.rewayat.find(r => r.id === savedRewayatId);
-          
+
           if (validRewayat) {
             setSelectedRewayatId(validRewayat.id);
           } else if (reciterData.rewayat.length > 0) {
@@ -165,7 +166,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       }
     };
     fetchData();
-  }, [reciterId, reciterPreferences]);
+  }, [currentReciterId, reciterPreferences]);
 
   useEffect(() => {
     const listener = headerOpacity.addListener(({value}) => {
@@ -310,10 +311,13 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }
   }, [reciter, toggleFavorite]);
 
-  const handleRewayatChange = (rewayatId: string) => {
-    setSelectedRewayatId(rewayatId);
-    setReciterPreference(reciterId, rewayatId);
-  };
+  const handleRewayatChange = useCallback(
+    (rewayatId: string) => {
+      setSelectedRewayatId(rewayatId);
+      setReciterPreference(currentReciterId, rewayatId);
+    },
+    [currentReciterId, setReciterPreference],
+  );
 
   // Memoize the rewayat list to prevent unnecessary re-renders
   const rewayatList = useMemo(() => {
@@ -328,21 +332,17 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   const handleRewayatInfoPress = useCallback(() => {
     if (!reciter) return;
-    
+
     // Convert rewayat array to RewayatStyle array format expected by the modal
     const rewayatStyles: RewayatStyle[] = reciter.rewayat.map(r => ({
       id: r.id,
       name: r.name,
       style: r.style,
-      surah_list: r.surah_list
+      surah_list: r.surah_list,
     }));
-    
-    showRewayatInfo(
-      rewayatStyles,
-      selectedRewayatId,
-      handleRewayatChange
-    );
-  }, [reciter, selectedRewayatId, showRewayatInfo]);
+
+    showRewayatInfo(rewayatStyles, selectedRewayatId, handleRewayatChange);
+  }, [handleRewayatChange, reciter, selectedRewayatId, showRewayatInfo]);
 
   const dominantColors = useImageColors(reciter?.name);
   const isLoadingColors =
@@ -409,9 +409,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   // Create a custom isLoved function that checks for the specific rewayatId
   const isLovedWithCurrentRewayat = useCallback(
-    (reciterId: string, surahId: string | number) => {
+    (id: string, surahId: string | number) => {
       if (!selectedRewayat) return false;
-      return isLovedWithRewayat(reciterId, surahId, selectedRewayat.id);
+      return isLovedWithRewayat(id, surahId, selectedRewayat.id);
     },
     [isLovedWithRewayat, selectedRewayat],
   );
@@ -420,26 +420,28 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const sortRewayat = (rewayat: Rewayat[]): Rewayat[] => {
     return [...rewayat].sort((a, b) => {
       // First priority: Hafs A'n Assem with murattal style
-      const aIsHafsMurattal = a.name === "Hafs A'n Assem" && a.style === 'murattal';
-      const bIsHafsMurattal = b.name === "Hafs A'n Assem" && b.style === 'murattal';
-      
+      const aIsHafsMurattal =
+        a.name === "Hafs A'n Assem" && a.style === 'murattal';
+      const bIsHafsMurattal =
+        b.name === "Hafs A'n Assem" && b.style === 'murattal';
+
       if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
       if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
-      
+
       // Second priority: Any Hafs A'n Assem
       const aIsHafs = a.name === "Hafs A'n Assem";
       const bIsHafs = b.name === "Hafs A'n Assem";
-      
+
       if (aIsHafs && !bIsHafs) return -1;
       if (!aIsHafs && bIsHafs) return 1;
-      
+
       // Third priority: Any murattal style
       const aIsMurattal = a.style === 'murattal';
       const bIsMurattal = b.style === 'murattal';
-      
+
       if (aIsMurattal && !bIsMurattal) return -1;
       if (!aIsMurattal && bIsMurattal) return 1;
-      
+
       return 0;
     });
   };
@@ -468,12 +470,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         <SearchView
           surahs={filteredSurahs}
           onSurahPress={handleSurahPress}
-          reciterId={reciterId}
+          reciterId={currentReciterId}
           isLoved={isLovedWithCurrentRewayat}
           onOptionsPress={(surah: Surah) =>
             showSurahOptions(
               surah,
-              reciterId,
+              currentReciterId,
               handleAddToQueue,
               selectedRewayat?.id,
             )
@@ -497,12 +499,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
             ref={flatListRef}
             surahs={filteredSurahs}
             onSurahPress={handleSurahPress}
-            reciterId={reciterId}
+            reciterId={currentReciterId}
             isLoved={isLovedWithCurrentRewayat}
             onOptionsPress={(surah: Surah) =>
               showSurahOptions(
                 surah,
-                reciterId,
+                currentReciterId,
                 handleAddToQueue,
                 selectedRewayat?.id,
               )
