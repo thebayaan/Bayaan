@@ -90,6 +90,7 @@ module.exports = {
     android: {
       package: 'com.bayaan.app',
       versionCode: versionInfo.versionCode,
+      userInterfaceStyle: 'automatic',
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#8dc9d6',
