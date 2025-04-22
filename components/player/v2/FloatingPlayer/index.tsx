@@ -76,7 +76,6 @@ const createStyles = (bottomInset: number) =>
     rightControls: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: moderateScale(8),
     },
     loveButton: {
       padding: moderateScale(4),
@@ -84,6 +83,14 @@ const createStyles = (bottomInset: number) =>
     surahGlyph: {
       fontFamily: 'SurahNames',
       fontSize: moderateScale(20),
+      textAlign: 'center',
+    },
+    surahGlyphContainer: {
+      width: moderateScale(50),
+      height: moderateScale(30),
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
     },
     androidBackground: {
       elevation: 10,
@@ -294,15 +301,17 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
                 activeOpacity={0.7}>
                 <Animated.View style={heartAnimatedStyle}>
                   <HeartIcon
-                    color={textColor}
+                    color={isTrackLoved(currentTrack) ? 'red' : textColor}
                     size={moderateScale(24)}
                     filled={isTrackLoved(currentTrack)}
                   />
                 </Animated.View>
               </TouchableOpacity>
-              <Text style={[styles.surahGlyph, {color: textColor}]}>
-                {surahGlyph}
-              </Text>
+              <View style={styles.surahGlyphContainer}>
+                <Text style={[styles.surahGlyph, {color: textColor}]}>
+                  {surahGlyph}
+                </Text>
+              </View>
             </View>
           </Pressable>
         </BlurView>
@@ -348,15 +357,17 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
                 activeOpacity={0.7}>
                 <Animated.View style={heartAnimatedStyle}>
                   <HeartIcon
-                    color={textColor}
+                    color={isTrackLoved(currentTrack) ? 'red' : textColor}
                     size={moderateScale(24)}
                     filled={isTrackLoved(currentTrack)}
                   />
                 </Animated.View>
               </TouchableOpacity>
-              <Text style={[styles.surahGlyph, {color: textColor}]}>
-                {surahGlyph}
-              </Text>
+              <View style={styles.surahGlyphContainer}>
+                <Text style={[styles.surahGlyph, {color: textColor}]}>
+                  {surahGlyph}
+                </Text>
+              </View>
             </View>
           </Pressable>
         </View>
