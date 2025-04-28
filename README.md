@@ -130,3 +130,34 @@ Contributions are welcome! Please follow the standard fork, branch, and pull req
 ## 📄 License
 
 This project is currently unlicensed. <!-- Update if a license file (e.g., LICENSE.md) exists or is added -->
+
+## 🚢 Deployment
+
+For detailed instructions on deploying the app to app stores, refer to our comprehensive [Deployment Guide](./DEPLOYMENT.md). This guide covers:
+
+- Version management process
+- Android deployment to Google Play Store
+- iOS deployment to Apple App Store
+- Keystore and credential management
+- Troubleshooting common deployment issues
+
+We use a Git-based [version management system](./docs/VERSION-MANAGEMENT.md) that automates version numbering based on Git tags.
+
+### Quick Deployment Commands
+
+```bash
+# Check current version
+npm run version:current
+
+# Bump version
+npm run version:patch  # For bug fixes
+npm run version:minor  # For new features
+npm run version:major  # For breaking changes
+
+# Build Android bundle
+cd android && ./gradlew bundleRelease
+
+# Build iOS (requires Xcode)
+cd ios && open Bayaan.xcworkspace
+# Then use Product > Archive in Xcode
+```

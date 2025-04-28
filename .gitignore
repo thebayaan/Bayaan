@@ -98,3 +98,9 @@ coverage/
 # Expo web
 web-build/
 web-report/
+
+# Keystore files
+android/keystore.properties
+*.keystore
+*.jks
+!android/app/debug.keystore
