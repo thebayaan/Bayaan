@@ -46,8 +46,7 @@ export default function RootLayout() {
   const router = useRouter();
   const store = usePlayerStore();
   const initializationRef = useRef(false);
-
-  useTheme();
+  const {theme, isDarkMode} = useTheme();
 
   const [fontsLoaded, fontError] = useFonts({
     'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
@@ -187,29 +186,50 @@ export default function RootLayout() {
     router.replace('/(tabs)/(home)');
   }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
 
-  // Configure Android navigation bar to be transparent
+  // Configure Android navigation bar to match theme
   useEffect(() => {
     async function setupNavigationBar() {
       if (Platform.OS === 'android') {
         try {
-          // Import the module dynamically to prevent errors on iOS
           const NavigationBar = await import('expo-navigation-bar').then(
             module => module.default,
           );
 
+          console.log(
+            '[NavBar Debug] theme.colors.background:',
+            theme.colors.background,
+          );
+          console.log('[NavBar Debug] isDarkMode:', isDarkMode);
+
           if (NavigationBar) {
-            await NavigationBar.setBackgroundColorAsync('transparent');
-            await NavigationBar.setButtonStyleAsync('light');
+            await NavigationBar.setBackgroundColorAsync(
+              theme.colors.background,
+            );
+            await NavigationBar.setButtonStyleAsync(
+              isDarkMode ? 'light' : 'dark',
+            );
+            console.log(
+              '[NavBar Debug] NavigationBar color and style set successfully',
+            );
+          } else {
+            console.warn('[NavBar Debug] NavigationBar module not found');
           }
           RNStatusBar.setTranslucent(true);
         } catch (error) {
-          console.warn('Failed to configure navigation bar:', error);
+          console.warn(
+            '[NavBar Debug] Failed to configure navigation bar:',
+            error,
+          );
         }
+      } else {
+        console.log(
+          '[NavBar Debug] Not Android, skipping navigation bar setup',
+        );
       }
     }
 
     setupNavigationBar();
-  }, []);
+  }, [theme.colors.background, isDarkMode]);
 
   if (fontError) {
     SplashScreen.hideAsync();
