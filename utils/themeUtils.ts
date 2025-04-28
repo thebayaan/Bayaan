@@ -16,31 +16,15 @@ export const createTheme = (
   colorScheme: ColorSchemeName | ThemeMode,
   primaryColor: PrimaryColor,
 ) => {
-  console.log('[Theme Debug] Creating theme with:', {
-    colorScheme,
-    primaryColor,
-    type: typeof colorScheme,
-  });
-
   // Handle system theme mode
   let effectiveColorScheme: 'light' | 'dark';
   if (colorScheme === 'system') {
     const systemTheme = Appearance.getColorScheme();
-    const appearanceInfo = {
-      colorScheme: systemTheme,
-      preferences: Appearance.getColorScheme(),
-      isDark: systemTheme === 'dark',
-    };
-    console.log('[Theme Debug] Detailed appearance info:', appearanceInfo);
     // Convert system theme to our theme type
     effectiveColorScheme = systemTheme === 'dark' ? 'dark' : 'light';
-    console.log('[Theme Debug] System theme detected:', systemTheme);
-    console.log('[Theme Debug] Converted to:', effectiveColorScheme);
   } else {
     effectiveColorScheme = colorScheme === 'dark' ? 'dark' : 'light';
   }
-
-  console.log('[Theme Debug] Effective color scheme:', effectiveColorScheme);
 
   return {
     colors: {
