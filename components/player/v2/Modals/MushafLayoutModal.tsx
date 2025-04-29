@@ -12,6 +12,73 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {Icon} from '@rneui/themed';
+import {useTajweedStore} from '@/store/tajweedStore';
+import {QuranData, Verse} from '@/types/quran';
+import FormattedTextRenderer from '@/components/utils/FormattedText';
+
+// Import Quran data
+const quranData = require('@/data/quran.json') as QuranData;
+
+// --- Pre-cache Translation/Transliteration Data --- //
+interface TranslationItem {
+  id: number;
+  resource_id: number;
+  text: string;
+}
+interface VerseTranslation {
+  id: number;
+  verse_number: number;
+  verse_key: string;
+  translations: TranslationItem[];
+}
+interface TransliterationVerse {
+  t: string;
+}
+interface TransliterationData {
+  [verseKey: string]: TransliterationVerse;
+}
+
+let translationDataCache: VerseTranslation[] | null = null;
+let transliterationDataCache: TransliterationData | null = null;
+try {
+  translationDataCache = require('@/data/quran-translation.json');
+  transliterationDataCache = require('@/data/transliteration.json');
+  console.log(
+    '[MushafLayoutModal] Translation/transliteration data pre-cached',
+  );
+} catch (error) {
+  console.error('[MushafLayoutModal] Error pre-caching data:', error);
+}
+// --- End Pre-cache --- //
+
+// Define colors for Tajweed rules
+const tajweedColors: {[key: string]: string} = {
+  madda_necessary: '#DD0000',
+  madda_obligatory_mottasel: '#FF00FF',
+  madda_obligatory_monfasel: '#FF00FF',
+  madda_permissible: '#FF7F00',
+  madda_normal: '#DDAA00',
+  'custom-alef-maksora': '#DDAA00',
+  ghunnah: '#00CC00',
+  idgham_ghunnah: '#00CC00',
+  idgham_shafawi: '#00CC00',
+  ikhafa: '#00CC00',
+  ikhafa_shafawi: '#00CC00',
+  iqlab: '#00CC00',
+  qalaqah: '#66CCFF',
+  idgham_mutajanisayn: '#0066FF',
+  idgham_mutaqaribayn: '#0066FF',
+  idgham_wo_ghunnah: '#0066FF',
+  slnt: '#AAAAAA',
+  ham_wasl: '#AAAAAA',
+  laam_shamsiyah: '#AAAAAA',
+};
+
+// Simplified segment structure for the sample text
+interface TajweedSampleSegment {
+  text: string;
+  rule: string | null;
+}
 
 // Define CustomHandle outside the main component
 interface CustomHandleProps extends BottomSheetHandleProps {
@@ -61,8 +128,10 @@ interface FontSizeControlProps {
   onChange: (newActualSize: number) => void; // Pass actual size
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
-  sampleText: string;
+  sampleText?: string; // Plain text for non-tajweed rendering
+  processedSampleSegments?: TajweedSampleSegment[]; // Segments for tajweed rendering
   sampleFontFamily?: string;
+  showTajweed?: boolean; // Add state to control rendering mode
 }
 
 const FontSizeControl: React.FC<FontSizeControlProps> = ({
@@ -72,7 +141,9 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   theme,
   styles,
   sampleText,
+  processedSampleSegments,
   sampleFontFamily,
+  showTajweed,
 }) => {
   // Calculate current display value (1-10) from actual size
   const currentDisplayValue = Math.round(
@@ -91,6 +162,16 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     const newActualSize =
       ACTUAL_MIN_FONT_SIZE + (newDisplayValue - 1) * ACTUAL_FONT_STEP;
     onChange(newActualSize);
+  };
+
+  // Determine if this control is for Arabic text
+  const isArabic = sampleFontFamily === 'QPC';
+
+  // Base style for sample text, including dynamic font size and color
+  const sampleBaseStyle = {
+    fontSize: moderateScale(currentActualSize),
+    color: theme.colors.text,
+    fontFamily: sampleFontFamily || 'Manrope-Regular', // Default font
   };
 
   return (
@@ -131,19 +212,41 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
           </TouchableOpacity>
         </View>
       </View>
-      {/* Sample Text Display - uses actual size */}
-      <Text
+      {/* Sample Text Display */}
+      <View
         style={[
-          styles.sampleText,
-          sampleFontFamily === 'QPC' ? styles.arabicSampleText : {},
-          {
-            fontSize: moderateScale(currentActualSize),
-            color: theme.colors.text,
-          },
-          sampleFontFamily ? {fontFamily: sampleFontFamily} : {},
+          styles.sampleTextContainer,
+          isArabic && styles.arabicSampleTextContainer,
         ]}>
-        {sampleText}
-      </Text>
+        {isArabic ? (
+          // Arabic Text Rendering (Handles Tajweed)
+          <Text
+            style={[
+              styles.sampleTextBase,
+              styles.arabicSampleText,
+              sampleBaseStyle,
+            ]}>
+            {showTajweed && processedSampleSegments
+              ? processedSampleSegments.map((segment, index) => {
+                  const color = segment.rule
+                    ? tajweedColors[segment.rule] || theme.colors.text
+                    : theme.colors.text;
+                  return (
+                    <Text key={`sample-${index}`} style={{color}}>
+                      {segment.text}
+                    </Text>
+                  );
+                })
+              : sampleText}
+          </Text>
+        ) : // Translation/Transliteration Rendering (Handles Formatting)
+        sampleText ? (
+          <FormattedTextRenderer
+            text={sampleText}
+            baseStyle={sampleBaseStyle}
+          />
+        ) : null}
+      </View>
     </View>
   );
 };
@@ -165,6 +268,48 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
 }) => {
   const {theme} = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
+  const {indexedTajweedData, isLoading: isTajweedLoading} = useTajweedStore();
+
+  const verseKey = '3:138'; // Target verse
+
+  // --- Fetch Actual Data for Verse 3:138 --- //
+  const actualVerseText = React.useMemo(
+    () => quranData[verseKey]?.text || 'Error loading verse',
+    [], // No dependencies, quranData is constant
+  );
+  const verseWords = React.useMemo(
+    () => (indexedTajweedData ? indexedTajweedData[verseKey] : undefined),
+    [indexedTajweedData], // Depends on indexedTajweedData from store
+  );
+  const actualTranslationText = React.useMemo(() => {
+    const translation = translationDataCache?.find(
+      t => t.verse_key === verseKey,
+    );
+    return translation?.translations?.[0]?.text || 'Error loading translation';
+  }, []); // Depends only on static pre-cached data
+
+  const actualTransliterationText = React.useMemo(
+    () =>
+      transliterationDataCache?.[verseKey]?.t ||
+      'Error loading transliteration',
+    [], // Depends only on static pre-cached data
+  );
+
+  // Create flat segments array for rendering inside a single Text
+  const flatVerseSegments = React.useMemo(() => {
+    if (!verseWords) return undefined;
+    return verseWords.flatMap((wordData, wordIndex) => {
+      const segments = wordData.segments.map(segment => ({
+        text: segment.text,
+        rule: segment.rule,
+      }));
+      if (wordIndex < verseWords.length - 1) {
+        segments.push({text: ' ', rule: null});
+      }
+      return segments;
+    });
+  }, [verseWords]);
+  // --- End Fetch Data --- //
 
   const trackColor = {
     false: Color(theme.colors.textSecondary).alpha(0.3).toString(),
@@ -184,14 +329,23 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
     ),
     [],
   );
-
-  // Define the handle component prop, passing theme and styles
   const handleComponent = React.useCallback(
     (props: BottomSheetHandleProps) => (
       <CustomHandle {...props} theme={theme} styles={styles} />
     ),
     [theme, styles],
   );
+
+  // Prepare props for Arabic FontSizeControl
+  const arabicSampleTextToDisplay = !showTajweed ? actualVerseText : undefined;
+  const arabicSegmentsToDisplay =
+    showTajweed && !isTajweedLoading && flatVerseSegments
+      ? flatVerseSegments
+      : undefined;
+  const arabicFallbackText =
+    showTajweed && (isTajweedLoading || !flatVerseSegments)
+      ? 'Loading Tajweed...'
+      : undefined;
 
   return (
     <BottomSheet
@@ -210,7 +364,7 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
         showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Mushaf Layout</Text>
 
-        {/* Arabic Text Section (Moved to Top) */}
+        {/* Arabic Text Section */}
         <Text style={styles.sectionHeader}>Arabic Text</Text>
         <View style={styles.card}>
           <View style={styles.optionRow}>
@@ -231,8 +385,10 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
             onChange={onArabicFontSizeChange}
             theme={theme}
             styles={styles}
-            sampleText="هَٰذَا بَيَانٌ لِّلنَّاسِ وَهُدًى وَمَوْعِظَةٌ لِّلْمُتَّقِينَ ١٣٨"
+            processedSampleSegments={arabicSegmentsToDisplay}
+            sampleText={arabicSampleTextToDisplay || arabicFallbackText}
             sampleFontFamily="QPC"
+            showTajweed={showTajweed}
           />
         </View>
 
@@ -250,7 +406,6 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
               style={styles.switchStyle}
             />
           </View>
-          {/* Add Font Size Control */}
           {showTransliteration && (
             <>
               <View style={styles.divider} />
@@ -260,7 +415,7 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
                 onChange={onTransliterationFontSizeChange}
                 theme={theme}
                 styles={styles}
-                sampleText="Hādhā bayānul lin-nāsi wa hudaw wa maw'iẓatul lil-muttaqīn"
+                sampleText={actualTransliterationText}
                 sampleFontFamily="Manrope-Regular"
               />
             </>
@@ -281,11 +436,9 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
               style={styles.switchStyle}
             />
           </View>
-          {/* Add Translation Source Text Here */}
           <Text style={styles.sourceText}>
             Using: The Clear Quran by Dr. Mustafa Khattab
           </Text>
-
           {showTranslation && (
             <>
               <View style={styles.divider} />
@@ -295,7 +448,7 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
                 onChange={onTranslationFontSizeChange}
                 theme={theme}
                 styles={styles}
-                sampleText="This is a clear statement for ˹all˺ people, and a guidance and advice for the God-fearing."
+                sampleText={actualTranslationText}
                 sampleFontFamily="Manrope-Regular"
               />
             </>
@@ -364,14 +517,17 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       marginHorizontal: moderateScale(10),
     },
-    sampleText: {
+    sampleTextContainer: {
       marginTop: verticalScale(5),
       paddingVertical: verticalScale(10),
       paddingHorizontal: moderateScale(8),
       borderRadius: moderateScale(6),
       overflow: 'hidden',
-      textAlign: 'center',
       opacity: 0.8,
+    },
+    sampleTextBase: {},
+    arabicSampleTextContainer: {
+      alignItems: 'flex-end',
     },
     arabicSampleText: {
       textAlign: 'right',
@@ -401,6 +557,7 @@ const createStyles = (theme: Theme) =>
     background: {
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      backgroundColor: theme.colors.backgroundSecondary,
     },
     sourceText: {
       fontSize: moderateScale(12),

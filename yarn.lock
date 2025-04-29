@@ -2162,10 +2162,10 @@
   resolved "https://registry.npmjs.org/@jsamr/react-native-li/-/react-native-li-2.3.1.tgz"
   integrity sha512-Qbo4NEj48SQ4k8FZJHFE2fgZDKTWaUGmVxcIQh3msg5JezLdTMMHuRRDYctfdHI6L0FZGObmEv3haWbIvmol8w==
 
-"@legendapp/list@^1.0.0-beta.26":
-  version "1.0.0-beta.28"
-  resolved "https://registry.npmjs.org/@legendapp/list/-/list-1.0.0-beta.28.tgz"
-  integrity sha512-CS9USCJ0fK/3+mu1XCRSf19gvEuUn1j7TGC+Z/sESk7j7/UxTqqMRHNrtqUeZSzTLUWj4wUORBMHZseAo+Rkmw==
+"@legendapp/list@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/@legendapp/list/-/list-1.0.5.tgz"
+  integrity sha512-vuraIdftGRNyp0ZU9M7dX4ZsZ/vc+/CKj/fMYn/sImDjHoAngKATPv3LJlrAPup+ndtg3bGCKbwBnZurlZ5ghw==
 
 "@lokesh.dhakar/quantize@^1.4.0":
   version "1.4.0"

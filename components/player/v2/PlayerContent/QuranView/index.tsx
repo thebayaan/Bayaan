@@ -1,15 +1,36 @@
 import React, {useCallback, useRef, useEffect, useState} from 'react';
-import {View, ScrollView, StyleSheet, Text, Platform} from 'react-native';
+import {View, Text, Platform, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
-import {Surah, QuranData} from '@/types/quran';
+import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
-import {useTajweedStore, getTajweedDataForVerse} from '@/store/tajweedStore';
+import {
+  useTajweedStore,
+  getIndexedTajweedDataForVerse,
+} from '@/store/tajweedStore';
+import {
+  LegendList,
+  LegendListRef,
+  LegendListRenderItemProps,
+} from '@legendapp/list';
 
-// Import data with type safety
+// Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
 const surahData = require('@/data/surahData.json') as Surah[];
+
+// Pre-load translation and transliteration data outside component
+let translationDataCache: VerseTranslation[] | null = null;
+let transliterationDataCache: TransliterationData | null = null;
+
+// Try to load these immediately
+try {
+  translationDataCache = require('@/data/quran-translation.json');
+  transliterationDataCache = require('@/data/transliteration.json');
+  console.log('[QuranView] Translation and transliteration data pre-cached');
+} catch (error) {
+  console.error('[QuranView] Error pre-caching data:', error);
+}
 
 // Define translation data type
 interface TranslationItem {
@@ -27,11 +48,17 @@ interface VerseTranslation {
 
 // Define transliteration data type
 interface TransliterationVerse {
-  t: string;
+  t: string; // Transliteration text
 }
 
 interface TransliterationData {
   [verseKey: string]: TransliterationVerse;
+}
+
+// Enhanced verse type including translations and transliterations
+interface EnhancedVerse extends Verse {
+  translation?: string;
+  transliteration?: string;
 }
 
 interface QuranViewProps {
@@ -39,7 +66,7 @@ interface QuranViewProps {
   onVersePress: (verseKey: string) => void;
   showTranslation?: boolean;
   showTransliteration?: boolean;
-  showTajweed?: boolean; // New prop to toggle tajweed rendering
+  showTajweed?: boolean;
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
@@ -50,76 +77,31 @@ export const QuranView: React.FC<QuranViewProps> = ({
   onVersePress,
   showTranslation = false,
   showTransliteration = false,
-  showTajweed = false, // Default to false
+  showTajweed = false,
   transliterationFontSize,
   translationFontSize,
   arabicFontSize,
 }) => {
   const {theme} = useTheme();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const listRef = useRef<LegendListRef>(null);
   const surah = surahData.find(s => s.id === currentSurah);
-  const [translationData, setTranslationData] = useState<VerseTranslation[]>(
-    [],
+  const [translationData, setTranslationData] = useState(
+    translationDataCache || [],
   );
-  const [transliterationMap, setTransliterationMap] =
-    useState<TransliterationData>({});
-  const [isTranslationLoaded, setIsTranslationLoaded] = useState(false);
-  const [isTransliterationLoaded, setIsTransliterationLoaded] = useState(false);
-
-  // Use the tajweed store instead of local state
-  const {tajweedData} = useTajweedStore();
-
-  // Load translations once on mount
-  useEffect(() => {
-    if (!isTranslationLoaded) {
-      try {
-        const translations =
-          require('@/data/quran-translation.json') as VerseTranslation[];
-        if (translations && translations.length > 0) {
-          setTranslationData(translations);
-          setIsTranslationLoaded(true); // Mark as loaded
-          console.log('Translation data loaded successfully.');
-        } else {
-          console.error('Translation data format is unexpected');
-        }
-      } catch (error) {
-        console.error('Error loading translation data:', error);
-      }
-    }
-  }, [isTranslationLoaded]); // Run only when isTranslationLoaded changes (initially false)
-
-  // Load transliterations once on mount
-  useEffect(() => {
-    if (!isTransliterationLoaded) {
-      try {
-        const transliterations =
-          require('@/data/transliteration.json') as TransliterationData;
-        if (transliterations) {
-          setTransliterationMap(transliterations);
-          setIsTransliterationLoaded(true); // Mark as loaded
-          console.log('Transliteration data loaded successfully.');
-        } else {
-          console.error('Transliteration data format is unexpected');
-        }
-      } catch (error) {
-        console.error('Error loading transliteration data:', error);
-      }
-    }
-  }, [isTransliterationLoaded]); // Run only when isTransliterationLoaded changes (initially false)
-
-  // Helper function to get tajweed data for a verse
-  const getTajweedForVerse = useCallback(
-    (verseKey: string) => {
-      if (!showTajweed || !tajweedData) {
-        return undefined;
-      }
-      return getTajweedDataForVerse(tajweedData, verseKey);
-    },
-    [showTajweed, tajweedData],
+  const [transliterationMap, setTransliterationMap] = useState(
+    transliterationDataCache || {},
+  );
+  const [isTranslationLoaded, setIsTranslationLoaded] =
+    useState(!!translationDataCache);
+  const [isTransliterationLoaded, setIsTransliterationLoaded] = useState(
+    !!transliterationDataCache,
   );
 
-  // Safely get verses for the current surah, always merging data if loaded
-  const getVersesForSurah = useCallback(() => {
+  // Use the tajweed store with indexed data for O(1) lookups
+  const {indexedTajweedData} = useTajweedStore();
+
+  // Memoize the getVersesForSurah function to avoid useMemo dependency issues
+  const getVersesForSurahMemo = useCallback(() => {
     if (!quranData) {
       console.error('Quran data is not properly loaded');
       return [];
@@ -130,7 +112,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         .filter(verse => verse.surah_number === currentSurah)
         .sort((a, b) => a.ayah_number - b.ayah_number);
 
-      // Map verses and *always* try to attach translation/transliteration if loaded
+      // Map verses and attach translation/transliteration if loaded
       return verses.map(verse => {
         const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
         let translationText = '';
@@ -167,20 +149,123 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [
     currentSurah,
-    translationData, // Depend on the data itself
-    transliterationMap, // Depend on the data itself
-    isTranslationLoaded, // Depend on loaded state
-    isTransliterationLoaded, // Depend on loaded state
+    translationData,
+    transliterationMap,
+    isTranslationLoaded,
+    isTransliterationLoaded,
   ]);
+
+  // Get verses data
+  const verses = getVersesForSurahMemo();
+
+  // Load translations if not pre-cached
+  useEffect(() => {
+    if (!isTranslationLoaded && !translationDataCache) {
+      try {
+        console.log('[QuranView] Loading translation data...');
+        const translations =
+          require('@/data/quran-translation.json') as VerseTranslation[];
+        if (translations && translations.length > 0) {
+          setTranslationData(translations);
+          translationDataCache = translations; // Cache for future use
+          setIsTranslationLoaded(true);
+          console.log('[QuranView] Translation data loaded successfully.');
+        } else {
+          console.error('[QuranView] Translation data format is unexpected');
+        }
+      } catch (error) {
+        console.error('[QuranView] Error loading translation data:', error);
+      }
+    }
+  }, [isTranslationLoaded]);
+
+  // Load transliterations if not pre-cached
+  useEffect(() => {
+    if (!isTransliterationLoaded && !transliterationDataCache) {
+      try {
+        console.log('[QuranView] Loading transliteration data...');
+        const transliterations =
+          require('@/data/transliteration.json') as TransliterationData;
+        if (transliterations) {
+          setTransliterationMap(transliterations);
+          transliterationDataCache = transliterations; // Cache for future use
+          setIsTransliterationLoaded(true);
+          console.log('[QuranView] Transliteration data loaded successfully.');
+        } else {
+          console.error(
+            '[QuranView] Transliteration data format is unexpected',
+          );
+        }
+      } catch (error) {
+        console.error('[QuranView] Error loading transliteration data:', error);
+      }
+    }
+  }, [isTransliterationLoaded]);
+
+  // Helper function to get tajweed data for a verse using O(1) indexed lookup
+  const getIndexedTajweedForVerse = useCallback(
+    (verseKey: string) => {
+      if (!showTajweed || !indexedTajweedData) {
+        return undefined;
+      }
+      return getIndexedTajweedDataForVerse(indexedTajweedData, verseKey);
+    },
+    [showTajweed, indexedTajweedData],
+  );
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({x: 0, y: 0, animated: false});
+    if (listRef.current) {
+      listRef.current.scrollToOffset({offset: 0, animated: false});
     }
   }, [currentSurah]);
 
-  const verses = getVersesForSurah();
+  // Render the bismillah header (to be used as list header)
+  const renderHeader = useCallback(() => {
+    if (surah?.id === 9) return null;
+    return (
+      <View style={styles.bismillahContainer}>
+        <Text style={[styles.bismillah, {color: theme.colors.text}]}>﷽</Text>
+      </View>
+    );
+  }, [surah?.id, theme.colors.text]);
+
+  // Render the verse items (optimized with LegendList)
+  const renderItem = useCallback(
+    ({item}: LegendListRenderItemProps<EnhancedVerse>) => {
+      const verseKey = `${item.surah_number}:${item.ayah_number}`;
+      const verseTajweedData = getIndexedTajweedForVerse(verseKey);
+
+      return (
+        <VerseItem
+          verse={item}
+          onPress={() => onVersePress(item.verse_key)}
+          textColor={theme.colors.text}
+          borderColor={theme.colors.border}
+          showTranslation={showTranslation}
+          showTransliteration={showTransliteration}
+          transliterationFontSize={transliterationFontSize}
+          translationFontSize={translationFontSize}
+          arabicFontSize={arabicFontSize}
+          processedTajweedAyahData={verseTajweedData}
+        />
+      );
+    },
+    [
+      onVersePress,
+      theme.colors.text,
+      theme.colors.border,
+      showTranslation,
+      showTransliteration,
+      transliterationFontSize,
+      translationFontSize,
+      arabicFontSize,
+      getIndexedTajweedForVerse,
+    ],
+  );
+
+  // Key extractor for items
+  const keyExtractor = useCallback((item: EnhancedVerse) => item.verse_key, []);
 
   if (!surah || !verses.length) {
     return null;
@@ -188,49 +273,22 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.scrollView}
+      <LegendList
+        ref={listRef}
+        data={verses}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={renderHeader}
+        style={styles.list}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
         overScrollMode="never"
         nestedScrollEnabled={Platform.OS === 'android'}
         disableScrollViewPanResponder={Platform.OS === 'android'}
-        scrollEventThrottle={16}>
-        {/* Bismillah Header */}
-        {surah.id !== 9 && (
-          <View style={styles.bismillahContainer}>
-            <Text style={[styles.bismillah, {color: theme.colors.text}]}>
-              ﷽
-            </Text>
-          </View>
-        )}
-
-        {/* Verses */}
-        {verses.map(verse => {
-          // Get tajweed data for this verse if tajweed is enabled and data is loaded
-          const verseTajweedData = getTajweedForVerse(
-            `${verse.surah_number}:${verse.ayah_number}`,
-          );
-
-          return (
-            <VerseItem
-              key={verse.verse_key}
-              verse={verse} // Pass the verse object which might have translation/transliteration
-              onPress={() => onVersePress(verse.verse_key)}
-              textColor={theme.colors.text}
-              borderColor={theme.colors.border}
-              showTranslation={showTranslation} // Control visibility here
-              showTransliteration={showTransliteration} // Control visibility here
-              transliterationFontSize={transliterationFontSize}
-              translationFontSize={translationFontSize}
-              arabicFontSize={arabicFontSize}
-              tajweedAyahData={verseTajweedData} // Pass the tajweed data for this verse
-            />
-          );
-        })}
-      </ScrollView>
+        recycleItems={true} // Enable item recycling for better performance
+        estimatedItemSize={150} // Estimate average item height for better initial rendering
+      />
     </View>
   );
 };
@@ -244,7 +302,7 @@ const styles = StyleSheet.create({
     marginTop: moderateScale(5),
     backgroundColor: 'transparent',
   },
-  scrollView: {
+  list: {
     flex: 1,
     borderRadius: moderateScale(15),
   },
