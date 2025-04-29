@@ -37,10 +37,10 @@ const tajweedColors: {[key: string]: string} = {
   idgham_mutajanisayn: '#0066FF',
   idgham_mutaqaribayn: '#0066FF',
   idgham_wo_ghunnah: '#0066FF',
-  laam_shamsiyah: '#0066FF',
   // Gray - Silent (Unannounced Pronunciation)
   slnt: '#AAAAAA',
   ham_wasl: '#AAAAAA',
+  laam_shamsiyah: '#AAAAAA',
 };
 
 /**
@@ -72,10 +72,9 @@ function parseTajweedWord(
       const textSegment = wordText.substring(currentIndex, nextTagIndex);
       const currentRule =
         ruleStack.length > 0 ? ruleStack[ruleStack.length - 1] : null;
-      const color =
-        currentRule
-          ? tajweedColors[currentRule] || defaultColor
-          : defaultColor;
+      const color = currentRule
+        ? tajweedColors[currentRule] || defaultColor
+        : defaultColor;
 
       result.push(
         <Text key={`word-segment-${keyIndex++}`} style={{color}}>
@@ -239,7 +238,7 @@ const styles = StyleSheet.create({
   },
   arabicText: {
     fontSize: moderateScale(24),
-    fontFamily: 'Uthmani',
+    fontFamily: 'QPC',
     textAlign: 'right',
     writingDirection: 'rtl',
   },
