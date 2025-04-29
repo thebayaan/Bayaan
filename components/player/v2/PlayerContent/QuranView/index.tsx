@@ -6,6 +6,18 @@ import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import {Surah, QuranData} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 
+// Interface for the structure of a word entry in the tajweed JSON data
+interface TajweedWord {
+  word_index: number;
+  location: string; // e.g., "1:1:1"
+  text: string; // The word text with embedded <rule> tags
+}
+
+// Interface for the tajweed data file structure
+interface TajweedData {
+  [key: string]: TajweedWord;
+}
+
 // Import data with type safety
 const quranData = require('@/data/quran.json') as QuranData;
 const surahData = require('@/data/surahData.json') as Surah[];
@@ -38,6 +50,7 @@ interface QuranViewProps {
   onVersePress: (verseKey: string) => void;
   showTranslation?: boolean;
   showTransliteration?: boolean;
+  showTajweed?: boolean; // New prop to toggle tajweed rendering
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
@@ -48,6 +61,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   onVersePress,
   showTranslation = false,
   showTransliteration = false,
+  showTajweed = false, // Default to false
   transliterationFontSize,
   translationFontSize,
   arabicFontSize,
@@ -60,8 +74,10 @@ export const QuranView: React.FC<QuranViewProps> = ({
   );
   const [transliterationMap, setTransliterationMap] =
     useState<TransliterationData>({});
+  const [tajweedData, setTajweedData] = useState<TajweedData>({});
   const [isTranslationLoaded, setIsTranslationLoaded] = useState(false);
   const [isTransliterationLoaded, setIsTransliterationLoaded] = useState(false);
+  const [isTajweedLoaded, setIsTajweedLoaded] = useState(false);
 
   // Load translations once on mount
   useEffect(() => {
@@ -100,6 +116,47 @@ export const QuranView: React.FC<QuranViewProps> = ({
       }
     }
   }, [isTransliterationLoaded]); // Run only when isTransliterationLoaded changes (initially false)
+
+  // Load tajweed data once on mount, but only if showTajweed is true
+  useEffect(() => {
+    // Only load tajweed data if requested and not already loaded
+    if (showTajweed && !isTajweedLoaded) {
+      try {
+        // Load the tajweed data asynchronously
+        const tajweed =
+          require('@/data/QPC Hafs Tajweed 2.json') as TajweedData;
+        if (tajweed) {
+          setTajweedData(tajweed);
+          setIsTajweedLoaded(true);
+          console.log('Tajweed data loaded successfully.');
+        } else {
+          console.error('Tajweed data format is unexpected');
+        }
+      } catch (error) {
+        console.error('Error loading tajweed data:', error);
+      }
+    }
+  }, [showTajweed, isTajweedLoaded]);
+
+  // Helper function to filter tajweed data for a specific verse
+  const getTajweedDataForVerse = useCallback(
+    (verseKey: string): TajweedWord[] | undefined => {
+      if (!isTajweedLoaded || !showTajweed) {
+        return undefined;
+      }
+
+      // Find all words for this verse
+      // verseKey format: "surah:ayah" (e.g., "1:1")
+      // tajweed location format: "surah:ayah:word" (e.g., "1:1:1")
+      const verseWords = Object.values(tajweedData).filter(word =>
+        word.location.startsWith(verseKey + ':'),
+      );
+
+      // Sort by word_index to ensure correct order
+      return verseWords.sort((a, b) => a.word_index - b.word_index);
+    },
+    [isTajweedLoaded, tajweedData, showTajweed],
+  );
 
   // Safely get verses for the current surah, always merging data if loaded
   const getVersesForSurah = useCallback(() => {
@@ -191,20 +248,30 @@ export const QuranView: React.FC<QuranViewProps> = ({
         )}
 
         {/* Verses */}
-        {verses.map(verse => (
-          <VerseItem
-            key={verse.verse_key}
-            verse={verse} // Pass the verse object which might have translation/transliteration
-            onPress={() => onVersePress(verse.verse_key)}
-            textColor={theme.colors.text}
-            borderColor={theme.colors.border}
-            showTranslation={showTranslation} // Control visibility here
-            showTransliteration={showTransliteration} // Control visibility here
-            transliterationFontSize={transliterationFontSize}
-            translationFontSize={translationFontSize}
-            arabicFontSize={arabicFontSize}
-          />
-        ))}
+        {verses.map(verse => {
+          // Get tajweed data for this verse if tajweed is enabled
+          const verseTajweedData = showTajweed
+            ? getTajweedDataForVerse(
+                `${verse.surah_number}:${verse.ayah_number}`,
+              )
+            : undefined;
+
+          return (
+            <VerseItem
+              key={verse.verse_key}
+              verse={verse} // Pass the verse object which might have translation/transliteration
+              onPress={() => onVersePress(verse.verse_key)}
+              textColor={theme.colors.text}
+              borderColor={theme.colors.border}
+              showTranslation={showTranslation} // Control visibility here
+              showTransliteration={showTransliteration} // Control visibility here
+              transliterationFontSize={transliterationFontSize}
+              translationFontSize={translationFontSize}
+              arabicFontSize={arabicFontSize}
+              tajweedAyahData={verseTajweedData} // Pass the tajweed data for this verse
+            />
+          );
+        })}
       </ScrollView>
     </View>
   );

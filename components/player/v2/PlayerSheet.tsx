@@ -22,6 +22,7 @@ const surahInfo = require('@/data/surahInfo.json');
 // AsyncStorage Keys
 const SHOW_TRANSLATION_KEY = '@MushafLayout:showTranslation';
 const SHOW_TRANSLITERATION_KEY = '@MushafLayout:showTransliteration';
+const SHOW_TAJWEED_KEY = '@MushafLayout:showTajweed';
 const ARABIC_FONT_SIZE_KEY = '@MushafLayout:arabicFontSize';
 const TRANSLATION_FONT_SIZE_KEY = '@MushafLayout:translationFontSize';
 const TRANSLITERATION_FONT_SIZE_KEY = '@MushafLayout:transliterationFontSize';
@@ -52,12 +53,12 @@ export const PlayerSheet = () => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const speedBottomSheetRef = useRef<BottomSheet>(null);
   const sleepBottomSheetRef = useRef<BottomSheet>(null);
-  const queueBottomSheetRef = useRef<BottomSheet>(null);
   const summaryBottomSheetRef = useRef<BottomSheet>(null);
   const mushafLayoutSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const [showTranslation, setShowTranslation] = useState(true);
   const [showTransliteration, setShowTransliteration] = useState(true);
+  const [showTajweed, setShowTajweed] = useState(false);
   const [transliterationFontSize, setTransliterationFontSize] = useState(
     DEFAULT_TRANSLITERATION_FONT_SIZE,
   );
@@ -89,12 +90,14 @@ export const PlayerSheet = () => {
         const [
           translationValue,
           transliterationValue,
+          tajweedValue,
           arabicFontSizeValue,
           translationFontSizeValue,
           transliterationFontSizeValue,
         ] = await Promise.all([
           AsyncStorage.getItem(SHOW_TRANSLATION_KEY),
           AsyncStorage.getItem(SHOW_TRANSLITERATION_KEY),
+          AsyncStorage.getItem(SHOW_TAJWEED_KEY),
           AsyncStorage.getItem(ARABIC_FONT_SIZE_KEY),
           AsyncStorage.getItem(TRANSLATION_FONT_SIZE_KEY),
           AsyncStorage.getItem(TRANSLITERATION_FONT_SIZE_KEY),
@@ -118,6 +121,8 @@ export const PlayerSheet = () => {
           transliterationValue !== null
             ? JSON.parse(transliterationValue)
             : true;
+        const loadedShowTajweed =
+          tajweedValue !== null ? JSON.parse(tajweedValue) : false;
         const loadedArabicSize = parseFontSize(
           arabicFontSizeValue,
           DEFAULT_ARABIC_FONT_SIZE,
@@ -134,6 +139,7 @@ export const PlayerSheet = () => {
         // Update state
         setShowTranslation(loadedShowTranslation);
         setShowTransliteration(loadedShowTransliteration);
+        setShowTajweed(loadedShowTajweed);
         setArabicFontSize(loadedArabicSize);
         setTranslationFontSize(loadedTranslationSize);
         setTransliterationFontSize(loadedTranslitSize);
@@ -141,6 +147,7 @@ export const PlayerSheet = () => {
         console.log('Mushaf settings loaded:', {
           showTranslation: loadedShowTranslation,
           showTransliteration: loadedShowTransliteration,
+          showTajweed: loadedShowTajweed,
           arabicFontSize: loadedArabicSize,
           translationFontSize: loadedTranslationSize,
           transliterationFontSize: loadedTranslitSize,
@@ -150,6 +157,7 @@ export const PlayerSheet = () => {
         // Keep defaults if loading fails
         setShowTranslation(true);
         setShowTransliteration(true);
+        setShowTajweed(false);
         setArabicFontSize(DEFAULT_ARABIC_FONT_SIZE);
         setTranslationFontSize(DEFAULT_TRANSLATION_FONT_SIZE);
         setTransliterationFontSize(DEFAULT_TRANSLITERATION_FONT_SIZE);
@@ -291,10 +299,10 @@ export const PlayerSheet = () => {
     }
   }, [showTranslation]);
 
-  const toggleTransliteration = useCallback(async () => {
-    const newValue = !showTransliteration;
-    setShowTransliteration(newValue);
+  const handleToggleTransliteration = useCallback(async () => {
     try {
+      const newValue = !showTransliteration;
+      setShowTransliteration(newValue);
       await AsyncStorage.setItem(
         SHOW_TRANSLITERATION_KEY,
         JSON.stringify(newValue),
@@ -304,6 +312,17 @@ export const PlayerSheet = () => {
       console.error('Failed to save showTransliteration setting', e);
     }
   }, [showTransliteration]);
+
+  const handleToggleTajweed = useCallback(async () => {
+    try {
+      const newValue = !showTajweed;
+      setShowTajweed(newValue);
+      await AsyncStorage.setItem(SHOW_TAJWEED_KEY, JSON.stringify(newValue));
+      console.log('Saved showTajweed:', newValue);
+    } catch (e) {
+      console.error('Failed to save showTajweed setting', e);
+    }
+  }, [showTajweed]);
 
   const handleTransliterationFontSizeChange = useCallback(
     async (size: number) => {
@@ -376,11 +395,11 @@ export const PlayerSheet = () => {
         <PlayerContent
           speedBottomSheetRef={speedBottomSheetRef}
           sleepBottomSheetRef={sleepBottomSheetRef}
-          queueBottomSheetRef={queueBottomSheetRef}
           summaryBottomSheetRef={summaryBottomSheetRef}
           mushafLayoutSheetRef={mushafLayoutSheetRef}
           showTranslation={showTranslation}
           showTransliteration={showTransliteration}
+          showTajweed={showTajweed}
           transliterationFontSize={transliterationFontSize}
           translationFontSize={translationFontSize}
           arabicFontSize={arabicFontSize}
@@ -413,7 +432,9 @@ export const PlayerSheet = () => {
         showTranslation={showTranslation}
         toggleTranslation={toggleTranslation}
         showTransliteration={showTransliteration}
-        toggleTransliteration={toggleTransliteration}
+        toggleTransliteration={handleToggleTransliteration}
+        showTajweed={showTajweed}
+        toggleTajweed={handleToggleTajweed}
         transliterationFontSize={transliterationFontSize}
         translationFontSize={translationFontSize}
         onTransliterationFontSizeChange={handleTransliterationFontSizeChange}
