@@ -8,7 +8,6 @@ import {Icon} from '@rneui/themed';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {QuranData} from '@/types/quran';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
-import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {LinearGradient} from 'expo-linear-gradient';
 import {
   useMushafSettingsStore,
@@ -40,25 +39,33 @@ try {
 
 // Define colors for Tajweed rules
 const tajweedColors: {[key: string]: string} = {
-  madda_necessary: '#DD0000',
-  madda_obligatory_mottasel: '#FF00FF',
-  madda_obligatory_monfasel: '#FF00FF',
-  madda_permissible: '#FF7F00',
-  madda_normal: '#DDAA00',
-  'custom-alef-maksora': '#DDAA00',
-  ghunnah: '#00CC00',
-  idgham_ghunnah: '#00CC00',
-  idgham_shafawi: '#00CC00',
-  ikhafa: '#00CC00',
-  ikhafa_shafawi: '#00CC00',
-  iqlab: '#00CC00',
-  qalaqah: '#66CCFF',
-  idgham_mutajanisayn: '#0066FF',
-  idgham_mutaqaribayn: '#0066FF',
-  idgham_wo_ghunnah: '#0066FF',
-  slnt: '#AAAAAA',
-  ham_wasl: '#AAAAAA',
-  laam_shamsiyah: '#AAAAAA',
+  // Red - Necessary Prolongation (Madd: 6)
+  madda_necessary: '#b50000',
+  // Pink - Obligatory Prolongation (Madd: 4 or 5)
+  madda_obligatory_mottasel: '#f40000',
+  madda_obligatory_monfasel: '#f40000',
+  // Orange - Permissible Prolongation (Madd: 2, 4, or 6)
+  madda_permissible: '#ff7b00',
+  // Gold/Yellow - Normal Prolongation (Madd: 2)
+  madda_normal: '#ce9e00',
+  'custom-alef-maksora': '#ce9e00',
+  // Green - Nasalization (Ghunnah)
+  ghunnah: '#09b000',
+  idgham_ghunnah: '#09b000',
+  idgham_shafawi: '#09b000',
+  ikhafa: '#09b000',
+  ikhafa_shafawi: '#09b000',
+  iqlab: '#09b000',
+  // Light Blue - Qalqala (Echoing Sound)
+  qalaqah: '#2fadff',
+  // Dark Blue - Tafkhim (Emphatic Pronunciation)
+  idgham_mutajanisayn: '#3f48e6',
+  idgham_mutaqaribayn: '#3f48e6',
+  idgham_wo_ghunnah: '#3f48e6',
+  // Gray - Silent (Unannounced Pronunciation)
+  slnt: '#a5a5a5',
+  ham_wasl: '#a5a5a5',
+  laam_shamsiyah: '#a5a5a5',
 };
 
 // Simplified segment structure for the sample text
@@ -228,11 +235,13 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   const coloredGradient = React.useMemo(
     () =>
       [
-        GRADIENT_COLORS[0], // Purple
-        GRADIENT_COLORS[2], // Emerald
-        GRADIENT_COLORS[3], // Red
-        GRADIENT_COLORS[4], // Orange
-        GRADIENT_COLORS[7], // Indigo
+        tajweedColors.madda_necessary, // Deep Red
+        tajweedColors.madda_obligatory_mottasel, // Red
+        tajweedColors.madda_permissible, // Orange
+        tajweedColors.madda_normal, // Gold
+        tajweedColors.ghunnah, // Green
+        tajweedColors.qalaqah, // Light Blue
+        tajweedColors.idgham_mutajanisayn, // Dark Blue
       ] as const,
     [],
   );
