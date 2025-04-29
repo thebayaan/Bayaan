@@ -20,11 +20,11 @@ const surahInfo = require('@/data/surahInfo.json');
 interface PlayerContentProps {
   speedBottomSheetRef: React.RefObject<BottomSheet>;
   sleepBottomSheetRef: React.RefObject<BottomSheet>;
-  queueBottomSheetRef: React.RefObject<BottomSheet>;
   summaryBottomSheetRef: React.RefObject<BottomSheet>;
   mushafLayoutSheetRef: React.RefObject<BottomSheet>;
   showTranslation: boolean;
   showTransliteration: boolean;
+  showTajweed: boolean;
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
@@ -37,6 +37,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   mushafLayoutSheetRef,
   showTranslation,
   showTransliteration,
+  showTajweed,
   transliterationFontSize,
   translationFontSize,
   arabicFontSize,
@@ -114,6 +115,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                   onVersePress={handleVersePress}
                   showTranslation={showTranslation}
                   showTransliteration={showTransliteration}
+                  showTajweed={showTajweed}
                   transliterationFontSize={transliterationFontSize}
                   translationFontSize={translationFontSize}
                   arabicFontSize={arabicFontSize}
