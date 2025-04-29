@@ -159,5 +159,8 @@ cd android && ./gradlew bundleRelease
 
 # Build iOS (requires Xcode)
 cd ios && open Bayaan.xcworkspace
-# Then use Product > Archive in Xcode
+# IMPORTANT: First clean and build to ensure version changes are applied
+# In Xcode: Product > Clean Build Folder (Shift+Command+K)
+# Then: Product > Build (Command+B)
+# Only then: Product > Archive
 ```
