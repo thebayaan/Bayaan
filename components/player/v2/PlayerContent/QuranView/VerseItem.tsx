@@ -1,9 +1,10 @@
-import React, {memo, useCallback} from 'react';
-import {Text, TouchableOpacity, StyleSheet, View} from 'react-native';
+import React, {memo, useCallback, useState, useEffect, useRef} from 'react';
+import {StyleSheet, TouchableOpacity, Text, View} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Verse} from '@/types/quran';
 import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
+import {Ionicons} from '@expo/vector-icons';
 
 // Interface for the structure of a word entry in the tajweed JSON data
 interface TajweedWordData {
@@ -114,6 +115,23 @@ interface ProcessedTajweedWord {
   }[];
 }
 
+// Interface for footnote data
+interface FootnoteData {
+  id: string;
+  number: string;
+  content?: string;
+}
+
+// Type for the Saheeh International JSON structure
+interface SaheehFootnoteEntry {
+  t: string; // Translation text
+  f?: {[key: string]: string}; // Optional footnotes object
+}
+
+interface SaheehData {
+  [verseKey: string]: SaheehFootnoteEntry;
+}
+
 interface VerseItemProps {
   verse: Verse;
   onPress: () => void;
@@ -194,13 +212,106 @@ export const VerseItem = memo<VerseItemProps>(
     tajweedAyahData,
     processedTajweedAyahData,
   }) => {
-    // Create a semi-transparent background color based on the text color
-    const bgColor = Color(textColor).alpha(0.08).toString();
+    const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
+      null,
+    );
+    // Cache for the Saheeh International data
+    const saheehDataCache = useRef<SaheehData | null>(null);
+    const [isSaheehDataLoaded, setIsSaheehDataLoaded] = useState(false);
 
-    // Clean translation text by removing footnote tags - memoized for performance
-    const cleanTranslationText = useCallback((text?: string) => {
-      if (!text) return '';
-      return text.replace(/<sup[^>]*>.*?<\/sup>/g, '');
+    // Load Saheeh International data once
+    useEffect(() => {
+      if (!saheehDataCache.current) {
+        try {
+          saheehDataCache.current = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
+          setIsSaheehDataLoaded(true);
+          console.log('[VerseItem] Saheeh International data loaded.');
+        } catch (error) {
+          console.error(
+            '[VerseItem] Failed to load Saheeh International data:',
+            error,
+          );
+        }
+      }
+    }, []);
+
+    const bgColor = Color(textColor).alpha(0.08).toString();
+    const footnoteBgColor = Color(textColor).alpha(0.1).toString();
+
+    // Handle footnote press - now uses cached data
+    const handleFootnotePress = useCallback(
+      (footnoteId: string, footnoteNumber: string) => {
+        console.log(
+          `[Footnote Press] Verse Key: ${verse.verse_key}, Footnote ID: ${footnoteId}, Number: ${footnoteNumber}`,
+        );
+
+        if (!isSaheehDataLoaded || !saheehDataCache.current) {
+          console.error(
+            '[VerseItem] Saheeh data not loaded yet when trying to access footnote.',
+          );
+          setActiveFootnote({
+            id: footnoteId,
+            number: footnoteNumber,
+            content: 'Error: Footnote data not ready',
+          });
+          return;
+        }
+
+        const verseData = saheehDataCache.current[verse.verse_key];
+        console.log(
+          '[Footnote Press] Found verseData:',
+          verseData ? 'Yes' : 'No',
+        );
+
+        // --- Start: Additional Logging ---
+        if (verseData) {
+          console.log('[Footnote Press] Inspecting verseData:', verseData);
+          console.log('[Footnote Press] Inspecting verseData.f:', verseData.f);
+          console.log(
+            `[Footnote Press] Keys in verseData.f: ${verseData.f ? Object.keys(verseData.f).join(', ') : 'N/A'}`,
+          );
+        }
+        // --- End: Additional Logging ---
+        if (verseData && verseData.f) {
+          const footnoteContent = verseData.f[footnoteId];
+          console.log(
+            `[Footnote Press] Found footnoteContent for ID ${footnoteId}:`,
+            footnoteContent ? 'Yes' : 'No',
+          );
+
+          if (footnoteContent) {
+            setActiveFootnote({
+              id: footnoteId,
+              number: footnoteNumber,
+              content: footnoteContent,
+            });
+          } else {
+            console.warn(
+              `Footnote content for ID ${footnoteId} in verse ${verse.verse_key} not found in footnotes object.`,
+            );
+            setActiveFootnote({
+              id: footnoteId,
+              number: footnoteNumber,
+              content: 'Footnote content not available',
+            });
+          }
+        } else {
+          console.warn(
+            `Footnotes object (f) not found for verse ${verse.verse_key}.`,
+          );
+          setActiveFootnote({
+            id: footnoteId,
+            number: footnoteNumber,
+            content: 'Footnote data structure issue',
+          });
+        }
+      },
+      [verse.verse_key, isSaheehDataLoaded],
+    );
+
+    // Close the footnote display
+    const closeFootnote = useCallback(() => {
+      setActiveFootnote(null);
     }, []);
 
     // Build the tajweed text nodes for the entire verse
@@ -291,16 +402,53 @@ export const VerseItem = memo<VerseItemProps>(
           />
         )}
         {showTranslation && verse.translation && (
-          <Text
+          <View>
+            <FormattedTextRenderer
+              text={verse.translation}
+              baseStyle={[
+                styles.translationText,
+                {
+                  color: textColor,
+                  fontSize: moderateScale(translationFontSize),
+                },
+              ]}
+              onFootnotePress={handleFootnotePress}
+            />
+
+            {/* Display Translation Source */}
+            {verse.translation && (
+              <Text
+                style={[
+                  styles.translationSource,
+                  {color: Color(textColor).alpha(0.6).toString()},
+                ]}>
+                Saheeh International
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Footnote Display */}
+        {activeFootnote && (
+          <View
             style={[
-              styles.translationText,
-              {
-                color: textColor,
-                fontSize: moderateScale(translationFontSize),
-              },
+              styles.footnoteContainer,
+              {backgroundColor: footnoteBgColor},
             ]}>
-            {cleanTranslationText(verse.translation)}
-          </Text>
+            <View style={styles.footnoteHeader}>
+              <Text style={[styles.footnoteTitle, {color: textColor}]}>
+                Footnote
+              </Text>
+              <TouchableOpacity
+                onPress={closeFootnote}
+                style={styles.closeButton}>
+                <Ionicons name="close" size={20} color={textColor} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.footnoteContent, {color: textColor}]}>
+              {activeFootnote.content}
+            </Text>
+          </View>
         )}
       </TouchableOpacity>
     );
@@ -351,5 +499,36 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Regular',
     marginTop: verticalScale(8),
     textAlign: 'left',
+  },
+  translationSource: {
+    fontSize: moderateScale(11),
+    fontFamily: 'Manrope-Regular',
+    marginTop: verticalScale(2),
+    marginBottom: verticalScale(4),
+    textAlign: 'left',
+    fontStyle: 'italic',
+  },
+  footnoteContainer: {
+    marginTop: verticalScale(8),
+    borderRadius: moderateScale(8),
+    padding: moderateScale(12),
+  },
+  footnoteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: verticalScale(8),
+  },
+  footnoteTitle: {
+    fontSize: moderateScale(16),
+    fontFamily: 'Manrope-Bold',
+  },
+  closeButton: {
+    padding: moderateScale(4),
+  },
+  footnoteContent: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-Regular',
+    lineHeight: moderateScale(20),
   },
 });
