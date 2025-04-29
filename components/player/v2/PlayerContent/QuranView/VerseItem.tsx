@@ -5,6 +5,106 @@ import {Verse} from '@/types/quran';
 import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 
+// Interface for the structure of a word entry in the tajweed JSON data
+interface TajweedWord {
+  word_index: number;
+  location: string; // e.g., "1:1:1"
+  text: string; // The word text, potentially containing <rule> tags
+}
+
+// Define colors for Tajweed rules (adjust these as needed)
+const tajweedColors: {[key: string]: string} = {
+  // Red - Necessary Prolongation (Madd: 6)
+  madda_necessary: '#DD0000',
+  // Pink - Obligatory Prolongation (Madd: 4 or 5)
+  madda_obligatory_mottasel: '#FF00FF',
+  madda_obligatory_monfasel: '#FF00FF',
+  // Orange - Permissible Prolongation (Madd: 2, 4, or 6)
+  madda_permissible: '#FF7F00',
+  // Gold/Yellow - Normal Prolongation (Madd: 2)
+  madda_normal: '#DDAA00',
+  'custom-alef-maksora': '#DDAA00',
+  // Green - Nasalization (Ghunnah)
+  ghunnah: '#00CC00',
+  idgham_ghunnah: '#00CC00',
+  idgham_shafawi: '#00CC00',
+  ikhafa: '#00CC00',
+  ikhafa_shafawi: '#00CC00',
+  iqlab: '#00CC00',
+  // Light Blue - Qalqala (Echoing Sound)
+  qalaqah: '#66CCFF',
+  // Dark Blue - Tafkhim (Emphatic Pronunciation)
+  idgham_mutajanisayn: '#0066FF',
+  idgham_mutaqaribayn: '#0066FF',
+  idgham_wo_ghunnah: '#0066FF',
+  laam_shamsiyah: '#0066FF',
+  // Gray - Silent (Unannounced Pronunciation)
+  slnt: '#AAAAAA',
+  ham_wasl: '#AAAAAA',
+};
+
+/**
+ * Parses a word string containing potentially nested tajweed rule tags
+ * and returns an array of styled Text components.
+ */
+function parseTajweedWord(
+  wordText: string,
+  defaultColor: string,
+): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  const ruleStack: string[] = [];
+  let currentIndex = 0;
+  let keyIndex = 0;
+
+  // Regex to find opening or closing rule tags
+  const tagRegex = /<rule class=([^>]+)>|<\/rule>/g;
+  let match: RegExpExecArray | null;
+
+  while (currentIndex < wordText.length) {
+    // Find the next tag
+    tagRegex.lastIndex = currentIndex; // Start search from current position
+    match = tagRegex.exec(wordText);
+
+    const nextTagIndex = match ? match.index : wordText.length;
+
+    // Process text segment before the next tag (or to the end)
+    if (nextTagIndex > currentIndex) {
+      const textSegment = wordText.substring(currentIndex, nextTagIndex);
+      const currentRule =
+        ruleStack.length > 0 ? ruleStack[ruleStack.length - 1] : null;
+      const color =
+        currentRule
+          ? tajweedColors[currentRule] || defaultColor
+          : defaultColor;
+
+      result.push(
+        <Text key={`word-segment-${keyIndex++}`} style={{color}}>
+          {textSegment}
+        </Text>,
+      );
+    }
+
+    // If no more tags found, we're done
+    if (!match) {
+      break;
+    }
+
+    // Process the found tag
+    if (match[1]) {
+      // Opening tag: <rule class=...>
+      const ruleName = match[1];
+      ruleStack.push(ruleName);
+      currentIndex = tagRegex.lastIndex; // Move past the opening tag
+    } else {
+      // Closing tag: </rule>
+      ruleStack.pop();
+      currentIndex = tagRegex.lastIndex; // Move past the closing tag
+    }
+  }
+
+  return result;
+}
+
 interface VerseItemProps {
   verse: Verse;
   onPress: () => void;
@@ -15,6 +115,7 @@ interface VerseItemProps {
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
+  tajweedAyahData?: TajweedWord[]; // Optional array for tajweed rendering
 }
 
 export const VerseItem = memo<VerseItemProps>(
@@ -28,6 +129,7 @@ export const VerseItem = memo<VerseItemProps>(
     transliterationFontSize,
     translationFontSize,
     arabicFontSize,
+    tajweedAyahData, // Destructure the new prop
   }) => {
     // Create a semi-transparent background color based on the text color
     const bgColor = Color(textColor).alpha(0.08).toString();
@@ -50,16 +152,35 @@ export const VerseItem = memo<VerseItemProps>(
             </Text>
           </View>
         </View>
-        <Text
-          style={[
-            styles.arabicText,
-            {
-              color: textColor,
-              fontSize: moderateScale(arabicFontSize),
-            },
-          ]}>
-          {verse.text}
-        </Text>
+        {tajweedAyahData ? (
+          <View style={styles.tajweedContainer}>
+            {tajweedAyahData.map((wordData, index) => (
+              <Text
+                key={`${wordData.location}-${index}`}
+                style={[
+                  styles.arabicText, // Use base arabic style
+                  {
+                    color: textColor, // Base color, overridden by parseTajweedWord
+                    fontSize: moderateScale(arabicFontSize),
+                    marginLeft: index > 0 ? moderateScale(3) : 0, // Add space between words
+                  },
+                ]}>
+                {parseTajweedWord(wordData.text, textColor)}
+              </Text>
+            ))}
+          </View>
+        ) : (
+          <Text
+            style={[
+              styles.arabicText,
+              {
+                color: textColor,
+                fontSize: moderateScale(arabicFontSize),
+              },
+            ]}>
+            {verse.text} {/* Fallback to plain text */}
+          </Text>
+        )}
         {showTransliteration && verse.transliteration && (
           <FormattedTextRenderer
             text={verse.transliteration}
@@ -109,6 +230,12 @@ const styles = StyleSheet.create({
   verseInfo: {
     fontSize: moderateScale(12),
     fontFamily: 'Manrope-Medium',
+  },
+  tajweedContainer: {
+    flexDirection: 'row-reverse', // Right-to-left flow
+    flexWrap: 'wrap', // Allow words to wrap to the next line
+    justifyContent: 'flex-end', // Align words to the right
+    alignItems: 'center', // Align text baselines
   },
   arabicText: {
     fontSize: moderateScale(24),

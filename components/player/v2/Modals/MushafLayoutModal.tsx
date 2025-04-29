@@ -38,6 +38,8 @@ interface MushafLayoutModalProps {
   toggleTranslation: () => void;
   showTransliteration: boolean;
   toggleTransliteration: () => void;
+  showTajweed: boolean;
+  toggleTajweed: () => void;
   transliterationFontSize: number;
   translationFontSize: number;
   onTransliterationFontSizeChange: (size: number) => void;
@@ -152,6 +154,8 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
   toggleTranslation,
   showTransliteration,
   toggleTransliteration,
+  showTajweed,
+  toggleTajweed,
   transliterationFontSize,
   translationFontSize,
   onTransliterationFontSizeChange,
@@ -209,6 +213,18 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
         {/* Arabic Text Section (Moved to Top) */}
         <Text style={styles.sectionHeader}>Arabic Text</Text>
         <View style={styles.card}>
+          <View style={styles.optionRow}>
+            <Text style={styles.optionLabel}>Tajweed Coloring</Text>
+            <Switch
+              trackColor={trackColor}
+              thumbColor={theme.colors.card}
+              ios_backgroundColor={trackColor.false}
+              onValueChange={toggleTajweed}
+              value={showTajweed}
+              style={styles.switchStyle}
+            />
+          </View>
+          <View style={styles.divider} />
           <FontSizeControl
             label="Font Size"
             currentActualSize={arabicFontSize}

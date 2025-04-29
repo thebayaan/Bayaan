@@ -63,6 +63,7 @@ export default function RootLayout() {
     'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
     'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
     Uthmani: require('@/assets/fonts/Uthmani.otf'),
+    QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
   });
 
   const onLayoutRootView = useCallback(async () => {
