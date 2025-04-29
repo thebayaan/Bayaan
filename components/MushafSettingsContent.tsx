@@ -37,36 +37,46 @@ try {
   console.error('[MushafSettingsContent] Error pre-caching data:', error);
 }
 
-// Define colors for Tajweed rules
-const tajweedColors: {[key: string]: string} = {
-  // Red - Necessary Prolongation (Madd: 6)
-  madda_necessary: '#b50000',
-  // Pink - Obligatory Prolongation (Madd: 4 or 5)
-  madda_obligatory_mottasel: '#f40000',
-  madda_obligatory_monfasel: '#f40000',
-  // Orange - Permissible Prolongation (Madd: 2, 4, or 6)
-  madda_permissible: '#ff7b00',
-  // Gold/Yellow - Normal Prolongation (Madd: 2)
-  madda_normal: '#ce9e00',
-  'custom-alef-maksora': '#ce9e00',
-  // Green - Nasalization (Ghunnah)
-  ghunnah: '#09b000',
-  idgham_ghunnah: '#09b000',
-  idgham_shafawi: '#09b000',
-  ikhafa: '#09b000',
-  ikhafa_shafawi: '#09b000',
-  iqlab: '#09b000',
-  // Light Blue - Qalqala (Echoing Sound)
-  qalaqah: '#2fadff',
-  // Dark Blue - Tafkhim (Emphatic Pronunciation)
-  idgham_mutajanisayn: '#3f48e6',
-  idgham_mutaqaribayn: '#3f48e6',
-  idgham_wo_ghunnah: '#3f48e6',
-  // Gray - Silent (Unannounced Pronunciation)
-  slnt: '#a5a5a5',
-  ham_wasl: '#a5a5a5',
-  laam_shamsiyah: '#a5a5a5',
-};
+// Define the getTajweedColors function that returns the appropriate color set based on theme mode
+const getTajweedColors = (isDarkMode: boolean): {[key: string]: string} => ({
+  // Idgham (Merging) - Gray
+  idgham_mutajanisayn: isDarkMode ? '#999999' : '#a5a5a5',
+  idgham_mutaqaribayn: isDarkMode ? '#999999' : '#a5a5a5',
+  idgham_wo_ghunnah: isDarkMode ? '#999999' : '#a5a5a5',
+
+  // Normal Prolongation (Madd: 2) - Yellow/Pink
+  madda_normal: isDarkMode ? '#ffc1e0' : '#ce9e00',
+  'custom-alef-maksora': isDarkMode ? '#ffc1e0' : '#ce9e00',
+
+  // Necessary Prolongation (Madd: 6) - Deep Red
+  madda_necessary: isDarkMode ? '#e30000' : '#b50000',
+
+  // Permissible Prolongation (Madd: 2, 4, or 6) - Orange
+  madda_permissible: isDarkMode ? '#ff8e3b' : '#ff7b00',
+
+  // Obligatory Prolongation (Madd: 4 or 5) - Red/Pink
+  madda_obligatory_mottasel: isDarkMode ? '#ff5e8e' : '#f40000',
+  madda_obligatory_monfasel: isDarkMode ? '#ff5e8e' : '#f40000',
+
+  // Nasalization (Ghunnah) - Green
+  ghunnah: isDarkMode ? '#26b55d' : '#09b000',
+  idgham_ghunnah: isDarkMode ? '#26b55d' : '#09b000',
+  idgham_shafawi: isDarkMode ? '#26b55d' : '#09b000',
+  ikhafa: isDarkMode ? '#26b55d' : '#09b000',
+  ikhafa_shafawi: isDarkMode ? '#26b55d' : '#09b000',
+  iqlab: isDarkMode ? '#26b55d' : '#09b000',
+
+  // Qalqala (Echoing Sound) - Light Blue
+  qalaqah: isDarkMode ? '#00deff' : '#2fadff',
+
+  // Tafkhim (Emphatic Pronunciation) - Dark Blue
+  tafkhim: isDarkMode ? '#3c84d5' : '#3f48e6',
+
+  // Silent (Unannounced Pronunciation) - Gray
+  slnt: isDarkMode ? '#999999' : '#a5a5a5',
+  ham_wasl: isDarkMode ? '#999999' : '#a5a5a5',
+  laam_shamsiyah: isDarkMode ? '#999999' : '#a5a5a5',
+});
 
 // Simplified segment structure for the sample text
 interface TajweedSampleSegment {
@@ -98,6 +108,12 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   sampleFontFamily,
   showTajweed,
 }) => {
+  // Get the appropriate tajweed colors for the current theme
+  const tajweedColors = useMemo(
+    () => getTajweedColors(theme.isDarkMode),
+    [theme.isDarkMode],
+  );
+
   // Calculate current display value (1-10) from actual size
   const currentDisplayValue = getDisplayValue(currentActualSize);
 
@@ -164,6 +180,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     showTajweed,
     currentActualSize,
     theme.colors.text,
+    tajweedColors,
     styles.sampleTextBase,
     styles.arabicSampleText,
     sampleFontFamily,
@@ -231,19 +248,25 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   onValueChange,
   theme,
 }) => {
+  // Get the appropriate tajweed colors for the current theme
+  const tajweedColors = useMemo(
+    () => getTajweedColors(theme.isDarkMode),
+    [theme.isDarkMode],
+  );
+
   // Use memoized static arrays to prevent recalculations on each render
   const coloredGradient = React.useMemo(
     () =>
       [
         tajweedColors.madda_necessary, // Deep Red
-        tajweedColors.madda_obligatory_mottasel, // Red
+        tajweedColors.madda_obligatory_mottasel, // Pink
         tajweedColors.madda_permissible, // Orange
-        tajweedColors.madda_normal, // Gold
+        tajweedColors.madda_normal, // Yellow/Pink
         tajweedColors.ghunnah, // Green
         tajweedColors.qalaqah, // Light Blue
-        tajweedColors.idgham_mutajanisayn, // Dark Blue
+        tajweedColors.tafkhim, // Dark Blue
       ] as const,
-    [],
+    [tajweedColors],
   );
 
   const monochromeGradient = React.useMemo(
@@ -323,6 +346,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {indexedTajweedData, isLoading: isTajweedLoading} = useTajweedStore();
+
+  // Get the appropriate tajweed colors for the current theme
 
   // Access settings from the store
   const {
