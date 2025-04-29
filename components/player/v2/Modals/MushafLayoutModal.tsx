@@ -13,7 +13,7 @@ import Color from 'color';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {Icon} from '@rneui/themed';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {QuranData, Verse} from '@/types/quran';
+import {QuranData} from '@/types/quran';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 
 // Import Quran data
@@ -25,31 +25,59 @@ interface TranslationItem {
   resource_id: number;
   text: string;
 }
+
 interface VerseTranslation {
   id: number;
-  verse_number: number;
   verse_key: string;
+  verse_number: number;
   translations: TranslationItem[];
 }
-interface TransliterationVerse {
-  t: string;
-}
+
 interface TransliterationData {
-  [verseKey: string]: TransliterationVerse;
+  [key: string]: {
+    t: string;
+  };
 }
 
+// Pre-load data outside component
 let translationDataCache: VerseTranslation[] | null = null;
 let transliterationDataCache: TransliterationData | null = null;
+
 try {
-  translationDataCache = require('@/data/quran-translation.json');
+  // Load Saheeh International translation
+  const saheehInternationalData = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
+
+  // Process the Saheeh International data to match the expected format
+  translationDataCache = Object.entries(saheehInternationalData).map(
+    ([verseKey, verseData]: [string, any]) => {
+      // Extract chapter and verse numbers from verse key (format: "1:1")
+      const [chapterNum, verseNum] = verseKey.split(':').map(Number);
+
+      return {
+        id: parseInt(`${chapterNum}${verseNum.toString().padStart(3, '0')}`),
+        verse_number: verseNum,
+        verse_key: verseKey,
+        chapter_number: chapterNum,
+        translations: [
+          {
+            id: parseInt(
+              `9${chapterNum}${verseNum.toString().padStart(3, '0')}`,
+            ),
+            resource_id: 190,
+            text: verseData.t,
+          },
+        ],
+      };
+    },
+  );
+
   transliterationDataCache = require('@/data/transliteration.json');
   console.log(
-    '[MushafLayoutModal] Translation/transliteration data pre-cached',
+    '[MushafLayoutModal] Saheeh International translation/transliteration data pre-cached',
   );
 } catch (error) {
   console.error('[MushafLayoutModal] Error pre-caching data:', error);
 }
-// --- End Pre-cache --- //
 
 // Define colors for Tajweed rules
 const tajweedColors: {[key: string]: string} = {
@@ -436,8 +464,8 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
               style={styles.switchStyle}
             />
           </View>
-          <Text style={styles.sourceText}>
-            Using: The Clear Quran by Dr. Mustafa Khattab
+          <Text style={styles.helperText}>
+            Using: Saheeh International Translation with footnotes
           </Text>
           {showTranslation && (
             <>
@@ -559,7 +587,7 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: moderateScale(20),
       backgroundColor: theme.colors.backgroundSecondary,
     },
-    sourceText: {
+    helperText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,

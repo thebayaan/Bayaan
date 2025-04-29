@@ -25,9 +25,38 @@ let transliterationDataCache: TransliterationData | null = null;
 
 // Try to load these immediately
 try {
-  translationDataCache = require('@/data/quran-translation.json');
+  // Load Saheeh International translation instead of the original translation
+  const saheehInternationalData = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
+
+  // Process the Saheeh International data which has a different format
+  // Convert to the format expected by the app
+  translationDataCache = Object.entries(saheehInternationalData).map(
+    ([verseKey, verseData]: [string, any]) => {
+      // Extract chapter and verse numbers from verse key (format: "1:1")
+      const [chapterNum, verseNum] = verseKey.split(':').map(Number);
+
+      return {
+        id: parseInt(`${chapterNum}${verseNum.toString().padStart(3, '0')}`), // Create a unique ID
+        verse_number: verseNum,
+        verse_key: verseKey,
+        chapter_number: chapterNum,
+        translations: [
+          {
+            id: parseInt(
+              `9${chapterNum}${verseNum.toString().padStart(3, '0')}`,
+            ), // Create a unique resource ID
+            resource_id: 190, // Assign a resource ID for Saheeh International
+            text: verseData.t, // The translation text is in the 't' property
+          },
+        ],
+      };
+    },
+  );
+
   transliterationDataCache = require('@/data/transliteration.json');
-  console.log('[QuranView] Translation and transliteration data pre-cached');
+  console.log(
+    '[QuranView] Saheeh International translation and transliteration data pre-cached',
+  );
 } catch (error) {
   console.error('[QuranView] Error pre-caching data:', error);
 }
@@ -222,7 +251,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Render the bismillah header (to be used as list header)
   const renderHeader = useCallback(() => {
-    if (surah?.id === 9) return null;
+    if (!surah?.bismillah_pre) return null;
     return (
       <View style={styles.bismillahContainer}>
         <Text style={[styles.bismillah, {color: theme.colors.text}]}>﷽</Text>
