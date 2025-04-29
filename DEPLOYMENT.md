@@ -92,9 +92,21 @@ For detailed information on keystore management, refer to:
 
 2. Select "Generic iOS Device" as the build destination
 
-3. Go to Product > Archive
+3. **IMPORTANT**: Create a fresh build before archiving to ensure version changes are applied:
+   ```bash
+   # First, clean the build
+   Product > Clean Build Folder (Shift+Command+K)
+   
+   # Then build the app
+   Product > Build (Command+B)
+   ```
 
-4. When archiving completes, the Organizer window will appear with your new archive
+4. Once the build succeeds, proceed to archive:
+   ```bash
+   Product > Archive
+   ```
+
+5. When archiving completes, the Organizer window will appear with your new archive
 
 ### Upload to App Store Connect
 
@@ -108,6 +120,11 @@ For detailed information on keystore management, refer to:
 
 ```bash
 cd ios
+# Clean and build first
+xcodebuild clean -workspace Bayaan.xcworkspace -scheme Bayaan
+xcodebuild -workspace Bayaan.xcworkspace -scheme Bayaan -configuration Release
+
+# Then run fastlane
 fastlane release
 ```
 
@@ -138,6 +155,13 @@ If you encounter "wrong signing key" errors:
 1. Verify your Apple Developer Program membership is active
 2. Check that provisioning profiles are up to date
 3. Ensure your signing certificate hasn't expired
+
+### Version Not Updated in Build
+
+If your version bump isn't reflected in the final build:
+1. Ensure you've created a fresh build after the version bump
+2. For iOS, always clean the project (Product > Clean Build Folder) before building
+3. Check that any build scripts that modify version numbers have run correctly
 
 ## Deployment Checklist
 
