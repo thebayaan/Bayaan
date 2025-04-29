@@ -13,6 +13,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useTheme} from '@/hooks/useTheme';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -22,12 +23,6 @@ interface PlayerContentProps {
   sleepBottomSheetRef: React.RefObject<BottomSheet>;
   summaryBottomSheetRef: React.RefObject<BottomSheet>;
   mushafLayoutSheetRef: React.RefObject<BottomSheet>;
-  showTranslation: boolean;
-  showTransliteration: boolean;
-  showTajweed: boolean;
-  transliterationFontSize: number;
-  translationFontSize: number;
-  arabicFontSize: number;
 }
 
 const PlayerContent: React.FC<PlayerContentProps> = ({
@@ -35,16 +30,20 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   sleepBottomSheetRef,
   summaryBottomSheetRef,
   mushafLayoutSheetRef,
-  showTranslation,
-  showTransliteration,
-  showTajweed,
-  transliterationFontSize,
-  translationFontSize,
-  arabicFontSize,
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
   const {queue, updateQueue, removeFromQueue, play} = useUnifiedPlayer();
+
+  // Get mushaf settings from the store
+  const {
+    showTranslation,
+    showTransliteration,
+    showTajweed,
+    arabicFontSize,
+    translationFontSize,
+    transliterationFontSize,
+  } = useMushafSettingsStore();
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);

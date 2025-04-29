@@ -12,6 +12,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
 import Header from '@/components/Header';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
+import {QuranIcon} from '@/components/Icons';
 
 // App Store IDs - Replace with your actual IDs
 
@@ -45,6 +46,18 @@ const themeOptions: ThemeOption[] = [
 ];
 
 const settingsItems = [
+  {
+    section: 'Quran Settings',
+    items: [
+      {
+        title: 'Mushaf Settings',
+        type: 'mushafSettings',
+        description: 'Customize Quran display options',
+        icon: 'quran',
+        iconType: 'custom',
+      },
+    ],
+  },
   {
     section: 'Audio & Playback',
     items: [
@@ -148,6 +161,9 @@ export default function SettingsScreen() {
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
+      case 'mushafSettings':
+        router.push('/settings/mushaf-settings');
+        break;
       case 'defaultReciter':
         router.push('/settings/default-reciter');
         break;
@@ -326,16 +342,21 @@ export default function SettingsScreen() {
                   onPress={() => handleSettingPress(item.type)}
                   activeOpacity={0.7}>
                   <View style={styles.settingsItemContent}>
-                    {item.icon && (
-                      <View style={styles.settingsItemIcon}>
+                    <View style={styles.settingsItemIcon}>
+                      {item.iconType === 'custom' && item.icon === 'quran' ? (
+                        <QuranIcon
+                          size={moderateScale(24)}
+                          color={theme.colors.textSecondary}
+                        />
+                      ) : (
                         <Icon
                           name={item.icon}
                           type={item.iconType}
                           size={moderateScale(20)}
                           color={theme.colors.textSecondary}
                         />
-                      </View>
-                    )}
+                      )}
+                    </View>
                     <View style={styles.settingsTextContainer}>
                       <Text
                         style={[

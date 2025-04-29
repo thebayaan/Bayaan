@@ -5,6 +5,7 @@ import {Verse} from '@/types/quran';
 import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {Ionicons} from '@expo/vector-icons';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Interface for the structure of a word entry in the tajweed JSON data
 interface TajweedWordData {
@@ -204,14 +205,41 @@ export const VerseItem = memo<VerseItemProps>(
     onPress,
     textColor,
     borderColor,
-    showTranslation = false,
-    showTransliteration = false,
-    transliterationFontSize,
-    translationFontSize,
-    arabicFontSize,
+    showTranslation: propShowTranslation,
+    showTransliteration: propShowTransliteration,
+    transliterationFontSize: propTransliterationFontSize,
+    translationFontSize: propTranslationFontSize,
+    arabicFontSize: propArabicFontSize,
     tajweedAyahData,
     processedTajweedAyahData,
   }) => {
+    // Get settings from the store
+    const {
+      showTranslation: storeShowTranslation,
+      showTransliteration: storeShowTransliteration,
+      showTajweed,
+      arabicFontSize: storeArabicFontSize,
+      translationFontSize: storeTranslationFontSize,
+      transliterationFontSize: storeTransliterationFontSize,
+    } = useMushafSettingsStore();
+
+    // Use prop values if provided, otherwise use store values
+    const showTranslation =
+      propShowTranslation !== undefined
+        ? propShowTranslation
+        : storeShowTranslation;
+    const showTransliteration =
+      propShowTransliteration !== undefined
+        ? propShowTransliteration
+        : storeShowTransliteration;
+
+    const transliterationFontSize =
+      propTransliterationFontSize || storeTransliterationFontSize;
+
+    const translationFontSize =
+      propTranslationFontSize || storeTranslationFontSize;
+    const arabicFontSize = propArabicFontSize || storeArabicFontSize;
+
     const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
       null,
     );
@@ -349,8 +377,8 @@ export const VerseItem = memo<VerseItemProps>(
             </Text>
           </View>
         </View>
-        {processedTajweedAyahData ? (
-          // Render the entire verse within a single Text component
+        {processedTajweedAyahData && showTajweed ? (
+          // Render the entire verse with tajweed colors
           <Text
             style={[
               styles.arabicText,
@@ -358,8 +386,8 @@ export const VerseItem = memo<VerseItemProps>(
             ]}>
             {tajweedNodes}
           </Text>
-        ) : tajweedAyahData ? (
-          // Fallback to legacy method (might still have alignment issues)
+        ) : tajweedAyahData && showTajweed ? (
+          // Fallback to legacy tajweed method
           <View style={styles.tajweedContainer}>
             {tajweedAyahData.map((wordData, index) => (
               <Text
@@ -377,7 +405,7 @@ export const VerseItem = memo<VerseItemProps>(
             ))}
           </View>
         ) : (
-          // Plain text fallback
+          // Plain text (no tajweed)
           <Text
             style={[
               styles.arabicText,
