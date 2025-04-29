@@ -1,4 +1,4 @@
-import React, {memo} from 'react';
+import React, {memo, useCallback} from 'react';
 import {Text, TouchableOpacity, StyleSheet, View} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Verse} from '@/types/quran';
@@ -6,7 +6,7 @@ import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 
 // Interface for the structure of a word entry in the tajweed JSON data
-interface TajweedWord {
+interface TajweedWordData {
   word_index: number;
   location: string; // e.g., "1:1:1"
   text: string; // The word text, potentially containing <rule> tags
@@ -44,8 +44,8 @@ const tajweedColors: {[key: string]: string} = {
 };
 
 /**
- * Parses a word string containing potentially nested tajweed rule tags
- * and returns an array of styled Text components.
+ * Legacy function to parse tajweed words at render time
+ * This is kept for backward compatibility
  */
 function parseTajweedWord(
   wordText: string,
@@ -104,6 +104,16 @@ function parseTajweedWord(
   return result;
 }
 
+// Type for processed word data from store
+interface ProcessedTajweedWord {
+  word_index: number;
+  location: string;
+  segments: {
+    text: string;
+    rule: string | null;
+  }[];
+}
+
 interface VerseItemProps {
   verse: Verse;
   onPress: () => void;
@@ -114,8 +124,61 @@ interface VerseItemProps {
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
-  tajweedAyahData?: TajweedWord[]; // Optional array for tajweed rendering
+  tajweedAyahData?: TajweedWordData[]; // Original tajweed data
+  processedTajweedAyahData?: ProcessedTajweedWord[]; // Pre-processed tajweed data
 }
+
+/**
+ * Pre-render optimized tajweed segment
+ * This component is memoized to prevent re-renders when parent re-renders
+ */
+const TajweedSegment = memo(({text, color}: {text: string; color: string}) => (
+  <Text style={{color}}>{text}</Text>
+));
+TajweedSegment.displayName = 'TajweedSegment';
+
+/**
+ * Pre-render optimized tajweed word
+ * This component is memoized to prevent re-renders when parent re-renders
+ */
+const TajweedWord = memo(
+  ({
+    wordData,
+    index,
+    textColor,
+    arabicFontSize,
+  }: {
+    wordData: ProcessedTajweedWord;
+    index: number;
+    textColor: string;
+    arabicFontSize: number;
+  }) => (
+    <Text
+      style={[
+        styles.arabicText,
+        {
+          fontSize: moderateScale(arabicFontSize),
+          marginLeft: index > 0 ? moderateScale(3) : 0,
+          textAlign: 'right',
+          writingDirection: 'rtl',
+        },
+      ]}>
+      {wordData.segments.map((segment, segIndex) => {
+        const color = segment.rule
+          ? tajweedColors[segment.rule] || textColor
+          : textColor;
+        return (
+          <TajweedSegment
+            key={`${wordData.location}-${index}-${segIndex}`}
+            text={segment.text}
+            color={color}
+          />
+        );
+      })}
+    </Text>
+  ),
+);
+TajweedWord.displayName = 'TajweedWord';
 
 export const VerseItem = memo<VerseItemProps>(
   ({
@@ -128,16 +191,40 @@ export const VerseItem = memo<VerseItemProps>(
     transliterationFontSize,
     translationFontSize,
     arabicFontSize,
-    tajweedAyahData, // Destructure the new prop
+    tajweedAyahData,
+    processedTajweedAyahData,
   }) => {
     // Create a semi-transparent background color based on the text color
     const bgColor = Color(textColor).alpha(0.08).toString();
 
-    // Clean translation text by removing footnote tags
-    const cleanTranslationText = (text?: string) => {
+    // Clean translation text by removing footnote tags - memoized for performance
+    const cleanTranslationText = useCallback((text?: string) => {
       if (!text) return '';
       return text.replace(/<sup[^>]*>.*?<\/sup>/g, '');
-    };
+    }, []);
+
+    // Build the tajweed text nodes for the entire verse
+    const tajweedNodes = processedTajweedAyahData
+      ? processedTajweedAyahData.flatMap((wordData, wordIndex) => {
+          const segments = wordData.segments.map((segment, segIndex) => {
+            const color = segment.rule
+              ? tajweedColors[segment.rule] || textColor
+              : textColor;
+            return (
+              <TajweedSegment
+                key={`${wordData.location}-${wordIndex}-${segIndex}`}
+                text={segment.text}
+                color={color}
+              />
+            );
+          });
+          // Add a space after each word except the last one
+          if (wordIndex < processedTajweedAyahData.length - 1) {
+            segments.push(<Text key={`${wordData.location}-space`}> </Text>);
+          }
+          return segments;
+        })
+      : null;
 
     return (
       <TouchableOpacity
@@ -151,17 +238,27 @@ export const VerseItem = memo<VerseItemProps>(
             </Text>
           </View>
         </View>
-        {tajweedAyahData ? (
+        {processedTajweedAyahData ? (
+          // Render the entire verse within a single Text component
+          <Text
+            style={[
+              styles.arabicText,
+              {fontSize: moderateScale(arabicFontSize)},
+            ]}>
+            {tajweedNodes}
+          </Text>
+        ) : tajweedAyahData ? (
+          // Fallback to legacy method (might still have alignment issues)
           <View style={styles.tajweedContainer}>
             {tajweedAyahData.map((wordData, index) => (
               <Text
                 key={`${wordData.location}-${index}`}
                 style={[
-                  styles.arabicText, // Use base arabic style
+                  styles.arabicText,
                   {
-                    color: textColor, // Base color, overridden by parseTajweedWord
+                    color: textColor,
                     fontSize: moderateScale(arabicFontSize),
-                    marginLeft: index > 0 ? moderateScale(3) : 0, // Add space between words
+                    marginLeft: index > 0 ? moderateScale(3) : 0,
                   },
                 ]}>
                 {parseTajweedWord(wordData.text, textColor)}
@@ -169,6 +266,7 @@ export const VerseItem = memo<VerseItemProps>(
             ))}
           </View>
         ) : (
+          // Plain text fallback
           <Text
             style={[
               styles.arabicText,
@@ -177,7 +275,7 @@ export const VerseItem = memo<VerseItemProps>(
                 fontSize: moderateScale(arabicFontSize),
               },
             ]}>
-            {verse.text} {/* Fallback to plain text */}
+            {verse.text}
           </Text>
         )}
         {showTransliteration && verse.transliteration && (
