@@ -135,7 +135,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
       <Text
         style={[
           styles.sampleText,
-          sampleFontFamily === 'Uthmani' ? styles.arabicSampleText : {},
+          sampleFontFamily === 'QPC' ? styles.arabicSampleText : {},
           {
             fontSize: moderateScale(currentActualSize),
             color: theme.colors.text,
@@ -232,7 +232,7 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
             theme={theme}
             styles={styles}
             sampleText="هَٰذَا بَيَانٌ لِّلنَّاسِ وَهُدًى وَمَوْعِظَةٌ لِّلْمُتَّقِينَ ١٣٨"
-            sampleFontFamily="Uthmani"
+            sampleFontFamily="QPC"
           />
         </View>
 

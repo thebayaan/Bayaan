@@ -19,6 +19,7 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
+import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -42,6 +43,7 @@ const RETRY_DELAY = 1000;
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [isTajweedLoading, setIsTajweedLoading] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
   const store = usePlayerStore();
@@ -65,6 +67,18 @@ export default function RootLayout() {
     Uthmani: require('@/assets/fonts/Uthmani.otf'),
     QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
   });
+
+  // Preload Tajweed data once when the app starts
+  useEffect(() => {
+    if (!isTajweedLoading) {
+      setIsTajweedLoading(true);
+      console.log('[App] Preloading tajweed data...');
+      // Start preloading tajweed data in the background
+      preloadTajweedDataWithTimeout();
+      // We don't need to wait for tajweed data to load to continue app initialization
+      // This will load asynchronously while other resources are being prepared
+    }
+  }, [isTajweedLoading]);
 
   const onLayoutRootView = useCallback(async () => {
     try {
