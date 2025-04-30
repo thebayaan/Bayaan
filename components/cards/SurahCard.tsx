@@ -6,13 +6,15 @@ import {
   StyleSheet,
   StyleProp,
   ViewStyle,
+  GestureResponderEvent,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
+import {Icon} from '@rneui/themed';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -27,6 +29,7 @@ interface SurahCardProps {
   revelationPlace: string;
   color: string;
   onPress: () => void;
+  onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
 }
@@ -41,6 +44,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   revelationPlace,
   color,
   onPress,
+  onOptionsPress,
   style,
   isLoved = false,
 }) => {
@@ -92,6 +96,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       padding: moderateScale(6),
       justifyContent: 'center',
       alignItems: 'center',
+      position: 'relative',
     },
     arabicName: {
       fontSize: moderateScale(26),
@@ -109,7 +114,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     },
     textBlock: {
       alignItems: 'center',
-      marginBottom: moderateScale(2),
     },
     name: {
       fontSize: moderateScale(12),
@@ -178,10 +182,27 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       marginVertical: moderateScale(2),
     },
     heartIconContainer: {
-      marginTop: moderateScale(2),
-      height: moderateScale(14),
+      position: 'absolute',
+      bottom: verticalScale(5),
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+    },
+    optionsButton: {
+      position: 'absolute',
+      bottom: moderateScale(4),
+      right: moderateScale(4),
+      padding: moderateScale(5),
+      borderRadius: moderateScale(15),
+      backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
     },
   });
+
+  // Simple wrapper to prevent main card press when options are clicked
+  const handleOptionsPressWrapper = (e: GestureResponderEvent) => {
+    e.stopPropagation();
+    onOptionsPress?.();
+  };
 
   return (
     <AnimatedTouchableOpacity
@@ -228,17 +249,32 @@ export const SurahCard: React.FC<SurahCardProps> = ({
               {translatedName}
             </Text>
           </View>
-          <View style={styles.heartIconContainer}>
-            {isLoved && (
-              <HeartIcon
-                size={moderateScale(14)}
-                color={theme.colors.text}
-                filled={true}
-              />
-            )}
-          </View>
+        </View>
+
+        <View style={styles.heartIconContainer}>
+          {isLoved && (
+            <HeartIcon
+              size={moderateScale(14)}
+              color={theme.colors.text}
+              filled={true}
+            />
+          )}
         </View>
       </View>
+
+      {onOptionsPress && (
+        <TouchableOpacity
+          style={styles.optionsButton}
+          onPress={handleOptionsPressWrapper}
+          activeOpacity={0.7}>
+          <Icon
+            name="more-horizontal"
+            type="feather"
+            size={moderateScale(18)}
+            color={theme.colors.textSecondary}
+          />
+        </TouchableOpacity>
+      )}
     </AnimatedTouchableOpacity>
   );
 };

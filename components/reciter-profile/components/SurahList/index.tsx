@@ -68,9 +68,17 @@ export const SurahList = React.forwardRef<
           onPress={() => onSurahPress(item)}
           style={styles.surahCard}
           isLoved={isLoved(reciterId, item.id.toString())}
+          onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
         />
       ),
-      [getColorForSurah, onSurahPress, styles.surahCard, isLoved, reciterId],
+      [
+        getColorForSurah,
+        onSurahPress,
+        styles.surahCard,
+        isLoved,
+        reciterId,
+        onOptionsPress,
+      ],
     );
 
     // Render a list item using SurahItem
