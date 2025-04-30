@@ -20,6 +20,7 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 interface SurahCardProps {
   id: number;
@@ -58,6 +59,11 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       transform: [{scale: scale.value}],
     };
   });
+
+  const handleCardPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
 
   const handlePressIn = () => {
     scale.value = withSpring(0.95, {
@@ -198,9 +204,14 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     },
   });
 
-  // Simple wrapper to prevent main card press when options are clicked
   const handleOptionsPressWrapper = (e: GestureResponderEvent) => {
     e.stopPropagation();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onOptionsPress?.();
+  };
+
+  const handleLongPressWrapper = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onOptionsPress?.();
   };
 
@@ -208,7 +219,9 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     <AnimatedTouchableOpacity
       activeOpacity={1}
       style={[styles.container, animatedStyle, style]}
-      onPress={onPress}
+      onPress={handleCardPress}
+      onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
+      delayLongPress={500}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}>
       <LinearGradient
