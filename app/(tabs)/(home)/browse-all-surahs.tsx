@@ -19,6 +19,7 @@ import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
 import {useModal} from '@/components/providers/ModalProvider';
 
+// Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
 type SortOption = 'asc' | 'desc' | 'revelation';
 
@@ -111,14 +112,26 @@ export default function BrowseAllSurahsScreen() {
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {showSelectReciter} = useModal();
+  // Retrieve persisted settings
+  const browseViewModeSetting = useSettings(state => state.browseViewMode);
+  const setBrowseViewModeSetting = useSettings(
+    state => state.setBrowseViewMode,
+  );
+  const browseSortOptionSetting = useSettings(state => state.browseSortOption);
+  const setBrowseSortOptionSetting = useSettings(
+    state => state.setBrowseSortOption,
+  );
 
   // Define styles *before* callbacks that use them
   const styles = useStyles();
   const {theme} = useTheme(); // Keep theme for options row styling
 
   const [searchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [sortOption, setSortOption] = useState<SortOption>('asc');
+  // Initialize local state from persisted settings
+  const [viewMode, setViewMode] = useState<ViewMode>(browseViewModeSetting);
+  const [sortOption, setSortOption] = useState<SortOption>(
+    browseSortOptionSetting,
+  );
 
   // Filter and sort surahs
   const displaySurahs = useMemo(() => {
@@ -215,11 +228,14 @@ export default function BrowseAllSurahsScreen() {
   );
 
   const toggleViewMode = () => {
-    setViewMode(viewMode === 'card' ? 'list' : 'card');
+    const newMode = viewMode === 'card' ? 'list' : 'card';
+    setViewMode(newMode);
+    setBrowseViewModeSetting(newMode); // Persist the change
   };
 
   const changeSortOption = (option: SortOption) => {
     setSortOption(option);
+    setBrowseSortOptionSetting(option); // Persist the change
   };
 
   // Render a card item

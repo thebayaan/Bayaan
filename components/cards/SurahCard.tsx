@@ -12,7 +12,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
-import {MakkahIcon, MadinahIcon} from '@/components/Icons';
+import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -28,6 +28,7 @@ interface SurahCardProps {
   color: string;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
+  isLoved?: boolean;
 }
 
 const AnimatedTouchableOpacity =
@@ -41,6 +42,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   color,
   onPress,
   style,
+  isLoved = false,
 }) => {
   const {theme} = useTheme();
 
@@ -105,11 +107,14 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       paddingHorizontal: moderateScale(3),
       width: '100%',
     },
+    textBlock: {
+      alignItems: 'center',
+      marginBottom: moderateScale(2),
+    },
     name: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
-      marginBottom: 0,
       textAlign: 'center',
       letterSpacing: 0.2,
     },
@@ -172,6 +177,10 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       backgroundColor: Color(color).alpha(0.15).toString(),
       marginVertical: moderateScale(2),
     },
+    heartIconContainer: {
+      marginTop: moderateScale(2),
+      height: moderateScale(14),
+    },
   });
 
   return (
@@ -208,15 +217,26 @@ export const SurahCard: React.FC<SurahCardProps> = ({
         <Text style={styles.arabicName}>{surahGlyphMap[id]}</Text>
         <View style={styles.divider} />
         <View style={styles.nameContainer}>
-          <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
-            {name}
-          </Text>
-          <Text
-            style={styles.translatedName}
-            numberOfLines={1}
-            ellipsizeMode="tail">
-            {translatedName}
-          </Text>
+          <View style={styles.textBlock}>
+            <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+              {name}
+            </Text>
+            <Text
+              style={styles.translatedName}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {translatedName}
+            </Text>
+          </View>
+          <View style={styles.heartIconContainer}>
+            {isLoved && (
+              <HeartIcon
+                size={moderateScale(14)}
+                color={theme.colors.text}
+                filled={true}
+              />
+            )}
+          </View>
         </View>
       </View>
     </AnimatedTouchableOpacity>
