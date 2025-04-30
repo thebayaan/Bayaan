@@ -14,6 +14,12 @@ import {HeartIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface SurahItemProps {
   item: Surah;
@@ -23,15 +29,27 @@ interface SurahItemProps {
   onOptionsPress?: (item: Surah) => void;
 }
 
+// Create Animated component
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
+
 export const SurahItem: React.FC<SurahItemProps> = React.memo(
   ({item, onPress, isLoved = false, onOptionsPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
-    const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
+    // Animation value
+    const scale = useSharedValue(1);
+
+    const handlePress = React.useCallback(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress(item);
+    }, [item, onPress]);
+
     const handleOptionsPress = React.useCallback(
-      (e: GestureResponderEvent) => {
-        e.stopPropagation();
+      (e?: GestureResponderEvent) => {
+        e?.stopPropagation();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         if (onOptionsPress) {
           requestAnimationFrame(() => {
             onOptionsPress(item);
@@ -41,16 +59,55 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       [item, onOptionsPress],
     );
 
+    const handleLongPressWrapper = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      handleOptionsPress();
+    };
+
+    // Animation handlers
+    const handlePressIn = () => {
+      scale.value = withSpring(0.98, {
+        damping: 15,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    };
+
+    const handlePressOut = () => {
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    };
+
+    // Animated style
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{scale: scale.value}],
+    }));
+
     const revelationPlace = item.revelation_place.toLowerCase() as
       | 'makkah'
       | 'madinah';
 
     return (
-      <TouchableOpacity
+      <AnimatedTouchableOpacity
         activeOpacity={0.99}
-        style={styles.surahItem}
-        onPress={handlePress}>
-        <View style={styles.surahGlyphContainer}>
+        style={[styles.surahItem, animatedStyle]}
+        onPress={handlePress}
+        onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
+        delayLongPress={500}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`Surah ${item.name}, ${item.translated_name_english}, ${item.verses_count} verses`}
+        accessibilityHint={
+          onOptionsPress
+            ? 'Tap to view Surah. Long press or tap options button for more actions.'
+            : 'Tap to view Surah.'
+        }
+      >
+        <View style={styles.surahGlyphContainer} accessibilityElementsHidden={true}>
           <Text
             style={styles.surahGlyph}
             numberOfLines={1}
@@ -58,7 +115,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             {surahGlyphMap[item.id]}
           </Text>
         </View>
-        <View style={styles.surahInfoContainer}>
+        <View style={styles.surahInfoContainer} accessibilityElementsHidden={true}>
           <View style={styles.nameContainer}>
             <Text style={styles.surahName}>{`${item.id}. ${item.name}`}</Text>
             {isLoved && (
@@ -99,7 +156,11 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           <TouchableOpacity
             style={styles.optionsButton}
             onPress={handleOptionsPress}
-            activeOpacity={0.7}>
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="More options"
+            accessibilityHint="Opens menu with additional actions for this Surah"
+          >
             <Icon
               name="more-horizontal"
               type="feather"
@@ -108,7 +169,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             />
           </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </AnimatedTouchableOpacity>
     );
   },
 );
