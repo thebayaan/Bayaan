@@ -16,32 +16,19 @@ import {
 const quranData = require('@/data/quran.json') as QuranData;
 const surahData = require('@/data/surahData.json') as Surah[];
 
-// Pre-load translation and transliteration data outside component
-let translationDataCache: VerseTranslation[] | null = null;
-let transliterationDataCache: TransliterationData | null = null;
-
-// Try to load these immediately
-try {
-  translationDataCache = require('@/data/quran-translation.json');
-  transliterationDataCache = require('@/data/transliteration.json');
-  console.log('[QuranView] Translation and transliteration data pre-cached');
-} catch (error) {
-  console.error('[QuranView] Error pre-caching data:', error);
+// Define Saheeh International translation data entry
+interface SaheehEntry {
+  t: string;
+  f?: Record<string, string>;
 }
-
-// Define translation data type
-interface TranslationItem {
-  id: number;
-  resource_id: number;
-  text: string;
-}
-
-interface VerseTranslation {
-  id: number;
-  verse_number: number;
-  verse_key: string;
-  translations: TranslationItem[];
-}
+// Load Saheeh translation and transliteration data
+const saheehDataCache =
+  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as Record<
+    string,
+    SaheehEntry
+  >;
+const transliterationDataCache =
+  require('@/data/transliteration.json') as TransliterationData;
 
 // Define transliteration data type
 interface TransliterationVerse {
@@ -96,17 +83,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const {theme} = useTheme();
   const listRef = useRef<LegendListRef>(null);
   const surah = surahData.find(s => s.id === currentSurah);
-  const [translationData, setTranslationData] = useState(
-    translationDataCache || [],
-  );
-  const [transliterationMap, setTransliterationMap] = useState(
-    transliterationDataCache || {},
-  );
-  const [isTranslationLoaded, setIsTranslationLoaded] =
-    useState(!!translationDataCache);
-  const [isTransliterationLoaded, setIsTransliterationLoaded] = useState(
-    !!transliterationDataCache,
-  );
+  const [transliterationMap] = useState(transliterationDataCache || {});
+  const [isTransliterationLoaded] = useState(!!transliterationDataCache);
 
   // Use the tajweed store with indexed data for O(1) lookups
   const {indexedTajweedData} = useTajweedStore();
@@ -126,22 +104,12 @@ export const QuranView: React.FC<QuranViewProps> = ({
       // Map verses and attach translation/transliteration if loaded
       return verses.map(verse => {
         const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
+        // Always use Saheeh translation (with footnote tags)
         let translationText = '';
-        let transliterationText = '';
-
-        // Add translation if data is loaded
-        if (isTranslationLoaded) {
-          const translation = translationData.find(
-            t => t.verse_key === verseKey,
-          );
-          if (
-            translation &&
-            translation.translations &&
-            translation.translations.length > 0
-          ) {
-            translationText = translation.translations[0].text;
-          }
+        if (saheehDataCache && saheehDataCache[verseKey]?.t) {
+          translationText = saheehDataCache[verseKey].t;
         }
+        let transliterationText = '';
 
         // Add transliteration if data is loaded
         if (isTransliterationLoaded && transliterationMap[verseKey]) {
@@ -166,59 +134,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [
     currentSurah,
-    translationData,
     transliterationMap,
-    isTranslationLoaded,
     isTransliterationLoaded,
     indexedTajweedData,
   ]);
 
   // Get verses data
   const verses = getVersesForSurahMemo();
-
-  // Load translations if not pre-cached
-  useEffect(() => {
-    if (!isTranslationLoaded && !translationDataCache) {
-      try {
-        console.log('[QuranView] Loading translation data...');
-        const translations =
-          require('@/data/quran-translation.json') as VerseTranslation[];
-        if (translations && translations.length > 0) {
-          setTranslationData(translations);
-          translationDataCache = translations; // Cache for future use
-          setIsTranslationLoaded(true);
-          console.log('[QuranView] Translation data loaded successfully.');
-        } else {
-          console.error('[QuranView] Translation data format is unexpected');
-        }
-      } catch (error) {
-        console.error('[QuranView] Error loading translation data:', error);
-      }
-    }
-  }, [isTranslationLoaded]);
-
-  // Load transliterations if not pre-cached
-  useEffect(() => {
-    if (!isTransliterationLoaded && !transliterationDataCache) {
-      try {
-        console.log('[QuranView] Loading transliteration data...');
-        const transliterations =
-          require('@/data/transliteration.json') as TransliterationData;
-        if (transliterations) {
-          setTransliterationMap(transliterations);
-          transliterationDataCache = transliterations; // Cache for future use
-          setIsTransliterationLoaded(true);
-          console.log('[QuranView] Transliteration data loaded successfully.');
-        } else {
-          console.error(
-            '[QuranView] Transliteration data format is unexpected',
-          );
-        }
-      } catch (error) {
-        console.error('[QuranView] Error loading transliteration data:', error);
-      }
-    }
-  }, [isTransliterationLoaded]);
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {

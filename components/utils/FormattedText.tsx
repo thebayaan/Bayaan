@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  Text,
-  StyleSheet,
-  TextStyle,
-  StyleProp,
-  TouchableOpacity,
-} from 'react-native';
+import {Text, StyleSheet, TextStyle, StyleProp} from 'react-native';
 
 interface FormattedTextProps {
   text: string;
@@ -75,21 +69,17 @@ function FormattedTextRenderer({
         if (currentFootnoteText) {
           // Check the captured value
           elements.push(
-            <TouchableOpacity
+            <Text
               key={`footnote-${index}`}
               onPress={() => {
-                // Use the captured values in the closure
                 if (onFootnotePress) {
                   onFootnotePress(currentFootnoteId, currentFootnoteText);
                 }
               }}
-              activeOpacity={0.7}
-              style={styles.footnoteContainer}>
-              <Text
-                style={[currentStyle, styles.superscript, styles.footnoteText]}>
-                {currentFootnoteText} {/* Display the captured value */}
-              </Text>
-            </TouchableOpacity>,
+              style={[currentStyle, styles.superscript, styles.footnoteText]}
+              accessibilityRole="button">
+              {`[${currentFootnoteText}]`}
+            </Text>,
           );
         }
         // Reset the original variables for the next potential footnote
