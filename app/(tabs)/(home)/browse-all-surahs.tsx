@@ -18,6 +18,7 @@ import Animated, {FadeIn} from 'react-native-reanimated';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
 import {useModal} from '@/components/providers/ModalProvider';
+import {GRADIENT_COLORS} from '@/utils/gradientColors';
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
@@ -165,20 +166,7 @@ export default function BrowseAllSurahsScreen() {
 
   // Function to generate a consistent color for each surah
   const getColorForSurah = useCallback((id: number): string => {
-    const colors = [
-      '#059669', // Emerald
-      '#7C3AED', // Purple
-      '#1E40AF', // Deep Blue
-      '#DC2626', // Red
-      '#EA580C', // Orange
-      '#0891B2', // Cyan
-      '#BE185D', // Pink
-      '#4F46E5', // Indigo
-      '#B45309', // Amber
-      '#047857', // Dark Emerald
-    ];
-
-    return colors[id % colors.length];
+    return GRADIENT_COLORS[id % GRADIENT_COLORS.length];
   }, []);
 
   const handleSurahPress = useCallback(
@@ -252,7 +240,7 @@ export default function BrowseAllSurahsScreen() {
         style={styles.surahCard}
       />
     ),
-    [handleSurahPress, getColorForSurah, styles.surahCard],
+    [getColorForSurah, handleSurahPress, styles.surahCard],
   );
 
   // Render a list item using SurahItem

@@ -6,6 +6,7 @@ import {SurahCard} from './cards/SurahCard';
 import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
 import {SurahsHero} from '@/components/hero/SurahsHero';
+import {GRADIENT_COLORS} from '@/utils/gradientColors'; // Import the constant
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
@@ -16,7 +17,7 @@ interface SurahCollection {
   title: string;
   surahs: number[];
   description?: string;
-  color: string;
+  color: string; // Keep as string, but we'll assign from GRADIENT_COLORS
 }
 
 const FEATURED_COLLECTIONS: SurahCollection[] = [
@@ -24,27 +25,27 @@ const FEATURED_COLLECTIONS: SurahCollection[] = [
     id: 'heart-of-quran',
     title: 'Heart of Quran',
     surahs: [36, 55, 56, 67, 18],
-    color: '#059669', // Emerald
+    color: GRADIENT_COLORS[2], // Emerald
   },
   {
     id: 'daily-adhkar',
     title: 'Daily Adhkar Surahs',
     surahs: [112, 113, 114, 1],
-    color: '#7C3AED', // Purple
+    color: GRADIENT_COLORS[0], // Purple
   },
   {
     id: 'juz-amma',
     title: 'Juz Amma',
     description: 'Last 37 Surahs',
     surahs: Array.from({length: 37}, (_, i) => 78 + i),
-    color: '#1E40AF', // Deep Blue
+    color: GRADIENT_COLORS[1], // Blue
   },
   {
     id: 'seven-long',
     title: 'The Seven Long Surahs',
     description: "Al-Sab' Al-Tiwal",
     surahs: [2, 3, 4, 5, 6, 7, 9],
-    color: '#DC2626', // Red
+    color: GRADIENT_COLORS[3], // Red
   },
 ];
 
@@ -53,19 +54,19 @@ const BY_THEME: SurahCollection[] = [
     id: 'prophets',
     title: 'Stories of the Prophets',
     surahs: [12, 19, 28, 71, 21, 14],
-    color: '#EA580C', // Orange
+    color: GRADIENT_COLORS[4], // Orange
   },
   {
     id: 'mercy',
     title: 'Mercy and Forgiveness',
     surahs: [55, 40, 39, 9],
-    color: '#0891B2', // Cyan
+    color: GRADIENT_COLORS[5], // Cyan
   },
   {
     id: 'faith',
     title: 'Faith and Belief',
     surahs: [112, 109, 103, 2],
-    color: '#BE185D', // Pink
+    color: GRADIENT_COLORS[6], // Pink
   },
 ];
 
@@ -74,13 +75,13 @@ const SPECIAL_CATEGORIES: SurahCollection[] = [
     id: 'most-loved',
     title: 'Most Loved by Community',
     surahs: [55, 36, 18, 56, 67],
-    color: '#DC2626', // Red
+    color: GRADIENT_COLORS[3], // Red (Same as seven-long)
   },
   {
     id: 'most-recited',
     title: 'Most Recited',
     surahs: [1, 2, 36, 67, 18],
-    color: '#1E40AF', // Deep Blue
+    color: GRADIENT_COLORS[1], // Blue (Same as juz-amma)
   },
 ];
 
