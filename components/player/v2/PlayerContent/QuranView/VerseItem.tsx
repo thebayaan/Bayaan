@@ -175,6 +175,11 @@ export const VerseItem = memo<VerseItemProps>(
     // Handle footnote press - now uses cached data
     const handleFootnotePress = useCallback(
       (footnoteId: string, footnoteNumber: string) => {
+        // If tapping the same footnote again, close it
+        if (activeFootnote && activeFootnote.id === footnoteId) {
+          setActiveFootnote(null);
+          return;
+        }
         console.log(
           `[Footnote Press] Verse Key: ${verse.verse_key}, Footnote ID: ${footnoteId}, Number: ${footnoteNumber}`,
         );
@@ -240,7 +245,7 @@ export const VerseItem = memo<VerseItemProps>(
           });
         }
       },
-      [verse.verse_key, isSaheehDataLoaded],
+      [verse.verse_key, isSaheehDataLoaded, activeFootnote],
     );
 
     // Close the footnote display
