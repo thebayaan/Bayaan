@@ -39,7 +39,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const {
     showTranslation,
     showTransliteration,
-    showTajweed,
     arabicFontSize,
     translationFontSize,
     transliterationFontSize,
@@ -114,7 +113,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                   onVersePress={handleVersePress}
                   showTranslation={showTranslation}
                   showTransliteration={showTransliteration}
-                  showTajweed={showTajweed}
                   transliterationFontSize={transliterationFontSize}
                   translationFontSize={translationFontSize}
                   arabicFontSize={arabicFontSize}
