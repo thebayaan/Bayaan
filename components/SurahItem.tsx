@@ -105,9 +105,10 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
           onOptionsPress
             ? 'Tap to view Surah. Long press or tap options button for more actions.'
             : 'Tap to view Surah.'
-        }
-      >
-        <View style={styles.surahGlyphContainer} accessibilityElementsHidden={true}>
+        }>
+        <View
+          style={styles.surahGlyphContainer}
+          accessibilityElementsHidden={true}>
           <Text
             style={styles.surahGlyph}
             numberOfLines={1}
@@ -115,7 +116,9 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             {surahGlyphMap[item.id]}
           </Text>
         </View>
-        <View style={styles.surahInfoContainer} accessibilityElementsHidden={true}>
+        <View
+          style={styles.surahInfoContainer}
+          accessibilityElementsHidden={true}>
           <View style={styles.nameContainer}>
             <Text style={styles.surahName}>{`${item.id}. ${item.name}`}</Text>
             {isLoved && (
@@ -159,8 +162,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="More options"
-            accessibilityHint="Opens menu with additional actions for this Surah"
-          >
+            accessibilityHint="Opens menu with additional actions for this Surah">
             <Icon
               name="more-horizontal"
               type="feather"
