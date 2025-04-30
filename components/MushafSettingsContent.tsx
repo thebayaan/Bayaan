@@ -6,7 +6,6 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Icon} from '@rneui/themed';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {QuranData} from '@/types/quran';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
 import {
@@ -17,8 +16,21 @@ import {
   DISPLAY_MAX,
 } from '@/store/mushafSettingsStore';
 
-// Import Quran data
-const quranData = require('@/data/quran.json') as QuranData;
+// ---> Load Indopak JSON data
+interface IndopakNastaleeqData {
+  [verseKey: string]: {text: string};
+}
+let indopakNastaleeqDataCache: IndopakNastaleeqData | null = null;
+try {
+  indopakNastaleeqDataCache = require('@/data/IndopakNastaleeq.json');
+  console.log('[MushafSettingsContent] IndopakNastaleeq data pre-cached');
+} catch (error) {
+  console.error(
+    '[MushafSettingsContent] Error pre-caching Indopak data:',
+    error,
+  );
+}
+// <--- End Load Indopak JSON data
 
 // --- Pre-cache Translation/Transliteration Data --- //
 interface TransliterationData {
@@ -130,7 +142,9 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   };
 
   // Determine if this control is for Arabic text
-  const isArabic = sampleFontFamily === 'QPC';
+  const isQPC = sampleFontFamily === 'QPC';
+  const isIndopak = sampleFontFamily === 'Indopak';
+  const isArabic = isQPC || isIndopak;
 
   // Memoize the rendered sample text JSX to avoid re-calculating on every render
   const memoizedSampleText = React.useMemo(() => {
@@ -141,49 +155,64 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
       fontFamily: sampleFontFamily || 'Manrope-Regular', // Default font
     };
 
-    if (isArabic) {
-      // Render Arabic text (either segmented or plain)
+    // --- Refactor Arabic Rendering ---
+    if (isQPC && processedSampleSegments) {
+      // Always use processed segments for QPC
       return (
         <Text
           style={[
             styles.sampleTextBase,
             styles.arabicSampleText,
-            sampleBaseStyle,
+            sampleBaseStyle, // Apply base style here
           ]}>
-          {processedSampleSegments
-            ? processedSampleSegments.map((segment, index) => {
-                const color =
-                  showTajweed && segment.rule
-                    ? tajweedColors[segment.rule] || theme.colors.text
-                    : theme.colors.text;
-                return (
-                  <Text key={`sample-${index}`} style={{color}}>
-                    {segment.text}
-                  </Text>
-                );
-              })
-            : sampleText}
+          {processedSampleSegments.map((segment, index) => {
+            // Apply tajweed color only if showTajweed is true and rule exists
+            const color =
+              showTajweed && segment.rule
+                ? tajweedColors[segment.rule] || theme.colors.text // Fallback to default if rule color missing
+                : theme.colors.text; // Default color if tajweed is off or no rule
+            return (
+              <Text key={`sample-${index}`} style={{color}}>
+                {segment.text}
+              </Text>
+            );
+          })}
         </Text>
       );
-    } else if (sampleText) {
-      // Render Translation/Transliteration with formatting
+    } else if (isIndopak && sampleText) {
+      // Use plain sampleText for Indopak
+      return (
+        <Text
+          style={[
+            styles.sampleTextBase,
+            styles.arabicSampleText,
+            sampleBaseStyle, // Apply base style here
+          ]}>
+          {sampleText}
+        </Text>
+      );
+    } else if (!isArabic && sampleText) {
+      // Render Translation/Transliteration with formatting (non-Arabic)
       return (
         <FormattedTextRenderer text={sampleText} baseStyle={sampleBaseStyle} />
       );
     } else {
-      return null;
+      // Optional: Add a loading or error state if needed
+      return <Text style={sampleBaseStyle}>Loading sample...</Text>; // Or null
     }
   }, [
-    isArabic,
-    processedSampleSegments,
-    sampleText,
-    showTajweed,
     currentActualSize,
     theme.colors.text,
-    tajweedColors,
+    sampleFontFamily,
+    isQPC,
+    processedSampleSegments,
+    isIndopak,
+    sampleText,
+    isArabic,
     styles.sampleTextBase,
     styles.arabicSampleText,
-    sampleFontFamily,
+    showTajweed,
+    tajweedColors,
   ]);
 
   return (
@@ -241,12 +270,14 @@ interface TajweedToggleProps {
   value: boolean;
   onValueChange: () => void;
   theme: Theme;
+  disabled?: boolean;
 }
 
 const TajweedToggle: React.FC<TajweedToggleProps> = ({
   value,
   onValueChange,
   theme,
+  disabled = false,
 }) => {
   // Get the appropriate tajweed colors for the current theme
   const tajweedColors = useMemo(
@@ -279,7 +310,8 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   );
 
   // Simply select which array to use rather than recreating on each render
-  const gradientColors = value ? coloredGradient : monochromeGradient;
+  const gradientColors =
+    !disabled && value ? coloredGradient : monochromeGradient;
 
   // Create styles inline since we can't access the StyleSheet yet
   const toggleStyle = {
@@ -292,6 +324,7 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
     padding: moderateScale(4),
     paddingHorizontal: moderateScale(8),
     overflow: 'hidden',
+    opacity: disabled ? 0.5 : 1,
   } as const;
 
   const barStyle = {
@@ -309,11 +342,14 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   const textStyle = {
     fontSize: moderateScale(13),
     fontFamily: 'Manrope-SemiBold',
-    color: value ? theme.colors.text : theme.colors.textSecondary,
+    color: !disabled && value ? theme.colors.text : theme.colors.textSecondary,
   } as const;
 
   return (
-    <TouchableOpacity onPress={onValueChange} style={toggleStyle}>
+    <TouchableOpacity
+      onPress={onValueChange}
+      style={toggleStyle}
+      disabled={disabled}>
       {/* Color Bar - always visible but changes based on state */}
       <LinearGradient
         colors={
@@ -328,7 +364,7 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
 
       {/* Fixed-width text container */}
       <View style={textContainerStyle}>
-        <Text style={textStyle}>{value ? 'ON' : 'OFF'}</Text>
+        <Text style={textStyle}>{!disabled && value ? 'ON' : 'OFF'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -363,20 +399,23 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     setArabicFontSize,
     setTranslationFontSize,
     setTransliterationFontSize,
+    arabicFontFamily,
+    setArabicFontFamily,
   } = useMushafSettingsStore();
 
   const verseKey = '3:138'; // Target verse for examples
 
-  // --- Fetch Actual Data for Verse 3:138 --- //
-  const actualVerseText = useMemo(
-    () => quranData[verseKey]?.text || 'Error loading verse',
-    [],
-  );
-
-  const verseWords = useMemo(
-    () => (indexedTajweedData ? indexedTajweedData[verseKey] : undefined),
-    [indexedTajweedData],
-  );
+  // ---> Fetch Indopak sample text
+  const actualVerseTextIndopak = useMemo(() => {
+    if (!indopakNastaleeqDataCache) {
+      return 'Error loading Indopak verse';
+    }
+    return (
+      indopakNastaleeqDataCache[verseKey]?.text ||
+      'Verse not found in Indopak data'
+    );
+  }, []);
+  // <--- End Fetch Indopak sample text
 
   const actualTranslationText = useMemo(() => {
     try {
@@ -402,31 +441,33 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   // Create flat segments array for rendering inside a single Text
   const flatVerseSegments = useMemo(() => {
-    if (!verseWords) return undefined;
+    if (isTajweedLoading || !indexedTajweedData?.[verseKey]) return undefined;
+    const verseWords = indexedTajweedData[verseKey];
     return verseWords.flatMap((wordData, wordIndex) => {
       const segments = wordData.segments.map(segment => ({
         text: segment.text,
         rule: segment.rule,
       }));
+      // Add space between words
       if (wordIndex < verseWords.length - 1) {
         segments.push({text: ' ', rule: null});
       }
       return segments;
     });
-  }, [verseWords]);
-  // --- End Fetch Data --- //
+  }, [indexedTajweedData, verseKey, isTajweedLoading]);
+  // --- End Segment Preparation ---
 
   const trackColor = {
     false: Color(theme.colors.textSecondary).alpha(0.3).toString(),
     true: theme.colors.primary,
   };
 
-  // Prepare props for Arabic FontSizeControl
-  const arabicSegmentsToDisplay =
-    !isTajweedLoading && flatVerseSegments ? flatVerseSegments : undefined;
+  // Determine sample text and segments based on font
+  const isIndopakSelected = arabicFontFamily === 'Indopak';
+  const isQPCSelected = arabicFontFamily === 'QPC';
 
-  // Always have a text fallback if segments aren't available
-  const sampleText = actualVerseText || 'Error loading verse';
+  // Can only show tajweed if QPC is selected
+  const canShowTajweed = isQPCSelected; // Simpler check now
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -443,10 +484,49 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Text>
           </View>
           <TajweedToggle
-            value={showTajweed}
+            value={showTajweed && canShowTajweed}
             onValueChange={toggleTajweed}
             theme={theme}
+            disabled={!canShowTajweed}
           />
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.fontFamilySelectorRow}>
+          <Text style={styles.optionLabel}>Font Style</Text>
+          <View style={styles.fontFamilyButtonsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.fontFamilyButton,
+                arabicFontFamily === 'QPC' && styles.fontFamilyButtonActive,
+              ]}
+              onPress={() => setArabicFontFamily('QPC')}
+              activeOpacity={0.7}>
+              <Text
+                style={[
+                  styles.fontFamilyButtonText,
+                  arabicFontFamily === 'QPC' &&
+                    styles.fontFamilyButtonTextActive,
+                ]}>
+                Uthmani
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.fontFamilyButton,
+                arabicFontFamily === 'Indopak' && styles.fontFamilyButtonActive,
+              ]}
+              onPress={() => setArabicFontFamily('Indopak')}
+              activeOpacity={0.7}>
+              <Text
+                style={[
+                  styles.fontFamilyButtonText,
+                  arabicFontFamily === 'Indopak' &&
+                    styles.fontFamilyButtonTextActive,
+                ]}>
+                Indopak
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={styles.divider} />
         <FontSizeControl
@@ -455,10 +535,12 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           onChange={setArabicFontSize}
           theme={theme}
           styles={styles}
-          processedSampleSegments={arabicSegmentsToDisplay}
-          sampleText={sampleText}
-          sampleFontFamily="QPC"
-          showTajweed={showTajweed}
+          processedSampleSegments={
+            isQPCSelected ? flatVerseSegments : undefined
+          }
+          sampleText={isIndopakSelected ? actualVerseTextIndopak : undefined}
+          sampleFontFamily={arabicFontFamily}
+          showTajweed={showTajweed && canShowTajweed}
         />
       </View>
 
@@ -633,5 +715,35 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,
       marginTop: verticalScale(2),
+    },
+    fontFamilySelectorRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: verticalScale(10),
+    },
+    fontFamilyButtonsContainer: {
+      flexDirection: 'row',
+      borderRadius: moderateScale(8),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    fontFamilyButton: {
+      paddingVertical: moderateScale(6),
+      paddingHorizontal: moderateScale(12),
+      backgroundColor: theme.colors.card,
+    },
+    fontFamilyButtonActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    fontFamilyButtonText: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+    },
+    fontFamilyButtonTextActive: {
+      color: theme.colors.text,
+      fontFamily: 'Manrope-SemiBold',
     },
   });

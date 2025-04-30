@@ -7,12 +7,18 @@ import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {Ionicons} from '@expo/vector-icons';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
-// Interface for the structure of a word entry in the tajweed JSON data
-interface TajweedWordData {
-  word_index: number;
-  location: string; // e.g., "1:1:1"
-  text: string; // The word text, potentially containing <rule> tags
+// ---> Load Indopak JSON data
+interface IndopakNastaleeqData {
+  [verseKey: string]: {text: string};
 }
+let indopakNastaleeqDataCache: IndopakNastaleeqData | null = null;
+try {
+  indopakNastaleeqDataCache = require('@/data/IndopakNastaleeq.json');
+  console.log('[VerseItem] IndopakNastaleeq data pre-cached');
+} catch (error) {
+  console.error('[VerseItem] Error pre-caching Indopak data:', error);
+}
+// <--- End Load Indopak JSON data
 
 // Define colors for Tajweed rules (adjust these as needed)
 const tajweedColors: {[key: string]: string} = {
@@ -45,67 +51,6 @@ const tajweedColors: {[key: string]: string} = {
   laam_shamsiyah: '#AAAAAA',
 };
 
-/**
- * Legacy function to parse tajweed words at render time
- * This is kept for backward compatibility
- */
-function parseTajweedWord(
-  wordText: string,
-  defaultColor: string,
-): React.ReactNode[] {
-  const result: React.ReactNode[] = [];
-  const ruleStack: string[] = [];
-  let currentIndex = 0;
-  let keyIndex = 0;
-
-  // Regex to find opening or closing rule tags
-  const tagRegex = /<rule class=([^>]+)>|<\/rule>/g;
-  let match: RegExpExecArray | null;
-
-  while (currentIndex < wordText.length) {
-    // Find the next tag
-    tagRegex.lastIndex = currentIndex; // Start search from current position
-    match = tagRegex.exec(wordText);
-
-    const nextTagIndex = match ? match.index : wordText.length;
-
-    // Process text segment before the next tag (or to the end)
-    if (nextTagIndex > currentIndex) {
-      const textSegment = wordText.substring(currentIndex, nextTagIndex);
-      const currentRule =
-        ruleStack.length > 0 ? ruleStack[ruleStack.length - 1] : null;
-      const color = currentRule
-        ? tajweedColors[currentRule] || defaultColor
-        : defaultColor;
-
-      result.push(
-        <Text key={`word-segment-${keyIndex++}`} style={{color}}>
-          {textSegment}
-        </Text>,
-      );
-    }
-
-    // If no more tags found, we're done
-    if (!match) {
-      break;
-    }
-
-    // Process the found tag
-    if (match[1]) {
-      // Opening tag: <rule class=...>
-      const ruleName = match[1];
-      ruleStack.push(ruleName);
-      currentIndex = tagRegex.lastIndex; // Move past the opening tag
-    } else {
-      // Closing tag: </rule>
-      ruleStack.pop();
-      currentIndex = tagRegex.lastIndex; // Move past the closing tag
-    }
-  }
-
-  return result;
-}
-
 // Type for processed word data from store
 interface ProcessedTajweedWord {
   word_index: number;
@@ -134,7 +79,7 @@ interface SaheehData {
 }
 
 interface VerseItemProps {
-  verse: Verse;
+  verse: Verse & {processedTajweedAyahData?: ProcessedTajweedWord[]}; // Combine Verse and optional processed data
   onPress: () => void;
   textColor: string;
   borderColor: string;
@@ -143,8 +88,8 @@ interface VerseItemProps {
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
-  tajweedAyahData?: TajweedWordData[]; // Original tajweed data
-  processedTajweedAyahData?: ProcessedTajweedWord[]; // Pre-processed tajweed data
+  // Remove legacy tajweedAyahData prop if it exists
+  processedTajweedAyahData?: ProcessedTajweedWord[]; // Keep this prop as it's now passed from QuranView
 }
 
 /**
@@ -156,52 +101,9 @@ const TajweedSegment = memo(({text, color}: {text: string; color: string}) => (
 ));
 TajweedSegment.displayName = 'TajweedSegment';
 
-/**
- * Pre-render optimized tajweed word
- * This component is memoized to prevent re-renders when parent re-renders
- */
-const TajweedWord = memo(
-  ({
-    wordData,
-    index,
-    textColor,
-    arabicFontSize,
-  }: {
-    wordData: ProcessedTajweedWord;
-    index: number;
-    textColor: string;
-    arabicFontSize: number;
-  }) => (
-    <Text
-      style={[
-        styles.arabicText,
-        {
-          fontSize: moderateScale(arabicFontSize),
-          marginLeft: index > 0 ? moderateScale(3) : 0,
-          textAlign: 'right',
-          writingDirection: 'rtl',
-        },
-      ]}>
-      {wordData.segments.map((segment, segIndex) => {
-        const color = segment.rule
-          ? tajweedColors[segment.rule] || textColor
-          : textColor;
-        return (
-          <TajweedSegment
-            key={`${wordData.location}-${index}-${segIndex}`}
-            text={segment.text}
-            color={color}
-          />
-        );
-      })}
-    </Text>
-  ),
-);
-TajweedWord.displayName = 'TajweedWord';
-
 export const VerseItem = memo<VerseItemProps>(
   ({
-    verse,
+    verse, // Contains processedTajweedAyahData if available
     onPress,
     textColor,
     borderColor,
@@ -210,17 +112,17 @@ export const VerseItem = memo<VerseItemProps>(
     transliterationFontSize: propTransliterationFontSize,
     translationFontSize: propTranslationFontSize,
     arabicFontSize: propArabicFontSize,
-    tajweedAyahData,
-    processedTajweedAyahData,
+    // processedTajweedAyahData prop is now part of the verse object
   }) => {
     // Get settings from the store
     const {
       showTranslation: storeShowTranslation,
       showTransliteration: storeShowTransliteration,
-      showTajweed,
+      showTajweed, // Used for conditional coloring
       arabicFontSize: storeArabicFontSize,
       translationFontSize: storeTranslationFontSize,
       transliterationFontSize: storeTransliterationFontSize,
+      arabicFontFamily,
     } = useMushafSettingsStore();
 
     // Use prop values if provided, otherwise use store values
@@ -239,6 +141,10 @@ export const VerseItem = memo<VerseItemProps>(
     const translationFontSize =
       propTranslationFontSize || storeTranslationFontSize;
     const arabicFontSize = propArabicFontSize || storeArabicFontSize;
+
+    // Determine font selection
+    const isIndopakSelected = arabicFontFamily === 'Indopak';
+    const isQPCSelected = arabicFontFamily === 'QPC';
 
     const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
       null,
@@ -342,28 +248,42 @@ export const VerseItem = memo<VerseItemProps>(
       setActiveFootnote(null);
     }, []);
 
-    // Build the tajweed text nodes for the entire verse
-    const tajweedNodes = processedTajweedAyahData
-      ? processedTajweedAyahData.flatMap((wordData, wordIndex) => {
-          const segments = wordData.segments.map((segment, segIndex) => {
-            const color = segment.rule
-              ? tajweedColors[segment.rule] || textColor
-              : textColor;
-            return (
-              <TajweedSegment
-                key={`${wordData.location}-${wordIndex}-${segIndex}`}
-                text={segment.text}
-                color={color}
-              />
-            );
-          });
-          // Add a space after each word except the last one
-          if (wordIndex < processedTajweedAyahData.length - 1) {
-            segments.push(<Text key={`${wordData.location}-space`}> </Text>);
-          }
-          return segments;
-        })
-      : null;
+    // Access processed data from the verse object
+    const processedTajweedAyahData = verse.processedTajweedAyahData;
+
+    // --- Build Tajweed Nodes (Only if QPC and data available) ---
+    const tajweedNodes =
+      isQPCSelected && processedTajweedAyahData
+        ? processedTajweedAyahData.flatMap((wordData, wordIndex) => {
+            const segments = wordData.segments.map((segment, segIndex) => {
+              // Apply color based on showTajweed state from store
+              const color =
+                showTajweed && segment.rule
+                  ? tajweedColors[segment.rule] || textColor // Tajweed color or default
+                  : textColor; // Default color if tajweed off or no rule
+              return (
+                <TajweedSegment
+                  key={`${wordData.location}-${wordIndex}-${segIndex}`}
+                  text={segment.text}
+                  color={color}
+                />
+              );
+            });
+            // Add space between words
+            if (wordIndex < processedTajweedAyahData.length - 1) {
+              segments.push(<Text key={`${wordData.location}-space`}> </Text>);
+            }
+            return segments;
+          })
+        : null;
+    // --- End Building Nodes ---
+
+    // ---> Get Indopak text if applicable
+    const indopakText =
+      isIndopakSelected && indopakNastaleeqDataCache
+        ? indopakNastaleeqDataCache[verse.verse_key]?.text
+        : null;
+    // <--- End Get Indopak text
 
     return (
       <TouchableOpacity
@@ -377,46 +297,48 @@ export const VerseItem = memo<VerseItemProps>(
             </Text>
           </View>
         </View>
-        {processedTajweedAyahData && showTajweed ? (
-          // Render the entire verse with tajweed colors
-          <Text
-            style={[
-              styles.arabicText,
-              {fontSize: moderateScale(arabicFontSize)},
-            ]}>
-            {tajweedNodes}
-          </Text>
-        ) : tajweedAyahData && showTajweed ? (
-          // Fallback to legacy tajweed method
-          <View style={styles.tajweedContainer}>
-            {tajweedAyahData.map((wordData, index) => (
-              <Text
-                key={`${wordData.location}-${index}`}
-                style={[
-                  styles.arabicText,
-                  {
-                    color: textColor,
-                    fontSize: moderateScale(arabicFontSize),
-                    marginLeft: index > 0 ? moderateScale(3) : 0,
-                  },
-                ]}>
-                {parseTajweedWord(wordData.text, textColor)}
-              </Text>
-            ))}
-          </View>
-        ) : (
-          // Plain text (no tajweed)
+        {/* ---> Simplified Arabic Text Rendering <-- */}
+        {isIndopakSelected ? (
+          // Indopak Rendering
           <Text
             style={[
               styles.arabicText,
               {
                 color: textColor,
                 fontSize: moderateScale(arabicFontSize),
+                fontFamily: arabicFontFamily, // 'Indopak'
               },
             ]}>
-            {verse.text}
+            {indopakText || 'Loading Indopak...'}
+          </Text>
+        ) : isQPCSelected && tajweedNodes ? (
+          // QPC Rendering: Always use generated tajweedNodes
+          <Text
+            style={[
+              styles.arabicText,
+              {
+                fontSize: moderateScale(arabicFontSize),
+                fontFamily: arabicFontFamily, // 'QPC'
+              },
+            ]}>
+            {tajweedNodes}
+          </Text>
+        ) : (
+          // Fallback (e.g., QPC selected but data is loading/missing)
+          <Text
+            style={[
+              styles.arabicText,
+              {
+                color: textColor,
+                fontSize: moderateScale(arabicFontSize),
+                fontFamily: arabicFontFamily, // Should be QPC here ideally
+              },
+            ]}>
+            {/* Display plain text or loading indicator */}
+            {verse.text || 'Loading...'}
           </Text>
         )}
+        {/* ---> End Conditional Rendering <--- */}
         {showTransliteration && verse.transliteration && (
           <FormattedTextRenderer
             text={verse.transliteration}
@@ -504,15 +426,8 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     fontFamily: 'Manrope-Medium',
   },
-  tajweedContainer: {
-    flexDirection: 'row-reverse', // Right-to-left flow
-    flexWrap: 'wrap', // Allow words to wrap to the next line
-    justifyContent: 'flex-end', // Align words to the right
-    alignItems: 'center', // Align text baselines
-  },
   arabicText: {
     fontSize: moderateScale(24),
-    fontFamily: 'QPC',
     textAlign: 'right',
     writingDirection: 'rtl',
   },

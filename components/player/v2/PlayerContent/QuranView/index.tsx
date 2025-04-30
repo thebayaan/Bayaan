@@ -5,10 +5,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
-import {
-  useTajweedStore,
-  getIndexedTajweedDataForVerse,
-} from '@/store/tajweedStore';
+import {useTajweedStore} from '@/store/tajweedStore';
 import {
   LegendList,
   LegendListRef,
@@ -61,6 +58,21 @@ interface EnhancedVerse extends Verse {
   transliteration?: string;
 }
 
+// Type for processed tajweed data
+interface ProcessedTajweedWord {
+  word_index: number;
+  location: string;
+  segments: {
+    text: string;
+    rule: string | null;
+  }[];
+}
+
+// Verse type including tajweed data
+type VerseWithTajweed = EnhancedVerse & {
+  processedTajweedAyahData?: ProcessedTajweedWord[];
+};
+
 interface QuranViewProps {
   currentSurah: number;
   onVersePress: (verseKey: string) => void;
@@ -77,7 +89,6 @@ export const QuranView: React.FC<QuranViewProps> = ({
   onVersePress,
   showTranslation = false,
   showTransliteration = false,
-  showTajweed = false,
   transliterationFontSize,
   translationFontSize,
   arabicFontSize,
@@ -137,10 +148,16 @@ export const QuranView: React.FC<QuranViewProps> = ({
           transliterationText = transliterationMap[verseKey].t;
         }
 
+        // --- Attach pre-processed tajweed data directly ---
+        const processedTajweedAyahData = indexedTajweedData
+          ? indexedTajweedData[verseKey]
+          : undefined;
+
         return {
           ...verse,
           translation: translationText,
           transliteration: transliterationText,
+          processedTajweedAyahData,
         };
       });
     } catch (error) {
@@ -153,6 +170,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     transliterationMap,
     isTranslationLoaded,
     isTransliterationLoaded,
+    indexedTajweedData,
   ]);
 
   // Get verses data
@@ -202,17 +220,6 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [isTransliterationLoaded]);
 
-  // Helper function to get tajweed data for a verse using O(1) indexed lookup
-  const getIndexedTajweedForVerse = useCallback(
-    (verseKey: string) => {
-      if (!showTajweed || !indexedTajweedData) {
-        return undefined;
-      }
-      return getIndexedTajweedDataForVerse(indexedTajweedData, verseKey);
-    },
-    [showTajweed, indexedTajweedData],
-  );
-
   // Reset scroll position when currentSurah changes
   useEffect(() => {
     if (listRef.current) {
@@ -222,20 +229,17 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Render the bismillah header (to be used as list header)
   const renderHeader = useCallback(() => {
-    if (surah?.id === 9) return null;
+    if (!surah?.bismillah_pre) return null;
     return (
       <View style={styles.bismillahContainer}>
         <Text style={[styles.bismillah, {color: theme.colors.text}]}>﷽</Text>
       </View>
     );
-  }, [surah?.id, theme.colors.text]);
+  }, [surah?.bismillah_pre, theme.colors.text]);
 
   // Render the verse items (optimized with LegendList)
   const renderItem = useCallback(
-    ({item}: LegendListRenderItemProps<EnhancedVerse>) => {
-      const verseKey = `${item.surah_number}:${item.ayah_number}`;
-      const verseTajweedData = getIndexedTajweedForVerse(verseKey);
-
+    ({item}: LegendListRenderItemProps<VerseWithTajweed>) => {
       return (
         <VerseItem
           verse={item}
@@ -247,7 +251,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
           transliterationFontSize={transliterationFontSize}
           translationFontSize={translationFontSize}
           arabicFontSize={arabicFontSize}
-          processedTajweedAyahData={verseTajweedData}
+          processedTajweedAyahData={item.processedTajweedAyahData}
         />
       );
     },
@@ -260,12 +264,14 @@ export const QuranView: React.FC<QuranViewProps> = ({
       transliterationFontSize,
       translationFontSize,
       arabicFontSize,
-      getIndexedTajweedForVerse,
     ],
   );
 
   // Key extractor for items
-  const keyExtractor = useCallback((item: EnhancedVerse) => item.verse_key, []);
+  const keyExtractor = useCallback(
+    (item: VerseWithTajweed) => item.verse_key,
+    [],
+  );
 
   if (!surah || !verses.length) {
     return null;
