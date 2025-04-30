@@ -2,10 +2,10 @@ import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
-  Animated,
+  Animated as RNAnimated,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Switch,
+  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -30,6 +30,13 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
 import {RewayatStyle} from '@/types/reciter';
+import {Icon} from '@rneui/themed';
+import {HeartIcon} from '@/components/Icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 // Import components directly
 import {ActionButtons} from './components/ActionButtons';
@@ -38,15 +45,20 @@ import {StickyHeader} from './components/StickyHeader';
 import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
+import {moderateScale} from 'react-native-size-matters';
 
 interface ReciterProfileProps {
   id: string;
-  showFavorites?: boolean;
+  showLoved?: boolean;
 }
+
+// Define types matching useSettings
+type ReciterProfileViewMode = 'card' | 'list';
+type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
 
 const ReciterProfile: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
-  showFavorites = false,
+  showLoved = false,
 }) => {
   const {theme} = useTheme();
   const styles = createSharedStyles(theme);
@@ -59,18 +71,32 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     string | undefined
   >(undefined);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const iconsOpacity = useRef(new Animated.Value(1)).current;
-  const iconsZIndex = useRef(new Animated.Value(10)).current;
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const iconsOpacity = useRef(new RNAnimated.Value(1)).current;
+  const iconsZIndex = useRef(new RNAnimated.Value(1)).current;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   const [isStatusBarDark, setIsStatusBarDark] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showLovedOnly, setShowLovedOnly] = useState(showFavorites);
-  const flatListRef = useRef<Animated.FlatList>(null);
+  const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
+    useSettings(state => state.reciterProfileViewMode),
+  );
+  const [sortOption, setSortOption] = useState<ReciterProfileSortOption>(
+    useSettings(state => state.reciterProfileSortOption),
+  );
+  const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
+  const flatListRef = useRef<RNAnimated.FlatList>(null);
   const {isLovedWithRewayat} = useLoved();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {showSurahOptions, showRewayatInfo} = useModal();
   const {reciterPreferences, setReciterPreference} = useSettings();
+
+  // Retrieve persisted reciter profile settings
+  const setReciterViewModeSetting = useSettings(
+    state => state.setReciterProfileViewMode,
+  );
+  const setReciterSortOptionSetting = useSettings(
+    state => state.setReciterProfileSortOption,
+  );
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [100, 200],
@@ -96,46 +122,50 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   }, [surahs, selectedRewayat]);
 
   const filteredSurahsMemo = useMemo(() => {
-    if (!availableSurahs.length) return [];
+    // Start with available surahs for the selected rewayat
+    let surahsToProcess = availableSurahs;
 
-    if (!searchQuery && !showLovedOnly) {
-      return availableSurahs;
+    // Filter by loved status if toggled and a rewayat is selected
+    if (showLovedOnly && selectedRewayat?.id) {
+      surahsToProcess = surahsToProcess.filter(surah =>
+        isLovedWithRewayat(
+          currentReciterId,
+          surah.id.toString(),
+          selectedRewayat.id,
+        ),
+      );
     }
 
-    return availableSurahs.filter(surah => {
-      if (showLovedOnly) {
-        if (!selectedRewayat) return false;
-        if (
-          !isLovedWithRewayat(
-            currentReciterId,
-            surah.id.toString(),
-            selectedRewayat.id,
-          )
-        ) {
-          return false;
-        }
-      }
+    // Filter by search query if present
+    const filtered = searchQuery
+      ? surahsToProcess.filter(
+          surah =>
+            surah.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            surah.translated_name_english
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase()),
+        )
+      : surahsToProcess;
 
-      if (searchQuery) {
-        const lowercaseQuery = searchQuery.toLowerCase().trim();
-        return (
-          surah.name.toLowerCase().includes(lowercaseQuery) ||
-          surah.translated_name_english
-            .toLowerCase()
-            .includes(lowercaseQuery) ||
-          surah.id.toString() === lowercaseQuery
-        );
+    // Sort based on sortOption
+    return [...filtered].sort((a, b) => {
+      if (sortOption === 'asc') {
+        return a.id - b.id;
+      } else if (sortOption === 'desc') {
+        return b.id - a.id;
+      } else if (sortOption === 'revelation') {
+        return a.revelation_order - b.revelation_order;
       }
-
-      return true;
+      return 0;
     });
   }, [
     availableSurahs,
-    searchQuery,
     showLovedOnly,
     isLovedWithRewayat,
     currentReciterId,
     selectedRewayat,
+    searchQuery,
+    sortOption,
   ]);
 
   useEffect(() => {
@@ -374,7 +404,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     setFilteredSurahs(filteredSurahsMemo);
   }, [filteredSurahsMemo]);
 
-  const handleScroll = Animated.event(
+  const handleScroll = RNAnimated.event(
     [{nativeEvent: {contentOffset: {y: scrollY}}}],
     {
       useNativeDriver: true,
@@ -446,6 +476,56 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     });
   };
 
+  // Callback to toggle view mode
+  const toggleViewMode = useCallback(() => {
+    const newMode = viewMode === 'card' ? 'list' : 'card';
+    setViewMode(newMode);
+    setReciterViewModeSetting(newMode);
+  }, [viewMode, setReciterViewModeSetting]);
+
+  // Callback to change sort option
+  const changeSortOption = useCallback(
+    (option: ReciterProfileSortOption) => {
+      setSortOption(option);
+      setReciterSortOptionSetting(option);
+    },
+    [setReciterSortOptionSetting],
+  );
+
+  // Function to generate a consistent color for each surah (similar to browse-all)
+  const getColorForSurah = useCallback((id: number): string => {
+    const colors = [
+      '#059669',
+      '#7C3AED',
+      '#1E40AF',
+      '#DC2626',
+      '#EA580C',
+      '#0891B2',
+      '#BE185D',
+      '#4F46E5',
+      '#B45309',
+      '#047857',
+    ];
+    return colors[id % colors.length];
+  }, []);
+
+  // Add shared value for heart animation
+  const heartScale = useSharedValue(1);
+
+  // Create animated style for heart
+  const heartAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: heartScale.value}],
+  }));
+
+  // Callback to toggle loved filter with animation
+  const toggleShowLovedOnly = useCallback(() => {
+    setShowLovedOnly(prev => !prev);
+    // Animate the heart
+    heartScale.value = withSpring(1.2, {damping: 10, stiffness: 300}, () => {
+      heartScale.value = withSpring(1);
+    });
+  }, [heartScale]);
+
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
       <SafeAreaView style={styles.container}>
@@ -510,6 +590,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
               )
             }
             onScroll={handleScroll}
+            viewMode={viewMode}
+            sortOption={sortOption}
+            getColorForSurah={getColorForSurah}
             ListHeaderComponent={
               <>
                 <ReciterHeader
@@ -526,21 +609,129 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                     onPlayPress={handlePlayAll}
                     isFavoriteReciter={isFavoriteReciter(reciter.id)}
                   />
-                  <View style={styles.toggleContainer}>
-                    <Text style={styles.toggleLabel}>Show Loved Only</Text>
-                    <Switch
-                      value={showLovedOnly}
-                      onValueChange={setShowLovedOnly}
-                      trackColor={{
-                        false: theme.colors.border,
-                        true: theme.colors.primary,
-                      }}
-                      thumbColor={
-                        showLovedOnly
-                          ? theme.colors.background
-                          : theme.colors.text
-                      }
-                    />
+                  <View style={styles.optionsAndToggleRow}>
+                    {/* Sort options (Left side) */}
+                    <View style={styles.sortOptionsContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'asc' && styles.activeOptionButton,
+                        ]}
+                        activeOpacity={1}
+                        onPress={() => changeSortOption('asc')}>
+                        <Icon
+                          name="arrow-up"
+                          type="feather"
+                          size={moderateScale(14)}
+                          color={
+                            sortOption === 'asc'
+                              ? theme.colors.primary
+                              : theme.colors.textSecondary
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'asc' && styles.activeOptionText,
+                          ]}>
+                          Asc
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'desc' && styles.activeOptionButton,
+                        ]}
+                        activeOpacity={1}
+                        onPress={() => changeSortOption('desc')}>
+                        <Icon
+                          name="arrow-down"
+                          type="feather"
+                          size={moderateScale(14)}
+                          color={
+                            sortOption === 'desc'
+                              ? theme.colors.primary
+                              : theme.colors.textSecondary
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'desc' && styles.activeOptionText,
+                          ]}>
+                          Desc
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'revelation' &&
+                            styles.activeOptionButton,
+                        ]}
+                        activeOpacity={1}
+                        onPress={() => changeSortOption('revelation')}>
+                        <Icon
+                          name="calendar"
+                          type="feather"
+                          size={moderateScale(14)}
+                          color={
+                            sortOption === 'revelation'
+                              ? theme.colors.primary
+                              : theme.colors.textSecondary
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'revelation' &&
+                              styles.activeOptionText,
+                          ]}>
+                          Rev
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Right side controls (Heart + View Toggle) */}
+                    <View style={styles.rightControlsContainer}>
+                      {/* Heart (Loved) Filter Button */}
+                      <TouchableOpacity
+                        style={[
+                          styles.optionButton,
+                          {
+                            marginRight: moderateScale(15),
+                            marginTop: moderateScale(4),
+                          },
+                        ]}
+                        activeOpacity={1}
+                        onPress={toggleShowLovedOnly}>
+                        <Animated.View style={heartAnimatedStyle}>
+                          <HeartIcon
+                            size={moderateScale(16)}
+                            color={
+                              showLovedOnly
+                                ? theme.colors.error
+                                : theme.colors.textSecondary
+                            }
+                            filled={showLovedOnly}
+                          />
+                        </Animated.View>
+                      </TouchableOpacity>
+
+                      {/* View mode toggle */}
+                      <TouchableOpacity
+                        style={styles.viewModeButton}
+                        onPress={toggleViewMode}
+                        activeOpacity={1}>
+                        <Icon
+                          name={viewMode === 'card' ? 'list' : 'grid'}
+                          type="feather"
+                          size={moderateScale(16)}
+                          color={theme.colors.text}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </>
