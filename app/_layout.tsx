@@ -66,6 +66,7 @@ export default function RootLayout() {
     'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
     Uthmani: require('@/assets/fonts/Uthmani.otf'),
     QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
+    Indopak: require('@/assets/fonts/Indopak.ttf'),
   });
 
   // Preload Tajweed data once when the app starts
