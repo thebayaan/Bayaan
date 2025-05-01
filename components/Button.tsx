@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {forwardRef} from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -27,9 +27,13 @@ interface ButtonProps extends TouchableOpacityProps {
   disabled?: boolean;
   icon?: React.ReactNode;
   loading?: boolean;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export type ButtonRef = React.ComponentRef<typeof TouchableOpacity>;
+
+export const Button = forwardRef<ButtonRef, ButtonProps>(({
   title,
   onPress,
   style,
@@ -43,8 +47,10 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   icon,
   loading = false,
+  onPressIn,
+  onPressOut,
   ...props
-}) => {
+}, ref) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
 
@@ -69,9 +75,12 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <TouchableOpacity
+      ref={ref}
       activeOpacity={0.99}
       style={buttonStyle}
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       disabled={disabled || loading}
       {...props}>
       <View style={styles.buttonContent}>
@@ -89,7 +98,9 @@ export const Button: React.FC<ButtonProps> = ({
       </View>
     </TouchableOpacity>
   );
-};
+});
+
+Button.displayName = 'Button';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
