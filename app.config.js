@@ -22,6 +22,7 @@ module.exports = {
       config: {
         usesNonExemptEncryption: false,
       },
+      teamId: 'S4W5Q2L53W',
       infoPlist: {
         NSMicrophoneUsageDescription:
           'This app uses the microphone to play audio.',
