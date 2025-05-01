@@ -193,10 +193,10 @@ const createStyles = (theme: Theme) =>
     columnWrapper: {
       justifyContent: 'space-between',
       marginBottom: moderateScale(16),
-      paddingHorizontal: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
     },
     surahCard: {
-      width: '48%',
+      width: '47%',
     },
     listSeparator: {
       height: moderateScale(4),

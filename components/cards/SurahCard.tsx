@@ -142,11 +142,11 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       right: moderateScale(4),
       opacity: 0.8,
       padding: moderateScale(3),
-      backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
-        .alpha(0.08)
-        .toString(),
-      borderRadius: moderateScale(10),
-      borderWidth: 0.5,
+      // backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
+      //   .alpha(0.08)
+      //   .toString(),
+      // borderRadius: moderateScale(10),
+      // borderWidth: 0.5,
       borderColor: Color(color).alpha(0.2).toString(),
       shadowColor: theme.isDarkMode ? 'transparent' : 'rgba(0,0,0,0.1)',
       shadowOffset: {width: 0, height: 1},
@@ -158,17 +158,17 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       position: 'absolute',
       top: moderateScale(4),
       left: moderateScale(4),
-      backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
-        .alpha(0.08)
-        .toString(),
-      paddingHorizontal: moderateScale(4),
-      paddingVertical: 0,
+      // backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
+      //   .alpha(0.08)
+      //   .toString(),
+      // paddingHorizontal: moderateScale(4),
+      // paddingVertical: 0,
       height: moderateScale(16),
       minWidth: moderateScale(16),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: moderateScale(8),
-      borderWidth: 0.5,
+      // borderRadius: moderateScale(8),
+      // borderWidth: 0.5,
       borderColor: Color(color).alpha(0.2).toString(),
       shadowColor: theme.isDarkMode ? 'transparent' : 'rgba(0,0,0,0.1)',
       shadowOffset: {width: 0, height: 1},
@@ -200,7 +200,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       right: moderateScale(4),
       padding: moderateScale(5),
       borderRadius: moderateScale(15),
-      backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
   });
 
