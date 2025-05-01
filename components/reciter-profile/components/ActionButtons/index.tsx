@@ -4,7 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {StarIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ActionButtonsProps} from '@/components/reciter-profile/types';
 import Color from 'color';
 import Animated, {
@@ -12,6 +12,10 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from 'react-native-reanimated';
+import {Ionicons} from '@expo/vector-icons';
+
+// Gold color for the active star
+const GOLD_COLOR = '#FFD700';
 
 // Animated TouchableOpacity for button animations
 const AnimatedTouchableOpacity =
@@ -87,14 +91,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onFavoritePress}
         onPressIn={() => handlePressIn('favorite')}
         onPressOut={() => handlePressOut('favorite')}>
-        <StarIcon
-          color={
-            isFavoriteReciter
-              ? theme.colors.primary
-              : theme.colors.textSecondary
-          }
-          size={moderateScale(18)}
-          filled={isFavoriteReciter}
+        <Ionicons
+          name={isFavoriteReciter ? 'star' : 'star-outline'}
+          size={moderateScale(20)}
+          color={isFavoriteReciter ? GOLD_COLOR : theme.colors.textSecondary}
         />
       </AnimatedTouchableOpacity>
       <View style={styles.rightAlignedButtons}>
@@ -104,7 +104,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           onPress={onShufflePress}
           onPressIn={() => handlePressIn('shuffle')}
           onPressOut={() => handlePressOut('shuffle')}>
-          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(16)} />
         </AnimatedTouchableOpacity>
         <AnimatedTouchableOpacity
           activeOpacity={0.7}
