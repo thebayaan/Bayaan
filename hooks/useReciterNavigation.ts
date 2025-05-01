@@ -16,7 +16,7 @@ export const useReciterNavigation = () => {
       // Navigate after a short delay to allow the sheet to close
       setTimeout(() => {
         router.push({
-          pathname: '/(tabs)/(home)/reciter/[id]',
+          pathname: '/(tabs)/(a.home)/reciter/[id]',
           params: {id: reciterId},
         });
       }, 300); // Delay for bottom sheet animation

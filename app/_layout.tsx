@@ -197,9 +197,6 @@ export default function RootLayout() {
     if (!appIsReady || !fontsLoaded || !isPlayerReady || fontError) {
       return;
     }
-
-    // Go directly to main app
-    router.replace('/(tabs)/(home)');
   }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
 
   // Configure Android navigation bar to match theme

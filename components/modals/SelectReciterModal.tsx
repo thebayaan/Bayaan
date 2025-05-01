@@ -79,18 +79,26 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
 
   const handleUseDefaultReciter = useCallback(async () => {
     if (!surahId || !defaultReciter) return;
-    const success = await playWithReciter(defaultReciter, surahId);
-    if (success) {
-      onClose();
-    }
+
+    // Close the modal immediately for responsive UI
+    onClose();
+
+    // Then handle the player operations in the background
+    playWithReciter(defaultReciter, surahId).catch(error => {
+      console.error('Error playing with default reciter:', error);
+    });
   }, [defaultReciter, surahId, playWithReciter, onClose]);
 
   const handleUseRandomReciter = useCallback(async () => {
     if (!surahId) return;
-    const success = await playWithRandomReciter(surahId);
-    if (success) {
-      onClose();
-    }
+
+    // Close the modal immediately for responsive UI
+    onClose();
+
+    // Then handle the player operations in the background
+    playWithRandomReciter(surahId).catch(error => {
+      console.error('Error playing with random reciter:', error);
+    });
   }, [surahId, playWithRandomReciter, onClose]);
 
   const handleBrowseAllReciters = useCallback(() => {
@@ -98,8 +106,8 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
 
     const route =
       source === 'search'
-        ? '/(tabs)/(search)/reciter/browse'
-        : '/(tabs)/(home)/reciter/browse';
+        ? '/(tabs)/(b.search)/reciter/browse'
+        : '/(tabs)/(a.home)/reciter/browse';
 
     onClose();
     setTimeout(() => {

@@ -259,7 +259,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       if (result.type === 'reciter') {
         const reciter = result.item as Reciter;
         router.push({
-          pathname: '/(tabs)/(search)/reciter/[id]',
+          pathname: '/(tabs)/(b.search)/reciter/[id]',
           params: {id: reciter.id, name: reciter.name},
         });
       } else {
@@ -272,13 +272,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         switch (defaultReciterSelection) {
           case 'browseAll':
             router.push({
-              pathname: '/(tabs)/(search)/reciter/browse',
+              pathname: '/(tabs)/(b.search)/reciter/browse',
               params: {view: 'all', surahId: surah.id},
             });
             break;
           case 'searchFavorites':
             router.push({
-              pathname: '/(tabs)/(search)/reciter/browse',
+              pathname: '/(tabs)/(b.search)/reciter/browse',
               params: {view: 'favorites', surahId: surah.id},
             });
             break;
