@@ -56,6 +56,9 @@ interface ReciterProfileProps {
 type ReciterProfileViewMode = 'card' | 'list';
 type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
 
+// Create a proper memoized wrapper for SurahList
+const MemoizedSurahList = React.memo(SurahList);
+
 const ReciterProfile: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
@@ -404,15 +407,36 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     setFilteredSurahs(filteredSurahsMemo);
   }, [filteredSurahsMemo]);
 
+  // Maintain scroll position reference outside of react state
+  const scrollPosition = useRef(0);
+
+  // Create a scroll event listener for status bar updates
+  const handleStatusBarUpdate = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offsetY = event.nativeEvent.contentOffset.y;
+      if (!theme.isDarkMode) {
+        setIsStatusBarDark(offsetY > 100);
+      }
+    },
+    [theme.isDarkMode],
+  );
+
+  // Save scroll position separately
+  const handleSaveScrollPosition = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollPosition.current = event.nativeEvent.contentOffset.y;
+    },
+    [],
+  );
+
+  // Create a proper animated scroll event
   const handleScroll = RNAnimated.event(
     [{nativeEvent: {contentOffset: {y: scrollY}}}],
     {
       useNativeDriver: true,
       listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const offsetY = event.nativeEvent.contentOffset.y;
-        if (!theme.isDarkMode) {
-          setIsStatusBarDark(offsetY > 100);
-        }
+        handleStatusBarUpdate(event);
+        handleSaveScrollPosition(event);
       },
     },
   );
@@ -476,12 +500,24 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     });
   };
 
-  // Callback to toggle view mode
+  // Callback to toggle view mode with optimized performance
   const toggleViewMode = useCallback(() => {
     const newMode = viewMode === 'card' ? 'list' : 'card';
-    setViewMode(newMode);
+    // First update settings store to avoid state sync issues
     setReciterViewModeSetting(newMode);
-  }, [viewMode, setReciterViewModeSetting]);
+    // Then update local state
+    setViewMode(newMode);
+
+    // Schedule scroll restoration after view mode change is applied
+    requestAnimationFrame(() => {
+      if (flatListRef.current) {
+        flatListRef.current.scrollToOffset({
+          offset: scrollPosition.current,
+          animated: false,
+        });
+      }
+    });
+  }, [viewMode, setReciterViewModeSetting, scrollPosition]);
 
   // Callback to change sort option
   const changeSortOption = useCallback(
@@ -525,6 +561,44 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       heartScale.value = withSpring(1);
     });
   }, [heartScale]);
+
+  // Create a stable reference to data and callbacks used by SurahList to prevent re-renders
+  const surahListProps = useMemo(
+    () => ({
+      surahs: filteredSurahs,
+      onSurahPress: handleSurahPress,
+      reciterId: currentReciterId,
+      isLoved: isLovedWithCurrentRewayat,
+      onOptionsPress: (surah: Surah) =>
+        showSurahOptions(
+          surah,
+          currentReciterId,
+          handleAddToQueue,
+          selectedRewayat?.id,
+        ),
+      onScroll: handleScroll,
+      viewMode,
+      sortOption,
+      getColorForSurah,
+      maintainVisibleContentPosition: {
+        minIndexForVisible: 0,
+        autoscrollToTopThreshold: 10,
+      },
+    }),
+    [
+      filteredSurahs,
+      handleSurahPress,
+      currentReciterId,
+      isLovedWithCurrentRewayat,
+      showSurahOptions,
+      handleAddToQueue,
+      selectedRewayat?.id,
+      handleScroll,
+      viewMode,
+      sortOption,
+      getColorForSurah,
+    ],
+  );
 
   if (!reciter || isLoadingColors || !isImagePreloaded) {
     return (
@@ -575,24 +649,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         />
       ) : (
         <>
-          <SurahList
+          <MemoizedSurahList
             ref={flatListRef}
-            surahs={filteredSurahs}
-            onSurahPress={handleSurahPress}
-            reciterId={currentReciterId}
-            isLoved={isLovedWithCurrentRewayat}
-            onOptionsPress={(surah: Surah) =>
-              showSurahOptions(
-                surah,
-                currentReciterId,
-                handleAddToQueue,
-                selectedRewayat?.id,
-              )
-            }
-            onScroll={handleScroll}
-            viewMode={viewMode}
-            sortOption={sortOption}
-            getColorForSurah={getColorForSurah}
+            {...surahListProps}
             ListHeaderComponent={
               <>
                 <ReciterHeader
@@ -708,13 +767,13 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                         onPress={toggleShowLovedOnly}>
                         <Animated.View style={heartAnimatedStyle}>
                           <HeartIcon
-                            size={moderateScale(16)}
+                            size={moderateScale(22)}
                             color={
                               showLovedOnly
                                 ? theme.colors.error
                                 : theme.colors.textSecondary
                             }
-                            filled={showLovedOnly}
+                            filled={true}
                           />
                         </Animated.View>
                       </TouchableOpacity>
