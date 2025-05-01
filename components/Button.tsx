@@ -33,72 +33,77 @@ interface ButtonProps extends TouchableOpacityProps {
 
 export type ButtonRef = React.ComponentRef<typeof TouchableOpacity>;
 
-export const Button = forwardRef<ButtonRef, ButtonProps>(({
-  title,
-  onPress,
-  style,
-  textStyle,
-  backgroundColor,
-  textColor,
-  size = 'medium',
-  borderRadius,
-  borderWidth,
-  borderColor,
-  disabled = false,
-  icon,
-  loading = false,
-  onPressIn,
-  onPressOut,
-  ...props
-}, ref) => {
-  const {theme} = useTheme();
-  const styles = createStyles(theme);
+export const Button = forwardRef<ButtonRef, ButtonProps>(
+  (
+    {
+      title,
+      onPress,
+      style,
+      textStyle,
+      backgroundColor,
+      textColor,
+      size = 'medium',
+      borderRadius,
+      borderWidth,
+      borderColor,
+      disabled = false,
+      icon,
+      loading = false,
+      onPressIn,
+      onPressOut,
+      ...props
+    },
+    ref,
+  ) => {
+    const {theme} = useTheme();
+    const styles = createStyles(theme);
 
-  const buttonStyle = [
-    styles.button,
-    styles[size],
-    backgroundColor && {backgroundColor},
-    borderRadius !== undefined && {borderRadius},
-    borderWidth !== undefined && {borderWidth},
-    borderColor && {borderColor},
-    disabled && styles.disabledButton,
-    style,
-  ].filter(Boolean) as StyleProp<ViewStyle>;
+    const buttonStyle = [
+      styles.button,
+      styles[size],
+      backgroundColor && {backgroundColor},
+      borderRadius !== undefined && {borderRadius},
+      borderWidth !== undefined && {borderWidth},
+      borderColor && {borderColor},
+      disabled && styles.disabledButton,
+      style,
+    ].filter(Boolean) as StyleProp<ViewStyle>;
 
-  const buttonTextStyle = [
-    styles.buttonText,
-    styles[`${size}Text` as keyof typeof styles],
-    textColor && {color: textColor},
-    disabled && styles.disabledButtonText,
-    textStyle,
-  ].filter(Boolean) as StyleProp<TextStyle>;
+    const buttonTextStyle = [
+      styles.buttonText,
+      styles[`${size}Text` as keyof typeof styles],
+      textColor && {color: textColor},
+      disabled && styles.disabledButtonText,
+      textStyle,
+    ].filter(Boolean) as StyleProp<TextStyle>;
 
-  return (
-    <TouchableOpacity
-      ref={ref}
-      activeOpacity={0.99}
-      style={buttonStyle}
-      onPress={onPress}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      disabled={disabled || loading}
-      {...props}>
-      <View style={styles.buttonContent}>
-        {loading ? (
-          <ActivityIndicator
-            color={theme.colors.background}
-            style={styles.loadingIndicator}
-          />
-        ) : (
-          <>
-            {icon && <View style={styles.iconContainer}>{icon}</View>}
-            <Text style={buttonTextStyle}>{title}</Text>
-          </>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
-});
+    return (
+      <TouchableOpacity
+        ref={ref}
+        activeOpacity={0.99}
+        style={buttonStyle}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        disabled={disabled || loading}
+        {...props}>
+        <View style={styles.buttonContent}>
+          {loading ? (
+            <ActivityIndicator
+              color={theme.colors.background}
+              style={styles.loadingIndicator}
+            />
+          ) : (
+            <>
+              {icon && <View style={styles.iconContainer}>{icon}</View>}
+              <Text style={buttonTextStyle}>{title}</Text>
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  },
+);
 
 Button.displayName = 'Button';
 
