@@ -13,7 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Icon} from '@rneui/themed';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
-import {HeartIcon, StarIcon} from '@/components/Icons';
+import {HeartIcon} from '@/components/Icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {TrackItem} from '@/components/TrackItem';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
@@ -27,16 +27,32 @@ import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {BlurView} from '@react-native-community/blur';
+import {Ionicons} from '@expo/vector-icons';
+
+// Consistent colors for icons
+const HEART_COLOR = 'red';
+const GOLD_COLOR = '#FFD700';
+
+// Define a type for icon components (both custom Icons and Ionicons)
+type IconComponent = React.FC<IconProps> | typeof Ionicons;
 
 interface CollectionItem {
   id: string;
   title: string;
-  icon: React.FC<IconProps>;
+  icon: IconComponent;
+  useIonicons?: boolean;
+  iconColor?: string;
 }
 
 const collectionItems: CollectionItem[] = [
-  {id: 'loved', title: 'Loved Surahs', icon: HeartIcon},
-  {id: 'favorite-reciters', title: 'Favorite Reciters', icon: StarIcon},
+  {id: 'loved', title: 'Loved Surahs', icon: HeartIcon, iconColor: HEART_COLOR},
+  {
+    id: 'favorite-reciters',
+    title: 'Favorite Reciters',
+    icon: Ionicons,
+    useIonicons: true,
+    iconColor: GOLD_COLOR,
+  },
   // {id: 'playlists', title: 'Playlists', icon: PlaylistIcon},
   // {id: 'downloads', title: 'Downloads', icon: DownloadIcon},
 ];
@@ -124,11 +140,19 @@ export default function CollectionScreen() {
           activeOpacity={0.99}
           style={styles.listItem}
           onPress={() => router.push(`/collection/${item.id}`)}>
-          <item.icon
-            color={theme.colors.text}
-            size={moderateScale(35)}
-            filled={true}
-          />
+          {item.useIonicons ? (
+            <Ionicons
+              name="star"
+              size={moderateScale(35)}
+              color={item.iconColor || theme.colors.text}
+            />
+          ) : (
+            <item.icon
+              color={item.iconColor || theme.colors.text}
+              size={moderateScale(35)}
+              filled={true}
+            />
+          )}
           <Text style={styles.listItemText}>{item.title}</Text>
           <Icon
             name="arrow-right"
