@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "teamId": "S4W5Q2L53W"
       },
       "android": {
         "buildType": "apk"
@@ -20,7 +21,8 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "teamId": "S4W5Q2L53W"
       },
       "android": {
         "buildType": "apk"
@@ -34,7 +36,8 @@
       "ios": {
         "resourceClass": "m-medium",
         "credentialsSource": "remote",
-        "enterpriseProvisioning": "universal"
+        "enterpriseProvisioning": "universal",
+        "teamId": "S4W5Q2L53W"
       },
       "android": {
         "buildType": "app-bundle",
