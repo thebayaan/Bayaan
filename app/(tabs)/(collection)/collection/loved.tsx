@@ -262,8 +262,11 @@ const LovedScreen = () => {
         item.surahName.toLowerCase().includes(searchQuery.toLowerCase())),
   );
 
-  const getItemKey = (item: any) =>
-    `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
+  const getItemKey = (item: {
+    reciterId: string;
+    surahId: string;
+    rewayatId?: string;
+  }) => `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
 
   const handlePlayAll = useCallback(async () => {
     if (filteredData.length === 0) return;
