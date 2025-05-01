@@ -104,7 +104,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           onPress={onShufflePress}
           onPressIn={() => handlePressIn('shuffle')}
           onPressOut={() => handlePressOut('shuffle')}>
-          <ShuffleIcon color={theme.colors.text} size={moderateScale(16)} />
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
         </AnimatedTouchableOpacity>
         <AnimatedTouchableOpacity
           activeOpacity={0.7}
@@ -113,7 +113,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           onPressIn={() => handlePressIn('play')}
           onPressOut={() => handlePressOut('play')}>
           <View style={styles.playIconContainer}>
-            <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(16)}
+            />
           </View>
         </AnimatedTouchableOpacity>
       </View>
@@ -145,8 +148,8 @@ const createStyles = (theme: Theme) =>
       padding: moderateScale(8),
     },
     circleButton: {
-      width: moderateScale(40),
-      height: moderateScale(40),
+      width: moderateScale(42),
+      height: moderateScale(42),
       justifyContent: 'center',
       alignItems: 'center',
       borderRadius: moderateScale(12),
@@ -157,8 +160,9 @@ const createStyles = (theme: Theme) =>
       // Slightly larger to emphasize it's the primary action
       width: moderateScale(42),
       height: moderateScale(42),
+      backgroundColor: theme.colors.text,
     },
     playIconContainer: {
-      paddingLeft: moderateScale(2), // Slight adjustment to center the play icon visually
+      paddingLeft: moderateScale(4), // Slight adjustment to center the play icon visually
     },
   });

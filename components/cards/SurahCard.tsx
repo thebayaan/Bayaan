@@ -177,7 +177,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       elevation: 1,
     },
     numberText: {
-      fontSize: moderateScale(8),
+      fontSize: moderateScale(10),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
@@ -196,10 +196,10 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     },
     optionsButton: {
       position: 'absolute',
-      bottom: moderateScale(4),
-      right: moderateScale(4),
-      padding: moderateScale(5),
-      borderRadius: moderateScale(15),
+      bottom: moderateScale(6),
+      right: moderateScale(6),
+      padding: moderateScale(2),
+      borderRadius: moderateScale(8),
       backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
   });
@@ -283,7 +283,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           <Icon
             name="more-horizontal"
             type="feather"
-            size={moderateScale(18)}
+            size={moderateScale(16)}
             color={theme.colors.textSecondary}
           />
         </TouchableOpacity>
