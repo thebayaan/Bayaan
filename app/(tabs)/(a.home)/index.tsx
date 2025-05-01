@@ -278,7 +278,7 @@ function HomeScreen() {
   const handleReciterPress = useCallback(
     (reciter: Reciter) => {
       router.push({
-        pathname: '/(tabs)/(home)/reciter/[id]',
+        pathname: '/(tabs)/(a.home)/reciter/[id]',
         params: {id: reciter.id},
       });
     },

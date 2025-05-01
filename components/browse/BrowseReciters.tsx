@@ -262,7 +262,7 @@ export default function BrowseReciters({
       } else {
         // Case 2: Browse all mode - navigate to reciter profile
         router.push({
-          pathname: '/(tabs)/(home)/reciter/[id]',
+          pathname: '/(tabs)/(a.home)/reciter/[id]',
           params: {id: reciter.id},
         });
       }
