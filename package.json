@@ -16,6 +16,7 @@
     "generate-icons": "node scripts/generate-icons.js",
     "fetch-reciters": "ts-node scripts/fetchReciterData.ts",
     "resize-splash-images": "ts-node scripts/resize-splash-images.js",
+    "prebuild": "expo prebuild --clean",
     "version:patch": "node scripts/version-bump.js patch",
     "version:minor": "node scripts/version-bump.js minor",
     "version:major": "node scripts/version-bump.js major",
