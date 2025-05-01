@@ -8,13 +8,15 @@ import {Button} from '@/components/Button';
 import {getSurahById} from '@/services/dataService';
 import {BaseModal} from '@/components/modals/BaseModal';
 import {useSettings} from '@/hooks/useSettings';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import {createTracksForReciter} from '@/utils/track';
-import {QueueContext} from '@/services/queue/QueueContext';
-import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useReciterSelection} from '@/hooks/useReciterSelection';
 import Color from 'color';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {useRouter} from 'expo-router';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface SelectReciterModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -22,6 +24,9 @@ interface SelectReciterModalProps {
   surahId: string;
   source?: 'search' | 'home';
 }
+
+// Create animated variants of Button component
+const AnimatedButton = Animated.createAnimatedComponent(Button);
 
 export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
   bottomSheetRef,
@@ -33,13 +38,29 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const [, setSurahName] = useState<string>('');
+  const {playWithReciter, playWithRandomReciter} = useReciterSelection();
 
   const {askEveryTime, setAskEveryTime, setDefaultReciterSelection} =
     useSettings();
-  const {updateQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
-  const {addRecentTrack} = useRecentlyPlayedStore();
   const router = useRouter();
+
+  // Animation values
+  const defaultButtonScale = useSharedValue(1);
+  const randomButtonScale = useSharedValue(1);
+  const browseButtonScale = useSharedValue(1);
+
+  // Animated styles
+  const defaultButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: defaultButtonScale.value}],
+  }));
+
+  const randomButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: randomButtonScale.value}],
+  }));
+
+  const browseButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: browseButtonScale.value}],
+  }));
 
   React.useEffect(() => {
     const fetchSurahName = async () => {
@@ -58,47 +79,19 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
 
   const handleUseDefaultReciter = useCallback(async () => {
     if (!surahId || !defaultReciter) return;
-
-    try {
-      const surah = await getSurahById(parseInt(surahId, 10));
-      if (!surah) return;
-
-      // Create track for the selected surah
-      const tracks = await createTracksForReciter(
-        defaultReciter,
-        [surah],
-        defaultReciter.rewayat[0]?.id,
-      );
-
-      // Update queue and start playing
-      await updateQueue(tracks, 0);
-      await play();
-
-      // Add to recently played list with the rewayatId
-      await addRecentTrack(
-        defaultReciter,
-        surah,
-        0,
-        0,
-        defaultReciter.rewayat[0]?.id,
-      );
-
-      // Set current reciter for batch loading
-      queueContext.setCurrentReciter(defaultReciter);
-
+    const success = await playWithReciter(defaultReciter, surahId);
+    if (success) {
       onClose();
-    } catch (error) {
-      console.error('Error playing surah:', error);
     }
-  }, [
-    defaultReciter,
-    surahId,
-    updateQueue,
-    play,
-    queueContext,
-    onClose,
-    addRecentTrack,
-  ]);
+  }, [defaultReciter, surahId, playWithReciter, onClose]);
+
+  const handleUseRandomReciter = useCallback(async () => {
+    if (!surahId) return;
+    const success = await playWithRandomReciter(surahId);
+    if (success) {
+      onClose();
+    }
+  }, [surahId, playWithRandomReciter, onClose]);
 
   const handleBrowseAllReciters = useCallback(() => {
     if (!surahId) return;
@@ -134,11 +127,53 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
     setAskEveryTime(!askEveryTime);
   }, [askEveryTime, setAskEveryTime]);
 
+  // Animation handlers
+  const handleDefaultButtonPressIn = () => {
+    defaultButtonScale.value = withSpring(0.95, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handleDefaultButtonPressOut = () => {
+    defaultButtonScale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handleRandomButtonPressIn = () => {
+    randomButtonScale.value = withSpring(0.95, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handleRandomButtonPressOut = () => {
+    randomButtonScale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handleBrowseButtonPressIn = () => {
+    browseButtonScale.value = withSpring(0.95, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
+  const handleBrowseButtonPressOut = () => {
+    browseButtonScale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  };
+
   return (
     <BaseModal
       bottomSheetRef={bottomSheetRef}
       snapPoints={['40%']}
-      title="Select Reciter"
       onChange={index => {
         if (index === -1) {
           onClose();
@@ -146,24 +181,39 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
       }}>
       <View style={styles.container}>
         <View style={styles.contentContainer}>
-          <Button
-            title="Browse All Reciters"
-            style={styles.button}
-            textStyle={styles.buttonText}
-            onPress={() =>
-              handleReciterSelection(handleBrowseAllReciters, 'browseAll')
-            }>
-            <Text style={styles.buttonText}>Browse All Reciters</Text>
-          </Button>
-          <Button
+          <AnimatedButton
             title="Use Default Reciter"
-            style={styles.defaultButton}
+            style={[styles.defaultButton, defaultButtonAnimatedStyle]}
             textStyle={styles.defaultButtonText}
+            onPressIn={handleDefaultButtonPressIn}
+            onPressOut={handleDefaultButtonPressOut}
             onPress={() =>
               handleReciterSelection(handleUseDefaultReciter, 'useDefault')
             }>
             <Text style={styles.defaultButtonText}>Use Default Reciter</Text>
-          </Button>
+          </AnimatedButton>
+          <AnimatedButton
+            title="Random Reciter"
+            style={[styles.button, randomButtonAnimatedStyle]}
+            textStyle={styles.buttonText}
+            onPressIn={handleRandomButtonPressIn}
+            onPressOut={handleRandomButtonPressOut}
+            onPress={() =>
+              handleReciterSelection(handleUseRandomReciter, 'randomReciter')
+            }>
+            <Text style={styles.buttonText}>Random Reciter</Text>
+          </AnimatedButton>
+          <AnimatedButton
+            title="Browse All Reciters"
+            style={[styles.button, browseButtonAnimatedStyle]}
+            textStyle={styles.buttonText}
+            onPressIn={handleBrowseButtonPressIn}
+            onPressOut={handleBrowseButtonPressOut}
+            onPress={() =>
+              handleReciterSelection(handleBrowseAllReciters, 'browseAll')
+            }>
+            <Text style={styles.buttonText}>Browse All Reciters</Text>
+          </AnimatedButton>
           <View style={styles.askEveryTimeContainer}>
             <Text style={styles.askEveryTimeText}>Ask every time</Text>
             <Switch
@@ -189,16 +239,18 @@ const createStyles = (theme: Theme) =>
     },
     contentContainer: {
       flex: 1,
-      padding: moderateScale(16),
+      padding: moderateScale(8),
     },
     button: {
+      height: moderateScale(48),
+      width: '100%',
       paddingVertical: moderateScale(12),
       paddingHorizontal: moderateScale(16),
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(30),
       marginTop: moderateScale(8),
       backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     buttonText: {
       fontSize: moderateScale(16),
@@ -207,13 +259,15 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
     },
     defaultButton: {
+      height: moderateScale(48),
+      width: '100%',
       paddingVertical: moderateScale(12),
       paddingHorizontal: moderateScale(16),
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(30),
       marginTop: moderateScale(8),
-      backgroundColor: Color(theme.colors.text).alpha(0.9).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      backgroundColor: theme.colors.text,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     defaultButtonText: {
       fontSize: moderateScale(16),
