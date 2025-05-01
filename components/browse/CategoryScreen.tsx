@@ -19,7 +19,11 @@ interface CategoryScreenProps {
   };
 }
 
-export function CategoryScreen({category, backgroundColor, icon}: CategoryScreenProps) {
+export function CategoryScreen({
+  category,
+  backgroundColor,
+  icon,
+}: CategoryScreenProps) {
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -28,7 +32,13 @@ export function CategoryScreen({category, backgroundColor, icon}: CategoryScreen
     router.push(`/surah/${surahId}`);
   };
 
-  const renderItem = ({item: surah, index}: {item: Category['surahs'][0]; index: number}) => (
+  const renderItem = ({
+    item: surah,
+    index,
+  }: {
+    item: Category['surahs'][0];
+    index: number;
+  }) => (
     <Animated.View entering={FadeInDown.delay(index * 50)}>
       <TouchableOpacity
         activeOpacity={0.7}
@@ -73,7 +83,8 @@ export function CategoryScreen({category, backgroundColor, icon}: CategoryScreen
   );
 
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <View
+      style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <View
         style={[
           styles.header,
@@ -205,4 +216,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
     textTransform: 'capitalize',
   },
-}); 
+});
