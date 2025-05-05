@@ -306,7 +306,7 @@ export const RecentReciterCard = ({
       marginTop: 'auto',
       paddingTop: moderateScale(4),
       backgroundColor: Color(theme.colors.primary).alpha(0.08).toString(),
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(8),
       paddingVertical: moderateScale(3),
       paddingHorizontal: moderateScale(6),
       gap: moderateScale(6),
@@ -316,19 +316,19 @@ export const RecentReciterCard = ({
       borderColor: Color(theme.colors.primary).alpha(0.1).toString(),
     },
     sliderContainer: {
-      height: moderateScale(3),
+      height: moderateScale(5),
       flex: 1,
-      marginHorizontal: moderateScale(4),
+      marginHorizontal: moderateScale(2),
     },
     timeRemaining: {
       fontSize: moderateScale(8),
       fontFamily: 'Manrope-Bold',
       color: Color(theme.colors.text).alpha(0.9).toString(),
-      minWidth: moderateScale(16),
+      minWidth: moderateScale(4),
       textAlign: 'right',
     },
     playButton: {
-      marginLeft: 0,
+      marginBottom: 2,
     },
   });
 
@@ -406,7 +406,7 @@ export const RecentReciterCard = ({
                 .alpha(0.1)
                 .toString()}
               trackStyle={{
-                height: moderateScale(2.5),
+                height: moderateScale(3.5),
                 borderRadius: moderateScale(2),
               }}
               thumbStyle={{height: 0, width: 0}}
