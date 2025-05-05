@@ -27,6 +27,8 @@ interface SurahItemProps {
   reciterId?: string;
   isLoved?: boolean;
   onOptionsPress?: (item: Surah) => void;
+  enableHaptics?: boolean;
+  enableAnimation?: boolean;
 }
 
 // Create Animated component
@@ -34,71 +36,95 @@ const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
 export const SurahItem: React.FC<SurahItemProps> = React.memo(
-  ({item, onPress, isLoved = false, onOptionsPress}) => {
+  ({
+    item,
+    onPress,
+    isLoved = false,
+    onOptionsPress,
+    enableHaptics = false,
+    enableAnimation = false,
+  }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
     // Animation value
-    const scale = useSharedValue(1);
+    const scale = useSharedValue(enableAnimation ? 1 : 1);
 
     const handlePress = React.useCallback(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (enableHaptics) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       onPress(item);
-    }, [item, onPress]);
+    }, [item, onPress, enableHaptics]);
 
     const handleOptionsPress = React.useCallback(
       (e?: GestureResponderEvent) => {
         e?.stopPropagation();
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (enableHaptics) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
         if (onOptionsPress) {
           requestAnimationFrame(() => {
             onOptionsPress(item);
           });
         }
       },
-      [item, onOptionsPress],
+      [item, onOptionsPress, enableHaptics],
     );
 
     const handleLongPressWrapper = () => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (enableHaptics) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       handleOptionsPress();
     };
 
     // Animation handlers
     const handlePressIn = () => {
-      scale.value = withSpring(0.98, {
-        damping: 15,
-        stiffness: 400,
-        mass: 0.5,
-      });
+      if (enableAnimation) {
+        scale.value = withSpring(0.98, {
+          damping: 15,
+          stiffness: 400,
+          mass: 0.5,
+        });
+      }
     };
 
     const handlePressOut = () => {
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 400,
-        mass: 0.5,
-      });
+      if (enableAnimation) {
+        scale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 400,
+          mass: 0.5,
+        });
+      }
     };
 
     // Animated style
     const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{scale: scale.value}],
+      transform: enableAnimation ? [{scale: scale.value}] : [],
     }));
 
     const revelationPlace = item.revelation_place.toLowerCase() as
       | 'makkah'
       | 'madinah';
 
+    // Choose Touchable component based on animation prop
+    const TouchableComponent = enableAnimation
+      ? AnimatedTouchableOpacity
+      : TouchableOpacity;
+
     return (
-      <AnimatedTouchableOpacity
+      <TouchableComponent
         activeOpacity={0.99}
-        style={[styles.surahItem, animatedStyle]}
+        style={
+          enableAnimation ? [styles.surahItem, animatedStyle] : styles.surahItem
+        }
         onPress={handlePress}
         onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
         delayLongPress={500}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPressIn={enableAnimation ? handlePressIn : undefined}
+        onPressOut={enableAnimation ? handlePressOut : undefined}
         accessibilityRole="button"
         accessibilityLabel={`Surah ${item.name}, ${item.translated_name_english}, ${item.verses_count} verses`}
         accessibilityHint={
@@ -171,7 +197,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             />
           </TouchableOpacity>
         )}
-      </AnimatedTouchableOpacity>
+      </TouchableComponent>
     );
   },
 );
