@@ -1,5 +1,12 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, FlatList, Platform} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Platform,
+  Keyboard,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -11,9 +18,12 @@ import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SearchInput} from '@/components/SearchInput';
 import {BlurView} from '@react-native-community/blur';
-import {LinearGradient} from 'expo-linear-gradient';
 import {StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
+import {SurahCard} from '@/components/cards/SurahCard';
+
+// Define view mode type
+type ReciterProfileViewMode = 'card' | 'list';
 
 interface SearchViewProps {
   surahs: Surah[];
@@ -33,6 +43,8 @@ interface SearchViewProps {
   };
   isDarkMode: boolean;
   reciterName: string;
+  viewMode: ReciterProfileViewMode;
+  getColorForSurah: (id: number) => string;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
@@ -47,19 +59,24 @@ export const SearchView: React.FC<SearchViewProps> = ({
   availableRewayat,
   selectedRewayatId,
   onRewayatSelect,
-  dominantColors,
   isDarkMode,
   reciterName,
+  viewMode,
+  getColorForSurah,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
 
-  const renderSurahItem = React.useCallback(
+  // Render list item
+  const renderListItem = React.useCallback(
     ({item}: {item: Surah}) => (
       <SurahItem
         item={item}
-        onPress={onSurahPress}
+        onPress={surah => {
+          Keyboard.dismiss();
+          onSurahPress(surah);
+        }}
         reciterId={reciterId}
         isLoved={isLoved(reciterId, item.id.toString())}
         onOptionsPress={onOptionsPress}
@@ -68,92 +85,129 @@ export const SearchView: React.FC<SearchViewProps> = ({
     [onSurahPress, reciterId, isLoved, onOptionsPress],
   );
 
+  // Render card item
+  const renderCardItem = React.useCallback(
+    ({item}: {item: Surah}) => (
+      <SurahCard
+        id={item.id}
+        name={item.name}
+        translatedName={item.translated_name_english}
+        versesCount={item.verses_count}
+        revelationPlace={item.revelation_place}
+        color={getColorForSurah(item.id)}
+        onPress={() => {
+          Keyboard.dismiss();
+          onSurahPress(item);
+        }}
+        style={styles.surahCard}
+        isLoved={isLoved(reciterId, item.id.toString())}
+        onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
+      />
+    ),
+    [
+      getColorForSurah,
+      onSurahPress,
+      styles.surahCard,
+      isLoved,
+      reciterId,
+      onOptionsPress,
+    ],
+  );
+
+  // Memoize the Rewayat List Header
+  const ListHeader = React.useMemo(
+    () => (
+      <FlatList
+        data={availableRewayat}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.rewayatList}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({item}) => (
+          <TouchableOpacity
+            style={[
+              styles.rewayatButton,
+              selectedRewayatId === item.id && styles.selectedRewayatButton,
+            ]}
+            onPress={() => onRewayatSelect(item.id)}
+            activeOpacity={0.7}>
+            <View style={styles.rewayatButtonContent}>
+              <Text
+                style={[
+                  styles.rewayatButtonText,
+                  selectedRewayatId === item.id &&
+                    styles.selectedRewayatButtonText,
+                ]}>
+                {item.name}
+              </Text>
+              <Text
+                style={[
+                  styles.rewayatButtonSubText,
+                  selectedRewayatId === item.id &&
+                    styles.selectedRewayatButtonSubText,
+                ]}>
+                {item.style}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        keyExtractor={item => item.id}
+      />
+    ),
+    [availableRewayat, selectedRewayatId, onRewayatSelect, styles],
+  );
+
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
-      style={styles.container}>
-      <StatusBar style="light" />
-      <View style={styles.headerContainer}>
+      style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
         {Platform.OS === 'ios' ? (
           <BlurView
-            blurAmount={100}
-            blurType={isDarkMode ? 'dark' : 'light'}
-            style={[StyleSheet.absoluteFill, {paddingTop: insets.top}]}
-          />
+            blurAmount={80}
+            blurType={theme.isDarkMode ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}>
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: Color(theme.colors.card)
+                    .alpha(0.7)
+                    .toString(),
+                },
+              ]}
+            />
+          </BlurView>
         ) : (
           <View
             style={[
               StyleSheet.absoluteFill,
               {
-                backgroundColor: isDarkMode
-                  ? 'rgba(0,0,0,0.8)'
-                  : 'rgba(255,255,255,0.9)',
-                paddingTop: insets.top,
+                backgroundColor: theme.colors.card,
+                opacity: 0.95,
               },
             ]}
           />
         )}
-        <LinearGradient
-          colors={[dominantColors.primary, dominantColors.secondary]}
-          style={[StyleSheet.absoluteFill, styles.gradient]}
-          start={{x: 0, y: 0}}
-          end={{x: 0, y: 1}}
-        />
-        <View style={[styles.headerContent, {paddingTop: insets.top}]}>
-          <Text style={styles.reciterName}>{reciterName}</Text>
+        <Text style={[styles.reciterName, {color: theme.colors.text}]}>
+          {reciterName}
+        </Text>
+        <View style={styles.searchBoxContainer}>
           <SearchInput
+            placeholder="Search surahs"
             value={searchQuery}
             onChangeText={onSearchChange}
             onCancel={onCloseSearch}
-            placeholder="Search Surahs"
-            autoFocus={false}
-            iconColor="white"
-            textColor="white"
-            backgroundColor={Color('white').alpha(0.15).toString()}
-            borderColor={Color('white').alpha(0.2).toString()}
-            iconSize={moderateScale(18)}
-            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+            iconColor={theme.colors.text}
+            textColor={theme.colors.text}
+            backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
+            borderColor={Color(theme.colors.border).alpha(0.2).toString()}
+            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
             autoCorrect={false}
+            autoComplete="off"
             autoCapitalize="none"
-            keyboardShouldPersistTaps="handled"
-          />
-
-          <FlatList
-            data={availableRewayat}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.rewayatList}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({item}) => (
-              <TouchableOpacity
-                style={[
-                  styles.rewayatButton,
-                  selectedRewayatId === item.id && styles.selectedRewayatButton,
-                ]}
-                onPress={() => onRewayatSelect(item.id)}
-                activeOpacity={0.7}>
-                <View>
-                  <Text
-                    style={[
-                      styles.rewayatButtonText,
-                      selectedRewayatId === item.id &&
-                        styles.selectedRewayatButtonText,
-                    ]}>
-                    {item.name}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.rewayatButtonSubText,
-                      selectedRewayatId === item.id &&
-                        styles.selectedRewayatButtonText,
-                    ]}>
-                    {item.style}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-            keyExtractor={item => item.id}
           />
         </View>
       </View>
@@ -161,19 +215,32 @@ export const SearchView: React.FC<SearchViewProps> = ({
       <View style={styles.contentContainer}>
         <FlatList
           data={surahs}
-          renderItem={renderSurahItem}
-          keyExtractor={item => item.id.toString()}
+          renderItem={viewMode === 'card' ? renderCardItem : renderListItem}
+          keyExtractor={item => `${viewMode}-${item.id}`}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={ListHeader}
+          onScrollBeginDrag={() => Keyboard.dismiss()}
           contentContainerStyle={[
-            styles.surahList,
+            styles.listContentContainer,
             {paddingBottom: insets.bottom + moderateScale(70)},
           ]}
+          numColumns={viewMode === 'card' ? 2 : 1}
+          columnWrapperStyle={
+            viewMode === 'card' ? styles.columnWrapper : undefined
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No surahs found</Text>
+              <Text
+                style={[styles.emptyText, {color: theme.colors.textSecondary}]}>
+                No surahs found
+              </Text>
             </View>
           }
+          initialNumToRender={viewMode === 'card' ? 10 : 15}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
         />
       </View>
     </Animated.View>
@@ -184,68 +251,79 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
     },
     headerContainer: {
       overflow: 'hidden',
-      borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
-    },
-    gradient: {
-      opacity: 0.9,
-    },
-    headerContent: {
-      paddingBottom: moderateScale(8),
     },
     reciterName: {
       fontSize: moderateScale(14),
       fontFamily: theme.fonts.bold,
-      color: 'white',
       textAlign: 'center',
       marginBottom: moderateScale(4),
+      marginTop: moderateScale(12),
+    },
+    searchBoxContainer: {
+      paddingBottom: moderateScale(12),
+      paddingTop: moderateScale(4),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
     },
     rewayatList: {
       paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(4),
-      gap: moderateScale(6),
+      paddingVertical: moderateScale(12),
+      gap: moderateScale(8),
+      backgroundColor: theme.colors.background,
     },
     rewayatButton: {
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(6),
-      borderRadius: moderateScale(8),
-      backgroundColor: Color('white').alpha(0.15).toString(),
-      borderWidth: 1,
-      borderColor: Color('white').alpha(0.2).toString(),
-      minWidth: moderateScale(100),
+      minWidth: moderateScale(90),
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(12),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
+      borderWidth: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     selectedRewayatButton: {
-      backgroundColor: Color('white').alpha(0.25).toString(),
-      borderColor: 'white',
+      backgroundColor: theme.colors.text,
+    },
+    rewayatButtonContent: {
+      alignItems: 'center',
     },
     rewayatButtonText: {
       fontSize: moderateScale(11),
-      fontFamily: theme.fonts.medium,
-      color: 'white',
-      opacity: 0.8,
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    selectedRewayatButtonText: {
+      color: theme.colors.background,
+      fontFamily: theme.fonts.bold,
     },
     rewayatButtonSubText: {
       fontSize: moderateScale(9),
-      fontFamily: theme.fonts.regular,
-      color: 'white',
-      opacity: 0.6,
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.textSecondary,
+      opacity: 0.7,
       marginTop: moderateScale(1),
+      textAlign: 'center',
       textTransform: 'capitalize',
     },
-    selectedRewayatButtonText: {
-      color: 'white',
-      fontFamily: theme.fonts.bold,
-      opacity: 1,
+    selectedRewayatButtonSubText: {
+      color: Color(theme.colors.background).alpha(0.7).toString(),
+      fontFamily: theme.fonts.medium,
     },
     contentContainer: {
       flex: 1,
     },
-    surahList: {
-      paddingTop: moderateScale(8),
+    listContentContainer: {},
+    columnWrapper: {
+      justifyContent: 'space-between',
+      marginBottom: moderateScale(16),
+      paddingHorizontal: moderateScale(16),
+    },
+    surahCard: {
+      width: '47%',
     },
     emptyContainer: {
       flex: 1,
@@ -256,6 +334,5 @@ const createStyles = (theme: Theme) =>
     emptyText: {
       fontSize: moderateScale(16),
       fontFamily: theme.fonts.medium,
-      color: theme.colors.textSecondary,
     },
   });

@@ -79,8 +79,6 @@ const createStyles = (theme: Theme) =>
       zIndex: 1,
       paddingBottom: moderateScale(15),
       paddingHorizontal: moderateScale(20),
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255, 255, 255, 0.1)',
       overflow: 'hidden',
     },
     headerGradient: {

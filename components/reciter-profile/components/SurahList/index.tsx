@@ -117,7 +117,7 @@ export const SurahList = React.forwardRef<
           ]}>
           <Animated.FlatList
             ref={viewMode === 'card' ? ref : undefined}
-            bounces={false}
+            bounces={true}
             showsVerticalScrollIndicator={false}
             data={surahs}
             renderItem={renderCardItem}
@@ -147,7 +147,7 @@ export const SurahList = React.forwardRef<
           ]}>
           <Animated.FlatList
             ref={viewMode === 'list' ? ref : undefined}
-            bounces={false}
+            bounces={true}
             showsVerticalScrollIndicator={false}
             data={surahs}
             renderItem={renderListItem}
