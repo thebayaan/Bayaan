@@ -254,6 +254,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
+      Keyboard.dismiss();
       await addToRecentSearches(query);
 
       if (result.type === 'reciter') {
@@ -569,6 +570,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           contentContainerStyle={styles.resultsContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={() => Keyboard.dismiss()}
           ListHeaderComponent={
             searching ? (
               <View style={styles.loadingContainer}>
