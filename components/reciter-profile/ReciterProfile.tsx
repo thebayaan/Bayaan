@@ -646,6 +646,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           dominantColors={dominantColors}
           isDarkMode={theme.isDarkMode}
           reciterName={reciter.name}
+          viewMode={viewMode}
+          getColorForSurah={getColorForSurah}
         />
       ) : (
         <>
