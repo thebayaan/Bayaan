@@ -4,31 +4,52 @@
  */
 
 import TrackPlayer, {Event, State} from 'react-native-track-player';
-import {
-  QueueState,
-  QueueOperation,
-  QueueConfig,
-  QueueError,
-  QueueOperationType,
-} from './types';
-import {Track} from '@/types/audio';
+import {QueueState, QueueConfig, QueueError, QueueOperation} from './types';
 import {performance} from '@/utils/performance';
 import {QueueOperationManager} from './QueueOperationManager';
 import {BatchLoader} from './BatchLoader';
 import {Reciter} from '@/data/reciterData';
+import {useRecentlyPlayedStore} from '../player/store/recentlyPlayedStore';
+import {getReciterById, getSurahById} from '@/services/dataService';
+
+/**
+ * Events emitted by the QueueContext
+ */
+export enum QueueEvents {
+  STATE_CHANGED = 'state_changed',
+  ERROR = 'error',
+  OPERATION_COMPLETED = 'operation_completed',
+  BATCH_LOADED = 'batch_loaded',
+  TRACK_CHANGED = 'track_changed',
+  PLAYBACK_STATE_CHANGED = 'playback_state_changed',
+}
+
+// Define a type for event data
+type EventData = {
+  [QueueEvents.STATE_CHANGED]: QueueState;
+  [QueueEvents.ERROR]: QueueError;
+  [QueueEvents.OPERATION_COMPLETED]: {
+    operation: QueueOperation;
+    duration: number;
+  };
+  [QueueEvents.BATCH_LOADED]: number;
+  [QueueEvents.TRACK_CHANGED]: number;
+  [QueueEvents.PLAYBACK_STATE_CHANGED]: State;
+  [key: string]: unknown; // Fallback for any other events
+};
 
 /**
  * Basic EventEmitter implementation for React Native
  */
 class EventEmitter {
-  private listeners: Map<string, Set<(data: any) => void>> = new Map();
+  private listeners: Map<string, Set<(data: unknown) => void>> = new Map();
   private maxListeners = 10;
 
   setMaxListeners(n: number): void {
     this.maxListeners = n;
   }
 
-  emit(event: string, data: any): boolean {
+  emit(event: string, data: unknown): boolean {
     const listeners = this.listeners.get(event);
     if (!listeners) return false;
 
@@ -42,13 +63,14 @@ class EventEmitter {
     return true;
   }
 
-  on(event: string, listener: (data: any) => void): this {
+  on(event: string, listener: (data: unknown) => void): this {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    const listeners = this.listeners.get(event)!;
+    const listeners = this.listeners.get(event);
 
-    if (listeners.size >= this.maxListeners) {
+    // Safe access - we just checked that it exists
+    if (listeners && listeners.size >= this.maxListeners) {
       console.warn(
         'MaxListenersExceededWarning: Possible EventEmitter memory leak detected. ' +
           `${listeners.size} ${event} listeners added. ` +
@@ -56,11 +78,14 @@ class EventEmitter {
       );
     }
 
-    listeners.add(listener);
+    // Safe access with definite assignment
+    if (listeners) {
+      listeners.add(listener);
+    }
     return this;
   }
 
-  off(event: string, listener: (data: any) => void): this {
+  off(event: string, listener: (data: unknown) => void): this {
     const listeners = this.listeners.get(event);
     if (listeners) {
       listeners.delete(listener);
@@ -91,18 +116,6 @@ const DEFAULT_CONFIG: QueueConfig = {
   maxRetryAttempts: 3,
   retryDelay: 1000,
 };
-
-/**
- * Events emitted by the QueueContext
- */
-export enum QueueEvents {
-  STATE_CHANGED = 'state_changed',
-  ERROR = 'error',
-  OPERATION_COMPLETED = 'operation_completed',
-  BATCH_LOADED = 'batch_loaded',
-  TRACK_CHANGED = 'track_changed',
-  PLAYBACK_STATE_CHANGED = 'playback_state_changed',
-}
 
 /**
  * Manages the queue state and operations
@@ -168,6 +181,31 @@ export class QueueContext {
       }));
 
       this.eventEmitter.emit(QueueEvents.TRACK_CHANGED, event.nextTrack);
+
+      // Get the track details and update recently played
+      try {
+        const currentTrack = await TrackPlayer.getTrack(event.nextTrack);
+        if (currentTrack && currentTrack.reciterId && currentTrack.surahId) {
+          const reciter = await getReciterById(currentTrack.reciterId);
+          const surah = getSurahById(parseInt(currentTrack.surahId, 10));
+          if (reciter && surah) {
+            this.currentReciter = reciter;
+            const {addRecentTrack} = useRecentlyPlayedStore.getState();
+            console.log(
+              `[QueueContext] TrackChanged: Adding ${reciter.name} - ${surah.name} to recent tracks`,
+            );
+            addRecentTrack(
+              reciter,
+              surah,
+              0, // Reset progress for new track
+              currentTrack.duration || 0,
+              currentTrack.rewayatId || reciter.rewayat[0]?.id, // Use track's rewayat or fallback
+            );
+          }
+        }
+      } catch (error) {
+        console.error('[QueueContext] Error updating recent tracks:', error);
+      }
 
       // Check if we need to load more tracks
       if (this.currentReciter) {
@@ -278,12 +316,13 @@ export class QueueContext {
    * @param event - Event to subscribe to
    * @param handler - Event handler
    */
-  public subscribe(
-    event: QueueEvents,
-    handler: (data: any) => void,
+  public subscribe<E extends QueueEvents>(
+    event: E,
+    handler: (data: EventData[E]) => void,
   ): () => void {
-    this.eventEmitter.on(event, handler);
-    return () => this.eventEmitter.off(event, handler);
+    this.eventEmitter.on(event, handler as (data: unknown) => void);
+    return () =>
+      this.eventEmitter.off(event, handler as (data: unknown) => void);
   }
 
   /**
