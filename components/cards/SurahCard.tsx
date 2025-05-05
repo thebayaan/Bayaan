@@ -33,6 +33,9 @@ interface SurahCardProps {
   onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
+  isLoading?: boolean;
+  enableHaptics?: boolean;
+  enableAnimation?: boolean;
 }
 
 const AnimatedTouchableOpacity =
@@ -48,46 +51,52 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   onOptionsPress,
   style,
   isLoved = false,
+  enableHaptics = false,
+  enableAnimation = false,
 }) => {
   const {theme} = useTheme();
 
-  // Animation values
-  const scale = useSharedValue(1);
+  // --- Conditional Animation Setup ---
+  const scale = useSharedValue(enableAnimation ? 1 : 1);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{scale: scale.value}],
-    };
-  });
-
-  const handleCardPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress();
-  };
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: enableAnimation ? [{scale: scale.value}] : [],
+  }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.95, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
+    if (enableAnimation) {
+      scale.value = withSpring(0.95, {
+        damping: 20,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
+    if (enableAnimation) {
+      scale.value = withSpring(1, {
+        damping: 20,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    }
+  };
+  // --- End Conditional Animation Setup ---
+
+  const handleCardPress = () => {
+    if (enableHaptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress();
   };
 
-  const getGradientColors = (): [string, string] => {
+  const gradientColors = React.useMemo((): [string, string] => {
     const baseColor = Color(color);
     const gradientStart = baseColor.alpha(0.15).toString();
     const gradientEnd = baseColor.alpha(0.05).toString();
     return [gradientStart, gradientEnd];
-  };
-
+  }, [color]);
   const styles = StyleSheet.create({
     container: {
       width: moderateScale(120),
@@ -206,26 +215,41 @@ export const SurahCard: React.FC<SurahCardProps> = ({
 
   const handleOptionsPressWrapper = (e: GestureResponderEvent) => {
     e.stopPropagation();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (enableHaptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     onOptionsPress?.();
   };
 
   const handleLongPressWrapper = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (enableHaptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     onOptionsPress?.();
   };
 
+  // Choose Touchable component based on animation prop
+  const TouchableComponent = enableAnimation
+    ? AnimatedTouchableOpacity
+    : TouchableOpacity;
+
   return (
-    <AnimatedTouchableOpacity
+    <TouchableComponent
       activeOpacity={1}
-      style={[styles.container, animatedStyle, style]}
+      // Apply animated style only if animation enabled
+      style={
+        enableAnimation
+          ? [styles.container, animatedStyle, style]
+          : [styles.container, style]
+      }
       onPress={handleCardPress}
       onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
       delayLongPress={500}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
+      // Conditionally add animation handlers
+      onPressIn={enableAnimation ? handlePressIn : undefined}
+      onPressOut={enableAnimation ? handlePressOut : undefined}>
       <LinearGradient
-        colors={getGradientColors() as [string, string]}
+        colors={gradientColors as [string, string]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={StyleSheet.absoluteFill}
@@ -288,6 +312,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           />
         </TouchableOpacity>
       )}
-    </AnimatedTouchableOpacity>
+    </TouchableComponent>
   );
 };
