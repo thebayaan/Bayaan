@@ -41,19 +41,34 @@ Bayaan uses a Git-based version management system described in detail in [VERSIO
 
 ## Android Deployment
 
+### Android Signing Configuration
+
+Bayaan uses an Expo Config Plugin (`withAndroidSigning.js` in the project root) to automatically manage Android signing configuration. The plugin:
+
+- Adds proper signing configurations to `android/app/build.gradle`
+- Ensures correct signing for release builds
+- Maintains configuration even when native projects are regenerated
+
+This approach eliminates the need for an external `signing.gradle` file that was previously used.
+
 ### Build Android App Bundle
 
-1. Navigate to the android directory:
+1. First, generate a fresh native build with Expo:
+   ```bash
+   expo prebuild --platform android --clean
+   ```
+
+2. Navigate to the android directory:
    ```bash
    cd android
    ```
 
-2. Build the release bundle:
+3. Build the release bundle:
    ```bash
    ./gradlew bundleRelease
    ```
 
-3. The AAB will be located at:
+4. The AAB will be located at:
    ```
    app/build/outputs/bundle/release/app-release.aab
    ```
@@ -74,6 +89,12 @@ The upload keystore is stored at:
 ```
 ~/Documents/app-credentials/bayaan/keystore/bayaan-upload-key.keystore
 ```
+
+Keystore credentials are managed securely through:
+- **Keystore path**: Referenced via `BAYAAN_UPLOAD_STORE_FILE` in `~/.gradle/gradle.properties`
+- **Keystore password**: Set as `BAYAAN_UPLOAD_STORE_PASSWORD` in `~/.gradle/gradle.properties`
+- **Key alias**: Set as `BAYAAN_UPLOAD_KEY_ALIAS` in `~/.gradle/gradle.properties` (defaults to 'upload')
+- **Key password**: Set as `BAYAAN_UPLOAD_KEY_PASSWORD` in `~/.gradle/gradle.properties`
 
 For detailed information on keystore management, refer to:
 ```
@@ -147,8 +168,10 @@ This requires Fastlane to be set up with appropriate configuration.
 
 If you encounter "wrong signing key" errors:
 1. Verify you're using the correct keystore
-2. Check keystore-info.txt for correct credentials
-3. If needed, request an upload key reset in Google Play Console
+2. Check that your `~/.gradle/gradle.properties` has the correct credentials
+3. Ensure `app.json` and `app.config.js` both include the `withAndroidSigning.js` plugin
+4. Try running `expo prebuild --platform android --clean` to regenerate the native project
+5. If needed, request an upload key reset in Google Play Console
 
 ### iOS Provisioning Issues
 
@@ -185,7 +208,9 @@ Keystore credentials are managed securely through:
 - **Keystore file**: Stored at `~/Documents/app-credentials/bayaan/keystore/bayaan-upload-key.keystore`
 - **Passwords**: Stored in `~/.gradle/gradle.properties` using variables:
   ```
+  BAYAAN_UPLOAD_STORE_FILE=/path/to/keystore/bayaan-upload-key.keystore
   BAYAAN_UPLOAD_STORE_PASSWORD=your_keystore_password
+  BAYAAN_UPLOAD_KEY_ALIAS=upload
   BAYAAN_UPLOAD_KEY_PASSWORD=your_key_password
   ```
 
@@ -197,11 +222,14 @@ This keeps sensitive credentials outside the project repository while maintainin
 2. **Convenience**: No need to enter passwords each time you build
 3. **Organized**: Keystore information is well-documented
 4. **Flexibility**: Environment variables can override gradle.properties if needed
+5. **Resilience**: Expo config plugin maintains signing configuration even if native files are regenerated
 
 ### For CI/CD Integration
 
 For CI/CD integration, set environment variables in your build system:
 ```
+BAYAAN_UPLOAD_STORE_FILE
 BAYAAN_UPLOAD_STORE_PASSWORD
+BAYAAN_UPLOAD_KEY_ALIAS
 BAYAAN_UPLOAD_KEY_PASSWORD
 ``` 
