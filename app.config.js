@@ -149,6 +149,7 @@ module.exports = {
           sounds: [],
         },
       ],
+      './withAndroidSigning.js',
     ],
   },
 };
