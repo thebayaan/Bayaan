@@ -21,6 +21,9 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface SurahCardProps {
   id: number;
@@ -36,6 +39,8 @@ interface SurahCardProps {
   isLoading?: boolean;
   enableHaptics?: boolean;
   enableAnimation?: boolean;
+  reciterId?: string;
+  rewayatId?: string;
 }
 
 const AnimatedTouchableOpacity =
@@ -53,8 +58,39 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   isLoved = false,
   enableHaptics = false,
   enableAnimation = false,
+  reciterId,
+  rewayatId,
 }) => {
   const {theme} = useTheme();
+
+  // Get necessary state slices from player store
+  const playbackStatus = usePlayerStore(state => state.playback.state);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const tracks = usePlayerStore(state => state.queue.tracks);
+
+  // Check if this specific track is playing
+  const isCurrentlyPlaying = React.useMemo(() => {
+    // Get current track
+    const currentTrack =
+      tracks && currentIndex >= 0 && currentIndex < tracks.length
+        ? tracks[currentIndex]
+        : null;
+
+    // Check if this is the active track (regardless of play state)
+    if (!reciterId || !currentTrack) return false;
+
+    // For the same reciter and surah, we need to also check rewayatId if present
+    const rewayatMatches =
+      rewayatId && currentTrack.rewayatId
+        ? rewayatId === currentTrack.rewayatId
+        : true;
+
+    return (
+      currentTrack.reciterId === reciterId &&
+      currentTrack.surahId === id.toString() &&
+      rewayatMatches
+    );
+  }, [reciterId, id, rewayatId, currentIndex, tracks]);
 
   // --- Conditional Animation Setup ---
   const scale = useSharedValue(enableAnimation ? 1 : 1);
@@ -211,6 +247,15 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       borderRadius: moderateScale(8),
       backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
+    nowPlayingContainer: {
+      position: 'absolute',
+      bottom: moderateScale(6),
+      right: moderateScale(6),
+      width: moderateScale(24),
+      height: moderateScale(24),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
   });
 
   const handleOptionsPressWrapper = (e: GestureResponderEvent) => {
@@ -299,18 +344,35 @@ export const SurahCard: React.FC<SurahCardProps> = ({
         </View>
       </View>
 
-      {onOptionsPress && (
+      {/* Conditional Rendering: NowPlayingIndicator or Options Button */}
+      {isCurrentlyPlaying ? (
         <TouchableOpacity
-          style={styles.optionsButton}
-          onPress={handleOptionsPressWrapper}
+          style={styles.nowPlayingContainer}
+          onPress={onOptionsPress ? handleOptionsPressWrapper : undefined}
           activeOpacity={0.7}>
-          <Icon
-            name="more-horizontal"
-            type="feather"
-            size={moderateScale(16)}
-            color={theme.colors.textSecondary}
+          <NowPlayingIndicator
+            isPlaying={
+              playbackStatus === TrackPlayerState.Playing ||
+              playbackStatus === TrackPlayerState.Buffering
+            }
+            barCount={3}
+            surahId={id}
           />
         </TouchableOpacity>
+      ) : (
+        onOptionsPress && (
+          <TouchableOpacity
+            style={styles.optionsButton}
+            onPress={handleOptionsPressWrapper}
+            activeOpacity={0.7}>
+            <Icon
+              name="more-horizontal"
+              type="feather"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )
       )}
     </TouchableComponent>
   );

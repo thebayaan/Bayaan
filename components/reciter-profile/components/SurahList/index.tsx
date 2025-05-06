@@ -18,6 +18,7 @@ interface UpdatedSurahListProps extends SurahListProps {
   viewMode: ReciterProfileViewMode;
   getColorForSurah: (id: number) => string;
   sortOption: ReciterProfileSortOption;
+  rewayatId?: string; // Add rewayatId prop
 }
 
 // Shared ItemSeparator component
@@ -49,6 +50,7 @@ export const SurahList = React.forwardRef<
       contentContainerStyle,
       viewMode,
       getColorForSurah,
+      rewayatId,
     },
     ref,
   ) => {
@@ -69,6 +71,8 @@ export const SurahList = React.forwardRef<
           style={styles.surahCard}
           isLoved={isLoved(reciterId, item.id.toString())}
           onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
+          reciterId={reciterId}
+          rewayatId={rewayatId}
         />
       ),
       [
@@ -78,6 +82,7 @@ export const SurahList = React.forwardRef<
         isLoved,
         reciterId,
         onOptionsPress,
+        rewayatId,
       ],
     );
 
@@ -90,9 +95,10 @@ export const SurahList = React.forwardRef<
           reciterId={reciterId}
           isLoved={isLoved(reciterId, item.id.toString())}
           onOptionsPress={onOptionsPress}
+          rewayatId={rewayatId}
         />
       ),
-      [onSurahPress, reciterId, isLoved, onOptionsPress],
+      [onSurahPress, reciterId, isLoved, onOptionsPress, rewayatId],
     );
 
     // Shared ListHeader to avoid re-rendering issues

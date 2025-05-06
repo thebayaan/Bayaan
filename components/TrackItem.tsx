@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useMemo} from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -9,6 +9,9 @@ import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import Color from 'color';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface TrackItemProps {
   reciterId: string;
@@ -24,6 +27,32 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const styles = createStyles(theme);
     const [reciter, setReciter] = useState<Reciter | null>(null);
     const [rewayat, setRewayat] = useState<Rewayat | null>(null);
+
+    // Get player state
+    const playbackStatus = usePlayerStore(state => state.playback.state);
+    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+    const tracks = usePlayerStore(state => state.queue.tracks);
+
+    // Check if this item is the currently active track
+    const isCurrentlyPlaying = useMemo(() => {
+      const currentTrack =
+        tracks && currentIndex >= 0 && currentIndex < tracks.length
+          ? tracks[currentIndex]
+          : null;
+
+      if (!reciterId || !currentTrack || !surahId) return false;
+
+      const rewayatMatches =
+        rewayatId && currentTrack.rewayatId
+          ? rewayatId === currentTrack.rewayatId
+          : !rewayatId && !currentTrack.rewayatId; // Match if both are undefined/null
+
+      return (
+        currentTrack.reciterId === reciterId &&
+        currentTrack.surahId === surahId && // surahId is already string here
+        rewayatMatches
+      );
+    }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
 
     useEffect(() => {
       let mounted = true;
@@ -66,6 +95,11 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       );
     };
 
+    const handlePlayButtonPress = (e: any) => {
+      e.stopPropagation(); // Prevent triggering onPress of the main item
+      onPlayPress?.();
+    };
+
     return (
       <TouchableOpacity
         activeOpacity={0.99}
@@ -78,28 +112,48 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
             style={styles.reciterImage}
           />
         </View>
+
         <View style={styles.trackInfo}>
           <View style={styles.surahNameContainer}>
             <View style={styles.surahTextContainer}>
-              <Text style={styles.surahName}>
-                {surah.id + '. ' + surah.name}
-              </Text>
+              <View style={styles.surahNameRow}>
+                {(onPlayPress || isCurrentlyPlaying) && (
+                  <TouchableOpacity
+                    style={styles.playIndicatorContainer}
+                    onPress={handlePlayButtonPress}
+                    activeOpacity={0.7}>
+                    {isCurrentlyPlaying ? (
+                      <NowPlayingIndicator
+                        isPlaying={
+                          playbackStatus === TrackPlayerState.Playing ||
+                          playbackStatus === TrackPlayerState.Buffering
+                        }
+                        surahId={surah.id}
+                        barCount={3}
+                        barWidth={moderateScale(2.5)}
+                        gap={moderateScale(1.5)}
+                      />
+                    ) : (
+                      <Icon
+                        name="play-circle"
+                        type="feather"
+                        size={moderateScale(18)}
+                        color={theme.colors.primary}
+                      />
+                    )}
+                  </TouchableOpacity>
+                )}
+                <Text style={styles.surahName}>
+                  {surah.id + '. ' + surah.name}
+                </Text>
+              </View>
               <Text style={styles.reciterName}>{reciter.name}</Text>
               {renderRewayatBadge()}
             </View>
+
             <Text style={styles.surahGlyph}>{surahGlyph}</Text>
           </View>
         </View>
-        {onPlayPress && (
-          <TouchableOpacity onPress={onPlayPress}>
-            <Icon
-              name="play-circle"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity>
-        )}
       </TouchableOpacity>
     );
   },
@@ -134,8 +188,13 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
     },
     surahTextContainer: {
-      flex: 1,
-      marginRight: moderateScale(12),
+      flexShrink: 1,
+      marginRight: moderateScale(8),
+    },
+    surahNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: moderateScale(1),
     },
     surahName: {
       fontSize: moderateScale(14),
@@ -170,5 +229,10 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
       textTransform: 'capitalize',
+    },
+    playIndicatorContainer: {
+      marginRight: moderateScale(6),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

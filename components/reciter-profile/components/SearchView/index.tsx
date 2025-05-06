@@ -80,9 +80,10 @@ export const SearchView: React.FC<SearchViewProps> = ({
         reciterId={reciterId}
         isLoved={isLoved(reciterId, item.id.toString())}
         onOptionsPress={onOptionsPress}
+        rewayatId={selectedRewayatId}
       />
     ),
-    [onSurahPress, reciterId, isLoved, onOptionsPress],
+    [onSurahPress, reciterId, isLoved, onOptionsPress, selectedRewayatId],
   );
 
   // Render card item
@@ -102,6 +103,8 @@ export const SearchView: React.FC<SearchViewProps> = ({
         style={styles.surahCard}
         isLoved={isLoved(reciterId, item.id.toString())}
         onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
+        reciterId={reciterId}
+        rewayatId={selectedRewayatId}
       />
     ),
     [
@@ -111,6 +114,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       isLoved,
       reciterId,
       onOptionsPress,
+      selectedRewayatId,
     ],
   );
 

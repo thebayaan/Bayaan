@@ -76,6 +76,7 @@ export const QueueList: React.FC<QueueListProps> = ({
             <TrackItem
               reciterId={track.reciterId}
               surahId={track.surahId || ''}
+              rewayatId={track.rewayatId}
               onPress={() => onQueueItemPress(index)}
             />
             <TouchableOpacity
