@@ -221,7 +221,7 @@ export const RecentReciterCard = ({
       }
 
       // Create tracks for all available surahs
-      const tracks = await createTracksForReciter(
+      const reciterTracks = await createTracksForReciter(
         reciter,
         allSurahsForRewayat,
         rewayatToUseId,
@@ -229,8 +229,8 @@ export const RecentReciterCard = ({
 
       // Reorder tracks so the selected one is first
       const reorderedTracks = [
-        ...tracks.slice(startIndex),
-        ...tracks.slice(0, startIndex),
+        ...reciterTracks.slice(startIndex),
+        ...reciterTracks.slice(0, startIndex),
       ];
 
       const startPosition =
