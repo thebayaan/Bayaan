@@ -335,7 +335,7 @@ export const RecentReciterCard = ({
       alignItems: 'center',
       marginTop: 'auto',
       paddingTop: moderateScale(4),
-      backgroundColor: Color(theme.colors.primary).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.06).toString(),
       borderRadius: moderateScale(8),
       paddingVertical: moderateScale(3),
       paddingHorizontal: moderateScale(6),
@@ -343,7 +343,7 @@ export const RecentReciterCard = ({
       width: moderateScale(75),
       alignSelf: 'flex-start',
       borderWidth: 1,
-      borderColor: Color(theme.colors.primary).alpha(0.1).toString(),
+      borderColor: Color(theme.colors.border).alpha(0.12).toString(),
     },
     sliderContainer: {
       height: moderateScale(5),
@@ -392,9 +392,9 @@ export const RecentReciterCard = ({
       )}
       <LinearGradient
         colors={[
-          Color(theme.colors.primary).alpha(0.05).toString(),
-          Color(theme.colors.background).alpha(0.02).toString(),
-          Color(theme.colors.primary).alpha(0.08).toString(),
+          Color(theme.colors.textSecondary).alpha(0.03).toString(),
+          Color(theme.colors.background).alpha(0.01).toString(),
+          Color(theme.colors.textSecondary).alpha(0.05).toString(),
         ]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
@@ -446,11 +446,11 @@ export const RecentReciterCard = ({
             <Slider
               value={currentSliderProgress}
               disabled={true}
-              minimumTrackTintColor={Color(theme.colors.primary)
-                .alpha(0.9)
+              minimumTrackTintColor={Color(theme.colors.textSecondary)
+                .alpha(0.45)
                 .toString()}
-              maximumTrackTintColor={Color(theme.colors.primary)
-                .alpha(0.1)
+              maximumTrackTintColor={Color(theme.colors.border)
+                .alpha(0.2)
                 .toString()}
               trackStyle={{
                 height: moderateScale(3.5),
