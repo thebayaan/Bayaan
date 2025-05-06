@@ -103,17 +103,30 @@ For detailed information on keystore management, refer to:
 
 ## iOS Deployment
 
+### iOS Team Configuration
+
+Bayaan uses an Expo Config Plugin (`withIOSTeam.js` in the project root) to automatically maintain the iOS Team ID configuration. This plugin:
+
+- Ensures the correct Apple Developer Team ID ('S4W5Q2L53W') is set in the Xcode project
+- Maintains this configuration even when native projects are regenerated with `expo prebuild`
+- Eliminates manual steps to reconfigure team settings in Xcode
+
 ### Build iOS IPA
 
-1. Open the project in Xcode:
+1. First, generate a fresh native build with Expo:
+   ```bash
+   expo prebuild --platform ios --clean
+   ```
+
+2. Open the project in Xcode:
    ```bash
    cd ios
    open Bayaan.xcworkspace
    ```
 
-2. Select "Generic iOS Device" as the build destination
+3. Select "Generic iOS Device" as the build destination
 
-3. **IMPORTANT**: Create a fresh build before archiving to ensure version changes are applied:
+4. **IMPORTANT**: Create a fresh build before archiving to ensure version changes are applied:
    ```bash
    # First, clean the build
    Product > Clean Build Folder (Shift+Command+K)
@@ -122,12 +135,12 @@ For detailed information on keystore management, refer to:
    Product > Build (Command+B)
    ```
 
-4. Once the build succeeds, proceed to archive:
+5. Once the build succeeds, proceed to archive:
    ```bash
    Product > Archive
    ```
 
-5. When archiving completes, the Organizer window will appear with your new archive
+6. When archiving completes, the Organizer window will appear with your new archive
 
 ### Upload to App Store Connect
 
@@ -178,6 +191,11 @@ If you encounter "wrong signing key" errors:
 1. Verify your Apple Developer Program membership is active
 2. Check that provisioning profiles are up to date
 3. Ensure your signing certificate hasn't expired
+4. If team settings are reset despite using the plugin:
+   - Check that both `app.json` and `app.config.js` include the `withIOSTeam.js` plugin
+   - Verify that the Team ID in `withIOSTeam.js` matches your Apple Developer Team ID
+   - Try running `expo prebuild --platform ios --clean` to regenerate iOS files
+   - As a last resort, manually set the team in Xcode: Target > Signing & Capabilities > Team
 
 ### Version Not Updated in Build
 
