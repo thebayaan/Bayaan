@@ -150,6 +150,7 @@ module.exports = {
         },
       ],
       './withAndroidSigning.js',
+      './withIOSTeam.js',
     ],
   },
 };
