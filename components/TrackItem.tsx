@@ -1,5 +1,10 @@
 import React, {useEffect, useState, useMemo} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  GestureResponderEvent,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -95,7 +100,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       );
     };
 
-    const handlePlayButtonPress = (e: any) => {
+    const handlePlayButtonPress = (e: GestureResponderEvent) => {
       e.stopPropagation(); // Prevent triggering onPress of the main item
       onPlayPress?.();
     };
