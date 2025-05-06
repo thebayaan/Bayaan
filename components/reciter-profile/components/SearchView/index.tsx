@@ -308,7 +308,6 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(9),
       fontFamily: theme.fonts.medium,
       color: theme.colors.textSecondary,
-      opacity: 0.7,
       marginTop: moderateScale(1),
       textAlign: 'center',
       textTransform: 'capitalize',
