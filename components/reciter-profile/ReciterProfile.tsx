@@ -580,6 +580,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       viewMode,
       sortOption,
       getColorForSurah,
+      rewayatId: selectedRewayat?.id,
       maintainVisibleContentPosition: {
         minIndexForVisible: 0,
         autoscrollToTopThreshold: 10,

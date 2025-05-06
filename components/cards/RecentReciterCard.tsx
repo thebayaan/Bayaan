@@ -16,7 +16,9 @@ import {
 import {createTracksForReciter} from '@/utils/track';
 import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {QueueContext} from '@/services/queue/QueueContext';
-import TrackPlayer from 'react-native-track-player';
+import TrackPlayer, {
+  State as TrackPlayerState,
+} from 'react-native-track-player';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {BlurView} from '@react-native-community/blur';
 import Animated, {
@@ -25,6 +27,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import {Surah} from '@/data/surahData';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -46,7 +50,6 @@ export const RecentReciterCard = ({
   imageUrl,
   reciterName,
   surahName,
-  trackId,
   reciterId,
   surahId,
   progress,
@@ -55,10 +58,35 @@ export const RecentReciterCard = ({
   rewayatId,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
-  const {queue, updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
-  const isCurrentTrack = queue.tracks[queue.currentIndex]?.id === trackId;
+
+  // Get necessary state slices from player store
+  const playbackStatus = usePlayerStore(state => state.playback.state);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const tracks = usePlayerStore(state => state.queue.tracks);
+
+  // Check if this specific card represents the currently active track in the player
+  const isCurrentlyPlaying = useMemo(() => {
+    const currentTrack =
+      tracks && currentIndex >= 0 && currentIndex < tracks.length
+        ? tracks[currentIndex]
+        : null;
+
+    if (!reciterId || !currentTrack || !surahId) return false;
+
+    const rewayatMatches =
+      rewayatId && currentTrack.rewayatId
+        ? rewayatId === currentTrack.rewayatId
+        : !rewayatId && !currentTrack.rewayatId; // Match if both are undefined/null
+
+    return (
+      currentTrack.reciterId === reciterId &&
+      currentTrack.surahId === surahId.toString() &&
+      rewayatMatches
+    );
+  }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
 
   // Animation values
   const scale = useSharedValue(1);
@@ -84,18 +112,19 @@ export const RecentReciterCard = ({
   };
 
   const trackProgress = useProgress(
-    isCurrentTrack && isRecent ? 10000 : undefined,
+    isCurrentlyPlaying && isRecent ? 1000 : undefined,
   );
 
   // Calculate time remaining
   const timeRemaining = useMemo(() => {
-    const effectiveDuration = isCurrentTrack
-      ? trackProgress.duration
-      : duration;
+    const effectiveDuration =
+      isCurrentlyPlaying && trackProgress.duration > 0
+        ? trackProgress.duration
+        : duration;
     let remainingSeconds = effectiveDuration;
 
     if (effectiveDuration > 0) {
-      if (isCurrentTrack) {
+      if (isCurrentlyPlaying && trackProgress.position >= 0) {
         remainingSeconds = effectiveDuration - trackProgress.position;
       } else {
         remainingSeconds = effectiveDuration * (1 - progress);
@@ -111,16 +140,16 @@ export const RecentReciterCard = ({
     }
     return `${totalMinutes}m`;
   }, [
-    isCurrentTrack,
+    isCurrentlyPlaying,
     trackProgress.duration,
     trackProgress.position,
     duration,
     progress,
   ]);
 
-  // Calculate current progress value
-  const currentProgress =
-    isCurrentTrack && trackProgress.duration > 0
+  // Calculate current progress value for the slider
+  const currentSliderProgress =
+    isCurrentlyPlaying && trackProgress.duration > 0
       ? trackProgress.position / trackProgress.duration
       : progress;
 
@@ -204,9 +233,10 @@ export const RecentReciterCard = ({
         ...tracks.slice(0, startIndex),
       ];
 
-      const startPosition = isCurrentTrack
-        ? trackProgress.position
-        : progress * duration;
+      const startPosition =
+        isCurrentlyPlaying && trackProgress.position >= 0
+          ? trackProgress.position
+          : progress * duration;
 
       await updateQueue(reorderedTracks, 0);
       // Seek BEFORE playing
@@ -225,7 +255,7 @@ export const RecentReciterCard = ({
   }, [
     reciterId,
     surahId,
-    isCurrentTrack,
+    isCurrentlyPlaying,
     trackProgress.position,
     progress,
     duration,
@@ -327,7 +357,11 @@ export const RecentReciterCard = ({
       minWidth: moderateScale(4),
       textAlign: 'right',
     },
-    playButton: {
+    playButtonContainer: {
+      width: moderateScale(14),
+      height: moderateScale(14),
+      justifyContent: 'center',
+      alignItems: 'center',
       marginBottom: 2,
     },
   });
@@ -388,16 +422,29 @@ export const RecentReciterCard = ({
           <View style={styles.progressSection}>
             <TouchableOpacity
               activeOpacity={0.99}
-              style={styles.playButton}
+              style={styles.playButtonContainer}
               onPress={handlePress}>
-              <PlayIcon
-                color={theme.colors.text}
-                size={moderateScale(12)}
-                filled={isCurrentTrack}
-              />
+              {isCurrentlyPlaying ? (
+                <NowPlayingIndicator
+                  isPlaying={
+                    playbackStatus === TrackPlayerState.Playing ||
+                    playbackStatus === TrackPlayerState.Buffering
+                  }
+                  surahId={surahId}
+                  barCount={3}
+                  barWidth={moderateScale(2.5)}
+                  gap={moderateScale(1.5)}
+                />
+              ) : (
+                <PlayIcon
+                  color={theme.colors.text}
+                  size={moderateScale(12)}
+                  filled={false}
+                />
+              )}
             </TouchableOpacity>
             <Slider
-              value={currentProgress}
+              value={currentSliderProgress}
               disabled={true}
               minimumTrackTintColor={Color(theme.colors.primary)
                 .alpha(0.9)

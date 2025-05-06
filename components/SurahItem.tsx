@@ -20,6 +20,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import {NowPlayingIndicator} from './NowPlayingIndicator';
 
 interface SurahItemProps {
   item: Surah;
@@ -29,6 +32,7 @@ interface SurahItemProps {
   onOptionsPress?: (item: Surah) => void;
   enableHaptics?: boolean;
   enableAnimation?: boolean;
+  rewayatId?: string;
 }
 
 // Create Animated component
@@ -39,13 +43,43 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   ({
     item,
     onPress,
+    reciterId,
     isLoved = false,
     onOptionsPress,
     enableHaptics = false,
     enableAnimation = false,
+    rewayatId,
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
+
+    // Get necessary state slices from player store
+    const playbackStatus = usePlayerStore(state => state.playback.state);
+    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+    const tracks = usePlayerStore(state => state.queue.tracks);
+
+    // Determine if this specific item is currently playing
+    const isCurrentlyPlaying = React.useMemo(() => {
+      // Check if playback is active
+      const isActive =
+        playbackStatus === TrackPlayerState.Playing ||
+        playbackStatus === TrackPlayerState.Buffering;
+
+      // Ensure valid index and track exists
+      const currentTrack =
+        tracks && currentIndex >= 0 && currentIndex < tracks.length
+          ? tracks[currentIndex]
+          : null;
+
+      if (!reciterId || !currentTrack || !isActive) return false;
+
+      // Check if the current track matches this item
+      const isCorrectTrack =
+        currentTrack.reciterId === reciterId &&
+        currentTrack.surahId === item.id.toString();
+
+      return isCorrectTrack; // No need to check isActive again, already done
+    }, [reciterId, item.id, playbackStatus, currentIndex, tracks]);
 
     // Animation value
     const scale = useSharedValue(enableAnimation ? 1 : 1);
@@ -117,18 +151,21 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     return (
       <TouchableComponent
         activeOpacity={0.99}
-        style={
-          enableAnimation ? [styles.surahItem, animatedStyle] : styles.surahItem
-        }
+        style={[
+          styles.surahItem,
+          animatedStyle,
+          // Optional: Add subtle highlight if playing?
+          // isCurrentlyPlaying && styles.playingHighlight,
+        ]}
         onPress={handlePress}
         onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
         delayLongPress={500}
         onPressIn={enableAnimation ? handlePressIn : undefined}
         onPressOut={enableAnimation ? handlePressOut : undefined}
         accessibilityRole="button"
-        accessibilityLabel={`Surah ${item.name}, ${item.translated_name_english}, ${item.verses_count} verses`}
+        accessibilityLabel={`Surah ${item.name}, ${item.translated_name_english}, ${item.verses_count} verses${isCurrentlyPlaying ? ', currently playing' : ''}`}
         accessibilityHint={
-          onOptionsPress
+          onOptionsPress && !isCurrentlyPlaying
             ? 'Tap to view Surah. Long press or tap options button for more actions.'
             : 'Tap to view Surah.'
         }>
@@ -181,22 +218,70 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             </Text>
           </View>
         </View>
-        {onOptionsPress && (
-          <TouchableOpacity
-            style={styles.optionsButton}
-            onPress={handleOptionsPress}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="More options"
-            accessibilityHint="Opens menu with additional actions for this Surah">
-            <Icon
-              name="more-horizontal"
-              type="feather"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-        )}
+        {/* Conditional Rendering: Indicator or Options Button */}
+        <View style={styles.rightActionContainer}>
+          {/* Check if this specific track is the current one loaded in the player */}
+          {((): boolean => {
+            // Get current track
+            const currentTrack =
+              tracks && currentIndex >= 0 && currentIndex < tracks.length
+                ? tracks[currentIndex]
+                : null;
+
+            // Check if this is the active track (regardless of play state)
+            if (!reciterId || !currentTrack) return false;
+
+            // For the same reciter and surah, we need to also check rewayatId if present
+            // This ensures only the exact track being played shows the indicator
+            const rewayatMatches =
+              // If the component has a rewayatId prop and the current track has a rewayatId,
+              // make sure they match
+              rewayatId && currentTrack.rewayatId
+                ? rewayatId === currentTrack.rewayatId
+                : // If component doesn't specify rewayatId, or track doesn't have one,
+                  // we'll assume a match based on reciter and surah only
+                  true;
+
+            return (
+              currentTrack.reciterId === reciterId &&
+              currentTrack.surahId === item.id.toString() &&
+              rewayatMatches
+            );
+          })() ? (
+            // This is the active track, show NowPlayingIndicator
+            <TouchableOpacity
+              style={styles.optionsButton}
+              onPress={handleOptionsPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="More options"
+              accessibilityHint="Opens menu with additional actions for this Surah">
+              <NowPlayingIndicator
+                isPlaying={
+                  playbackStatus === TrackPlayerState.Playing ||
+                  playbackStatus === TrackPlayerState.Buffering
+                }
+                barCount={3}
+                surahId={Number(item.id)}
+              />
+            </TouchableOpacity>
+          ) : onOptionsPress ? (
+            <TouchableOpacity
+              style={styles.optionsButton}
+              onPress={handleOptionsPress}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="More options"
+              accessibilityHint="Opens menu with additional actions for this Surah">
+              <Icon
+                name="more-horizontal"
+                type="feather"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </TouchableComponent>
     );
   },
@@ -214,6 +299,9 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       position: 'relative',
     },
+    // playingHighlight: {
+    //   backgroundColor: Color(theme.colors.primary).alpha(0.05).toString(),
+    // },
     surahGlyphContainer: {
       width: moderateScale(70),
       height: moderateScale(50),
@@ -264,8 +352,14 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
     },
-    optionsButton: {
-      padding: moderateScale(8),
+    rightActionContainer: {
+      width: moderateScale(40),
+      height: moderateScale(40),
+      justifyContent: 'center',
+      alignItems: 'center',
       marginLeft: moderateScale(8),
+    },
+    optionsButton: {
+      // Removed padding here, use container size
     },
   });
