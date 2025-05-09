@@ -10,12 +10,14 @@ import {LegendList} from '@legendapp/list';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {BrowseReciterCard} from './BrowseReciterCard';
+import Animated, {FadeInDown, FadeOut} from 'react-native-reanimated';
 
 interface BrowseGridProps {
   reciters: Reciter[];
   onReciterPress: (reciter: Reciter) => void;
   theme: Theme;
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
+  onScrollBeginDrag?: () => void;
 }
 
 function createStyles(_theme: Theme) {
@@ -53,7 +55,7 @@ const createItemRows = (
 };
 
 const BrowseGrid = React.memo(
-  ({reciters, onReciterPress, theme}: BrowseGridProps) => {
+  ({reciters, onReciterPress, theme, onScrollBeginDrag}: BrowseGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
     const [isLoading] = useState(false);
 
@@ -88,15 +90,19 @@ const BrowseGrid = React.memo(
     const renderRow = useCallback(
       ({item}: {item: Reciter[]}) => (
         <View style={styles.row}>
-          {item.map(reciter => (
-            <BrowseReciterCard
+          {item.map((reciter, index) => (
+            <Animated.View
               key={reciter.id}
-              reciter={reciter}
-              onPress={() => onReciterPress(reciter)}
-              width={itemDimensions.width}
-              height={itemDimensions.height}
-              theme={theme}
-            />
+              entering={FadeInDown.duration(400).delay(index * 50)}
+              exiting={FadeOut.duration(200)}>
+              <BrowseReciterCard
+                reciter={reciter}
+                onPress={() => onReciterPress(reciter)}
+                width={itemDimensions.width}
+                height={itemDimensions.height}
+                theme={theme}
+              />
+            </Animated.View>
           ))}
           {/* Add empty placeholders for the last row if needed */}
           {item.length < numColumns &&
@@ -136,7 +142,7 @@ const BrowseGrid = React.memo(
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.gridContainer}
           estimatedItemSize={itemDimensions.height}
-          recycleItems
+          recycleItems={false}
           drawDistance={2000}
           showsVerticalScrollIndicator={false}
           ListFooterComponent={renderFooter}
@@ -144,14 +150,16 @@ const BrowseGrid = React.memo(
           waitForInitialLayout
           onEndReachedThreshold={0.5}
           maintainVisibleContentPosition
+          onScrollBeginDrag={onScrollBeginDrag}
         />
       </View>
     );
   },
   (prevProps, nextProps) =>
+    // Only re-render if reciters array reference changes
+    prevProps.reciters === nextProps.reciters &&
     prevProps.theme === nextProps.theme &&
-    prevProps.onReciterPress === nextProps.onReciterPress &&
-    prevProps.reciters.length === nextProps.reciters.length,
+    prevProps.onReciterPress === nextProps.onReciterPress,
 );
 
 BrowseGrid.displayName = 'BrowseGrid';
