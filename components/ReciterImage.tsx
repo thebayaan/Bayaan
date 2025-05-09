@@ -9,10 +9,11 @@ interface ReciterImageProps {
   imageUrl?: string;
   reciterName: string;
   style?: StyleProp<ViewStyle>;
+  profileIconSize?: number;
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({reciterName = '', style}) => {
+  ({reciterName = '', style, profileIconSize}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
@@ -62,7 +63,10 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             resizeMode="cover"
           />
         ) : (
-          <ProfileIcon color={theme.colors.light} size={moderateScale(60)} />
+          <ProfileIcon
+            color={theme.colors.light}
+            size={profileIconSize || moderateScale(20)}
+          />
         )}
       </View>
     );

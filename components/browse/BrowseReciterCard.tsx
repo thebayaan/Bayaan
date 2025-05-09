@@ -33,7 +33,7 @@ function createStyles(theme: Theme, width: number, height: number) {
       height,
       borderRadius: moderateScale(12),
       overflow: 'hidden',
-      borderWidth: 0.5,
+      // borderWidth: 0.5,
       borderColor: Color(theme.colors.border).alpha(0.15).toString(),
     },
     backgroundImageContainer: {
@@ -45,9 +45,9 @@ function createStyles(theme: Theme, width: number, height: number) {
       overflow: 'hidden',
     },
     backgroundImage: {
-      width: '100%',
-      height: '100%',
-      transform: [{scale: 1.2}],
+      width: '90%',
+      height: '90%',
+      // transform: [{scale: 1.2}],
     },
     foregroundImageContainer: {
       width: '100%',
@@ -157,6 +157,7 @@ const BrowseReciterCard = React.memo(
             imageUrl={reciter.image_url || undefined}
             reciterName={reciter.name}
             style={styles.backgroundImage}
+            profileIconSize={moderateScale(40)}
           />
           {Platform.OS === 'ios' ? (
             <BlurView
@@ -186,6 +187,7 @@ const BrowseReciterCard = React.memo(
             imageUrl={reciter.image_url || undefined}
             reciterName={reciter.name}
             style={styles.foregroundImage}
+            profileIconSize={moderateScale(40)}
           />
         </View>
 

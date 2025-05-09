@@ -186,7 +186,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             <Text style={styles.surahName}>{`${item.id}. ${item.name}`}</Text>
             {isLoved && (
               <HeartIcon
-                size={moderateScale(14)}
+                size={moderateScale(12)}
                 color={theme.colors.text}
                 filled={true}
               />
@@ -202,13 +202,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             ]}>
             {revelationPlace === 'makkah' ? (
               <MakkahIcon
-                size={moderateScale(15)}
+                size={moderateScale(13)}
                 color={theme.colors.textSecondary}
                 secondaryColor={Color(theme.colors.card).alpha(0.8).toString()}
               />
             ) : (
               <MadinahIcon
-                size={moderateScale(15)}
+                size={moderateScale(13)}
                 color={theme.colors.textSecondary}
               />
             )}
@@ -276,7 +276,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
               <Icon
                 name="more-horizontal"
                 type="feather"
-                size={moderateScale(20)}
+                size={moderateScale(18)}
                 color={theme.colors.text}
               />
             </TouchableOpacity>
@@ -294,8 +294,8 @@ const createStyles = (theme: Theme) =>
     surahItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(10),
-      paddingHorizontal: moderateScale(15),
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(12),
       backgroundColor: theme.colors.background,
       position: 'relative',
     },
@@ -303,34 +303,34 @@ const createStyles = (theme: Theme) =>
     //   backgroundColor: Color(theme.colors.primary).alpha(0.05).toString(),
     // },
     surahGlyphContainer: {
-      width: moderateScale(70),
-      height: moderateScale(50),
+      width: moderateScale(60),
+      height: moderateScale(45),
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: moderateScale(5),
+      marginRight: moderateScale(4),
     },
     surahInfoContainer: {
       flex: 1,
-      marginLeft: moderateScale(5),
+      marginLeft: moderateScale(4),
     },
     nameContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: moderateScale(6),
+      gap: moderateScale(4),
     },
     surahName: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
     surahSecondaryInfo: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
-      marginBottom: moderateScale(4),
+      marginBottom: moderateScale(3),
     },
     surahGlyph: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(20),
       fontFamily: 'SurahNames',
       color: theme.colors.text,
       textAlign: 'center',
@@ -339,25 +339,25 @@ const createStyles = (theme: Theme) =>
     locationIndicator: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: moderateScale(4),
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(2),
-      borderRadius: moderateScale(4),
+      gap: moderateScale(3),
+      paddingHorizontal: moderateScale(5),
+      paddingVertical: moderateScale(1),
+      borderRadius: moderateScale(3),
       borderWidth: 1,
       borderColor: Color(theme.colors.border).alpha(0.1).toString(),
       alignSelf: 'flex-start',
     },
     locationText: {
-      fontSize: moderateScale(10),
+      fontSize: moderateScale(9),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
     },
     rightActionContainer: {
-      width: moderateScale(40),
-      height: moderateScale(40),
+      width: moderateScale(35),
+      height: moderateScale(35),
       justifyContent: 'center',
       alignItems: 'center',
-      marginLeft: moderateScale(8),
+      marginLeft: moderateScale(6),
     },
     optionsButton: {
       // Removed padding here, use container size

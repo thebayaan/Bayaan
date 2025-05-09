@@ -64,6 +64,7 @@ export const TrackInfo = () => {
             imageUrl={currentTrack?.artwork}
             reciterName={currentTrack?.artist || ''}
             style={styles.reciterImage}
+            profileIconSize={moderateScale(20)}
           />
         </View>
         <View style={styles.trackInfo}>
