@@ -135,14 +135,14 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                         }
                         surahId={surah.id}
                         barCount={3}
-                        barWidth={moderateScale(2.5)}
-                        gap={moderateScale(1.5)}
+                        barWidth={moderateScale(2)}
+                        gap={moderateScale(1.2)}
                       />
                     ) : (
                       <Icon
                         name="play-circle"
                         type="feather"
-                        size={moderateScale(18)}
+                        size={moderateScale(16)}
                         color={theme.colors.primary}
                       />
                     )}
@@ -171,18 +171,18 @@ const createStyles = (theme: Theme) =>
     trackItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(10),
-      marginHorizontal: moderateScale(15),
-      borderRadius: moderateScale(8),
-      marginVertical: moderateScale(4),
+      paddingVertical: moderateScale(8),
+      marginHorizontal: moderateScale(12),
+      borderRadius: moderateScale(7),
+      marginVertical: moderateScale(3),
     },
     imageContainer: {
-      marginRight: moderateScale(12),
+      marginRight: moderateScale(10),
     },
     reciterImage: {
-      width: moderateScale(50),
-      height: moderateScale(50),
-      borderRadius: moderateScale(10),
+      width: moderateScale(45),
+      height: moderateScale(45),
+      borderRadius: moderateScale(8),
     },
     trackInfo: {
       flex: 1,
@@ -194,49 +194,49 @@ const createStyles = (theme: Theme) =>
     },
     surahTextContainer: {
       flexShrink: 1,
-      marginRight: moderateScale(8),
+      marginRight: moderateScale(6),
     },
     surahNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: moderateScale(1),
+      marginBottom: moderateScale(0.5),
     },
     surahName: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
     surahGlyph: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(22),
       fontFamily: 'SurahNames',
       color: theme.colors.text,
       textAlign: 'right',
     },
     reciterName: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(11),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginVertical: moderateScale(2),
+      marginVertical: moderateScale(1.5),
     },
     rewayatBadge: {
-      marginTop: moderateScale(4),
+      marginTop: moderateScale(3),
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(2),
-      borderRadius: moderateScale(4),
+      paddingHorizontal: moderateScale(5),
+      paddingVertical: moderateScale(1.5),
+      borderRadius: moderateScale(3),
       borderWidth: 1,
       borderColor: Color(theme.colors.border).alpha(0.1).toString(),
       alignSelf: 'flex-start',
     },
     rewayatText: {
-      fontSize: moderateScale(10),
+      fontSize: moderateScale(9),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
       textTransform: 'capitalize',
     },
     playIndicatorContainer: {
-      marginRight: moderateScale(6),
+      marginRight: moderateScale(5),
       justifyContent: 'center',
       alignItems: 'center',
     },

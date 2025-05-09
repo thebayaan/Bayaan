@@ -407,6 +407,7 @@ export const RecentReciterCard = ({
             imageUrl={imageUrl}
             reciterName={reciterName}
             style={styles.image}
+            profileIconSize={moderateScale(40)}
           />
         </View>
 

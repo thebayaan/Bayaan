@@ -33,6 +33,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
             imageUrl={item.image_url || undefined}
             reciterName={item.name}
             style={styles.reciterImage}
+            profileIconSize={moderateScale(20)}
           />
         </View>
         <View style={styles.reciterInfo}>
@@ -65,46 +66,46 @@ const createStyles = (theme: Theme) =>
     reciterItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(10),
-      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(18),
     },
     imageContainer: {
-      width: moderateScale(60),
-      height: moderateScale(60),
-      marginRight: moderateScale(15),
+      width: moderateScale(50),
+      height: moderateScale(50),
+      marginRight: moderateScale(12),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      borderRadius: moderateScale(10),
+      borderRadius: moderateScale(50),
       borderWidth: moderateScale(1),
       borderColor: 'transparent',
     },
     reciterImage: {
-      width: moderateScale(60),
-      height: moderateScale(60),
+      width: moderateScale(50),
+      height: moderateScale(50),
     },
     reciterInfo: {
       flex: 1,
       justifyContent: 'center',
     },
     reciterName: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(14),
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
-      marginBottom: moderateScale(2),
+      marginBottom: moderateScale(1),
     },
     reciterRewayat: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(12),
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
     },
     selectedReciterItem: {
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(10),
     },
     selectedImageContainer: {
       borderColor: theme.colors.primary,
     },
     checkmarkContainer: {
-      marginLeft: moderateScale(10),
+      marginLeft: moderateScale(8),
     },
   });
