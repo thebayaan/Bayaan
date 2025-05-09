@@ -88,13 +88,11 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     ? parseInt(currentTrack.surahId, 10)
     : 1;
 
-  // Custom backdrop for the bottom sheet
-
   return (
     <View style={styles.container}>
       <BottomSheetScrollView
         contentContainerStyle={styles.scrollContent}
-        bounces={false}
+        bounces={true}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={Platform.OS === 'android'}>
         <View style={styles.contentContainer}>
