@@ -10,7 +10,6 @@ import {LegendList} from '@legendapp/list';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {BrowseReciterCard} from './BrowseReciterCard';
-import Animated, {FadeInDown, FadeOut} from 'react-native-reanimated';
 
 interface BrowseGridProps {
   reciters: Reciter[];
@@ -90,19 +89,15 @@ const BrowseGrid = React.memo(
     const renderRow = useCallback(
       ({item}: {item: Reciter[]}) => (
         <View style={styles.row}>
-          {item.map((reciter, index) => (
-            <Animated.View
+          {item.map(reciter => (
+            <BrowseReciterCard
               key={reciter.id}
-              entering={FadeInDown.duration(400).delay(index * 50)}
-              exiting={FadeOut.duration(200)}>
-              <BrowseReciterCard
-                reciter={reciter}
-                onPress={() => onReciterPress(reciter)}
-                width={itemDimensions.width}
-                height={itemDimensions.height}
-                theme={theme}
-              />
-            </Animated.View>
+              reciter={reciter}
+              onPress={() => onReciterPress(reciter)}
+              width={itemDimensions.width}
+              height={itemDimensions.height}
+              theme={theme}
+            />
           ))}
           {/* Add empty placeholders for the last row if needed */}
           {item.length < numColumns &&
@@ -142,7 +137,7 @@ const BrowseGrid = React.memo(
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.gridContainer}
           estimatedItemSize={itemDimensions.height}
-          recycleItems={false}
+          recycleItems
           drawDistance={2000}
           showsVerticalScrollIndicator={false}
           ListFooterComponent={renderFooter}
@@ -156,10 +151,9 @@ const BrowseGrid = React.memo(
     );
   },
   (prevProps, nextProps) =>
-    // Only re-render if reciters array reference changes
-    prevProps.reciters === nextProps.reciters &&
     prevProps.theme === nextProps.theme &&
-    prevProps.onReciterPress === nextProps.onReciterPress,
+    prevProps.onReciterPress === nextProps.onReciterPress &&
+    prevProps.reciters.length === nextProps.reciters.length,
 );
 
 BrowseGrid.displayName = 'BrowseGrid';
