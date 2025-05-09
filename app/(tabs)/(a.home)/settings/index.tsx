@@ -47,7 +47,7 @@ const themeOptions: ThemeOption[] = [
 
 const settingsItems = [
   {
-    section: 'Quran Settings',
+    section: 'Quran',
     items: [
       {
         title: 'Mushaf Settings',
@@ -478,7 +478,7 @@ const createStyles = (theme: Theme) =>
       width: '100%',
     },
     settingsItemCard: {
-      backgroundColor: theme.colors.card,
+      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
       borderRadius: moderateScale(12),
       padding: moderateScale(12),
     },

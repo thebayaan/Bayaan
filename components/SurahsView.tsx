@@ -183,6 +183,7 @@ const CollectionSection = ({
         revelationPlace={item.revelation_place}
         onPress={() => onSurahPress(item)}
         color={collection.color}
+        enableAnimation
       />
     ),
     [collection.color, onSurahPress],
