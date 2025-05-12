@@ -18,8 +18,8 @@ export const lightColors = {
 
 export const darkColors = {
   ...DefaultTheme.colors,
-  background: '#06151C',
-  backgroundSecondary: '#07121a',
+  background: '#07121a',
+  backgroundSecondary: '#06151C',
   text: '#e8e8e8',
   secondary: '#1c1a1e',
   accent: '#00623a',
