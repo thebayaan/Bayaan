@@ -2,7 +2,6 @@ import React, {useCallback, useRef, useEffect, useState} from 'react';
 import {View, Text, Platform, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -224,10 +223,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    aspectRatio: 1,
-    maxWidth: MAX_PLAYER_CONTENT_HEIGHT,
-    maxHeight: MAX_PLAYER_CONTENT_HEIGHT,
-    marginTop: moderateScale(5),
+    height: '100%',
     backgroundColor: 'transparent',
   },
   list: {
