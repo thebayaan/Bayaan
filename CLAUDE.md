@@ -8,63 +8,63 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Start the development server
-yarn start
-# or
 npm start
+# or
+yarn start
 
 # Start specific platform
-yarn ios        # Run on iOS simulator (macOS only)
-yarn android    # Run on Android emulator
-yarn web        # Run on web browser
+npm run ios        # Run on iOS simulator (macOS only)
+npm run android    # Run on Android emulator
+npm run web        # Run on web browser
 
 # Reset project (clear caches)
-yarn reset-project
+npm run reset-project
 ```
 
 ### Code Quality
 
 ```bash
 # Linting
-yarn lint       # Check for linting issues
-yarn lint:fix   # Fix linting issues
+npm run lint       # Check for linting issues
+npm run lint:fix   # Fix linting issues
 
 # Formatting
-yarn format     # Format all files with Prettier
+npm run format     # Format all files with Prettier
 ```
 
 ### Testing
 
 ```bash
 # Run tests in watch mode
-yarn test
+npm test
 ```
 
 ### Version Management
 
 ```bash
 # Check current version
-yarn version:current
+npm run version:current
 
 # Bump version (semantic versioning)
-yarn version:patch  # For bug fixes (1.0.0 -> 1.0.1)
-yarn version:minor  # For new features (1.0.0 -> 1.1.0)
-yarn version:major  # For breaking changes (1.0.0 -> 2.0.0)
+npm run version:patch  # For bug fixes (1.0.0 -> 1.0.1)
+npm run version:minor  # For new features (1.0.0 -> 1.1.0)
+npm run version:major  # For breaking changes (1.0.0 -> 2.0.0)
 ```
 
 ### Asset Generation
 
 ```bash
 # Generate reciter images
-yarn generate-reciter-images
+npm run generate-reciter-images
 
 # Generate app icons
-yarn generate-icons
+npm run generate-icons
 
 # Fetch reciter data
-yarn fetch-reciters
+npm run fetch-reciters
 
 # Resize splash images
-yarn resize-splash-images
+npm run resize-splash-images
 ```
 
 ## Architecture Overview

@@ -23,6 +23,8 @@ import Animated, {
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from './NowPlayingIndicator';
+import {DownloadButton} from './DownloadButton';
+import {createTrack} from '@/utils/track';
 
 interface SurahItemProps {
   item: Surah;
@@ -33,6 +35,8 @@ interface SurahItemProps {
   enableHaptics?: boolean;
   enableAnimation?: boolean;
   rewayatId?: string;
+  showDownloadButton?: boolean;
+  reciterName?: string;
 }
 
 // Create Animated component
@@ -49,6 +53,8 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     enableHaptics = false,
     enableAnimation = false,
     rewayatId,
+    showDownloadButton = false,
+    reciterName,
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
@@ -143,6 +149,32 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       | 'makkah'
       | 'madinah';
 
+    // Create track for download functionality
+    const downloadTrack = React.useMemo(async () => {
+      if (!showDownloadButton || !reciterId || !reciterName) return null;
+      
+      try {
+        // Import the required modules for creating a track
+        const {RECITERS} = await import('@/data/reciterData');
+        const reciter = RECITERS.find(r => r.id === reciterId);
+        
+        if (!reciter) return null;
+        
+        return await createTrack(reciter, item, rewayatId);
+      } catch (error) {
+        console.error('Failed to create download track:', error);
+        return null;
+      }
+    }, [showDownloadButton, reciterId, reciterName, item, rewayatId]);
+
+    const [track, setTrack] = React.useState<any>(null);
+
+    React.useEffect(() => {
+      if (downloadTrack) {
+        downloadTrack.then(setTrack);
+      }
+    }, [downloadTrack]);
+
     // Choose Touchable component based on animation prop
     const TouchableComponent = enableAnimation
       ? AnimatedTouchableOpacity
@@ -218,7 +250,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             </Text>
           </View>
         </View>
-        {/* Conditional Rendering: Indicator or Options Button */}
+        {/* Conditional Rendering: Indicator, Download Button, or Options Button */}
         <View style={styles.rightActionContainer}>
           {/* Check if this specific track is the current one loaded in the player */}
           {((): boolean => {
@@ -265,6 +297,14 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                 surahId={Number(item.id)}
               />
             </TouchableOpacity>
+          ) : showDownloadButton && track ? (
+            // Show download button if enabled and track is available
+            <DownloadButton
+              track={track}
+              size={18}
+              enableHaptics={enableHaptics}
+              showProgress={true}
+            />
           ) : onOptionsPress ? (
             <TouchableOpacity
               style={styles.optionsButton}
