@@ -19,14 +19,17 @@ interface DownloadState {
   settings: DownloadSettings;
   storageInfo: StorageInfo | null;
   isInitialized: boolean;
-  
+
   // UI State
   showDownloadProgress: boolean;
   selectedDownloads: string[];
-  
+
   // Actions
   initialize: () => Promise<void>;
-  addToDownloadQueue: (tracks: Track[], options?: Partial<DownloadOptions>) => Promise<void>;
+  addToDownloadQueue: (
+    tracks: Track[],
+    options?: Partial<DownloadOptions>,
+  ) => Promise<void>;
   removeFromQueue: (trackId: string) => Promise<void>;
   pauseDownload: (trackId: string) => Promise<void>;
   resumeDownload: (trackId: string) => Promise<void>;
@@ -36,12 +39,12 @@ interface DownloadState {
   getDownloadProgress: (trackId: string) => DownloadProgress | null;
   isTrackDownloaded: (trackId: string) => Promise<boolean>;
   getLocalPath: (trackId: string) => Promise<string | null>;
-  
+
   // Bulk operations
   downloadReciter: (reciterId: string, rewayatId?: string) => Promise<void>;
   downloadSurah: (surahId: string, reciterIds?: string[]) => Promise<void>;
   deleteSelectedDownloads: () => Promise<void>;
-  
+
   // UI Actions
   setShowDownloadProgress: (show: boolean) => void;
   toggleDownloadSelection: (trackId: string) => void;
@@ -53,10 +56,10 @@ export const useDownloadStore = create<DownloadState>()(
   persist(
     (set, get) => {
       const downloadManager = DownloadManager.getInstance();
-      
+
       // Setup event listeners
       const setupEventListeners = () => {
-        downloadManager.on('download_started', (data) => {
+        downloadManager.on('download_started', data => {
           const {trackId} = data;
           set(state => ({
             downloads: {
@@ -70,7 +73,7 @@ export const useDownloadStore = create<DownloadState>()(
           }));
         });
 
-        downloadManager.on('download_progress', (data) => {
+        downloadManager.on('download_progress', data => {
           const {trackId, progress, downloadedBytes, totalBytes} = data;
           set(state => ({
             downloads: {
@@ -85,7 +88,7 @@ export const useDownloadStore = create<DownloadState>()(
           }));
         });
 
-        downloadManager.on('download_completed', (data) => {
+        downloadManager.on('download_completed', data => {
           const {trackId, localPath} = data;
           set(state => ({
             downloads: {
@@ -102,7 +105,7 @@ export const useDownloadStore = create<DownloadState>()(
           }));
         });
 
-        downloadManager.on('download_failed', (data) => {
+        downloadManager.on('download_failed', data => {
           const {trackId, error} = data;
           set(state => ({
             downloads: {
@@ -116,7 +119,7 @@ export const useDownloadStore = create<DownloadState>()(
           }));
         });
 
-        downloadManager.on('download_paused', (data) => {
+        downloadManager.on('download_paused', data => {
           const {trackId} = data;
           set(state => ({
             downloads: {
@@ -129,7 +132,7 @@ export const useDownloadStore = create<DownloadState>()(
           }));
         });
 
-        downloadManager.on('download_resumed', (data) => {
+        downloadManager.on('download_resumed', data => {
           const {trackId} = data;
           set(state => ({
             downloads: {
@@ -142,7 +145,7 @@ export const useDownloadStore = create<DownloadState>()(
           }));
         });
 
-        downloadManager.on('queue_updated', (data) => {
+        downloadManager.on('queue_updated', data => {
           const {queue} = data;
           set({queue});
         });
@@ -181,17 +184,20 @@ export const useDownloadStore = create<DownloadState>()(
           try {
             await downloadManager.initialize();
             setupEventListeners();
-            
+
             // Load initial data
             const [downloads, storageInfo] = await Promise.all([
               downloadManager.getAllDownloads(),
               downloadManager.getStorageInfo(),
             ]);
 
-            const downloadsMap = downloads.reduce((acc, download) => {
-              acc[download.trackId] = download;
-              return acc;
-            }, {} as Record<string, DownloadItem>);
+            const downloadsMap = downloads.reduce(
+              (acc, download) => {
+                acc[download.trackId] = download;
+                return acc;
+              },
+              {} as Record<string, DownloadItem>,
+            );
 
             set({
               downloads: downloadsMap,
@@ -203,10 +209,13 @@ export const useDownloadStore = create<DownloadState>()(
           }
         },
 
-        addToDownloadQueue: async (tracks: Track[], options?: Partial<DownloadOptions>) => {
+        addToDownloadQueue: async (
+          tracks: Track[],
+          options?: Partial<DownloadOptions>,
+        ) => {
           try {
             await downloadManager.addToDownloadQueue(tracks, options);
-            
+
             // Update local state optimistically
             const newDownloads = {...get().downloads};
             tracks.forEach(track => {
@@ -224,7 +233,7 @@ export const useDownloadStore = create<DownloadState>()(
                 };
               }
             });
-            
+
             set({downloads: newDownloads});
           } catch (error) {
             console.error('Failed to add to download queue:', error);
@@ -234,7 +243,7 @@ export const useDownloadStore = create<DownloadState>()(
         removeFromQueue: async (trackId: string) => {
           try {
             await downloadManager.removeFromQueue(trackId);
-            
+
             set(state => ({
               downloads: {
                 ...state.downloads,
@@ -269,13 +278,15 @@ export const useDownloadStore = create<DownloadState>()(
         deleteDownload: async (trackId: string) => {
           try {
             await downloadManager.deleteDownload(trackId);
-            
+
             set(state => {
               const newDownloads = {...state.downloads};
               delete newDownloads[trackId];
               return {
                 downloads: newDownloads,
-                selectedDownloads: state.selectedDownloads.filter(id => id !== trackId),
+                selectedDownloads: state.selectedDownloads.filter(
+                  id => id !== trackId,
+                ),
               };
             });
           } catch (error) {
@@ -286,7 +297,7 @@ export const useDownloadStore = create<DownloadState>()(
         updateSettings: async (newSettings: Partial<DownloadSettings>) => {
           try {
             await downloadManager.updateSettings(newSettings);
-            
+
             set(state => ({
               settings: {...state.settings, ...newSettings},
             }));
@@ -335,18 +346,20 @@ export const useDownloadStore = create<DownloadState>()(
 
         deleteSelectedDownloads: async () => {
           const {selectedDownloads} = get();
-          
+
           try {
             await Promise.all(
-              selectedDownloads.map(trackId => downloadManager.deleteDownload(trackId))
+              selectedDownloads.map(trackId =>
+                downloadManager.deleteDownload(trackId),
+              ),
             );
-            
+
             set(state => {
               const newDownloads = {...state.downloads};
               selectedDownloads.forEach(trackId => {
                 delete newDownloads[trackId];
               });
-              
+
               return {
                 downloads: newDownloads,
                 selectedDownloads: [],
@@ -377,7 +390,7 @@ export const useDownloadStore = create<DownloadState>()(
         selectAllDownloads: () => {
           const {downloads} = get();
           const allTrackIds = Object.keys(downloads).filter(
-            trackId => downloads[trackId].status === 'completed'
+            trackId => downloads[trackId].status === 'completed',
           );
           set({selectedDownloads: allTrackIds});
         },
@@ -386,11 +399,11 @@ export const useDownloadStore = create<DownloadState>()(
     {
       name: 'download-store',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (state) => ({
+      partialize: state => ({
         settings: state.settings,
         // Don't persist downloads, queue, or other dynamic data
         // They will be loaded from the file system on initialization
       }),
-    }
-  )
+    },
+  ),
 );

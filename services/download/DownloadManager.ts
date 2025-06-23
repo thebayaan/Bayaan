@@ -57,7 +57,7 @@ export class DownloadManager extends EventEmitter {
       await this.loadSettings();
       await this.setupNetworkMonitoring();
       await this.resumePendingDownloads();
-      
+
       this.isInitialized = true;
       console.log('DownloadManager initialized');
     } catch (error) {
@@ -71,7 +71,7 @@ export class DownloadManager extends EventEmitter {
    */
   async addToDownloadQueue(
     tracks: Track[],
-    options: Partial<DownloadOptions> = {}
+    options: Partial<DownloadOptions> = {},
   ): Promise<void> {
     const defaultOptions: DownloadOptions = {
       quality: this.settings.downloadQuality,
@@ -112,7 +112,7 @@ export class DownloadManager extends EventEmitter {
   async removeFromQueue(trackId: string): Promise<void> {
     // Remove from queue
     this.downloadQueue = this.downloadQueue.filter(
-      item => item.track.id !== trackId
+      item => item.track.id !== trackId,
     );
 
     // Cancel active download if exists
@@ -133,16 +133,19 @@ export class DownloadManager extends EventEmitter {
     if (activeController) {
       activeController.abort();
       this.activeDownloads.delete(trackId);
-      
+
       // Update status in metadata
       const metadata = await this.storageManager.getDownloadMetadata();
       const downloadItem = Object.values(metadata.downloads).find(
-        item => item.trackId === trackId
+        item => item.trackId === trackId,
       );
-      
+
       if (downloadItem) {
         downloadItem.status = 'paused';
-        await this.storageManager.updateDownloadMetadata(downloadItem.id, downloadItem);
+        await this.storageManager.updateDownloadMetadata(
+          downloadItem.id,
+          downloadItem,
+        );
       }
 
       this.emit('download_paused', {trackId});
@@ -155,7 +158,7 @@ export class DownloadManager extends EventEmitter {
   async resumeDownload(trackId: string): Promise<void> {
     const metadata = await this.storageManager.getDownloadMetadata();
     const downloadItem = Object.values(metadata.downloads).find(
-      item => item.trackId === trackId && item.status === 'paused'
+      item => item.trackId === trackId && item.status === 'paused',
     );
 
     if (downloadItem) {
@@ -208,7 +211,9 @@ export class DownloadManager extends EventEmitter {
    */
   async downloadSurah(surahId: string, reciterIds?: string[]): Promise<void> {
     // Implementation for downloading a surah from multiple reciters
-    console.log(`Download surah: ${surahId} from reciters: ${reciterIds?.join(', ')}`);
+    console.log(
+      `Download surah: ${surahId} from reciters: ${reciterIds?.join(', ')}`,
+    );
   }
 
   /**
@@ -233,7 +238,7 @@ export class DownloadManager extends EventEmitter {
   async updateSettings(newSettings: Partial<DownloadSettings>): Promise<void> {
     this.settings = {...this.settings, ...newSettings};
     await this.storageManager.updateSettings(this.settings);
-    
+
     // Adjust active downloads based on new settings
     if (newSettings.maxConcurrentDownloads !== undefined) {
       await this.adjustConcurrentDownloads();
@@ -285,7 +290,7 @@ export class DownloadManager extends EventEmitter {
   private async startDownload(queueItem: DownloadQueueItem): Promise<void> {
     const {track} = queueItem;
     const abortController = new AbortController();
-    
+
     this.activeDownloads.set(track.id, abortController);
 
     // Create download item
@@ -303,56 +308,71 @@ export class DownloadManager extends EventEmitter {
 
     try {
       // Update metadata
-      await this.storageManager.updateDownloadMetadata(downloadItem.id, downloadItem);
-      
+      await this.storageManager.updateDownloadMetadata(
+        downloadItem.id,
+        downloadItem,
+      );
+
       this.emit('download_started', {trackId: track.id});
 
       // Perform the actual download
-      const audioData = await this.performDownload(
+      const tempDownloadUri = await this.performDownload(
         track.url,
         abortController.signal,
-        (progress) => {
+        progress => {
           downloadItem.progress = progress.progress;
           downloadItem.downloadedBytes = progress.downloadedBytes;
           downloadItem.totalBytes = progress.totalBytes;
-          
+
           this.emit('download_progress', {
             trackId: track.id,
             progress: progress.progress,
             downloadedBytes: progress.downloadedBytes,
             totalBytes: progress.totalBytes,
           });
-        }
+        },
       );
 
       // Store the downloaded file
-      const localPath = await this.storageManager.storeTrack(track, audioData, downloadItem);
-      
+      const localPath = await this.storageManager.storeTrack(
+        track,
+        tempDownloadUri,
+        downloadItem,
+      );
+
       downloadItem.status = 'completed';
       downloadItem.progress = 100;
       downloadItem.localPath = localPath;
       downloadItem.downloadDate = new Date();
 
-      await this.storageManager.updateDownloadMetadata(downloadItem.id, downloadItem);
-      
+      await this.storageManager.updateDownloadMetadata(
+        downloadItem.id,
+        downloadItem,
+      );
+
       // Remove from queue and active downloads
-      this.downloadQueue = this.downloadQueue.filter(item => item.id !== queueItem.id);
+      this.downloadQueue = this.downloadQueue.filter(
+        item => item.id !== queueItem.id,
+      );
       this.activeDownloads.delete(track.id);
 
       this.emit('download_completed', {trackId: track.id, localPath});
-      
+
       // Continue processing queue
       await this.processQueue();
-
     } catch (error) {
       downloadItem.status = 'failed';
-      downloadItem.error = error instanceof Error ? error.message : 'Unknown error';
+      downloadItem.error =
+        error instanceof Error ? error.message : 'Unknown error';
       downloadItem.retryCount++;
 
-      await this.storageManager.updateDownloadMetadata(downloadItem.id, downloadItem);
-      
+      await this.storageManager.updateDownloadMetadata(
+        downloadItem.id,
+        downloadItem,
+      );
+
       this.activeDownloads.delete(track.id);
-      
+
       // Retry logic
       if (downloadItem.retryCount < 3) {
         // Add back to queue for retry
@@ -372,48 +392,73 @@ export class DownloadManager extends EventEmitter {
   private async performDownload(
     url: string,
     signal: AbortSignal,
-    onProgress: (progress: {progress: number; downloadedBytes: number; totalBytes: number}) => void
+    onProgress: (progress: {
+      progress: number;
+      downloadedBytes: number;
+      totalBytes: number;
+    }) => void,
   ): Promise<string> {
-    const response = await fetch(url, {signal});
-    
-    if (!response.ok) {
-      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    // Use FileSystem.downloadAsync for better performance and native handling
+    const tempFileName = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp3`;
+    const cacheDir = FileSystem.cacheDirectory?.endsWith('/')
+      ? FileSystem.cacheDirectory
+      : FileSystem.cacheDirectory + '/';
+    const tempFileUri = cacheDir + tempFileName;
+
+    try {
+      const downloadResumable = FileSystem.createDownloadResumable(
+        url,
+        tempFileUri,
+        {},
+        downloadProgress => {
+          const {totalBytesWritten, totalBytesExpectedToWrite} =
+            downloadProgress;
+          const progress =
+            totalBytesExpectedToWrite > 0
+              ? (totalBytesWritten / totalBytesExpectedToWrite) * 100
+              : 0;
+
+          onProgress({
+            progress,
+            downloadedBytes: totalBytesWritten,
+            totalBytes: totalBytesExpectedToWrite,
+          });
+        },
+      );
+
+      // Handle abort signal
+      const abortPromise = new Promise<never>((_, reject) => {
+        signal.addEventListener('abort', () => {
+          downloadResumable.pauseAsync().then(() => {
+            FileSystem.deleteAsync(tempFileUri, {idempotent: true});
+            reject(new Error('Download cancelled'));
+          });
+        });
+      });
+
+      const downloadPromise = downloadResumable.downloadAsync();
+      const result = await Promise.race([downloadPromise, abortPromise]);
+
+      if (!result) {
+        throw new Error('Download failed: No result returned');
+      }
+
+      // Verify the file was downloaded
+      const fileInfo = await FileSystem.getInfoAsync(tempFileUri);
+      if (!fileInfo.exists) {
+        throw new Error('Download failed: File not found after download');
+      }
+
+      return tempFileUri;
+    } catch (error) {
+      // Clean up temp file on error
+      try {
+        await FileSystem.deleteAsync(tempFileUri, {idempotent: true});
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup temp file:', cleanupError);
+      }
+      throw error;
     }
-
-    const totalBytes = parseInt(response.headers.get('content-length') || '0', 10);
-    let downloadedBytes = 0;
-
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('Failed to get response reader');
-    }
-
-    const chunks: Uint8Array[] = [];
-
-    while (true) {
-      const {done, value} = await reader.read();
-      
-      if (done) break;
-      
-      chunks.push(value);
-      downloadedBytes += value.length;
-      
-      const progress = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0;
-      onProgress({progress, downloadedBytes, totalBytes});
-    }
-
-    // Convert chunks to base64 string
-    const uint8Array = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
-    let offset = 0;
-    
-    for (const chunk of chunks) {
-      uint8Array.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    // Convert to base64
-    const base64String = btoa(String.fromCharCode(...uint8Array));
-    return base64String;
   }
 
   private canDownload(): boolean {
@@ -443,10 +488,10 @@ export class DownloadManager extends EventEmitter {
 
   private async resumePendingDownloads(): Promise<void> {
     const metadata = await this.storageManager.getDownloadMetadata();
-    
+
     // Find downloads that were in progress and add them back to queue
     const pendingDownloads = Object.values(metadata.downloads).filter(
-      item => item.status === 'downloading' || item.status === 'queued'
+      item => item.status === 'downloading' || item.status === 'queued',
     );
 
     for (const download of pendingDownloads) {
@@ -479,7 +524,7 @@ export class DownloadManager extends EventEmitter {
       // Cancel excess downloads
       const activeEntries = Array.from(this.activeDownloads.entries());
       const toCancel = activeEntries.slice(maxAllowed);
-      
+
       for (const [trackId, controller] of toCancel) {
         controller.abort();
         this.activeDownloads.delete(trackId);

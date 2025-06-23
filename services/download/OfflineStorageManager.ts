@@ -15,7 +15,12 @@ export class OfflineStorageManager {
   private cacheDirectory: string;
 
   private constructor() {
-    this.baseDirectory = FileSystem.documentDirectory + 'downloads/';
+    // Ensure FileSystem.documentDirectory exists and has trailing slash
+    const docDir = FileSystem.documentDirectory?.endsWith('/')
+      ? FileSystem.documentDirectory
+      : FileSystem.documentDirectory + '/';
+
+    this.baseDirectory = docDir + 'downloads/';
     this.metadataFile = this.baseDirectory + 'metadata.json';
     this.cacheDirectory = this.baseDirectory + 'cache/';
   }
@@ -52,7 +57,7 @@ export class OfflineStorageManager {
    */
   async storeTrack(
     track: Track,
-    audioData: string,
+    tempDownloadUri: string,
     downloadItem: DownloadItem,
   ): Promise<string> {
     const start = performance.now();
@@ -61,10 +66,18 @@ export class OfflineStorageManager {
       const filePath = this.generateFilePath(track);
       await this.ensureDirectoryExists(this.getDirectoryFromPath(filePath));
 
-      // Write the audio file
-      await FileSystem.writeAsStringAsync(filePath, audioData, {
-        encoding: FileSystem.EncodingType.Base64,
+      // Move the downloaded file to its final location
+      await FileSystem.moveAsync({
+        from: tempDownloadUri,
+        to: filePath,
       });
+
+      // Get file size
+      const fileInfo = await FileSystem.getInfoAsync(filePath);
+      const fileSize =
+        fileInfo.exists && !fileInfo.isDirectory
+          ? (fileInfo as FileSystem.FileInfo & {size?: number}).size || 0
+          : 0;
 
       // Update metadata
       await this.updateDownloadMetadata(downloadItem.id, {
@@ -72,10 +85,13 @@ export class OfflineStorageManager {
         localPath: filePath,
         status: 'completed',
         downloadDate: new Date(),
+        totalBytes: fileSize,
       });
 
       const end = performance.now();
-      console.log(`Track stored in ${end - start}ms: ${filePath}`);
+      console.log(
+        `Track stored in ${end - start}ms: ${filePath} (${fileSize} bytes)`,
+      );
 
       return filePath;
     } catch (error) {
@@ -192,7 +208,31 @@ export class OfflineStorageManager {
       }
 
       const content = await FileSystem.readAsStringAsync(this.metadataFile);
-      const metadata = JSON.parse(content) as DownloadMetadata;
+      const rawMetadata = JSON.parse(content);
+
+      // Convert date strings back to Date objects for downloads
+      const processedDownloads: Record<string, DownloadItem> = {};
+      Object.entries(rawMetadata.downloads || {}).forEach(
+        ([key, download]: [string, unknown]) => {
+          const downloadItem = download as DownloadItem & {
+            downloadDate?: string;
+          };
+          processedDownloads[key] = {
+            ...downloadItem,
+            downloadDate: downloadItem.downloadDate
+              ? new Date(downloadItem.downloadDate)
+              : undefined,
+          };
+        },
+      );
+
+      const metadata: DownloadMetadata = {
+        ...rawMetadata,
+        downloads: processedDownloads,
+        lastUpdated: rawMetadata.lastUpdated
+          ? new Date(rawMetadata.lastUpdated)
+          : new Date(),
+      };
 
       // Validate and migrate if necessary
       return this.validateMetadata(metadata);
@@ -211,8 +251,15 @@ export class OfflineStorageManager {
   ): Promise<void> {
     try {
       const metadata = await this.getDownloadMetadata();
-      metadata.downloads[downloadId] = downloadItem;
-      metadata.lastUpdated = new Date();
+
+      // Ensure dates are properly serialized
+      const serializedItem = {
+        ...downloadItem,
+        downloadDate: downloadItem.downloadDate?.toISOString(),
+      };
+
+      metadata.downloads[downloadId] = serializedItem as DownloadItem;
+      metadata.lastUpdated = new Date().toISOString() as unknown as Date;
 
       await FileSystem.writeAsStringAsync(
         this.metadataFile,
@@ -231,7 +278,7 @@ export class OfflineStorageManager {
     try {
       const metadata = await this.getDownloadMetadata();
       delete metadata.downloads[downloadId];
-      metadata.lastUpdated = new Date();
+      metadata.lastUpdated = new Date().toISOString() as unknown as Date;
 
       await FileSystem.writeAsStringAsync(
         this.metadataFile,
@@ -250,7 +297,7 @@ export class OfflineStorageManager {
     try {
       const metadata = await this.getDownloadMetadata();
       metadata.settings = {...metadata.settings, ...settings};
-      metadata.lastUpdated = new Date();
+      metadata.lastUpdated = new Date().toISOString() as unknown as Date;
 
       await FileSystem.writeAsStringAsync(
         this.metadataFile,
@@ -283,9 +330,15 @@ export class OfflineStorageManager {
   }
 
   private async ensureDirectoryExists(directory: string): Promise<void> {
-    const exists = await FileSystem.getInfoAsync(directory);
-    if (!exists.exists) {
-      await FileSystem.makeDirectoryAsync(directory, {intermediates: true});
+    try {
+      const exists = await FileSystem.getInfoAsync(directory);
+      if (!exists.exists) {
+        await FileSystem.makeDirectoryAsync(directory, {intermediates: true});
+        console.log(`Created directory: ${directory}`);
+      }
+    } catch (error) {
+      console.error(`Failed to create directory ${directory}:`, error);
+      throw error;
     }
   }
 
@@ -313,7 +366,7 @@ export class OfflineStorageManager {
         autoDownloadFavorites: false,
         backgroundDownloads: true,
       },
-      lastUpdated: new Date(),
+      lastUpdated: new Date().toISOString() as unknown as Date,
     };
   }
 
@@ -349,7 +402,7 @@ export class OfflineStorageManager {
 
         return totalSize;
       } else {
-        return info.size || 0;
+        return (info as FileSystem.FileInfo & {size?: number}).size || 0;
       }
     } catch (error) {
       console.error('Failed to calculate folder size:', error);
@@ -362,10 +415,14 @@ export class OfflineStorageManager {
     availableSpace: number;
   }> {
     try {
-      const info = await FileSystem.getInfoAsync(FileSystem.documentDirectory);
+      // Note: FileSystem.getInfoAsync doesn't provide device storage info
+      // This is a simplified implementation - in a real app you might use a different approach
+      // or native modules to get actual device storage information
+      const info = await FileSystem.getInfoAsync(FileSystem.documentDirectory!);
+      const size = (info as FileSystem.FileInfo & {size?: number}).size || 0;
       return {
-        totalSpace: info.size || 0,
-        availableSpace: info.size || 0, // This is a simplified implementation
+        totalSpace: size,
+        availableSpace: size, // This is a placeholder - real implementation would calculate available space
       };
     } catch (error) {
       console.error('Failed to get device storage info:', error);

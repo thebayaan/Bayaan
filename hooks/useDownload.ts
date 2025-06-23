@@ -1,7 +1,15 @@
 import {useCallback, useEffect, useState} from 'react';
 import {useDownloadStore} from '@/store/downloadStore';
 import {Track, DownloadableTrack} from '@/types/audio';
-import {DownloadOptions, DownloadProgress, DownloadStatus} from '@/services/download/types';
+import {
+  DownloadOptions,
+  DownloadProgress,
+  DownloadStatus,
+  DownloadItem,
+  DownloadQueueItem,
+  DownloadSettings,
+  StorageInfo,
+} from '@/services/download/types';
 
 interface UseDownloadReturn {
   // Track-specific state
@@ -9,24 +17,30 @@ interface UseDownloadReturn {
   getDownloadStatus: (trackId: string) => DownloadStatus;
   getDownloadProgress: (trackId: string) => number;
   getDownloadableTrack: (track: Track) => DownloadableTrack;
-  
+
   // Actions
-  downloadTrack: (track: Track, options?: Partial<DownloadOptions>) => Promise<void>;
-  downloadTracks: (tracks: Track[], options?: Partial<DownloadOptions>) => Promise<void>;
+  downloadTrack: (
+    track: Track,
+    options?: Partial<DownloadOptions>,
+  ) => Promise<void>;
+  downloadTracks: (
+    tracks: Track[],
+    options?: Partial<DownloadOptions>,
+  ) => Promise<void>;
   pauseDownload: (trackId: string) => Promise<void>;
   resumeDownload: (trackId: string) => Promise<void>;
   cancelDownload: (trackId: string) => Promise<void>;
   deleteDownload: (trackId: string) => Promise<void>;
-  
+
   // Bulk operations
   downloadReciter: (reciterId: string, rewayatId?: string) => Promise<void>;
   downloadSurah: (surahId: string, reciterIds?: string[]) => Promise<void>;
-  
+
   // State
-  downloads: Record<string, any>;
-  queue: any[];
-  settings: any;
-  storageInfo: any;
+  downloads: Record<string, DownloadItem>;
+  queue: DownloadQueueItem[];
+  settings: DownloadSettings;
+  storageInfo: StorageInfo | null;
   isInitialized: boolean;
 }
 
@@ -57,78 +71,105 @@ export function useDownload(): UseDownloadReturn {
     }
   }, [isInitialized, initialize]);
 
-  const isDownloaded = useCallback((trackId: string): boolean => {
-    const download = downloads[trackId];
-    return download?.status === 'completed' && !!download.localPath;
-  }, [downloads]);
+  const isDownloaded = useCallback(
+    (trackId: string): boolean => {
+      const download = downloads[trackId];
+      return download?.status === 'completed' && !!download.localPath;
+    },
+    [downloads],
+  );
 
-  const getDownloadStatus = useCallback((trackId: string): DownloadStatus => {
-    const download = downloads[trackId];
-    return download?.status || 'pending';
-  }, [downloads]);
+  const getDownloadStatus = useCallback(
+    (trackId: string): DownloadStatus => {
+      const download = downloads[trackId];
+      return download?.status || 'pending';
+    },
+    [downloads],
+  );
 
-  const getDownloadProgress = useCallback((trackId: string): number => {
-    const download = downloads[trackId];
-    return download?.progress || 0;
-  }, [downloads]);
+  const getDownloadProgress = useCallback(
+    (trackId: string): number => {
+      const download = downloads[trackId];
+      return download?.progress || 0;
+    },
+    [downloads],
+  );
 
-  const getDownloadableTrack = useCallback((track: Track): DownloadableTrack => {
-    const download = downloads[track.id];
-    
-    return {
-      ...track,
-      isDownloaded: isDownloaded(track.id),
-      downloadStatus: getDownloadStatus(track.id),
-      downloadProgress: getDownloadProgress(track.id),
-      localPath: download?.localPath,
-      downloadDate: download?.downloadDate,
-      fileSize: download?.totalBytes,
-    };
-  }, [downloads, isDownloaded, getDownloadStatus, getDownloadProgress]);
+  const getDownloadableTrack = useCallback(
+    (track: Track): DownloadableTrack => {
+      const download = downloads[track.id];
 
-  const downloadTrack = useCallback(async (
-    track: Track,
-    options?: Partial<DownloadOptions>
-  ): Promise<void> => {
-    await addToDownloadQueue([track], options);
-  }, [addToDownloadQueue]);
+      return {
+        ...track,
+        isDownloaded: isDownloaded(track.id),
+        downloadStatus: getDownloadStatus(track.id),
+        downloadProgress: getDownloadProgress(track.id),
+        localPath: download?.localPath,
+        downloadDate: download?.downloadDate,
+        fileSize: download?.totalBytes,
+      };
+    },
+    [downloads, isDownloaded, getDownloadStatus, getDownloadProgress],
+  );
 
-  const downloadTracks = useCallback(async (
-    tracks: Track[],
-    options?: Partial<DownloadOptions>
-  ): Promise<void> => {
-    await addToDownloadQueue(tracks, options);
-  }, [addToDownloadQueue]);
+  const downloadTrack = useCallback(
+    async (track: Track, options?: Partial<DownloadOptions>): Promise<void> => {
+      await addToDownloadQueue([track], options);
+    },
+    [addToDownloadQueue],
+  );
 
-  const pauseDownload = useCallback(async (trackId: string): Promise<void> => {
-    await storePauseDownload(trackId);
-  }, [storePauseDownload]);
+  const downloadTracks = useCallback(
+    async (
+      tracks: Track[],
+      options?: Partial<DownloadOptions>,
+    ): Promise<void> => {
+      await addToDownloadQueue(tracks, options);
+    },
+    [addToDownloadQueue],
+  );
 
-  const resumeDownload = useCallback(async (trackId: string): Promise<void> => {
-    await storeResumeDownload(trackId);
-  }, [storeResumeDownload]);
+  const pauseDownload = useCallback(
+    async (trackId: string): Promise<void> => {
+      await storePauseDownload(trackId);
+    },
+    [storePauseDownload],
+  );
 
-  const cancelDownload = useCallback(async (trackId: string): Promise<void> => {
-    await removeFromQueue(trackId);
-  }, [removeFromQueue]);
+  const resumeDownload = useCallback(
+    async (trackId: string): Promise<void> => {
+      await storeResumeDownload(trackId);
+    },
+    [storeResumeDownload],
+  );
 
-  const deleteDownload = useCallback(async (trackId: string): Promise<void> => {
-    await storeDeleteDownload(trackId);
-  }, [storeDeleteDownload]);
+  const cancelDownload = useCallback(
+    async (trackId: string): Promise<void> => {
+      await removeFromQueue(trackId);
+    },
+    [removeFromQueue],
+  );
 
-  const downloadReciter = useCallback(async (
-    reciterId: string,
-    rewayatId?: string
-  ): Promise<void> => {
-    await storeDownloadReciter(reciterId, rewayatId);
-  }, [storeDownloadReciter]);
+  const deleteDownload = useCallback(
+    async (trackId: string): Promise<void> => {
+      await storeDeleteDownload(trackId);
+    },
+    [storeDeleteDownload],
+  );
 
-  const downloadSurah = useCallback(async (
-    surahId: string,
-    reciterIds?: string[]
-  ): Promise<void> => {
-    await storeDownloadSurah(surahId, reciterIds);
-  }, [storeDownloadSurah]);
+  const downloadReciter = useCallback(
+    async (reciterId: string, rewayatId?: string): Promise<void> => {
+      await storeDownloadReciter(reciterId, rewayatId);
+    },
+    [storeDownloadReciter],
+  );
+
+  const downloadSurah = useCallback(
+    async (surahId: string, reciterIds?: string[]): Promise<void> => {
+      await storeDownloadSurah(surahId, reciterIds);
+    },
+    [storeDownloadSurah],
+  );
 
   return {
     // Track-specific state
@@ -136,7 +177,7 @@ export function useDownload(): UseDownloadReturn {
     getDownloadStatus,
     getDownloadProgress,
     getDownloadableTrack,
-    
+
     // Actions
     downloadTrack,
     downloadTracks,
@@ -144,11 +185,11 @@ export function useDownload(): UseDownloadReturn {
     resumeDownload,
     cancelDownload,
     deleteDownload,
-    
+
     // Bulk operations
     downloadReciter,
     downloadSurah,
-    
+
     // State
     downloads,
     queue,
@@ -173,7 +214,7 @@ export function useTrackDownload(track: Track) {
   } = useDownload();
 
   const [downloadableTrack, setDownloadableTrack] = useState<DownloadableTrack>(
-    getDownloadableTrack(track)
+    getDownloadableTrack(track),
   );
 
   // Update downloadable track when downloads state changes
@@ -181,9 +222,12 @@ export function useTrackDownload(track: Track) {
     setDownloadableTrack(getDownloadableTrack(track));
   }, [track, getDownloadableTrack]);
 
-  const download = useCallback(async (options?: Partial<DownloadOptions>) => {
-    await downloadTrack(track, options);
-  }, [downloadTrack, track]);
+  const download = useCallback(
+    async (options?: Partial<DownloadOptions>) => {
+      await downloadTrack(track, options);
+    },
+    [downloadTrack, track],
+  );
 
   const pause = useCallback(async () => {
     await pauseDownload(track.id);
@@ -209,7 +253,7 @@ export function useTrackDownload(track: Track) {
     localPath: downloadableTrack.localPath,
     downloadDate: downloadableTrack.downloadDate,
     fileSize: downloadableTrack.fileSize,
-    
+
     // Actions
     download,
     pause,

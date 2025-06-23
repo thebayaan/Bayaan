@@ -56,7 +56,7 @@ export interface DownloadProgress {
   estimatedTimeRemaining: number; // seconds
 }
 
-export type DownloadStatus = 
+export type DownloadStatus =
   | 'pending'
   | 'queued'
   | 'downloading'

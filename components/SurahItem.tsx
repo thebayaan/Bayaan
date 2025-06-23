@@ -25,6 +25,7 @@ import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from './NowPlayingIndicator';
 import {DownloadButton} from './DownloadButton';
 import {createTrack} from '@/utils/track';
+import {Track} from '@/types/audio';
 
 interface SurahItemProps {
   item: Surah;
@@ -150,30 +151,41 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       | 'madinah';
 
     // Create track for download functionality
-    const downloadTrack = React.useMemo(async () => {
-      if (!showDownloadButton || !reciterId || !reciterName) return null;
-      
-      try {
-        // Import the required modules for creating a track
-        const {RECITERS} = await import('@/data/reciterData');
-        const reciter = RECITERS.find(r => r.id === reciterId);
-        
-        if (!reciter) return null;
-        
-        return await createTrack(reciter, item, rewayatId);
-      } catch (error) {
-        console.error('Failed to create download track:', error);
-        return null;
-      }
-    }, [showDownloadButton, reciterId, reciterName, item, rewayatId]);
-
-    const [track, setTrack] = React.useState<any>(null);
+    const [track, setTrack] = React.useState<Track | null>(null);
 
     React.useEffect(() => {
-      if (downloadTrack) {
-        downloadTrack.then(setTrack);
-      }
-    }, [downloadTrack]);
+      let isMounted = true;
+
+      const createDownloadTrack = async () => {
+        if (!showDownloadButton || !reciterId || !reciterName) {
+          if (isMounted) setTrack(null);
+          return;
+        }
+
+        try {
+          // Import the required modules for creating a track
+          const {RECITERS} = await import('@/data/reciterData');
+          const reciter = RECITERS.find(r => r.id === reciterId);
+
+          if (!reciter) {
+            if (isMounted) setTrack(null);
+            return;
+          }
+
+          const newTrack = await createTrack(reciter, item, rewayatId);
+          if (isMounted) setTrack(newTrack);
+        } catch (error) {
+          console.error('Failed to create download track:', error);
+          if (isMounted) setTrack(null);
+        }
+      };
+
+      createDownloadTrack();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [showDownloadButton, reciterId, reciterName, item, rewayatId]);
 
     // Choose Touchable component based on animation prop
     const TouchableComponent = enableAnimation

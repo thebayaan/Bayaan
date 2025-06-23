@@ -59,7 +59,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(
         pulseScale.value = withRepeat(
           withTiming(1.1, {duration: 1000}),
           -1,
-          true
+          true,
         );
       } else {
         pulseScale.value = withTiming(1, {duration: 200});
@@ -72,7 +72,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(
         rotation.value = withRepeat(
           withTiming(360, {duration: 2000, easing: Easing.linear}),
           -1,
-          false
+          false,
         );
       } else {
         rotation.value = withTiming(0, {duration: 200});
@@ -109,7 +109,15 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
       }
-    }, [status, download, pause, resume, cancel, deleteDownload, enableHaptics]);
+    }, [
+      status,
+      download,
+      pause,
+      resume,
+      cancel,
+      deleteDownload,
+      enableHaptics,
+    ]);
 
     const getIcon = (): {name: string; type: string; color: string} => {
       switch (status) {
@@ -184,9 +192,9 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(
       ],
     }));
 
-
-    const shouldShowProgress = showProgress && 
-      (status === 'downloading' || status === 'paused') && 
+    const shouldShowProgress =
+      showProgress &&
+      (status === 'downloading' || status === 'paused') &&
       progress > 0;
 
     return (
@@ -200,9 +208,12 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(
           alignItems: 'center',
         }}
         accessibilityRole="button"
-        accessibilityLabel={getAccessibilityLabel(status, isDownloaded, progress)}
+        accessibilityLabel={getAccessibilityLabel(
+          status,
+          isDownloaded,
+          progress,
+        )}
         accessibilityHint={getAccessibilityHint(status)}>
-        
         <AnimatedView style={[pulseStyle, {position: 'relative'}]}>
           {/* Progress Circle (shown during download) */}
           {shouldShowProgress && (
@@ -255,7 +266,7 @@ export const DownloadButton: React.FC<DownloadButtonProps> = React.memo(
         </AnimatedView>
       </TouchableOpacity>
     );
-  }
+  },
 );
 
 DownloadButton.displayName = 'DownloadButton';
@@ -263,7 +274,7 @@ DownloadButton.displayName = 'DownloadButton';
 function getAccessibilityLabel(
   status: DownloadStatus,
   isDownloaded: boolean,
-  progress: number
+  progress: number,
 ): string {
   switch (status) {
     case 'pending':
