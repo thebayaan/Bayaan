@@ -27,9 +27,9 @@ import {BlurView} from '@react-native-community/blur';
 import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
-import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useModal} from '@/components/providers/ModalProvider';
+import {ExploreView} from '@/components/search/ExploreView';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -107,6 +107,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const [, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
   const [reciterFuse, setReciterFuse] = useState<Fuse<Reciter> | null>(null);
@@ -118,10 +119,11 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const insets = useSafeAreaInsets();
   const {showSelectReciter} = useModal();
 
-  // Clear query when closing
+  // Clear query and exit search mode when closing
   useEffect(() => {
     if (!visible) {
       setQuery('');
+      setIsSearchMode(false);
     }
   }, [visible]);
 
@@ -133,6 +135,24 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
     return () => clearTimeout(handler);
   }, [query]);
+
+  // Handle search input focus - enter search mode
+  const handleSearchFocus = useCallback(() => {
+    setIsSearchMode(true);
+    // Focus the input after a slight delay to ensure the component is rendered
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+  }, []);
+
+  // Handle search cancel - return to explore mode
+  const handleSearchCancel = useCallback(() => {
+    Keyboard.dismiss();
+    setQuery('');
+    setIsSearchMode(false);
+    searchInputRef.current?.blur();
+    onClose();
+  }, [onClose]);
 
   // Initialize search engines and load initial data
   useEffect(() => {
@@ -469,11 +489,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   if (!visible) return null;
 
+  // Show ExploreView when not in search mode
+  if (!isSearchMode) {
+    return <ExploreView onSearchPress={handleSearchFocus} />;
+  }
+
   return (
-    <Animated.View
-      entering={FadeIn.duration(200)}
-      exiting={FadeOut.duration(200)}
-      style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
         {Platform.OS === 'ios' ? (
           <BlurView
@@ -508,11 +530,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
             placeholder="Search surahs or reciters"
             value={query}
             onChangeText={setQuery}
-            onCancel={() => {
-              Keyboard.dismiss();
-              setQuery('');
-              onClose();
-            }}
+            onCancel={handleSearchCancel}
             iconColor={theme.colors.text}
             textColor={theme.colors.text}
             backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
@@ -521,6 +539,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
             autoCorrect={false}
             autoComplete="off"
             autoCapitalize="none"
+            autoFocus={true}
           />
         </View>
       </View>
@@ -531,13 +550,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled">
-          <Animated.View entering={FadeIn.delay(100)}>
+          <View>
             {renderSuggestionRow(SEARCH_SUGGESTIONS.surahs, 'Surahs')}
             {renderSuggestionRow(SEARCH_SUGGESTIONS.reciters, 'Reciters')}
-          </Animated.View>
+          </View>
 
           {recentSearches.length > 0 && (
-            <Animated.View entering={FadeIn.delay(200)}>
+            <View>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
                   Recent Searches
@@ -559,11 +578,11 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               />
-            </Animated.View>
+            </View>
           )}
         </ScrollView>
       ) : (
-        <Animated.FlatList
+        <FlatList
           data={searchResults}
           renderItem={renderSearchResult}
           keyExtractor={(item, index) => `${item.type}-${index}`}
@@ -594,7 +613,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           ListFooterComponent={<View style={styles.footer} />}
         />
       )}
-    </Animated.View>
+    </View>
   );
 }
 
