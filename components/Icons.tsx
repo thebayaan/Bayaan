@@ -638,6 +638,18 @@ export const MushafiIcon: React.FC<IconProps> = ({color, size}) => (
   </Svg>
 );
 
+export const CheckIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20 6L9 17L4 12"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 export const DiscoverIcon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path

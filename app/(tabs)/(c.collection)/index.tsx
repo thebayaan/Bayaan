@@ -13,7 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Icon} from '@rneui/themed';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
-import {HeartIcon} from '@/components/Icons';
+import {HeartIcon, DownloadIcon} from '@/components/Icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {TrackItem} from '@/components/TrackItem';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
@@ -54,7 +54,7 @@ const collectionItems: CollectionItem[] = [
     iconColor: GOLD_COLOR,
   },
   // {id: 'playlists', title: 'Playlists', icon: PlaylistIcon},
-  // {id: 'downloads', title: 'Downloads', icon: DownloadIcon},
+  {id: 'downloads', title: 'Downloads', icon: DownloadIcon},
 ];
 
 function calculatePreviewItemWidth(width: number, columns: number) {
