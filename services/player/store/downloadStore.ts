@@ -2,10 +2,11 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import { clearAllDownloads } from '@/services/downloadService';
 
 
 
-interface DownloadedSurah {
+export interface DownloadedSurah {
     reciterId: string;
     surahId: string;
     rewayatId: string;
@@ -30,7 +31,7 @@ interface DownloadedSurah {
     isDownloaded: (reciterId: string, surahId: string) => boolean;
     isDownloading: (reciterId: string, surahId: string) => boolean;
     getDownload: (reciterId: string, surahId: string) => DownloadedSurah | undefined;
-    
+    clearAllDownloads: () => Promise<void>;
     // Status management
     setDownloading: (id: string) => void;
     clearDownloading: (id: string) => void;
@@ -50,11 +51,23 @@ export const useDownloadStore = create<DownloadStoreState>()(
 
       // Actions
       addDownload: (download: DownloadedSurah) => {
-        set(state => ({
-          downloads: [...state.downloads, download]
-        }));
+        set(state => {
+          // Check if download already exists
+          const exists = state.downloads.some(d => 
+            d.reciterId === download.reciterId && 
+            d.surahId === download.surahId
+          );
+          
+          if (exists) {
+            console.log('Download already exists, skipping duplicate');
+            return state; // Don't add duplicate
+          }
+          
+          return {
+            downloads: [...state.downloads, download]
+          };
+        });
       },
-
       removeDownload: (reciterId: string, surahId: string) => {
         set(state => ({
           downloads: state.downloads.filter(d => 
@@ -64,6 +77,16 @@ export const useDownloadStore = create<DownloadStoreState>()(
       },
 
       clearDownloads: () => {
+        set({downloads: []});
+      },
+
+      clearAllDownloads: async () => {
+        const {downloads} = get();
+        
+        // Delete files using service
+        await clearAllDownloads(downloads);
+        
+        // Clear store
         set({downloads: []});
       },
 
@@ -131,6 +154,7 @@ export const useDownload = () => {
       getDownload: store.getDownload,
       setDownloading: store.setDownloading,
       clearDownloading: store.clearDownloading,
+      clearAllDownloads: store.clearAllDownloads,
       setError: store.setError,
     };
   };

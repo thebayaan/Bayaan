@@ -4,6 +4,7 @@ import {
   moderateScale,
   verticalScale,
 } from 'react-native-size-matters';
+import Color from 'color';
 
 export const createStyles = (theme: Theme) =>
   ScaledSheet.create({
@@ -157,5 +158,24 @@ export const createStyles = (theme: Theme) =>
     },
     listContentContainer: {
       paddingHorizontal: moderateScale(15),
+    },
+    clearButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(12),
+      paddingVertical: moderateScale(8),
+      backgroundColor: Color(theme.colors.error).alpha(0.1).toString(),
+      borderRadius: moderateScale(8),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.error).alpha(0.3).toString(),
+    },
+    clearButtonText: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.error,
+      marginLeft: moderateScale(6),
+    },
+    clearButtonTextDisabled: {
+      color: theme.colors.textSecondary,
     },
   });

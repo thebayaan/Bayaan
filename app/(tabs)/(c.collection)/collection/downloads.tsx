@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {View, Text, FlatList} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -10,6 +10,10 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createDownloadedTrack} from '@/utils/track';
+import {Icon} from '@rneui/themed';
+import {moderateScale} from 'react-native-size-matters';
+import Color from 'color';
+
 
 interface DownloadedSurah {
   reciterId: string;
@@ -25,10 +29,11 @@ interface DownloadedSurah {
 
 
 export default function DownloadsScreen() {
+
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const {downloads} = useDownload();
+  const {downloads, clearAllDownloads} = useDownload();
   const {updateQueue, play} = useUnifiedPlayer();
   
   // State to store reciter and surah data for each download
@@ -78,6 +83,11 @@ export default function DownloadsScreen() {
     }
   }, [updateQueue, play]);
 
+  const handleClearAll = useCallback(async () => {
+    await clearAllDownloads();
+  }, [clearAllDownloads]);
+  
+
   const renderItem = ({item}: {item: {download: DownloadedSurah, reciter: Reciter | null, surah: Surah | null}}) => {
     const {download, reciter, surah} = item;
     
@@ -102,6 +112,24 @@ export default function DownloadsScreen() {
       <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Downloads</Text>
+          <TouchableOpacity 
+  style={[styles.clearButton, {marginLeft: moderateScale(20)}]}
+  onPress={handleClearAll}
+  activeOpacity={0.7}
+  disabled={downloads.length === 0}>
+  <Icon
+    name="trash-2"
+    type="feather"
+    size={moderateScale(18)}
+    color={downloads.length === 0 ? theme.colors.textSecondary : theme.colors.error}
+  />
+  <Text style={[
+    styles.clearButtonText,
+    downloads.length === 0 && styles.clearButtonTextDisabled
+  ]}>
+    Clear All ({downloads.length})
+  </Text>
+</TouchableOpacity>
         </View>
       </View>
       <FlatList
