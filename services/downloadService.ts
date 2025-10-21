@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { fetchAudioUrl } from './dataService'; // Adjust the path as needed
+import { DownloadedSurah } from './player/store/downloadStore';
 
 /**
  * Downloads a Surah MP3 for offline playback
@@ -36,7 +37,20 @@ export async function downloadSurah(
   return localPath;
 }
 
-
+export async function clearAllDownloads(downloads: DownloadedSurah[]): Promise<void> {
+  // Delete all files
+  for (const download of downloads) {
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(download.filePath);
+      if (fileInfo.exists) {
+        await FileSystem.deleteAsync(download.filePath);
+        console.log('Deleted file:', download.filePath);
+      }
+    } catch (error) {
+      console.error('Error deleting file:', download.filePath, error);
+    }
+  }
+}
 async function getAllDownloadedFiles() {
   try {
     if (!FileSystem.documentDirectory) {
