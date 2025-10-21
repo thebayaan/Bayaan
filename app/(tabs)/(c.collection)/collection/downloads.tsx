@@ -79,7 +79,7 @@ export default function DownloadsScreen() {
       await updateQueue([track], 0);
       await play();
     } catch (error) {
-      console.error('Error playing downloaded surah:', error);
+      console.error('Error playing downloaded surah', error);
     }
   }, [updateQueue, play]);
 
