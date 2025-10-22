@@ -178,4 +178,112 @@ export const createStyles = (theme: Theme) =>
     clearButtonTextDisabled: {
       color: theme.colors.textSecondary,
     },
+
+
+// Add these styles to your _styles.ts
+headerContainer2: {
+  width: '100%',
+  overflow: 'hidden',
+},
+gradientContainer2: {
+  width: '100%',
+  paddingTop: moderateScale(60),
+  paddingBottom: moderateScale(20),
+  paddingHorizontal: moderateScale(20),
+},
+backButton2: {
+  position: 'absolute',
+  top: moderateScale(60),
+  left: moderateScale(20),
+  zIndex: 10,
+},
+titleContainer: {
+  alignItems: 'center',
+  marginTop: moderateScale(20),
+},
+title: {
+  fontSize: moderateScale(32),
+  fontWeight: 'bold',
+  color: 'white',
+  textAlign: 'center',
+},
+subtitle: {
+  fontSize: moderateScale(16),
+  color: 'rgba(255, 255, 255, 0.8)',
+  marginTop: moderateScale(8),
+},
+actionButtons2: {
+  flexDirection: 'row',
+  justifyContent: 'center',
+  marginTop: moderateScale(20),
+  gap: moderateScale(20),
+},
+playAllButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  paddingHorizontal: moderateScale(20),
+  paddingVertical: moderateScale(12),
+  borderRadius: moderateScale(25),
+  borderWidth: 1,
+  borderColor: 'rgba(255, 255, 255, 0.3)',
+},
+dragHandle: {
+  position: 'absolute',
+  left: moderateScale(10),
+  top: '50%',
+  transform: [{translateY: moderateScale(-10)}],
+  zIndex: 1,
+},
+playAllText: {
+  color: 'white',
+  fontSize: moderateScale(16),
+  fontWeight: '600',
+  marginLeft: moderateScale(8),
+},
+draggableItem: {
+  marginVertical: moderateScale(2),
+},
+draggingItem: {
+  opacity: 0.8,
+  transform: [{scale: 1.02}],
+},
+rightAction: {
+  flex: 1,
+  backgroundColor: '#ff4444',
+  justifyContent: 'center',
+  alignItems: 'flex-end',
+  paddingRight: moderateScale(20),
+},
+deleteButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: moderateScale(15),
+  paddingVertical: moderateScale(10),
+},
+deleteText: {
+  color: 'white',
+  fontSize: moderateScale(14),
+  fontWeight: '600',
+  marginLeft: moderateScale(8),
+},
+clearButton2: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  paddingHorizontal: moderateScale(20),
+  paddingVertical: moderateScale(12),
+  borderRadius: moderateScale(25),
+  borderWidth: 1,
+  borderColor: 'rgba(255, 255, 255, 0.3)',
+},
+clearText: {
+  color: 'white',
+  fontSize: moderateScale(16),
+  fontWeight: '600',
+  marginLeft: moderateScale(8),
+},
+buttonDisabled: {
+  opacity: 0.5,
+},
   });

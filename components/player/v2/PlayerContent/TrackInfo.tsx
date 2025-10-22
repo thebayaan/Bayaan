@@ -86,7 +86,7 @@ export const TrackInfo = () => {
       setDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
       
       // 2. Download the file 
-      const filePath = await downloadSurah(
+      const downloadResult = await downloadSurah(
         parseInt(currentTrack.surahId, 10),  // ← surahId should be a number
         currentTrack.reciterId,              // ← reciterId should be the UUID
         currentTrack.rewayatId
@@ -97,8 +97,8 @@ export const TrackInfo = () => {
         reciterId: currentTrack.reciterId,
         surahId: currentTrack.surahId,
         rewayatId: currentTrack.rewayatId,
-        filePath,
-        fileSize: 0, // You'll get this from file info
+        filePath: downloadResult.filePath,
+        fileSize: downloadResult.fileSize,
         downloadDate: Date.now(),
         status: 'completed'
       });

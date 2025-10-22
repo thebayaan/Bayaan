@@ -2,7 +2,8 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import { clearAllDownloads } from '@/services/downloadService';
+import { clearAllDownloads as clearAllDownloadsService } from '@/services/downloadService';
+import { removeDownload as removeDownloadService } from '@/services/downloadService';
 
 
 
@@ -31,10 +32,12 @@ export interface DownloadedSurah {
     isDownloaded: (reciterId: string, surahId: string) => boolean;
     isDownloading: (reciterId: string, surahId: string) => boolean;
     getDownload: (reciterId: string, surahId: string) => DownloadedSurah | undefined;
+    setDownloads: (downloads: DownloadedSurah[]) => void;
     clearAllDownloads: () => Promise<void>;
     // Status management
     setDownloading: (id: string) => void;
     clearDownloading: (id: string) => void;
+    reorderDownloads: (fromIndex: number, toIndex: number) => void;
     setError: (error: Error | null) => void;
   }
 
@@ -68,26 +71,51 @@ export const useDownloadStore = create<DownloadStoreState>()(
           };
         });
       },
-      removeDownload: (reciterId: string, surahId: string) => {
-        set(state => ({
-          downloads: state.downloads.filter(d => 
-            !(d.reciterId === reciterId && d.surahId === surahId)
-          )
-        }));
+      removeDownload: async (reciterId: string, surahId: string) => {
+        const {downloads} = get();
+        const download = downloads.find(d => d.reciterId === reciterId && d.surahId === surahId);
+        
+        try {
+          if (download) {
+            await removeDownloadService(download);
+          }
+          
+          // Remove from store
+          set(state => ({
+            downloads: state.downloads.filter(d => 
+              !(d.reciterId === reciterId && d.surahId === surahId)
+            )
+          }));
+        } catch (error) {
+          console.error('Error removing download:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          set({error: new Error(`Failed to remove download: ${errorMessage}`)});
+          throw error;
+        }
       },
 
       clearDownloads: () => {
         set({downloads: []});
       },
 
+      setDownloads: (downloads: DownloadedSurah[]) => {
+        set({downloads});
+      },
       clearAllDownloads: async () => {
         const {downloads} = get();
         
-        // Delete files using service
-        await clearAllDownloads(downloads);
-        
-        // Clear store
-        set({downloads: []});
+        try {
+          // Delete files using service
+          await clearAllDownloadsService(downloads);
+          
+          // Clear store - let Zustand handle persistence
+          set({downloads: [], downloading: [], error: null});
+        } catch (error) {
+          console.error('Error clearing downloads:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          set({error: new Error(`Failed to clear downloads: ${errorMessage}`)});
+          throw error;
+        }
       },
 
       // Queries
@@ -126,6 +154,15 @@ export const useDownloadStore = create<DownloadStoreState>()(
         }));
       },
 
+      reorderDownloads: (fromIndex: number, toIndex: number) => {
+        set(state => {
+          const newDownloads = [...state.downloads];
+          const [movedItem] = newDownloads.splice(fromIndex, 1);
+          newDownloads.splice(toIndex, 0, movedItem);
+          return { downloads: newDownloads };
+        });
+      },
+
       setError: (error: Error | null) => {
         set({error});
       },
@@ -155,6 +192,8 @@ export const useDownload = () => {
       setDownloading: store.setDownloading,
       clearDownloading: store.clearDownloading,
       clearAllDownloads: store.clearAllDownloads,
+      reorderDownloads: store.reorderDownloads,
+      setDownloads: store.setDownloads,
       setError: store.setError,
     };
   };
