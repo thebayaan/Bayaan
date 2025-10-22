@@ -163,7 +163,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
     try {
       setDownloading(`${reciterId}-${surah.id}`);
       
-      const filePath = await downloadSurah(
+      const downloadResult = await downloadSurah(
         surah.id, // Use surah.id directly
         reciterId, // Use reciterId from props
         rewayatId // Use rewayatId from props
@@ -173,8 +173,8 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
         reciterId,
         surahId: surah.id.toString(),
         rewayatId: rewayatId || '',
-        filePath,
-        fileSize: 0,
+        filePath: downloadResult.filePath,
+        fileSize: downloadResult.fileSize,
         downloadDate: Date.now(),
         status: 'completed'
       });

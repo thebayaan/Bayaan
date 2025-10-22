@@ -1,43 +1,82 @@
 import * as FileSystem from 'expo-file-system';
-import { fetchAudioUrl } from './dataService'; // Adjust the path as needed
+import { fetchAudioUrl } from './dataService';
 import { DownloadedSurah } from './player/store/downloadStore';
+
+interface DownloadResult {
+  filePath: string;
+  fileSize: number;
+}
 
 /**
  * Downloads a Surah MP3 for offline playback
- * @param surahId - The Surah number/id
- * @param reciterId - The reciter's ID
+ * @param surahId - The Surah number (1-114)
+ * @param reciterId - The reciter's unique identifier
  * @param rewayatId - Optional: the rewayat ID (reading style)
- * @returns The local file path
+ * @returns Promise resolving to download result with file path and size
+ * @throws {Error} When download fails or invalid parameters provided
  */
 export async function downloadSurah(
   surahId: number,
   reciterId: string,
   rewayatId?: string,
-): Promise<string> {
-  //  Get the remote URL using the data service
-  const remoteUrl = await fetchAudioUrl(surahId, reciterId, rewayatId);
+): Promise<DownloadResult> {
+  // Validate inputs
+  if (!surahId || surahId < 1 || surahId > 114) {
+    throw new Error(`Invalid surah ID: ${surahId}. Must be between 1 and 114.`);
+  }
+  
+  if (!reciterId || typeof reciterId !== 'string') {
+    throw new Error('Invalid reciter ID provided');
+  }
+  
+  // Sanitize file name components to prevent path injection
+  const sanitizedReciterId = reciterId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const sanitizedRewayatId = rewayatId?.replace(/[^a-zA-Z0-9_-]/g, '');
+  
+  try {
+    // Get the remote URL using the data service
+    const remoteUrl = await fetchAudioUrl(surahId, reciterId, rewayatId);
 
-  // Decide local file path (you can add reciter/rewayat to avoid conflicts)
-  const padded = surahId.toString().padStart(3, '0');
-  const fileName = rewayatId
-    ? `${padded}_${reciterId}_${rewayatId}.mp3`
-    : `${padded}_${reciterId}.mp3`;
-  const localPath = `${FileSystem.documentDirectory}${fileName}`;
+    // Generate safe file name
+    const padded = surahId.toString().padStart(3, '0');
+    const fileName = sanitizedRewayatId
+      ? `${padded}_${sanitizedReciterId}_${sanitizedRewayatId}.mp3`
+      : `${padded}_${sanitizedReciterId}.mp3`;
+    const localPath = `${FileSystem.documentDirectory}${fileName}`;
 
-  // Check if file already exists
-  const fileInfo = await FileSystem.getInfoAsync(localPath);
-  if (!fileInfo.exists) {
+    // Check if file already exists
+    const fileInfo = await FileSystem.getInfoAsync(localPath);
+    if (fileInfo.exists) {
+      console.log('File already exists:', localPath);
+      return {
+        filePath: localPath,
+        fileSize: fileInfo.size || 0
+      };
+    }
+
     console.log(`Downloading Surah ${surahId}...`);
     await FileSystem.downloadAsync(remoteUrl, localPath);
-    console.log('Download complete:', localPath);
-  } else {
-    console.log('File already exists:', localPath);
+    
+    // Get file size after download
+    const downloadedFileInfo = await FileSystem.getInfoAsync(localPath);
+    const fileSize = downloadedFileInfo.exists ? downloadedFileInfo.size || 0 : 0;
+    
+    console.log('Download complete:', localPath, `Size: ${fileSize} bytes`);
+    
+    return {
+      filePath: localPath,
+      fileSize
+    };
+  } catch (error) {
+    console.error('Download failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    throw new Error(`Failed to download Surah ${surahId}: ${errorMessage}`);
   }
-
-  return localPath;
 }
 
 export async function clearAllDownloads(downloads: DownloadedSurah[]): Promise<void> {
+  const errors: string[] = [];
+  
   // Delete all files
   for (const download of downloads) {
     try {
@@ -47,21 +86,29 @@ export async function clearAllDownloads(downloads: DownloadedSurah[]): Promise<v
         console.log('Deleted file:', download.filePath);
       }
     } catch (error) {
-      console.error('Error deleting file:', download.filePath, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMsg = `Failed to delete ${download.filePath}: ${errorMessage}`;
+      console.error(errorMsg);
+      errors.push(errorMsg);
     }
   }
+  
+  // If any deletions failed, throw an error with details
+  if (errors.length > 0) {
+    throw new Error(`Failed to delete ${errors.length} files:\n${errors.join('\n')}`);
+  }
 }
-async function getAllDownloadedFiles() {
+
+export async function removeDownload(download: DownloadedSurah): Promise<void> {
   try {
-    if (!FileSystem.documentDirectory) {
-      console.error('Document directory is not available.');
-      return [];
+    const fileInfo = await FileSystem.getInfoAsync(download.filePath);
+    if (fileInfo.exists) {
+      await FileSystem.deleteAsync(download.filePath);
+      console.log('Deleted file:', download.filePath);
     }
-    const files = await FileSystem.readDirectoryAsync(FileSystem.documentDirectory);
-    console.log('Downloaded files:', files);
-    return files; // Array of file names like ['001.mp3', '002.mp3']
   } catch (error) {
-    console.error('Error reading downloaded files:', error);
-    return [];
+    console.error('Error deleting file:', download.filePath, error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    throw new Error(`Failed to delete file ${download.filePath}: ${errorMessage}`);
   }
 }
