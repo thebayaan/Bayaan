@@ -8,7 +8,6 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
@@ -24,10 +23,11 @@ interface TrackItemProps {
   rewayatId?: string;
   onPress: () => void;
   onPlayPress?: () => void;
+  hidePlayButton?: boolean;
 }
 
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
-  ({reciterId, surahId, rewayatId, onPress, onPlayPress}) => {
+  ({reciterId, surahId, rewayatId, onPress, onPlayPress, hidePlayButton}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const [reciter, setReciter] = useState<Reciter | null>(null);
@@ -122,12 +122,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           <View style={styles.surahNameContainer}>
             <View style={styles.surahTextContainer}>
               <View style={styles.surahNameRow}>
-                {(onPlayPress || isCurrentlyPlaying) && (
+                {(isCurrentlyPlaying || (onPlayPress && !hidePlayButton)) && (
                   <TouchableOpacity
                     style={styles.playIndicatorContainer}
                     onPress={handlePlayButtonPress}
                     activeOpacity={0.7}>
-                    {isCurrentlyPlaying ? (
+                    {isCurrentlyPlaying && (
                       <NowPlayingIndicator
                         isPlaying={
                           playbackStatus === TrackPlayerState.Playing ||
@@ -137,13 +137,6 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                         barCount={3}
                         barWidth={moderateScale(2)}
                         gap={moderateScale(1.2)}
-                      />
-                    ) : (
-                      <Icon
-                        name="play-circle"
-                        type="feather"
-                        size={moderateScale(16)}
-                        color={theme.colors.primary}
                       />
                     )}
                   </TouchableOpacity>
