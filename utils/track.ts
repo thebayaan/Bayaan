@@ -1,7 +1,7 @@
 import {Reciter} from '@/data/reciterData';
 import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
-import {generateAudioUrl} from './audioUtils';
+import {generateAudioUrl, generateSmartAudioUrl} from './audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 
 /**
@@ -23,6 +23,7 @@ export function getAvailableSurahs(
 
 /**
  * Creates a Track object for a specific surah and reciter
+ * Uses smart URL generation to prefer local downloaded files over remote URLs
  * @param reciter - Reciter object
  * @param surah - Surah object
  * @param rewayatId - Optional specific rewayat ID
@@ -33,7 +34,7 @@ export async function createTrack(
   surah: Surah,
   rewayatId?: string,
 ): Promise<Track> {
-  const url = generateAudioUrl(reciter, String(surah.id), rewayatId);
+  const url = generateSmartAudioUrl(reciter, String(surah.id), rewayatId);
   return {
     id: `${reciter.id}-${surah.id}`,
     url,
