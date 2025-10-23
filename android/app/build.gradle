@@ -91,8 +91,8 @@ android {
         applicationId 'com.bayaan.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 144
-        versionName "1.2.0"
+        versionCode 166
+        versionName "1.1.2"
     }
     
     signingConfigs {

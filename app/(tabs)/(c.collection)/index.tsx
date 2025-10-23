@@ -20,7 +20,9 @@ import {FilterBar} from '@/components/collection/FilterBar';
 import {SectionHeader} from '@/components/collection/SectionHeader';
 import {CollectionItem} from '@/components/collection/CollectionItem';
 import {GridItem} from '@/components/collection/GridItem';
+import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
 import {useDownload} from '@/services/player/store/downloadStore';
+import {usePlaylists} from '@/hooks/usePlaylists';
 
 
 // Filter options
@@ -29,6 +31,8 @@ const FILTERS = [
   {id: 'playlists', label: 'Playlists'},
   {id: 'reciters', label: 'Reciters'},
   {id: 'downloads', label: 'Downloads'},
+
+  {id: 'loved', label: 'Loved'},
 
 ];
 
@@ -42,12 +46,23 @@ export default function CollectionScreen() {
   
   const [activeFilter, setActiveFilter] = useState('all');
   const [isGridView, setIsGridView] = useState(false);
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const {downloads} = useDownload();
+  const {playlists, createPlaylist, loading: playlistsLoading} = usePlaylists();
 
   // Handle navigation to existing screens
   const handleNewPlaylist = () => {
-    // TODO: Implement playlist creation
-    console.log('New playlist pressed');
+    setShowCreatePlaylist(true);
+  };
+
+  const handleCreatePlaylist = async (name: string, color: string) => {
+    try {
+      await createPlaylist(name, color);
+      // Modal will close automatically
+    } catch (error) {
+      console.error('Failed to create playlist:', error);
+      // TODO: Show error message to user
+    }
   };
 
   const handleSearch = () => {
@@ -63,30 +78,50 @@ export default function CollectionScreen() {
   const getCollectionItems = () => {
     const items = [];
 
-    // Add Loved Surahs
+    // Add User Playlists
     if (activeFilter === 'all' || activeFilter === 'playlists') {
+      if (playlists && Array.isArray(playlists)) {
+        playlists.forEach(playlist => {
+          items.push({
+            id: playlist.id,
+            title: playlist.name,
+            subtitle: `Playlist • ${playlist.itemCount} surahs`,
+          iconName: 'book-open',
+          iconType: 'feather',
+            color: playlist.color,
+            onPress: () => {
+              // TODO: Navigate to playlist detail screen
+              console.log('Navigate to playlist:', playlist.id);
+            },
+          });
+        });
+      }
+    }
+
+    // Add Loved Surahs
+    if (activeFilter === 'all' || activeFilter === 'loved') {
       items.push({
         id: 'loved',
         title: 'Loved Surahs',
-        subtitle: `Playlist • ${lovedTracks.length} surahs`,
+        subtitle: `Loved • ${lovedTracks.length} surahs`,
         iconName: 'heart',
         iconType: 'feather',
+        color: undefined,
         onPress: () => router.push('/collection/loved'),
       });
     }
 
     // Add Favorite Reciters
     if (activeFilter === 'all' || activeFilter === 'reciters') {
-      
-        items.push({
-          id: `favorite-reciters`,
-          title: `Favorite Reciters`,
-          subtitle: 'Reciter',
-          iconName: 'user',
-          iconType: 'feather',
-          onPress: () => router.push(`/collection/favorite-reciters`),
-        });
-    
+      items.push({
+        id: 'favorite-reciters',
+        title: 'Favorite Reciters',
+        subtitle: `Favorite • ${favoriteReciters.length} reciters`,
+        iconName: 'user',
+        iconType: 'feather',
+        color: undefined,
+        onPress: () => router.push('/collection/favorite-reciters'),
+      });
     }
 
     // Add Downloads
@@ -94,9 +129,10 @@ export default function CollectionScreen() {
       items.push({
         id: 'downloads',
         title: 'Downloads',
-        subtitle: `Playlist • ${downloads.length} surahs`,
+        subtitle: `Downloaded • ${downloads.length} surahs`,
         iconName: 'download',
         iconType: 'feather',
+        color: undefined,
         onPress: () => router.push('/collection/downloads'),
       });
     }
@@ -195,6 +231,7 @@ export default function CollectionScreen() {
               subtitle={item.subtitle}
               iconName={item.iconName}
               iconType={item.iconType}
+              color={item.color}
               onPress={item.onPress}
               theme={theme}
             />
@@ -203,6 +240,14 @@ export default function CollectionScreen() {
         
         <View style={{height: moderateScale(100)}} />
       </ScrollView>
+
+      {/* Create Playlist Modal */}
+      <CreatePlaylistModal
+        visible={showCreatePlaylist}
+        onClose={() => setShowCreatePlaylist(false)}
+        onCreatePlaylist={handleCreatePlaylist}
+        theme={theme}
+      />
     </View>
   );
 }
