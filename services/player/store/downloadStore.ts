@@ -17,6 +17,14 @@ export interface DownloadedSurah {
     status: 'downloading' | 'completed' | 'error';
   }
 
+
+interface Playlist {
+  id: string;
+  name: string;
+  createdAt: number;
+  trackIds: string[]; // Array of "reciterId:surahId:rewayatId" strings
+}
+
   interface DownloadStoreState {
     // State
     downloads: DownloadedSurah[];
@@ -39,6 +47,13 @@ export interface DownloadedSurah {
     clearDownloading: (id: string) => void;
     reorderDownloads: (fromIndex: number, toIndex: number) => void;
     setError: (error: Error | null) => void;
+
+    // Playlists
+  playlists: Playlist[];
+  createPlaylist: (name: string) => void;
+  deletePlaylist: (playlistId: string) => void;
+  addToPlaylist: (playlistId: string, trackId: string) => void;
+  removeFromPlaylist: (playlistId: string, trackId: string) => void;
   }
 
 // Add this after your interface (around line 39)
@@ -51,6 +66,47 @@ export const useDownloadStore = create<DownloadStoreState>()(
       downloads: [],
       downloading: [],
       error: null,
+      playlists: [],
+
+      
+createPlaylist: (name: string) => {
+  const newPlaylist: Playlist = {
+    id: Date.now().toString(), // Simple ID generation
+    name,
+    createdAt: Date.now(),
+    trackIds: []
+  };
+  
+  set(state => ({
+    playlists: [...state.playlists, newPlaylist]
+  }));
+},
+
+deletePlaylist: (playlistId: string) => {
+  set(state => ({
+    playlists: state.playlists.filter(p => p.id !== playlistId)
+  }));
+},
+
+addToPlaylist: (playlistId: string, trackId: string) => {
+  set(state => ({
+    playlists: state.playlists.map(playlist => 
+      playlist.id === playlistId 
+        ? { ...playlist, trackIds: [...playlist.trackIds, trackId] }
+        : playlist
+    )
+  }));
+},
+
+removeFromPlaylist: (playlistId: string, trackId: string) => {
+  set(state => ({
+    playlists: state.playlists.map(playlist => 
+      playlist.id === playlistId 
+        ? { ...playlist, trackIds: playlist.trackIds.filter(id => id !== trackId) }
+        : playlist
+    )
+  }));
+},
 
       // Actions
       addDownload: (download: DownloadedSurah) => {
@@ -172,6 +228,7 @@ export const useDownloadStore = create<DownloadStoreState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: state => ({
         downloads: state.downloads,
+        playlists: state.playlists,
       }),
     },
   ),
@@ -194,6 +251,11 @@ export const useDownload = () => {
       clearAllDownloads: store.clearAllDownloads,
       reorderDownloads: store.reorderDownloads,
       setDownloads: store.setDownloads,
+      playlists: store.playlists, 
+      createPlaylist: store.createPlaylist,
+      deletePlaylist: store.deletePlaylist,  
+      addToPlaylist: store.addToPlaylist, 
+      removeFromPlaylist: store.removeFromPlaylist,
       setError: store.setError,
     };
   };

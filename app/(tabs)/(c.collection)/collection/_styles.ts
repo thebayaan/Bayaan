@@ -16,6 +16,8 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: moderateScale(15),
+      width: '100%',
+  overflow: 'hidden',
     },
     headerTitleContainer: {
       flex: 1,
@@ -146,10 +148,15 @@ export const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     contentContainer: {
-      paddingBottom: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
+  paddingBottom: moderateScale(10),
     },
     gradientContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingBottom: moderateScale(20),
       overflow: 'hidden',
+      backgroundColor: 'purple',
     },
     backButton: {
       position: 'absolute',
@@ -180,66 +187,12 @@ export const createStyles = (theme: Theme) =>
     },
 
 
-// Add these styles to your _styles.ts
-headerContainer2: {
-  width: '100%',
-  overflow: 'hidden',
-},
-gradientContainer2: {
-  width: '100%',
-  paddingTop: moderateScale(60),
-  paddingBottom: moderateScale(20),
-  paddingHorizontal: moderateScale(20),
-},
-backButton2: {
-  position: 'absolute',
-  top: moderateScale(60),
-  left: moderateScale(20),
-  zIndex: 10,
-},
-titleContainer: {
-  alignItems: 'center',
-  marginTop: moderateScale(20),
-},
-title: {
-  fontSize: moderateScale(32),
-  fontWeight: 'bold',
-  color: 'white',
-  textAlign: 'center',
-},
-subtitle: {
-  fontSize: moderateScale(16),
-  color: 'rgba(255, 255, 255, 0.8)',
-  marginTop: moderateScale(8),
-},
-actionButtons2: {
-  flexDirection: 'row',
-  justifyContent: 'center',
-  marginTop: moderateScale(20),
-  gap: moderateScale(20),
-},
-playAllButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  paddingHorizontal: moderateScale(20),
-  paddingVertical: moderateScale(12),
-  borderRadius: moderateScale(25),
-  borderWidth: 1,
-  borderColor: 'rgba(255, 255, 255, 0.3)',
-},
 dragHandle: {
   position: 'absolute',
   left: moderateScale(10),
   top: '50%',
   transform: [{translateY: moderateScale(-10)}],
   zIndex: 1,
-},
-playAllText: {
-  color: 'white',
-  fontSize: moderateScale(16),
-  fontWeight: '600',
-  marginLeft: moderateScale(8),
 },
 draggableItem: {
   marginVertical: moderateScale(2),
@@ -266,24 +219,5 @@ deleteText: {
   fontSize: moderateScale(14),
   fontWeight: '600',
   marginLeft: moderateScale(8),
-},
-clearButton2: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  paddingHorizontal: moderateScale(20),
-  paddingVertical: moderateScale(12),
-  borderRadius: moderateScale(25),
-  borderWidth: 1,
-  borderColor: 'rgba(255, 255, 255, 0.3)',
-},
-clearText: {
-  color: 'white',
-  fontSize: moderateScale(16),
-  fontWeight: '600',
-  marginLeft: moderateScale(8),
-},
-buttonDisabled: {
-  opacity: 0.5,
 },
   });
