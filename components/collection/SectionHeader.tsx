@@ -1,0 +1,58 @@
+import React from 'react';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {moderateScale} from 'react-native-size-matters';
+import {Icon} from '@rneui/themed';
+import {Theme} from '@/utils/themeUtils';
+
+interface SectionHeaderProps {
+  title: string;
+  onViewToggle?: () => void;
+  isGridView?: boolean;
+  theme: Theme;
+}
+
+export const SectionHeader: React.FC<SectionHeaderProps> = ({
+  title,
+  onViewToggle,
+  isGridView = false,
+  theme,
+}) => {
+  return (
+    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      <Text style={[styles.title, {color: theme.colors.textSecondary}]}>{title}</Text>
+      
+      {/* {onViewToggle && (
+        <TouchableOpacity
+          style={styles.toggleButton}
+          onPress={onViewToggle}
+          activeOpacity={0.7}>
+          <Icon
+            name={isGridView ? "list" : "grid"}
+            type="feather"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+      )} */}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(16),
+    paddingVertical: moderateScale(8),
+  },
+  title: {
+    fontSize: moderateScale(14),
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  toggleButton: {
+    padding: moderateScale(4),
+  },
+});
