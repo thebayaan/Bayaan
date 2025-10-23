@@ -17,7 +17,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingHorizontal: moderateScale(15),
       width: '100%',
-  overflow: 'hidden',
+      overflow: 'hidden',
     },
     headerTitleContainer: {
       flex: 1,
@@ -149,7 +149,7 @@ export const createStyles = (theme: Theme) =>
     },
     contentContainer: {
       paddingHorizontal: moderateScale(16),
-  paddingBottom: moderateScale(10),
+      paddingBottom: moderateScale(10),
     },
     gradientContainer: {
       width: '100%',
@@ -186,38 +186,37 @@ export const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
     },
 
-
-dragHandle: {
-  position: 'absolute',
-  left: moderateScale(10),
-  top: '50%',
-  transform: [{translateY: moderateScale(-10)}],
-  zIndex: 1,
-},
-draggableItem: {
-  marginVertical: moderateScale(2),
-},
-draggingItem: {
-  opacity: 0.8,
-  transform: [{scale: 1.02}],
-},
-rightAction: {
-  flex: 1,
-  backgroundColor: '#ff4444',
-  justifyContent: 'center',
-  alignItems: 'flex-end',
-  paddingRight: moderateScale(20),
-},
-deleteButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingHorizontal: moderateScale(15),
-  paddingVertical: moderateScale(10),
-},
-deleteText: {
-  color: 'white',
-  fontSize: moderateScale(14),
-  fontWeight: '600',
-  marginLeft: moderateScale(8),
-},
+    dragHandle: {
+      position: 'absolute',
+      left: moderateScale(10),
+      top: '50%',
+      transform: [{translateY: moderateScale(-10)}],
+      zIndex: 1,
+    },
+    draggableItem: {
+      marginVertical: moderateScale(2),
+    },
+    draggingItem: {
+      opacity: 0.8,
+      transform: [{scale: 1.02}],
+    },
+    rightAction: {
+      flex: 1,
+      backgroundColor: '#ff4444',
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+      paddingRight: moderateScale(20),
+    },
+    deleteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(15),
+      paddingVertical: moderateScale(10),
+    },
+    deleteText: {
+      color: 'white',
+      fontSize: moderateScale(14),
+      fontWeight: '600',
+      marginLeft: moderateScale(8),
+    },
   });
