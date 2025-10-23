@@ -61,6 +61,28 @@ export const usePlaylists = () => {
     }
   };
 
+  // Get single playlist
+  const getPlaylist = async (id: string) => {
+    try {
+      setError(null);
+      return await playlistService.getPlaylist(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get playlist');
+      throw err;
+    }
+  };
+
+  // Get playlist items
+  const getPlaylistItems = async (playlistId: string) => {
+    try {
+      setError(null);
+      return await playlistService.getPlaylistItems(playlistId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get playlist items');
+      throw err;
+    }
+  };
+
   // Load playlists on mount
   useEffect(() => {
     loadPlaylists();
@@ -73,6 +95,8 @@ export const usePlaylists = () => {
     createPlaylist,
     deletePlaylist,
     updatePlaylist,
+    getPlaylist,
+    getPlaylistItems,
     refreshPlaylists: loadPlaylists,
   };
 };

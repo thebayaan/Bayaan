@@ -89,10 +89,7 @@ export default function CollectionScreen() {
           iconName: 'book-open',
           iconType: 'feather',
             color: playlist.color,
-            onPress: () => {
-              // TODO: Navigate to playlist detail screen
-              console.log('Navigate to playlist:', playlist.id);
-            },
+            onPress: () => router.push(`/playlist/${playlist.id}`),
           });
         });
       }
