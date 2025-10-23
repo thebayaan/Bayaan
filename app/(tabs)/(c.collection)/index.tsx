@@ -54,7 +54,12 @@ const collectionItems: CollectionItem[] = [
     iconColor: GOLD_COLOR,
   },
   // {id: 'playlists', title: 'Playlists', icon: PlaylistIcon},
-  {id: 'downloads', title: 'Downloads', icon: DownloadIcon},
+  {
+    id: 'downloads',
+    title: 'Downloads',
+    icon: DownloadIcon,
+    iconColor: '#10B981',
+  },
 ];
 
 function calculatePreviewItemWidth(width: number, columns: number) {

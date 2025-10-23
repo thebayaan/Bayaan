@@ -12,6 +12,7 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
 import {HeartIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
+import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
@@ -23,6 +24,7 @@ import Animated, {
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from './NowPlayingIndicator';
+import {useDownload} from '@/services/player/store/downloadStore';
 
 interface SurahItemProps {
   item: Surah;
@@ -52,6 +54,14 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
+    const {isDownloaded, isDownloadedWithRewayat} = useDownload();
+
+    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
+    const isDownloadedState = reciterId
+      ? rewayatId
+        ? isDownloadedWithRewayat(reciterId, item.id.toString(), rewayatId)
+        : isDownloaded(reciterId, item.id.toString())
+      : false;
 
     // Get necessary state slices from player store
     const playbackStatus = usePlayerStore(state => state.playback.state);
@@ -186,15 +196,25 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             <Text style={styles.surahName}>{`${item.id}. ${item.name}`}</Text>
             {isLoved && (
               <HeartIcon
-                size={moderateScale(12)}
+                size={moderateScale(14)}
                 color={theme.colors.text}
                 filled={true}
               />
             )}
           </View>
-          <Text style={styles.surahSecondaryInfo}>
-            {item.translated_name_english}
-          </Text>
+          <View style={styles.secondaryInfoContainer}>
+            {isDownloadedState && (
+              <Ionicons
+                name="arrow-down-circle"
+                size={moderateScale(12)}
+                color={theme.colors.textSecondary}
+                style={styles.downloadIcon}
+              />
+            )}
+            <Text style={styles.surahSecondaryInfo}>
+              {item.translated_name_english}
+            </Text>
+          </View>
           <View
             style={[
               styles.locationIndicator,
@@ -323,11 +343,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
+    secondaryInfoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      marginBottom: moderateScale(3),
+    },
     surahSecondaryInfo: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
-      marginBottom: moderateScale(3),
+    },
+    downloadIcon: {
+      marginTop: moderateScale(1),
     },
     surahGlyph: {
       fontSize: moderateScale(20),
