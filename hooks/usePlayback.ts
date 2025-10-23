@@ -1,7 +1,7 @@
 // hooks/usePlayback.ts
 import {usePlayerStore} from '@/store/playerStore';
 import {useQueueStore} from '@/store/queueStore';
-import {generateAudioUrl} from '@/utils/audioUtils';
+import {generateAudioUrl, generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {Track} from '@/types/audio';
 import {Reciter} from '@/data/reciterData';
@@ -231,7 +231,7 @@ export const usePlayback = () => {
 
       const track: Track = {
         id: `${reciter.id}:${surah.id}`,
-        url: generateAudioUrl(reciter, surah.id.toString()),
+        url: generateSmartAudioUrl(reciter, surah.id.toString()),
         title: surah.name,
         artist: reciter.name,
         artwork: getReciterArtwork(reciter),
@@ -398,7 +398,7 @@ export const usePlayback = () => {
 
       const track: Track = {
         id: `${reciter.id}:${surah.id}`,
-        url: generateAudioUrl(reciter, surah.id.toString()),
+        url: generateSmartAudioUrl(reciter, surah.id.toString()),
         title: surah.name,
         artist: reciter.name,
         artwork: getReciterArtwork(reciter),
@@ -443,7 +443,7 @@ export const usePlayback = () => {
   ): Track[] => {
     return surahs.map(surah => ({
       id: `${reciter.id}:${surah.id}`,
-      url: generateAudioUrl(reciter, surah.id.toString()),
+      url: generateSmartAudioUrl(reciter, surah.id.toString()),
       title: surah.name,
       artist: reciter.name,
       reciterId: reciter.id,
