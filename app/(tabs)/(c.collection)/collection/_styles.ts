@@ -4,6 +4,7 @@ import {
   moderateScale,
   verticalScale,
 } from 'react-native-size-matters';
+import Color from 'color';
 
 export const createStyles = (theme: Theme) =>
   ScaledSheet.create({
@@ -15,6 +16,8 @@ export const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: moderateScale(15),
+      width: '100%',
+  overflow: 'hidden',
     },
     headerTitleContainer: {
       flex: 1,
@@ -145,10 +148,15 @@ export const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     contentContainer: {
-      paddingBottom: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
+  paddingBottom: moderateScale(10),
     },
     gradientContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingBottom: moderateScale(20),
       overflow: 'hidden',
+      backgroundColor: 'purple',
     },
     backButton: {
       position: 'absolute',
@@ -158,4 +166,58 @@ export const createStyles = (theme: Theme) =>
     listContentContainer: {
       paddingHorizontal: moderateScale(15),
     },
+    clearButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(12),
+      paddingVertical: moderateScale(8),
+      backgroundColor: Color(theme.colors.error).alpha(0.1).toString(),
+      borderRadius: moderateScale(8),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.error).alpha(0.3).toString(),
+    },
+    clearButtonText: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.error,
+      marginLeft: moderateScale(6),
+    },
+    clearButtonTextDisabled: {
+      color: theme.colors.textSecondary,
+    },
+
+
+dragHandle: {
+  position: 'absolute',
+  left: moderateScale(10),
+  top: '50%',
+  transform: [{translateY: moderateScale(-10)}],
+  zIndex: 1,
+},
+draggableItem: {
+  marginVertical: moderateScale(2),
+},
+draggingItem: {
+  opacity: 0.8,
+  transform: [{scale: 1.02}],
+},
+rightAction: {
+  flex: 1,
+  backgroundColor: '#ff4444',
+  justifyContent: 'center',
+  alignItems: 'flex-end',
+  paddingRight: moderateScale(20),
+},
+deleteButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: moderateScale(15),
+  paddingVertical: moderateScale(10),
+},
+deleteText: {
+  color: 'white',
+  fontSize: moderateScale(14),
+  fontWeight: '600',
+  marginLeft: moderateScale(8),
+},
   });

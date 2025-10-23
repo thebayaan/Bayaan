@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
+import Svg, { Circle } from 'react-native-svg';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -14,6 +15,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {downloadSurah} from '@/services/downloadService';
+import { CheckIcon, DownloadIcon } from '@/components/Icons';
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
@@ -61,6 +65,52 @@ export const TrackInfo = () => {
       }, 100);
     }
   }, [currentTrack, setSheetMode, navigateToReciterProfile]);
+  const {isDownloaded, isDownloading, setDownloading, addDownload, clearDownloading} = useDownload();
+  
+  const isTrackDownloaded = currentTrack ? isDownloaded(currentTrack.reciterId, currentTrack.surahId) : false;
+
+  const handleDownload = useCallback(async () => {
+    if (!currentTrack) return;
+    if (isTrackDownloaded) {
+      console.log('Track already downloaded');
+      return;
+    }
+    
+    // Check if currently downloading
+    if (isDownloading(currentTrack.reciterId, currentTrack.surahId)) {
+      console.log('Track is already downloading');
+      return;
+    }
+    try {
+      // 1. Set downloading state
+      setDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
+      
+      // 2. Download the file 
+      const downloadResult = await downloadSurah(
+        parseInt(currentTrack.surahId, 10),  // ← surahId should be a number
+        currentTrack.reciterId,              // ← reciterId should be the UUID
+        currentTrack.rewayatId
+      );
+      
+      // 3. Add to downloads store
+      addDownload({
+        reciterId: currentTrack.reciterId,
+        surahId: currentTrack.surahId,
+        rewayatId: currentTrack.rewayatId,
+        filePath: downloadResult.filePath,
+        fileSize: downloadResult.fileSize,
+        downloadDate: Date.now(),
+        status: 'completed'
+      });
+      
+      // 4. Clear downloading state
+      clearDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      clearDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
+    }
+  }, [currentTrack, setDownloading, addDownload, clearDownloading]);
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {
@@ -78,6 +128,8 @@ export const TrackInfo = () => {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{scale: scale.value}],
   }));
+
+  const circumference = 2 * Math.PI * 18; // radius = 18
 
   return (
     <View style={styles.container}>
@@ -119,6 +171,35 @@ export const TrackInfo = () => {
         </TouchableOpacity>
 
         <View style={styles.spacer} />
+
+        <TouchableOpacity 
+  style={styles.downloadButton}
+  onPress={handleDownload}  // ← Add this!
+  activeOpacity={0.7}>
+  <Svg width={40} height={40}>
+    {/* Background circle */}
+    <Circle cx="20" cy="20" r="18" stroke="#ccc" strokeWidth="2" fill="none" />
+    
+    {/* Progress circle */}
+    <Circle 
+      cx="20" cy="20" r="18" 
+      stroke="#4CAF50" 
+      strokeWidth="2" 
+      fill="none"
+      strokeDasharray={`${circumference}`}
+      strokeDashoffset={circumference - (20 * circumference / 100)}
+    />
+  </Svg>
+  
+  {/* Icon in center */}
+  <View style={styles.iconContainer}>
+    {isTrackDownloaded ? (
+      <CheckIcon color={theme.colors.text} size={20} />
+    ) : (
+      <DownloadIcon color={theme.colors.text} size={20} />
+    )}
+  </View>
+</TouchableOpacity>
 
         <TouchableOpacity
           style={styles.loveButton}
@@ -186,6 +267,17 @@ const styles = StyleSheet.create({
   },
   loveButton: {
     paddingLeft: moderateScale(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  downloadButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
   },

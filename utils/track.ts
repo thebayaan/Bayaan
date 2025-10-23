@@ -104,6 +104,35 @@ export async function createTracksForRange(
 }
 
 /**
+ * Creates a Track object for a downloaded file using local file path
+ * @param reciter - Reciter object
+ * @param surah - Surah object
+ * @param filePath - Local file path to the downloaded audio file
+ * @param rewayatId - Optional specific rewayat ID
+ * @returns Track object with local file path
+ */
+export function createDownloadedTrack(
+  reciter: Reciter,
+  surah: Surah,
+  filePath: string,
+  rewayatId?: string,
+): Track {
+  return {
+    id: `${reciter.id}-${surah.id}`,
+    url: filePath, // Use local file path instead of remote URL
+    title: surah.name,
+    artist: reciter.name,
+    artwork: getReciterArtwork(reciter),
+    surahId: String(surah.id),
+    reciterId: reciter.id,
+    reciterName: reciter.name,
+    rewayatId: rewayatId || reciter.rewayat[0].id,
+    duration: 0, // Will be set by TrackPlayer
+    description: `${surah.translated_name_english} - ${surah.name}`,
+  };
+}
+
+/**
  * Shuffles an array of tracks
  * @param tracks - Array of tracks to shuffle
  * @returns Shuffled array of tracks
