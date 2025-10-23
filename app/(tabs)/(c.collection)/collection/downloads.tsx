@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {View, Text, FlatList, TouchableOpacity} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {TrackItem} from '@/components/TrackItem';
 import {useDownload, DownloadedSurah} from '@/services/player/store/downloadStore';
@@ -10,29 +9,97 @@ import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createDownloadedTrack} from '@/utils/track';
-import {Icon} from '@rneui/themed';
 import {moderateScale} from 'react-native-size-matters';
-import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
-import {useRouter} from 'expo-router';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { Swipeable } from 'react-native-gesture-handler';
+import {Icon} from '@rneui/themed';
+import {useRouter} from 'expo-router';
+import TrackPlayer, { State as TrackPlayerState } from 'react-native-track-player';
+import {DownloadCollectionActionButtons} from '@/components/DownloadCollectionActionButtons';
+import {CollectionCard} from '@/components/CollectionCard';
+import {DownloadIcon} from '@/components/Icons';
+import {Alert} from 'react-native';
 
 
 
 
 
-
-// Mock data for downloads (replace with actual data source later)
 
 
 export default function DownloadsScreen() {
-
   const {theme} = useTheme();
-  const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const {downloads, clearAllDownloads, reorderDownloads, setDownloads, removeDownload} = useDownload();
-  const {updateQueue, play} = useUnifiedPlayer();
+  
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    headerContainer: {
+      width: '100%',
+      overflow: 'hidden',
+    },
+    gradientContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingBottom: moderateScale(20),
+      overflow: 'hidden',
+      backgroundColor: '#10B981',
+    },
+    contentContainer: {
+      paddingHorizontal: moderateScale(16),
+      paddingBottom: moderateScale(10),
+    },
+    listContentContainer: {
+      flexGrow: 1,
+      paddingBottom: moderateScale(65),
+    },
+    emptyText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginTop: moderateScale(32),
+    },
+    dragHandle: {
+      position: 'absolute',
+      left: moderateScale(10),
+      top: '50%',
+      transform: [{translateY: moderateScale(-10)}],
+      zIndex: 1,
+    },
+    draggableItem: {
+      marginVertical: moderateScale(2),
+    },
+    draggingItem: {
+      opacity: 0.8,
+      transform: [{scale: 1.02}],
+    },
+    rightAction: {
+      flex: 1,
+      backgroundColor: '#ff4444',
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+      paddingRight: moderateScale(20),
+    },
+    deleteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(15),
+      paddingVertical: moderateScale(10),
+    },
+    deleteText: {
+      color: 'white',
+      fontSize: moderateScale(14),
+      fontWeight: '600',
+      marginLeft: moderateScale(8),
+    },
+    backButton: {
+      position: 'absolute',
+      zIndex: 10,
+    },
+  });
+  const {downloads, clearAllDownloads, setDownloads, removeDownload} = useDownload();  const {updateQueue, play, pause, playback} = useUnifiedPlayer();
   const router = useRouter();
   // State to store reciter and surah data for each download
   const [downloadData, setDownloadData] = useState<Array<{
@@ -67,6 +134,7 @@ export default function DownloadsScreen() {
     }
   }, [downloads]);
 
+  
   // Handle surah press to play downloaded file
   const handleSurahPress = useCallback(async (download: DownloadedSurah, reciter: Reciter, surah: Surah) => {
     try {
@@ -84,6 +152,7 @@ export default function DownloadsScreen() {
   const handleClearAll = useCallback(async () => {
     await clearAllDownloads();
   }, [clearAllDownloads]);
+
   const handleReorder = useCallback((data: Array<{download: DownloadedSurah, reciter: Reciter | null, surah: Surah | null}>) => {
     // Update local state
     setDownloadData(data);
@@ -93,10 +162,27 @@ export default function DownloadsScreen() {
     setDownloads(newOrder);
   }, [setDownloads]);
 
+  const handleRemoveDownload = useCallback((download: DownloadedSurah) => {
+    removeDownload(download.reciterId, download.surahId);
+  }, [removeDownload]);
+  
+
+  
+
+
+
+// play all downloads
 const handlePlayAll = useCallback(async () => {
   if (downloadData.length === 0) return;
 
   try {
+    // If currently playing, pause
+    if (playback.state === TrackPlayerState.Playing) {
+      await pause();
+      return;
+    }
+
+    // If paused or stopped, play all downloads
     const trackPromises = downloadData.map(async item => {
       if (!item.reciter || !item.surah) return null;
       return createDownloadedTrack(
@@ -118,11 +204,53 @@ const handlePlayAll = useCallback(async () => {
   } catch (error) {
     console.error('Error playing all downloads:', error);
   }
-}, [downloadData, updateQueue, play]);
-const handleRemoveDownload = useCallback((download: DownloadedSurah) => {
-  removeDownload(download.reciterId, download.surahId);
-}, [removeDownload]);
-//render item for draggable flat list
+}, [downloadData, updateQueue, play, pause, playback.state]);
+
+const ListHeaderComponent = useCallback(() => {
+  return (
+    <View style={styles.headerContainer}>
+      <LinearGradient
+        colors={['#10B981', theme.colors.background] as [string, string]}
+        style={[
+          styles.gradientContainer,
+          {paddingTop: insets.top + moderateScale(20)},
+        ]}>
+        <CollectionCard
+          icon={
+            <DownloadIcon
+              color={theme.colors.text}
+              size={moderateScale(80)}
+              filled={true}
+            />
+          }
+          title="Downloads"
+          subtitle={`${downloadData.length} surahs downloaded`}
+        />
+      </LinearGradient>
+      <View style={styles.contentContainer}>
+        <DownloadCollectionActionButtons
+          
+          onPlayPress={handlePlayAll}
+          disabled={downloadData.length === 0}
+          isPlaying={playback.state === TrackPlayerState.Playing}
+          
+        />
+      </View>
+    </View>
+  );
+}, [
+  styles.headerContainer,
+  styles.gradientContainer,
+  styles.contentContainer,
+  theme.colors.background,
+  theme.colors.text,
+  insets.top,
+  downloadData.length,
+  handleClearAll,
+  handlePlayAll,
+  playback.state,
+]);
+
 const renderItem = ({item, drag, isActive}: RenderItemParams<{download: DownloadedSurah, reciter: Reciter | null, surah: Surah | null}>) => {
   const {download, reciter, surah} = item;
   
@@ -147,9 +275,9 @@ const renderItem = ({item, drag, isActive}: RenderItemParams<{download: Download
         onLongPress={drag}
         disabled={isActive}
         style={[styles.draggableItem, isActive && styles.draggingItem]}>
-            <View style={styles.dragHandle}>
-        <Icon name="menu" type="feather" size={moderateScale(20)} color={theme.colors.textSecondary} />
-      </View>
+        <View style={styles.dragHandle}>
+          <Icon name="menu" type="feather" size={moderateScale(20)} color={theme.colors.textSecondary} />
+        </View>
         <TrackItem
           reciterId={download.reciterId}
           surahId={download.surahId}
@@ -165,57 +293,34 @@ const renderItem = ({item, drag, isActive}: RenderItemParams<{download: Download
 
 return (
   <View style={styles.container}>
-    {/* Header with gradient background */}
-    <View style={styles.headerContainer2}>
-      <LinearGradient
-        colors={['#8B5CF6', '#A855F7', '#C084FC']}
-        style={styles.gradientContainer2}>
-        
-        {/* Back button */}
-        <TouchableOpacity 
-          style={styles.backButton2}
-          onPress={() => router.back()}>
-          <Icon name="arrow-left" type="feather" size={moderateScale(24)} color="white" />
-        </TouchableOpacity>
-
-        {/* Title */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Downloads</Text>
-          <Text style={styles.subtitle}>{downloadData.length} surahs downloaded</Text>
-        </View>
-
-        {/* Action buttons */}
-        <View style={styles.actionButtons2}>
-          <TouchableOpacity 
-            style={[styles.playAllButton, downloadData.length === 0 && styles.buttonDisabled]}
-            onPress={handlePlayAll}
-            disabled={downloadData.length === 0}>
-            <Icon name="play" type="feather" size={moderateScale(20)} color="white" />
-            <Text style={styles.playAllText}>Play All</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.clearButton2, downloadData.length === 0 && styles.buttonDisabled]}
-            onPress={handleClearAll}
-            disabled={downloadData.length === 0}>
-            <Icon name="trash-2" type="feather" size={moderateScale(20)} color="white" />
-            <Text style={styles.clearText}>Clear All</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-    </View>
-
-    {/* Content */}
     <DraggableFlatList
-  data={downloadData}
-  renderItem={renderItem}
-  keyExtractor={item => `${item.download.reciterId}-${item.download.surahId}`}
-  onDragEnd={({data}) => handleReorder(data)}
-  contentContainerStyle={styles.listContainer}
-  ListEmptyComponent={
-    <Text style={styles.emptyText}>No downloads yet</Text>
-  }
-/>
+      data={downloadData}
+      renderItem={renderItem}
+      keyExtractor={item => `${item.download.reciterId}-${item.download.surahId}`}
+      onDragEnd={({data}) => handleReorder(data)}
+      ListHeaderComponent={ListHeaderComponent}
+      contentContainerStyle={styles.listContentContainer}
+      ListEmptyComponent={
+        <Text style={styles.emptyText}>No downloads yet</Text>
+      }
+    />
+    <View
+      style={[
+        styles.backButton,
+        {
+          top: insets.top + moderateScale(10),
+          left: moderateScale(15),
+        },
+      ]}>
+      <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
+        <Icon
+          name="arrow-left"
+          type="feather"
+          size={moderateScale(24)}
+          color="white"
+        />
+      </TouchableOpacity>
+    </View>
   </View>
 );
 }
