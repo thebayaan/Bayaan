@@ -10,6 +10,7 @@ interface CollectionItemProps {
   iconName?: string;
   iconType?: string;
   thumbnail?: string;
+  color?: string;
   onPress: () => void;
   theme: Theme;
 }
@@ -20,6 +21,7 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
   iconName,
   iconType = 'feather',
   thumbnail,
+  color,
   onPress,
   theme,
 }) => {
@@ -30,13 +32,16 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
       activeOpacity={0.7}>
       
       {/* Thumbnail/Icon */}
-      <View style={[styles.thumbnail, {backgroundColor: theme.colors.card}]}>
+      <View style={[
+        styles.thumbnail, 
+        {backgroundColor: color || theme.colors.card}
+      ]}>
         {iconName ? (
           <Icon
             name={iconName}
             type={iconType}
             size={moderateScale(24)}
-            color={theme.colors.primary}
+            color={color ? 'white' : theme.colors.primary}
           />
         ) : thumbnail ? (
           <Text style={styles.thumbnailText}>{thumbnail}</Text>
