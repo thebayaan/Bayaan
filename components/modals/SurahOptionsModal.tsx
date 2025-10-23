@@ -15,7 +15,6 @@ import BottomSheet from '@gorhom/bottom-sheet';
 import {BaseModal} from './BaseModal';
 import {Icon} from '@rneui/themed';
 import {useLoved} from '@/hooks/useLoved';
-import {usePlayerStore} from '@/services/player/store/playerStore';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -26,7 +25,7 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
-import { CheckIcon, DownloadIcon } from '@/components/Icons';
+import {CheckIcon, DownloadIcon} from '@/components/Icons';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {downloadSurah} from '@/services/downloadService';
 import Color from 'color';
@@ -75,7 +74,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
   const scale = useSharedValue(1);
   const {width} = useWindowDimensions();
-  
+
   const [showSummary, setShowSummary] = useState(false);
 
   // Calculate loved state - use isLovedWithRewayat if rewayatId is provided, otherwise use isLoved
@@ -137,38 +136,48 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
       scale.value = withSpring(1);
     });
 
-
-    
     // Use the provided rewayatId if available, otherwise use an empty string
     toggleLoved(reciterId, surah.id.toString(), rewayatId || '');
   }, [reciterId, surah.id, toggleLoved, scale, rewayatId]);
 
-  const {isDownloaded, isDownloading, setDownloading, addDownload, clearDownloading} = useDownload();
-  
-  const isTrackDownloaded = reciterId ? isDownloaded(reciterId, surah.id.toString()) : false;
+  const {
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+  } = useDownload();
+
+  // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
+  const isTrackDownloaded = reciterId
+    ? rewayatId
+      ? isDownloadedWithRewayat(reciterId, surah.id.toString(), rewayatId)
+      : isDownloaded(reciterId, surah.id.toString())
+    : false;
 
   const handleDownload = useCallback(async () => {
     if (!reciterId) return; // Use reciterId from props, not currentTrack
-    
-    if (isDownloaded(reciterId, surah.id.toString())) {
+
+    if (isTrackDownloaded) {
       console.log('Track already downloaded');
       return;
     }
-    
+
     if (isDownloading(reciterId, surah.id.toString())) {
       console.log('Track is already downloading');
       return;
     }
-    
+
     try {
       setDownloading(`${reciterId}-${surah.id}`);
-      
+
       const downloadResult = await downloadSurah(
         surah.id, // Use surah.id directly
         reciterId, // Use reciterId from props
-        rewayatId // Use rewayatId from props
+        rewayatId, // Use rewayatId from props
       );
-      
+
       addDownload({
         reciterId,
         surahId: surah.id.toString(),
@@ -176,16 +185,24 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
         filePath: downloadResult.filePath,
         fileSize: downloadResult.fileSize,
         downloadDate: Date.now(),
-        status: 'completed'
+        status: 'completed',
       });
-      
+
       clearDownloading(`${reciterId}-${surah.id}`);
-      
     } catch (error) {
       console.error('Download failed:', error);
       clearDownloading(`${reciterId}-${surah.id}`);
     }
-  }, [reciterId, surah.id, rewayatId, isDownloaded, isDownloading, setDownloading, addDownload, clearDownloading]);
+  }, [
+    reciterId,
+    surah.id,
+    rewayatId,
+    isTrackDownloaded,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+  ]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{scale: scale.value}],
@@ -252,19 +269,19 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
               onPress={handleDownload}
               activeOpacity={reciterId ? 0.7 : 1}>
               <Animated.View style={animatedStyle}>
-                {isTrackDownloaded? <CheckIcon
-                color={theme.colors.text}
-                size={moderateScale(20)}/> :<DownloadIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                 
-                />}
+                {isTrackDownloaded ? (
+                  <CheckIcon
+                    color={theme.colors.text}
+                    size={moderateScale(20)}
+                  />
+                ) : (
+                  <DownloadIcon
+                    color={theme.colors.text}
+                    size={moderateScale(20)}
+                  />
+                )}
               </Animated.View>
-              <Text
-                style={[
-                  styles.optionText,
-                  
-                ]}>
+              <Text style={[styles.optionText]}>
                 {isTrackDownloaded ? 'Downloaded' : 'Download'}
               </Text>
             </TouchableOpacity>
