@@ -91,7 +91,7 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     const playlists = await this.db.getAllAsync(
-      `SELECT * FROM user_playlists ORDER BY created_at DESC`
+      `SELECT id, name, description, color, created_at, updated_at FROM user_playlists ORDER BY created_at DESC`
     ) as any[];
 
     // Get item count for each playlist
@@ -103,7 +103,12 @@ class DatabaseService {
         ) as any;
 
         return {
-          ...playlist,
+          id: playlist.id,
+          name: playlist.name,
+          description: playlist.description,
+          color: playlist.color,
+          createdAt: playlist.created_at,
+          updatedAt: playlist.updated_at,
           itemCount: countResult?.count || 0,
         };
       })
@@ -116,7 +121,7 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     const playlist = await this.db.getFirstAsync(
-      `SELECT * FROM user_playlists WHERE id = ?`,
+      `SELECT id, name, description, color, created_at, updated_at FROM user_playlists WHERE id = ?`,
       [id]
     ) as any;
 
@@ -129,7 +134,12 @@ class DatabaseService {
     ) as any;
 
     return {
-      ...playlist,
+      id: playlist.id,
+      name: playlist.name,
+      description: playlist.description,
+      color: playlist.color,
+      createdAt: playlist.created_at,
+      updatedAt: playlist.updated_at,
       itemCount: countResult?.count || 0,
     };
   }
@@ -137,9 +147,17 @@ class DatabaseService {
   async updatePlaylist(id: string, updates: Partial<UserPlaylist>): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
+    // Map camelCase field names to snake_case column names
+    const fieldMapping: Record<string, string> = {
+      name: 'name',
+      description: 'description',
+      color: 'color',
+      updatedAt: 'updated_at',
+    };
+
     const setClause = Object.keys(updates)
       .filter(key => key !== 'id' && key !== 'itemCount')
-      .map(key => `${key} = ?`)
+      .map(key => `${fieldMapping[key] || key} = ?`)
       .join(', ');
 
     if (setClause) {
@@ -149,8 +167,8 @@ class DatabaseService {
         .filter(value => value !== undefined);
 
       await this.db.runAsync(
-        `UPDATE user_playlists SET ${setClause}, updated_at = ? WHERE id = ?`,
-        [...values, Date.now(), id]
+        `UPDATE user_playlists SET ${setClause} WHERE id = ?`,
+        [...values, id]
       );
     }
   }
@@ -181,7 +199,10 @@ class DatabaseService {
     ) as any[];
 
     return items.map(item => ({
-      ...item,
+      id: item.id,
+      playlistId: item.playlist_id,
+      surahId: item.surah_id,
+      reciterId: item.reciter_id,
       rewayatId: item.rewayat_id,
       orderIndex: item.order_index,
       addedAt: item.added_at,

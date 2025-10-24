@@ -76,7 +76,15 @@ export default function CollectionScreen() {
 
   // Get collection items based on filter
   const getCollectionItems = () => {
-    const items = [];
+    const items: Array<{
+      id: string;
+      title: string;
+      subtitle: string;
+      iconName: string;
+      iconType: string;
+      color?: string;
+      onPress: () => void;
+    }> = [];
 
     // Add User Playlists
     if (activeFilter === 'all' || activeFilter === 'playlists') {
