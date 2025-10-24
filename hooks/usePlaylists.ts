@@ -83,6 +83,28 @@ export const usePlaylists = () => {
     }
   };
 
+  // Remove item from playlist
+  const removeFromPlaylist = async (itemId: string) => {
+    try {
+      setError(null);
+      await playlistService.removeFromPlaylist(itemId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove item from playlist');
+      throw err;
+    }
+  };
+
+  // Reorder playlist items
+  const reorderPlaylistItems = async (playlistId: string, itemIds: string[]) => {
+    try {
+      setError(null);
+      await playlistService.reorderPlaylistItems(playlistId, itemIds);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reorder playlist items');
+      throw err;
+    }
+  };
+
   // Load playlists on mount
   useEffect(() => {
     loadPlaylists();
@@ -97,6 +119,8 @@ export const usePlaylists = () => {
     updatePlaylist,
     getPlaylist,
     getPlaylistItems,
+    removeFromPlaylist,
+    reorderPlaylistItems,
     refreshPlaylists: loadPlaylists,
   };
 };
