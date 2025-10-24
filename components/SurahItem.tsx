@@ -56,13 +56,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
-    const {isDownloaded, isDownloadedWithRewayat} = useDownload();
+    const {isDownloaded: checkIsDownloaded, isDownloadedWithRewayat} = useDownload();
 
-    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
+    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use checkIsDownloaded
     const isDownloadedState = reciterId
       ? rewayatId
         ? isDownloadedWithRewayat(reciterId, item.id.toString(), rewayatId)
-        : isDownloaded(reciterId, item.id.toString())
+        : checkIsDownloaded(reciterId, item.id.toString())
       : false;
 
     // Get necessary state slices from player store
