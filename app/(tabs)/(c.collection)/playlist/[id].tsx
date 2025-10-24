@@ -1,24 +1,29 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
-  FlatList,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {moderateScale} from 'react-native-size-matters';
-import {ScaledSheet} from 'react-native-size-matters';
-import {useLocalSearchParams} from 'expo-router';
-import {PlaylistHeader} from '@/components/collection/PlaylistHeader';
-import {usePlaylists} from '@/hooks/usePlaylists';
 import {TrackItem} from '@/components/TrackItem';
+import {usePlaylists} from '@/hooks/usePlaylists';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createTrack} from '@/utils/track';
+import {moderateScale} from 'react-native-size-matters';
+import {LinearGradient} from 'expo-linear-gradient';
+import DraggableFlatList, {
+  RenderItemParams,
+} from 'react-native-draggable-flatlist';
+import {Swipeable} from 'react-native-gesture-handler';
+import {Icon} from '@rneui/themed';
+import {useRouter, useLocalSearchParams} from 'expo-router';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import {PlaylistHeader} from '@/components/collection/PlaylistHeader';
 
 interface PlaylistTrack {
   id: string;
@@ -33,14 +38,69 @@ const PlaylistDetailScreen = () => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const {id} = useLocalSearchParams<{id: string}>();
-  const {getPlaylist, getPlaylistItems} = usePlaylists();
-  const {updateQueue, play} = useUnifiedPlayer();
+  const router = useRouter();
+  const {getPlaylist, getPlaylistItems, removeFromPlaylist, reorderPlaylistItems} = usePlaylists();
+  const {updateQueue, play, pause, playback} = useUnifiedPlayer();
   
   const [playlist, setPlaylist] = useState<any>(null);
-  const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
+  const [playlistData, setPlaylistData] = useState<
+    Array<{
+      track: PlaylistTrack;
+      reciter: Reciter | null;
+      surah: Surah | null;
+    }>
+  >([]);
   const [loading, setLoading] = useState(true);
 
-  const styles = createStyles(theme, insets);
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    listContentContainer: {
+      flexGrow: 1,
+      paddingBottom: moderateScale(65),
+    },
+    emptyText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginTop: moderateScale(32),
+    },
+    dragHandle: {
+      position: 'absolute',
+      left: moderateScale(10),
+      top: '50%',
+      transform: [{translateY: moderateScale(-10)}],
+      zIndex: 1,
+    },
+    draggableItem: {
+      marginVertical: moderateScale(2),
+    },
+    draggingItem: {
+      opacity: 0.8,
+      transform: [{scale: 1.02}],
+    },
+    rightAction: {
+      flex: 1,
+      backgroundColor: '#ff4444',
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+      paddingRight: moderateScale(20),
+    },
+    deleteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(15),
+      paddingVertical: moderateScale(10),
+    },
+    deleteText: {
+      color: 'white',
+      fontSize: moderateScale(14),
+      fontWeight: '600',
+      marginLeft: moderateScale(8),
+    },
+  });
 
   useEffect(() => {
     loadPlaylistData();
@@ -58,7 +118,7 @@ const PlaylistDetailScreen = () => {
       const playlistItems = await getPlaylistItems(id!);
       
       // Enrich with surah and reciter data
-      const enrichedTracks = await Promise.all(
+      const enrichedData = await Promise.all(
         playlistItems.map(async (item) => {
           const [reciter, surah] = await Promise.all([
             getReciterById(item.reciterId),
@@ -66,17 +126,21 @@ const PlaylistDetailScreen = () => {
           ]);
           
           return {
-            id: item.id,
-            surahId: item.surahId,
-            reciterId: item.reciterId,
-            rewayatId: item.rewayatId,
-            surah,
-            reciter,
+            track: {
+              id: item.id,
+              surahId: item.surahId,
+              reciterId: item.reciterId,
+              rewayatId: item.rewayatId,
+              surah,
+              reciter,
+            },
+            reciter: reciter || null,
+            surah: surah || null,
           };
         })
       );
       
-      setTracks(enrichedTracks);
+      setPlaylistData(enrichedData);
     } catch (error) {
       console.error('Failed to load playlist:', error);
     } finally {
@@ -84,45 +148,97 @@ const PlaylistDetailScreen = () => {
     }
   };
 
-  const handlePlayAll = async () => {
-    if (tracks.length === 0) return;
+  // Handle surah press to play track
+  const handleSurahPress = useCallback(
+    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
+      try {
+        // Create track using the smart audio URL system
+        const playerTrack = await createTrack(reciter, surah, track.rewayatId);
+        
+        // Update queue with the track and start playing
+        await updateQueue([playerTrack], 0);
+        await play();
+      } catch (error) {
+        console.error('Error playing track:', error);
+      }
+    },
+    [updateQueue, play],
+  );
+
+  const handleReorder = useCallback(
+    (
+      data: Array<{
+        track: PlaylistTrack;
+        reciter: Reciter | null;
+        surah: Surah | null;
+      }>,
+    ) => {
+      // Update local state
+      setPlaylistData(data);
+
+      // Update store with new order
+      const newOrder = data.map(item => item.track.id);
+      reorderPlaylistItems(id!, newOrder);
+    },
+    [reorderPlaylistItems, id],
+  );
+
+  const handleRemoveFromPlaylist = useCallback(
+    async (track: PlaylistTrack) => {
+      try {
+        await removeFromPlaylist(track.id);
+        // Reload playlist data to reflect changes
+        await loadPlaylistData();
+      } catch (error) {
+        console.error('Failed to remove item from playlist:', error);
+      }
+    },
+    [removeFromPlaylist],
+  );
+
+  // Play all tracks
+  const handlePlayAll = useCallback(async () => {
+    if (playlistData.length === 0) return;
     
     try {
-      // Create tracks for all items in the playlist
-      const playerTracks = await Promise.all(
-        tracks.map(async (track) => {
-          if (!track.surah || !track.reciter) return null;
-          return await createTrack(track.reciter, track.surah, track.rewayatId);
-        })
+      // If currently playing, pause
+      if (playback.state === TrackPlayerState.Playing) {
+        await pause();
+        return;
+      }
+
+      // If paused or stopped, play all tracks
+      const trackPromises = playlistData.map(async item => {
+        if (!item.reciter || !item.surah) return null;
+        return await createTrack(item.reciter, item.surah, item.track.rewayatId);
+      });
+      
+      const validTracks = (await Promise.all(trackPromises)).filter(
+        (track): track is NonNullable<typeof track> => track !== null,
       );
       
-      // Filter out null tracks
-      const validTracks = playerTracks.filter(track => track !== null);
-      
-      if (validTracks.length > 0) {
-        // Update queue with all tracks and start playing from the first one
-        await updateQueue(validTracks, 0);
-        await play();
-      }
+      if (validTracks.length === 0) return;
+
+      await updateQueue(validTracks, 0);
+      await play();
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  };
+  }, [playlistData, updateQueue, play, pause, playback.state]);
 
-  const handleShuffle = async () => {
-    if (tracks.length === 0) return;
+  const handleShuffle = useCallback(async () => {
+    if (playlistData.length === 0) return;
     
     try {
       // Create tracks for all items in the playlist
-      const playerTracks = await Promise.all(
-        tracks.map(async (track) => {
-          if (!track.surah || !track.reciter) return null;
-          return await createTrack(track.reciter, track.surah, track.rewayatId);
-        })
-      );
+      const trackPromises = playlistData.map(async item => {
+        if (!item.reciter || !item.surah) return null;
+        return await createTrack(item.reciter, item.surah, item.track.rewayatId);
+      });
       
-      // Filter out null tracks
-      const validTracks = playerTracks.filter(track => track !== null);
+      const validTracks = (await Promise.all(trackPromises)).filter(
+        (track): track is NonNullable<typeof track> => track !== null,
+      );
       
       if (validTracks.length > 0) {
         // Shuffle the tracks array
@@ -135,50 +251,15 @@ const PlaylistDetailScreen = () => {
     } catch (error) {
       console.error('Error shuffling tracks:', error);
     }
-  };
+  }, [playlistData, updateQueue, play]);
 
-  const handleTrackPress = async (track: PlaylistTrack) => {
-    if (!track.surah || !track.reciter) return;
+  const ListHeaderComponent = useCallback(() => {
+    if (!playlist) return null;
     
-    try {
-      // Create track using the smart audio URL system
-      const playerTrack = await createTrack(track.reciter, track.surah, track.rewayatId);
-      
-      // Update queue with the track and start playing
-      await updateQueue([playerTrack], 0);
-      await play();
-    } catch (error) {
-      console.error('Error playing track:', error);
-    }
-  };
-
-  const renderTrack = ({item}: {item: PlaylistTrack}) => {
-    if (!item.surah || !item.reciter) return null;
-
     return (
-      <TrackItem
-        reciterId={item.reciterId}
-        surahId={item.surahId}
-        rewayatId={item.rewayatId}
-        onPress={() => handleTrackPress(item)}
-        onPlayPress={() => handleTrackPress(item)}
-      />
-    );
-  };
-
-  if (loading || !playlist) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
       <PlaylistHeader
         title={playlist.name}
-        subtitle={`Playlist • ${playlist.itemCount} surahs`}
+        subtitle={`Playlist • ${playlistData.length} surahs`}
         backgroundColor={playlist.color}
         iconName="book-open"
         onPlayPress={handlePlayAll}
@@ -186,66 +267,96 @@ const PlaylistDetailScreen = () => {
         showDownloadIcon={false}
         theme={theme}
       />
+    );
+  }, [
+    playlist,
+    playlistData.length,
+    handlePlayAll,
+    handleShuffle,
+    theme,
+  ]);
 
-      <FlatList
-        data={tracks}
-        renderItem={renderTrack}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No surahs in this playlist</Text>
-            {/* <TouchableOpacity style={styles.addButton}>
-              <Text style={styles.addButtonText}>Add Surahs</Text>
-            </TouchableOpacity> */}
+  const renderItem = ({
+    item,
+    drag,
+    isActive,
+  }: RenderItemParams<{
+    track: PlaylistTrack;
+    reciter: Reciter | null;
+    surah: Surah | null;
+  }>) => {
+    const {track, reciter, surah} = item;
+
+    if (!reciter || !surah) {
+      return null;
+    }
+
+    const renderRightActions = () => (
+      <View style={styles.rightAction}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleRemoveFromPlaylist(track)}>
+          <Icon
+            name="trash-2"
+            type="feather"
+            size={moderateScale(20)}
+            color="white"
+          />
+          <Text style={styles.deleteText}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+    );
+
+    return (
+      <Swipeable renderRightActions={renderRightActions}>
+        <TouchableOpacity
+          onLongPress={drag}
+          disabled={isActive}
+          style={[styles.draggableItem, isActive && styles.draggingItem]}>
+          <View style={styles.dragHandle}>
+            <Icon
+              name="menu"
+              type="feather"
+              size={moderateScale(20)}
+              color={'transparent'}
+            />
           </View>
+          <TrackItem
+            reciterId={track.reciterId}
+            surahId={track.surahId}
+            rewayatId={track.rewayatId}
+            onPress={() => handleSurahPress(track, reciter, surah)}
+            onPlayPress={() => handleSurahPress(track, reciter, surah)}
+          />
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
+
+  if (loading || !playlist) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emptyText}>Loading...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <DraggableFlatList
+        data={playlistData}
+        renderItem={renderItem}
+        keyExtractor={item => item.track.id}
+        onDragEnd={({data}) => handleReorder(data)}
+        ListHeaderComponent={ListHeaderComponent}
+        contentContainerStyle={styles.listContentContainer}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No surahs in this playlist</Text>
         }
+        bounces={false}
       />
     </View>
   );
 };
-
-const createStyles = (theme: any, insets: any) =>
-  ScaledSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    loadingText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginTop: moderateScale(50),
-    },
-    listContent: {
-      flexGrow: 1,
-      paddingBottom: moderateScale(100),
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(20),
-      marginTop: moderateScale(50),
-    },
-    emptyText: {
-      fontSize: moderateScale(18),
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-      marginBottom: moderateScale(20),
-    },
-    addButton: {
-      backgroundColor: theme.colors.primary,
-      paddingHorizontal: moderateScale(20),
-      paddingVertical: moderateScale(12),
-      borderRadius: moderateScale(8),
-    },
-    addButtonText: {
-      color: 'white',
-      fontSize: moderateScale(16),
-      fontWeight: '600',
-    },
-  });
 
 export default PlaylistDetailScreen;
