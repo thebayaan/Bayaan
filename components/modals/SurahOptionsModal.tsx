@@ -10,7 +10,7 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Surah} from '@/data/surahData';
-import {QueueIcon, HeartIcon} from '@/components/Icons';
+import {QueueIcon, HeartIcon, PlaylistIcon} from '@/components/Icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {BaseModal} from './BaseModal';
 import {Icon} from '@rneui/themed';
@@ -28,6 +28,7 @@ import RenderHtml, {
 import {CheckIcon, DownloadIcon} from '@/components/Icons';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {downloadSurah} from '@/services/downloadService';
+import {SelectPlaylistModal} from './SelectPlaylistModal';
 import Color from 'color';
 
 interface SurahOptionsModalProps {
@@ -76,6 +77,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   const {width} = useWindowDimensions();
 
   const [showSummary, setShowSummary] = useState(false);
+  const playlistModalRef = React.useRef<BottomSheet>(null);
 
   // Calculate loved state - use isLovedWithRewayat if rewayatId is provided, otherwise use isLoved
   const isLovedState = reciterId
@@ -204,6 +206,15 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
     clearDownloading,
   ]);
 
+  const handleAddToPlaylist = useCallback(() => {
+    if (!reciterId) return;
+    playlistModalRef.current?.snapToIndex(0);
+  }, [reciterId]);
+
+  const handlePlaylistModalClose = useCallback(() => {
+    playlistModalRef.current?.close();
+  }, []);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{scale: scale.value}],
   }));
@@ -215,113 +226,143 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   }, []);
 
   return (
-    <BaseModal
-      bottomSheetRef={bottomSheetRef}
-      snapPoints={showSummary ? ['90%'] : ['50%']}
-      title={showSummary ? `About ${surah.name}` : undefined}
-      onChange={handleSheetChange}>
-      {showSummary ? (
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          bounces={false}>
-          <View style={styles.content}>
-            <RenderHtml
-              {...renderHtmlDefaultProps}
-              contentWidth={width - moderateScale(72)}
-              source={{html: `<div>${currentSurahInfo.text}</div>`}}
-              tagsStyles={tagsStyles}
-            />
-          </View>
-        </ScrollView>
-      ) : (
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.surahName}>{surah.name}</Text>
-            <Text style={styles.surahTranslation}>
-              {surah.translated_name_english}
-            </Text>
-          </View>
+    <>
+      <BaseModal
+        bottomSheetRef={bottomSheetRef}
+        snapPoints={showSummary ? ['80%'] : ['60%']}
+        title={showSummary ? `About ${surah.name}` : undefined}
+        onChange={handleSheetChange}>
+        {showSummary ? (
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            bounces={false}>
+            <View style={styles.content}>
+              <RenderHtml
+                {...renderHtmlDefaultProps}
+                contentWidth={width - moderateScale(72)}
+                source={{html: `<div>${currentSurahInfo.text}</div>`}}
+                tagsStyles={tagsStyles}
+              />
+            </View>
+          </ScrollView>
+        ) : (
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.surahName}>{surah.name}</Text>
+              <Text style={styles.surahTranslation}>
+                {surah.translated_name_english}
+              </Text>
+            </View>
 
-          <View style={styles.optionsGrid}>
-            <TouchableOpacity
-              style={[styles.option, !reciterId && styles.optionDisabled]}
-              onPress={handleToggleLove}
-              activeOpacity={reciterId ? 0.7 : 1}>
-              <Animated.View style={animatedStyle}>
-                <HeartIcon
+
+            <View style={styles.optionsGrid}>
+              <TouchableOpacity
+                style={[styles.option, !reciterId && styles.optionDisabled]}
+                onPress={handleToggleLove}
+                activeOpacity={reciterId ? 0.7 : 1}>
+                <Animated.View style={animatedStyle}>
+                  <HeartIcon
+                    color={theme.colors.text}
+                    size={moderateScale(20)}
+                    filled={isLovedState}
+                  />
+                </Animated.View>
+                <Text
+                  style={[
+                    styles.optionText,
+                    !reciterId && styles.optionTextDisabled,
+                  ]}>
+                  {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.option, !reciterId && styles.optionDisabled]}
+                onPress={handleDownload}
+                activeOpacity={reciterId ? 0.7 : 1}>
+                <Animated.View style={animatedStyle}>
+                  {isTrackDownloaded? <CheckIcon
                   color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={isLovedState}
-                />
-              </Animated.View>
-              <Text
-                style={[
-                  styles.optionText,
-                  !reciterId && styles.optionTextDisabled,
-                ]}>
-                {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.option, !reciterId && styles.optionDisabled]}
-              onPress={handleDownload}
-              activeOpacity={reciterId ? 0.7 : 1}>
-              <Animated.View style={animatedStyle}>
-                {isTrackDownloaded ? (
-                  <CheckIcon
+                  size={moderateScale(20)}/> :<DownloadIcon
                     color={theme.colors.text}
                     size={moderateScale(20)}
-                  />
-                ) : (
-                  <DownloadIcon
+                   
+                  />}
+                </Animated.View>
+                <Text
+                  style={[
+                    styles.optionText,
+                    
+                  ]}>
+                  {isTrackDownloaded ? 'Downloaded' : 'Download'}
+                </Text>
+              </TouchableOpacity>
+
+
+              <TouchableOpacity
+                style={[styles.option, !onAddToQueue && styles.optionDisabled]}
+                onPress={handleAddToQueue}
+                activeOpacity={onAddToQueue ? 0.7 : 1}>
+                <View style={styles.rotatedIcon}>
+                  <QueueIcon
                     color={theme.colors.text}
                     size={moderateScale(20)}
+                    filled={true}
                   />
-                )}
-              </Animated.View>
-              <Text style={[styles.optionText]}>
-                {isTrackDownloaded ? 'Downloaded' : 'Download'}
-              </Text>
-            </TouchableOpacity>
+                </View>
+                <Text
+                  style={[
+                    styles.optionText,
+                    !onAddToQueue && styles.optionTextDisabled,
+                  ]}>
+                  Add to Queue
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.option, !onAddToQueue && styles.optionDisabled]}
-              onPress={handleAddToQueue}
-              activeOpacity={onAddToQueue ? 0.7 : 1}>
-              <View style={styles.rotatedIcon}>
-                <QueueIcon
+              <TouchableOpacity
+                style={[styles.option, !reciterId && styles.optionDisabled]}
+                onPress={handleAddToPlaylist}
+                activeOpacity={reciterId ? 0.7 : 1}>
+                <PlaylistIcon
                   color={theme.colors.text}
                   size={moderateScale(20)}
                   filled={true}
                 />
-              </View>
-              <Text
-                style={[
-                  styles.optionText,
-                  !onAddToQueue && styles.optionTextDisabled,
-                ]}>
-                Add to Queue
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.optionText,
+                    !reciterId && styles.optionTextDisabled,
+                  ]}>
+                  Add to Playlist
+                </Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.option}
-              onPress={handleViewInfo}
-              activeOpacity={0.7}>
-              <Icon
-                name="info"
-                type="feather"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.optionText}>Learn About Surah</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.option}
+                onPress={handleViewInfo}
+                activeOpacity={0.7}>
+                <Icon
+                  name="info"
+                  type="feather"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Learn About Surah</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )}
-    </BaseModal>
+        )}
+      </BaseModal>
+      
+      <SelectPlaylistModal
+        bottomSheetRef={playlistModalRef}
+        surah={surah}
+        reciterId={reciterId || ''}
+        rewayatId={rewayatId}
+        onClose={handlePlaylistModalClose}
+      />
+    </>
   );
 };
 

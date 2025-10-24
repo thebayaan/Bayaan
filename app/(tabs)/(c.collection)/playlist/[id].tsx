@@ -17,6 +17,8 @@ import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {createTrack} from '@/utils/track';
 
 interface PlaylistTrack {
   id: string;
@@ -32,6 +34,7 @@ const PlaylistDetailScreen = () => {
   const insets = useSafeAreaInsets();
   const {id} = useLocalSearchParams<{id: string}>();
   const {getPlaylist, getPlaylistItems} = usePlaylists();
+  const {updateQueue, play} = useUnifiedPlayer();
   
   const [playlist, setPlaylist] = useState<any>(null);
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
@@ -81,19 +84,72 @@ const PlaylistDetailScreen = () => {
     }
   };
 
-  const handlePlayAll = () => {
-    // TODO: Implement play all functionality
-    console.log('Play all pressed');
+  const handlePlayAll = async () => {
+    if (tracks.length === 0) return;
+    
+    try {
+      // Create tracks for all items in the playlist
+      const playerTracks = await Promise.all(
+        tracks.map(async (track) => {
+          if (!track.surah || !track.reciter) return null;
+          return await createTrack(track.reciter, track.surah, track.rewayatId);
+        })
+      );
+      
+      // Filter out null tracks
+      const validTracks = playerTracks.filter(track => track !== null);
+      
+      if (validTracks.length > 0) {
+        // Update queue with all tracks and start playing from the first one
+        await updateQueue(validTracks, 0);
+        await play();
+      }
+    } catch (error) {
+      console.error('Error playing all tracks:', error);
+    }
   };
 
-  const handleShuffle = () => {
-    // TODO: Implement shuffle functionality
-    console.log('Shuffle pressed');
+  const handleShuffle = async () => {
+    if (tracks.length === 0) return;
+    
+    try {
+      // Create tracks for all items in the playlist
+      const playerTracks = await Promise.all(
+        tracks.map(async (track) => {
+          if (!track.surah || !track.reciter) return null;
+          return await createTrack(track.reciter, track.surah, track.rewayatId);
+        })
+      );
+      
+      // Filter out null tracks
+      const validTracks = playerTracks.filter(track => track !== null);
+      
+      if (validTracks.length > 0) {
+        // Shuffle the tracks array
+        const shuffledTracks = [...validTracks].sort(() => Math.random() - 0.5);
+        
+        // Update queue with shuffled tracks and start playing from the first one
+        await updateQueue(shuffledTracks, 0);
+        await play();
+      }
+    } catch (error) {
+      console.error('Error shuffling tracks:', error);
+    }
   };
 
-  const handleTrackPress = (track: PlaylistTrack) => {
-    // TODO: Implement track play functionality
-    console.log('Track pressed:', track);
+  const handleTrackPress = async (track: PlaylistTrack) => {
+    if (!track.surah || !track.reciter) return;
+    
+    try {
+      // Create track using the smart audio URL system
+      const playerTrack = await createTrack(track.reciter, track.surah, track.rewayatId);
+      
+      // Update queue with the track and start playing
+      await updateQueue([playerTrack], 0);
+      await play();
+    } catch (error) {
+      console.error('Error playing track:', error);
+    }
   };
 
   const renderTrack = ({item}: {item: PlaylistTrack}) => {
@@ -101,14 +157,11 @@ const PlaylistDetailScreen = () => {
 
     return (
       <TrackItem
-        track={{
-          id: `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`,
-          title: item.surah.name,
-          artist: item.reciter.name,
-          artwork: '', // TODO: Add artwork if needed
-        }}
+        reciterId={item.reciterId}
+        surahId={item.surahId}
+        rewayatId={item.rewayatId}
         onPress={() => handleTrackPress(item)}
-        theme={theme}
+        onPlayPress={() => handleTrackPress(item)}
       />
     );
   };
