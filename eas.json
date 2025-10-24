@@ -33,8 +33,7 @@
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium",
-        "credentialsSource": "remote",
-        "enterpriseProvisioning": "universal"
+        "credentialsSource": "remote"
       },
       "android": {
         "buildType": "app-bundle",
