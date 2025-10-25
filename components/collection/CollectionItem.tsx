@@ -12,6 +12,7 @@ interface CollectionItemProps {
   thumbnail?: string;
   color?: string;
   onPress: () => void;
+  onLongPress?: () => void;
   theme: Theme;
 }
 
@@ -23,13 +24,22 @@ export const CollectionItem: React.FC<CollectionItemProps> = ({
   thumbnail,
   color,
   onPress,
+  onLongPress,
   theme,
 }) => {
+  const handleLongPress = () => {
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[styles.container, {backgroundColor: theme.colors.background}]}
       onPress={onPress}
-      activeOpacity={0.7}>
+      onLongPress={handleLongPress}
+      activeOpacity={0.7}
+      delayLongPress={300}>
       
       {/* Thumbnail/Icon */}
       <View style={[

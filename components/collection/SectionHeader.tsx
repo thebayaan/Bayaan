@@ -21,7 +21,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
     <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <Text style={[styles.title, {color: theme.colors.textSecondary}]}>{title}</Text>
       
-      {/* {onViewToggle && (
+      {onViewToggle && (
         <TouchableOpacity
           style={styles.toggleButton}
           onPress={onViewToggle}
@@ -33,7 +33,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
             color={theme.colors.text}
           />
         </TouchableOpacity>
-      )} */}
+      )}
     </View>
   );
 };
