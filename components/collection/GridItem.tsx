@@ -11,8 +11,10 @@ interface GridItemProps {
   iconType?: string;
   thumbnail?: string;
   onPress: () => void;
+  onLongPress?: () => void;
   theme: Theme;
-  isLarge?: boolean; // For featured items
+  isLarge?: boolean; 
+  color?: string;// For featured items
 }
 
 export const GridItem: React.FC<GridItemProps> = ({
@@ -22,9 +24,17 @@ export const GridItem: React.FC<GridItemProps> = ({
   iconType = 'feather',
   thumbnail,
   onPress,
+  onLongPress,
   theme,
   isLarge = false,
+  color,
 }) => {
+  const handleLongPress = () => {
+    if (onLongPress) {
+      onLongPress();
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -33,13 +43,15 @@ export const GridItem: React.FC<GridItemProps> = ({
         {backgroundColor: theme.colors.card}
       ]}
       onPress={onPress}
-      activeOpacity={0.8}>
+      onLongPress={handleLongPress}
+      activeOpacity={0.8}
+      delayLongPress={300}>
       
       {/* Icon Container */}
       <View style={[
         styles.iconContainer,
         isLarge ? styles.largeIconContainer : styles.smallIconContainer,
-        {backgroundColor: theme.colors.primary}
+        {backgroundColor: color || theme.colors.primary}
       ]}>
         {iconName ? (
           <Icon

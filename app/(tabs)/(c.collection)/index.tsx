@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   ScrollView,
@@ -23,6 +23,8 @@ import {GridItem} from '@/components/collection/GridItem';
 import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
+import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
+import * as Haptics from 'expo-haptics';
 
 
 // Filter options
@@ -47,8 +49,15 @@ export default function CollectionScreen() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [isGridView, setIsGridView] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
+  const [showPlaylistContextMenu, setShowPlaylistContextMenu] = useState(false);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<{id: string; name: string} | null>(null);
   const {downloads} = useDownload();
-  const {playlists, createPlaylist, loading: playlistsLoading} = usePlaylists();
+  const {playlists, createPlaylist, deletePlaylist, loading: playlistsLoading} = usePlaylists();
+
+  // Debug state changes
+  useEffect(() => {
+    console.log('State changed - showPlaylistContextMenu:', showPlaylistContextMenu, 'selectedPlaylist:', selectedPlaylist);
+  }, [showPlaylistContextMenu, selectedPlaylist]);
 
   // Handle navigation to existing screens
   const handleNewPlaylist = () => {
@@ -62,6 +71,25 @@ export default function CollectionScreen() {
     } catch (error) {
       console.error('Failed to create playlist:', error);
       // TODO: Show error message to user
+    }
+  };
+
+  const handlePlaylistLongPress = (playlistId: string, playlistName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedPlaylist({id: playlistId, name: playlistName});
+    setShowPlaylistContextMenu(true);
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!selectedPlaylist) return;
+    
+    try {
+      await deletePlaylist(selectedPlaylist.id);
+      setShowPlaylistContextMenu(false);
+      setSelectedPlaylist(null);
+    } catch (error) {
+      console.error('Failed to delete playlist:', error);
+      // Error handling is done in the confirmation dialog
     }
   };
 
@@ -84,22 +112,28 @@ export default function CollectionScreen() {
       iconType: string;
       color?: string;
       onPress: () => void;
+      onLongPress?: () => void;
     }> = [];
 
     // Add User Playlists
     if (activeFilter === 'all' || activeFilter === 'playlists') {
       if (playlists && Array.isArray(playlists)) {
+        console.log('Found playlists:', playlists.length);
         playlists.forEach(playlist => {
+          console.log('Adding playlist:', playlist.name);
           items.push({
             id: playlist.id,
             title: playlist.name,
             subtitle: `Playlist • ${playlist.itemCount} surahs`,
-          iconName: 'book-open',
-          iconType: 'feather',
+            iconName: 'book-open',
+            iconType: 'feather',
             color: playlist.color,
             onPress: () => router.push(`/playlist/${playlist.id}`),
+            onLongPress: () => handlePlaylistLongPress(playlist.id, playlist.name),
           });
         });
+      } else {
+        console.log('No playlists found or not an array');
       }
     }
 
@@ -185,7 +219,11 @@ export default function CollectionScreen() {
         )}
       </View>
       
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
         <View style={{paddingTop: insets.top}} />
         
         {/* Header */}
@@ -223,7 +261,9 @@ export default function CollectionScreen() {
                 iconName={item.iconName}
                 iconType={item.iconType}
                 onPress={item.onPress}
+                onLongPress={item.onLongPress}
                 theme={theme}
+                color={item.color}
                 isLarge={index === 0 && item.id === 'loved'} // Make "Loved Surahs" large like Spotify
               />
             ))}
@@ -238,6 +278,7 @@ export default function CollectionScreen() {
               iconType={item.iconType}
               color={item.color}
               onPress={item.onPress}
+              onLongPress={item.onLongPress}
               theme={theme}
             />
           ))
@@ -251,6 +292,19 @@ export default function CollectionScreen() {
         visible={showCreatePlaylist}
         onClose={() => setShowCreatePlaylist(false)}
         onCreatePlaylist={handleCreatePlaylist}
+        theme={theme}
+      />
+
+      {/* Playlist Context Menu */}
+      <PlaylistContextMenu
+        visible={showPlaylistContextMenu}
+        onClose={() => {
+          console.log('Closing playlist context menu');
+          setShowPlaylistContextMenu(false);
+          setSelectedPlaylist(null);
+        }}
+        playlistName={selectedPlaylist?.name || ''}
+        onDelete={handleDeletePlaylist}
         theme={theme}
       />
     </View>
