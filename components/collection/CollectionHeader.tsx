@@ -22,7 +22,7 @@ export const CollectionHeader: React.FC<CollectionHeaderProps> = ({
       <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
       
       <View style={styles.actions}>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.actionButton}
           onPress={onSearchPress}
           activeOpacity={0.7}>
@@ -32,7 +32,7 @@ export const CollectionHeader: React.FC<CollectionHeaderProps> = ({
             size={moderateScale(24)}
             color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         
         <TouchableOpacity
           style={styles.actionButton}
