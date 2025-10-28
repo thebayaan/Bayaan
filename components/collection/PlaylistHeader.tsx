@@ -4,7 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Icon} from '@rneui/themed';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {CollectionActionButtons} from '@/components/CollectionActionButtons';
@@ -86,7 +86,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   );
 };
 
-const createStyles = (theme: Theme, insets: any) =>
+const createStyles = (theme: Theme, insets: EdgeInsets) =>
   ScaledSheet.create({
     headerContainer: {
       width: '100%',
