@@ -69,7 +69,7 @@ export default function CollectionScreen() {
     try {
       await createPlaylist(name, color);
       // Modal will close automatically
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to create playlist:', error);
       // TODO: Show error message to user
     }
@@ -108,7 +108,7 @@ export default function CollectionScreen() {
       await updatePlaylist(selectedPlaylist.id, {name, color});
       setSelectedPlaylist(null);
       editPlaylistModalRef.current?.close();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to update playlist:', error);
     }
   };
@@ -120,7 +120,7 @@ export default function CollectionScreen() {
       await deletePlaylist(selectedPlaylist.id);
       playlistContextMenuRef.current?.close();
       setSelectedPlaylist(null);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to delete playlist:', error);
       // Error handling is done in the confirmation dialog
     }

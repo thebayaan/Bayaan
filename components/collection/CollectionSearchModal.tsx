@@ -37,6 +37,19 @@ import {useDownload} from '@/services/player/store/downloadStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {SearchInput} from '@/components/SearchInput';
 import {getSurahById, getAllReciters} from '@/services/dataService';
+import {UserPlaylist, PlaylistItem} from '@/services/playlist/PlaylistService';
+import {Reciter, Rewayat} from '@/data/reciterData';
+import {Surah} from '@/data/surahData';
+/**
+ * Simplified type for loved tracks from the useLoved hook
+ * The hook returns a subset without the timestamp field
+ */
+type SimplifiedLovedTrack = {
+  reciterId: string;
+  surahId: string;
+  rewayatId: string;
+};
+import {DownloadedSurah} from '@/services/player/store/downloadStore';
 
 /**
  * SEARCH DEBOUNCE TIME
@@ -44,6 +57,20 @@ import {getSurahById, getAllReciters} from '@/services/dataService';
  * 300ms means we wait for user to stop typing for 300ms before searching
  */
 const SEARCH_DEBOUNCE_MS = 300;
+
+/**
+ * Metadata can contain different types based on result type
+ */
+type SearchResultMetadata =
+  | {kind: 'playlist'; data: UserPlaylist}
+  | {
+      kind: 'playlist_item';
+      data: {playlist: UserPlaylist; item: PlaylistItem; surah: Surah};
+    }
+  | {kind: 'reciter'; data: Reciter}
+  | {kind: 'rewayat'; data: {reciter: Reciter; rewayat: Rewayat}}
+  | {kind: 'surah'; data: SimplifiedLovedTrack}
+  | {kind: 'download'; data: DownloadedSurah};
 
 /**
  * Interface for search results
@@ -54,7 +81,7 @@ interface SearchResult {
   id: string;
   title: string;
   subtitle: string;
-  metadata?: any; // Store the actual data for navigation
+  metadata: SearchResultMetadata;
 }
 
 interface CollectionSearchModalProps {
@@ -107,7 +134,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
   const {playlists, getPlaylistItems} = usePlaylists(); // Playlists + function to get items
   
   // Get ALL reciters (not just favorites) for lookup
-  const [allReciters, setAllReciters] = useState<any[]>([]);
+  const [allReciters, setAllReciters] = useState<Reciter[]>([]);
   
   // Load all reciters on mount
   useEffect(() => {
@@ -186,7 +213,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           id: playlist.id,
           title: playlist.name,
           subtitle: `${playlist.itemCount} items`,
-          metadata: playlist,
+          metadata: {kind: 'playlist', data: playlist},
         });
         console.log('  ✓ Found playlist by name:', playlist.name);
       }
@@ -225,16 +252,19 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
                   title: surah.name,
                   subtitle: `${reciterName} • in "${playlist.name}" playlist`,
                   metadata: {
-                    playlist,
-                    item,
-                    surah,
+                    kind: 'playlist_item',
+                    data: {
+                      playlist,
+                      item,
+                      surah,
+                    },
                   },
                 });
                 console.log(`  ✓ Found surah "${surah.name}" in playlist "${playlist.name}"`);
               }
             }
           }
-        } catch (error) {
+        } catch (error: unknown) {
           console.error(`  ❌ Error searching playlist ${playlist.id}:`, error);
         }
       }
@@ -271,7 +301,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           id: `loved-${track.reciterId}-${track.surahId}-${track.rewayatId}`,
           title: surah.name,
           subtitle: `Loved • ${reciter.name}`,
-          metadata: track,
+          metadata: {kind: 'surah', data: track},
         });
         console.log('  ✓ Found loved track:', surah.name);
       }
@@ -308,7 +338,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           id: `download-${download.reciterId}-${download.surahId}-${download.rewayatId}`,
           title: `Downloaded: ${surah.name}`,
           subtitle: reciter.name,
-          metadata: download,
+          metadata: {kind: 'download', data: download},
         });
         console.log('  ✓ Found download:', surah.name);
       }
@@ -331,7 +361,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           id: reciter.id,
           title: reciter.name,
           subtitle: `${reciter.rewayat.length} rewayat available`,
-          metadata: reciter,
+          metadata: {kind: 'reciter', data: reciter},
         });
         console.log('  ✓ Found favorite reciter:', reciter.name);
       }
@@ -351,7 +381,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
             id: rewayat.id,
             title: `${rewayat.name} by ${reciter.name}`,
             subtitle: 'Rewayat',
-            metadata: {reciter, rewayat},
+            metadata: {kind: 'rewayat', data: {reciter, rewayat}},
           });
           console.log('  ✓ Found rewayat:', rewayat.name);
         }
@@ -415,15 +445,17 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         
       case 'playlist_item':
         // Navigate to the track inside the playlist
-        const {surah, item} = result.metadata;
-        router.push({
-          pathname: '/player',
-          params: {
-            reciterId: item.reciterId,
-            surahId: item.surahId,
-            rewayatId: item.rewayatId,
-          },
-        });
+        if (result.metadata.kind === 'playlist_item') {
+          const {surah, item} = result.metadata.data;
+          router.push({
+            pathname: '/player',
+            params: {
+              reciterId: item.reciterId,
+              surahId: item.surahId,
+              rewayatId: item.rewayatId,
+            },
+          });
+        }
         break;
         
       case 'reciter':
@@ -433,22 +465,26 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         
       case 'rewayat':
         // Navigate to reciter profile (they can select the rewayat there)
-        const {reciter} = result.metadata;
-        router.push(`/reciter/${reciter.id}`);
+        if (result.metadata.kind === 'rewayat') {
+          const {reciter} = result.metadata.data;
+          router.push(`/reciter/${reciter.id}`);
+        }
         break;
         
       case 'surah':
       case 'download':
         // Navigate to player with the track
-        const track = result.metadata;
-        router.push({
-          pathname: '/player',
-          params: {
-            reciterId: track.reciterId,
-            surahId: track.surahId,
-            rewayatId: track.rewayatId,
-          },
-        });
+        if (result.metadata.kind === 'surah' || result.metadata.kind === 'download') {
+          const track = result.metadata.data;
+          router.push({
+            pathname: '/player',
+            params: {
+              reciterId: track.reciterId,
+              surahId: track.surahId,
+              rewayatId: track.rewayatId,
+            },
+          });
+        }
         break;
     }
     
