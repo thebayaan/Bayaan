@@ -21,6 +21,7 @@ import {SectionHeader} from '@/components/collection/SectionHeader';
 import {CollectionItem} from '@/components/collection/CollectionItem';
 import {GridItem} from '@/components/collection/GridItem';
 import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
+import {CollectionSearchModal} from '@/components/collection/CollectionSearchModal';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
@@ -50,6 +51,7 @@ export default function CollectionScreen() {
   const [isGridView, setIsGridView] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [showPlaylistContextMenu, setShowPlaylistContextMenu] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [selectedPlaylist, setSelectedPlaylist] = useState<{id: string; name: string} | null>(null);
   const {downloads} = useDownload();
   const {playlists, createPlaylist, deletePlaylist, loading: playlistsLoading} = usePlaylists();
@@ -94,8 +96,8 @@ export default function CollectionScreen() {
   };
 
   const handleSearch = () => {
-    // TODO: Implement search
-    console.log('Search pressed');
+    // Open the search modal
+    setShowSearchModal(true);
   };
 
   const handleViewToggle = () => {
@@ -305,6 +307,13 @@ export default function CollectionScreen() {
         }}
         playlistName={selectedPlaylist?.name || ''}
         onDelete={handleDeletePlaylist}
+        theme={theme}
+      />
+
+      {/* Collection Search Modal - DEEP SEARCH */}
+      <CollectionSearchModal
+        visible={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
         theme={theme}
       />
     </View>
