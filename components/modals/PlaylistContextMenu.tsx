@@ -1,29 +1,38 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Alert, Modal} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
-import {Theme} from '@/utils/themeUtils';
+import BottomSheet from '@gorhom/bottom-sheet';
+import {BaseModal} from './BaseModal';
+import {useTheme} from '@/hooks/useTheme';
 
 interface PlaylistContextMenuProps {
-  visible: boolean;
-  onClose: () => void;
+  bottomSheetRef: React.RefObject<BottomSheet>;
+  playlistId: string;
   playlistName: string;
+  playlistColor?: string;
   onDelete: () => void;
+  onClose: () => void;
   onEdit?: () => void;
   onShare?: () => void;
-  theme: Theme;
 }
 
 export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
-  visible,
-  onClose,
+  bottomSheetRef,
   playlistName,
   onDelete,
+  onClose,
   onEdit,
-  onShare,
-  theme,
 }) => {
-  const styles = createStyles(theme);
+  const {theme} = useTheme();
+
+  const handleEdit = () => {
+    if (onEdit) {
+      // onEdit will handle closing the context menu
+      // No need to close here as it's handled in handleEditPlaylist
+      onEdit();
+    }
+  };
 
   const handleDelete = () => {
     Alert.alert(
@@ -48,6 +57,13 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
 
   const options = [
     {
+      label: 'Edit Playlist',
+      icon: 'edit-2',
+      onPress: handleEdit,
+      destructive: false,
+      disabled: false,
+    },
+    {
       label: 'Delete Playlist',
       icon: 'trash-2',
       onPress: handleDelete,
@@ -57,129 +73,96 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
   ];
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}>
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Playlist Options</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Icon name="x" type="feather" size={moderateScale(24)} color={theme.colors.text} />
-            </TouchableOpacity>
-          </View>
-          
-          <Text style={styles.playlistName}>{playlistName}</Text>
-          
-          <View style={styles.optionsContainer}>
-            {options.map((option, index) => (
-              <TouchableOpacity
-                key={index}
+    <BaseModal
+      bottomSheetRef={bottomSheetRef}
+      snapPoints={['40%']}
+      onChange={(index) => {
+        if (index === -1) {
+          onClose();
+        }
+      }}>
+      <View style={styles.container}>
+        <Text style={[styles.playlistName, {color: theme.colors.text}]}>
+          {playlistName}
+        </Text>
+
+        <View style={styles.optionsContainer}>
+          {options.map((option, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.option,
+                !option.destructive && {backgroundColor: theme.colors.card},
+                option.disabled && styles.optionDisabled,
+                option.destructive && [styles.optionDestructive, {backgroundColor: 'rgba(255, 68, 68, 0.1)'}],
+              ]}
+              onPress={option.onPress}
+              disabled={option.disabled}
+              activeOpacity={option.disabled ? 1 : 0.7}>
+              <Icon
+                name={option.icon}
+                type="feather"
+                size={moderateScale(20)}
+                color={
+                  option.disabled
+                    ? theme.colors.textSecondary
+                    : option.destructive
+                    ? '#ff4444'
+                    : theme.colors.text
+                }
+              />
+              <Text
                 style={[
-                  styles.option,
-                  option.disabled && styles.optionDisabled,
-                  option.destructive && styles.optionDestructive,
-                ]}
-                onPress={option.onPress}
-                disabled={option.disabled}
-                activeOpacity={option.disabled ? 1 : 0.7}>
-                <Icon
-                  name={option.icon}
-                  type="feather"
-                  size={moderateScale(20)}
-                  color={
-                    option.disabled
-                      ? theme.colors.textSecondary
-                      : option.destructive
-                      ? '#ff4444'
-                      : theme.colors.text
-                  }
-                />
-                <Text
-                  style={[
-                    styles.optionText,
-                    option.disabled && styles.optionTextDisabled,
-                    option.destructive && styles.optionTextDestructive,
-                  ]}>
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  styles.optionText,
+                  {color: theme.colors.text},
+                  option.disabled && styles.optionTextDisabled,
+                  option.destructive && styles.optionTextDestructive,
+                ]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
-    </Modal>
+    </BaseModal>
   );
 };
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'flex-end',
-    },
-    modalContainer: {
-      backgroundColor: theme.colors.background,
-      borderTopLeftRadius: moderateScale(20),
-      borderTopRightRadius: moderateScale(20),
-      paddingHorizontal: moderateScale(20),
-      paddingTop: moderateScale(20),
-      paddingBottom: moderateScale(60),
-    },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      marginBottom: moderateScale(16),
-    },
-    title: {
-      fontSize: moderateScale(20),
-      fontWeight: '600',
-      color: theme.colors.text,
-    },
-    closeButton: {
-      padding: moderateScale(8),
-    },
-    playlistName: {
-      fontSize: moderateScale(18),
-      fontWeight: '600',
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginBottom: moderateScale(20),
-    },
-    optionsContainer: {
-      gap: moderateScale(8),
-    },
-    option: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      borderRadius: moderateScale(8),
-      backgroundColor: theme.colors.card,
-    },
-    optionDisabled: {
-      opacity: 0.5,
-    },
-    optionDestructive: {
-      backgroundColor: 'rgba(255, 68, 68, 0.1)',
-    },
-    optionText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.text,
-      marginLeft: moderateScale(12),
-      fontWeight: '500',
-    },
-    optionTextDisabled: {
-      color: theme.colors.textSecondary,
-    },
-    optionTextDestructive: {
-      color: '#ff4444',
-    },
-  });
+const styles = StyleSheet.create({
+  container: {
+    padding: moderateScale(16),
+  },
+  playlistName: {
+    fontSize: moderateScale(18),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: moderateScale(20),
+  },
+  optionsContainer: {
+    gap: moderateScale(8),
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: moderateScale(16),
+    paddingHorizontal: moderateScale(16),
+    borderRadius: moderateScale(8),
+  },
+  optionDisabled: {
+    opacity: 0.5,
+  },
+  optionDestructive: {
+    // Background color is set inline for theme support
+  },
+  optionText: {
+    fontSize: moderateScale(16),
+    marginLeft: moderateScale(12),
+    fontWeight: '500',
+  },
+  optionTextDisabled: {
+    opacity: 0.5,
+  },
+  optionTextDestructive: {
+    color: '#ff4444',
+  },
+});
