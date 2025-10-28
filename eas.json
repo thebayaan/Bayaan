@@ -8,8 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "teamId": "S4W5Q2L53W"
+        "resourceClass": "m-medium"
       },
       "android": {
         "buildType": "apk"
@@ -21,8 +20,7 @@
     "preview": {
       "distribution": "internal",
       "ios": {
-        "resourceClass": "m-medium",
-        "teamId": "S4W5Q2L53W"
+        "resourceClass": "m-medium"
       },
       "android": {
         "buildType": "apk"
@@ -35,9 +33,7 @@
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium",
-        "credentialsSource": "remote",
-        "enterpriseProvisioning": "universal",
-        "teamId": "S4W5Q2L53W"
+        "credentialsSource": "remote"
       },
       "android": {
         "buildType": "app-bundle",
@@ -51,8 +47,7 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+        "appleTeamId": "S4W5Q2L53W"
       },
       "android": {
         "track": "internal",
