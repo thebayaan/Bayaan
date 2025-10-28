@@ -19,7 +19,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 }) => {
   return (
     <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <Text style={[styles.title, {color: theme.colors.textSecondary}]}>{title}</Text>
+      {/* <Text style={[styles.title, {color: theme.colors.textSecondary}]}>{title}</Text> */}
       
       {onViewToggle && (
         <TouchableOpacity
@@ -41,7 +41,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: moderateScale(16),
     paddingVertical: moderateScale(8),
