@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   ScrollView,
@@ -13,6 +13,7 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
 import {Theme} from '@/utils/themeUtils';
 import {BlurView} from '@react-native-community/blur';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 // Components
 import {CollectionHeader} from '@/components/collection/CollectionHeader';
@@ -21,6 +22,7 @@ import {SectionHeader} from '@/components/collection/SectionHeader';
 import {CollectionItem} from '@/components/collection/CollectionItem';
 import {GridItem} from '@/components/collection/GridItem';
 import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
+import {EditPlaylistModal} from '@/components/collection/EditPlaylistModal';
 import {CollectionSearchModal} from '@/components/collection/CollectionSearchModal';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
@@ -50,16 +52,13 @@ export default function CollectionScreen() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [isGridView, setIsGridView] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
-  const [showPlaylistContextMenu, setShowPlaylistContextMenu] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<{id: string; name: string} | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<{id: string; name: string; color?: string} | null>(null);
+  const shouldClearPlaylistRef = useRef(true);
+  const playlistContextMenuRef = useRef<BottomSheet>(null);
+  const editPlaylistModalRef = useRef<BottomSheet>(null);
   const {downloads} = useDownload();
-  const {playlists, createPlaylist, deletePlaylist, loading: playlistsLoading} = usePlaylists();
-
-  // Debug state changes
-  useEffect(() => {
-    console.log('State changed - showPlaylistContextMenu:', showPlaylistContextMenu, 'selectedPlaylist:', selectedPlaylist);
-  }, [showPlaylistContextMenu, selectedPlaylist]);
+  const {playlists, createPlaylist, deletePlaylist, updatePlaylist, loading: playlistsLoading} = usePlaylists();
 
   // Handle navigation to existing screens
   const handleNewPlaylist = () => {
@@ -76,10 +75,42 @@ export default function CollectionScreen() {
     }
   };
 
-  const handlePlaylistLongPress = (playlistId: string, playlistName: string) => {
+  const handlePlaylistLongPress = (playlistId: string, playlistName: string, color?: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedPlaylist({id: playlistId, name: playlistName});
-    setShowPlaylistContextMenu(true);
+    setSelectedPlaylist({id: playlistId, name: playlistName, color});
+    shouldClearPlaylistRef.current = true; // Reset flag when opening context menu
+    playlistContextMenuRef.current?.expand();
+  };
+
+  const handleEditPlaylist = () => {
+    // Prevent clearing selectedPlaylist BEFORE closing context menu
+    // Set this immediately so the context menu's onChange callback sees it
+    shouldClearPlaylistRef.current = false;
+    
+    // Close context menu and open edit modal
+    playlistContextMenuRef.current?.close();
+    
+    // Expand the edit modal with a delay to ensure smooth transition
+    setTimeout(() => {
+      editPlaylistModalRef.current?.expand();
+      
+      // Clear the flag after modal is fully opened
+      setTimeout(() => {
+        shouldClearPlaylistRef.current = true;
+      }, 500);
+    }, 250);
+  };
+
+  const handleSavePlaylistEdit = async (name: string, color: string) => {
+    if (!selectedPlaylist) return;
+    
+    try {
+      await updatePlaylist(selectedPlaylist.id, {name, color});
+      setSelectedPlaylist(null);
+      editPlaylistModalRef.current?.close();
+    } catch (error) {
+      console.error('Failed to update playlist:', error);
+    }
   };
 
   const handleDeletePlaylist = async () => {
@@ -87,12 +118,24 @@ export default function CollectionScreen() {
     
     try {
       await deletePlaylist(selectedPlaylist.id);
-      setShowPlaylistContextMenu(false);
+      playlistContextMenuRef.current?.close();
       setSelectedPlaylist(null);
     } catch (error) {
       console.error('Failed to delete playlist:', error);
       // Error handling is done in the confirmation dialog
     }
+  };
+
+  const handleClosePlaylistContextMenu = () => {
+    // Don't clear selectedPlaylist if we're transitioning to edit mode
+    if (shouldClearPlaylistRef.current) {
+      setSelectedPlaylist(null);
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    editPlaylistModalRef.current?.close();
+    setSelectedPlaylist(null);
   };
 
   const handleSearch = () => {
@@ -131,7 +174,7 @@ export default function CollectionScreen() {
             iconType: 'feather',
             color: playlist.color,
             onPress: () => router.push(`/playlist/${playlist.id}`),
-            onLongPress: () => handlePlaylistLongPress(playlist.id, playlist.name),
+            onLongPress: () => handlePlaylistLongPress(playlist.id, playlist.name, playlist.color),
           });
         });
       } else {
@@ -299,16 +342,27 @@ export default function CollectionScreen() {
 
       {/* Playlist Context Menu */}
       <PlaylistContextMenu
-        visible={showPlaylistContextMenu}
-        onClose={() => {
-          console.log('Closing playlist context menu');
-          setShowPlaylistContextMenu(false);
-          setSelectedPlaylist(null);
-        }}
+        bottomSheetRef={playlistContextMenuRef}
+        playlistId={selectedPlaylist?.id || ''}
         playlistName={selectedPlaylist?.name || ''}
+        playlistColor={selectedPlaylist?.color}
         onDelete={handleDeletePlaylist}
-        theme={theme}
+        onEdit={handleEditPlaylist}
+        onClose={handleClosePlaylistContextMenu}
       />
+
+      {/* Edit Playlist Modal */}
+      {selectedPlaylist && (
+        <EditPlaylistModal
+          bottomSheetRef={editPlaylistModalRef}
+          playlistId={selectedPlaylist.id}
+          playlistName={selectedPlaylist.name}
+          playlistColor={selectedPlaylist.color || '#6366F1'}
+          onSave={handleSavePlaylistEdit}
+          onClose={handleCloseEditModal}
+          theme={theme}
+        />
+      )}
 
       {/* Collection Search Modal - DEEP SEARCH */}
       <CollectionSearchModal
