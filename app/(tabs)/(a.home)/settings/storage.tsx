@@ -122,7 +122,7 @@ export default function StorageScreen() {
               setIsClearing(true);
               // Clear both AsyncStorage cache AND file system cache
               await clearPlayerCache();
-              await clearCacheDirectory();
+            //   await clearCacheDirectory();
               // Refresh storage breakdown
               refresh();
               Alert.alert('Success', 'Cache has been cleared.');
