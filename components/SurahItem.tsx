@@ -10,7 +10,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
-import {HeartIcon} from '@/components/Icons';
+import {HeartIcon, DownloadIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
@@ -31,6 +31,7 @@ interface SurahItemProps {
   onPress: (item: Surah) => void;
   reciterId?: string;
   isLoved?: boolean;
+  isDownloaded?: boolean;
   onOptionsPress?: (item: Surah) => void;
   enableHaptics?: boolean;
   enableAnimation?: boolean;
@@ -47,6 +48,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     onPress,
     reciterId,
     isLoved = false,
+    isDownloaded = false,
     onOptionsPress,
     enableHaptics = false,
     enableAnimation = false,
@@ -54,13 +56,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
-    const {isDownloaded, isDownloadedWithRewayat} = useDownload();
+    const {isDownloaded: checkIsDownloaded, isDownloadedWithRewayat} = useDownload();
 
-    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
+    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use checkIsDownloaded
     const isDownloadedState = reciterId
       ? rewayatId
         ? isDownloadedWithRewayat(reciterId, item.id.toString(), rewayatId)
-        : isDownloaded(reciterId, item.id.toString())
+        : checkIsDownloaded(reciterId, item.id.toString())
       : false;
 
     // Get necessary state slices from player store
@@ -197,6 +199,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             {isLoved && (
               <HeartIcon
                 size={moderateScale(14)}
+                color={theme.colors.text}
+                filled={true}
+              />
+            )}
+            {isDownloaded && (
+              <DownloadIcon
+                size={moderateScale(12)}
                 color={theme.colors.text}
                 filled={true}
               />
