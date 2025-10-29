@@ -82,12 +82,13 @@ const settingsItems = [
     section: 'App & Data',
     items: [
       {
-        title: 'Clear Cache',
-        type: 'clearCache',
-        description: 'Free up storage space',
-        icon: 'trash-2',
+        title: 'Storage',
+        type: 'storage',
+        description: 'View and manage storage usage',
+        icon: 'hard-drive',
         iconType: 'feather',
       },
+      
       // Add more app settings here as needed
     ],
   },
@@ -169,6 +170,9 @@ export default function SettingsScreen() {
         break;
       case 'reciterChoice':
         router.push('/settings/reciter-choice');
+        break;
+      case 'storage':
+        router.push('/settings/storage');
         break;
       case 'clearCache':
         await clearPlayerCache();
