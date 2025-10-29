@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'loved-tracks-store';
 
-interface LovedTrack {
+export interface LovedTrack {
   reciterId: string;
   surahId: string;
   rewayatId: string;

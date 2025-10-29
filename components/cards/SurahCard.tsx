@@ -13,7 +13,7 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
-import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
+import {MakkahIcon, MadinahIcon, HeartIcon, DownloadIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 import Animated, {
   useAnimatedStyle,
@@ -36,6 +36,7 @@ interface SurahCardProps {
   onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
+  isDownloaded?: boolean;
   isLoading?: boolean;
   enableHaptics?: boolean;
   enableAnimation?: boolean;
@@ -56,6 +57,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   onOptionsPress,
   style,
   isLoved = false,
+  isDownloaded = false,
   enableHaptics = false,
   enableAnimation = false,
   reciterId,
@@ -336,6 +338,13 @@ export const SurahCard: React.FC<SurahCardProps> = ({
         <View style={styles.heartIconContainer}>
           {isLoved && (
             <HeartIcon
+              size={moderateScale(14)}
+              color={theme.colors.text}
+              filled={true}
+            />
+          )}
+          {isDownloaded && (
+            <DownloadIcon
               size={moderateScale(14)}
               color={theme.colors.text}
               filled={true}
