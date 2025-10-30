@@ -24,6 +24,9 @@ import {Icon} from '@rneui/themed';
 import {useRouter, useLocalSearchParams} from 'expo-router';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {PlaylistHeader} from '@/components/collection/PlaylistHeader';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {downloadSurah} from '@/services/downloadService';
+import {showToast} from '@/utils/toastUtils';
 
 interface PlaylistTrack {
   id: string;
@@ -41,6 +44,14 @@ const PlaylistDetailScreen = () => {
   const router = useRouter();
   const {getPlaylist, getPlaylistItems, removeFromPlaylist, reorderPlaylistItems} = usePlaylists();
   const {updateQueue, play, pause, playback} = useUnifiedPlayer();
+  const {
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+  } = useDownload();
   
   const [playlist, setPlaylist] = useState<any>(null);
   const [playlistData, setPlaylistData] = useState<
@@ -51,6 +62,7 @@ const PlaylistDetailScreen = () => {
     }>
   >([]);
   const [loading, setLoading] = useState(true);
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
   const styles = StyleSheet.create({
     container: {
@@ -253,6 +265,121 @@ const PlaylistDetailScreen = () => {
     }
   }, [playlistData, updateQueue, play]);
 
+  const handleBulkDownload = useCallback(async () => {
+    if (playlistData.length === 0 || isBulkDownloading) return;
+    
+    setIsBulkDownloading(true);
+    
+    try {
+      // Filter out already downloaded surahs
+      const surahsToDownload = playlistData.filter(item => {
+        if (!item.reciter || !item.surah || !item.track.reciterId || !item.track.surahId) {
+          return false;
+        }
+        
+        // Check if already downloaded
+        if (item.track.rewayatId) {
+          return !isDownloadedWithRewayat(
+            item.track.reciterId,
+            item.track.surahId,
+            item.track.rewayatId,
+          );
+        } else {
+          return !isDownloaded(item.track.reciterId, item.track.surahId);
+        }
+      });
+
+      const alreadyDownloaded = playlistData.length - surahsToDownload.length;
+
+      if (surahsToDownload.length === 0) {
+        showToast(
+          alreadyDownloaded > 0
+            ? 'All surahs in this playlist are already downloaded'
+            : 'No surahs to download',
+        );
+        setIsBulkDownloading(false);
+        return;
+      }
+
+      showToast(`Starting download of ${surahsToDownload.length} surah${surahsToDownload.length > 1 ? 's' : ''}...`);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Download each surah
+      for (let i = 0; i < surahsToDownload.length; i++) {
+        const item = surahsToDownload[i];
+        if (!item.reciter || !item.surah || !item.track.reciterId || !item.track.surahId) {
+          continue;
+        }
+
+        const downloadId = `${item.track.reciterId}-${item.track.surahId}`;
+        
+        // Skip if already downloading
+        if (isDownloading(item.track.reciterId, item.track.surahId)) {
+          continue;
+        }
+
+        try {
+          setDownloading(downloadId);
+          
+          // Show progress for downloads > 3
+          if (surahsToDownload.length > 3) {
+            showToast(`Downloading ${i + 1}/${surahsToDownload.length}: ${item.surah.name}`);
+          }
+          
+          const downloadResult = await downloadSurah(
+            parseInt(item.track.surahId, 10),
+            item.track.reciterId,
+            item.track.rewayatId,
+          );
+
+          addDownload({
+            reciterId: item.track.reciterId,
+            surahId: item.track.surahId,
+            rewayatId: item.track.rewayatId || '',
+            filePath: downloadResult.filePath,
+            fileSize: downloadResult.fileSize,
+            downloadDate: Date.now(),
+            status: 'completed',
+          });
+
+          clearDownloading(downloadId);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to download surah ${item.track.surahId}:`, error);
+          clearDownloading(downloadId);
+          failCount++;
+        }
+      }
+
+      // Show completion message
+      if (failCount === 0) {
+        showToast(
+          `Successfully downloaded ${successCount} surah${successCount > 1 ? 's' : ''}!`,
+        );
+      } else {
+        showToast(
+          `Downloaded ${successCount} surah${successCount > 1 ? 's' : ''}, ${failCount} failed`,
+        );
+      }
+    } catch (error) {
+      console.error('Error in bulk download:', error);
+      showToast('An error occurred during bulk download');
+    } finally {
+      setIsBulkDownloading(false);
+    }
+  }, [
+    playlistData,
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+    isBulkDownloading,
+  ]);
+
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;
     
@@ -264,7 +391,9 @@ const PlaylistDetailScreen = () => {
         iconName="book-open"
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        showDownloadIcon={false}
+        onDownloadPress={handleBulkDownload}
+        showDownloadIcon={true}
+        downloadDisabled={isBulkDownloading}
         theme={theme}
       />
     );
@@ -273,6 +402,8 @@ const PlaylistDetailScreen = () => {
     playlistData.length,
     handlePlayAll,
     handleShuffle,
+    handleBulkDownload,
+    isBulkDownloading,
     theme,
   ]);
 

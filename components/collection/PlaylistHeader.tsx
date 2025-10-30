@@ -17,7 +17,9 @@ interface PlaylistHeaderProps {
   iconType?: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
+  onDownloadPress?: () => void;
   showDownloadIcon?: boolean;
+  downloadDisabled?: boolean;
   theme: Theme;
 }
 
@@ -29,7 +31,9 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   iconType = 'feather',
   onPlayPress,
   onShufflePress,
+  onDownloadPress,
   showDownloadIcon = false,
+  downloadDisabled = false,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -79,7 +83,9 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
           <CollectionActionButtons
             onPlayPress={onPlayPress}
             onShufflePress={onShufflePress}
+            onDownloadPress={onDownloadPress}
             showDownloadIcon={showDownloadIcon}
+            disabled={downloadDisabled}
           />
           </View>
     </View>
