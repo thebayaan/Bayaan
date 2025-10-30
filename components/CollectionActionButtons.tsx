@@ -12,13 +12,14 @@ interface CollectionActionButtonsProps {
   onShufflePress: () => void;
   onPlayPress: () => void;
   showDownloadIcon?: boolean;
+  onDownloadPress?: () => void;
   disabled?: boolean;
   isPlaying?: boolean;
 }
 
 export const CollectionActionButtons: React.FC<
   CollectionActionButtonsProps
-> = ({onShufflePress, onPlayPress, showDownloadIcon = false, disabled = false, isPlaying = false}) => {
+> = ({onShufflePress, onPlayPress, showDownloadIcon = false, onDownloadPress, disabled = false, isPlaying = false}) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
 
@@ -28,9 +29,10 @@ export const CollectionActionButtons: React.FC<
         <TouchableOpacity
           activeOpacity={0.99}
           style={styles.actionButton}
-          disabled={true}>
+          onPress={onDownloadPress}
+          disabled={!onDownloadPress || disabled}>
           <DownloadIcon
-            color={theme.colors.textSecondary + '40'}
+            color={onDownloadPress && !disabled ? theme.colors.text : theme.colors.textSecondary + '40'}
             size={moderateScale(28)}
           />
         </TouchableOpacity>
