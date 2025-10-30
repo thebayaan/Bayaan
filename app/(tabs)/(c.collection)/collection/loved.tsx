@@ -30,6 +30,9 @@ import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {downloadSurah} from '@/services/downloadService';
+import {showToast} from '@/utils/toastUtils';
 
 interface LovedTrack {
   reciterId: string;
@@ -102,6 +105,14 @@ const LovedScreen = () => {
   const {updateQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
+  const {
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+  } = useDownload();
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
@@ -109,6 +120,7 @@ const LovedScreen = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [reciters, setReciters] = useState<Record<string, Reciter>>({});
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [150, 200],
@@ -405,6 +417,130 @@ const LovedScreen = () => {
     addRecentTrack,
   ]);
 
+  const handleBulkDownload = useCallback(async () => {
+    if (filteredData.length === 0 || isBulkDownloading) return;
+    
+    setIsBulkDownloading(true);
+    
+    try {
+      // Get all loved tracks and filter out already downloaded ones
+      const surahsToDownload = filteredData.filter(item => {
+        // Find the loved track to get its rewayatId
+        const lovedTrack = lovedTracks.find(
+          track =>
+            track.reciterId === item.reciterId &&
+            track.surahId === item.surahId,
+        );
+        const rewayatId = lovedTrack?.rewayatId;
+        
+        // Check if already downloaded
+        if (rewayatId) {
+          return !isDownloadedWithRewayat(
+            item.reciterId,
+            item.surahId,
+            rewayatId,
+          );
+        } else {
+          return !isDownloaded(item.reciterId, item.surahId);
+        }
+      });
+
+      const alreadyDownloaded = filteredData.length - surahsToDownload.length;
+
+      if (surahsToDownload.length === 0) {
+        showToast(
+          alreadyDownloaded > 0
+            ? 'All loved surahs are already downloaded'
+            : 'No surahs to download',
+        );
+        setIsBulkDownloading(false);
+        return;
+      }
+
+      showToast(`Starting download of ${surahsToDownload.length} loved surah${surahsToDownload.length > 1 ? 's' : ''}...`);
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Download each surah
+      for (let i = 0; i < surahsToDownload.length; i++) {
+        const item = surahsToDownload[i];
+        // Find the loved track to get its rewayatId
+        const lovedTrack = lovedTracks.find(
+          track =>
+            track.reciterId === item.reciterId &&
+            track.surahId === item.surahId,
+        );
+        const rewayatId = lovedTrack?.rewayatId;
+
+        const downloadId = `${item.reciterId}-${item.surahId}`;
+        
+        // Skip if already downloading
+        if (isDownloading(item.reciterId, item.surahId)) {
+          continue;
+        }
+
+        try {
+          setDownloading(downloadId);
+          
+          // Show progress for downloads > 3
+          if (surahsToDownload.length > 3) {
+            showToast(`Downloading ${i + 1}/${surahsToDownload.length}: ${item.surahName || item.surahId}`);
+          }
+          
+          const downloadResult = await downloadSurah(
+            parseInt(item.surahId, 10),
+            item.reciterId,
+            rewayatId,
+          );
+
+          addDownload({
+            reciterId: item.reciterId,
+            surahId: item.surahId,
+            rewayatId: rewayatId || '',
+            filePath: downloadResult.filePath,
+            fileSize: downloadResult.fileSize,
+            downloadDate: Date.now(),
+            status: 'completed',
+          });
+
+          clearDownloading(downloadId);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to download surah ${item.surahId}:`, error);
+          clearDownloading(downloadId);
+          failCount++;
+        }
+      }
+
+      // Show completion message
+      if (failCount === 0) {
+        showToast(
+          `Successfully downloaded ${successCount} loved surah${successCount > 1 ? 's' : ''}!`,
+        );
+      } else {
+        showToast(
+          `Downloaded ${successCount} surah${successCount > 1 ? 's' : ''}, ${failCount} failed`,
+        );
+      }
+    } catch (error) {
+      console.error('Error in bulk download:', error);
+      showToast('An error occurred during bulk download');
+    } finally {
+      setIsBulkDownloading(false);
+    }
+  }, [
+    filteredData,
+    lovedTracks,
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+    isBulkDownloading,
+  ]);
+
   const handleScroll = Animated.event(
     [{nativeEvent: {contentOffset: {y: scrollY}}}],
     {
@@ -441,6 +577,9 @@ const LovedScreen = () => {
           <CollectionActionButtons
             onShufflePress={handleShuffleAll}
             onPlayPress={handlePlayAll}
+            onDownloadPress={handleBulkDownload}
+            showDownloadIcon={true}
+            disabled={isBulkDownloading}
           />
           {showSearch && (
             <View style={styles.searchBarContainer}>
@@ -465,6 +604,8 @@ const LovedScreen = () => {
     lovedTracks.length,
     handleShuffleAll,
     handlePlayAll,
+    handleBulkDownload,
+    isBulkDownloading,
     showSearch,
     searchQuery,
   ]);
