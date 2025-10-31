@@ -625,44 +625,8 @@ export async function playbackService() {
         return;
       }
 
-      // For Playing state, update immediately for responsive UI
-      // Don't wait for validation - audio is already playing!
-      if (state === State.Playing) {
-        // Update state immediately without batching or validation delay
-        const position = await TrackPlayer.getPosition();
-        const duration = await TrackPlayer.getDuration();
-        
-        store.updatePlaybackState({
-          state,
-          position: position || 0,
-          duration: duration || 0,
-        });
-        store.updateLoadingState({trackLoading: false});
-        store.setError('playback', null);
-        
-        // Validate in the background (non-blocking)
-        validateTrackState()
-          .then(validation => {
-            if (!validation.isValid && validation.error) {
-              console.warn(
-                '[PlaybackService] Track validation warning:',
-                validation.error,
-              );
-              // Don't interrupt playback for validation issues
-              // Just log it for debugging
-            }
-            // Update duration if validation found a better value
-            if (validation.duration && validation.duration > 0) {
-              store.updatePlaybackState({
-                duration: validation.duration,
-              });
-            }
-          })
-          .catch(error => {
-            console.warn('[PlaybackService] Validation error:', error);
-          });
-      } else if (state === State.Ready) {
-        // For Ready state, validate track (but still batch to prevent flicker)
+      // For Ready or Playing states, validate track
+      if (state === State.Ready || state === State.Playing) {
         const validation = await validateTrackState();
         if (!validation.isValid) {
           console.warn(
@@ -692,20 +656,8 @@ export async function playbackService() {
           // Clear any previous errors
           store.setError('playback', null);
         });
-      } else if (state === State.Paused) {
-        // For Paused state, update immediately for responsive UI
-        // User just paused, they expect immediate feedback
-        const position = await TrackPlayer.getPosition();
-        const duration = await TrackPlayer.getDuration();
-        
-        store.updatePlaybackState({
-          state,
-          position: position || 0,
-          duration: duration || 0,
-        });
-        store.updateLoadingState({trackLoading: false});
       } else {
-        // For other states (Buffering, etc.), batch updates to prevent flicker
+        // For other states, just update the store
         const position = await TrackPlayer.getPosition();
         const duration = await TrackPlayer.getDuration();
 
