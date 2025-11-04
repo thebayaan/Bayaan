@@ -1,114 +1,45 @@
-import {useState, useEffect} from 'react';
-import {playlistService, UserPlaylist} from '@/services/playlist/PlaylistService';
+import {useEffect} from 'react';
+import {usePlaylistsStore} from '@/store/playlistsStore';
 
+/**
+ * Hook to access and manage playlists.
+ * This hook wraps the Zustand store to provide a consistent API
+ * while ensuring all components share the same state.
+ *
+ * The store acts as a single source of truth, so updates from one
+ * component automatically propagate to all other components using this hook.
+ */
 export const usePlaylists = () => {
-  const [playlists, setPlaylists] = useState<UserPlaylist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Get state and actions from the Zustand store
+  const playlists = usePlaylistsStore(state => state.playlists);
+  const loading = usePlaylistsStore(state => state.loading);
+  const error = usePlaylistsStore(state => state.error);
+  const loadPlaylists = usePlaylistsStore(state => state.loadPlaylists);
+  const createPlaylist = usePlaylistsStore(state => state.createPlaylist);
+  const updatePlaylist = usePlaylistsStore(state => state.updatePlaylist);
+  const deletePlaylist = usePlaylistsStore(state => state.deletePlaylist);
+  const getPlaylist = usePlaylistsStore(state => state.getPlaylist);
+  const getPlaylistItems = usePlaylistsStore(state => state.getPlaylistItems);
+  const addToPlaylist = usePlaylistsStore(state => state.addToPlaylist);
+  const removeFromPlaylist = usePlaylistsStore(
+    state => state.removeFromPlaylist,
+  );
+  const reorderPlaylistItems = usePlaylistsStore(
+    state => state.reorderPlaylistItems,
+  );
+  const refreshPlaylists = usePlaylistsStore(state => state.refreshPlaylists);
 
-  // Load playlists
-  const loadPlaylists = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const allPlaylists = await playlistService.getAllPlaylists();
-      setPlaylists(allPlaylists);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load playlists');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Create playlist
-  const createPlaylist = async (name: string, color: string, description?: string) => {
-    try {
-      setError(null);
-      const newPlaylist = await playlistService.createPlaylist(name, color, description);
-      await loadPlaylists(); // Refresh the list
-      return newPlaylist;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create playlist');
-      throw err;
-    }
-  };
-
-  // Delete playlist
-  const deletePlaylist = async (playlistId: string) => {
-    try {
-      setError(null);
-      await playlistService.deletePlaylist(playlistId);
-      await loadPlaylists(); // Refresh the list
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete playlist');
-      throw err;
-    }
-  };
-
-  // Update playlist
-  const updatePlaylist = async (id: string, updates: Partial<UserPlaylist>) => {
-    try {
-      setError(null);
-      const updatedPlaylist = await playlistService.updatePlaylist(id, updates);
-      if (updatedPlaylist) {
-        await loadPlaylists(); // Refresh the list
-        return updatedPlaylist;
-      }
-      throw new Error('Playlist not found');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update playlist');
-      throw err;
-    }
-  };
-
-  // Get single playlist
-  const getPlaylist = async (id: string) => {
-    try {
-      setError(null);
-      return await playlistService.getPlaylist(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get playlist');
-      throw err;
-    }
-  };
-
-  // Get playlist items
-  const getPlaylistItems = async (playlistId: string) => {
-    try {
-      setError(null);
-      return await playlistService.getPlaylistItems(playlistId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get playlist items');
-      throw err;
-    }
-  };
-
-  // Remove item from playlist
-  const removeFromPlaylist = async (itemId: string) => {
-    try {
-      setError(null);
-      await playlistService.removeFromPlaylist(itemId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove item from playlist');
-      throw err;
-    }
-  };
-
-  // Reorder playlist items
-  const reorderPlaylistItems = async (playlistId: string, itemIds: string[]) => {
-    try {
-      setError(null);
-      await playlistService.reorderPlaylistItems(playlistId, itemIds);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reorder playlist items');
-      throw err;
-    }
-  };
-
-  // Load playlists on mount
+  // Safety fallback: Load playlists if not already loaded by AppInitializer
+  // This should rarely execute as AppInitializer preloads data on app startup
   useEffect(() => {
-    loadPlaylists();
-  }, []);
+    // Only load if we have no playlists and we're not currently loading
+    if (playlists.length === 0 && !loading) {
+      console.warn(
+        '[usePlaylists] Playlists not preloaded, loading as fallback...',
+      );
+      loadPlaylists();
+    }
+  }, []); // Empty deps - only run on mount
 
   return {
     playlists,
@@ -119,8 +50,9 @@ export const usePlaylists = () => {
     updatePlaylist,
     getPlaylist,
     getPlaylistItems,
+    addToPlaylist,
     removeFromPlaylist,
     reorderPlaylistItems,
-    refreshPlaylists: loadPlaylists,
+    refreshPlaylists,
   };
 };

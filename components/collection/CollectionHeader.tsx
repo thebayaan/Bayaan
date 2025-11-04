@@ -14,13 +14,13 @@ interface CollectionHeaderProps {
 export const CollectionHeader: React.FC<CollectionHeaderProps> = ({
   title,
   onNewPlaylistPress,
-  onSearchPress,
   theme,
 }) => {
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <View
+      style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
-      
+
       <View style={styles.actions}>
         {/* <TouchableOpacity
           style={styles.actionButton}
@@ -33,7 +33,7 @@ export const CollectionHeader: React.FC<CollectionHeaderProps> = ({
             color={theme.colors.text}
           />
         </TouchableOpacity> */}
-        
+
         <TouchableOpacity
           style={styles.actionButton}
           onPress={onNewPlaylistPress}
