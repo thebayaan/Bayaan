@@ -16,7 +16,7 @@ import {Input} from '@/components/Input';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 
-interface CreatePlaylistModalProps {
+interface PlaylistModalProps {
   visible: boolean;
   onClose: () => void;
   onCreatePlaylist: (name: string, color: string) => void;
@@ -43,7 +43,7 @@ const PLAYLIST_COLORS = [
   '#10B981', // Emerald
 ];
 
-export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
+export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   visible,
   onClose,
   onCreatePlaylist,
@@ -197,7 +197,7 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
             showIcon
             iconName="edit-3"
             iconType="feather"
-            placeholder="e.g., Morning Recitations"
+            placeholder="Name"
             value={playlistName}
             onChangeText={setPlaylistName}
             maxLength={50}

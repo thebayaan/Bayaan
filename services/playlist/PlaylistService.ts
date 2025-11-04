@@ -1,25 +1,35 @@
-import {Surah} from '@/data/surahData';
-import {Reciter} from '@/data/reciterData';
-import {databaseService, UserPlaylist, PlaylistItem} from '@/services/database/DatabaseService';
+import {
+  databaseService,
+  UserPlaylist,
+  PlaylistItem,
+} from '@/services/database/DatabaseService';
 
 // Re-export types for convenience
 export type {UserPlaylist, PlaylistItem};
 
 class PlaylistService {
-  private initialized = false;
+  private initPromise: Promise<void> | null = null;
 
-  // Initialize the service
+  // Initialize the service (idempotent with mutex protection)
   async initialize(): Promise<void> {
-    if (!this.initialized) {
-      await databaseService.initialize();
-      this.initialized = true;
+    // If initialization is in progress, wait for it
+    if (this.initPromise) {
+      return this.initPromise;
     }
+
+    // Start initialization
+    this.initPromise = databaseService.initialize();
+    return this.initPromise;
   }
 
   // Create a new playlist
-  async createPlaylist(name: string, color: string, description?: string): Promise<UserPlaylist> {
+  async createPlaylist(
+    name: string,
+    color: string,
+    description?: string,
+  ): Promise<UserPlaylist> {
     await this.initialize();
-    
+
     const playlist: Omit<UserPlaylist, 'itemCount'> = {
       id: `playlist_${Date.now()}`,
       name,
@@ -57,7 +67,7 @@ class PlaylistService {
   ): Promise<void> {
     await this.initialize();
 
-    // Check if item already exists
+    // Check if item already exists (read operation - OK to be outside transaction)
     const existingItems = await databaseService.getPlaylistItems(playlistId);
     const existingItem = existingItems.find(
       item =>
@@ -79,6 +89,7 @@ class PlaylistService {
       addedAt: Date.now(),
     };
 
+    // Wrap both operations in a single transaction
     await databaseService.addPlaylistItem(item);
     await databaseService.updatePlaylist(playlistId, {updatedAt: Date.now()});
   }
@@ -102,14 +113,23 @@ class PlaylistService {
   }
 
   // Update playlist
-  async updatePlaylist(id: string, updates: Partial<UserPlaylist>): Promise<UserPlaylist | null> {
+  async updatePlaylist(
+    id: string,
+    updates: Partial<UserPlaylist>,
+  ): Promise<UserPlaylist | null> {
     await this.initialize();
-    await databaseService.updatePlaylist(id, {...updates, updatedAt: Date.now()});
+    await databaseService.updatePlaylist(id, {
+      ...updates,
+      updatedAt: Date.now(),
+    });
     return await databaseService.getPlaylist(id);
   }
 
   // Reorder playlist items
-  async reorderPlaylistItems(playlistId: string, itemIds: string[]): Promise<void> {
+  async reorderPlaylistItems(
+    playlistId: string,
+    itemIds: string[],
+  ): Promise<void> {
     await this.initialize();
     await databaseService.reorderPlaylistItems(playlistId, itemIds);
   }

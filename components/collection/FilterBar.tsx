@@ -1,5 +1,12 @@
 import React, {useMemo} from 'react';
-import {View, Text, TouchableOpacity, ScrollView, StyleSheet, Keyboard} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Keyboard,
+} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import Animated, {
@@ -16,7 +23,7 @@ interface FilterItem {
 
 interface DynamicChip extends FilterItem {
   isSelected: boolean;
-  type: 'active' | 'inactive';
+  type: 'active' | 'inactive' | 'clear';
 }
 
 interface FilterBarProps {
@@ -33,40 +40,54 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   theme,
 }) => {
   const styles = createStyles(theme);
-  
+
   // Create dynamic chips that actually change content to trigger animations
   const dynamicFilterChips = useMemo((): DynamicChip[] => {
     const chips: DynamicChip[] = [];
-    
-    // Always show the active filter first
-    const activeFilterItem = filters.find(f => f.id === activeFilter);
-    if (activeFilterItem) {
+
+    // If a specific filter is active, show only the X button and active filter
+    if (activeFilter && activeFilter !== '') {
+      // Add X button first (on the left)
       chips.push({
-        ...activeFilterItem,
-        isSelected: true,
-        type: 'active'
+        id: 'clear',
+        label: '✕',
+        isSelected: false,
+        type: 'clear',
       });
-    }
-    
-    // Then show all other filters
-    filters.forEach(filter => {
-      if (filter.id !== activeFilter) {
+
+      // Add the active filter
+      const activeFilterItem = filters.find(f => f.id === activeFilter);
+      if (activeFilterItem) {
+        chips.push({
+          ...activeFilterItem,
+          isSelected: true,
+          type: 'active',
+        });
+      }
+    } else {
+      // Show all filters when no filter is active
+      filters.forEach(filter => {
         chips.push({
           ...filter,
           isSelected: false,
-          type: 'inactive'
+          type: 'inactive',
         });
-      }
-    });
-    
+      });
+    }
+
     return chips;
   }, [filters, activeFilter]);
-  
+
   const handleFilterPress = (filterId: string) => {
     Keyboard.dismiss();
-    onFilterChange(filterId);
+    // If clear button is pressed, or if clicking on active filter, clear the filter
+    if (filterId === 'clear' || filterId === activeFilter) {
+      onFilterChange('');
+    } else {
+      onFilterChange(filterId);
+    }
   };
-  
+
   return (
     <View style={styles.filterSectionsContainer}>
       <ScrollView
@@ -76,7 +97,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         keyboardShouldPersistTaps="handled">
         {dynamicFilterChips.map(chip => (
           <Animated.View
-            key={chip.id + chip.type}
+            key={chip.label + chip.type}
             entering={FadeIn.duration(300)}
             exiting={FadeOut.duration(200)}
             layout={LinearTransition.duration(300)}>
@@ -84,13 +105,18 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               style={[
                 styles.filterChip,
                 chip.isSelected && styles.filterChipActive,
+                chip.type === 'clear' && styles.filterChipClear,
               ]}
               activeOpacity={0.7}
-              onPress={() => handleFilterPress(chip.id)}>
+              onPress={() => {
+                Keyboard.dismiss();
+                handleFilterPress(chip.id);
+              }}>
               <Text
                 style={[
                   styles.filterChipText,
                   chip.isSelected && styles.filterChipTextActive,
+                  chip.type === 'clear' && styles.filterChipTextClear,
                 ]}>
                 {chip.label}
               </Text>
@@ -127,6 +153,11 @@ const createStyles = (theme: Theme) =>
       backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       borderColor: Color(theme.colors.text).alpha(0.2).toString(),
     },
+    filterChipClear: {
+      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      paddingHorizontal: moderateScale(10),
+    },
     filterChipText: {
       fontSize: moderateScale(12),
       fontFamily: theme.fonts.medium,
@@ -135,5 +166,10 @@ const createStyles = (theme: Theme) =>
     filterChipTextActive: {
       color: theme.colors.text,
       fontFamily: theme.fonts.semiBold,
+    },
+    filterChipTextClear: {
+      fontSize: moderateScale(14),
+      color: theme.colors.textSecondary,
+      fontFamily: theme.fonts.medium,
     },
   });

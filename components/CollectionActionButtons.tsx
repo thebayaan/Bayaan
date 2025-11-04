@@ -4,48 +4,87 @@ import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayIcon, ShuffleIcon, DownloadIcon, PauseIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon, PauseIcon} from '@/components/Icons';
+import Color from 'color';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
 
 
 
 interface CollectionActionButtonsProps {
   onShufflePress: () => void;
   onPlayPress: () => void;
-  showDownloadIcon?: boolean;
   disabled?: boolean;
   isPlaying?: boolean;
 }
 
 export const CollectionActionButtons: React.FC<
   CollectionActionButtonsProps
-> = ({onShufflePress, onPlayPress, showDownloadIcon = false, disabled = false, isPlaying = false}) => {
+> = React.memo(({onShufflePress, onPlayPress, disabled = false, isPlaying = false}) => {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const styles = React.useMemo(() => createStyles(theme), [theme]);
+
+  // Animation values for button press feedback
+  const shuffleScale = useSharedValue(1);
+  const playScale = useSharedValue(1);
+
+  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: shuffleScale.value}],
+  }));
+
+  const playAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: playScale.value}],
+  }));
+
+  const handlePressIn = React.useCallback((button: 'shuffle' | 'play') => {
+    const scale = button === 'shuffle' ? shuffleScale : playScale;
+    scale.value = withSpring(0.92, {
+      damping: 15,
+      stiffness: 300,
+    });
+  }, [shuffleScale, playScale]);
+
+  const handlePressOut = React.useCallback((button: 'shuffle' | 'play') => {
+    const scale = button === 'shuffle' ? shuffleScale : playScale;
+    scale.value = withSpring(1, {
+      damping: 15,
+      stiffness: 300,
+    });
+  }, [shuffleScale, playScale]);
 
   return (
-    <View style={showDownloadIcon? styles.actionButtons : styles.actionButtonsWithoutDownload}>
-      {showDownloadIcon && (
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={styles.actionButton}
-          disabled={true}>
-          <DownloadIcon
-            color={theme.colors.textSecondary + '40'}
-            size={moderateScale(28)}
-          />
-        </TouchableOpacity>
-      )}
+    <View style={styles.actionButtons}>
       <View style={styles.rightAlignedButtons}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={styles.actionButton}
-          onPress={onShufflePress}>
-          <ShuffleIcon color={theme.colors.text} size={moderateScale(32)} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          style={[styles.playButton, disabled && styles.buttonDisabled]}
+        <AnimatedTouchableOpacity
+          activeOpacity={0.7}
+          style={[
+            styles.circleButton,
+            shuffleAnimatedStyle,
+            disabled && styles.buttonDisabled,
+          ]}
+          onPress={onShufflePress}
+          onPressIn={() => !disabled && handlePressIn('shuffle')}
+          onPressOut={() => !disabled && handlePressOut('shuffle')}
+          disabled={disabled}>
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+        </AnimatedTouchableOpacity>
+        <AnimatedTouchableOpacity
+          activeOpacity={0.7}
+          style={[
+            styles.circleButton,
+            styles.playButton,
+            playAnimatedStyle,
+            disabled && styles.buttonDisabled,
+          ]}
           onPress={onPlayPress}
+          onPressIn={() => !disabled && handlePressIn('play')}
+          onPressOut={() => !disabled && handlePressOut('play')}
           disabled={disabled}>
           <View style={styles.playIconContainer}>
             {isPlaying ? (
@@ -54,55 +93,44 @@ export const CollectionActionButtons: React.FC<
               <PlayIcon color={theme.colors.background} size={moderateScale(16)} />
             )}
           </View>
-        </TouchableOpacity>
+        </AnimatedTouchableOpacity>
       </View>
     </View>
   );
-};
+});
+
+CollectionActionButtons.displayName = 'CollectionActionButtons';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     actionButtons: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(20),
-    },
-    actionButtonsWithoutDownload: {
-      flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'center',
       paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(20),
+      paddingHorizontal: moderateScale(5),
     },
     rightAlignedButtons: {
       flexDirection: 'row',
       alignItems: 'center',
-      flex: 1,
-      justifyContent: 'flex-end',
+      gap: moderateScale(8),
     },
-    actionButton: {
-      width: moderateScale(56),
-      height: moderateScale(56),
+    circleButton: {
+      width: moderateScale(42),
+      height: moderateScale(42),
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: moderateScale(28),
-      marginHorizontal: moderateScale(5),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
+      padding: moderateScale(8),
     },
     playButton: {
       backgroundColor: theme.colors.text,
-      width: moderateScale(42),
-      height: moderateScale(42),
-      borderRadius: moderateScale(12),
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginLeft: moderateScale(10),
     },
     buttonDisabled: {
       opacity: 0.5,
     },
     playIconContainer: {
-      paddingLeft: moderateScale(4), // Slight adjustment to center the play icon visually
+      paddingLeft: moderateScale(4),
     },
   });

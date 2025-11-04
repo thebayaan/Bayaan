@@ -122,6 +122,9 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           <View style={styles.surahNameContainer}>
             <View style={styles.surahTextContainer}>
               <View style={styles.surahNameRow}>
+                <Text style={styles.surahName}>
+                  {surah.id + '. ' + surah.name}
+                </Text>
                 {(isCurrentlyPlaying || (onPlayPress && !hidePlayButton)) && (
                   <TouchableOpacity
                     style={styles.playIndicatorContainer}
@@ -141,9 +144,6 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                     )}
                   </TouchableOpacity>
                 )}
-                <Text style={styles.surahName}>
-                  {surah.id + '. ' + surah.name}
-                </Text>
               </View>
               <Text style={styles.reciterName}>{reciter.name}</Text>
               {renderRewayatBadge()}
@@ -165,17 +165,15 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(8),
-      marginHorizontal: moderateScale(12),
-      borderRadius: moderateScale(7),
-      marginVertical: moderateScale(3),
+      paddingHorizontal: moderateScale(18),
     },
     imageContainer: {
-      marginRight: moderateScale(10),
+      marginRight: moderateScale(12),
     },
     reciterImage: {
-      width: moderateScale(45),
-      height: moderateScale(45),
-      borderRadius: moderateScale(8),
+      width: moderateScale(50),
+      height: moderateScale(50),
+      borderRadius: moderateScale(10),
     },
     trackInfo: {
       flex: 1,
@@ -192,11 +190,11 @@ const createStyles = (theme: Theme) =>
     surahNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: moderateScale(0.5),
+      marginBottom: moderateScale(1),
     },
     surahName: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Bold',
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
     },
     surahGlyph: {
@@ -206,10 +204,9 @@ const createStyles = (theme: Theme) =>
       textAlign: 'right',
     },
     reciterName: {
-      fontSize: moderateScale(11),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginVertical: moderateScale(1.5),
+      fontSize: moderateScale(12),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
     },
     rewayatBadge: {
       marginTop: moderateScale(3),
@@ -223,13 +220,13 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
     },
     rewayatText: {
-      fontSize: moderateScale(9),
-      fontFamily: 'Manrope-Medium',
+      fontSize: moderateScale(10),
+      fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
       textTransform: 'capitalize',
     },
     playIndicatorContainer: {
-      marginRight: moderateScale(5),
+      marginLeft: moderateScale(6),
       justifyContent: 'center',
       alignItems: 'center',
     },
