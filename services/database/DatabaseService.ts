@@ -20,6 +20,31 @@ export interface PlaylistItem {
   addedAt: number;
 }
 
+// Database row types
+interface PlaylistRow {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  created_at: number;
+  updated_at: number;
+  item_count: number;
+}
+
+interface PlaylistItemRow {
+  id: string;
+  playlist_id: string;
+  surah_id: string;
+  reciter_id: string;
+  rewayat_id: string | null;
+  order_index: number;
+  added_at: number;
+}
+
+interface MaxOrderRow {
+  max_order: number | null;
+}
+
 class DatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
   private initPromise: Promise<void> | null = null;
@@ -100,8 +125,9 @@ class DatabaseService {
   ): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    await this.db.withTransactionAsync(async () => {
-      await this.db!.runAsync(
+    const db = this.db;
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(
         `INSERT INTO user_playlists (id, name, description, color, created_at, updated_at) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
@@ -133,12 +159,12 @@ class DatabaseService {
       LEFT JOIN playlist_items pi ON p.id = pi.playlist_id
       GROUP BY p.id
       ORDER BY p.updated_at DESC`,
-    )) as any[];
+    )) as PlaylistRow[];
 
     return playlists.map(playlist => ({
       id: playlist.id,
       name: playlist.name,
-      description: playlist.description,
+      description: playlist.description || undefined,
       color: playlist.color,
       createdAt: playlist.created_at,
       updatedAt: playlist.updated_at,
@@ -164,14 +190,14 @@ class DatabaseService {
       WHERE p.id = ?
       GROUP BY p.id`,
       [id],
-    )) as any;
+    )) as PlaylistRow | null;
 
     if (!playlist) return null;
 
     return {
       id: playlist.id,
       name: playlist.name,
-      description: playlist.description,
+      description: playlist.description || undefined,
       color: playlist.color,
       createdAt: playlist.created_at,
       updatedAt: playlist.updated_at,
@@ -204,8 +230,9 @@ class DatabaseService {
         .map(key => updates[key as keyof UserPlaylist])
         .filter(value => value !== undefined);
 
-      await this.db.withTransactionAsync(async () => {
-        await this.db!.runAsync(
+      const db = this.db;
+      await db.withTransactionAsync(async () => {
+        await db.runAsync(
           `UPDATE user_playlists SET ${setClause} WHERE id = ?`,
           [...values, id],
         );
@@ -217,14 +244,14 @@ class DatabaseService {
     if (!this.db) throw new Error('Database not initialized');
 
     try {
-      await this.db.withTransactionAsync(async () => {
+      const db = this.db;
+      await db.withTransactionAsync(async () => {
         // Delete associated items first (CASCADE should handle this, but be explicit)
-        await this.db!.runAsync(
-          `DELETE FROM playlist_items WHERE playlist_id = ?`,
-          [id],
-        );
+        await db.runAsync(`DELETE FROM playlist_items WHERE playlist_id = ?`, [
+          id,
+        ]);
         // Then delete the playlist
-        const result = await this.db!.runAsync(
+        const result = await db.runAsync(
           `DELETE FROM user_playlists WHERE id = ?`,
           [id],
         );
@@ -244,8 +271,9 @@ class DatabaseService {
   async addPlaylistItem(item: PlaylistItem): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    await this.db.withTransactionAsync(async () => {
-      await this.db!.runAsync(
+    const db = this.db;
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(
         `INSERT INTO playlist_items (id, playlist_id, surah_id, reciter_id, rewayat_id, order_index, added_at) 
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -267,14 +295,14 @@ class DatabaseService {
     const items = (await this.db.getAllAsync(
       `SELECT * FROM playlist_items WHERE playlist_id = ? ORDER BY order_index DESC`,
       [playlistId],
-    )) as any[];
+    )) as PlaylistItemRow[];
 
     return items.map(item => ({
       id: item.id,
       playlistId: item.playlist_id,
       surahId: item.surah_id,
       reciterId: item.reciter_id,
-      rewayatId: item.rewayat_id,
+      rewayatId: item.rewayat_id || undefined,
       orderIndex: item.order_index,
       addedAt: item.added_at,
     }));
@@ -283,10 +311,9 @@ class DatabaseService {
   async removePlaylistItem(itemId: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    await this.db.withTransactionAsync(async () => {
-      await this.db!.runAsync(`DELETE FROM playlist_items WHERE id = ?`, [
-        itemId,
-      ]);
+    const db = this.db;
+    await db.withTransactionAsync(async () => {
+      await db.runAsync(`DELETE FROM playlist_items WHERE id = ?`, [itemId]);
     });
   }
 
@@ -296,13 +323,17 @@ class DatabaseService {
   ): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
+    const db = this.db;
     // Use a transaction to update all items at once
-    await this.db.withTransactionAsync(async () => {
+    await db.withTransactionAsync(async () => {
       for (let i = 0; i < itemIds.length; i++) {
-        await this.db!.runAsync(
-          `UPDATE playlist_items SET order_index = ? WHERE id = ? AND playlist_id = ?`,
-          [i, itemIds[i]!, playlistId],
-        );
+        const itemId = itemIds[i];
+        if (itemId) {
+          await db.runAsync(
+            `UPDATE playlist_items SET order_index = ? WHERE id = ? AND playlist_id = ?`,
+            [i, itemId, playlistId],
+          );
+        }
       }
     });
   }
@@ -314,7 +345,7 @@ class DatabaseService {
     const result = (await this.db.getFirstAsync(
       `SELECT MAX(order_index) as max_order FROM playlist_items WHERE playlist_id = ?`,
       [playlistId],
-    )) as any;
+    )) as MaxOrderRow | null;
 
     return (result?.max_order ?? -1) + 1;
   }
