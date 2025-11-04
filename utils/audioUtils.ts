@@ -38,19 +38,32 @@ export function generateSmartAudioUrl(
   surahId: string,
   rewayatId?: string,
 ): string {
-  // Check if the surah is downloaded
+  // Check if the surah is downloaded (with rewayat if provided)
   const downloadStore = useDownloadStore.getState();
-  const isDownloaded = downloadStore.isDownloaded(reciter.id, surahId);
+  
+  // Use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
+  const isDownloaded = rewayatId
+    ? downloadStore.isDownloadedWithRewayat(reciter.id, surahId, rewayatId)
+    : downloadStore.isDownloaded(reciter.id, surahId);
   
   if (isDownloaded) {
     const download = downloadStore.getDownload(reciter.id, surahId);
-    if (download && download.status === 'completed') {
-      console.log(`Using local file for ${reciter.name} - Surah ${surahId}: ${download.filePath}`);
+    // Double-check that the download matches the rewayat (if specified)
+    if (
+      download &&
+      download.status === 'completed' &&
+      (!rewayatId || download.rewayatId === rewayatId)
+    ) {
+      console.log(
+        `Using local file for ${reciter.name} - Surah ${surahId}${rewayatId ? ` (Rewayat: ${rewayatId})` : ''}: ${download.filePath}`,
+      );
       return download.filePath;
     }
   }
   
   // Fall back to remote URL if not downloaded
-  console.log(`Using remote URL for ${reciter.name} - Surah ${surahId}`);
+  console.log(
+    `Using remote URL for ${reciter.name} - Surah ${surahId}${rewayatId ? ` (Rewayat: ${rewayatId})` : ''}`,
+  );
   return generateAudioUrl(reciter, surahId, rewayatId);
 }
