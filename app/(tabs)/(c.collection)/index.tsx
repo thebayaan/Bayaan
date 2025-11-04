@@ -1,4 +1,4 @@
-import React, {useState, useRef, useMemo} from 'react';
+import React, {useState, useRef, useMemo, useCallback} from 'react';
 import {View, ScrollView, Platform, Text} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -111,54 +111,53 @@ export default function CollectionScreen() {
     setEditPlaylistData(null);
   };
 
-  const handlePlaylistLongPress = (
-    playlistId: string,
-    playlistName: string,
-    color?: string,
-  ) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedPlaylist({id: playlistId, name: playlistName, color});
-    shouldClearPlaylistRef.current = true; // Reset flag when opening context menu
+  const handlePlaylistLongPress = useCallback(
+    (playlistId: string, playlistName: string, color?: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setSelectedPlaylist({id: playlistId, name: playlistName, color});
+      shouldClearPlaylistRef.current = true; // Reset flag when opening context menu
 
-    // Create a closure that captures the playlist data for editing
-    const handleEditForThisPlaylist = () => {
-      // Prevent clearing selectedPlaylist BEFORE closing context menu
-      shouldClearPlaylistRef.current = false;
+      // Create a closure that captures the playlist data for editing
+      const handleEditForThisPlaylist = () => {
+        // Prevent clearing selectedPlaylist BEFORE closing context menu
+        shouldClearPlaylistRef.current = false;
 
-      // Set edit mode data and open the modal
-      setIsEditMode(true);
-      setEditPlaylistData({
-        id: playlistId,
-        name: playlistName,
-        color: color || '#6366F1',
-      });
-      setShowCreatePlaylist(true);
+        // Set edit mode data and open the modal
+        setIsEditMode(true);
+        setEditPlaylistData({
+          id: playlistId,
+          name: playlistName,
+          color: color || '#6366F1',
+        });
+        setShowCreatePlaylist(true);
 
-      // Clear the flag after modal is fully opened
-      setTimeout(() => {
-        shouldClearPlaylistRef.current = true;
-      }, 600);
-    };
+        // Clear the flag after modal is fully opened
+        setTimeout(() => {
+          shouldClearPlaylistRef.current = true;
+        }, 600);
+      };
 
-    // Create a closure that captures the playlist ID for deletion
-    const handleDeleteForThisPlaylist = async () => {
-      try {
-        await deletePlaylist(playlistId);
-        setSelectedPlaylist(null);
-      } catch (error: unknown) {
-        console.error('Failed to delete playlist:', error);
-        // Error handling is done in the confirmation dialog
-      }
-    };
+      // Create a closure that captures the playlist ID for deletion
+      const handleDeleteForThisPlaylist = async () => {
+        try {
+          await deletePlaylist(playlistId);
+          setSelectedPlaylist(null);
+        } catch (error: unknown) {
+          console.error('Failed to delete playlist:', error);
+          // Error handling is done in the confirmation dialog
+        }
+      };
 
-    showPlaylistContextMenu(
-      playlistId,
-      playlistName,
-      handleDeleteForThisPlaylist,
-      handleEditForThisPlaylist,
-      color,
-    );
-  };
+      showPlaylistContextMenu(
+        playlistId,
+        playlistName,
+        handleDeleteForThisPlaylist,
+        handleEditForThisPlaylist,
+        color,
+      );
+    },
+    [deletePlaylist, showPlaylistContextMenu],
+  );
 
   const handleSearch = () => {
     // Open the search modal
@@ -170,8 +169,8 @@ export default function CollectionScreen() {
     setCollectionViewMode(newMode);
   };
 
-  // Get collection items based on filter
-  const getCollectionItems = (): CollectionItemType[] => {
+  // Memoize collection items to ensure re-render when dependencies change
+  const collectionItems = useMemo(() => {
     const items: Array<CollectionItemType & {timestamp: number}> = [];
 
     // Add User Playlists
@@ -275,12 +274,17 @@ export default function CollectionScreen() {
     // Sort by most recent first (descending order: highest timestamp at top)
     // b.timestamp - a.timestamp means newer items (higher timestamp) come first
     return items.sort((a, b) => b.timestamp - a.timestamp);
-  };
-
-  // Memoize collection items to ensure re-render when dependencies change
-  const collectionItems = useMemo(() => {
-    return getCollectionItems();
-  }, [getCollectionItems]);
+  }, [
+    playlists,
+    lovedTracks,
+    favoriteReciters,
+    downloads,
+    activeFilter,
+    router,
+    handlePlaylistLongPress,
+    updateQueue,
+    play,
+  ]);
 
   // Get existing playlist colors to avoid duplicates
   const existingPlaylistColors = useMemo(
