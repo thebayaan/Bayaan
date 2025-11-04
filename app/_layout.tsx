@@ -20,7 +20,6 @@ import {
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
-import {appInitializer} from '@/services/AppInitializer';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -81,23 +80,6 @@ export default function RootLayout() {
       // This will load asynchronously while other resources are being prepared
     }
   }, [isTajweedLoading]);
-
-  // Initialize all SQLite-based services in the background
-  useEffect(() => {
-    const initializeServices = async () => {
-      try {
-        console.log('[App] Initializing SQLite services...');
-        await appInitializer.initialize();
-        console.log('[App] SQLite services initialized successfully');
-      } catch (error) {
-        console.error('[App] Failed to initialize SQLite services:', error);
-        // Critical services will prevent app startup via setupError
-        // Non-critical services will just log errors and continue
-      }
-    };
-
-    initializeServices();
-  }, []);
 
   const onLayoutRootView = useCallback(async () => {
     try {
@@ -215,6 +197,9 @@ export default function RootLayout() {
     if (!appIsReady || !fontsLoaded || !isPlayerReady || fontError) {
       return;
     }
+
+    // Go directly to main app
+    router.replace('/(tabs)/(home)');
   }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
 
   // Configure Android navigation bar to match theme

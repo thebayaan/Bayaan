@@ -14,7 +14,7 @@ function formatReciterName(name: string): string {
  * 1. Remote URL if available
  * 2. Local asset if available
  * 3. Generated placeholder URL
- *
+ * 
  * Ensures the URL is valid and accessible for Android notification tray
  */
 export function getReciterArtwork(reciter: Reciter): string {

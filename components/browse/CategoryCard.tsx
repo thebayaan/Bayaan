@@ -40,10 +40,7 @@ export function CategoryCard({
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={[
-        styles.container,
-        {width: CARD_WIDTH, height: CARD_WIDTH * CARD_ASPECT_RATIO},
-      ]}>
+      style={[styles.container, {width: CARD_WIDTH, height: CARD_WIDTH * CARD_ASPECT_RATIO}]}>
       <LinearGradient
         colors={gradientColors}
         start={{x: 0, y: 0}}

@@ -19,12 +19,12 @@ import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
 import {LinearGradient} from 'expo-linear-gradient';
+import {StarIcon} from '@/components/Icons';
 import {StatusBar} from 'expo-status-bar';
 import {CollectionCard} from '@/components/CollectionCard';
 import SearchBar from '@/components/SearchBar';
 import {Reciter} from '@/data/reciterData';
 import {useModal} from '@/components/providers/ModalProvider';
-import {Ionicons} from '@expo/vector-icons';
 
 type ReciterListItem =
   | Reciter
@@ -136,10 +136,10 @@ export default function FavoriteRecitersScreen() {
           ]}>
           <CollectionCard
             icon={
-              <Ionicons
-                name="star"
-                size={moderateScale(80)}
+              <StarIcon
                 color={theme.colors.text}
+                size={moderateScale(80)}
+                filled={true}
               />
             }
             title="Favorite Reciters"

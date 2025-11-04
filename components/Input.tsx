@@ -1,177 +1,123 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TextInputProps,
-  ViewStyle,
-  TextStyle,
-} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {TextInput, View, TextInputProps, TouchableOpacity} from 'react-native';
+import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import Color from 'color';
+import {Theme} from '@/utils/themeUtils';
+import {Icon} from '@rneui/themed';
+import {TextStyle} from 'react-native';
 
 interface InputProps extends TextInputProps {
-  label?: string;
-  showIcon?: boolean;
-  iconName?: string;
-  iconType?: string;
-  error?: string;
-  helperText?: string;
-  showCharacterCount?: boolean;
-  containerStyle?: ViewStyle;
-  inputContainerStyle?: ViewStyle;
-  inputStyle?: TextStyle;
+  icon?: React.ReactNode;
+  rightIcon?: string;
+  onRightIconPress?: () => void;
+  iconColor?: string;
+  sanitize?: boolean; // Add this prop to control sanitization
 }
 
+const sanitizeInput = (text: string): string => {
+  // Remove any HTML tags
+  text = text.replace(/<[^>]*>/g, '');
+
+  // Remove special characters that could be used for XSS
+  text = text.replace(/[&<>"'`=\\/]/g, '');
+
+  // Trim whitespace
+  text = text.trim();
+
+  return text;
+};
+
 export const Input: React.FC<InputProps> = ({
-  label,
-  showIcon = false,
-  iconName = 'edit-3',
-  iconType = 'feather',
-  error,
-  helperText,
-  showCharacterCount = false,
-  maxLength,
-  value,
-  containerStyle,
-  inputContainerStyle,
-  inputStyle,
-  ...textInputProps
+  icon,
+  style,
+  rightIcon,
+  onRightIconPress,
+  iconColor,
+  sanitize = true, // Default to true for security
+  onChangeText,
+  ...props
 }) => {
-  const {theme, isDarkMode} = useTheme();
+  const {theme} = useTheme();
+  const styles = createStyles(theme);
+
+  const handleChangeText = (text: string) => {
+    if (sanitize) {
+      text = sanitizeInput(text);
+    }
+    onChangeText?.(text);
+  };
+
+  const inputStyle = [
+    styles.input,
+    icon && styles.inputWithIcon,
+    rightIcon && styles.inputWithRightIcon,
+    style,
+  ].filter(Boolean) as TextStyle[];
 
   return (
-    <View style={[styles.container, containerStyle]}>
-      {/* Label with optional icon */}
-      {label && (
-        <View style={styles.labelRow}>
-          {showIcon && (
-            <Icon
-              name={iconName}
-              type={iconType}
-              size={moderateScale(16)}
-              color={theme.colors.textSecondary}
-            />
-          )}
-          <Text
-            style={[
-              styles.label,
-              {
-                color: theme.colors.text,
-                marginLeft: showIcon ? moderateScale(8) : 0,
-              },
-            ]}>
-            {label}
-          </Text>
-        </View>
-      )}
-
-      {/* Input Container */}
-      <View
-        style={[
-          styles.inputContainer,
-          {
-            backgroundColor: theme.colors.card,
-            borderColor: error
-              ? '#EF4444'
-              : Color(theme.colors.border).alpha(0.3).toString(),
-          },
-          inputContainerStyle,
-        ]}>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              color: theme.colors.text,
-            },
-            inputStyle,
-          ]}
-          placeholderTextColor={Color(theme.colors.textSecondary)
-            .alpha(0.5)
-            .toString()}
-          keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-          maxLength={maxLength}
-          value={value}
-          {...textInputProps}
-        />
-      </View>
-
-      {/* Footer (Error/Helper Text and Character Count) */}
-      {(error || helperText || (showCharacterCount && maxLength)) && (
-        <View style={styles.footer}>
-          {(error || helperText) && (
-            <Text
-              style={[
-                styles.helperText,
-                {
-                  color: error ? '#EF4444' : theme.colors.textSecondary,
-                },
-              ]}>
-              {error || helperText}
-            </Text>
-          )}
-          {showCharacterCount && maxLength && (
-            <Text
-              style={[
-                styles.characterCount,
-                {
-                  color:
-                    (value?.length || 0) > maxLength * 0.9
-                      ? '#EF4444'
-                      : theme.colors.textSecondary,
-                },
-              ]}>
-              {value?.length || 0}/{maxLength} characters
-            </Text>
-          )}
-        </View>
+    <View style={styles.container}>
+      {icon && <View style={styles.iconContainer}>{icon}</View>}
+      <TextInput
+        style={inputStyle}
+        placeholderTextColor={iconColor || theme.colors.textSecondary}
+        onChangeText={handleChangeText}
+        keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+        {...props}
+      />
+      {rightIcon && (
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.rightIconContainer}
+          onPress={onRightIconPress}>
+          <Icon
+            type="antdesign"
+            name={rightIcon}
+            size={moderateScale(20)}
+            color={iconColor || theme.colors.textSecondary}
+          />
+        </TouchableOpacity>
       )}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: moderateScale(24),
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: moderateScale(12),
-  },
-  label: {
-    fontSize: moderateScale(15),
-    fontFamily: 'Manrope-SemiBold',
-    letterSpacing: 0.2,
-  },
-  inputContainer: {
-    borderWidth: 1.5,
-    borderRadius: moderateScale(16),
-    overflow: 'hidden',
-  },
-  input: {
-    paddingHorizontal: moderateScale(20),
-    paddingVertical: moderateScale(16),
-    fontSize: moderateScale(16),
-    fontFamily: 'Manrope-Medium',
-  },
-  footer: {
-    marginTop: moderateScale(8),
-    paddingHorizontal: moderateScale(4),
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  helperText: {
-    fontSize: moderateScale(12),
-    fontFamily: 'Manrope-Regular',
-    flex: 1,
-  },
-  characterCount: {
-    fontSize: moderateScale(12),
-    fontFamily: 'Manrope-Medium',
-  },
-});
+const createStyles = (theme: Theme) =>
+  ScaledSheet.create({
+    container: {
+      width: '100%',
+      marginBottom: moderateScale(15),
+    },
+    input: {
+      height: moderateScale(50),
+      // borderWidth: moderateScale(0.5),
+      borderColor: theme.colors.border,
+      borderRadius: moderateScale(20),
+      paddingHorizontal: moderateScale(15),
+      fontSize: moderateScale(16),
+      color: theme.colors.text,
+    },
+    inputWithIcon: {
+      paddingLeft: moderateScale(40),
+    },
+    inputWithRightIcon: {
+      paddingRight: moderateScale(40),
+    },
+    iconContainer: {
+      position: 'absolute',
+      left: moderateScale(15),
+      top: moderateScale(13),
+      zIndex: 1,
+    },
+    rightIconContainer: {
+      position: 'absolute',
+      right: moderateScale(15),
+      top: moderateScale(13),
+      zIndex: 1,
+    },
+    placeholderColor: {
+      color: theme.colors.light,
+    },
+    rightIcon: {
+      color: theme.colors.light,
+    },
+  });

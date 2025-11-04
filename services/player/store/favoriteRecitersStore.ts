@@ -3,21 +3,15 @@ import {persist} from 'zustand/middleware';
 import {Reciter} from '@/data/reciterData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface FavoriteReciterWithTimestamp extends Reciter {
-  favoritedAt: number;
-}
-
 interface FavoriteRecitersState {
   favoriteReciterIds: string[];
-  favoriteReciters: Record<string, FavoriteReciterWithTimestamp>;
+  favoriteReciters: Record<string, Reciter>;
   addFavoriteReciter: (reciter: Reciter) => void;
   removeFavoriteReciter: (reciterId: string) => void;
   toggleFavoriteReciter: (reciter: Reciter) => void;
   isFavoriteReciter: (reciterId: string) => boolean;
-  getFavoriteReciter: (
-    reciterId: string,
-  ) => FavoriteReciterWithTimestamp | undefined;
-  getFavoriteReciters: () => FavoriteReciterWithTimestamp[];
+  getFavoriteReciter: (reciterId: string) => Reciter | undefined;
+  getFavoriteReciters: () => Reciter[];
   reset: () => void;
 }
 
@@ -33,16 +27,11 @@ export const useFavoriteRecitersStore = create<FavoriteRecitersState>()(
             return state;
           }
 
-          const reciterWithTimestamp: FavoriteReciterWithTimestamp = {
-            ...reciter,
-            favoritedAt: Date.now(),
-          };
-
           return {
             favoriteReciterIds: [...state.favoriteReciterIds, reciter.id],
             favoriteReciters: {
               ...state.favoriteReciters,
-              [reciter.id]: reciterWithTimestamp,
+              [reciter.id]: reciter,
             },
           };
         });

@@ -415,6 +415,7 @@ VerseItem.displayName = 'VerseItem';
 const styles = StyleSheet.create({
   container: {
     paddingVertical: verticalScale(12),
+    paddingHorizontal: moderateScale(16),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   verseInfoContainer: {

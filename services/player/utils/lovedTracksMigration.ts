@@ -30,7 +30,7 @@ export async function migrateFavoritesToLoved(): Promise<MigrationResult> {
     for (const favoriteKey of oldFavorites) {
       try {
         const [reciterId, surahId] = favoriteKey.split(':');
-
+        
         // Skip if already loved
         if (lovedStore.isLoved(reciterId, surahId)) {
           result.skipped++;
@@ -61,7 +61,7 @@ export async function migrateFavoritesToLoved(): Promise<MigrationResult> {
 export async function cleanupOldFavorites(): Promise<void> {
   try {
     const playerStore = usePlayerStore.getState();
-
+    
     // Clear old favorites array
     playerStore.toggleFavoriteTrack = () => {}; // No-op the toggle function
     // @ts-ignore - We know this exists from the store type
@@ -86,9 +86,7 @@ export async function validateMigration(): Promise<boolean> {
     for (const favoriteKey of oldFavorites) {
       const [reciterId, surahId] = favoriteKey.split(':');
       if (!lovedStore.isLoved(reciterId, surahId)) {
-        console.error(
-          `Migration validation failed: ${favoriteKey} not found in loved tracks`,
-        );
+        console.error(`Migration validation failed: ${favoriteKey} not found in loved tracks`);
         return false;
       }
     }
@@ -98,4 +96,4 @@ export async function validateMigration(): Promise<boolean> {
     console.error('Error validating migration:', error);
     return false;
   }
-}
+} 

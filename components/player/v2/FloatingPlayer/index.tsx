@@ -86,7 +86,7 @@ const createStyles = (bottomInset: number) =>
       textAlign: 'center',
     },
     surahGlyphContainer: {
-      width: moderateScale(55),
+      width: moderateScale(50),
       height: moderateScale(30),
       alignItems: 'center',
       justifyContent: 'center',

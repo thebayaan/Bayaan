@@ -1,14 +1,16 @@
-import React, {useState, useCallback, useMemo} from 'react';
-import {View, StyleSheet, Platform, useWindowDimensions} from 'react-native';
+import React, {useState, useCallback} from 'react';
+import {View, StyleSheet, Platform} from 'react-native';
 import BottomSheet, {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 import {Header} from './Header';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
 import {PlaybackControls} from './PlaybackControls';
+import {AdditionalControls} from './AdditionalControls';
 import {ControlButtons} from './ControlButtons';
 import {SurahSummary} from '../SurahSummary';
 import {moderateScale} from 'react-native-size-matters';
+import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -21,7 +23,6 @@ interface PlayerContentProps {
   sleepBottomSheetRef: React.RefObject<BottomSheet>;
   summaryBottomSheetRef: React.RefObject<BottomSheet>;
   mushafLayoutSheetRef: React.RefObject<BottomSheet>;
-  optionsBottomSheetRef: React.RefObject<BottomSheet>;
 }
 
 const PlayerContent: React.FC<PlayerContentProps> = ({
@@ -29,12 +30,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   sleepBottomSheetRef,
   summaryBottomSheetRef,
   mushafLayoutSheetRef,
-  optionsBottomSheetRef,
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
   const {queue, updateQueue, removeFromQueue, play} = useUnifiedPlayer();
-  const dimensions = useWindowDimensions();
 
   // Get mushaf settings from the store
   const {
@@ -44,17 +43,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     translationFontSize,
     transliterationFontSize,
   } = useMushafSettingsStore();
-
-  // Calculate dynamic heights based on screen size
-  const layoutConfig = useMemo(() => {
-    const isTablet = dimensions.width >= 768; // Common tablet breakpoint
-    // Return different configurations based on device type
-    return {
-      quranQueueHeight: isTablet
-        ? dimensions.height * 0.5 // 40% of screen height for tablets
-        : dimensions.height * 0.5, // 40% of screen height for phones
-    };
-  }, [dimensions.height, dimensions.width]);
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
@@ -100,26 +88,20 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     ? parseInt(currentTrack.surahId, 10)
     : 1;
 
-  const handleOptionsPress = useCallback(() => {
-    optionsBottomSheetRef.current?.snapToIndex(0);
-  }, [optionsBottomSheetRef]);
+  // Custom backdrop for the bottom sheet
 
   return (
     <View style={styles.container}>
       <BottomSheetScrollView
         contentContainerStyle={styles.scrollContent}
-        bounces={true}
+        bounces={false}
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={Platform.OS === 'android'}>
         <View style={styles.contentContainer}>
-          <Header onOptionsPress={handleOptionsPress} />
+          <Header />
           <View style={styles.mainContent}>
             {/* Container for QuranView and QueueList */}
-            <View
-              style={[
-                styles.viewsContainer,
-                {height: layoutConfig.quranQueueHeight},
-              ]}>
+            <View style={styles.viewsContainer}>
               {/* QuranView */}
               <View
                 style={[
@@ -148,6 +130,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 />
               </View>
             </View>
+            <AdditionalControls />
             <View style={styles.controlsContainer}>
               <TrackInfo />
               <PlaybackControls />
@@ -185,6 +168,7 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     width: '100%',
+    maxWidth: MAX_PLAYER_CONTENT_HEIGHT,
     paddingHorizontal: moderateScale(20),
     paddingTop: moderateScale(5),
     paddingBottom: moderateScale(20),
@@ -192,6 +176,9 @@ const styles = StyleSheet.create({
   },
   viewsContainer: {
     width: '100%',
+    aspectRatio: 1,
+    maxWidth: MAX_PLAYER_CONTENT_HEIGHT,
+    maxHeight: MAX_PLAYER_CONTENT_HEIGHT,
     marginTop: moderateScale(5),
     position: 'relative',
   },
@@ -204,7 +191,7 @@ const styles = StyleSheet.create({
   },
   controlsContainer: {
     width: '100%',
-    marginTop: moderateScale(20),
+    marginTop: moderateScale(10),
   },
   visible: {
     display: 'flex',

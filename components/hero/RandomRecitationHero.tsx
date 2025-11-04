@@ -12,7 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
 import {DiscoverIcon} from '@/components/Icons';
-import {getMultipleRandomTracks} from '@/utils/randomRecitation';
+import {getRandomTrack} from '@/utils/randomRecitation';
 import {usePlayerStore} from '@/store/playerStore';
 import * as Haptics from 'expo-haptics';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
@@ -107,65 +107,30 @@ export function RandomRecitationHero({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       // Show initial toast
-      showToast('Finding random recitations from different reciters...');
+      showToast('Finding a random recitation...');
 
-      // Get multiple random tracks with different reciters
-      const randomTracks = await getMultipleRandomTracks(15, false);
-
-      if (randomTracks.length === 0) {
-        showToast('Failed to find random recitations. Please try again.');
-        return;
-      }
-
-      // Get the first track to show what's being played
-      const {reciter, surah} = randomTracks[0];
+      // Get a random track
+      const {reciter, surah} = await getRandomTrack();
 
       // Show what's being played
       showToast(`Playing ${surah.name} by ${reciter.name}`);
 
-      // Create tracks for all random selections
-      const trackPromises = randomTracks.map(item => {
-        // Randomly select a rewayah from available options
-        const availableRewayat = item.reciter.rewayat.filter(r =>
-          r.surah_list.includes(item.surah.id),
-        );
+      // Get selected rewayat (use the first one for simplicity)
+      const selectedRewayat = reciter.rewayat[0];
 
-        // If no available rewayat includes this surah, fall back to the one with most surahs
-        const rewayahToUse =
-          availableRewayat.length > 0
-            ? availableRewayat[
-                Math.floor(Math.random() * availableRewayat.length)
-              ]
-            : item.reciter.rewayat.reduce(
-                (prev, current) =>
-                  current.surah_total > prev.surah_total ? current : prev,
-                item.reciter.rewayat[0],
-              );
-
-        return createTracksForReciter(
-          item.reciter,
-          [item.surah],
-          rewayahToUse.id,
-        );
-      });
-
-      // Wait for all tracks to be created
-      const trackBatches = await Promise.all(trackPromises);
-
-      // Flatten the array of track arrays
-      const tracks = trackBatches.flat();
+      // Create track for the random selection
+      const tracks = await createTracksForReciter(
+        reciter,
+        [surah],
+        selectedRewayat.id,
+      );
 
       // Update queue and play
       await updateQueue(tracks, 0);
       await play();
 
-      // Add to recent tracks - use the first randomly selected rewayah for the first track
-      const firstRewayah =
-        randomTracks[0].reciter.rewayat.filter(r =>
-          r.surah_list.includes(randomTracks[0].surah.id),
-        )[0] || randomTracks[0].reciter.rewayat[0];
-
-      await addRecentTrack(reciter, surah, 0, 0, firstRewayah.id);
+      // Add to recent tracks
+      await addRecentTrack(reciter, surah, 0, 0, selectedRewayat.id);
 
       // Set current reciter in queue context
       queueContext.setCurrentReciter(reciter);

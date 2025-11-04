@@ -2,7 +2,7 @@ import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {Track} from '@/types/audio';
-import {generateAudioUrl, generateSmartAudioUrl} from '@/utils/audioUtils';
+import {generateAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import TrackPlayer from 'react-native-track-player';
 
@@ -21,7 +21,7 @@ async function debugTrackPlayer(message: string) {
 function createTrackFromSurah(reciter: Reciter, surah: Surah): Track {
   const track = {
     id: `${reciter.id}:${surah.id}`,
-    url: generateSmartAudioUrl(reciter, surah.id.toString()),
+    url: generateAudioUrl(reciter, surah.id.toString()),
     title: surah.name,
     artist: reciter.name,
     artwork: getReciterArtwork(reciter),

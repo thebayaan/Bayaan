@@ -472,7 +472,7 @@ export const ScrollingHero = React.memo(
     );
 
     const handleBrowseAllPress = useCallback(() => {
-      router.push('/(tabs)/(a.home)/browse-all');
+      router.push('/(tabs)/(home)/browse-all');
     }, [router]);
 
     return (

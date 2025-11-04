@@ -44,4 +44,4 @@ export function SurahOfTheDay({surah, onPress, style}: SurahOfTheDayProps) {
       gradientColors={gradientColors}
     />
   );
-}
+} 

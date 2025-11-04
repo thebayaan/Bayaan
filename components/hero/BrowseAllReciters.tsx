@@ -72,7 +72,7 @@ export const BrowseAllHeroSection: React.FC<BrowseAllHeroSectionProps> =
 
     const handlePress = () => {
       // Navigate to the browse-all-surahs screen
-      router.push('/(tabs)/(a.home)/browse-all-surahs');
+      router.push('/(tabs)/(home)/browse-all-surahs');
 
       // Still call the onPress prop if it exists (for backward compatibility)
       if (onPress) {

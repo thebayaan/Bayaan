@@ -14,9 +14,6 @@ import {SleepTimerModal} from './Modals/SleepTimerModal';
 import {ExtendedSummaryModal} from './SurahSummary/ExtendedSummaryModal';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MushafLayoutModal} from './Modals/MushafLayoutModal';
-import {PlayerOptionsModal} from '@/components/player/PlayerOptionsModal';
-import {SURAHS} from '@/data/surahData';
-import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -44,9 +41,7 @@ export const PlayerSheet = () => {
   const sleepBottomSheetRef = useRef<BottomSheet>(null);
   const summaryBottomSheetRef = useRef<BottomSheet>(null);
   const mushafLayoutSheetRef = useRef<BottomSheet>(null);
-  const optionsBottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
-  const {navigateToReciterProfile} = useReciterNavigation();
 
   const {
     queue,
@@ -174,27 +169,6 @@ export const PlayerSheet = () => {
     sleepBottomSheetRef.current?.close();
   }, [updateSettings]);
 
-  const handleGoToReciter = useCallback(() => {
-    if (!currentTrack?.reciterId) return;
-    setSheetMode('hidden');
-    // Small delay to ensure sheet is closing before navigation
-    setTimeout(() => {
-      navigateToReciterProfile(currentTrack.reciterId);
-    }, 100);
-  }, [currentTrack, setSheetMode, navigateToReciterProfile]);
-
-  // Get current surah info for the summary modal
-  const surahNumber = currentTrack?.surahId
-    ? parseInt(currentTrack.surahId, 10)
-    : undefined;
-  const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
-
-  // Get the full Surah object for the options modal
-  const currentSurahData = useMemo(() => {
-    if (!surahNumber) return undefined;
-    return SURAHS.find(s => s.id === surahNumber);
-  }, [surahNumber]);
-
   // Only render modals once settings are loaded to prevent hydration issues
   if (!shouldShow) {
     return null;
@@ -203,6 +177,12 @@ export const PlayerSheet = () => {
   const currentIndex = sheetMode === 'full' ? 0 : -1;
   const textColor = Color(theme.colors.text);
   const isLightText = textColor.isLight();
+
+  // Get current surah info for the summary modal
+  const surahNumber = currentTrack?.surahId
+    ? parseInt(currentTrack.surahId, 10)
+    : undefined;
+  const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
 
   return (
     <>
@@ -229,7 +209,6 @@ export const PlayerSheet = () => {
           sleepBottomSheetRef={sleepBottomSheetRef}
           summaryBottomSheetRef={summaryBottomSheetRef}
           mushafLayoutSheetRef={mushafLayoutSheetRef}
-          optionsBottomSheetRef={optionsBottomSheetRef}
         />
       </BottomSheet>
 
@@ -255,17 +234,6 @@ export const PlayerSheet = () => {
       )}
 
       <MushafLayoutModal bottomSheetRef={mushafLayoutSheetRef} />
-
-      {currentSurahData && currentTrack?.reciterId && (
-        <PlayerOptionsModal
-          bottomSheetRef={optionsBottomSheetRef}
-          surah={currentSurahData}
-          reciterId={currentTrack.reciterId}
-          rewayatId={currentTrack.rewayatId}
-          onClose={() => optionsBottomSheetRef.current?.close()}
-          onGoToReciter={handleGoToReciter}
-        />
-      )}
     </>
   );
 };

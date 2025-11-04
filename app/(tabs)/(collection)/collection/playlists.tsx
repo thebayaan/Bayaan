@@ -3,28 +3,47 @@ import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {PlaylistCard} from '@/components/cards/PlaylistCard';
+import {ReciterCard} from '@/components/cards/ReciterCard';
 import {useRouter} from 'expo-router';
 import {Icon} from '@rneui/themed';
 import {moderateScale} from 'react-native-size-matters';
-import {usePlaylists} from '@/hooks/usePlaylists';
+
+interface Playlist {
+  id: string;
+  name: string;
+  imageUrl: string;
+}
+
+// Mock data for playlists (replace with actual data source later)
+const mockPlaylists: Playlist[] = [
+  {
+    id: '1',
+    name: 'My Favorite Surahs',
+    imageUrl: 'https://example.com/image1.jpg',
+  },
+  {
+    id: '2',
+    name: 'Ramadan Collection',
+    imageUrl: 'https://example.com/image2.jpg',
+  },
+  // Add more mock playlists as needed
+];
 
 export default function PlaylistsScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {playlists} = usePlaylists();
 
   const handlePlaylistPress = (playlistId: string) => {
+    // Navigate to playlist details screen (to be implemented)
     router.push(`/playlist/${playlistId}`);
   };
 
-  const renderItem = ({item}: {item: (typeof playlists)[0]}) => (
-    <PlaylistCard
+  const renderItem = ({item}: {item: Playlist}) => (
+    <ReciterCard
+      imageUrl={item.imageUrl}
       name={item.name}
-      itemCount={item.itemCount}
-      color={item.color}
       onPress={() => handlePlaylistPress(item.id)}
     />
   );
@@ -37,7 +56,7 @@ export default function PlaylistsScreen() {
         </View>
       </View>
       <FlatList
-        data={playlists}
+        data={mockPlaylists}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         numColumns={2}

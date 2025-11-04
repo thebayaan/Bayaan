@@ -3,7 +3,7 @@
 /**
  * This script analyzes the reciter data to extract all unique rewayat names and styles.
  * It helps understand the data structure for proper filtering in the app.
- *
+ * 
  * Run with: node scripts/analyze-reciters.js
  */
 
@@ -17,16 +17,16 @@ const dataPath = path.join(__dirname, '../data/reciterData.ts');
 function extractRecitersData(filePath) {
   try {
     const fileContent = fs.readFileSync(filePath, 'utf8');
-
+    
     // This is a simple approach - in a real scenario, you might want to use a TypeScript parser
     // Extract the content between export const RECITERS = [ and the last ];
     const match = fileContent.match(/export const RECITERS = (\[[\s\S]*?\]);/);
-
+    
     if (!match || !match[1]) {
       console.error('Could not find RECITERS array in the file');
       return null;
     }
-
+    
     // Evaluate the array (be careful with this approach in production)
     // For a safer approach, consider using a JSON parser if your data is in JSON format
     try {
@@ -35,7 +35,7 @@ function extractRecitersData(filePath) {
         .replace(/readonly/g, '')
         .replace(/:/g, ':')
         .replace(/as const/g, '');
-
+      
       return eval(jsCompatibleString);
     } catch (evalError) {
       console.error('Error evaluating RECITERS array:', evalError);
@@ -50,10 +50,10 @@ function extractRecitersData(filePath) {
 // Main function to analyze the data
 function analyzeReciters() {
   console.log('Analyzing reciter data...\n');
-
+  
   // Try to extract data from TypeScript file
   let reciters = extractRecitersData(dataPath);
-
+  
   // If that fails, try to find a JSON file
   if (!reciters) {
     const jsonPath = path.join(__dirname, '../data/reciters.json');
@@ -62,9 +62,7 @@ function analyzeReciters() {
         console.log('Using JSON data file instead...');
         reciters = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
       } else {
-        console.error(
-          'Could not find reciter data in either TS or JSON format',
-        );
+        console.error('Could not find reciter data in either TS or JSON format');
         return;
       }
     } catch (error) {
@@ -72,26 +70,26 @@ function analyzeReciters() {
       return;
     }
   }
-
+  
   if (!reciters || !Array.isArray(reciters)) {
     console.error('Invalid reciters data format');
     return;
   }
-
+  
   console.log(`Found ${reciters.length} reciters\n`);
-
+  
   // Extract unique rewayat names and styles
   const rewayatNames = new Set();
   const styles = new Set();
   const rewayatMap = new Map(); // Map style to rewayat names
-
+  
   reciters.forEach(reciter => {
     if (reciter.rewayat && Array.isArray(reciter.rewayat)) {
       reciter.rewayat.forEach(rewaya => {
         if (rewaya.name) {
           rewayatNames.add(rewaya.name);
         }
-
+        
         if (rewaya.style) {
           // Normalize style names
           let normalizedStyle = rewaya.style.toLowerCase();
@@ -99,7 +97,7 @@ function analyzeReciters() {
             normalizedStyle = 'murattal';
           }
           styles.add(normalizedStyle);
-
+          
           // Group rewayat names by style
           if (!rewayatMap.has(normalizedStyle)) {
             rewayatMap.set(normalizedStyle, new Set());
@@ -111,7 +109,7 @@ function analyzeReciters() {
       });
     }
   });
-
+  
   // Print results
   console.log('=== UNIQUE STYLES ===');
   const sortedStyles = Array.from(styles).sort();
@@ -119,14 +117,14 @@ function analyzeReciters() {
     console.log(`- ${style}`);
   });
   console.log(`\nTotal unique styles: ${styles.size}\n`);
-
+  
   console.log('=== UNIQUE REWAYAT NAMES ===');
   const sortedRewayatNames = Array.from(rewayatNames).sort();
   sortedRewayatNames.forEach(name => {
     console.log(`- ${name}`);
   });
   console.log(`\nTotal unique rewayat names: ${rewayatNames.size}\n`);
-
+  
   console.log('=== REWAYAT NAMES BY STYLE ===');
   sortedStyles.forEach(style => {
     console.log(`\n${style.toUpperCase()}:`);
@@ -136,7 +134,7 @@ function analyzeReciters() {
     });
     console.log(`  Total: ${namesForStyle.length}`);
   });
-
+  
   // Generate code for the filter modal
   console.log('\n=== SUGGESTED FILTER MODAL CODE ===');
   console.log(`
@@ -155,4 +153,4 @@ export const REWAYAT_OPTIONS = [
 }
 
 // Run the analysis
-analyzeReciters();
+analyzeReciters(); 

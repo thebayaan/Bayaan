@@ -1,10 +1,10 @@
 import React from 'react';
-import {View, TouchableOpacity} from 'react-native';
+import {View, TouchableOpacity, Text} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayIcon, ShuffleIcon} from '@/components/Icons';
+import {StarIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ActionButtonsProps} from '@/components/reciter-profile/types';
 import Color from 'color';
 import Animated, {
@@ -12,12 +12,9 @@ import Animated, {
   withSpring,
   useSharedValue,
 } from 'react-native-reanimated';
-import {Ionicons} from '@expo/vector-icons';
-
-// Gold color for the active star
-const GOLD_COLOR = '#FFD700';
 
 // Animated TouchableOpacity for button animations
+
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -91,33 +88,34 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         onPress={onFavoritePress}
         onPressIn={() => handlePressIn('favorite')}
         onPressOut={() => handlePressOut('favorite')}>
-        <Ionicons
-          name={isFavoriteReciter ? 'star' : 'star-outline'}
-          size={moderateScale(20)}
-          color={isFavoriteReciter ? GOLD_COLOR : theme.colors.textSecondary}
+        <StarIcon
+          color={
+            isFavoriteReciter
+              ? theme.colors.primary
+              : theme.colors.textSecondary
+          }
+          size={isFavoriteReciter ? moderateScale(40) : moderateScale(28)}
+          filled={isFavoriteReciter}
         />
       </AnimatedTouchableOpacity>
       <View style={styles.rightAlignedButtons}>
         <AnimatedTouchableOpacity
           activeOpacity={0.7}
-          style={[styles.circleButton, shuffleAnimatedStyle]}
+          style={[styles.shuffleButton, shuffleAnimatedStyle]}
           onPress={onShufflePress}
           onPressIn={() => handlePressIn('shuffle')}
           onPressOut={() => handlePressOut('shuffle')}>
-          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(22)} />
+          <Text style={styles.buttonText}>Shuffle</Text>
         </AnimatedTouchableOpacity>
         <AnimatedTouchableOpacity
           activeOpacity={0.7}
-          style={[styles.circleButton, styles.playButton, playAnimatedStyle]}
+          style={[styles.playButton, playAnimatedStyle]}
           onPress={onPlayPress}
           onPressIn={() => handlePressIn('play')}
           onPressOut={() => handlePressOut('play')}>
-          <View style={styles.playIconContainer}>
-            <PlayIcon
-              color={theme.colors.background}
-              size={moderateScale(16)}
-            />
-          </View>
+          <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
+          <Text style={styles.playButtonText}>Play All</Text>
         </AnimatedTouchableOpacity>
       </View>
     </View>
@@ -130,39 +128,58 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingVertical: moderateScale(5),
+      paddingVertical: moderateScale(10),
       paddingHorizontal: moderateScale(5),
     },
     rightAlignedButtons: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: moderateScale(8),
+      gap: moderateScale(10),
     },
     favoriteButton: {
-      width: moderateScale(40),
-      height: moderateScale(40),
+      width: moderateScale(50),
+      height: moderateScale(50),
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
-      padding: moderateScale(8),
+      borderRadius: moderateScale(25),
+      backgroundColor: 'transparent',
     },
-    circleButton: {
-      width: moderateScale(42),
-      height: moderateScale(42),
-      justifyContent: 'center',
+    favoriteButtonActive: {
+      backgroundColor: theme.colors.card,
+      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
+    },
+    shuffleButton: {
+      flexDirection: 'row',
       alignItems: 'center',
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
-      padding: moderateScale(8),
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(16),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      gap: moderateScale(8),
     },
     playButton: {
-      // Slightly larger to emphasize it's the primary action
-      width: moderateScale(42),
-      height: moderateScale(42),
-      backgroundColor: theme.colors.text,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(16),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
+      gap: moderateScale(8),
     },
-    playIconContainer: {
-      paddingLeft: moderateScale(4), // Slight adjustment to center the play icon visually
+    buttonText: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.text,
+    },
+    playButtonText: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
     },
   });

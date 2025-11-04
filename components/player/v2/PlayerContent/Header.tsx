@@ -6,11 +6,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
-interface HeaderProps {
-  onOptionsPress: () => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
+export const Header = () => {
   const {theme} = useTheme();
   const {queue, setSheetMode} = useUnifiedPlayer();
 
@@ -44,18 +40,6 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       <Text style={[styles.arabicSurahName, {color: theme.colors.text}]}>
         {surahGlyph}
       </Text>
-
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={styles.optionsButton}
-        onPress={onOptionsPress}>
-        <Icon
-          name="more-horizontal"
-          type="feather"
-          size={moderateScale(22)}
-          color={theme.colors.text}
-        />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -72,16 +56,6 @@ const styles = StyleSheet.create({
   closeButton: {
     position: 'absolute',
     left: moderateScale(15),
-    zIndex: 1,
-    padding: moderateScale(10),
-    width: moderateScale(44),
-    height: moderateScale(44),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  optionsButton: {
-    position: 'absolute',
-    right: moderateScale(15),
     zIndex: 1,
     padding: moderateScale(10),
     width: moderateScale(44),

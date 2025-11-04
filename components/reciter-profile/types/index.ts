@@ -88,8 +88,6 @@ export interface SurahListProps {
   reciterId: string;
   /** Function to check if a surah is loved */
   isLoved: (reciterId: string, surahId: string) => boolean;
-  /** Function to check if a surah is downloaded */
-  isDownloaded: (reciterId: string, surahId: string) => boolean;
   /** Handler for surah options button press */
   onOptionsPress: (surah: Surah) => void;
   /** Scroll event handler */

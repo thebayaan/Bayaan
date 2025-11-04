@@ -12,7 +12,6 @@ const FEATURED_RECITER_NAMES = [
   'Mohammed Jibreel',
   'Maher Al Meaqly',
   'Hazem Hassan',
-  'Ahmad Deban',
   'Mohammed Hamed',
   'Ahmad Talib bin Humaid',
   'Idrees Abkr',

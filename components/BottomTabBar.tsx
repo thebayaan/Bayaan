@@ -47,7 +47,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 
   const getIcon = (routeName: string, isFocused: boolean) => {
     switch (routeName) {
-      case '(a.home)':
+      case '(home)':
         return (
           <HomeIcon
             filled={isFocused}
@@ -55,7 +55,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
             size={iconSize}
           />
         );
-      case '(b.search)':
+      case '(search)':
         return (
           <SearchIcon
             filled={isFocused}
@@ -63,7 +63,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
             size={iconSize}
           />
         );
-      case '(c.collection)':
+      case '(collection)':
         return (
           <CollectionIcon
             filled={isFocused}

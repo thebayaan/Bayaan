@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'loved-tracks-store';
 
-export interface LovedTrack {
+interface LovedTrack {
   reciterId: string;
   surahId: string;
   rewayatId: string;
@@ -66,10 +66,10 @@ export const useLovedStore = create<LovedTracksState>()(
             // Remove if exists
             newTracks = state.tracks.filter(t => t !== existingTrack);
           } else {
-            // Add to the beginning so most recent is first
+            // Add if doesn't exist
             newTracks = [
-              {reciterId, surahId, rewayatId, timestamp: Date.now()},
               ...state.tracks,
+              {reciterId, surahId, rewayatId, timestamp: Date.now()},
             ];
           }
 
@@ -114,10 +114,7 @@ export const useLovedStore = create<LovedTracksState>()(
         return hasOldFormatMatch;
       },
 
-      getLovedTracks: () => {
-        // Return tracks sorted by timestamp descending (most recent first)
-        return [...get().tracks].sort((a, b) => b.timestamp - a.timestamp);
-      },
+      getLovedTracks: () => get().tracks,
 
       clearLoved: () => {
         set({tracks: []});
@@ -167,8 +164,8 @@ export const useLovedStore = create<LovedTracksState>()(
 export const useLoved = () => {
   const store = useLovedStore();
   return {
-    // State - return tracks sorted by timestamp descending (most recent first)
-    lovedTracks: [...store.tracks].sort((a, b) => b.timestamp - a.timestamp),
+    // State
+    lovedTracks: store.tracks,
     loading: store.loading,
     error: store.error,
     syncStatus: store.syncStatus,

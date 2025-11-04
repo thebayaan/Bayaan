@@ -79,9 +79,15 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   const imageSize = width || sizeMap[size];
   const calculatedHeight = height || imageSize;
 
+  // Adjust font size based on image size
+  const fontSize = moderateScale(
+    imageSize <= sizeMap.small ? 10 : imageSize <= sizeMap.medium ? 12 : 14,
+  );
+
   const styles = StyleSheet.create({
     container: {
       alignItems: 'center',
+      marginRight: moderateScale(8),
       width: imageSize,
     },
     imageContainer: {
@@ -89,7 +95,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
       height: calculatedHeight,
       borderRadius: calculatedHeight / 2, // Keep it circular even if custom dimensions
       overflow: 'hidden',
-      marginBottom: verticalScale(5),
+      marginBottom: verticalScale(4),
       alignItems: 'center', // For the plus icon
       justifyContent: 'center', // For the plus icon
     },
@@ -105,21 +111,14 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
     },
     name: {
       color: theme.colors.text,
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
+      fontSize: fontSize,
+      fontFamily: 'Manrope-SemiBold',
       textAlign: 'center',
       width: imageSize,
-      marginBottom: verticalScale(2),
-    },
-    subtitle: {
-      fontSize: moderateScale(10),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-      width: imageSize,
+      marginTop: verticalScale(4),
     },
     addText: {
-      fontSize: moderateScale(12),
+      fontSize: fontSize,
       fontWeight: 'bold',
       color: theme.colors.text,
       textAlign: 'center',
@@ -154,20 +153,14 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           />
         )}
       </View>
-      {variant === 'add' ? (
-        <Text style={[styles.addText, addTextStyle]} numberOfLines={2}>
-          {name}
-        </Text>
-      ) : (
-        <>
-          <Text style={styles.name} numberOfLines={1}>
-            {name}
-          </Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            Reciter
-          </Text>
-        </>
-      )}
+      <Text
+        style={[
+          variant === 'add' ? styles.addText : styles.name,
+          variant === 'add' && addTextStyle,
+        ]}
+        numberOfLines={2}>
+        {name}
+      </Text>
     </AnimatedTouchableOpacity>
   );
 };

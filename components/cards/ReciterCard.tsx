@@ -50,7 +50,6 @@ export const ReciterCard: React.FC<ReciterCardProps> = ({
           imageUrl={imageUrl}
           reciterName={name}
           style={styles.reciterImage}
-          profileIconSize={moderateScale(40)}
         />
       </View>
       <Text style={styles.name} numberOfLines={1}>

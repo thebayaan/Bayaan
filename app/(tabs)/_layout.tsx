@@ -23,18 +23,15 @@ export default function TabsLayout() {
         backgroundColor="transparent"
       />
       <Tabs
-        initialRouteName="(a.home)"
+        initialRouteName="(home)"
         screenOptions={{
           headerShown: false,
           lazy: true,
         }}
         tabBar={tabBarComponent}>
-        <Tabs.Screen name="(a.home)" options={{title: 'Home'}} />
-        <Tabs.Screen name="(b.search)" options={{title: 'Search'}} />
-        <Tabs.Screen
-          name="(c.collection)"
-          options={{title: 'Your Collection'}}
-        />
+        <Tabs.Screen name="(home)" options={{title: 'Home'}} />
+        <Tabs.Screen name="(search)" options={{title: 'Search'}} />
+        <Tabs.Screen name="(collection)" options={{title: 'Your Collection'}} />
       </Tabs>
       {/* <FloatingPlayer /> */}
     </>

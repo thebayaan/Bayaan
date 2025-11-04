@@ -16,7 +16,6 @@ interface BrowseGridProps {
   onReciterPress: (reciter: Reciter) => void;
   theme: Theme;
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
-  onScrollBeginDrag?: () => void;
 }
 
 function createStyles(_theme: Theme) {
@@ -54,7 +53,7 @@ const createItemRows = (
 };
 
 const BrowseGrid = React.memo(
-  ({reciters, onReciterPress, theme, onScrollBeginDrag}: BrowseGridProps) => {
+  ({reciters, onReciterPress, theme}: BrowseGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
     const [isLoading] = useState(false);
 
@@ -145,7 +144,6 @@ const BrowseGrid = React.memo(
           waitForInitialLayout
           onEndReachedThreshold={0.5}
           maintainVisibleContentPosition
-          onScrollBeginDrag={onScrollBeginDrag}
         />
       </View>
     );

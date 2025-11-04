@@ -1,7 +1,7 @@
 import {Reciter} from '@/data/reciterData';
 import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
-import {generateAudioUrl, generateSmartAudioUrl} from './audioUtils';
+import {generateAudioUrl} from './audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 
 /**
@@ -23,7 +23,6 @@ export function getAvailableSurahs(
 
 /**
  * Creates a Track object for a specific surah and reciter
- * Uses smart URL generation to prefer local downloaded files over remote URLs
  * @param reciter - Reciter object
  * @param surah - Surah object
  * @param rewayatId - Optional specific rewayat ID
@@ -34,7 +33,7 @@ export async function createTrack(
   surah: Surah,
   rewayatId?: string,
 ): Promise<Track> {
-  const url = generateSmartAudioUrl(reciter, String(surah.id), rewayatId);
+  const url = generateAudioUrl(reciter, String(surah.id), rewayatId);
   return {
     id: `${reciter.id}-${surah.id}`,
     url,
@@ -102,35 +101,6 @@ export async function createTracksForRange(
 
   // Create tracks for available surahs
   return createTracksForReciter(reciter, availableSurahs, rewayatId);
-}
-
-/**
- * Creates a Track object for a downloaded file using local file path
- * @param reciter - Reciter object
- * @param surah - Surah object
- * @param filePath - Local file path to the downloaded audio file
- * @param rewayatId - Optional specific rewayat ID
- * @returns Track object with local file path
- */
-export function createDownloadedTrack(
-  reciter: Reciter,
-  surah: Surah,
-  filePath: string,
-  rewayatId?: string,
-): Track {
-  return {
-    id: `${reciter.id}-${surah.id}`,
-    url: filePath, // Use local file path instead of remote URL
-    title: surah.name,
-    artist: reciter.name,
-    artwork: getReciterArtwork(reciter),
-    surahId: String(surah.id),
-    reciterId: reciter.id,
-    reciterName: reciter.name,
-    rewayatId: rewayatId || reciter.rewayat[0].id,
-    duration: 0, // Will be set by TrackPlayer
-    description: `${surah.translated_name_english} - ${surah.name}`,
-  };
 }
 
 /**

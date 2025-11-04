@@ -11,11 +11,10 @@ interface ReciterItemProps {
   item: Reciter;
   onPress: (item: Reciter) => void;
   isSelected?: boolean;
-  secondaryText?: string;
 }
 
 export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
-  ({item, onPress, isSelected, secondaryText}) => {
+  ({item, onPress, isSelected}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
@@ -34,16 +33,14 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
             imageUrl={item.image_url || undefined}
             reciterName={item.name}
             style={styles.reciterImage}
-            profileIconSize={moderateScale(20)}
           />
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
           <Text style={styles.reciterRewayat} numberOfLines={1}>
-            {secondaryText ||
-              (item.rewayat.length > 1
-                ? `${item.rewayat.length} rewayat available`
-                : item.rewayat[0]?.name || '')}
+            {item.rewayat.length > 1
+              ? `${item.rewayat.length} rewayat available`
+              : item.rewayat[0]?.name || ''}
           </Text>
         </View>
         {isSelected && (
@@ -68,46 +65,46 @@ const createStyles = (theme: Theme) =>
     reciterItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(8),
-      paddingHorizontal: moderateScale(18),
+      paddingVertical: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
     },
     imageContainer: {
-      width: moderateScale(50),
-      height: moderateScale(50),
-      marginRight: moderateScale(12),
+      width: moderateScale(60),
+      height: moderateScale(60),
+      marginRight: moderateScale(15),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      borderRadius: moderateScale(50),
+      borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
       borderColor: 'transparent',
     },
     reciterImage: {
-      width: moderateScale(50),
-      height: moderateScale(50),
+      width: moderateScale(60),
+      height: moderateScale(60),
     },
     reciterInfo: {
       flex: 1,
       justifyContent: 'center',
     },
     reciterName: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(16),
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
-      marginBottom: moderateScale(1),
+      marginBottom: moderateScale(2),
     },
     reciterRewayat: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(14),
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
     },
     selectedReciterItem: {
-      borderRadius: moderateScale(10),
+      borderRadius: moderateScale(12),
     },
     selectedImageContainer: {
       borderColor: theme.colors.primary,
     },
     checkmarkContainer: {
-      marginLeft: moderateScale(8),
+      marginLeft: moderateScale(10),
     },
   });

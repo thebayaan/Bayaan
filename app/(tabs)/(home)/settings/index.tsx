@@ -47,7 +47,7 @@ const themeOptions: ThemeOption[] = [
 
 const settingsItems = [
   {
-    section: 'Quran',
+    section: 'Quran Settings',
     items: [
       {
         title: 'Mushaf Settings',
@@ -82,13 +82,12 @@ const settingsItems = [
     section: 'App & Data',
     items: [
       {
-        title: 'Storage',
-        type: 'storage',
-        description: 'View and manage storage usage',
-        icon: 'hard-drive',
+        title: 'Clear Cache',
+        type: 'clearCache',
+        description: 'Free up storage space',
+        icon: 'trash-2',
         iconType: 'feather',
       },
-
       // Add more app settings here as needed
     ],
   },
@@ -170,9 +169,6 @@ export default function SettingsScreen() {
         break;
       case 'reciterChoice':
         router.push('/settings/reciter-choice');
-        break;
-      case 'storage':
-        router.push('/settings/storage');
         break;
       case 'clearCache':
         await clearPlayerCache();
@@ -482,7 +478,7 @@ const createStyles = (theme: Theme) =>
       width: '100%',
     },
     settingsItemCard: {
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: theme.colors.card,
       borderRadius: moderateScale(12),
       padding: moderateScale(12),
     },

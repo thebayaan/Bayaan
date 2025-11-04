@@ -13,7 +13,6 @@ export default function CollectionLayout() {
       <Stack.Screen name="collection/favorite-reciters" />
       <Stack.Screen name="collection/playlists" />
       <Stack.Screen name="collection/downloads" />
-      <Stack.Screen name="playlist/[id]" />
     </Stack>
   );
 }

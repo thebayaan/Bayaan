@@ -47,7 +47,7 @@ While Qira'at are the major schools of Quranic recitation attributed to famous r
 "The Quran was revealed in seven ahruf (styles). So recite what is easier for you from it."
 - Sahih al-Bukhari 2419, Sahih Muslim 818
 
-The most widely used Rewayah today is Hafs 'an Assem (حَفْص عَن عَاصِم), which is considered the standard version used in most printed Qurans and is instantly recognizable to most Muslims worldwide.
+The most widely used Rewayah today is Hafs 'an Asim (حَفْص عَن عَاصِم), which is considered the standard version used in most printed Qurans and is instantly recognizable to most Muslims worldwide.
 
 Each Rewayah may have slight variations in pronunciation, elongation, or articulation points. These differences are purely phonetic and never alter the meaning of the Quranic text, as they all represent authentic ways of reciting the Quran that have been meticulously preserved.`;
 
@@ -64,7 +64,7 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        bounces={true}
+        bounces={false}
         nestedScrollEnabled={Platform.OS === 'android'}
         disableScrollViewPanResponder={Platform.OS === 'android'}
         scrollEventThrottle={16}>

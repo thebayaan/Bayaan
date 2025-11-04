@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, StyleSheet, TextStyle, StyleProp, Platform} from 'react-native';
+import {Text, StyleSheet, TextStyle, StyleProp} from 'react-native';
 
 interface FormattedTextProps {
   text: string;
@@ -12,19 +12,6 @@ function FormattedTextRenderer({
   baseStyle,
   onFootnotePress,
 }: FormattedTextProps) {
-  // Extract base fontSize from style for relative sizing of superscript
-  let baseFontSize = 14; // Default
-  if (baseStyle && typeof baseStyle !== 'function') {
-    const flattenedStyle = StyleSheet.flatten(baseStyle);
-    if (flattenedStyle.fontSize) {
-      baseFontSize = flattenedStyle.fontSize;
-    }
-  }
-
-  // Calculate relative sizes for superscript
-  const superscriptFontSize = Math.max(baseFontSize * 0.75, 10); // Relative to base font size
-  const superscriptLineHeight = Math.max(baseFontSize * 1.3, 16); // Relative line height
-
   const parts = text.split(/(<\/?(?:b|i|u|sup)(?:\s+[^>]*)?\/?>)/);
 
   const elements: React.ReactNode[] = [];
@@ -41,20 +28,7 @@ function FormattedTextRenderer({
 
     if (part.startsWith('<sup') && part.includes('foot_note')) {
       captureFootnote = true;
-      styleStack.push([
-        currentStyle,
-        {
-          fontSize: superscriptFontSize,
-          lineHeight: superscriptLineHeight,
-          includeFontPadding: false,
-          ...Platform.select({
-            android: {
-              textAlignVertical: 'top',
-              paddingTop: 2, // Small padding on Android to improve alignment
-            },
-          }),
-        },
-      ]);
+      styleStack.push([currentStyle, styles.superscript]);
 
       const match = part.match(/foot_note="([^"]+)"/);
       footnoteId = match ? match[1] : '';
@@ -73,20 +47,7 @@ function FormattedTextRenderer({
         styleStack.push([currentStyle, styles.underline]);
         break;
       case '<sup>': // Handle regular superscript
-        styleStack.push([
-          currentStyle,
-          {
-            fontSize: superscriptFontSize,
-            lineHeight: superscriptLineHeight,
-            includeFontPadding: false,
-            ...Platform.select({
-              android: {
-                textAlignVertical: 'top',
-                paddingTop: 2,
-              },
-            }),
-          },
-        ]);
+        styleStack.push([currentStyle, styles.superscript]);
         break;
       case '</b>':
       case '</i>':
@@ -115,22 +76,7 @@ function FormattedTextRenderer({
                   onFootnotePress(currentFootnoteId, currentFootnoteText);
                 }
               }}
-              style={[
-                currentStyle,
-                {
-                  fontSize: superscriptFontSize,
-                  lineHeight: superscriptLineHeight,
-                  includeFontPadding: false,
-                  color: '#3498db',
-                  fontWeight: 'bold',
-                  ...Platform.select({
-                    android: {
-                      textAlignVertical: 'top',
-                      paddingTop: 2,
-                    },
-                  }),
-                },
-              ]}
+              style={[currentStyle, styles.superscript, styles.footnoteText]}
               accessibilityRole="button">
               {`[${currentFootnoteText}]`}
             </Text>,
@@ -156,15 +102,7 @@ function FormattedTextRenderer({
     }
   });
 
-  return (
-    <Text
-      style={[
-        baseStyle,
-        Platform.OS === 'android' ? {lineHeight: baseFontSize * 1.4} : null,
-      ]}>
-      {elements}
-    </Text>
-  );
+  return <Text style={baseStyle}>{elements}</Text>;
 }
 
 const styles = StyleSheet.create({
@@ -178,6 +116,21 @@ const styles = StyleSheet.create({
   },
   underline: {
     textDecorationLine: 'underline',
+  },
+  superscript: {
+    fontSize: 14, // Increased font size
+    lineHeight: 18, // Adjusted line height for new font size
+    includeFontPadding: false,
+  },
+  footnoteContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    paddingHorizontal: 4, // Added horizontal padding for larger touch area
+    paddingVertical: 2, // Added vertical padding for larger touch area
+  },
+  footnoteText: {
+    color: '#3498db',
+    fontWeight: 'bold', // Keep it bold
   },
 });
 

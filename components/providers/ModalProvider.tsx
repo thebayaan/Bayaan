@@ -7,7 +7,6 @@ import {SurahOptionsModal} from '@/components/modals/SurahOptionsModal';
 import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
 import {SelectReciterModal} from '@/components/modals/SelectReciterModal';
-import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
 import type {RewayatStyle} from '@/types/reciter';
 
 interface ModalContextType {
@@ -24,19 +23,6 @@ interface ModalContextType {
   ) => void;
   showFavoriteReciters: () => void;
   showSelectReciter: (surahId: string, source?: 'search' | 'home') => void;
-  showPlaylistContextMenu: (
-    playlistId: string,
-    playlistName: string,
-    onDelete: () => void,
-    onEdit?: () => void,
-    playlistColor?: string,
-  ) => void;
-  showEditPlaylist: (
-    playlistId: string,
-    playlistName: string,
-    playlistColor: string,
-    onSave: (name: string, color: string) => void,
-  ) => void;
 }
 
 const ModalContext = createContext<ModalContextType | null>(null);
@@ -58,8 +44,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const rewayatInfoRef = useRef<BottomSheet>(null);
   const favoriteRecitersRef = useRef<BottomSheet>(null);
   const selectReciterRef = useRef<BottomSheet>(null);
-  const playlistContextMenuRef = useRef<BottomSheet>(null);
-  const editPlaylistModalRef = useRef<BottomSheet>(null);
 
   const [currentSurah, setCurrentSurah] = React.useState<Surah | null>(null);
   const [currentReciterId, setCurrentReciterId] = React.useState<
@@ -83,22 +67,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const [queueHandler, setQueueHandler] = React.useState<
     ((surah: Surah) => Promise<void>) | undefined
   >();
-
-  const [playlistContextMenuParams, setPlaylistContextMenuParams] =
-    React.useState<{
-      playlistId: string;
-      playlistName: string;
-      playlistColor?: string;
-      onDelete: () => void;
-      onEdit?: () => void;
-    } | null>(null);
-
-  const [, setEditPlaylistParams] = React.useState<{
-    playlistId: string;
-    playlistName: string;
-    playlistColor: string;
-    onSave: (name: string, color: string) => void;
-  } | null>(null);
 
   const showSurahOptions = useCallback(
     (
@@ -155,51 +123,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     [],
   );
 
-  const showPlaylistContextMenu = useCallback(
-    (
-      playlistId: string,
-      playlistName: string,
-      onDelete: () => void,
-      onEdit?: () => void,
-      playlistColor?: string,
-    ) => {
-      setPlaylistContextMenuParams({
-        playlistId,
-        playlistName,
-        playlistColor,
-        onDelete,
-        onEdit,
-      });
-      setTimeout(() => {
-        playlistContextMenuRef.current?.expand();
-      }, 50);
-    },
-    [],
-  );
-
-  const showEditPlaylist = useCallback(
-    (
-      playlistId: string,
-      playlistName: string,
-      playlistColor: string,
-      onSave: (name: string, color: string) => void,
-    ) => {
-      setEditPlaylistParams({
-        playlistId,
-        playlistName,
-        playlistColor,
-        onSave,
-      });
-      // Open immediately for smooth transition
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          editPlaylistModalRef.current?.expand();
-        }, 50);
-      });
-    },
-    [],
-  );
-
   const handleCloseSurahOptions = useCallback(() => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
@@ -221,11 +144,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     setSelectReciterParams(null);
   }, []);
 
-  const handleClosePlaylistContextMenu = useCallback(() => {
-    playlistContextMenuRef.current?.close();
-    setPlaylistContextMenuParams(null);
-  }, []);
-
   return (
     <ModalContext.Provider
       value={{
@@ -233,8 +151,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
         showRewayatInfo,
         showFavoriteReciters,
         showSelectReciter,
-        showPlaylistContextMenu,
-        showEditPlaylist,
       }}>
       <View style={StyleSheet.absoluteFill}>{children}</View>
       <View style={styles.modalContainer}>
@@ -269,27 +185,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             onClose={handleCloseSelectReciter}
             surahId={selectReciterParams.surahId}
             source={selectReciterParams.source}
-          />
-        )}
-        {playlistContextMenuParams && (
-          <PlaylistContextMenu
-            bottomSheetRef={playlistContextMenuRef}
-            playlistId={playlistContextMenuParams.playlistId}
-            playlistName={playlistContextMenuParams.playlistName}
-            playlistColor={playlistContextMenuParams.playlistColor}
-            onDelete={() => {
-              playlistContextMenuParams.onDelete();
-              handleClosePlaylistContextMenu();
-            }}
-            onEdit={() => {
-              // Call the edit handler first
-              playlistContextMenuParams.onEdit?.();
-              // Close context menu after a short delay to allow edit modal to start opening
-              setTimeout(() => {
-                handleClosePlaylistContextMenu();
-              }, 100);
-            }}
-            onClose={handleClosePlaylistContextMenu}
           />
         )}
       </View>

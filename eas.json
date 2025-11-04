@@ -33,7 +33,8 @@
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium",
-        "credentialsSource": "remote"
+        "credentialsSource": "remote",
+        "enterpriseProvisioning": "universal"
       },
       "android": {
         "buildType": "app-bundle",
@@ -47,7 +48,8 @@
   "submit": {
     "production": {
       "ios": {
-        "appleTeamId": "S4W5Q2L53W"
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID"
       },
       "android": {
         "track": "internal",

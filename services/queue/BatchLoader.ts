@@ -8,7 +8,6 @@ import {QueueConfig, AddBatchPayload, QueueError} from './types';
 import {Track} from '@/types/audio';
 import {QueueContext} from './QueueContext';
 import {Reciter, Rewayat} from '@/data/reciterData';
-import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {performance} from '@/utils/performance';
 
 /**
@@ -187,7 +186,7 @@ export class BatchLoader {
   ): Track[] {
     return surahNumbers.map(surahNumber => ({
       id: `${reciter.id}-${surahNumber}`,
-      url: generateSmartAudioUrl(reciter, surahNumber.toString(), rewayat.id),
+      url: `${rewayat.server}/${surahNumber}.mp3`,
       title: `Surah ${surahNumber}`, // TODO: Get actual surah name
       artist: reciter.name,
       artwork: reciter.image_url || undefined,
