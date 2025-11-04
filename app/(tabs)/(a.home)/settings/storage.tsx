@@ -22,11 +22,21 @@ interface StorageCategoryProps {
   styles: ReturnType<typeof createStyles>;
 }
 
-const StorageCategory = ({color, label, size, theme, styles}: StorageCategoryProps) => (
+const StorageCategory = ({
+  color,
+  label,
+  size,
+  theme,
+  styles,
+}: StorageCategoryProps) => (
   <View style={styles.categoryRow}>
     <View style={[styles.dot, {backgroundColor: color}]} />
-    <Text style={[styles.categoryLabel, {color: theme.colors.text}]}>{label}</Text>
-    <Text style={[styles.categorySize, {color: theme.colors.text}]}>{size}</Text>
+    <Text style={[styles.categoryLabel, {color: theme.colors.text}]}>
+      {label}
+    </Text>
+    <Text style={[styles.categorySize, {color: theme.colors.text}]}>
+      {size}
+    </Text>
   </View>
 );
 
@@ -47,8 +57,11 @@ const ActionSection = ({
 }) => (
   <View style={styles.actionSection}>
     <View style={styles.actionContent}>
-      <Text style={[styles.actionTitle, {color: theme.colors.text}]}>{title}</Text>
-      <Text style={[styles.actionDescription, {color: theme.colors.textSecondary}]}>
+      <Text style={[styles.actionTitle, {color: theme.colors.text}]}>
+        {title}
+      </Text>
+      <Text
+        style={[styles.actionDescription, {color: theme.colors.textSecondary}]}>
         {description}
       </Text>
     </View>
@@ -67,7 +80,7 @@ export default function StorageScreen() {
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
   const [isClearing, setIsClearing] = useState(false);
-  
+
   const {
     total,
     free,
@@ -111,7 +124,7 @@ export default function StorageScreen() {
   const handleClearCache = () => {
     Alert.alert(
       'Clear cache',
-      'This will clear your cache. Your downloads won\'t be removed.',
+      "This will clear your cache. Your downloads won't be removed.",
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -122,7 +135,7 @@ export default function StorageScreen() {
               setIsClearing(true);
               // Clear both AsyncStorage cache AND file system cache
               await clearPlayerCache();
-            //   await clearCacheDirectory();
+              //   await clearCacheDirectory();
               // Refresh storage breakdown
               refresh();
               Alert.alert('Success', 'Cache has been cleared.');
@@ -155,14 +168,24 @@ export default function StorageScreen() {
   const MIN_PERCENTAGE = 2;
   if (downloadsPercentage > 0 && downloadsPercentage < MIN_PERCENTAGE) {
     downloadsPercentage = MIN_PERCENTAGE;
-    otherAppsPercentage = Math.max(0, 100 - downloadsPercentage - cachePercentage - freePercentage);
+    otherAppsPercentage = Math.max(
+      0,
+      100 - downloadsPercentage - cachePercentage - freePercentage,
+    );
   }
   if (cachePercentage > 0 && cachePercentage < MIN_PERCENTAGE) {
     cachePercentage = MIN_PERCENTAGE;
-    otherAppsPercentage = Math.max(0, 100 - downloadsPercentage - cachePercentage - freePercentage);
+    otherAppsPercentage = Math.max(
+      0,
+      100 - downloadsPercentage - cachePercentage - freePercentage,
+    );
   }
   // Recalculate to ensure total is 100%
-  const totalPercentage = otherAppsPercentage + downloadsPercentage + cachePercentage + freePercentage;
+  const totalPercentage =
+    otherAppsPercentage +
+    downloadsPercentage +
+    cachePercentage +
+    freePercentage;
   if (totalPercentage > 100) {
     const scale = 100 / totalPercentage;
     otherAppsPercentage *= scale;
@@ -189,19 +212,24 @@ export default function StorageScreen() {
   return (
     <View style={styles.container}>
       <Header title="Storage" onBack={() => router.back()} />
-      
+
       <ScrollView
         style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {loading ? (
-          <Animated.View entering={FadeIn.delay(100)} style={styles.loadingContainer}>
-            <Text style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
+          <Animated.View
+            entering={FadeIn.delay(100)}
+            style={styles.loadingContainer}>
+            <Text
+              style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
               Loading storage information...
             </Text>
           </Animated.View>
         ) : error ? (
-          <Animated.View entering={FadeIn.delay(100)} style={styles.errorContainer}>
+          <Animated.View
+            entering={FadeIn.delay(100)}
+            style={styles.errorContainer}>
             <Icon
               name="alert-circle"
               type="feather"
@@ -215,7 +243,9 @@ export default function StorageScreen() {
         ) : (
           <>
             {/* Progress Bar */}
-            <Animated.View entering={FadeInDown.delay(100)} style={styles.progressContainer}>
+            <Animated.View
+              entering={FadeInDown.delay(100)}
+              style={styles.progressContainer}>
               <View style={styles.progressBarContainer}>
                 <View
                   style={[
@@ -257,7 +287,9 @@ export default function StorageScreen() {
             </Animated.View>
 
             {/* Storage Breakdown */}
-            <Animated.View entering={FadeInDown.delay(200)} style={styles.breakdownContainer}>
+            <Animated.View
+              entering={FadeInDown.delay(200)}
+              style={styles.breakdownContainer}>
               <StorageCategory
                 color={colors.otherApps}
                 label="Other apps"
@@ -299,9 +331,9 @@ export default function StorageScreen() {
                 styles={styles}
                 key="downloads"
               />
-              
+
               <View style={styles.actionSpacer} />
-              
+
               <ActionSection
                 title="Clear cache"
                 description="You can free up storage by clearing your cache. Your downloads won't be removed."
@@ -424,4 +456,3 @@ const createStyles = (theme: Theme) =>
       height: moderateScale(12),
     },
   });
-

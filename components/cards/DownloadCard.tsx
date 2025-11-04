@@ -76,5 +76,3 @@ export const DownloadCard: React.FC<DownloadCardProps> = ({
     </TouchableOpacity>
   );
 };
-
-

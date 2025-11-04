@@ -16,4 +16,3 @@ export function showToast(
     Alert.alert(message);
   }
 }
-

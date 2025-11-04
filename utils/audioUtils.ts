@@ -41,15 +41,17 @@ export function generateSmartAudioUrl(
   // Check if the surah is downloaded
   const downloadStore = useDownloadStore.getState();
   const isDownloaded = downloadStore.isDownloaded(reciter.id, surahId);
-  
+
   if (isDownloaded) {
     const download = downloadStore.getDownload(reciter.id, surahId);
     if (download && download.status === 'completed') {
-      console.log(`Using local file for ${reciter.name} - Surah ${surahId}: ${download.filePath}`);
+      console.log(
+        `Using local file for ${reciter.name} - Surah ${surahId}: ${download.filePath}`,
+      );
       return download.filePath;
     }
   }
-  
+
   // Fall back to remote URL if not downloaded
   console.log(`Using remote URL for ${reciter.name} - Surah ${surahId}`);
   return generateAudioUrl(reciter, surahId, rewayatId);

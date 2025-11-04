@@ -1,7 +1,11 @@
 import React, {useState, useCallback, useEffect} from 'react';
 import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale, verticalScale} from 'react-native-size-matters';
+import {
+  ScaledSheet,
+  moderateScale,
+  verticalScale,
+} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import SearchBar from '@/components/SearchBar';
 import {RECITERS, Reciter} from '@/data/reciterData';
@@ -77,7 +81,8 @@ export default function DefaultReciterScreen() {
     <View style={styles.container}>
       <Header title="Default Reciter" onBack={() => router.back()} />
 
-      <View style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
+      <View
+        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
         {defaultReciter && (
           <View style={styles.currentReciterContainer}>
             <View style={styles.currentReciterContent}>
@@ -87,10 +92,18 @@ export default function DefaultReciterScreen() {
                 style={styles.currentReciterImage}
               />
               <View style={styles.currentReciterInfo}>
-                <Text style={[styles.currentReciterName, {color: theme.colors.text}]}>
+                <Text
+                  style={[
+                    styles.currentReciterName,
+                    {color: theme.colors.text},
+                  ]}>
                   {defaultReciter.name}
                 </Text>
-                <Text style={[styles.currentReciterMoshaf, {color: theme.colors.textSecondary}]}>
+                <Text
+                  style={[
+                    styles.currentReciterMoshaf,
+                    {color: theme.colors.textSecondary},
+                  ]}>
                   {defaultReciter.rewayat[0].name}
                 </Text>
               </View>
@@ -117,7 +130,8 @@ export default function DefaultReciterScreen() {
           keyExtractor={item => item.id}
           style={styles.reciterList}
           ListEmptyComponent={
-            <Text style={[styles.emptyText, {color: theme.colors.textSecondary}]}>
+            <Text
+              style={[styles.emptyText, {color: theme.colors.textSecondary}]}>
               {searchQuery.trim() === ''
                 ? 'Only reciters with complete Quran are shown'
                 : 'No reciters found'}
@@ -187,4 +201,4 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       paddingVertical: moderateScale(15),
     },
-  }); 
+  });

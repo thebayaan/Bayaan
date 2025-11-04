@@ -88,7 +88,7 @@ const settingsItems = [
         icon: 'hard-drive',
         iconType: 'feather',
       },
-      
+
       // Add more app settings here as needed
     ],
   },

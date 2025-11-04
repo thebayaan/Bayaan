@@ -162,7 +162,7 @@ export async function fetchAudioUrl(
   reciterId: string,
   rewayatId?: string, // Optional: if not provided, use first available rewayat
 ): Promise<string> {
-  console.log('fetchAudioUrl called with:', { surahId, reciterId, rewayatId });
+  console.log('fetchAudioUrl called with:', {surahId, reciterId, rewayatId});
 
   const reciter = await getReciterById(reciterId);
 

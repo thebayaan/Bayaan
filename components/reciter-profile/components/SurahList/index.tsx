@@ -102,7 +102,14 @@ export const SurahList = React.forwardRef<
           rewayatId={rewayatId}
         />
       ),
-      [onSurahPress, reciterId, isLoved, isDownloaded, onOptionsPress, rewayatId],
+      [
+        onSurahPress,
+        reciterId,
+        isLoved,
+        isDownloaded,
+        onOptionsPress,
+        rewayatId,
+      ],
     );
 
     // Shared ListHeader to avoid re-rendering issues

@@ -1,6 +1,6 @@
 import DeviceInfo from 'react-native-device-info';
 import * as FileSystem from 'expo-file-system';
-import { useDownloadStore } from './player/store/downloadStore';
+import {useDownloadStore} from './player/store/downloadStore';
 
 export function getDownloadsStorage(): number {
   const downloads = useDownloadStore.getState().downloads;
@@ -14,13 +14,15 @@ export function getDownloadsStorage(): number {
 
 export async function getCacheStorage(): Promise<number> {
   let totalSize = 0;
-  
+
   if (!FileSystem.cacheDirectory) {
     return 0;
   }
-  
+
   try {
-    const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
+    const files = await FileSystem.readDirectoryAsync(
+      FileSystem.cacheDirectory,
+    );
     for (const file of files) {
       const filePath = `${FileSystem.cacheDirectory}${file}`;
       const info = await FileSystem.getInfoAsync(filePath);
@@ -32,7 +34,7 @@ export async function getCacheStorage(): Promise<number> {
   } catch (error) {
     console.error('Error calculating cache size:', error);
   }
-  
+
   return totalSize;
 }
 
@@ -41,32 +43,41 @@ export async function clearCacheDirectory(): Promise<void> {
     console.log('[StorageService] No cache directory to clear');
     return;
   }
-  
+
   try {
-    console.log('[StorageService] Clearing cache directory:', FileSystem.cacheDirectory);
-    const files = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory);
-    
+    console.log(
+      '[StorageService] Clearing cache directory:',
+      FileSystem.cacheDirectory,
+    );
+    const files = await FileSystem.readDirectoryAsync(
+      FileSystem.cacheDirectory,
+    );
+
     for (const file of files) {
       const filePath = `${FileSystem.cacheDirectory}${file}`;
       const info = await FileSystem.getInfoAsync(filePath);
-      
+
       if (info.exists) {
         try {
           if (info.isDirectory) {
             // Delete directory recursively
-            await FileSystem.deleteAsync(filePath, { idempotent: true });
+            await FileSystem.deleteAsync(filePath, {idempotent: true});
             console.log('[StorageService] Deleted directory:', filePath);
           } else {
             // Delete file (idempotent means "safe to delete even if already deleted")
-            await FileSystem.deleteAsync(filePath, { idempotent: true });
+            await FileSystem.deleteAsync(filePath, {idempotent: true});
             console.log('[StorageService] Deleted file:', filePath);
           }
         } catch (deleteError) {
-          console.error('[StorageService] Error deleting:', filePath, deleteError);
+          console.error(
+            '[StorageService] Error deleting:',
+            filePath,
+            deleteError,
+          );
         }
       }
     }
-    
+
     console.log('[StorageService] Cache directory cleared successfully');
   } catch (error) {
     console.error('[StorageService] Error clearing cache directory:', error);
@@ -74,20 +85,24 @@ export async function clearCacheDirectory(): Promise<void> {
   }
 }
 
-export async function getDeviceStorage(): Promise<{total: number, free: number, used: number}> {
+export async function getDeviceStorage(): Promise<{
+  total: number;
+  free: number;
+  used: number;
+}> {
   const total = await DeviceInfo.getTotalDiskCapacity();
   const free = await DeviceInfo.getFreeDiskStorage();
   const used = total - free;
-  
-  return { total, free, used };
+
+  return {total, free, used};
 }
 
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
