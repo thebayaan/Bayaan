@@ -49,6 +49,9 @@
     },
     "plugins": [
       "expo-router",
+      
+      "./withAndroidSigning.js",
+      "./withIOSTeam.js",
       [
         "expo-splash-screen",
         {

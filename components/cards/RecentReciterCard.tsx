@@ -8,11 +8,17 @@ import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {useProgress} from 'react-native-track-player';
 import {Slider} from '@miblanchard/react-native-slider';
-import {getReciterById, getSurahById} from '@/services/dataService';
+import {
+  getReciterById,
+  getSurahById,
+  getAvailableSurahsForRewayat,
+} from '@/services/dataService';
 import {createTracksForReciter} from '@/utils/track';
 import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {QueueContext} from '@/services/queue/QueueContext';
-import TrackPlayer from 'react-native-track-player';
+import TrackPlayer, {
+  State as TrackPlayerState,
+} from 'react-native-track-player';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {BlurView} from '@react-native-community/blur';
 import Animated, {
@@ -20,6 +26,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import {Surah} from '@/data/surahData';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -41,7 +50,6 @@ export const RecentReciterCard = ({
   imageUrl,
   reciterName,
   surahName,
-  trackId,
   reciterId,
   surahId,
   progress,
@@ -50,10 +58,35 @@ export const RecentReciterCard = ({
   rewayatId,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
-  const {queue, updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
-  const isCurrentTrack = queue.tracks[queue.currentIndex]?.id === trackId;
+
+  // Get necessary state slices from player store
+  const playbackStatus = usePlayerStore(state => state.playback.state);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const tracks = usePlayerStore(state => state.queue.tracks);
+
+  // Check if this specific card represents the currently active track in the player
+  const isCurrentlyPlaying = useMemo(() => {
+    const currentTrack =
+      tracks && currentIndex >= 0 && currentIndex < tracks.length
+        ? tracks[currentIndex]
+        : null;
+
+    if (!reciterId || !currentTrack || !surahId) return false;
+
+    const rewayatMatches =
+      rewayatId && currentTrack.rewayatId
+        ? rewayatId === currentTrack.rewayatId
+        : !rewayatId && !currentTrack.rewayatId; // Match if both are undefined/null
+
+    return (
+      currentTrack.reciterId === reciterId &&
+      currentTrack.surahId === surahId.toString() &&
+      rewayatMatches
+    );
+  }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
 
   // Animation values
   const scale = useSharedValue(1);
@@ -79,18 +112,19 @@ export const RecentReciterCard = ({
   };
 
   const trackProgress = useProgress(
-    isCurrentTrack && isRecent ? 10000 : undefined,
+    isCurrentlyPlaying && isRecent ? 1000 : undefined,
   );
 
   // Calculate time remaining
   const timeRemaining = useMemo(() => {
-    const effectiveDuration = isCurrentTrack
-      ? trackProgress.duration
-      : duration;
+    const effectiveDuration =
+      isCurrentlyPlaying && trackProgress.duration > 0
+        ? trackProgress.duration
+        : duration;
     let remainingSeconds = effectiveDuration;
 
     if (effectiveDuration > 0) {
-      if (isCurrentTrack) {
+      if (isCurrentlyPlaying && trackProgress.position >= 0) {
         remainingSeconds = effectiveDuration - trackProgress.position;
       } else {
         remainingSeconds = effectiveDuration * (1 - progress);
@@ -106,16 +140,16 @@ export const RecentReciterCard = ({
     }
     return `${totalMinutes}m`;
   }, [
-    isCurrentTrack,
+    isCurrentlyPlaying,
     trackProgress.duration,
     trackProgress.position,
     duration,
     progress,
   ]);
 
-  // Calculate current progress value
-  const currentProgress =
-    isCurrentTrack && trackProgress.duration > 0
+  // Calculate current progress value for the slider
+  const currentSliderProgress =
+    isCurrentlyPlaying && trackProgress.duration > 0
       ? trackProgress.position / trackProgress.duration
       : progress;
 
@@ -133,36 +167,95 @@ export const RecentReciterCard = ({
       }
 
       // Use the provided rewayatId if available, otherwise fallback to the first rewayat
-      const rewayatToUse = rewayatId || reciter.rewayat[0]?.id;
+      const rewayatToUseId = rewayatId || reciter.rewayat[0]?.id;
+      if (!rewayatToUseId) {
+        console.error('Could not determine rewayat ID');
+        return;
+      }
 
-      const tracks = await createTracksForReciter(
+      // Fetch all available surah IDs for this rewayat
+      const availableSurahIds =
+        await getAvailableSurahsForRewayat(rewayatToUseId);
+
+      // Convert IDs to Surah objects, filtering out any not found (shouldn't happen ideally)
+      const allSurahsForRewayat = availableSurahIds
+        .map(id => getSurahById(id))
+        .filter((s): s is Surah => s !== undefined);
+
+      if (allSurahsForRewayat.length === 0) {
+        console.error('No available surahs found for this rewayat');
+        return;
+      }
+
+      // Find the index of the selected surah in the full list
+      const startIndex = allSurahsForRewayat.findIndex(s => s.id === surahId);
+      if (startIndex === -1) {
+        console.error(
+          'Selected surah not found in the available list for rewayat',
+        );
+        // Fallback: just play the selected surah
+        const track = await createTracksForReciter(
+          reciter,
+          [surah],
+          rewayatToUseId,
+        );
+        if (!track || track.length === 0) {
+          console.error('Failed to create fallback track');
+          return;
+        }
+        await updateQueue(track, 0);
+        const startPosition = progress * duration;
+        if (startPosition > 0) {
+          await TrackPlayer.seekTo(startPosition);
+        }
+        await play();
+        await addRecentTrack(
+          reciter,
+          surah,
+          progress,
+          duration,
+          rewayatToUseId,
+        );
+        queueContext.setCurrentReciter(reciter);
+        return; // Exit after fallback
+      }
+
+      // Create tracks for all available surahs
+      const reciterTracks = await createTracksForReciter(
         reciter,
-        [surah],
-        rewayatToUse,
+        allSurahsForRewayat,
+        rewayatToUseId,
       );
 
-      const startPosition = isCurrentTrack
-        ? trackProgress.position
-        : progress * duration;
+      // Reorder tracks so the selected one is first
+      const reorderedTracks = [
+        ...reciterTracks.slice(startIndex),
+        ...reciterTracks.slice(0, startIndex),
+      ];
 
-      await updateQueue(tracks, 0);
-      await play();
-      await addRecentTrack(reciter, surah, progress, duration, rewayatToUse);
+      const startPosition =
+        isCurrentlyPlaying && trackProgress.position >= 0
+          ? trackProgress.position
+          : progress * duration;
 
-      queueContext.setCurrentReciter(reciter);
-
+      await updateQueue(reorderedTracks, 0);
+      // Seek BEFORE playing
       if (startPosition > 0) {
         await TrackPlayer.seekTo(startPosition);
       }
+      await play();
+      await addRecentTrack(reciter, surah, progress, duration, rewayatToUseId);
 
-      queueContext.batchLoader.loadNextBatchIfNeeded(reciter);
+      queueContext.setCurrentReciter(reciter);
+      // No longer need batchLoader here as the queue is fully populated
+      // queueContext.batchLoader.loadNextBatchIfNeeded(reciter);
     } catch (error) {
       console.error('Error playing surah:', error);
     }
   }, [
     reciterId,
     surahId,
-    isCurrentTrack,
+    isCurrentlyPlaying,
     trackProgress.position,
     progress,
     duration,
@@ -242,30 +335,34 @@ export const RecentReciterCard = ({
       alignItems: 'center',
       marginTop: 'auto',
       paddingTop: moderateScale(4),
-      backgroundColor: Color(theme.colors.primary).alpha(0.08).toString(),
-      borderRadius: moderateScale(20),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.06).toString(),
+      borderRadius: moderateScale(8),
       paddingVertical: moderateScale(3),
       paddingHorizontal: moderateScale(6),
       gap: moderateScale(6),
       width: moderateScale(75),
       alignSelf: 'flex-start',
       borderWidth: 1,
-      borderColor: Color(theme.colors.primary).alpha(0.1).toString(),
+      borderColor: Color(theme.colors.border).alpha(0.12).toString(),
     },
     sliderContainer: {
-      height: moderateScale(3),
+      height: moderateScale(5),
       flex: 1,
-      marginHorizontal: moderateScale(4),
+      marginHorizontal: moderateScale(2),
     },
     timeRemaining: {
       fontSize: moderateScale(8),
       fontFamily: 'Manrope-Bold',
       color: Color(theme.colors.text).alpha(0.9).toString(),
-      minWidth: moderateScale(16),
+      minWidth: moderateScale(4),
       textAlign: 'right',
     },
-    playButton: {
-      marginLeft: 0,
+    playButtonContainer: {
+      width: moderateScale(14),
+      height: moderateScale(14),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 2,
     },
   });
 
@@ -295,9 +392,9 @@ export const RecentReciterCard = ({
       )}
       <LinearGradient
         colors={[
-          Color(theme.colors.primary).alpha(0.05).toString(),
-          Color(theme.colors.background).alpha(0.02).toString(),
-          Color(theme.colors.primary).alpha(0.08).toString(),
+          Color(theme.colors.textSecondary).alpha(0.03).toString(),
+          Color(theme.colors.background).alpha(0.01).toString(),
+          Color(theme.colors.textSecondary).alpha(0.05).toString(),
         ]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
@@ -310,6 +407,7 @@ export const RecentReciterCard = ({
             imageUrl={imageUrl}
             reciterName={reciterName}
             style={styles.image}
+            profileIconSize={moderateScale(40)}
           />
         </View>
 
@@ -325,25 +423,38 @@ export const RecentReciterCard = ({
           <View style={styles.progressSection}>
             <TouchableOpacity
               activeOpacity={0.99}
-              style={styles.playButton}
+              style={styles.playButtonContainer}
               onPress={handlePress}>
-              <PlayIcon
-                color={theme.colors.text}
-                size={moderateScale(12)}
-                filled={isCurrentTrack}
-              />
+              {isCurrentlyPlaying ? (
+                <NowPlayingIndicator
+                  isPlaying={
+                    playbackStatus === TrackPlayerState.Playing ||
+                    playbackStatus === TrackPlayerState.Buffering
+                  }
+                  surahId={surahId}
+                  barCount={3}
+                  barWidth={moderateScale(2.5)}
+                  gap={moderateScale(1.5)}
+                />
+              ) : (
+                <PlayIcon
+                  color={theme.colors.text}
+                  size={moderateScale(12)}
+                  filled={false}
+                />
+              )}
             </TouchableOpacity>
             <Slider
-              value={currentProgress}
+              value={currentSliderProgress}
               disabled={true}
-              minimumTrackTintColor={Color(theme.colors.primary)
-                .alpha(0.9)
+              minimumTrackTintColor={Color(theme.colors.textSecondary)
+                .alpha(0.45)
                 .toString()}
-              maximumTrackTintColor={Color(theme.colors.primary)
-                .alpha(0.1)
+              maximumTrackTintColor={Color(theme.colors.border)
+                .alpha(0.2)
                 .toString()}
               trackStyle={{
-                height: moderateScale(2.5),
+                height: moderateScale(3.5),
                 borderRadius: moderateScale(2),
               }}
               thumbStyle={{height: 0, width: 0}}

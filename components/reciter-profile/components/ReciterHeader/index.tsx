@@ -46,6 +46,7 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
           reciterName={reciter.name}
           imageUrl={reciter.image_url || undefined}
           style={styles.reciterImage}
+          profileIconSize={moderateScale(40)}
         />
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName} numberOfLines={2}>

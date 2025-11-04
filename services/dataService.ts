@@ -162,7 +162,11 @@ export async function fetchAudioUrl(
   reciterId: string,
   rewayatId?: string, // Optional: if not provided, use first available rewayat
 ): Promise<string> {
+  console.log('fetchAudioUrl called with:', {surahId, reciterId, rewayatId});
+
   const reciter = await getReciterById(reciterId);
+
+  console.log('Reciter found in fetchAudioUrl:', !!reciter);
   if (!reciter) throw new Error('Reciter not found');
 
   const rewayat = rewayatId

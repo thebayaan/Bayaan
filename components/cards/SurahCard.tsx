@@ -13,7 +13,12 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
-import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
+import {
+  MakkahIcon,
+  MadinahIcon,
+  HeartIcon,
+  DownloadIcon,
+} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 import Animated, {
   useAnimatedStyle,
@@ -21,6 +26,9 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface SurahCardProps {
   id: number;
@@ -33,6 +41,12 @@ interface SurahCardProps {
   onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
+  isDownloaded?: boolean;
+  isLoading?: boolean;
+  enableHaptics?: boolean;
+  enableAnimation?: boolean;
+  reciterId?: string;
+  rewayatId?: string;
 }
 
 const AnimatedTouchableOpacity =
@@ -48,46 +62,84 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   onOptionsPress,
   style,
   isLoved = false,
+  isDownloaded = false,
+  enableHaptics = false,
+  enableAnimation = false,
+  reciterId,
+  rewayatId,
 }) => {
   const {theme} = useTheme();
 
-  // Animation values
-  const scale = useSharedValue(1);
+  // Get necessary state slices from player store
+  const playbackStatus = usePlayerStore(state => state.playback.state);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const tracks = usePlayerStore(state => state.queue.tracks);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{scale: scale.value}],
-    };
-  });
+  // Check if this specific track is playing
+  const isCurrentlyPlaying = React.useMemo(() => {
+    // Get current track
+    const currentTrack =
+      tracks && currentIndex >= 0 && currentIndex < tracks.length
+        ? tracks[currentIndex]
+        : null;
 
-  const handleCardPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress();
-  };
+    // Check if this is the active track (regardless of play state)
+    if (!reciterId || !currentTrack) return false;
+
+    // For the same reciter and surah, we need to also check rewayatId if present
+    const rewayatMatches =
+      rewayatId && currentTrack.rewayatId
+        ? rewayatId === currentTrack.rewayatId
+        : true;
+
+    return (
+      currentTrack.reciterId === reciterId &&
+      currentTrack.surahId === id.toString() &&
+      rewayatMatches
+    );
+  }, [reciterId, id, rewayatId, currentIndex, tracks]);
+
+  // --- Conditional Animation Setup ---
+  const scale = useSharedValue(enableAnimation ? 1 : 1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: enableAnimation ? [{scale: scale.value}] : [],
+  }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.95, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
+    if (enableAnimation) {
+      scale.value = withSpring(0.95, {
+        damping: 20,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
+    if (enableAnimation) {
+      scale.value = withSpring(1, {
+        damping: 20,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    }
+  };
+  // --- End Conditional Animation Setup ---
+
+  const handleCardPress = () => {
+    if (enableHaptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress();
   };
 
-  const getGradientColors = (): [string, string] => {
+  const gradientColors = React.useMemo((): [string, string] => {
     const baseColor = Color(color);
     const gradientStart = baseColor.alpha(0.15).toString();
     const gradientEnd = baseColor.alpha(0.05).toString();
     return [gradientStart, gradientEnd];
-  };
-
+  }, [color]);
   const styles = StyleSheet.create({
     container: {
       width: moderateScale(120),
@@ -142,11 +194,11 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       right: moderateScale(4),
       opacity: 0.8,
       padding: moderateScale(3),
-      backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
-        .alpha(0.08)
-        .toString(),
-      borderRadius: moderateScale(10),
-      borderWidth: 0.5,
+      // backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
+      //   .alpha(0.08)
+      //   .toString(),
+      // borderRadius: moderateScale(10),
+      // borderWidth: 0.5,
       borderColor: Color(color).alpha(0.2).toString(),
       shadowColor: theme.isDarkMode ? 'transparent' : 'rgba(0,0,0,0.1)',
       shadowOffset: {width: 0, height: 1},
@@ -158,17 +210,17 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       position: 'absolute',
       top: moderateScale(4),
       left: moderateScale(4),
-      backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
-        .alpha(0.08)
-        .toString(),
-      paddingHorizontal: moderateScale(4),
-      paddingVertical: 0,
+      // backgroundColor: Color(theme.isDarkMode ? '#ffffff' : color)
+      //   .alpha(0.08)
+      //   .toString(),
+      // paddingHorizontal: moderateScale(4),
+      // paddingVertical: 0,
       height: moderateScale(16),
       minWidth: moderateScale(16),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: moderateScale(8),
-      borderWidth: 0.5,
+      // borderRadius: moderateScale(8),
+      // borderWidth: 0.5,
       borderColor: Color(color).alpha(0.2).toString(),
       shadowColor: theme.isDarkMode ? 'transparent' : 'rgba(0,0,0,0.1)',
       shadowOffset: {width: 0, height: 1},
@@ -177,7 +229,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       elevation: 1,
     },
     numberText: {
-      fontSize: moderateScale(8),
+      fontSize: moderateScale(10),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
@@ -196,36 +248,60 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     },
     optionsButton: {
       position: 'absolute',
-      bottom: moderateScale(4),
-      right: moderateScale(4),
-      padding: moderateScale(5),
-      borderRadius: moderateScale(15),
-      backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
+      bottom: moderateScale(6),
+      right: moderateScale(6),
+      padding: moderateScale(2),
+      borderRadius: moderateScale(8),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
+    },
+    nowPlayingContainer: {
+      position: 'absolute',
+      bottom: moderateScale(6),
+      right: moderateScale(6),
+      width: moderateScale(24),
+      height: moderateScale(24),
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });
 
   const handleOptionsPressWrapper = (e: GestureResponderEvent) => {
     e.stopPropagation();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (enableHaptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     onOptionsPress?.();
   };
 
   const handleLongPressWrapper = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (enableHaptics) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     onOptionsPress?.();
   };
 
+  // Choose Touchable component based on animation prop
+  const TouchableComponent = enableAnimation
+    ? AnimatedTouchableOpacity
+    : TouchableOpacity;
+
   return (
-    <AnimatedTouchableOpacity
+    <TouchableComponent
       activeOpacity={1}
-      style={[styles.container, animatedStyle, style]}
+      // Apply animated style only if animation enabled
+      style={
+        enableAnimation
+          ? [styles.container, animatedStyle, style]
+          : [styles.container, style]
+      }
       onPress={handleCardPress}
       onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
       delayLongPress={500}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
+      // Conditionally add animation handlers
+      onPressIn={enableAnimation ? handlePressIn : undefined}
+      onPressOut={enableAnimation ? handlePressOut : undefined}>
       <LinearGradient
-        colors={getGradientColors() as [string, string]}
+        colors={gradientColors as [string, string]}
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={StyleSheet.absoluteFill}
@@ -272,22 +348,46 @@ export const SurahCard: React.FC<SurahCardProps> = ({
               filled={true}
             />
           )}
+          {isDownloaded && (
+            <DownloadIcon
+              size={moderateScale(14)}
+              color={theme.colors.text}
+              filled={true}
+            />
+          )}
         </View>
       </View>
 
-      {onOptionsPress && (
+      {/* Conditional Rendering: NowPlayingIndicator or Options Button */}
+      {isCurrentlyPlaying ? (
         <TouchableOpacity
-          style={styles.optionsButton}
-          onPress={handleOptionsPressWrapper}
+          style={styles.nowPlayingContainer}
+          onPress={onOptionsPress ? handleOptionsPressWrapper : undefined}
           activeOpacity={0.7}>
-          <Icon
-            name="more-horizontal"
-            type="feather"
-            size={moderateScale(18)}
-            color={theme.colors.textSecondary}
+          <NowPlayingIndicator
+            isPlaying={
+              playbackStatus === TrackPlayerState.Playing ||
+              playbackStatus === TrackPlayerState.Buffering
+            }
+            barCount={3}
+            surahId={id}
           />
         </TouchableOpacity>
+      ) : (
+        onOptionsPress && (
+          <TouchableOpacity
+            style={styles.optionsButton}
+            onPress={handleOptionsPressWrapper}
+            activeOpacity={0.7}>
+            <Icon
+              name="more-horizontal"
+              type="feather"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+          </TouchableOpacity>
+        )
       )}
-    </AnimatedTouchableOpacity>
+    </TouchableComponent>
   );
 };

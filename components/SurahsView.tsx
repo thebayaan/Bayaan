@@ -183,6 +183,7 @@ const CollectionSection = ({
         revelationPlace={item.revelation_place}
         onPress={() => onSurahPress(item)}
         color={collection.color}
+        enableAnimation
       />
     ),
     [collection.color, onSurahPress],
@@ -237,8 +238,7 @@ const mainStyles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingTop: verticalScale(0),
-    paddingBottom: verticalScale(100),
+    paddingBottom: verticalScale(40),
   },
   sectionHeader: {
     fontSize: moderateScale(22),

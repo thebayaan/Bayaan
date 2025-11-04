@@ -11,7 +11,6 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {Icon} from '@rneui/themed';
-import {MAX_PLAYER_CONTENT_HEIGHT} from '@/utils/constants';
 import {TrackItem} from '@/components/TrackItem';
 
 interface QueueListProps {
@@ -76,6 +75,7 @@ export const QueueList: React.FC<QueueListProps> = ({
             <TrackItem
               reciterId={track.reciterId}
               surahId={track.surahId || ''}
+              rewayatId={track.rewayatId}
               onPress={() => onQueueItemPress(index)}
             />
             <TouchableOpacity
@@ -99,10 +99,7 @@ export const QueueList: React.FC<QueueListProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    aspectRatio: 1,
-    maxWidth: MAX_PLAYER_CONTENT_HEIGHT,
-    maxHeight: MAX_PLAYER_CONTENT_HEIGHT,
-    marginTop: moderateScale(5),
+    height: '100%',
     backgroundColor: 'transparent',
   },
   list: {

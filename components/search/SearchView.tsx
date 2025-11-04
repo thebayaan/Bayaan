@@ -254,12 +254,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
+      Keyboard.dismiss();
       await addToRecentSearches(query);
 
       if (result.type === 'reciter') {
         const reciter = result.item as Reciter;
         router.push({
-          pathname: '/(tabs)/(search)/reciter/[id]',
+          pathname: '/(tabs)/(b.search)/reciter/[id]',
           params: {id: reciter.id, name: reciter.name},
         });
       } else {
@@ -272,13 +273,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         switch (defaultReciterSelection) {
           case 'browseAll':
             router.push({
-              pathname: '/(tabs)/(search)/reciter/browse',
+              pathname: '/(tabs)/(b.search)/reciter/browse',
               params: {view: 'all', surahId: surah.id},
             });
             break;
           case 'searchFavorites':
             router.push({
-              pathname: '/(tabs)/(search)/reciter/browse',
+              pathname: '/(tabs)/(b.search)/reciter/browse',
               params: {view: 'favorites', surahId: surah.id},
             });
             break;
@@ -569,6 +570,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           contentContainerStyle={styles.resultsContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={() => Keyboard.dismiss()}
           ListHeaderComponent={
             searching ? (
               <View style={styles.loadingContainer}>

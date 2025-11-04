@@ -1,5 +1,5 @@
 import {Track} from '@/types/audio';
-import {PlaybackState, QueueState, ErrorState} from './state';
+import {PlaybackState, QueueState} from './state';
 
 /**
  * All possible event types in the player system

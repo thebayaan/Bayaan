@@ -1,14 +1,21 @@
-import React, {useEffect, useState} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import React, {useEffect, useState, useMemo} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  GestureResponderEvent,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import Color from 'color';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface TrackItemProps {
   reciterId: string;
@@ -16,14 +23,41 @@ interface TrackItemProps {
   rewayatId?: string;
   onPress: () => void;
   onPlayPress?: () => void;
+  hidePlayButton?: boolean;
 }
 
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
-  ({reciterId, surahId, rewayatId, onPress, onPlayPress}) => {
+  ({reciterId, surahId, rewayatId, onPress, onPlayPress, hidePlayButton}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const [reciter, setReciter] = useState<Reciter | null>(null);
     const [rewayat, setRewayat] = useState<Rewayat | null>(null);
+
+    // Get player state
+    const playbackStatus = usePlayerStore(state => state.playback.state);
+    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+    const tracks = usePlayerStore(state => state.queue.tracks);
+
+    // Check if this item is the currently active track
+    const isCurrentlyPlaying = useMemo(() => {
+      const currentTrack =
+        tracks && currentIndex >= 0 && currentIndex < tracks.length
+          ? tracks[currentIndex]
+          : null;
+
+      if (!reciterId || !currentTrack || !surahId) return false;
+
+      const rewayatMatches =
+        rewayatId && currentTrack.rewayatId
+          ? rewayatId === currentTrack.rewayatId
+          : !rewayatId && !currentTrack.rewayatId; // Match if both are undefined/null
+
+      return (
+        currentTrack.reciterId === reciterId &&
+        currentTrack.surahId === surahId && // surahId is already string here
+        rewayatMatches
+      );
+    }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
 
     useEffect(() => {
       let mounted = true;
@@ -66,6 +100,11 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       );
     };
 
+    const handlePlayButtonPress = (e: GestureResponderEvent) => {
+      e.stopPropagation(); // Prevent triggering onPress of the main item
+      onPlayPress?.();
+    };
+
     return (
       <TouchableOpacity
         activeOpacity={0.99}
@@ -78,28 +117,41 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
             style={styles.reciterImage}
           />
         </View>
+
         <View style={styles.trackInfo}>
           <View style={styles.surahNameContainer}>
             <View style={styles.surahTextContainer}>
-              <Text style={styles.surahName}>
-                {surah.id + '. ' + surah.name}
-              </Text>
+              <View style={styles.surahNameRow}>
+                <Text style={styles.surahName}>
+                  {surah.id + '. ' + surah.name}
+                </Text>
+                {(isCurrentlyPlaying || (onPlayPress && !hidePlayButton)) && (
+                  <TouchableOpacity
+                    style={styles.playIndicatorContainer}
+                    onPress={handlePlayButtonPress}
+                    activeOpacity={0.7}>
+                    {isCurrentlyPlaying && (
+                      <NowPlayingIndicator
+                        isPlaying={
+                          playbackStatus === TrackPlayerState.Playing ||
+                          playbackStatus === TrackPlayerState.Buffering
+                        }
+                        surahId={surah.id}
+                        barCount={3}
+                        barWidth={moderateScale(2)}
+                        gap={moderateScale(1.2)}
+                      />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
               <Text style={styles.reciterName}>{reciter.name}</Text>
               {renderRewayatBadge()}
             </View>
+
             <Text style={styles.surahGlyph}>{surahGlyph}</Text>
           </View>
         </View>
-        {onPlayPress && (
-          <TouchableOpacity onPress={onPlayPress}>
-            <Icon
-              name="play-circle"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity>
-        )}
       </TouchableOpacity>
     );
   },
@@ -112,10 +164,8 @@ const createStyles = (theme: Theme) =>
     trackItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(10),
-      marginHorizontal: moderateScale(15),
-      borderRadius: moderateScale(8),
-      marginVertical: moderateScale(4),
+      paddingVertical: moderateScale(8),
+      paddingHorizontal: moderateScale(18),
     },
     imageContainer: {
       marginRight: moderateScale(12),
@@ -134,41 +184,50 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
     },
     surahTextContainer: {
-      flex: 1,
-      marginRight: moderateScale(12),
+      flexShrink: 1,
+      marginRight: moderateScale(6),
+    },
+    surahNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: moderateScale(1),
     },
     surahName: {
       fontSize: moderateScale(14),
-      fontFamily: 'Manrope-Bold',
+      fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
     },
     surahGlyph: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(22),
       fontFamily: 'SurahNames',
       color: theme.colors.text,
       textAlign: 'right',
     },
     reciterName: {
       fontSize: moderateScale(12),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginVertical: moderateScale(2),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
     },
     rewayatBadge: {
-      marginTop: moderateScale(4),
+      marginTop: moderateScale(3),
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: moderateScale(6),
-      paddingVertical: moderateScale(2),
-      borderRadius: moderateScale(4),
+      paddingHorizontal: moderateScale(5),
+      paddingVertical: moderateScale(1.5),
+      borderRadius: moderateScale(3),
       borderWidth: 1,
       borderColor: Color(theme.colors.border).alpha(0.1).toString(),
       alignSelf: 'flex-start',
     },
     rewayatText: {
       fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
+      fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
       textTransform: 'capitalize',
+    },
+    playIndicatorContainer: {
+      marginLeft: moderateScale(6),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });

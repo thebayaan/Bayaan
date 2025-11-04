@@ -18,6 +18,7 @@ interface UpdatedSurahListProps extends SurahListProps {
   viewMode: ReciterProfileViewMode;
   getColorForSurah: (id: number) => string;
   sortOption: ReciterProfileSortOption;
+  rewayatId?: string; // Add rewayatId prop
 }
 
 // Shared ItemSeparator component
@@ -43,12 +44,14 @@ export const SurahList = React.forwardRef<
       onSurahPress,
       reciterId,
       isLoved,
+      isDownloaded,
       onOptionsPress,
       onScroll,
       ListHeaderComponent,
       contentContainerStyle,
       viewMode,
       getColorForSurah,
+      rewayatId,
     },
     ref,
   ) => {
@@ -68,7 +71,10 @@ export const SurahList = React.forwardRef<
           onPress={() => onSurahPress(item)}
           style={styles.surahCard}
           isLoved={isLoved(reciterId, item.id.toString())}
+          isDownloaded={isDownloaded(reciterId, item.id.toString())}
           onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
+          reciterId={reciterId}
+          rewayatId={rewayatId}
         />
       ),
       [
@@ -76,8 +82,10 @@ export const SurahList = React.forwardRef<
         onSurahPress,
         styles.surahCard,
         isLoved,
+        isDownloaded,
         reciterId,
         onOptionsPress,
+        rewayatId,
       ],
     );
 
@@ -89,10 +97,19 @@ export const SurahList = React.forwardRef<
           onPress={onSurahPress}
           reciterId={reciterId}
           isLoved={isLoved(reciterId, item.id.toString())}
+          isDownloaded={isDownloaded(reciterId, item.id.toString())}
           onOptionsPress={onOptionsPress}
+          rewayatId={rewayatId}
         />
       ),
-      [onSurahPress, reciterId, isLoved, onOptionsPress],
+      [
+        onSurahPress,
+        reciterId,
+        isLoved,
+        isDownloaded,
+        onOptionsPress,
+        rewayatId,
+      ],
     );
 
     // Shared ListHeader to avoid re-rendering issues
@@ -117,7 +134,7 @@ export const SurahList = React.forwardRef<
           ]}>
           <Animated.FlatList
             ref={viewMode === 'card' ? ref : undefined}
-            bounces={false}
+            bounces={true}
             showsVerticalScrollIndicator={false}
             data={surahs}
             renderItem={renderCardItem}
@@ -147,7 +164,7 @@ export const SurahList = React.forwardRef<
           ]}>
           <Animated.FlatList
             ref={viewMode === 'list' ? ref : undefined}
-            bounces={false}
+            bounces={true}
             showsVerticalScrollIndicator={false}
             data={surahs}
             renderItem={renderListItem}
@@ -193,10 +210,10 @@ const createStyles = (theme: Theme) =>
     columnWrapper: {
       justifyContent: 'space-between',
       marginBottom: moderateScale(16),
-      paddingHorizontal: moderateScale(10),
+      paddingHorizontal: moderateScale(16),
     },
     surahCard: {
-      width: '48%',
+      width: '47%',
     },
     listSeparator: {
       height: moderateScale(4),

@@ -1,6 +1,10 @@
 import React from 'react';
 import {Text, StyleSheet, StyleProp, TextStyle} from 'react-native';
-import {getVersionString, getFullVersionString, getBuildTypeLabel} from '@/utils/appVersion';
+import {
+  getVersionString,
+  getFullVersionString,
+  getBuildTypeLabel,
+} from '@/utils/appVersion';
 import {useTheme} from '@/hooks/useTheme';
 
 interface VersionDisplayProps {
@@ -15,15 +19,16 @@ export const VersionDisplay: React.FC<VersionDisplayProps> = ({
   style,
 }) => {
   const {theme} = useTheme();
-  
-  const versionText = showBuildNumber 
+
+  const versionText = showBuildNumber
     ? getFullVersionString()
     : getVersionString();
-    
+
   const buildTypeLabel = showBuildType ? getBuildTypeLabel() : '';
-  
+
   return (
-    <Text style={[styles.versionText, {color: theme.colors.textSecondary}, style]}>
+    <Text
+      style={[styles.versionText, {color: theme.colors.textSecondary}, style]}>
       Version {versionText}
       {buildTypeLabel ? ` - ${buildTypeLabel}` : ''}
     </Text>
@@ -36,4 +41,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Regular',
     textAlign: 'center',
   },
-}); 
+});
