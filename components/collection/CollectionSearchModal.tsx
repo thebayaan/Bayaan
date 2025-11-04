@@ -1,13 +1,13 @@
 /**
  * Collection Search Modal
- * 
+ *
  * This modal allows users to search their entire collection:
  * - Playlists (by name AND by content inside playlists)
  * - Loved tracks (by surah name)
  * - Downloads (by surah name + reciter)
  * - Favorite reciters
  * - Rewayat (recitation styles)
- * 
+ *
  * Uses "deep search" meaning it searches inside playlists, not just names.
  */
 
@@ -77,7 +77,13 @@ type SearchResultMetadata =
  * Each result has a type and the actual data
  */
 interface SearchResult {
-  type: 'playlist' | 'reciter' | 'surah' | 'rewayat' | 'download' | 'playlist_item';
+  type:
+    | 'playlist'
+    | 'reciter'
+    | 'surah'
+    | 'rewayat'
+    | 'download'
+    | 'playlist_item';
   id: string;
   title: string;
   subtitle: string;
@@ -98,53 +104,53 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
   // ============================================
   // STATE MANAGEMENT
   // ============================================
-  
+
   /**
    * Search query - what the user is typing
    */
   const [query, setQuery] = useState('');
-  
+
   /**
    * Search results - what we find
    */
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  
+
   /**
    * Are we currently searching? (for loading indicator)
    */
   const [isSearching, setIsSearching] = useState(false);
-  
+
   /**
    * Reference to the search input so we can focus it when modal opens
    */
   const searchInputRef = useRef<TextInput>(null);
-  
+
   // ============================================
   // HOOKS - Getting Data
   // ============================================
-  
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {theme: activeTheme} = useTheme();
-  
+
   // Get all user's collection data
   const {favoriteReciters} = useFavoriteReciters(); // User's favorite reciters
-  const {lovedTracks} = useLoved();                  // Surahs they loved
-  const {downloads} = useDownload();                 // Downloaded surahs
+  const {lovedTracks} = useLoved(); // Surahs they loved
+  const {downloads} = useDownload(); // Downloaded surahs
   const {playlists, getPlaylistItems} = usePlaylists(); // Playlists + function to get items
-  
+
   // Get ALL reciters (not just favorites) for lookup
   const [allReciters, setAllReciters] = useState<Reciter[]>([]);
-  
+
   // Load all reciters on mount
   useEffect(() => {
     getAllReciters().then(setAllReciters);
   }, []);
-  
+
   // ============================================
   // EFFECTS
   // ============================================
-  
+
   /**
    * Effect: Auto-focus search when modal opens
    * When the modal becomes visible, automatically put cursor in search box
@@ -161,28 +167,28 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
       setSearchResults([]);
     }
   }, [visible]);
-  
+
   // ============================================
   // DEEP SEARCH FUNCTION
   // ============================================
-  
+
   /**
    * This is where the magic happens!
    * Performs deep search across all collection types
-   * 
+   *
    * @param searchQuery - What the user is searching for
    */
   const performSearch = async (searchQuery: string) => {
     // Normalize the query (lowercase, trim whitespace)
     const normalizedQuery = searchQuery.toLowerCase().trim();
-    
+
     // If no query, show nothing
     if (normalizedQuery.length === 0) {
       setSearchResults([]);
       setIsSearching(false);
       return;
     }
-    
+
     console.log('🔍 Starting deep search for:', normalizedQuery);
     console.log('📊 Collection data:', {
       playlists: playlists?.length || 0,
@@ -192,17 +198,20 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
     });
     setIsSearching(true);
     const results: SearchResult[] = [];
-    
+
     // ============================================
     // 1. SEARCH PLAYLISTS - Deep Search!
     // ============================================
     console.log('📚 Searching playlists...');
-    console.log('  Playlists available:', playlists?.map(p => p.name));
-    
+    console.log(
+      '  Playlists available:',
+      playlists?.map(p => p.name),
+    );
+
     if (!playlists || playlists.length === 0) {
       console.log('  ⚠️ No playlists available');
     }
-    
+
     for (const playlist of playlists || []) {
       /**
        * STEP 1: Check if playlist NAME matches
@@ -217,35 +226,43 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         });
         console.log('  ✓ Found playlist by name:', playlist.name);
       }
-      
+
       /**
        * STEP 2: Deep search - check items INSIDE the playlist
        * Only do this if name didn't match (avoid unnecessary DB calls)
        */
       const nameMatched = playlist.name.toLowerCase().includes(normalizedQuery);
-      
+
       if (!nameMatched && playlist.itemCount > 0) {
         try {
           // Fetch the items inside this playlist (async database call)
           const items = await getPlaylistItems(playlist.id);
-          console.log(`  📦 Checking ${items.length} items inside "${playlist.name}"`);
-          
+          console.log(
+            `  📦 Checking ${items.length} items inside "${playlist.name}"`,
+          );
+
           // For each item, check if it matches the query
           for (const item of items) {
             // Get surah information
             const surah = getSurahById(parseInt(item.surahId));
-            
+
             if (surah) {
               // Check if surah name matches
-              const surahNameMatch = surah.name.toLowerCase().includes(normalizedQuery);
+              const surahNameMatch = surah.name
+                .toLowerCase()
+                .includes(normalizedQuery);
               const surahArabicMatch = surah.name_arabic.includes(searchQuery); // Arabic doesn't have case, so use original query
-              const surahTransMatch = surah.translated_name_english.toLowerCase().includes(normalizedQuery);
-              
+              const surahTransMatch = surah.translated_name_english
+                .toLowerCase()
+                .includes(normalizedQuery);
+
               if (surahNameMatch || surahArabicMatch || surahTransMatch) {
                 // Get reciter name for context - search in ALL reciters, not just favorites
-                const reciter = allReciters.find(r => r.id === item.reciterId) || favoriteReciters.find(r => r.id === item.reciterId);
+                const reciter =
+                  allReciters.find(r => r.id === item.reciterId) ||
+                  favoriteReciters.find(r => r.id === item.reciterId);
                 const reciterName = reciter ? reciter.name : 'Unknown Reciter';
-                
+
                 results.push({
                   type: 'playlist_item',
                   id: `playlist-${playlist.id}-item-${item.id}`,
@@ -260,7 +277,9 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
                     },
                   },
                 });
-                console.log(`  ✓ Found surah "${surah.name}" in playlist "${playlist.name}"`);
+                console.log(
+                  `  ✓ Found surah "${surah.name}" in playlist "${playlist.name}"`,
+                );
               }
             }
           }
@@ -269,32 +288,34 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         }
       }
     }
-    
+
     // ============================================
     // 2. SEARCH LOVED TRACKS
     // ============================================
     console.log('❤️ Searching loved tracks...', lovedTracks?.length || 0);
-    
+
     if (!lovedTracks || lovedTracks.length === 0) {
       console.log('  ⚠️ No loved tracks available');
     }
-    
+
     lovedTracks.forEach(track => {
       // Get reciter info - search in ALL reciters, not just favorites
-      const reciter = allReciters.find(r => r.id === track.reciterId) || favoriteReciters.find(r => r.id === track.reciterId);
+      const reciter =
+        allReciters.find(r => r.id === track.reciterId) ||
+        favoriteReciters.find(r => r.id === track.reciterId);
       if (!reciter) return;
-      
+
       // Get surah info
       const surah = getSurahById(parseInt(track.surahId));
       if (!surah) return;
-      
+
       // Check if reciter name, surah name, or arabic name matches
-      const matches = 
+      const matches =
         reciter.name.toLowerCase().includes(normalizedQuery) ||
         surah.name.toLowerCase().includes(normalizedQuery) ||
         surah.name_arabic.includes(searchQuery) ||
         surah.translated_name_english.toLowerCase().includes(normalizedQuery);
-      
+
       if (matches) {
         results.push({
           type: 'surah',
@@ -306,32 +327,34 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         console.log('  ✓ Found loved track:', surah.name);
       }
     });
-    
+
     // ============================================
     // 3. SEARCH DOWNLOADS
     // ============================================
     console.log('💾 Searching downloads...', downloads?.length || 0);
-    
+
     if (!downloads || downloads.length === 0) {
       console.log('  ⚠️ No downloads available');
     }
-    
+
     downloads.forEach(download => {
       // Get reciter info - search in ALL reciters, not just favorites
-      const reciter = allReciters.find(r => r.id === download.reciterId) || favoriteReciters.find(r => r.id === download.reciterId);
+      const reciter =
+        allReciters.find(r => r.id === download.reciterId) ||
+        favoriteReciters.find(r => r.id === download.reciterId);
       if (!reciter) return;
-      
+
       // Get surah info
       const surah = getSurahById(parseInt(download.surahId));
       if (!surah) return;
-      
+
       // Check if matches
-      const matches = 
+      const matches =
         reciter.name.toLowerCase().includes(normalizedQuery) ||
         surah.name.toLowerCase().includes(normalizedQuery) ||
         surah.name_arabic.includes(searchQuery) ||
         surah.translated_name_english.toLowerCase().includes(normalizedQuery);
-      
+
       if (matches) {
         results.push({
           type: 'download',
@@ -343,16 +366,19 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         console.log('  ✓ Found download:', surah.name);
       }
     });
-    
+
     // ============================================
     // 4. SEARCH FAVORITE RECITERS
     // ============================================
-    console.log('⭐ Searching favorite reciters...', favoriteReciters?.length || 0);
-    
+    console.log(
+      '⭐ Searching favorite reciters...',
+      favoriteReciters?.length || 0,
+    );
+
     if (!favoriteReciters || favoriteReciters.length === 0) {
       console.log('  ⚠️ No favorite reciters available');
     }
-    
+
     favoriteReciters.forEach(reciter => {
       // Check if reciter name matches
       if (reciter.name.toLowerCase().includes(normalizedQuery)) {
@@ -365,16 +391,16 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         });
         console.log('  ✓ Found favorite reciter:', reciter.name);
       }
-      
+
       /**
        * Also search their rewayat (recitation styles)
        */
       reciter.rewayat.forEach(rewayat => {
         // Search in rewayat name, style, and compare lowercase for case-insensitive matching
-        const rewayatMatches = 
+        const rewayatMatches =
           rewayat.name.toLowerCase().includes(normalizedQuery) ||
           rewayat.style.toLowerCase().includes(normalizedQuery);
-        
+
         if (rewayatMatches) {
           results.push({
             type: 'rewayat',
@@ -387,18 +413,18 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         }
       });
     });
-    
+
     console.log(`✅ Search complete! Found ${results.length} results`);
-    
+
     // Update UI with results
     setSearchResults(results);
     setIsSearching(false);
   };
-  
+
   // ============================================
   // DEBOUNCED SEARCH
   // ============================================
-  
+
   /**
    * Debounce the search query
    * This prevents searching on every keystroke
@@ -410,14 +436,14 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
       setIsSearching(false);
       return;
     }
-    
+
     let cancelled = false;
-    
+
     const timeoutId = setTimeout(async () => {
       if (cancelled) return;
       await performSearch(query);
     }, SEARCH_DEBOUNCE_MS);
-    
+
     // Cleanup timeout on unmount or query change
     return () => {
       cancelled = true;
@@ -425,77 +451,83 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
     };
     // Only depend on query, and always use latest values from props/hooks
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
-  
+
   // ============================================
   // NAVIGATION HANDLER
   // ============================================
-  
+
   /**
    * Handle when user taps on a search result
    * Navigates to the appropriate screen based on result type
    */
-  const handleResultPress = useCallback((result: SearchResult) => {
-    Keyboard.dismiss(); // Hide keyboard
-    
-    switch (result.type) {
-      case 'playlist':
-        // Navigate to playlist detail page
-        router.push(`/playlist/${result.id}`);
-        break;
-        
-      case 'playlist_item':
-        // Navigate to the track inside the playlist
-        if (result.metadata.kind === 'playlist_item') {
-          const {surah, item} = result.metadata.data;
-          router.push({
-            pathname: '/player',
-            params: {
-              reciterId: item.reciterId,
-              surahId: item.surahId,
-              rewayatId: item.rewayatId,
-            },
-          });
-        }
-        break;
-        
-      case 'reciter':
-        // Navigate to reciter profile
-        router.push(`/reciter/${result.id}`);
-        break;
-        
-      case 'rewayat':
-        // Navigate to reciter profile (they can select the rewayat there)
-        if (result.metadata.kind === 'rewayat') {
-          const {reciter} = result.metadata.data;
-          router.push(`/reciter/${reciter.id}`);
-        }
-        break;
-        
-      case 'surah':
-      case 'download':
-        // Navigate to player with the track
-        if (result.metadata.kind === 'surah' || result.metadata.kind === 'download') {
-          const track = result.metadata.data;
-          router.push({
-            pathname: '/player',
-            params: {
-              reciterId: track.reciterId,
-              surahId: track.surahId,
-              rewayatId: track.rewayatId,
-            },
-          });
-        }
-        break;
-    }
-    
-    // Close modal
-    onClose();
-  }, [router, onClose]);
-  
+  const handleResultPress = useCallback(
+    (result: SearchResult) => {
+      Keyboard.dismiss(); // Hide keyboard
+
+      switch (result.type) {
+        case 'playlist':
+          // Navigate to playlist detail page
+          router.push(`/playlist/${result.id}`);
+          break;
+
+        case 'playlist_item':
+          // Navigate to the track inside the playlist
+          if (result.metadata.kind === 'playlist_item') {
+            const {surah, item} = result.metadata.data;
+            router.push({
+              pathname: '/player',
+              params: {
+                reciterId: item.reciterId,
+                surahId: item.surahId,
+                rewayatId: item.rewayatId,
+              },
+            });
+          }
+          break;
+
+        case 'reciter':
+          // Navigate to reciter profile
+          router.push(`/reciter/${result.id}`);
+          break;
+
+        case 'rewayat':
+          // Navigate to reciter profile (they can select the rewayat there)
+          if (result.metadata.kind === 'rewayat') {
+            const {reciter} = result.metadata.data;
+            router.push(`/reciter/${reciter.id}`);
+          }
+          break;
+
+        case 'surah':
+        case 'download':
+          // Navigate to player with the track
+          if (
+            result.metadata.kind === 'surah' ||
+            result.metadata.kind === 'download'
+          ) {
+            const track = result.metadata.data;
+            router.push({
+              pathname: '/player',
+              params: {
+                reciterId: track.reciterId,
+                surahId: track.surahId,
+                rewayatId: track.rewayatId,
+              },
+            });
+          }
+          break;
+      }
+
+      // Close modal
+      onClose();
+    },
+    [router, onClose],
+  );
+
   // ============================================
   // UI HELPERS
   // ============================================
-  
+
   /**
    * Get icon for each result type
    */
@@ -517,7 +549,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         return 'search';
     }
   };
-  
+
   /**
    * Get type label for each result
    */
@@ -539,11 +571,11 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         return '';
     }
   };
-  
+
   // ============================================
   // RENDER FUNCTIONS
   // ============================================
-  
+
   /**
    * Render each search result item
    */
@@ -553,7 +585,11 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
       onPress={() => handleResultPress(item)}
       activeOpacity={0.7}>
       {/* Icon */}
-      <View style={[styles.iconContainer, {backgroundColor: activeTheme.colors.card}]}>
+      <View
+        style={[
+          styles.iconContainer,
+          {backgroundColor: activeTheme.colors.card},
+        ]}>
         <Icon
           name={getIconForType(item.type)}
           type="feather"
@@ -561,40 +597,54 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           color={activeTheme.colors.text}
         />
       </View>
-      
+
       {/* Text Content */}
       <View style={styles.resultContent}>
-        <Text style={[styles.resultTitle, {color: activeTheme.colors.text}]} numberOfLines={1}>
+        <Text
+          style={[styles.resultTitle, {color: activeTheme.colors.text}]}
+          numberOfLines={1}>
           {item.title}
         </Text>
-        <Text style={[styles.resultSubtitle, {color: activeTheme.colors.textSecondary}]} numberOfLines={1}>
+        <Text
+          style={[
+            styles.resultSubtitle,
+            {color: activeTheme.colors.textSecondary},
+          ]}
+          numberOfLines={1}>
           {item.subtitle}
         </Text>
       </View>
-      
+
       {/* Type Badge */}
       <View style={styles.typeBadge}>
-        <Text style={[styles.typeBadgeText, {color: activeTheme.colors.textSecondary}]}>
+        <Text
+          style={[
+            styles.typeBadgeText,
+            {color: activeTheme.colors.textSecondary},
+          ]}>
           {getTypeLabel(item.type)}
         </Text>
       </View>
     </TouchableOpacity>
   );
-  
+
   // Don't render if not visible
   if (!visible) return null;
-  
+
   // ============================================
   // MAIN UI
   // ============================================
-  
+
   return (
-    <View style={[styles.modalContainer, {backgroundColor: activeTheme.colors.background}]}>
+    <View
+      style={[
+        styles.modalContainer,
+        {backgroundColor: activeTheme.colors.background},
+      ]}>
       <Animated.View
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(200)}
         style={styles.container}>
-        
         {/* Header with Search Input */}
         <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
           {/* Blur effect for iOS */}
@@ -606,7 +656,11 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
               <View
                 style={[
                   StyleSheet.absoluteFill,
-                  {backgroundColor: Color(activeTheme.colors.card).alpha(0.7).toString()},
+                  {
+                    backgroundColor: Color(activeTheme.colors.card)
+                      .alpha(0.7)
+                      .toString(),
+                  },
                 ]}
               />
             </BlurView>
@@ -618,7 +672,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
               ]}
             />
           )}
-          
+
           {/* Search Input */}
           <View style={styles.headerContent}>
             <SearchInput
@@ -632,8 +686,12 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
               }}
               iconColor={activeTheme.colors.text}
               textColor={activeTheme.colors.text}
-              backgroundColor={Color(activeTheme.colors.card).alpha(0.5).toString()}
-              borderColor={Color(activeTheme.colors.border).alpha(0.2).toString()}
+              backgroundColor={Color(activeTheme.colors.card)
+                .alpha(0.5)
+                .toString()}
+              borderColor={Color(activeTheme.colors.border)
+                .alpha(0.2)
+                .toString()}
               keyboardAppearance={activeTheme.isDarkMode ? 'dark' : 'light'}
               autoCorrect={false}
               autoComplete="off"
@@ -641,7 +699,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
             />
           </View>
         </View>
-        
+
         {/* Results List */}
         {query.trim().length === 0 ? (
           /* Empty State - No search yet */
@@ -655,7 +713,11 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
             <Text style={[styles.emptyTitle, {color: activeTheme.colors.text}]}>
               Search Your Collection
             </Text>
-            <Text style={[styles.emptySubtitle, {color: activeTheme.colors.textSecondary}]}>
+            <Text
+              style={[
+                styles.emptySubtitle,
+                {color: activeTheme.colors.textSecondary},
+              ]}>
               Search playlists, reciters, surahs, rewayat, and downloads
             </Text>
           </View>
@@ -669,7 +731,6 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={() => Keyboard.dismiss()}
-            
             /* Header - Shows loading or empty state */
             ListHeaderComponent={
               isSearching ? (
@@ -680,7 +741,11 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
                     size={moderateScale(24)}
                     color={activeTheme.colors.textSecondary}
                   />
-                  <Text style={[styles.loadingText, {color: activeTheme.colors.textSecondary}]}>
+                  <Text
+                    style={[
+                      styles.loadingText,
+                      {color: activeTheme.colors.textSecondary},
+                    ]}>
                     Searching...
                   </Text>
                 </View>
@@ -692,23 +757,35 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
                     size={moderateScale(48)}
                     color={activeTheme.colors.textSecondary}
                   />
-                  <Text style={[styles.noResultsText, {color: activeTheme.colors.text}]}>
+                  <Text
+                    style={[
+                      styles.noResultsText,
+                      {color: activeTheme.colors.text},
+                    ]}>
                     No results found
                   </Text>
-                  <Text style={[styles.noResultsSubtext, {color: activeTheme.colors.textSecondary}]}>
+                  <Text
+                    style={[
+                      styles.noResultsSubtext,
+                      {color: activeTheme.colors.textSecondary},
+                    ]}>
                     Try different keywords
                   </Text>
                 </View>
               ) : (
                 /* Show result count */
                 <View style={styles.resultsHeader}>
-                  <Text style={[styles.resultsCount, {color: activeTheme.colors.textSecondary}]}>
-                    {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
+                  <Text
+                    style={[
+                      styles.resultsCount,
+                      {color: activeTheme.colors.textSecondary},
+                    ]}>
+                    {searchResults.length}{' '}
+                    {searchResults.length === 1 ? 'result' : 'results'}
                   </Text>
                 </View>
               )
             }
-            
             /* Footer - Extra space at bottom */
             ListFooterComponent={<View style={{height: moderateScale(100)}} />}
           />
@@ -830,4 +907,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

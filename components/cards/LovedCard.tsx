@@ -76,5 +76,3 @@ export const LovedCard: React.FC<LovedCardProps> = ({
     </TouchableOpacity>
   );
 };
-
-
