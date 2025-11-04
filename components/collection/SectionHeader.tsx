@@ -18,16 +18,17 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
   theme,
 }) => {
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <View
+      style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {/* <Text style={[styles.title, {color: theme.colors.textSecondary}]}>{title}</Text> */}
-      
+
       {onViewToggle && (
         <TouchableOpacity
           style={styles.toggleButton}
           onPress={onViewToggle}
           activeOpacity={0.7}>
           <Icon
-            name={isGridView ? "list" : "grid"}
+            name={isGridView ? 'list' : 'grid'}
             type="feather"
             size={moderateScale(20)}
             color={theme.colors.text}

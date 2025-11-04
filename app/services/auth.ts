@@ -3,17 +3,20 @@ export async function deleteAccount(password: string) {
     console.log('[Auth] Starting account deletion process...');
 
     // Get current user
-    const {data: {user}} = await supabase.auth.getUser();
+    const {
+      data: {user},
+    } = await supabase.auth.getUser();
     if (!user?.email) {
       return {success: false, error: 'No user found'};
     }
 
     // Re-authenticate user before deletion
     console.log('[Auth] Re-authenticating user...');
-    const {data: authData, error: authError} = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password,
-    });
+    const {data: authData, error: authError} =
+      await supabase.auth.signInWithPassword({
+        email: user.email,
+        password,
+      });
 
     if (authError || !authData.user) {
       console.error('[Auth] Re-authentication failed:', authError);
@@ -28,9 +31,7 @@ export async function deleteAccount(password: string) {
 
     // Delete the user
     console.log('[Auth] Deleting user account...');
-    const {error: deleteError} = await supabase.auth.admin.deleteUser(
-      user.id,
-    );
+    const {error: deleteError} = await supabase.auth.admin.deleteUser(user.id);
 
     if (deleteError) {
       console.error('[Auth] Delete account error:', deleteError);
@@ -43,7 +44,8 @@ export async function deleteAccount(password: string) {
     console.error('[Auth] Unexpected delete account error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+      error:
+        error instanceof Error ? error.message : 'An unexpected error occurred',
     };
   }
-} 
+}

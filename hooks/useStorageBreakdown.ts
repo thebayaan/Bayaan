@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
+import {useState, useEffect} from 'react';
 import DeviceInfo from 'react-native-device-info';
-import { getDownloadsStorage, getCacheStorage, getDeviceStorage, formatBytes } from '@/services/storageService';
+import {
+  getDownloadsStorage,
+  getCacheStorage,
+  getDeviceStorage,
+  formatBytes,
+} from '@/services/storageService';
 
 export function useStorageBreakdown() {
   const [data, setData] = useState({
@@ -28,25 +33,25 @@ export function useStorageBreakdown() {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Get device storage (total capacity and free space)
         const deviceStorage = await getDeviceStorage();
-        
+
         // Get downloads storage
         const downloadsSize = getDownloadsStorage();
         console.log('[Storage] Downloads size:', downloadsSize, 'bytes');
-        
+
         // Get cache storage
         const cacheSize = await getCacheStorage();
         console.log('[Storage] Cache size:', cacheSize, 'bytes');
-        
+
         // Calculate breakdown:
         // Device used = total - free
         // Device used = other apps + our downloads + our cache
         // So: other apps = device used - our downloads - our cache
         const deviceUsed = deviceStorage.used;
         const otherAppsSize = deviceUsed - downloadsSize - cacheSize;
-        
+
         // Update raw data (in bytes)
         setRawData({
           total: deviceStorage.total,
@@ -56,7 +61,7 @@ export function useStorageBreakdown() {
           cache: cacheSize,
           otherApps: Math.max(0, otherAppsSize), // Ensure non-negative
         });
-        
+
         // Update formatted data
         setData({
           total: formatBytes(deviceStorage.total),
@@ -73,7 +78,7 @@ export function useStorageBreakdown() {
         setLoading(false);
       }
     }
-    
+
     loadStorageInfo();
   }, [refreshKey]);
 
@@ -81,10 +86,10 @@ export function useStorageBreakdown() {
     setRefreshKey(prev => prev + 1);
   };
 
-  return { 
-    ...data, 
+  return {
+    ...data,
     rawData, // Include raw bytes for calculations if needed
-    loading, 
+    loading,
     error,
     refresh,
   };
