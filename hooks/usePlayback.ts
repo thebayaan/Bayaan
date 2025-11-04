@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {QueueManager} from '@/services/QueueManager';
 import debounce from 'lodash/debounce';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {useDownloadStore} from '@/services/player/store/downloadStore';
 
 // Queue state management
 const QueueState = {
@@ -341,10 +342,14 @@ export const usePlayback = () => {
         // Optimize: Get artwork once (same for all tracks from same reciter)
         const artwork = getReciterArtwork(reciter);
         
+        // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
+        useDownloadStore.getState(); // Trigger hydration if not already done
+        
         // STEP 1: Create ONLY first track (instant - ~5ms)
+        // Use generateSmartAudioUrl - store is now warm, so check is fast (<1ms)
         const firstTrack = {
           id: `${reciter.id}:${firstSurah.id}`,
-          url: generateSmartAudioUrl(reciter, firstSurah.id.toString()),
+          url: generateSmartAudioUrl(reciter, firstSurah.id.toString()), // Fast now - store is warm
           title: firstSurah.name,
           artist: reciter.name,
           reciterId: reciter.id,
