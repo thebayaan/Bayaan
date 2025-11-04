@@ -2,8 +2,12 @@ import {useCallback} from 'react';
 import {Reciter} from '@/data/reciterData';
 import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
 
+interface FavoriteReciterWithTimestamp extends Reciter {
+  favoritedAt: number;
+}
+
 interface UseFavoriteRecitersReturn {
-  favoriteReciters: Reciter[];
+  favoriteReciters: FavoriteReciterWithTimestamp[];
   isFavoriteReciter: (reciterId: string) => boolean;
   toggleFavorite: (reciter: Reciter) => void;
   addFavorite: (reciter: Reciter) => void;

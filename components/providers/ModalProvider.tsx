@@ -8,8 +8,6 @@ import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
 import {SelectReciterModal} from '@/components/modals/SelectReciterModal';
 import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
-import {EditPlaylistModal} from '@/components/collection/EditPlaylistModal';
-import {useTheme} from '@/hooks/useTheme';
 import type {RewayatStyle} from '@/types/reciter';
 
 interface ModalContextType {
@@ -56,7 +54,6 @@ interface ModalProviderProps {
 }
 
 export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
-  const {theme} = useTheme();
   const surahOptionsRef = useRef<BottomSheet>(null);
   const rewayatInfoRef = useRef<BottomSheet>(null);
   const favoriteRecitersRef = useRef<BottomSheet>(null);
@@ -96,7 +93,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
       onEdit?: () => void;
     } | null>(null);
 
-  const [editPlaylistParams, setEditPlaylistParams] = React.useState<{
+  const [, setEditPlaylistParams] = React.useState<{
     playlistId: string;
     playlistName: string;
     playlistColor: string;
@@ -229,11 +226,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     setPlaylistContextMenuParams(null);
   }, []);
 
-  const handleCloseEditPlaylist = useCallback(() => {
-    editPlaylistModalRef.current?.close();
-    setEditPlaylistParams(null);
-  }, []);
-
   return (
     <ModalContext.Provider
       value={{
@@ -298,20 +290,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
               }, 100);
             }}
             onClose={handleClosePlaylistContextMenu}
-          />
-        )}
-        {editPlaylistParams && (
-          <EditPlaylistModal
-            bottomSheetRef={editPlaylistModalRef}
-            playlistId={editPlaylistParams.playlistId}
-            playlistName={editPlaylistParams.playlistName}
-            playlistColor={editPlaylistParams.playlistColor}
-            onSave={(name, color) => {
-              editPlaylistParams.onSave(name, color);
-              handleCloseEditPlaylist();
-            }}
-            onClose={handleCloseEditPlaylist}
-            theme={theme}
           />
         )}
       </View>

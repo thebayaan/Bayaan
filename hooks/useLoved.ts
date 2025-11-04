@@ -3,7 +3,12 @@ import {useLoved as useLovedStore} from '@/services/player/store/lovedStore';
 import {Track} from '@/types/audio';
 
 interface UseLoved {
-  lovedTracks: Array<{reciterId: string; surahId: string; rewayatId: string}>;
+  lovedTracks: Array<{
+    reciterId: string;
+    surahId: string;
+    rewayatId: string;
+    timestamp: number;
+  }>;
   isLoved: (reciterId: string, surahId: string | number) => boolean;
   isLovedWithRewayat: (
     reciterId: string,

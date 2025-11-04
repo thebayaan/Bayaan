@@ -40,64 +40,69 @@ interface LovedTrack {
 const LovedScreen = () => {
   const router = useRouter();
   const {theme} = useTheme();
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    headerContainer: {
-      width: '100%',
-      overflow: 'hidden',
-    },
-    gradientContainer: {
-      width: '100%',
-      alignItems: 'center',
-      paddingBottom: moderateScale(20),
-      overflow: 'hidden',
-      backgroundColor: 'purple',
-    },
-    contentContainer: {
-      paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(10),
-    },
-    listContentContainer: {
-      flexGrow: 1,
-      paddingBottom: moderateScale(65),
-    },
-    stickyHeader: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: moderateScale(100),
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1,
-    },
-    stickyHeaderTitle: {
-      fontSize: moderateScale(24),
-      fontWeight: 'bold',
-      color: 'white',
-    },
-    backButton: {
-      position: 'absolute',
-      zIndex: 10,
-    },
-    searchButton: {
-      position: 'absolute',
-      zIndex: 10,
-    },
-    searchBarContainer: {
-      marginTop: moderateScale(16),
-    },
-    emptyText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginTop: moderateScale(32),
-    },
-  });
   const insets = useSafeAreaInsets();
+
+  const styles = React.useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: theme.colors.background,
+        },
+        headerContainer: {
+          width: '100%',
+          overflow: 'hidden',
+        },
+        gradientContainer: {
+          width: '100%',
+          alignItems: 'center',
+          paddingBottom: moderateScale(20),
+          overflow: 'hidden',
+          backgroundColor: 'purple',
+        },
+        contentContainer: {
+          paddingHorizontal: moderateScale(16),
+          paddingBottom: moderateScale(10),
+        },
+        listContentContainer: {
+          flexGrow: 1,
+          paddingBottom: moderateScale(65),
+        },
+        stickyHeader: {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: moderateScale(100),
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1,
+        },
+        stickyHeaderTitle: {
+          fontSize: moderateScale(24),
+          fontWeight: 'bold',
+          color: 'white',
+        },
+        backButton: {
+          position: 'absolute',
+          zIndex: 10,
+        },
+        searchButton: {
+          position: 'absolute',
+          zIndex: 10,
+        },
+        searchBarContainer: {
+          marginTop: moderateScale(16),
+        },
+        emptyText: {
+          fontSize: moderateScale(16),
+          color: theme.colors.text,
+          textAlign: 'center',
+          marginTop: moderateScale(32),
+        },
+      }),
+    [theme.colors.background, theme.colors.text],
+  );
   const {lovedTracks} = useLoved();
   const {updateQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
@@ -240,27 +245,32 @@ const LovedScreen = () => {
     loadReciters();
   }, [lovedTracks]);
 
-  const data = lovedTracks.map(track => {
-    const reciter = reciters[track.reciterId];
-    const surah = getSurahById(parseInt(track.surahId, 10));
-    return {
-      reciterId: track.reciterId,
-      surahId: track.surahId,
-      rewayatId: track.rewayatId,
-      reciterName: reciter?.name,
-      surahName: surah?.name,
-    };
-  });
+  const data = React.useMemo(() => {
+    return lovedTracks.map(track => {
+      const reciter = reciters[track.reciterId];
+      // getSurahById is synchronous in this context
+      const surah = getSurahById(parseInt(track.surahId, 10));
+      return {
+        reciterId: track.reciterId,
+        surahId: track.surahId,
+        rewayatId: track.rewayatId,
+        reciterName: reciter?.name,
+        surahName: surah?.name,
+      };
+    });
+  }, [lovedTracks, reciters]);
 
-  const filteredData = data.filter(
-    item =>
-      item.reciterId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surahId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.reciterName &&
-        item.reciterName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.surahName &&
-        item.surahName.toLowerCase().includes(searchQuery.toLowerCase())),
-  );
+  const filteredData = React.useMemo(() => {
+    return data.filter(
+      item =>
+        item.reciterId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.surahId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.reciterName &&
+          item.reciterName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.surahName &&
+          item.surahName.toLowerCase().includes(searchQuery.toLowerCase())),
+    );
+  }, [data, searchQuery]);
 
   const getItemKey = (item: {
     reciterId: string;
@@ -269,22 +279,17 @@ const LovedScreen = () => {
   }) => `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
 
   const handlePlayAll = useCallback(async () => {
-    if (filteredData.length === 0) return;
+    if (lovedTracks.length === 0) return;
 
     try {
       // Create tracks for all loved tracks
-      const trackPromises = filteredData.map(async item => {
+      const trackPromises = lovedTracks.map(async item => {
         const reciter = await getReciterById(item.reciterId);
         const surah = await getSurahById(parseInt(item.surahId, 10));
         if (!reciter || !surah) return null;
 
-        // Find the loved track to get its rewayatId
-        const lovedTrack = lovedTracks.find(
-          track =>
-            track.reciterId === item.reciterId &&
-            track.surahId === item.surahId,
-        );
-        const rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
+        // Use the stored rewayatId if available, otherwise fallback to the first rewayat
+        const rewayatId = item.rewayatId || reciter.rewayat[0]?.id;
 
         const tracks = await createTracksForReciter(
           reciter,
@@ -326,32 +331,20 @@ const LovedScreen = () => {
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  }, [
-    filteredData,
-    lovedTracks,
-    updateQueue,
-    play,
-    queueContext,
-    addRecentTrack,
-  ]);
+  }, [lovedTracks, updateQueue, play, queueContext, addRecentTrack]);
 
   const handleShuffleAll = useCallback(async () => {
-    if (filteredData.length === 0) return;
+    if (lovedTracks.length === 0) return;
 
     try {
       // Create tracks for all loved tracks
-      const trackPromises = filteredData.map(async item => {
+      const trackPromises = lovedTracks.map(async item => {
         const reciter = await getReciterById(item.reciterId);
         const surah = await getSurahById(parseInt(item.surahId, 10));
         if (!reciter || !surah) return null;
 
-        // Find the loved track to get its rewayatId
-        const lovedTrack = lovedTracks.find(
-          track =>
-            track.reciterId === item.reciterId &&
-            track.surahId === item.surahId,
-        );
-        const rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
+        // Use the stored rewayatId if available, otherwise fallback to the first rewayat
+        const rewayatId = item.rewayatId || reciter.rewayat[0]?.id;
 
         const tracks = await createTracksForReciter(
           reciter,
@@ -396,14 +389,7 @@ const LovedScreen = () => {
     } catch (error) {
       console.error('Error shuffling tracks:', error);
     }
-  }, [
-    filteredData,
-    lovedTracks,
-    updateQueue,
-    play,
-    queueContext,
-    addRecentTrack,
-  ]);
+  }, [lovedTracks, updateQueue, play, queueContext, addRecentTrack]);
 
   const handleScroll = Animated.event(
     [{nativeEvent: {contentOffset: {y: scrollY}}}],
@@ -416,7 +402,7 @@ const LovedScreen = () => {
     },
   );
 
-  const ListHeaderComponent = useCallback(() => {
+  const renderListHeader = React.useCallback(() => {
     return (
       <View style={styles.headerContainer}>
         <LinearGradient
@@ -441,6 +427,7 @@ const LovedScreen = () => {
           <CollectionActionButtons
             onShufflePress={handleShuffleAll}
             onPlayPress={handlePlayAll}
+            disabled={lovedTracks.length === 0}
           />
           {showSearch && (
             <View style={styles.searchBarContainer}>
@@ -455,10 +442,7 @@ const LovedScreen = () => {
       </View>
     );
   }, [
-    styles.headerContainer,
-    styles.gradientContainer,
-    styles.contentContainer,
-    styles.searchBarContainer,
+    styles,
     theme.colors.background,
     theme.colors.text,
     insets.top,
@@ -478,7 +462,7 @@ const LovedScreen = () => {
         showsVerticalScrollIndicator={false}
         renderItem={ReciterTrackItem}
         keyExtractor={getItemKey}
-        ListHeaderComponent={ListHeaderComponent}
+        ListHeaderComponent={renderListHeader}
         contentContainerStyle={styles.listContentContainer}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No loved surahs yet</Text>
@@ -493,7 +477,8 @@ const LovedScreen = () => {
             opacity: headerOpacity,
             paddingTop: insets.top,
           },
-        ]}>
+        ]}
+        pointerEvents={isHeaderVisible ? 'auto' : 'none'}>
         <LinearGradient
           colors={['purple', theme.colors.background] as [string, string]}
           style={StyleSheet.absoluteFill}
@@ -507,7 +492,8 @@ const LovedScreen = () => {
             top: insets.top + moderateScale(10),
             left: moderateScale(15),
           },
-        ]}>
+        ]}
+        pointerEvents="box-none">
         <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
           <Animated.View
             style={{
@@ -544,7 +530,8 @@ const LovedScreen = () => {
             top: insets.top + moderateScale(10),
             right: moderateScale(15),
           },
-        ]}>
+        ]}
+        pointerEvents="box-none">
         <TouchableOpacity
           activeOpacity={0.99}
           onPress={() => setShowSearch(!showSearch)}>
