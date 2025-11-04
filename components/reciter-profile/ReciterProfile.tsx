@@ -227,6 +227,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const queueContext = QueueContext.getInstance();
   const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
+  // Track current operation to prevent race conditions
+  const currentOperationRef = useRef<string | null>(null);
+
   const handleSurahPress = useCallback(
     async (surah: Surah) => {
       if (!reciter || !selectedRewayat) return;
@@ -236,6 +239,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
         // OPTIMIZED: Use hybrid approach - create first track, play immediately
         // Then create remaining tracks in background (like playFromSurah does)
+        
+        // Generate unique operation ID to prevent race conditions
+        const operationId = `${Date.now()}-${reciter.id}-${surah.id}`;
+        currentOperationRef.current = operationId;
         
         // Get artwork once (same for all tracks)
         const artwork = getReciterArtwork(reciter);
@@ -254,9 +261,18 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         };
         
         // Add first track and play IMMEDIATELY (fast path - no blocking!)
-        await TrackPlayer.reset();
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
+        try {
+          await TrackPlayer.reset();
+          // Clear operation ID when reset happens (prevents race conditions)
+          currentOperationRef.current = operationId;
+          
+          await TrackPlayer.add(firstTrack);
+          await TrackPlayer.play();
+        } catch (error) {
+          console.error('Error starting playback:', error);
+          currentOperationRef.current = null; // Clear on error
+          throw error;
+        }
         
         // Update store state IMMEDIATELY but non-blocking (doesn't slow playback start)
         // This ensures floating player shows correct surah right away
@@ -264,7 +280,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         store.updateQueueState({
           tracks: [firstTrack],
           currentIndex: 0,
-          total: filteredSurahs.length,
+          total: 1, // FIX: Start with actual track count, not total surahs
           loading: false,
           endReached: false,
         });
@@ -294,17 +310,31 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
             }),
           )
             .then(remainingTracks => {
-              // Add remaining tracks to TrackPlayer (non-blocking)
-              TrackPlayer.add(remainingTracks).catch(error => {
-                console.error('Error adding tracks to TrackPlayer:', error);
-              });
+              // FIX: Check if operation is still valid (prevents race conditions)
+              if (currentOperationRef.current !== operationId) {
+                console.log('[ReciterProfile] Operation cancelled, skipping track addition');
+                return; // Operation was cancelled (user switched tracks)
+              }
               
-              // Update store with complete queue (non-blocking)
-              const completeQueue = [firstTrack, ...remainingTracks];
-              store.updateQueueState({
-                tracks: completeQueue,
-                total: completeQueue.length,
-              });
+              // Add remaining tracks to TrackPlayer (non-blocking)
+              TrackPlayer.add(remainingTracks)
+                .then(() => {
+                  // FIX: Double-check operation is still valid before updating store
+                  if (currentOperationRef.current !== operationId) {
+                    console.log('[ReciterProfile] Operation cancelled, skipping store update');
+                    return;
+                  }
+                  
+                  // Update store with complete queue (non-blocking)
+                  const completeQueue = [firstTrack, ...remainingTracks];
+                  store.updateQueueState({
+                    tracks: completeQueue,
+                    total: completeQueue.length, // FIX: Update total to match actual tracks
+                  });
+                })
+                .catch(error => {
+                  console.error('Error adding tracks to TrackPlayer:', error);
+                });
             })
             .catch(error => {
               console.error('Error creating remaining tracks:', error);
@@ -316,6 +346,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         queueContext.setCurrentReciter(reciter);
       } catch (error) {
         console.error('Error playing surah:', error);
+        currentOperationRef.current = null; // Clear on error
       }
     },
     [
