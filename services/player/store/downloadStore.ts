@@ -25,6 +25,7 @@ interface DownloadStoreState {
   // State
   downloads: DownloadedSurah[];
   downloading: string[]; // IDs currently downloading: ["abdul_basit-1", "abdul_basit-2"]
+  downloadProgress: Record<string, number>; // Progress map: {"abdul_basit-1": 0.5}
   error: Error | null;
 
   // Actions
@@ -49,6 +50,8 @@ interface DownloadStoreState {
   // Status management
   setDownloading: (id: string) => void;
   clearDownloading: (id: string) => void;
+  setDownloadProgress: (id: string, progress: number) => void;
+  getDownloadProgress: (reciterId: string, surahId: string) => number;
   reorderDownloads: (fromIndex: number, toIndex: number) => void;
   setError: (error: Error | null) => void;
 
@@ -69,6 +72,7 @@ export const useDownloadStore = create<DownloadStoreState>()(
       // Initial state
       downloads: [],
       downloading: [],
+      downloadProgress: {},
       error: null,
       playlists: [],
 
@@ -232,9 +236,29 @@ export const useDownloadStore = create<DownloadStoreState>()(
       },
 
       clearDownloading: (id: string) => {
+        set(state => {
+          const newProgress = {...state.downloadProgress};
+          delete newProgress[id];
+          return {
+            downloading: state.downloading.filter(d => d !== id),
+            downloadProgress: newProgress,
+          };
+        });
+      },
+
+      setDownloadProgress: (id: string, progress: number) => {
         set(state => ({
-          downloading: state.downloading.filter(d => d !== id),
+          downloadProgress: {
+            ...state.downloadProgress,
+            [id]: progress,
+          },
         }));
+      },
+
+      getDownloadProgress: (reciterId: string, surahId: string) => {
+        const {downloadProgress} = get();
+        const id = `${reciterId}-${surahId}`;
+        return downloadProgress[id] || 0;
       },
 
       reorderDownloads: (fromIndex: number, toIndex: number) => {
@@ -266,6 +290,7 @@ export const useDownload = () => {
   return {
     downloads: store.downloads,
     downloading: store.downloading,
+    downloadProgress: store.downloadProgress,
     error: store.error,
     addDownload: store.addDownload,
     removeDownload: store.removeDownload,
@@ -276,6 +301,8 @@ export const useDownload = () => {
     getDownload: store.getDownload,
     setDownloading: store.setDownloading,
     clearDownloading: store.clearDownloading,
+    setDownloadProgress: store.setDownloadProgress,
+    getDownloadProgress: store.getDownloadProgress,
     clearAllDownloads: store.clearAllDownloads,
     reorderDownloads: store.reorderDownloads,
     setDownloads: store.setDownloads,

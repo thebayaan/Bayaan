@@ -10,7 +10,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
-import {HeartIcon, DownloadIcon} from '@/components/Icons';
+import {HeartIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
@@ -25,6 +25,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from './NowPlayingIndicator';
 import {useDownload} from '@/services/player/store/downloadStore';
+import {CircularProgress} from '@/components/CircularProgress';
 
 interface SurahItemProps {
   item: Surah;
@@ -48,7 +49,6 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     onPress,
     reciterId,
     isLoved = false,
-    isDownloaded = false,
     onOptionsPress,
     enableHaptics = false,
     enableAnimation = false,
@@ -56,7 +56,12 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
-    const {isDownloaded: checkIsDownloaded, isDownloadedWithRewayat} = useDownload();
+    const {
+      isDownloaded: checkIsDownloaded,
+      isDownloadedWithRewayat,
+      isDownloading,
+      getDownloadProgress,
+    } = useDownload();
 
     // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use checkIsDownloaded
     const isDownloadedState = reciterId
@@ -64,6 +69,15 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         ? isDownloadedWithRewayat(reciterId, item.id.toString(), rewayatId)
         : checkIsDownloaded(reciterId, item.id.toString())
       : false;
+
+    // Check if currently downloading
+    const isCurrentlyDownloading =
+      reciterId && isDownloading(reciterId, item.id.toString());
+
+    // Get download progress
+    const downloadProgress = reciterId
+      ? getDownloadProgress(reciterId, item.id.toString())
+      : 0;
 
     // Get necessary state slices from player store
     const playbackStatus = usePlayerStore(state => state.playback.state);
@@ -163,12 +177,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     return (
       <TouchableComponent
         activeOpacity={0.99}
-        style={[
-          styles.surahItem,
-          animatedStyle,
-          // Optional: Add subtle highlight if playing?
-          // isCurrentlyPlaying && styles.playingHighlight,
-        ]}
+        style={[styles.surahItem, animatedStyle]}
         onPress={handlePress}
         onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
         delayLongPress={500}
@@ -203,23 +212,23 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                 filled={true}
               />
             )}
-            {isDownloaded && (
-              <DownloadIcon
-                size={moderateScale(12)}
-                color={theme.colors.text}
-                filled={true}
-              />
-            )}
           </View>
           <View style={styles.secondaryInfoContainer}>
-            {isDownloadedState && (
+            {isCurrentlyDownloading ? (
+              <CircularProgress
+                progress={downloadProgress}
+                size={moderateScale(12)}
+                strokeWidth={moderateScale(1.5)}
+                color={theme.colors.textSecondary}
+              />
+            ) : isDownloadedState ? (
               <Ionicons
                 name="arrow-down-circle"
                 size={moderateScale(12)}
                 color={theme.colors.textSecondary}
                 style={styles.downloadIcon}
               />
-            )}
+            ) : null}
             <Text style={styles.surahSecondaryInfo}>
               {item.translated_name_english}
             </Text>

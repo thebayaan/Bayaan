@@ -14,9 +14,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import {useDownload} from '@/services/player/store/downloadStore';
-import {downloadSurah} from '@/services/downloadService';
-import {Ionicons} from '@expo/vector-icons';
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
@@ -64,78 +61,6 @@ export const TrackInfo = () => {
       }, 100);
     }
   }, [currentTrack, setSheetMode, navigateToReciterProfile]);
-  const {
-    isDownloaded,
-    isDownloadedWithRewayat,
-    isDownloading,
-    setDownloading,
-    addDownload,
-    clearDownloading,
-  } = useDownload();
-
-  // Calculate download state - use isDownloadedWithRewayat if rewayatId is present, otherwise use isDownloaded
-  const isTrackDownloaded =
-    currentTrack && currentTrack.reciterId && currentTrack.surahId
-      ? currentTrack.rewayatId
-        ? isDownloadedWithRewayat(
-            currentTrack.reciterId,
-            currentTrack.surahId,
-            currentTrack.rewayatId,
-          )
-        : isDownloaded(currentTrack.reciterId, currentTrack.surahId)
-      : false;
-
-  const handleDownload = useCallback(async () => {
-    if (!currentTrack || !currentTrack.reciterId || !currentTrack.surahId)
-      return;
-    if (isTrackDownloaded) {
-      console.log('Track already downloaded');
-      return;
-    }
-
-    // Check if currently downloading
-    if (isDownloading(currentTrack.reciterId, currentTrack.surahId)) {
-      console.log('Track is already downloading');
-      return;
-    }
-    try {
-      // 1. Set downloading state
-      setDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
-
-      // 2. Download the file
-      const downloadResult = await downloadSurah(
-        parseInt(currentTrack.surahId, 10), // ← surahId should be a number
-        currentTrack.reciterId, // ← reciterId should be the UUID
-        currentTrack.rewayatId,
-      );
-
-      // 3. Add to downloads store
-      addDownload({
-        reciterId: currentTrack.reciterId,
-        surahId: currentTrack.surahId,
-        rewayatId: currentTrack.rewayatId || '',
-        filePath: downloadResult.filePath,
-        fileSize: downloadResult.fileSize,
-        downloadDate: Date.now(),
-        status: 'completed',
-      });
-
-      // 4. Clear downloading state
-      clearDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
-    } catch (error) {
-      console.error('Download failed:', error);
-      if (currentTrack.reciterId && currentTrack.surahId) {
-        clearDownloading(`${currentTrack.reciterId}-${currentTrack.surahId}`);
-      }
-    }
-  }, [
-    currentTrack,
-    isTrackDownloaded,
-    setDownloading,
-    addDownload,
-    clearDownloading,
-    isDownloading,
-  ]);
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {
@@ -194,17 +119,6 @@ export const TrackInfo = () => {
         </TouchableOpacity>
 
         <View style={styles.spacer} />
-
-        <TouchableOpacity
-          style={styles.downloadButton}
-          onPress={handleDownload}
-          activeOpacity={0.7}>
-          <Ionicons
-            name={isTrackDownloaded ? 'checkmark-circle' : 'arrow-down-circle'}
-            size={moderateScale(32)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.loveButton}
@@ -272,11 +186,6 @@ const styles = StyleSheet.create({
   },
   loveButton: {
     paddingLeft: moderateScale(8),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  downloadButton: {
-    paddingRight: moderateScale(8),
     justifyContent: 'center',
     alignItems: 'center',
   },

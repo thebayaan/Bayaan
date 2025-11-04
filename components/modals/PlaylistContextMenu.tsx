@@ -51,7 +51,7 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
             onClose();
           },
         },
-      ]
+      ],
     );
   };
 
@@ -76,7 +76,7 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     <BaseModal
       bottomSheetRef={bottomSheetRef}
       snapPoints={['40%']}
-      onChange={(index) => {
+      onChange={index => {
         if (index === -1) {
           onClose();
         }
@@ -94,7 +94,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
                 styles.option,
                 !option.destructive && {backgroundColor: theme.colors.card},
                 option.disabled && styles.optionDisabled,
-                option.destructive && [styles.optionDestructive, {backgroundColor: 'rgba(255, 68, 68, 0.1)'}],
+                option.destructive && [
+                  styles.optionDestructive,
+                  {backgroundColor: 'rgba(255, 68, 68, 0.1)'},
+                ],
               ]}
               onPress={option.onPress}
               disabled={option.disabled}
@@ -107,8 +110,8 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
                   option.disabled
                     ? theme.colors.textSecondary
                     : option.destructive
-                    ? '#ff4444'
-                    : theme.colors.text
+                      ? '#ff4444'
+                      : theme.colors.text
                 }
               />
               <Text

@@ -4,46 +4,51 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Icon} from '@rneui/themed';
-import {Reciter} from '@/data/reciterData';
-import {ReciterImage} from '@/components/ReciterImage';
+import {PlaylistIcon} from '@/components/Icons';
+import Color from 'color';
 
-interface ReciterItemProps {
-  item: Reciter;
-  onPress: (item: Reciter) => void;
+interface PlaylistItemProps {
+  id: string;
+  name: string;
+  itemCount: number;
+  color?: string;
+  onPress: () => void;
+  onLongPress?: () => void;
   isSelected?: boolean;
-  secondaryText?: string;
 }
 
-export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
-  ({item, onPress, isSelected, secondaryText}) => {
+export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
+  ({name, itemCount, color, onPress, onLongPress, isSelected}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
-    const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
+    const handlePress = React.useCallback(() => onPress(), [onPress]);
+    const handleLongPress = React.useCallback(
+      () => onLongPress?.(),
+      [onLongPress],
+    );
+
+    const playlistColor = color || theme.colors.primary;
+    const backgroundColor = Color(playlistColor).alpha(0.15).toString();
+    const borderColor = Color(playlistColor).alpha(0.3).toString();
 
     return (
       <TouchableOpacity
         activeOpacity={0.99}
-        style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
-        onPress={handlePress}>
+        style={[styles.playlistItem, isSelected && styles.selectedPlaylistItem]}
+        onPress={handlePress}
+        onLongPress={handleLongPress}>
         <View
           style={[
-            styles.imageContainer,
-            isSelected && styles.selectedImageContainer,
+            styles.iconContainer,
+            {backgroundColor, borderColor},
+            isSelected && styles.selectedIconContainer,
           ]}>
-          <ReciterImage
-            imageUrl={item.image_url || undefined}
-            reciterName={item.name}
-            style={styles.reciterImage}
-            profileIconSize={moderateScale(20)}
-          />
+          <PlaylistIcon color={playlistColor} size={moderateScale(24)} />
         </View>
-        <View style={styles.reciterInfo}>
-          <Text style={styles.reciterName}>{item.name}</Text>
-          <Text style={styles.reciterRewayat} numberOfLines={1}>
-            {secondaryText ||
-              (item.rewayat.length > 1
-                ? `${item.rewayat.length} rewayat available`
-                : item.rewayat[0]?.name || '')}
+        <View style={styles.playlistInfo}>
+          <Text style={styles.playlistName}>{name}</Text>
+          <Text style={styles.playlistSubtitle} numberOfLines={1}>
+            Playlist • {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
           </Text>
         </View>
         {isSelected && (
@@ -61,51 +66,46 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
   },
 );
 
-ReciterItem.displayName = 'ReciterItem';
+PlaylistItem.displayName = 'PlaylistItem';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
-    reciterItem: {
+    playlistItem: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(8),
       paddingHorizontal: moderateScale(18),
     },
-    imageContainer: {
+    iconContainer: {
       width: moderateScale(50),
       height: moderateScale(50),
       marginRight: moderateScale(12),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      borderRadius: moderateScale(50),
+      borderRadius: moderateScale(10),
       borderWidth: moderateScale(1),
-      borderColor: 'transparent',
     },
-    reciterImage: {
-      width: moderateScale(50),
-      height: moderateScale(50),
-    },
-    reciterInfo: {
+    playlistInfo: {
       flex: 1,
       justifyContent: 'center',
     },
-    reciterName: {
+    playlistName: {
       fontSize: moderateScale(14),
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
       marginBottom: moderateScale(1),
     },
-    reciterRewayat: {
+    playlistSubtitle: {
       fontSize: moderateScale(12),
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
     },
-    selectedReciterItem: {
+    selectedPlaylistItem: {
       borderRadius: moderateScale(10),
     },
-    selectedImageContainer: {
-      borderColor: theme.colors.primary,
+    selectedIconContainer: {
+      borderWidth: moderateScale(2),
     },
     checkmarkContainer: {
       marginLeft: moderateScale(8),

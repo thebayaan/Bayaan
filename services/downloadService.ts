@@ -12,6 +12,7 @@ interface DownloadResult {
  * @param surahId - The Surah number (1-114)
  * @param reciterId - The reciter's unique identifier
  * @param rewayatId - Optional: the rewayat ID (reading style)
+ * @param onProgress - Optional: callback for download progress (0-1)
  * @returns Promise resolving to download result with file path and size
  * @throws {Error} When download fails or invalid parameters provided
  */
@@ -19,6 +20,7 @@ export async function downloadSurah(
   surahId: number,
   reciterId: string,
   rewayatId?: string,
+  onProgress?: (progress: number) => void,
 ): Promise<DownloadResult> {
   // Validate inputs
   if (!surahId || surahId < 1 || surahId > 114) {
@@ -55,12 +57,30 @@ export async function downloadSurah(
     }
 
     console.log(`Downloading Surah ${surahId}...`);
-    await FileSystem.downloadAsync(remoteUrl, localPath);
+    
+    // Use downloadResumable for progress tracking
+    const downloadResumable = FileSystem.createDownloadResumable(
+      remoteUrl,
+      localPath,
+      {},
+      onProgress
+        ? downloadProgress => {
+            const progress =
+              downloadProgress.totalBytesWritten /
+              downloadProgress.totalBytesExpectedToWrite;
+            onProgress(progress);
+          }
+        : undefined,
+    );
 
-    // Get file size after download
-    const downloadedFileInfo = await FileSystem.getInfoAsync(localPath);
-    const fileSize = downloadedFileInfo.exists
-      ? downloadedFileInfo.size || 0
+    const result = await downloadResumable.downloadAsync();
+    
+    if (!result) {
+      throw new Error('Download failed: no result returned');
+    }
+
+    const fileSize = result.headers['Content-Length']
+      ? parseInt(result.headers['Content-Length'], 10)
       : 0;
 
     console.log('Download complete:', localPath, `Size: ${fileSize} bytes`);
