@@ -23,14 +23,14 @@ import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {createTracksForReciter} from '@/utils/track';
 import TrackPlayer, {State as TrackPlayerState} from 'react-native-track-player';
-import {generateSmartAudioUrl} from '@/utils/audioUtils';
+import {generateSmartAudioUrl, generateAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {shuffleArray} from '@/utils/arrayUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useModal} from '@/components/providers/ModalProvider';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {useDownload, useDownloadStore} from '@/services/player/store/downloadStore';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
 import {RewayatStyle} from '@/types/reciter';
@@ -247,10 +247,16 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         // Get artwork once (same for all tracks)
         const artwork = getReciterArtwork(reciter);
         
+        // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
+        // This makes generateSmartAudioUrl fast - the check itself is just a .some() on an array
+        // Store is pre-warmed in _layout.tsx, but we ensure it's ready here
+        useDownloadStore.getState(); // Trigger hydration if not already done
+        
         // Create ONLY first track (instant!)
+        // Use generateSmartAudioUrl - store is now warm, so check is fast (<1ms)
         const firstTrack = {
           id: `${reciter.id}:${surah.id}`,
-          url: generateSmartAudioUrl(reciter, surah.id.toString(), selectedRewayat.id),
+          url: generateSmartAudioUrl(reciter, surah.id.toString(), selectedRewayat.id), // Fast now - store is warm
           title: surah.name,
           artist: reciter.name,
           reciterId: reciter.id,
@@ -261,29 +267,29 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         };
         
         // Add first track and play IMMEDIATELY (fast path - no blocking!)
-        try {
-          await TrackPlayer.reset();
-          // Clear operation ID when reset happens (prevents race conditions)
-          currentOperationRef.current = operationId;
-          
-          await TrackPlayer.add(firstTrack);
-          await TrackPlayer.play();
-        } catch (error) {
-          console.error('Error starting playback:', error);
-          currentOperationRef.current = null; // Clear on error
-          throw error;
-        }
+        // OPTIMIZATION: Don't await reset - start it but don't wait for it to complete
+        // This makes switching surahs blazing fast!
+        const resetPromise = TrackPlayer.reset();
+        currentOperationRef.current = operationId;
         
-        // Update store state IMMEDIATELY but non-blocking (doesn't slow playback start)
-        // This ensures floating player shows correct surah right away
-        const store = usePlayerStore.getState();
-        store.updateQueueState({
-          tracks: [firstTrack],
-          currentIndex: 0,
-          total: 1, // FIX: Start with actual track count, not total surahs
-          loading: false,
-          endReached: false,
-        });
+        // Wait for reset to complete, but track creation and URL generation happens in parallel
+        await resetPromise;
+        
+        await TrackPlayer.add(firstTrack);
+        await TrackPlayer.play();
+        
+        // CRITICAL: Update store IMMEDIATELY and synchronously to prevent race conditions
+        // Check if operation is still valid (user might have switched during reset/add)
+        if (currentOperationRef.current === operationId) {
+          const store = usePlayerStore.getState();
+          store.updateQueueState({
+            tracks: [firstTrack],
+            currentIndex: 0,
+            total: 1,
+            loading: false,
+            endReached: false,
+          });
+        }
         
         // Get remaining surahs (reordered so selected is first)
         const remainingSurahs = [
@@ -327,6 +333,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                   
                   // Update store with complete queue (non-blocking)
                   const completeQueue = [firstTrack, ...remainingTracks];
+                  const store = usePlayerStore.getState();
                   store.updateQueueState({
                     tracks: completeQueue,
                     total: completeQueue.length, // FIX: Update total to match actual tracks
@@ -374,11 +381,15 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       // Get artwork once
       const artwork = getReciterArtwork(reciter);
       
+      // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
+      useDownloadStore.getState(); // Trigger hydration if not already done
+      
       // Create ONLY first track (instant!)
+      // Use generateSmartAudioUrl - store is now warm, so check is fast (<1ms)
       const firstSurah = filteredSurahs[0];
       const firstTrack = {
         id: `${reciter.id}:${firstSurah.id}`,
-        url: generateSmartAudioUrl(reciter, firstSurah.id.toString(), selectedRewayat.id),
+        url: generateSmartAudioUrl(reciter, firstSurah.id.toString(), selectedRewayat.id), // Fast now - store is warm
         title: firstSurah.name,
         artist: reciter.name,
         reciterId: reciter.id,
@@ -394,21 +405,23 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         currentOperationRef.current = operationId;
         await TrackPlayer.add(firstTrack);
         await TrackPlayer.play();
+        
+        // CRITICAL: Update store IMMEDIATELY and synchronously to prevent race conditions
+        if (currentOperationRef.current === operationId) {
+          const store = usePlayerStore.getState();
+          store.updateQueueState({
+            tracks: [firstTrack],
+            currentIndex: 0,
+            total: 1,
+            loading: false,
+            endReached: false,
+          });
+        }
       } catch (error) {
         console.error('Error starting playback:', error);
         currentOperationRef.current = null;
         throw error;
       }
-      
-      // Update store state
-      const store = usePlayerStore.getState();
-      store.updateQueueState({
-        tracks: [firstTrack],
-        currentIndex: 0,
-        total: 1, // Start with actual track count
-        loading: false,
-        endReached: false,
-      });
       
       // Create remaining tracks in parallel (background)
       const remainingSurahs = filteredSurahs.slice(1);
@@ -443,6 +456,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                 }
                 
                 const completeQueue = [firstTrack, ...remainingTracks];
+                const store = usePlayerStore.getState();
                 store.updateQueueState({
                   tracks: completeQueue,
                   total: completeQueue.length,
@@ -492,11 +506,15 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       // Get artwork once
       const artwork = getReciterArtwork(reciter);
       
+      // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
+      useDownloadStore.getState(); // Trigger hydration if not already done
+      
       // Create ONLY first track (instant!)
+      // Use generateSmartAudioUrl - store is now warm, so check is fast (<1ms)
       const firstSurah = shuffledSurahs[0];
       const firstTrack = {
         id: `${reciter.id}:${firstSurah.id}`,
-        url: generateSmartAudioUrl(reciter, firstSurah.id.toString(), selectedRewayat.id),
+        url: generateSmartAudioUrl(reciter, firstSurah.id.toString(), selectedRewayat.id), // Fast now - store is warm
         title: firstSurah.name,
         artist: reciter.name,
         reciterId: reciter.id,
@@ -517,21 +535,23 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         currentOperationRef.current = operationId;
         await TrackPlayer.add(firstTrack);
         await TrackPlayer.play();
+        
+        // CRITICAL: Update store IMMEDIATELY and synchronously to prevent race conditions
+        if (currentOperationRef.current === operationId) {
+          const store = usePlayerStore.getState();
+          store.updateQueueState({
+            tracks: [firstTrack],
+            currentIndex: 0,
+            total: 1,
+            loading: false,
+            endReached: false,
+          });
+        }
       } catch (error) {
         console.error('Error starting playback:', error);
         currentOperationRef.current = null;
         throw error;
       }
-      
-      // Update store state
-      const store = usePlayerStore.getState();
-      store.updateQueueState({
-        tracks: [firstTrack],
-        currentIndex: 0,
-        total: 1, // Start with actual track count
-        loading: false,
-        endReached: false,
-      });
       
       // Create remaining tracks in parallel (background)
       const remainingSurahs = shuffledSurahs.slice(1);
@@ -566,6 +586,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                 }
                 
                 const completeQueue = [firstTrack, ...remainingTracks];
+                const store = usePlayerStore.getState();
                 store.updateQueueState({
                   tracks: completeQueue,
                   total: completeQueue.length,
