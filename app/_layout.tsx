@@ -8,6 +8,7 @@ import playbackService from '@/services/player/events/playbackService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {setupTrackPlayer} from '@/services/player/utils/setup';
 import {setupEventBridge} from '@/services/player/events/bridge';
+import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {View, Text, Platform, StatusBar as RNStatusBar} from 'react-native';
@@ -139,6 +140,27 @@ export default function RootLayout() {
         }
 
         console.log('[App] Player setup complete');
+
+        // PRE-WARM: Initialize stores BEFORE first play to prevent cold start lag
+        // Zustand persist stores hydrate from AsyncStorage on first access
+        // Pre-warming ensures hydration happens here (during app init) not during first play
+        try {
+          // Pre-warm download store (used by generateSmartAudioUrl)
+          // Calling getState() triggers hydration if not already done
+          useDownloadStore.getState();
+          console.log('[App] Download store pre-warmed');
+          
+          // Pre-warm player store (used by playback)
+          usePlayerStore.getState();
+          console.log('[App] Player store pre-warmed');
+          
+          // Small delay to allow hydration to complete (Zustand persist is async)
+          // This ensures stores are fully hydrated before first play
+          await new Promise(resolve => setTimeout(resolve, 50));
+          console.log('[App] Store hydration complete');
+        } catch (error) {
+          console.debug('[App] Failed to pre-warm stores:', error);
+        }
 
         // Mark app as ready without state restoration
         setIsPlayerReady(true);
