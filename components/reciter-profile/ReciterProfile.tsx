@@ -362,27 +362,107 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const handlePlayAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
     try {
-      const tracks = await createTracksForReciter(
-        reciter,
-        filteredSurahs,
-        selectedRewayat.id,
-      );
-      await updateQueue(tracks, 0);
-      await play();
-
-      if (filteredSurahs.length > 0) {
-        await addRecentTrack(
-          reciter,
-          filteredSurahs[0],
-          0,
-          0,
-          selectedRewayat.id,
-        );
+      // OPTIMIZED: Use hybrid approach - create first track, play immediately
+      // Then create remaining tracks in background
+      
+      if (filteredSurahs.length === 0) return;
+      
+      // Generate unique operation ID
+      const operationId = `${Date.now()}-${reciter.id}-play-all`;
+      currentOperationRef.current = operationId;
+      
+      // Get artwork once
+      const artwork = getReciterArtwork(reciter);
+      
+      // Create ONLY first track (instant!)
+      const firstSurah = filteredSurahs[0];
+      const firstTrack = {
+        id: `${reciter.id}:${firstSurah.id}`,
+        url: generateSmartAudioUrl(reciter, firstSurah.id.toString(), selectedRewayat.id),
+        title: firstSurah.name,
+        artist: reciter.name,
+        reciterId: reciter.id,
+        artwork,
+        surahId: firstSurah.id.toString(),
+        reciterName: reciter.name,
+        rewayatId: selectedRewayat.id,
+      };
+      
+      // Add first track and play IMMEDIATELY
+      try {
+        await TrackPlayer.reset();
+        currentOperationRef.current = operationId;
+        await TrackPlayer.add(firstTrack);
+        await TrackPlayer.play();
+      } catch (error) {
+        console.error('Error starting playback:', error);
+        currentOperationRef.current = null;
+        throw error;
       }
-
+      
+      // Update store state
+      const store = usePlayerStore.getState();
+      store.updateQueueState({
+        tracks: [firstTrack],
+        currentIndex: 0,
+        total: 1, // Start with actual track count
+        loading: false,
+        endReached: false,
+      });
+      
+      // Create remaining tracks in parallel (background)
+      const remainingSurahs = filteredSurahs.slice(1);
+      if (remainingSurahs.length > 0) {
+        Promise.all(
+          remainingSurahs.map(async s => {
+            const url = generateSmartAudioUrl(reciter, s.id.toString(), selectedRewayat.id);
+            return {
+              id: `${reciter.id}:${s.id}`,
+              url,
+              title: s.name,
+              artist: reciter.name,
+              reciterId: reciter.id,
+              artwork,
+              surahId: s.id.toString(),
+              reciterName: reciter.name,
+              rewayatId: selectedRewayat.id,
+            };
+          }),
+        )
+          .then(remainingTracks => {
+            if (currentOperationRef.current !== operationId) {
+              console.log('[ReciterProfile] Operation cancelled, skipping track addition');
+              return;
+            }
+            
+            TrackPlayer.add(remainingTracks)
+              .then(() => {
+                if (currentOperationRef.current !== operationId) {
+                  console.log('[ReciterProfile] Operation cancelled, skipping store update');
+                  return;
+                }
+                
+                const completeQueue = [firstTrack, ...remainingTracks];
+                store.updateQueueState({
+                  tracks: completeQueue,
+                  total: completeQueue.length,
+                });
+              })
+              .catch(error => {
+                console.error('Error adding tracks to TrackPlayer:', error);
+              });
+          })
+          .catch(error => {
+            console.error('Error creating remaining tracks:', error);
+          });
+      }
+      
+      // Add to recently played AFTER playback starts (non-blocking)
+      addRecentTrack(reciter, firstSurah, 0, 0, selectedRewayat.id);
       queueContext.setCurrentReciter(reciter);
     } catch (error) {
       console.error('Error playing all surahs:', error);
+      currentOperationRef.current = null;
     }
   }, [
     reciter,
@@ -397,36 +477,115 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const handleShuffleAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
     try {
-      const tracks = await createTracksForReciter(
-        reciter,
-        filteredSurahs,
-        selectedRewayat.id,
-      );
-      const shuffledTracks = shuffleArray([...tracks]);
-      await updateQueue(shuffledTracks, 0);
-
+      // OPTIMIZED: Use hybrid approach - create first track, play immediately
+      // Then create remaining tracks in background
+      
+      if (filteredSurahs.length === 0) return;
+      
+      // Shuffle surahs first
+      const shuffledSurahs = shuffleArray([...filteredSurahs]);
+      
+      // Generate unique operation ID
+      const operationId = `${Date.now()}-${reciter.id}-shuffle-all`;
+      currentOperationRef.current = operationId;
+      
+      // Get artwork once
+      const artwork = getReciterArtwork(reciter);
+      
+      // Create ONLY first track (instant!)
+      const firstSurah = shuffledSurahs[0];
+      const firstTrack = {
+        id: `${reciter.id}:${firstSurah.id}`,
+        url: generateSmartAudioUrl(reciter, firstSurah.id.toString(), selectedRewayat.id),
+        title: firstSurah.name,
+        artist: reciter.name,
+        reciterId: reciter.id,
+        artwork,
+        surahId: firstSurah.id.toString(),
+        reciterName: reciter.name,
+        rewayatId: selectedRewayat.id,
+      };
+      
       // Enable shuffle mode in player settings
       if (!playerStore.settings.shuffle) {
         playerStore.toggleShuffle();
       }
-
-      await play();
-
-      if (filteredSurahs.length > 0) {
-        const firstTrackSurahId = shuffledTracks[0].surahId;
-        if (firstTrackSurahId) {
-          const firstSurah = filteredSurahs.find(
-            s => s.id === parseInt(firstTrackSurahId, 10),
-          );
-          if (firstSurah) {
-            await addRecentTrack(reciter, firstSurah, 0, 0, selectedRewayat.id);
-          }
-        }
+      
+      // Add first track and play IMMEDIATELY
+      try {
+        await TrackPlayer.reset();
+        currentOperationRef.current = operationId;
+        await TrackPlayer.add(firstTrack);
+        await TrackPlayer.play();
+      } catch (error) {
+        console.error('Error starting playback:', error);
+        currentOperationRef.current = null;
+        throw error;
       }
-
+      
+      // Update store state
+      const store = usePlayerStore.getState();
+      store.updateQueueState({
+        tracks: [firstTrack],
+        currentIndex: 0,
+        total: 1, // Start with actual track count
+        loading: false,
+        endReached: false,
+      });
+      
+      // Create remaining tracks in parallel (background)
+      const remainingSurahs = shuffledSurahs.slice(1);
+      if (remainingSurahs.length > 0) {
+        Promise.all(
+          remainingSurahs.map(async s => {
+            const url = generateSmartAudioUrl(reciter, s.id.toString(), selectedRewayat.id);
+            return {
+              id: `${reciter.id}:${s.id}`,
+              url,
+              title: s.name,
+              artist: reciter.name,
+              reciterId: reciter.id,
+              artwork,
+              surahId: s.id.toString(),
+              reciterName: reciter.name,
+              rewayatId: selectedRewayat.id,
+            };
+          }),
+        )
+          .then(remainingTracks => {
+            if (currentOperationRef.current !== operationId) {
+              console.log('[ReciterProfile] Operation cancelled, skipping track addition');
+              return;
+            }
+            
+            TrackPlayer.add(remainingTracks)
+              .then(() => {
+                if (currentOperationRef.current !== operationId) {
+                  console.log('[ReciterProfile] Operation cancelled, skipping store update');
+                  return;
+                }
+                
+                const completeQueue = [firstTrack, ...remainingTracks];
+                store.updateQueueState({
+                  tracks: completeQueue,
+                  total: completeQueue.length,
+                });
+              })
+              .catch(error => {
+                console.error('Error adding tracks to TrackPlayer:', error);
+              });
+          })
+          .catch(error => {
+            console.error('Error creating remaining tracks:', error);
+          });
+      }
+      
+      // Add to recently played AFTER playback starts (non-blocking)
+      addRecentTrack(reciter, firstSurah, 0, 0, selectedRewayat.id);
       queueContext.setCurrentReciter(reciter);
     } catch (error) {
       console.error('Error shuffling surahs:', error);
+      currentOperationRef.current = null;
     }
   }, [
     reciter,
