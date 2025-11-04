@@ -4,7 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayIcon, ShuffleIcon, PauseIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon, PauseIcon, DownloadIcon} from '@/components/Icons';
 import Color from 'color';
 import Animated, {
   useSharedValue,
@@ -20,13 +20,15 @@ const AnimatedTouchableOpacity =
 interface CollectionActionButtonsProps {
   onShufflePress: () => void;
   onPlayPress: () => void;
+  showDownloadIcon?: boolean;
+  onDownloadPress?: () => void;
   disabled?: boolean;
   isPlaying?: boolean;
 }
 
 export const CollectionActionButtons: React.FC<
   CollectionActionButtonsProps
-> = React.memo(({onShufflePress, onPlayPress, disabled = false, isPlaying = false}) => {
+> = ({onShufflePress, onPlayPress, showDownloadIcon = false, onDownloadPress, disabled = false, isPlaying = false}) => {
   const {theme} = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -59,7 +61,19 @@ export const CollectionActionButtons: React.FC<
   }, [shuffleScale, playScale]);
 
   return (
-    <View style={styles.actionButtons}>
+    <View style={showDownloadIcon ? styles.actionButtons : styles.actionButtonsWithoutDownload}>
+      {showDownloadIcon && (
+        <TouchableOpacity
+          activeOpacity={0.99}
+          style={styles.actionButton}
+          onPress={onDownloadPress}
+          disabled={!onDownloadPress || disabled}>
+          <DownloadIcon
+            color={onDownloadPress && !disabled ? theme.colors.text : theme.colors.textSecondary + '40'}
+            size={moderateScale(28)}
+          />
+        </TouchableOpacity>
+      )}
       <View style={styles.rightAlignedButtons}>
         <AnimatedTouchableOpacity
           activeOpacity={0.7}
@@ -105,10 +119,20 @@ const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     actionButtons: {
       flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: moderateScale(5),
+      paddingHorizontal: moderateScale(5),
+    },
+    actionButtonsWithoutDownload: {
+      flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'center',
       paddingVertical: moderateScale(5),
       paddingHorizontal: moderateScale(5),
+    },
+    actionButton: {
+      padding: moderateScale(8),
     },
     rightAlignedButtons: {
       flexDirection: 'row',
