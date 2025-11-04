@@ -13,7 +13,12 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
-import {MakkahIcon, MadinahIcon, HeartIcon, DownloadIcon} from '@/components/Icons';
+import {
+  MakkahIcon,
+  MadinahIcon,
+  HeartIcon,
+  DownloadIcon,
+} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 import Animated, {
   useAnimatedStyle,

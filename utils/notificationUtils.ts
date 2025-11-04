@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import {Platform} from 'react-native';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 
@@ -7,31 +7,35 @@ import * as Device from 'expo-device';
  * Registers the device for push notifications and returns the token
  * @returns Promise with the Expo push token
  */
-export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
+export async function registerForPushNotificationsAsync(): Promise<
+  string | undefined
+> {
   let token;
-  
+
   // Check if the app is running on a physical device (not simulator/emulator)
   if (Device.isDevice) {
     // Check current permission status
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const {status: existingStatus} = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
-    
+
     // If permissions haven't been determined yet, request them
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const {status} = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-    
+
     // If permission is not granted, return undefined
     if (finalStatus !== 'granted') {
       console.log('Failed to get push token for push notification!');
       return undefined;
     }
-    
+
     // Get the token
-    token = (await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId,
-    })).data;
+    token = (
+      await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
+      })
+    ).data;
   } else {
     console.log('Must use physical device for Push Notifications');
   }
@@ -61,4 +65,4 @@ export function configurePushNotifications(): void {
       shouldSetBadge: true,
     }),
   });
-} 
+}

@@ -88,10 +88,7 @@ class AppInitializer {
               `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
             );
           } catch (error) {
-            console.error(
-              `[AppInitializer] ✗ ${service.name} failed:`,
-              error,
-            );
+            console.error(`[AppInitializer] ✗ ${service.name} failed:`, error);
 
             // If this is a critical service, throw the error
             if (service.critical) {
@@ -244,4 +241,3 @@ appInitializer.registerService({
  *   },
  * });
  */
-

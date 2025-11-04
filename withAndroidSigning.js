@@ -1,4 +1,4 @@
-const { withDangerousMod } = require('@expo/config-plugins');
+const {withDangerousMod} = require('@expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
@@ -33,13 +33,16 @@ function applySigningConfigLogic(buildGradleContent) {
   let newContent = buildGradleContent;
 
   // First, remove any existing 'apply from: file("../signing.gradle")' line
-  const applyFromFileRegex = /apply from: file\(['"]\.\.\/signing\.gradle['"]\)\s*\n?/g;
+  const applyFromFileRegex =
+    /apply from: file\(['"]\.\.\/signing\.gradle['"]\)\s*\n?/g;
   if (applyFromFileRegex.test(newContent)) {
     newContent = newContent.replace(
       applyFromFileRegex,
-      '// Removed by withAndroidSigning plugin: apply from: file("../signing.gradle")\n'
+      '// Removed by withAndroidSigning plugin: apply from: file("../signing.gradle")\n',
     );
-    console.log("withAndroidSigning Plugin: Removed legacy 'apply from: file(\"../signing.gradle\")'.");
+    console.log(
+      'withAndroidSigning Plugin: Removed legacy \'apply from: file("../signing.gradle")\'.',
+    );
   }
 
   // Find the android block
@@ -48,30 +51,42 @@ function applySigningConfigLogic(buildGradleContent) {
 
   if (!androidBlockMatch) {
     console.warn(
-      "withAndroidSigning Plugin: Could not find 'android {' block in app/build.gradle. Signing configuration not applied."
+      "withAndroidSigning Plugin: Could not find 'android {' block in app/build.gradle. Signing configuration not applied.",
     );
     return newContent; // Return original content if anchor not found
   }
 
   // Check if signingConfigs exists but doesn't have a release config
-  const hasSigningConfigs = newContent.includes('signingConfigs {') || newContent.includes('signingConfigs{');
-  const hasReleaseConfig = newContent.includes('signingConfigs {') && 
-                         newContent.includes('release {') && 
-                         newContent.includes('BAYAAN_UPLOAD_STORE_FILE');
+  const hasSigningConfigs =
+    newContent.includes('signingConfigs {') ||
+    newContent.includes('signingConfigs{');
+  const hasReleaseConfig =
+    newContent.includes('signingConfigs {') &&
+    newContent.includes('release {') &&
+    newContent.includes('BAYAAN_UPLOAD_STORE_FILE');
 
   // Replace the entire signingConfigs block if it exists but doesn't have our release config
   if (hasSigningConfigs && !hasReleaseConfig) {
-    const signingConfigsBlockRegex = /signingConfigs\s*{[^}]*debug[^}]*}(?:[^}]*})?/s;
-    newContent = newContent.replace(signingConfigsBlockRegex, androidSigningConfigsBlock);
-    console.log("withAndroidSigning Plugin: Updated signingConfigs block with release configuration.");
-  } 
+    const signingConfigsBlockRegex =
+      /signingConfigs\s*{[^}]*debug[^}]*}(?:[^}]*})?/s;
+    newContent = newContent.replace(
+      signingConfigsBlockRegex,
+      androidSigningConfigsBlock,
+    );
+    console.log(
+      'withAndroidSigning Plugin: Updated signingConfigs block with release configuration.',
+    );
+  }
   // Add signingConfigs block if it doesn't exist
   else if (!hasSigningConfigs) {
     const insertIndex = androidBlockMatch.index + androidBlockMatch[0].length;
-    newContent = newContent.slice(0, insertIndex) + 
-                androidSigningConfigsBlock + 
-                newContent.slice(insertIndex);
-    console.log("withAndroidSigning Plugin: Added signingConfigs block with release configuration.");
+    newContent =
+      newContent.slice(0, insertIndex) +
+      androidSigningConfigsBlock +
+      newContent.slice(insertIndex);
+    console.log(
+      'withAndroidSigning Plugin: Added signingConfigs block with release configuration.',
+    );
   }
 
   // Fix the release build type section to remove any duplicate signing config lines
@@ -80,48 +95,65 @@ function applySigningConfigLogic(buildGradleContent) {
 
   if (releaseBlockMatch) {
     let releaseBlockContent = releaseBlockMatch[2];
-    
+
     // Count occurrences of signingConfig in the release block
-    const signingConfigCount = (releaseBlockContent.match(/signingConfig\s+signingConfigs\.[a-zA-Z0-9_]+/g) || []).length;
-    
+    const signingConfigCount = (
+      releaseBlockContent.match(
+        /signingConfig\s+signingConfigs\.[a-zA-Z0-9_]+/g,
+      ) || []
+    ).length;
+
     if (signingConfigCount > 1) {
       // Remove all signingConfig lines
-      releaseBlockContent = releaseBlockContent.replace(/\s*signingConfig\s+signingConfigs\.[a-zA-Z0-9_]+\s*/g, '\n');
-      
+      releaseBlockContent = releaseBlockContent.replace(
+        /\s*signingConfig\s+signingConfigs\.[a-zA-Z0-9_]+\s*/g,
+        '\n',
+      );
+
       // Add back just one correct one
-      releaseBlockContent = '\n            signingConfig signingConfigs.release' + releaseBlockContent;
-      
+      releaseBlockContent =
+        '\n            signingConfig signingConfigs.release' +
+        releaseBlockContent;
+
       // Reassemble the block
       newContent = newContent.replace(
         releaseBlockRegex,
-        `$1${releaseBlockContent}$3`
+        `$1${releaseBlockContent}$3`,
       );
-      
-      console.log("withAndroidSigning Plugin: Fixed duplicate signingConfig in release build type.");
-    } 
-    else if (signingConfigCount === 0) {
+
+      console.log(
+        'withAndroidSigning Plugin: Fixed duplicate signingConfig in release build type.',
+      );
+    } else if (signingConfigCount === 0) {
       // If there are no signingConfig lines, add one
-      const newReleaseContent = '\n            signingConfig signingConfigs.release' + releaseBlockContent;
-      
+      const newReleaseContent =
+        '\n            signingConfig signingConfigs.release' +
+        releaseBlockContent;
+
       newContent = newContent.replace(
         releaseBlockRegex,
-        `$1${newReleaseContent}$3`
+        `$1${newReleaseContent}$3`,
       );
-      
-      console.log("withAndroidSigning Plugin: Added missing signingConfig to release build type.");
-    }
-    else if (releaseBlockContent.includes("signingConfig signingConfigs.debug")) {
+
+      console.log(
+        'withAndroidSigning Plugin: Added missing signingConfig to release build type.',
+      );
+    } else if (
+      releaseBlockContent.includes('signingConfig signingConfigs.debug')
+    ) {
       // Replace debug with release
       newContent = newContent.replace(
         /signingConfig\s+signingConfigs\.debug/g,
-        'signingConfig signingConfigs.release'
+        'signingConfig signingConfigs.release',
       );
-      
-      console.log("withAndroidSigning Plugin: Changed debug signing config to release for release build type.");
+
+      console.log(
+        'withAndroidSigning Plugin: Changed debug signing config to release for release build type.',
+      );
     }
   } else {
     console.warn(
-      "withAndroidSigning Plugin: Could not find release build type block in app/build.gradle."
+      'withAndroidSigning Plugin: Could not find release build type block in app/build.gradle.',
     );
   }
 
@@ -137,7 +169,7 @@ const withAndroidSigning = config => {
         projectRoot,
         'android',
         'app',
-        'build.gradle'
+        'build.gradle',
       );
 
       try {
@@ -152,14 +184,14 @@ const withAndroidSigning = config => {
           errorMessage = error;
         }
         console.error(
-          `withAndroidSigning Plugin: Error modifying android/app/build.gradle: ${errorMessage}`
+          `withAndroidSigning Plugin: Error modifying android/app/build.gradle: ${errorMessage}`,
         );
         throw error; // Re-throw to halt the build process
       }
 
       return expoConfig;
-    }
+    },
   ]);
 };
 
-module.exports = withAndroidSigning; 
+module.exports = withAndroidSigning;

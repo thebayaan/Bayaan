@@ -8,30 +8,26 @@ import {PlayIcon, TrashIcon, PauseIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
 
 interface DownloadCollectionActionButtonsProps {
-  
   onPlayPress: () => void;
   disabled?: boolean;
   isPlaying?: boolean;
- 
 }
 
-export const DownloadCollectionActionButtons: React.FC<DownloadCollectionActionButtonsProps> = ({
- 
-  onPlayPress, 
+export const DownloadCollectionActionButtons: React.FC<
+  DownloadCollectionActionButtonsProps
+> = ({
+  onPlayPress,
   disabled = false,
-  
-  isPlaying = false
+
+  isPlaying = false,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
 
   return (
     <View style={styles.actionButtons}>
- 
-
       {/* Right side - Clear All and Play All buttons */}
       <View style={styles.rightAlignedButtons}>
-        
         <TouchableOpacity
           activeOpacity={0.99}
           style={[styles.playButton, disabled && styles.buttonDisabled]}
@@ -39,9 +35,15 @@ export const DownloadCollectionActionButtons: React.FC<DownloadCollectionActionB
           disabled={disabled}>
           <View style={styles.playIconContainer}>
             {isPlaying ? (
-              <PauseIcon color={theme.colors.background} size={moderateScale(16)} />
+              <PauseIcon
+                color={theme.colors.background}
+                size={moderateScale(16)}
+              />
             ) : (
-              <PlayIcon color={theme.colors.background} size={moderateScale(16)} />
+              <PlayIcon
+                color={theme.colors.background}
+                size={moderateScale(16)}
+              />
             )}
           </View>
         </TouchableOpacity>

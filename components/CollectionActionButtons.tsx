@@ -4,7 +4,12 @@ import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayIcon, ShuffleIcon, PauseIcon, DownloadIcon} from '@/components/Icons';
+import {
+  PlayIcon,
+  ShuffleIcon,
+  PauseIcon,
+  DownloadIcon,
+} from '@/components/Icons';
 import Color from 'color';
 import Animated, {
   useSharedValue,
@@ -14,8 +19,6 @@ import Animated, {
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
-
-
 
 interface CollectionActionButtonsProps {
   onShufflePress: () => void;
@@ -28,7 +31,14 @@ interface CollectionActionButtonsProps {
 
 export const CollectionActionButtons: React.FC<
   CollectionActionButtonsProps
-> = ({onShufflePress, onPlayPress, showDownloadIcon = false, onDownloadPress, disabled = false, isPlaying = false}) => {
+> = ({
+  onShufflePress,
+  onPlayPress,
+  showDownloadIcon = false,
+  onDownloadPress,
+  disabled = false,
+  isPlaying = false,
+}) => {
   const {theme} = useTheme();
   const styles = React.useMemo(() => createStyles(theme), [theme]);
 
@@ -44,24 +54,35 @@ export const CollectionActionButtons: React.FC<
     transform: [{scale: playScale.value}],
   }));
 
-  const handlePressIn = React.useCallback((button: 'shuffle' | 'play') => {
-    const scale = button === 'shuffle' ? shuffleScale : playScale;
-    scale.value = withSpring(0.92, {
-      damping: 15,
-      stiffness: 300,
-    });
-  }, [shuffleScale, playScale]);
+  const handlePressIn = React.useCallback(
+    (button: 'shuffle' | 'play') => {
+      const scale = button === 'shuffle' ? shuffleScale : playScale;
+      scale.value = withSpring(0.92, {
+        damping: 15,
+        stiffness: 300,
+      });
+    },
+    [shuffleScale, playScale],
+  );
 
-  const handlePressOut = React.useCallback((button: 'shuffle' | 'play') => {
-    const scale = button === 'shuffle' ? shuffleScale : playScale;
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  }, [shuffleScale, playScale]);
+  const handlePressOut = React.useCallback(
+    (button: 'shuffle' | 'play') => {
+      const scale = button === 'shuffle' ? shuffleScale : playScale;
+      scale.value = withSpring(1, {
+        damping: 15,
+        stiffness: 300,
+      });
+    },
+    [shuffleScale, playScale],
+  );
 
   return (
-    <View style={showDownloadIcon ? styles.actionButtons : styles.actionButtonsWithoutDownload}>
+    <View
+      style={
+        showDownloadIcon
+          ? styles.actionButtons
+          : styles.actionButtonsWithoutDownload
+      }>
       {showDownloadIcon && (
         <TouchableOpacity
           activeOpacity={0.99}
@@ -69,7 +90,11 @@ export const CollectionActionButtons: React.FC<
           onPress={onDownloadPress}
           disabled={!onDownloadPress || disabled}>
           <DownloadIcon
-            color={onDownloadPress && !disabled ? theme.colors.text : theme.colors.textSecondary + '40'}
+            color={
+              onDownloadPress && !disabled
+                ? theme.colors.text
+                : theme.colors.textSecondary + '40'
+            }
             size={moderateScale(28)}
           />
         </TouchableOpacity>
@@ -102,16 +127,22 @@ export const CollectionActionButtons: React.FC<
           disabled={disabled}>
           <View style={styles.playIconContainer}>
             {isPlaying ? (
-              <PauseIcon color={theme.colors.background} size={moderateScale(16)} />
+              <PauseIcon
+                color={theme.colors.background}
+                size={moderateScale(16)}
+              />
             ) : (
-              <PlayIcon color={theme.colors.background} size={moderateScale(16)} />
+              <PlayIcon
+                color={theme.colors.background}
+                size={moderateScale(16)}
+              />
             )}
           </View>
         </AnimatedTouchableOpacity>
       </View>
     </View>
   );
-});
+};
 
 CollectionActionButtons.displayName = 'CollectionActionButtons';
 

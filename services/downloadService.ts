@@ -57,7 +57,7 @@ export async function downloadSurah(
     }
 
     console.log(`Downloading Surah ${surahId}...`);
-    
+
     // Use downloadResumable for progress tracking
     const downloadResumable = FileSystem.createDownloadResumable(
       remoteUrl,
@@ -74,7 +74,7 @@ export async function downloadSurah(
     );
 
     const result = await downloadResumable.downloadAsync();
-    
+
     if (!result) {
       throw new Error('Download failed: no result returned');
     }

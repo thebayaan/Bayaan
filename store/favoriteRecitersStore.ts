@@ -44,16 +44,16 @@ export const useFavoriteRecitersStore = create<FavoriteRecitersState>(
         let timestamps: Record<string, number> = {};
 
         // Load existing timestamps
-        const timestampsJson = storage.getItem(FAVORITE_RECITERS_TIMESTAMPS_KEY);
+        const timestampsJson = storage.getItem(
+          FAVORITE_RECITERS_TIMESTAMPS_KEY,
+        );
         if (timestampsJson) {
           timestamps = JSON.parse(timestampsJson);
         }
 
         if (isCurrentlyFavorite) {
           // Remove from favorites
-          newFavorites = state.favoriteReciters.filter(
-            r => r.id !== reciterId,
-          );
+          newFavorites = state.favoriteReciters.filter(r => r.id !== reciterId);
           delete timestamps[reciterId];
         } else {
           // Add to favorites

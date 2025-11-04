@@ -13,9 +13,9 @@ interface DownloadActionButtonsProps {
 }
 
 export const DownloadActionButtons: React.FC<DownloadActionButtonsProps> = ({
-  onClearAllPress, 
-  onPlayPress, 
-  disabled = false
+  onClearAllPress,
+  onPlayPress,
+  disabled = false,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
