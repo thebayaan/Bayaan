@@ -21,11 +21,18 @@ interface Playlist {
   trackIds: string[]; // Array of "reciterId:surahId:rewayatId" strings
 }
 
+interface PlaylistDownloadProgress {
+  current: number;
+  total: number;
+  percentage: number;
+}
+
 interface DownloadStoreState {
   // State
   downloads: DownloadedSurah[];
   downloading: string[]; // IDs currently downloading: ["abdul_basit-1", "abdul_basit-2"]
   downloadProgress: Record<string, number>; // Progress map: {"abdul_basit-1": 0.5}
+  playlistDownloads: Record<string, PlaylistDownloadProgress>; // Playlist download progress
   error: Error | null;
 
   // Actions
@@ -55,6 +62,16 @@ interface DownloadStoreState {
   reorderDownloads: (fromIndex: number, toIndex: number) => void;
   setError: (error: Error | null) => void;
 
+  // Playlist download management
+  setPlaylistDownloadProgress: (
+    playlistId: string,
+    progress: PlaylistDownloadProgress | null,
+  ) => void;
+  getPlaylistDownloadProgress: (
+    playlistId: string,
+  ) => PlaylistDownloadProgress | null;
+  isPlaylistDownloading: (playlistId: string) => boolean;
+
   // Playlists
   playlists: Playlist[];
   createPlaylist: (name: string) => void;
@@ -73,6 +90,7 @@ export const useDownloadStore = create<DownloadStoreState>()(
       downloads: [],
       downloading: [],
       downloadProgress: {},
+      playlistDownloads: {},
       error: null,
       playlists: [],
 
@@ -272,6 +290,36 @@ export const useDownloadStore = create<DownloadStoreState>()(
 
       setError: (error: Error | null) => {
         set({error});
+      },
+
+      // Playlist download management
+      setPlaylistDownloadProgress: (
+        playlistId: string,
+        progress: PlaylistDownloadProgress | null,
+      ) => {
+        set(state => {
+          if (progress === null) {
+            const newPlaylistDownloads = {...state.playlistDownloads};
+            delete newPlaylistDownloads[playlistId];
+            return {playlistDownloads: newPlaylistDownloads};
+          }
+          return {
+            playlistDownloads: {
+              ...state.playlistDownloads,
+              [playlistId]: progress,
+            },
+          };
+        });
+      },
+
+      getPlaylistDownloadProgress: (playlistId: string) => {
+        const {playlistDownloads} = get();
+        return playlistDownloads[playlistId] || null;
+      },
+
+      isPlaylistDownloading: (playlistId: string) => {
+        const {playlistDownloads} = get();
+        return playlistDownloads[playlistId] !== undefined;
       },
     }),
     {
