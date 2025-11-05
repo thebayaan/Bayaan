@@ -328,6 +328,3 @@ The fixes ensure a smooth, responsive playback experience while maintaining all 
 
 ---
 
-**Document Version:** 1.0  
-**Date:** 2025
-**Author:** Omar K
