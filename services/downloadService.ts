@@ -102,8 +102,8 @@ export async function clearAllDownloads(
 ): Promise<void> {
   const errors: string[] = [];
 
-  // Delete all files
-  for (const download of downloads) {
+  // Delete all files in parallel for better performance
+  const deletePromises = downloads.map(async download => {
     try {
       const fileInfo = await FileSystem.getInfoAsync(download.filePath);
       if (fileInfo.exists) {
@@ -117,7 +117,10 @@ export async function clearAllDownloads(
       console.error(errorMsg);
       errors.push(errorMsg);
     }
-  }
+  });
+
+  // Wait for all deletions to complete
+  await Promise.all(deletePromises);
 
   // If any deletions failed, throw an error with details
   if (errors.length > 0) {
