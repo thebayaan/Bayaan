@@ -4,6 +4,62 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {clearAllDownloads as clearAllDownloadsService} from '@/services/downloadService';
 import {removeDownload as removeDownloadService} from '@/services/downloadService';
 
+// Throttle utility to prevent excessive state updates during downloads
+const throttleMap = new Map<
+  string,
+  {timer: NodeJS.Timeout | null; lastValue: number}
+>();
+
+function throttledSetProgress(
+  set: (fn: (state: DownloadStoreState) => Partial<DownloadStoreState>) => void,
+  id: string,
+  progress: number,
+  delay = 150,
+) {
+  const existing = throttleMap.get(id);
+
+  // Always update the last value
+  if (existing) {
+    existing.lastValue = progress;
+
+    // If there's already a pending timer, don't create a new one
+    if (existing.timer) {
+      return;
+    }
+  } else {
+    throttleMap.set(id, {timer: null, lastValue: progress});
+  }
+
+  // If progress is 1 (100%), update immediately and clear throttle
+  if (progress >= 1) {
+    set(state => ({
+      downloadProgress: {
+        ...state.downloadProgress,
+        [id]: progress,
+      },
+    }));
+    throttleMap.delete(id);
+    return;
+  }
+
+  // Set up the throttled update
+  const entry = throttleMap.get(id);
+  if (!entry) return;
+
+  entry.timer = setTimeout(() => {
+    const currentEntry = throttleMap.get(id);
+    if (currentEntry) {
+      set(state => ({
+        downloadProgress: {
+          ...state.downloadProgress,
+          [id]: currentEntry.lastValue,
+        },
+      }));
+      currentEntry.timer = null;
+    }
+  }, delay);
+}
+
 export interface DownloadedSurah {
   reciterId: string;
   surahId: string;
@@ -236,6 +292,13 @@ export const useDownloadStore = create<DownloadStoreState>()(
       },
 
       clearDownloading: (id: string) => {
+        // Clean up throttle map entry
+        const throttleEntry = throttleMap.get(id);
+        if (throttleEntry?.timer) {
+          clearTimeout(throttleEntry.timer);
+        }
+        throttleMap.delete(id);
+
         set(state => {
           const newProgress = {...state.downloadProgress};
           delete newProgress[id];
@@ -247,12 +310,8 @@ export const useDownloadStore = create<DownloadStoreState>()(
       },
 
       setDownloadProgress: (id: string, progress: number) => {
-        set(state => ({
-          downloadProgress: {
-            ...state.downloadProgress,
-            [id]: progress,
-          },
-        }));
+        // Use throttled update to prevent main thread blocking
+        throttledSetProgress(set, id, progress);
       },
 
       getDownloadProgress: (reciterId: string, surahId: string) => {
