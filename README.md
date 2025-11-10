@@ -123,9 +123,39 @@ Bayaan/
 └── tsconfig.json      # TypeScript configuration
 ```
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the [`docs/`](./docs) directory:
+
+### Quick Links
+- **[Documentation Index](./docs/README.md)** - Complete documentation overview
+- **[App Initialization](./docs/development/app-initialization.md)** - Understand the app startup process
+- **[Git Workflow](./docs/development/git-workflow.md)** - Branching and collaboration guidelines
+- **[Downloads Feature](./docs/features/downloads.md)** - Offline download functionality
+- **[Deployment Guide](./docs/deployment/deployment.md)** - Build and release procedures
+- **[Version Management](./docs/deployment/version-management.md)** - Git-based versioning system
+
+### Documentation Structure
+```
+docs/
+├── development/        # Setup, workflows, and dev guidelines
+├── features/          # Feature-specific documentation
+├── architecture/      # System architecture and migrations
+├── deployment/        # Build and deployment guides
+└── testing/           # Testing procedures and guides
+```
+
+For a complete guide to all documentation, see the [Documentation Index](./docs/README.md).
+
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow the standard fork, branch, and pull request workflow. Ensure your code adheres to the project's linting and formatting rules.
+Contributions are welcome! Please follow the standard fork, branch, and pull request workflow. 
+
+**Before contributing:**
+1. Review the [Git Workflow](./docs/development/git-workflow.md)
+2. Check relevant feature documentation in [`docs/features/`](./docs/features)
+3. Ensure your code adheres to the project's linting and formatting rules
+4. Update documentation for any new features or changes
 
 ## 📄 License
 
@@ -133,7 +163,7 @@ This project is currently unlicensed. <!-- Update if a license file (e.g., LICEN
 
 ## 🚢 Deployment
 
-For detailed instructions on deploying the app to app stores, refer to our comprehensive [Deployment Guide](./DEPLOYMENT.md). This guide covers:
+For detailed instructions on deploying the app to app stores, refer to our comprehensive [Deployment Guide](./docs/deployment/deployment.md). This guide covers:
 
 - Version management process
 - Android deployment to Google Play Store
@@ -141,7 +171,7 @@ For detailed instructions on deploying the app to app stores, refer to our compr
 - Keystore and credential management
 - Troubleshooting common deployment issues
 
-We use a Git-based [version management system](./docs/VERSION-MANAGEMENT.md) that automates version numbering based on Git tags.
+We use a Git-based [version management system](./docs/deployment/version-management.md) that automates version numbering based on Git tags.
 
 ### Quick Deployment Commands
 
