@@ -440,3 +440,5 @@ The AppInitializer provides a robust, extensible system for managing app startup
 
 **Key Takeaway**: Always register SQLite-based services with AppInitializer to ensure data is ready before screens mount.
 
+
+
