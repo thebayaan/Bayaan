@@ -9,6 +9,9 @@ import {Reciter, Rewayat} from '@/data/reciterData';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {CircularProgress} from '@/components/CircularProgress';
+import {Ionicons} from '@expo/vector-icons';
 
 interface TrackCardProps {
   reciterId: string;
@@ -35,6 +38,34 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   const playbackStatus = usePlayerStore(state => state.playback.state);
   const currentIndex = usePlayerStore(state => state.queue.currentIndex);
   const tracks = usePlayerStore(state => state.queue.tracks);
+
+  // Get download state
+  const {
+    isDownloaded: checkIsDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    isDownloadingWithRewayat,
+    getDownloadProgress,
+  } = useDownload();
+
+  // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided
+  const isDownloadedState = reciterId
+    ? rewayatId
+      ? isDownloadedWithRewayat(reciterId, surahId, rewayatId)
+      : checkIsDownloaded(reciterId, surahId)
+    : false;
+
+  // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
+  const isCurrentlyDownloading = reciterId
+    ? rewayatId
+      ? isDownloadingWithRewayat(reciterId, surahId, rewayatId)
+      : isDownloading(reciterId, surahId)
+    : false;
+
+  // Get download progress
+  const downloadProgress = reciterId
+    ? getDownloadProgress(reciterId, surahId)
+    : 0;
 
   // Check if this item is the currently active track
   const isCurrentlyPlaying = useMemo(() => {
@@ -100,7 +131,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       height: cardHeight,
       marginBottom: verticalScale(5),
       overflow: 'hidden',
-      borderRadius: moderateScale(15),
+      borderRadius: moderateScale(5),
       position: 'relative',
     },
     reciterImage: {
@@ -134,18 +165,25 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       fontFamily: 'SurahNames',
       color: theme.colors.text,
     },
+    reciterInfoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      marginBottom: verticalScale(1),
+    },
     reciterName: {
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,
-      marginBottom: verticalScale(1),
-      marginLeft: moderateScale(4),
+    },
+    downloadIcon: {
+      marginTop: moderateScale(1),
     },
     rewayatText: {
       fontSize: moderateScale(9),
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,
-      marginLeft: moderateScale(4),
+      textTransform: 'capitalize',
     },
   });
 
@@ -181,9 +219,26 @@ export const TrackCard: React.FC<TrackCardProps> = ({
         </Text>
         <Text style={styles.surahGlyph}>{surahGlyph}</Text>
       </View>
-      <Text style={styles.reciterName} numberOfLines={1}>
-        {reciter.name}
-      </Text>
+      <View style={styles.reciterInfoRow}>
+        {isCurrentlyDownloading ? (
+          <CircularProgress
+            progress={downloadProgress}
+            size={moderateScale(12)}
+            strokeWidth={moderateScale(1.5)}
+            color={theme.colors.textSecondary}
+          />
+        ) : isDownloadedState ? (
+          <Ionicons
+            name="arrow-down-circle"
+            size={moderateScale(12)}
+            color={theme.colors.textSecondary}
+            style={styles.downloadIcon}
+          />
+        ) : null}
+        <Text style={styles.reciterName} numberOfLines={1}>
+          {reciter.name}
+        </Text>
+      </View>
       {rewayat && (
         <Text style={styles.rewayatText} numberOfLines={1}>
           {rewayat.name}

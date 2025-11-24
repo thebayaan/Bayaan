@@ -1,10 +1,15 @@
-import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  StatusBar,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
-import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
 import {FlatList, ListRenderItem} from 'react-native';
@@ -23,11 +28,9 @@ import {getReciterArtwork} from '@/utils/artworkUtils';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
-import {
-  useDownload,
-  DownloadedSurah,
-} from '@/services/player/store/downloadStore';
+import {useDownload} from '@/services/player/store/downloadStore';
 import {downloadSurah} from '@/services/downloadService';
+import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 
 interface LovedTrack {
   reciterId: string;
@@ -42,11 +45,9 @@ interface LovedTrackData {
 }
 
 const LovedScreen = () => {
-  const router = useRouter();
   const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
   const {lovedTracks, toggleLoved} = useLoved();
-  const {updateQueue, play, pause, playback} = useUnifiedPlayer();
+  const {pause, playback} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const playerStore = usePlayerStore();
@@ -54,6 +55,7 @@ const LovedScreen = () => {
     isDownloaded,
     isDownloadedWithRewayat,
     isDownloading,
+    isDownloadingWithRewayat,
     setDownloading,
     clearDownloading,
     addDownload,
@@ -108,7 +110,7 @@ const LovedScreen = () => {
 
   // Use ref to track previous lovedTracks content to prevent infinite loops
   const prevLovedTracksRef = useRef<string>('');
-  
+
   const loadLovedData = useCallback(async () => {
     try {
       setLoading(true);
@@ -145,9 +147,9 @@ const LovedScreen = () => {
   useEffect(() => {
     // Create a stable string representation of lovedTracks
     const currentTracksString = JSON.stringify(
-      lovedTracks.map(t => `${t.reciterId}:${t.surahId}:${t.rewayatId || ''}`)
+      lovedTracks.map(t => `${t.reciterId}:${t.surahId}:${t.rewayatId || ''}`),
     );
-    
+
     // Only reload if the content actually changed
     if (prevLovedTracksRef.current !== currentTracksString) {
       prevLovedTracksRef.current = currentTracksString;
@@ -233,7 +235,8 @@ const LovedScreen = () => {
           Promise.all(
             remainingItems.map(async item => {
               if (!item.reciter || !item.surah) return null;
-              const itemRewayatId = item.track.rewayatId || item.reciter.rewayat[0]?.id;
+              const itemRewayatId =
+                item.track.rewayatId || item.reciter.rewayat[0]?.id;
               const url = generateSmartAudioUrl(
                 item.reciter,
                 item.surah.id.toString(),
@@ -259,7 +262,9 @@ const LovedScreen = () => {
 
               // Check if operation is still valid
               if (currentOperationRef.current !== operationId) {
-                console.log('[LovedScreen] Operation cancelled, skipping track addition');
+                console.log(
+                  '[LovedScreen] Operation cancelled, skipping track addition',
+                );
                 return;
               }
 
@@ -268,7 +273,9 @@ const LovedScreen = () => {
                 .then(() => {
                   // Double-check operation is still valid before updating store
                   if (currentOperationRef.current !== operationId) {
-                    console.log('[LovedScreen] Operation cancelled, skipping store update');
+                    console.log(
+                      '[LovedScreen] Operation cancelled, skipping store update',
+                    );
                     return;
                   }
 
@@ -325,7 +332,8 @@ const LovedScreen = () => {
       useDownloadStore.getState();
 
       // Create ONLY first track (instant!)
-      const rewayatId = firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
+      const rewayatId =
+        firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
       const firstTrack = {
         id: `${firstItem.reciter.id}:${firstItem.surah.id}`,
         url: generateSmartAudioUrl(
@@ -372,7 +380,8 @@ const LovedScreen = () => {
         Promise.all(
           remainingItems.map(async item => {
             if (!item.reciter || !item.surah) return null;
-            const itemRewayatId = item.track.rewayatId || item.reciter.rewayat[0]?.id;
+            const itemRewayatId =
+              item.track.rewayatId || item.reciter.rewayat[0]?.id;
             const url = generateSmartAudioUrl(
               item.reciter,
               item.surah.id.toString(),
@@ -397,14 +406,18 @@ const LovedScreen = () => {
             );
 
             if (currentOperationRef.current !== operationId) {
-              console.log('[LovedScreen] Operation cancelled, skipping track addition');
+              console.log(
+                '[LovedScreen] Operation cancelled, skipping track addition',
+              );
               return;
             }
 
             TrackPlayer.add(validRemainingTracks)
               .then(() => {
                 if (currentOperationRef.current !== operationId) {
-                  console.log('[LovedScreen] Operation cancelled, skipping store update');
+                  console.log(
+                    '[LovedScreen] Operation cancelled, skipping store update',
+                  );
                   return;
                 }
 
@@ -459,7 +472,8 @@ const LovedScreen = () => {
       useDownloadStore.getState();
 
       // Create ONLY first track (instant!)
-      const rewayatId = firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
+      const rewayatId =
+        firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
       const firstTrack = {
         id: `${firstItem.reciter.id}:${firstItem.surah.id}`,
         url: generateSmartAudioUrl(
@@ -511,7 +525,8 @@ const LovedScreen = () => {
         Promise.all(
           remainingItems.map(async item => {
             if (!item.reciter || !item.surah) return null;
-            const itemRewayatId = item.track.rewayatId || item.reciter.rewayat[0]?.id;
+            const itemRewayatId =
+              item.track.rewayatId || item.reciter.rewayat[0]?.id;
             const url = generateSmartAudioUrl(
               item.reciter,
               item.surah.id.toString(),
@@ -536,14 +551,18 @@ const LovedScreen = () => {
             );
 
             if (currentOperationRef.current !== operationId) {
-              console.log('[LovedScreen] Operation cancelled, skipping track addition');
+              console.log(
+                '[LovedScreen] Operation cancelled, skipping track addition',
+              );
               return;
             }
 
             TrackPlayer.add(validRemainingTracks)
               .then(() => {
                 if (currentOperationRef.current !== operationId) {
-                  console.log('[LovedScreen] Operation cancelled, skipping store update');
+                  console.log(
+                    '[LovedScreen] Operation cancelled, skipping store update',
+                  );
                   return;
                 }
 
@@ -612,10 +631,21 @@ const LovedScreen = () => {
         if (!item.reciter || !item.surah) continue;
 
         const surahId = parseInt(item.track.surahId, 10);
-        const downloadId = `${item.track.reciterId}-${surahId}`;
+        // Generate download ID with rewayatId if provided for proper tracking
+        const downloadId = item.track.rewayatId
+          ? `${item.track.reciterId}-${surahId}-${item.track.rewayatId}`
+          : `${item.track.reciterId}-${surahId}`;
 
-        // Skip if already downloading
-        if (isDownloading(item.track.reciterId, item.track.surahId)) {
+        // Skip if already downloading - use rewayat-aware check if rewayatId is provided
+        const isCurrentlyDownloading = item.track.rewayatId
+          ? isDownloadingWithRewayat(
+              item.track.reciterId,
+              item.track.surahId,
+              item.track.rewayatId,
+            )
+          : isDownloading(item.track.reciterId, item.track.surahId);
+
+        if (isCurrentlyDownloading) {
           continue;
         }
 
@@ -630,7 +660,10 @@ const LovedScreen = () => {
             progress => {
               // Throttle progress updates to prevent AsyncStorage queue overflow
               const now = Date.now();
-              if (now - lastProgressUpdateRef.current < progressUpdateThrottle) {
+              if (
+                now - lastProgressUpdateRef.current <
+                progressUpdateThrottle
+              ) {
                 return;
               }
               lastProgressUpdateRef.current = now;
@@ -662,7 +695,10 @@ const LovedScreen = () => {
         }
       }
 
-      Alert.alert('Download Complete', 'All loved surahs have been downloaded.');
+      Alert.alert(
+        'Download Complete',
+        'All loved surahs have been downloaded.',
+      );
     } catch (error) {
       console.error('Error in bulk download:', error);
       Alert.alert('Download Error', 'Some downloads may have failed.');
@@ -670,14 +706,15 @@ const LovedScreen = () => {
       setIsDownloadingBulk(false);
     }
   }, [
-    lovedData,
     isDownloadingBulk,
+    lovedData,
     isDownloaded,
     isDownloadedWithRewayat,
+    isDownloadingWithRewayat,
     isDownloading,
     setDownloading,
-    clearDownloading,
     addDownload,
+    clearDownloading,
     setDownloadProgress,
   ]);
 
@@ -689,6 +726,9 @@ const LovedScreen = () => {
     [toggleLoved],
   );
 
+  // Calculate download state for all loved tracks using custom hook
+  const downloadState = useCollectionDownloadState(lovedData);
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <LovedHeader
@@ -699,6 +739,8 @@ const LovedScreen = () => {
         onShufflePress={handleShuffle}
         onDownloadPress={handleBulkDownload}
         theme={theme}
+        allDownloaded={downloadState.allDownloaded}
+        hasNoTracks={downloadState.hasNoTracks}
       />
     );
   }, [
@@ -707,6 +749,8 @@ const LovedScreen = () => {
     handleShuffle,
     handleBulkDownload,
     theme,
+    downloadState.allDownloaded,
+    downloadState.hasNoTracks,
   ]);
 
   const renderItem: ListRenderItem<LovedTrackData> = ({item}) => {
@@ -760,6 +804,7 @@ const LovedScreen = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <FlatList
         data={lovedData}
         renderItem={renderItem}

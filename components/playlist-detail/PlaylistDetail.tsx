@@ -1,5 +1,11 @@
 import React, {useState, useEffect, useCallback, useRef} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
 import {usePlaylists} from '@/hooks/usePlaylists';
@@ -464,6 +470,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <DraggableFlatList
         data={playlistData}
         renderItem={renderItem}

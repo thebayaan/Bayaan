@@ -18,18 +18,14 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
-import {
-  CheckIcon,
-  DownloadIcon,
-  ProfileIcon,
-  HeartIcon,
-} from '@/components/Icons';
+import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {downloadSurah} from '@/services/downloadService';
 import {SelectPlaylistModal} from '@/components/modals/SelectPlaylistModal';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
+import {Ionicons} from '@expo/vector-icons';
 
 interface PlayerOptionsModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -125,6 +121,7 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
     isDownloaded,
     isDownloadedWithRewayat,
     isDownloading,
+    isDownloadingWithRewayat,
     setDownloading,
     addDownload,
     clearDownloading,
@@ -145,13 +142,21 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
       return;
     }
 
-    if (isDownloading(reciterId, surah.id.toString())) {
+    // Check if downloading - use rewayat-aware check if rewayatId is provided
+    const isCurrentlyDownloading = rewayatId
+      ? isDownloadingWithRewayat(reciterId, surah.id.toString(), rewayatId)
+      : isDownloading(reciterId, surah.id.toString());
+
+    if (isCurrentlyDownloading) {
       console.log('Track is already downloading');
       return;
     }
 
     try {
-      const downloadId = `${reciterId}-${surah.id}`;
+      // Generate download ID with rewayatId if provided for proper tracking
+      const downloadId = rewayatId
+        ? `${reciterId}-${surah.id}-${rewayatId}`
+        : `${reciterId}-${surah.id}`;
       setDownloading(downloadId);
 
       const downloadResult = await downloadSurah(
@@ -176,7 +181,10 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
       clearDownloading(downloadId);
     } catch (error) {
       console.error('Download failed:', error);
-      clearDownloading(`${reciterId}-${surah.id}`);
+      const downloadId = rewayatId
+        ? `${reciterId}-${surah.id}-${rewayatId}`
+        : `${reciterId}-${surah.id}`;
+      clearDownloading(downloadId);
     }
   }, [
     reciterId,
@@ -184,6 +192,7 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
     rewayatId,
     isTrackDownloaded,
     isDownloading,
+    isDownloadingWithRewayat,
     setDownloading,
     addDownload,
     clearDownloading,
@@ -253,7 +262,15 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
                 onPressIn={() => setPressedOption('download')}
                 onPressOut={() => setPressedOption(null)}
                 activeOpacity={1}>
-                {isDownloading(reciterId, surah.id.toString()) ? (
+                {(
+                  rewayatId
+                    ? isDownloadingWithRewayat(
+                        reciterId,
+                        surah.id.toString(),
+                        rewayatId,
+                      )
+                    : isDownloading(reciterId, surah.id.toString())
+                ) ? (
                   <CircularProgress
                     progress={downloadProgress}
                     size={moderateScale(20)}
@@ -266,13 +283,22 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
                     size={moderateScale(20)}
                   />
                 ) : (
-                  <DownloadIcon
-                    color={theme.colors.text}
+                  <Ionicons
+                    name="arrow-down"
                     size={moderateScale(20)}
+                    color={theme.colors.text}
                   />
                 )}
                 <Text style={[styles.optionText]}>
-                  {isDownloading(reciterId, surah.id.toString())
+                  {(
+                    rewayatId
+                      ? isDownloadingWithRewayat(
+                          reciterId,
+                          surah.id.toString(),
+                          rewayatId,
+                        )
+                      : isDownloading(reciterId, surah.id.toString())
+                  )
                     ? `Downloading ${Math.round(downloadProgress * 100)}%`
                     : isTrackDownloaded
                       ? 'Downloaded'

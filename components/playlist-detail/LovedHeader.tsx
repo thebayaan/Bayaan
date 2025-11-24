@@ -7,7 +7,8 @@ import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
-import {PlayIcon, ShuffleIcon, DownloadIcon, HeartIcon} from '@/components/Icons';
+import {PlayIcon, ShuffleIcon, HeartIcon, CheckIcon} from '@/components/Icons';
+import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import Animated, {
   useSharedValue,
@@ -26,6 +27,8 @@ interface LovedHeaderProps {
   onShufflePress: () => void;
   onDownloadPress: () => void;
   theme: Theme;
+  allDownloaded: boolean;
+  hasNoTracks: boolean;
 }
 
 export const LovedHeader: React.FC<LovedHeaderProps> = ({
@@ -36,6 +39,8 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
   onShufflePress,
   onDownloadPress,
   theme,
+  allDownloaded,
+  hasNoTracks,
 }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -122,11 +127,13 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
                     .toString(),
                 },
               ]}>
-              <HeartIcon
-                color="white"
-                size={moderateScale(30)}
-                filled={true}
-              />
+              <View style={{marginTop: moderateScale(6)}}>
+                <HeartIcon
+                  color="white"
+                  size={moderateScale(30)}
+                  filled={true}
+                />
+              </View>
             </View>
           </View>
 
@@ -142,11 +149,35 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
           {/* Download button on the left */}
           <AnimatedTouchableOpacity
             activeOpacity={0.7}
-            style={[styles.downloadButton, downloadAnimatedStyle]}
-            onPress={onDownloadPress}
-            onPressIn={() => handlePressIn('download')}
-            onPressOut={() => handlePressOut('download')}>
-            <DownloadIcon color={theme.colors.text} size={moderateScale(20)} />
+            style={[
+              styles.downloadButton,
+              downloadAnimatedStyle,
+              hasNoTracks && styles.disabledButton,
+            ]}
+            onPress={hasNoTracks ? undefined : onDownloadPress}
+            onPressIn={
+              hasNoTracks ? undefined : () => handlePressIn('download')
+            }
+            onPressOut={
+              hasNoTracks ? undefined : () => handlePressOut('download')
+            }
+            disabled={hasNoTracks}>
+            {allDownloaded && !hasNoTracks ? (
+              <CheckIcon
+                color={
+                  hasNoTracks ? theme.colors.textSecondary : theme.colors.text
+                }
+                size={moderateScale(20)}
+              />
+            ) : (
+              <Ionicons
+                name="arrow-down"
+                size={moderateScale(20)}
+                color={
+                  hasNoTracks ? theme.colors.textSecondary : theme.colors.text
+                }
+              />
+            )}
           </AnimatedTouchableOpacity>
 
           {/* Right side buttons */}
@@ -285,5 +316,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     playIconContainer: {
       paddingLeft: moderateScale(4),
     },
+    disabledButton: {
+      opacity: 0.4,
+    },
   });
-
