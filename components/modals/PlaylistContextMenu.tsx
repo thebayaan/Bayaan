@@ -9,6 +9,9 @@ import {usePlaylistsStore} from '@/store/playlistsStore';
 import {downloadSurah} from '@/services/downloadService';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {ActivityIndicator} from 'react-native';
+import {CheckIcon} from '@/components/Icons';
+import {Ionicons} from '@expo/vector-icons';
+import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 
 interface PlaylistContextMenuProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
@@ -39,23 +42,24 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     isDownloaded,
     isDownloadedWithRewayat,
     isDownloading,
+    isDownloadingWithRewayat,
     setPlaylistDownloadProgress,
   } = useDownloadStore();
-  
+
   const isMountedRef = useRef(true);
   const downloadCancelledRef = useRef(false);
   const lastProgressUpdateRef = useRef(0);
   const progressUpdateThrottle = 50; // Update progress max once per 50ms (more responsive)
-  
+
   // Get playlist download progress from store (persists across unmounts)
   // Subscribe to store changes to get reactive updates
-  const playlistProgress = useDownloadStore(state => 
-    state.playlistDownloads[playlistId] || null
+  const playlistProgress = useDownloadStore(
+    state => state.playlistDownloads[playlistId] || null,
   );
-  const isDownloadingPlaylist = useDownloadStore(state => 
-    state.playlistDownloads[playlistId] !== undefined
+  const isDownloadingPlaylist = useDownloadStore(
+    state => state.playlistDownloads[playlistId] !== undefined,
   );
-  
+
   const [downloadProgress, setDownloadProgressState] = useState(
     playlistProgress || {current: 0, total: 0, percentage: 0},
   );
@@ -77,6 +81,39 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
       // Don't cancel downloads on unmount, let them continue in background
     };
   }, []);
+
+  // Get playlist items and transform to format compatible with useCollectionDownloadState
+  const [playlistData, setPlaylistData] = useState<
+    Array<{
+      reciter: {id: string};
+      surah: {id: number};
+      track: {
+        reciterId: string;
+        surahId: string;
+        rewayatId?: string;
+      };
+    }>
+  >([]);
+
+  useEffect(() => {
+    const loadPlaylistData = async () => {
+      const items = await getPlaylistItems(playlistId);
+      const transformedData = items.map(item => ({
+        reciter: {id: item.reciterId},
+        surah: {id: parseInt(item.surahId, 10)},
+        track: {
+          reciterId: item.reciterId,
+          surahId: item.surahId,
+          rewayatId: item.rewayatId,
+        },
+      }));
+      setPlaylistData(transformedData);
+    };
+    loadPlaylistData();
+  }, [getPlaylistItems, playlistId]);
+
+  // Calculate download state using custom hook
+  const downloadState = useCollectionDownloadState(playlistData);
 
   const handleEdit = () => {
     if (onEdit) {
@@ -122,10 +159,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
       };
       setPlaylistDownloadProgress(playlistId, initialProgress);
       setDownloadProgressState(initialProgress);
-      
+
       // Get all playlist items
       const playlistItems = await getPlaylistItems(playlistId);
-      
+
       if (playlistItems.length === 0) {
         setPlaylistDownloadProgress(playlistId, null);
         if (isMountedRef.current) {
@@ -169,12 +206,26 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
       }
 
       // Download items sequentially with proper async yielding to prevent blocking
-      const downloadItem = async (item: typeof itemsToDownload[0], index: number) => {
+      const downloadItem = async (
+        item: (typeof itemsToDownload)[0],
+        index: number,
+      ) => {
         const surahId = parseInt(item.surahId, 10);
-        const downloadId = `${item.reciterId}-${surahId}`;
+        // Generate download ID with rewayatId if provided for proper tracking
+        const downloadId = item.rewayatId
+          ? `${item.reciterId}-${surahId}-${item.rewayatId}`
+          : `${item.reciterId}-${surahId}`;
 
-        // Skip if already downloading
-        if (isDownloading(item.reciterId, item.surahId)) {
+        // Skip if already downloading - use rewayat-aware check if rewayatId is provided
+        const isCurrentlyDownloading = item.rewayatId
+          ? isDownloadingWithRewayat(
+              item.reciterId,
+              item.surahId,
+              item.rewayatId,
+            )
+          : isDownloading(item.reciterId, item.surahId);
+
+        if (isCurrentlyDownloading) {
           return;
         }
 
@@ -189,7 +240,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
             progressValue => {
               // Throttle progress updates to prevent UI blocking
               const now = Date.now();
-              if (now - lastProgressUpdateRef.current < progressUpdateThrottle) {
+              if (
+                now - lastProgressUpdateRef.current <
+                progressUpdateThrottle
+              ) {
                 return;
               }
               lastProgressUpdateRef.current = now;
@@ -198,16 +252,16 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
               const itemProgress = progressValue / itemsToDownload.length;
               const completedProgress = index / itemsToDownload.length;
               const overallProgress = completedProgress + itemProgress;
-              
+
               // Update individual item progress (lightweight, store-only)
               setDownloadProgress(downloadId, progressValue);
-              
+
               const newProgress = {
                 current: index + 1,
                 total: itemsToDownload.length,
                 percentage: Math.min(overallProgress * 100, 99),
               };
-              
+
               // ONLY update persistent store - let React subscription handle UI updates
               // This prevents blocking when component is unmounted
               // Use setTimeout to ensure this doesn't block the download callback
@@ -242,17 +296,14 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
             total: itemsToDownload.length,
             percentage: ((index + 1) / itemsToDownload.length) * 100,
           };
-          
+
           // ONLY update persistent store - React subscription will update UI
           // Use setTimeout to prevent blocking
           setTimeout(() => {
             setPlaylistDownloadProgress(playlistId, newProgress);
           }, 0);
         } catch (error) {
-          console.error(
-            `Failed to download surah ${surahId}:`,
-            error,
-          );
+          console.error(`Failed to download surah ${surahId}:`, error);
           clearDownloading(downloadId);
         }
       };
@@ -279,7 +330,7 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
           total: itemsToDownload.length,
           percentage: 100,
         };
-        
+
         // Update store asynchronously to prevent blocking
         setTimeout(() => {
           setPlaylistDownloadProgress(playlistId, finalProgress);
@@ -329,6 +380,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     setDownloadProgress,
     addDownload,
     setPlaylistDownloadProgress,
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    isDownloadingWithRewayat,
   ]);
 
   const options = [
@@ -340,11 +395,15 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
       disabled: false,
     },
     {
-      label: 'Download Playlist',
+      label: downloadState.allDownloaded ? 'Downloaded' : 'Download Playlist',
       icon: 'download',
       onPress: handleDownloadPlaylist,
       destructive: false,
-      disabled: isDownloadingPlaylist,
+      disabled:
+        isDownloadingPlaylist ||
+        downloadState.hasNoTracks ||
+        downloadState.allDownloaded,
+      isDownloadOption: true,
     },
     {
       label: 'Delete Playlist',
@@ -420,12 +479,33 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
               onPress={option.onPress}
               disabled={option.disabled}
               activeOpacity={option.disabled ? 1 : 0.7}>
-              {isDownloadingPlaylist && option.label === 'Download Playlist' ? (
+              {isDownloadingPlaylist && option.isDownloadOption ? (
                 <ActivityIndicator
                   size="small"
                   color={theme.colors.primary}
                   style={styles.downloadIcon}
                 />
+              ) : option.isDownloadOption ? (
+                downloadState.allDownloaded && !downloadState.hasNoTracks ? (
+                  <CheckIcon
+                    color={
+                      option.disabled
+                        ? theme.colors.textSecondary
+                        : theme.colors.text
+                    }
+                    size={moderateScale(20)}
+                  />
+                ) : (
+                  <Ionicons
+                    name="arrow-down"
+                    size={moderateScale(20)}
+                    color={
+                      option.disabled
+                        ? theme.colors.textSecondary
+                        : theme.colors.text
+                    }
+                  />
+                )
               ) : (
                 <Icon
                   name={option.icon}

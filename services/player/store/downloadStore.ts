@@ -104,6 +104,11 @@ interface DownloadStoreState {
     rewayatId: string,
   ) => boolean;
   isDownloading: (reciterId: string, surahId: string) => boolean;
+  isDownloadingWithRewayat: (
+    reciterId: string,
+    surahId: string,
+    rewayatId: string,
+  ) => boolean;
   getDownload: (
     reciterId: string,
     surahId: string,
@@ -295,6 +300,16 @@ export const useDownloadStore = create<DownloadStoreState>()(
         return downloading.includes(id);
       },
 
+      isDownloadingWithRewayat: (
+        reciterId: string,
+        surahId: string,
+        rewayatId: string,
+      ) => {
+        const {downloading} = get();
+        const id = `${reciterId}-${surahId}-${rewayatId}`;
+        return downloading.includes(id);
+      },
+
       getDownload: (reciterId: string, surahId: string) => {
         const {downloads} = get();
         return downloads.find(
@@ -405,6 +420,7 @@ export const useDownload = () => {
     isDownloaded: store.isDownloaded,
     isDownloadedWithRewayat: store.isDownloadedWithRewayat,
     isDownloading: store.isDownloading,
+    isDownloadingWithRewayat: store.isDownloadingWithRewayat,
     getDownload: store.getDownload,
     setDownloading: store.setDownloading,
     clearDownloading: store.clearDownloading,

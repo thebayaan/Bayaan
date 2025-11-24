@@ -60,6 +60,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       isDownloaded: checkIsDownloaded,
       isDownloadedWithRewayat,
       isDownloading,
+      isDownloadingWithRewayat,
       getDownloadProgress,
     } = useDownload();
 
@@ -70,9 +71,12 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         : checkIsDownloaded(reciterId, item.id.toString())
       : false;
 
-    // Check if currently downloading
-    const isCurrentlyDownloading =
-      reciterId && isDownloading(reciterId, item.id.toString());
+    // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
+    const isCurrentlyDownloading = reciterId
+      ? rewayatId
+        ? isDownloadingWithRewayat(reciterId, item.id.toString(), rewayatId)
+        : isDownloading(reciterId, item.id.toString())
+      : false;
 
     // Get download progress
     const downloadProgress = reciterId
