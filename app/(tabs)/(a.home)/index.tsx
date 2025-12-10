@@ -25,6 +25,7 @@ import Animated from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
 import {EdgeInsets} from 'react-native-safe-area-context';
 import {useModal} from '@/components/providers/ModalProvider';
+import {useReciterSelection} from '@/hooks/useReciterSelection';
 
 interface HeaderProps {
   activeView: 'Reciters' | 'Surahs';
@@ -288,6 +289,7 @@ function HomeScreen() {
   const {showSelectReciter} = useModal();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
+  const {playWithReciter, playWithRandomReciter} = useReciterSelection();
 
   const handleSurahPress = useCallback(
     (surah: Surah) => {
@@ -314,13 +316,17 @@ function HomeScreen() {
           break;
         case 'useDefault':
           if (defaultReciter) {
-            router.push({
-              pathname: '/player',
-              params: {reciterImageUrl: defaultReciter.image_url},
+            playWithReciter(defaultReciter, surah.id.toString()).catch(error => {
+              console.error('Error playing with default reciter:', error);
             });
           } else {
             showSelectReciter(surah.id.toString(), 'home');
           }
+          break;
+        case 'randomReciter':
+          playWithRandomReciter(surah.id.toString()).catch(error => {
+            console.error('Error playing with random reciter:', error);
+          });
           break;
         default:
           showSelectReciter(surah.id.toString(), 'home');
@@ -332,6 +338,8 @@ function HomeScreen() {
       defaultReciterSelection,
       defaultReciter,
       showSelectReciter,
+      playWithReciter,
+      playWithRandomReciter,
     ],
   );
 

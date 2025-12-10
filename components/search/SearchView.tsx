@@ -30,6 +30,7 @@ import Color from 'color';
 import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useModal} from '@/components/providers/ModalProvider';
+import {useReciterSelection} from '@/hooks/useReciterSelection';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -117,6 +118,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
   const {showSelectReciter} = useModal();
+  const {playWithReciter, playWithRandomReciter} = useReciterSelection();
 
   // Clear query when closing
   useEffect(() => {
@@ -285,13 +287,19 @@ export function SearchView({onClose, visible}: SearchViewProps) {
             break;
           case 'useDefault':
             if (defaultReciter) {
-              router.push({
-                pathname: '/player',
-                params: {reciterImageUrl: defaultReciter.image_url},
-              });
+              playWithReciter(defaultReciter, surah.id.toString()).catch(
+                error => {
+                  console.error('Error playing with default reciter:', error);
+                },
+              );
             } else {
               showSelectReciter(surah.id.toString(), 'search');
             }
+            break;
+          case 'randomReciter':
+            playWithRandomReciter(surah.id.toString()).catch(error => {
+              console.error('Error playing with random reciter:', error);
+            });
             break;
           default:
             showSelectReciter(surah.id.toString(), 'search');
@@ -306,6 +314,8 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       defaultReciterSelection,
       defaultReciter,
       showSelectReciter,
+      playWithReciter,
+      playWithRandomReciter,
     ],
   );
 

@@ -13,13 +13,9 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
-import {
-  MakkahIcon,
-  MadinahIcon,
-  HeartIcon,
-  DownloadIcon,
-} from '@/components/Icons';
+import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
+import {Ionicons} from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -244,7 +240,10 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       bottom: verticalScale(5),
       left: 0,
       right: 0,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
+      gap: moderateScale(4),
     },
     optionsButton: {
       position: 'absolute',
@@ -349,10 +348,10 @@ export const SurahCard: React.FC<SurahCardProps> = ({
             />
           )}
           {isDownloaded && (
-            <DownloadIcon
+            <Ionicons
+              name="arrow-down-circle"
               size={moderateScale(14)}
-              color={theme.colors.text}
-              filled={true}
+              color={theme.colors.textSecondary}
             />
           )}
         </View>

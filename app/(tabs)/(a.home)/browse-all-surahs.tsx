@@ -19,6 +19,7 @@ import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
 import {useModal} from '@/components/providers/ModalProvider';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
+import {useReciterSelection} from '@/hooks/useReciterSelection';
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
@@ -113,6 +114,7 @@ export default function BrowseAllSurahsScreen() {
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {showSelectReciter} = useModal();
+  const {playWithReciter, playWithRandomReciter} = useReciterSelection();
   // Retrieve persisted settings
   const browseViewModeSetting = useSettings(state => state.browseViewMode);
   const setBrowseViewModeSetting = useSettings(
@@ -194,13 +196,19 @@ export default function BrowseAllSurahsScreen() {
           break;
         case 'useDefault':
           if (defaultReciter) {
-            router.push({
-              pathname: '/player',
-              params: {reciterImageUrl: defaultReciter.image_url},
-            });
+            playWithReciter(defaultReciter, surah.id.toString()).catch(
+              error => {
+                console.error('Error playing with default reciter:', error);
+              },
+            );
           } else {
             showSelectReciter(surah.id.toString(), 'home');
           }
+          break;
+        case 'randomReciter':
+          playWithRandomReciter(surah.id.toString()).catch(error => {
+            console.error('Error playing with random reciter:', error);
+          });
           break;
         default:
           showSelectReciter(surah.id.toString(), 'home');
@@ -212,6 +220,8 @@ export default function BrowseAllSurahsScreen() {
       defaultReciter,
       router,
       showSelectReciter,
+      playWithReciter,
+      playWithRandomReciter,
     ],
   );
 
