@@ -21,6 +21,7 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {restoreSession} from '@/services/player/utils/restoreSession';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -158,6 +159,10 @@ export default function RootLayout() {
 
         console.log('[App] Player setup complete');
 
+        // Restore playback state
+        console.log('[App] Restoring playback state...');
+        await restoreSession();
+
         // Mark app as ready without state restoration
         setIsPlayerReady(true);
         setAppIsReady(true);
@@ -189,7 +194,7 @@ export default function RootLayout() {
     }
 
     prepare();
-  }, [store]);
+  }, []); // Only run once on mount
 
   // Setup event listeners
   useEffect(() => {
