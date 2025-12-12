@@ -1,35 +1,36 @@
-import React, {useRef, useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  Animated,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   StyleSheet,
-  FlatList,
+  Alert,
+  StatusBar,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
-import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
-import {LinearGradient} from 'expo-linear-gradient';
-import {HeartIcon} from '@/components/Icons';
-import {StatusBar} from 'expo-status-bar';
-import {CollectionCard} from '@/components/CollectionCard';
-import SearchBar from '@/components/SearchBar';
-import {shuffleArray} from '@/utils/arrayUtils';
-import {CollectionActionButtons} from '@/components/CollectionActionButtons';
+import {FlatList, ListRenderItem} from 'react-native';
+import {Swipeable} from 'react-native-gesture-handler';
 import {Reciter} from '@/data/reciterData';
-import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {Surah} from '@/data/surahData';
 import {useLoved} from '@/hooks/useLoved';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import {createTracksForReciter} from '@/utils/track';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {shuffleArray} from '@/utils/arrayUtils';
+import {State as TrackPlayerState} from 'react-native-track-player';
+import TrackPlayer from 'react-native-track-player';
+import {generateSmartAudioUrl} from '@/utils/audioUtils';
+import {getReciterArtwork} from '@/utils/artworkUtils';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useDownloadStore} from '@/services/player/store/downloadStore';
+import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {downloadSurah} from '@/services/downloadService';
+import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 
 interface LovedTrack {
   reciterId: string;
@@ -37,58 +38,45 @@ interface LovedTrack {
   rewayatId?: string;
 }
 
+interface LovedTrackData {
+  track: LovedTrack;
+  reciter: Reciter | null;
+  surah: Surah | null;
+}
+
 const LovedScreen = () => {
-  const router = useRouter();
   const {theme} = useTheme();
+  const {lovedTracks, toggleLoved} = useLoved();
+  const {pause, playback} = useUnifiedPlayer();
+  const queueContext = QueueContext.getInstance();
+  const {addRecentTrack} = useRecentlyPlayedStore();
+  const playerStore = usePlayerStore();
+  const {
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    isDownloadingWithRewayat,
+    setDownloading,
+    clearDownloading,
+    addDownload,
+    setDownloadProgress,
+  } = useDownload();
+
+  const [lovedData, setLovedData] = useState<LovedTrackData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
+
+  // Track current operation to prevent race conditions
+  const currentOperationRef = useRef<string | null>(null);
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
     },
-    headerContainer: {
-      width: '100%',
-      overflow: 'hidden',
-    },
-    gradientContainer: {
-      width: '100%',
-      alignItems: 'center',
-      paddingBottom: moderateScale(20),
-      overflow: 'hidden',
-      backgroundColor: 'purple',
-    },
-    contentContainer: {
-      paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(10),
-    },
     listContentContainer: {
       flexGrow: 1,
       paddingBottom: moderateScale(65),
-    },
-    stickyHeader: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: moderateScale(100),
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1,
-    },
-    stickyHeaderTitle: {
-      fontSize: moderateScale(24),
-      fontWeight: 'bold',
-      color: 'white',
-    },
-    backButton: {
-      position: 'absolute',
-      zIndex: 10,
-    },
-    searchButton: {
-      position: 'absolute',
-      zIndex: 10,
-    },
-    searchBarContainer: {
-      marginTop: moderateScale(16),
     },
     emptyText: {
       fontSize: moderateScale(16),
@@ -96,486 +84,738 @@ const LovedScreen = () => {
       textAlign: 'center',
       marginTop: moderateScale(32),
     },
+    listItem: {
+      marginVertical: moderateScale(2),
+    },
+    rightAction: {
+      flex: 1,
+      backgroundColor: '#ff4444',
+      justifyContent: 'center',
+      alignItems: 'flex-end',
+      paddingRight: moderateScale(20),
+    },
+    deleteButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(15),
+      paddingVertical: moderateScale(10),
+    },
+    deleteText: {
+      color: 'white',
+      fontSize: moderateScale(14),
+      fontWeight: '600',
+      marginLeft: moderateScale(8),
+    },
   });
-  const insets = useSafeAreaInsets();
-  const {lovedTracks} = useLoved();
-  const {updateQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
-  const {addRecentTrack} = useRecentlyPlayedStore();
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
-  const [isStatusBarDark, setIsStatusBarDark] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [reciters, setReciters] = useState<Record<string, Reciter>>({});
+  // Use ref to track previous lovedTracks content to prevent infinite loops
+  const prevLovedTracksRef = useRef<string>('');
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [150, 200],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  const loadLovedData = useCallback(async () => {
+    try {
+      setLoading(true);
 
+      // Enrich with surah and reciter data
+      const enrichedData = await Promise.all(
+        lovedTracks.map(async track => {
+          const [reciter, surah] = await Promise.all([
+            getReciterById(track.reciterId),
+            Promise.resolve(getSurahById(parseInt(track.surahId, 10))),
+          ]);
+
+          return {
+            track: {
+              reciterId: track.reciterId,
+              surahId: track.surahId,
+              rewayatId: track.rewayatId,
+            },
+            reciter: reciter || null,
+            surah: surah || null,
+          };
+        }),
+      );
+
+      setLovedData(enrichedData);
+    } catch (error) {
+      console.error('Failed to load loved tracks:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [lovedTracks]);
+
+  // Load loved tracks data
   useEffect(() => {
-    const listener = headerOpacity.addListener(({value}) => {
-      if (value === 1 && !isHeaderVisible) {
-        setIsHeaderVisible(true);
-      } else if (value < 1 && isHeaderVisible) {
-        setIsHeaderVisible(false);
-      }
-    });
+    // Create a stable string representation of lovedTracks
+    const currentTracksString = JSON.stringify(
+      lovedTracks.map(t => `${t.reciterId}:${t.surahId}:${t.rewayatId || ''}`),
+    );
 
-    return () => headerOpacity.removeListener(listener);
-  }, [headerOpacity, isHeaderVisible]);
+    // Only reload if the content actually changed
+    if (prevLovedTracksRef.current !== currentTracksString) {
+      prevLovedTracksRef.current = currentTracksString;
+      loadLovedData();
+    }
+  }, [lovedTracks, loadLovedData]);
 
-  const handleTrackPress = useCallback(
-    async (trackId: string) => {
+  // Handle surah press to play track
+  const handleSurahPress = useCallback(
+    async (track: LovedTrack, reciter: Reciter, surah: Surah) => {
       try {
-        const [reciterId, surahId, rewayatId] = trackId.split(':');
-        const reciter = await getReciterById(reciterId);
-        const surah = await getSurahById(parseInt(surahId, 10));
+        // Safety check: ensure we have data loaded
+        if (lovedData.length === 0) {
+          console.warn('No loved tracks data loaded yet');
+          return;
+        }
 
-        if (!reciter || !surah) return;
-
-        // Get all loved tracks for the queue
-        const trackPromises = lovedTracks.map(async item => {
-          const itemReciter = await getReciterById(item.reciterId);
-          const itemSurah = await getSurahById(parseInt(item.surahId, 10));
-          if (!itemReciter || !itemSurah) return null;
-
-          // Use the stored rewayatId if available, otherwise fallback to the first rewayat
-          const itemRewayatId = item.rewayatId || itemReciter.rewayat[0]?.id;
-
-          const tracks = await createTracksForReciter(
-            itemReciter,
-            [itemSurah],
-            itemRewayatId,
-          );
-          return tracks[0] || null;
-        });
-
-        // Filter out any null tracks
-        const validTracks = (await Promise.all(trackPromises)).filter(
-          (track): track is NonNullable<typeof track> => track !== null,
+        // Find the index of the selected track in lovedData
+        const selectedIndex = lovedData.findIndex(
+          item =>
+            item.reciter?.id === reciter.id &&
+            item.surah?.id === surah.id &&
+            (item.track.rewayatId || '') === (track.rewayatId || ''),
         );
 
-        if (validTracks.length === 0) return;
+        if (selectedIndex === -1) {
+          console.warn('Selected track not found in loved tracks');
+          return;
+        }
 
-        // Find the index of the selected track
-        const selectedIndex = validTracks.findIndex(
-          track =>
-            track.reciterId === reciterId &&
-            track.surahId === surahId.toString() &&
-            (rewayatId ? track.rewayatId === rewayatId : true),
-        );
+        // Generate unique operation ID to prevent race conditions
+        const operationId = `${Date.now()}-${reciter.id}-${surah.id}`;
+        currentOperationRef.current = operationId;
 
-        if (selectedIndex === -1) return;
+        // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
+        useDownloadStore.getState();
 
-        // Reorder tracks to start from the selected track
-        const reorderedTracks = [
-          ...validTracks.slice(selectedIndex),
-          ...validTracks.slice(0, selectedIndex),
+        // Get artwork once (same for all tracks)
+        const artwork = getReciterArtwork(reciter);
+
+        // Create ONLY first track (instant!)
+        const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
+        const firstTrack = {
+          id: `${reciter.id}:${surah.id}`,
+          url: generateSmartAudioUrl(reciter, surah.id.toString(), rewayatId),
+          title: surah.name,
+          artist: reciter.name,
+          reciterId: reciter.id,
+          artwork,
+          surahId: surah.id.toString(),
+          reciterName: reciter.name,
+          rewayatId,
+        };
+
+        // Add first track and play IMMEDIATELY
+        const resetPromise = TrackPlayer.reset();
+        currentOperationRef.current = operationId;
+
+        await resetPromise;
+        await TrackPlayer.add(firstTrack);
+        await TrackPlayer.play();
+
+        // CRITICAL: Update store IMMEDIATELY and synchronously
+        if (currentOperationRef.current === operationId) {
+          const store = usePlayerStore.getState();
+          store.updateQueueState({
+            tracks: [firstTrack],
+            currentIndex: 0,
+            total: 1,
+            loading: false,
+            endReached: false,
+          });
+        }
+
+        // Get remaining items (reordered so selected is first)
+        const remainingItems = [
+          ...lovedData.slice(selectedIndex + 1),
+          ...lovedData.slice(0, selectedIndex),
         ];
 
-        // Update queue and start playing
-        await updateQueue(reorderedTracks, 0);
-        await play();
+        // Create remaining tracks in parallel (background - doesn't block playback!)
+        if (remainingItems.length > 0) {
+          Promise.all(
+            remainingItems.map(async item => {
+              if (!item.reciter || !item.surah) return null;
+              const itemRewayatId =
+                item.track.rewayatId || item.reciter.rewayat[0]?.id;
+              const url = generateSmartAudioUrl(
+                item.reciter,
+                item.surah.id.toString(),
+                itemRewayatId,
+              );
+              return {
+                id: `${item.reciter.id}:${item.surah.id}`,
+                url,
+                title: item.surah.name,
+                artist: item.reciter.name,
+                reciterId: item.reciter.id,
+                artwork: getReciterArtwork(item.reciter),
+                surahId: item.surah.id.toString(),
+                reciterName: item.reciter.name,
+                rewayatId: itemRewayatId,
+              };
+            }),
+          )
+            .then(remainingTracks => {
+              const validRemainingTracks = remainingTracks.filter(
+                (t): t is NonNullable<typeof t> => t !== null,
+              );
 
-        // Add to recently played list with the correct rewayatId
-        await addRecentTrack(
-          reciter,
-          surah,
-          0,
-          0,
-          rewayatId || reciter.rewayat[0]?.id,
-        );
+              // Check if operation is still valid
+              if (currentOperationRef.current !== operationId) {
+                console.log(
+                  '[LovedScreen] Operation cancelled, skipping track addition',
+                );
+                return;
+              }
 
-        // Set current reciter for batch loading
+              // Add remaining tracks to TrackPlayer (non-blocking)
+              TrackPlayer.add(validRemainingTracks)
+                .then(() => {
+                  // Double-check operation is still valid before updating store
+                  if (currentOperationRef.current !== operationId) {
+                    console.log(
+                      '[LovedScreen] Operation cancelled, skipping store update',
+                    );
+                    return;
+                  }
+
+                  // Update store with complete queue (non-blocking)
+                  const completeQueue = [firstTrack, ...validRemainingTracks];
+                  const store = usePlayerStore.getState();
+                  store.updateQueueState({
+                    tracks: completeQueue,
+                    total: completeQueue.length,
+                  });
+                })
+                .catch(error => {
+                  console.error('Error adding tracks to TrackPlayer:', error);
+                });
+            })
+            .catch(error => {
+              console.error('Error creating remaining tracks:', error);
+            });
+        }
+
+        // Add to recently played AFTER playback starts (non-blocking)
+        addRecentTrack(reciter, surah, 0, 0, rewayatId);
         queueContext.setCurrentReciter(reciter);
       } catch (error) {
         console.error('Error playing track:', error);
+        currentOperationRef.current = null;
       }
     },
-    [lovedTracks, updateQueue, play, queueContext, addRecentTrack],
+    [lovedData, queueContext, addRecentTrack],
   );
 
-  const ReciterTrackItem = useCallback(
-    ({item}: {item: LovedTrack}) => {
-      const reciter = reciters[item.reciterId];
+  // Play all tracks
+  const handlePlayAll = useCallback(async () => {
+    if (lovedData.length === 0) return;
 
-      if (!reciter) {
-        return <LoadingIndicator />;
+    try {
+      // If currently playing, pause
+      if (playback.state === TrackPlayerState.Playing) {
+        await pause();
+        return;
       }
 
-      const handlePress = () => {
-        const trackId = `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
-        handleTrackPress(trackId);
+      const firstItem = lovedData.find(item => item.reciter && item.surah);
+      if (!firstItem?.reciter || !firstItem?.surah) return;
+
+      // Generate unique operation ID
+      const operationId = `${Date.now()}-${firstItem.reciter.id}-play-all`;
+      currentOperationRef.current = operationId;
+
+      // Get artwork once
+      const artwork = getReciterArtwork(firstItem.reciter);
+
+      // OPTIMIZATION: Ensure download store is "warm"
+      useDownloadStore.getState();
+
+      // Create ONLY first track (instant!)
+      const rewayatId =
+        firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
+      const firstTrack = {
+        id: `${firstItem.reciter.id}:${firstItem.surah.id}`,
+        url: generateSmartAudioUrl(
+          firstItem.reciter,
+          firstItem.surah.id.toString(),
+          rewayatId,
+        ),
+        title: firstItem.surah.name,
+        artist: firstItem.reciter.name,
+        reciterId: firstItem.reciter.id,
+        artwork,
+        surahId: firstItem.surah.id.toString(),
+        reciterName: firstItem.reciter.name,
+        rewayatId,
       };
 
-      return (
-        <TrackItem
-          reciterId={item.reciterId}
-          surahId={item.surahId}
-          rewayatId={item.rewayatId}
-          onPress={handlePress}
-        />
-      );
-    },
-    [reciters, handleTrackPress],
-  );
+      // Add first track and play IMMEDIATELY
+      try {
+        await TrackPlayer.reset();
+        currentOperationRef.current = operationId;
+        await TrackPlayer.add(firstTrack);
+        await TrackPlayer.play();
 
-  useEffect(() => {
-    const loadReciters = async () => {
-      const reciterMap: Record<string, Reciter> = {};
-      for (const track of lovedTracks) {
-        if (!reciterMap[track.reciterId]) {
-          const reciter = await getReciterById(track.reciterId);
-          if (reciter) {
-            reciterMap[track.reciterId] = reciter;
-          }
+        // CRITICAL: Update store IMMEDIATELY and synchronously
+        if (currentOperationRef.current === operationId) {
+          const store = usePlayerStore.getState();
+          store.updateQueueState({
+            tracks: [firstTrack],
+            currentIndex: 0,
+            total: 1,
+            loading: false,
+            endReached: false,
+          });
         }
+      } catch (error) {
+        console.error('Error starting playback:', error);
+        currentOperationRef.current = null;
+        throw error;
       }
-      setReciters(reciterMap);
-    };
-    loadReciters();
-  }, [lovedTracks]);
 
-  const data = lovedTracks.map(track => {
-    const reciter = reciters[track.reciterId];
-    const surah = getSurahById(parseInt(track.surahId, 10));
-    return {
-      reciterId: track.reciterId,
-      surahId: track.surahId,
-      rewayatId: track.rewayatId,
-      reciterName: reciter?.name,
-      surahName: surah?.name,
-    };
-  });
+      // Create remaining tracks in parallel (background)
+      const remainingItems = lovedData.slice(1);
+      if (remainingItems.length > 0) {
+        Promise.all(
+          remainingItems.map(async item => {
+            if (!item.reciter || !item.surah) return null;
+            const itemRewayatId =
+              item.track.rewayatId || item.reciter.rewayat[0]?.id;
+            const url = generateSmartAudioUrl(
+              item.reciter,
+              item.surah.id.toString(),
+              itemRewayatId,
+            );
+            return {
+              id: `${item.reciter.id}:${item.surah.id}`,
+              url,
+              title: item.surah.name,
+              artist: item.reciter.name,
+              reciterId: item.reciter.id,
+              artwork: getReciterArtwork(item.reciter),
+              surahId: item.surah.id.toString(),
+              reciterName: item.reciter.name,
+              rewayatId: itemRewayatId,
+            };
+          }),
+        )
+          .then(remainingTracks => {
+            const validRemainingTracks = remainingTracks.filter(
+              (t): t is NonNullable<typeof t> => t !== null,
+            );
 
-  const filteredData = data.filter(
-    item =>
-      item.reciterId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.surahId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.reciterName &&
-        item.reciterName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.surahName &&
-        item.surahName.toLowerCase().includes(searchQuery.toLowerCase())),
-  );
+            if (currentOperationRef.current !== operationId) {
+              console.log(
+                '[LovedScreen] Operation cancelled, skipping track addition',
+              );
+              return;
+            }
 
-  const getItemKey = (item: {
-    reciterId: string;
-    surahId: string;
-    rewayatId?: string;
-  }) => `${item.reciterId}:${item.surahId}:${item.rewayatId || ''}`;
+            TrackPlayer.add(validRemainingTracks)
+              .then(() => {
+                if (currentOperationRef.current !== operationId) {
+                  console.log(
+                    '[LovedScreen] Operation cancelled, skipping store update',
+                  );
+                  return;
+                }
 
-  const handlePlayAll = useCallback(async () => {
-    if (filteredData.length === 0) return;
-
-    try {
-      // Create tracks for all loved tracks
-      const trackPromises = filteredData.map(async item => {
-        const reciter = await getReciterById(item.reciterId);
-        const surah = await getSurahById(parseInt(item.surahId, 10));
-        if (!reciter || !surah) return null;
-
-        // Find the loved track to get its rewayatId
-        const lovedTrack = lovedTracks.find(
-          track =>
-            track.reciterId === item.reciterId &&
-            track.surahId === item.surahId,
-        );
-        const rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
-
-        const tracks = await createTracksForReciter(
-          reciter,
-          [surah],
-          rewayatId,
-        );
-        return tracks[0] || null;
-      });
-
-      // Filter out any null tracks
-      const validTracks = (await Promise.all(trackPromises)).filter(
-        (track): track is NonNullable<typeof track> => track !== null,
-      );
-
-      if (validTracks.length === 0) return;
-
-      // Update queue and start playing
-      await updateQueue(validTracks, 0);
-      await play();
-
-      // Add first track to recently played
-      const firstTrack = validTracks[0];
-      if (!firstTrack?.reciterId || !firstTrack?.surahId) return;
-
-      const firstReciter = await getReciterById(firstTrack.reciterId);
-      const firstSurah = await getSurahById(parseInt(firstTrack.surahId, 10));
-
-      if (firstReciter && firstSurah) {
-        // Use the rewayatId from the track
-        await addRecentTrack(
-          firstReciter,
-          firstSurah,
-          0,
-          0,
-          firstTrack.rewayatId || firstReciter.rewayat[0]?.id,
-        );
-        queueContext.setCurrentReciter(firstReciter);
+                const completeQueue = [firstTrack, ...validRemainingTracks];
+                const store = usePlayerStore.getState();
+                store.updateQueueState({
+                  tracks: completeQueue,
+                  total: completeQueue.length,
+                });
+              })
+              .catch(error => {
+                console.error('Error adding tracks to TrackPlayer:', error);
+              });
+          })
+          .catch(error => {
+            console.error('Error creating remaining tracks:', error);
+          });
       }
+
+      // Add to recently played AFTER playback starts (non-blocking)
+      addRecentTrack(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
+      queueContext.setCurrentReciter(firstItem.reciter);
     } catch (error) {
       console.error('Error playing all tracks:', error);
+      currentOperationRef.current = null;
     }
-  }, [
-    filteredData,
-    lovedTracks,
-    updateQueue,
-    play,
-    queueContext,
-    addRecentTrack,
-  ]);
+  }, [lovedData, pause, playback.state, queueContext, addRecentTrack]);
 
-  const handleShuffleAll = useCallback(async () => {
-    if (filteredData.length === 0) return;
+  // Shuffle all tracks
+  const handleShuffle = useCallback(async () => {
+    if (lovedData.length === 0) return;
 
     try {
-      // Create tracks for all loved tracks
-      const trackPromises = filteredData.map(async item => {
-        const reciter = await getReciterById(item.reciterId);
-        const surah = await getSurahById(parseInt(item.surahId, 10));
-        if (!reciter || !surah) return null;
-
-        // Find the loved track to get its rewayatId
-        const lovedTrack = lovedTracks.find(
-          track =>
-            track.reciterId === item.reciterId &&
-            track.surahId === item.surahId,
-        );
-        const rewayatId = lovedTrack?.rewayatId || reciter.rewayat[0]?.id;
-
-        const tracks = await createTracksForReciter(
-          reciter,
-          [surah],
-          rewayatId,
-        );
-        return tracks[0] || null;
-      });
-
-      // Filter out any null tracks
-      const validTracks = (await Promise.all(trackPromises)).filter(
-        (track): track is NonNullable<typeof track> => track !== null,
+      // Shuffle items first
+      const shuffledItems = shuffleArray([...lovedData]).filter(
+        item => item.reciter && item.surah,
       );
 
-      if (validTracks.length === 0) return;
+      if (shuffledItems.length === 0) return;
 
-      // Shuffle the tracks
-      const shuffledTracks = shuffleArray([...validTracks]);
+      const firstItem = shuffledItems[0];
+      if (!firstItem.reciter || !firstItem.surah) return;
 
-      // Update queue and start playing
-      await updateQueue(shuffledTracks, 0);
-      await play();
+      // Generate unique operation ID
+      const operationId = `${Date.now()}-${firstItem.reciter.id}-shuffle-all`;
+      currentOperationRef.current = operationId;
 
-      // Add first track to recently played
-      const firstTrack = shuffledTracks[0];
-      if (!firstTrack?.reciterId || !firstTrack?.surahId) return;
+      // Get artwork once
+      const artwork = getReciterArtwork(firstItem.reciter);
 
-      const firstReciter = await getReciterById(firstTrack.reciterId);
-      const firstSurah = await getSurahById(parseInt(firstTrack.surahId, 10));
+      // OPTIMIZATION: Ensure download store is "warm"
+      useDownloadStore.getState();
 
-      if (firstReciter && firstSurah) {
-        // Use the rewayatId from the track
-        await addRecentTrack(
-          firstReciter,
-          firstSurah,
-          0,
-          0,
-          firstTrack.rewayatId || firstReciter.rewayat[0]?.id,
-        );
-        queueContext.setCurrentReciter(firstReciter);
+      // Create ONLY first track (instant!)
+      const rewayatId =
+        firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
+      const firstTrack = {
+        id: `${firstItem.reciter.id}:${firstItem.surah.id}`,
+        url: generateSmartAudioUrl(
+          firstItem.reciter,
+          firstItem.surah.id.toString(),
+          rewayatId,
+        ),
+        title: firstItem.surah.name,
+        artist: firstItem.reciter.name,
+        reciterId: firstItem.reciter.id,
+        artwork,
+        surahId: firstItem.surah.id.toString(),
+        reciterName: firstItem.reciter.name,
+        rewayatId,
+      };
+
+      // Enable shuffle mode in player settings
+      if (!playerStore.settings.shuffle) {
+        playerStore.toggleShuffle();
       }
+
+      // Add first track and play IMMEDIATELY
+      try {
+        await TrackPlayer.reset();
+        currentOperationRef.current = operationId;
+        await TrackPlayer.add(firstTrack);
+        await TrackPlayer.play();
+
+        // CRITICAL: Update store IMMEDIATELY and synchronously
+        if (currentOperationRef.current === operationId) {
+          const store = usePlayerStore.getState();
+          store.updateQueueState({
+            tracks: [firstTrack],
+            currentIndex: 0,
+            total: 1,
+            loading: false,
+            endReached: false,
+          });
+        }
+      } catch (error) {
+        console.error('Error starting playback:', error);
+        currentOperationRef.current = null;
+        throw error;
+      }
+
+      // Create remaining tracks in parallel (background)
+      const remainingItems = shuffledItems.slice(1);
+      if (remainingItems.length > 0) {
+        Promise.all(
+          remainingItems.map(async item => {
+            if (!item.reciter || !item.surah) return null;
+            const itemRewayatId =
+              item.track.rewayatId || item.reciter.rewayat[0]?.id;
+            const url = generateSmartAudioUrl(
+              item.reciter,
+              item.surah.id.toString(),
+              itemRewayatId,
+            );
+            return {
+              id: `${item.reciter.id}:${item.surah.id}`,
+              url,
+              title: item.surah.name,
+              artist: item.reciter.name,
+              reciterId: item.reciter.id,
+              artwork: getReciterArtwork(item.reciter),
+              surahId: item.surah.id.toString(),
+              reciterName: item.reciter.name,
+              rewayatId: itemRewayatId,
+            };
+          }),
+        )
+          .then(remainingTracks => {
+            const validRemainingTracks = remainingTracks.filter(
+              (t): t is NonNullable<typeof t> => t !== null,
+            );
+
+            if (currentOperationRef.current !== operationId) {
+              console.log(
+                '[LovedScreen] Operation cancelled, skipping track addition',
+              );
+              return;
+            }
+
+            TrackPlayer.add(validRemainingTracks)
+              .then(() => {
+                if (currentOperationRef.current !== operationId) {
+                  console.log(
+                    '[LovedScreen] Operation cancelled, skipping store update',
+                  );
+                  return;
+                }
+
+                const completeQueue = [firstTrack, ...validRemainingTracks];
+                const store = usePlayerStore.getState();
+                store.updateQueueState({
+                  tracks: completeQueue,
+                  total: completeQueue.length,
+                });
+              })
+              .catch(error => {
+                console.error('Error adding tracks to TrackPlayer:', error);
+              });
+          })
+          .catch(error => {
+            console.error('Error creating remaining tracks:', error);
+          });
+      }
+
+      // Add to recently played AFTER playback starts (non-blocking)
+      addRecentTrack(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
+      queueContext.setCurrentReciter(firstItem.reciter);
     } catch (error) {
       console.error('Error shuffling tracks:', error);
+      currentOperationRef.current = null;
+    }
+  }, [lovedData, queueContext, addRecentTrack, playerStore]);
+
+  // Handle bulk download
+  const handleBulkDownload = useCallback(async () => {
+    if (isDownloadingBulk) return;
+    if (lovedData.length === 0) return;
+
+    setIsDownloadingBulk(true);
+
+    try {
+      // Filter out items that are already downloaded
+      const itemsToDownload = lovedData.filter(item => {
+        if (!item.reciter || !item.surah) return false;
+        if (item.track.rewayatId) {
+          return !isDownloadedWithRewayat(
+            item.track.reciterId,
+            item.track.surahId,
+            item.track.rewayatId,
+          );
+        }
+        return !isDownloaded(item.track.reciterId, item.track.surahId);
+      });
+
+      if (itemsToDownload.length === 0) {
+        Alert.alert(
+          'Already Downloaded',
+          'All loved surahs are already downloaded.',
+        );
+        setIsDownloadingBulk(false);
+        return;
+      }
+
+      // Throttle progress updates to prevent AsyncStorage overload
+      const progressUpdateThrottle = 300; // Only update every 300ms
+      const lastProgressUpdateRef = {current: 0};
+
+      // Download items sequentially with delays to prevent AsyncStorage overload
+      for (let index = 0; index < itemsToDownload.length; index++) {
+        const item = itemsToDownload[index];
+        if (!item.reciter || !item.surah) continue;
+
+        const surahId = parseInt(item.track.surahId, 10);
+        // Generate download ID with rewayatId if provided for proper tracking
+        const downloadId = item.track.rewayatId
+          ? `${item.track.reciterId}-${surahId}-${item.track.rewayatId}`
+          : `${item.track.reciterId}-${surahId}`;
+
+        // Skip if already downloading - use rewayat-aware check if rewayatId is provided
+        const isCurrentlyDownloading = item.track.rewayatId
+          ? isDownloadingWithRewayat(
+              item.track.reciterId,
+              item.track.surahId,
+              item.track.rewayatId,
+            )
+          : isDownloading(item.track.reciterId, item.track.surahId);
+
+        if (isCurrentlyDownloading) {
+          continue;
+        }
+
+        try {
+          setDownloading(downloadId);
+
+          // Download with throttled progress tracking
+          const downloadResult = await downloadSurah(
+            surahId,
+            item.track.reciterId,
+            item.track.rewayatId,
+            progress => {
+              // Throttle progress updates to prevent AsyncStorage queue overflow
+              const now = Date.now();
+              if (
+                now - lastProgressUpdateRef.current <
+                progressUpdateThrottle
+              ) {
+                return;
+              }
+              lastProgressUpdateRef.current = now;
+              setDownloadProgress(downloadId, progress);
+            },
+          );
+
+          // Add to downloads
+          addDownload({
+            reciterId: item.track.reciterId,
+            surahId: item.track.surahId,
+            rewayatId: item.track.rewayatId || '',
+            filePath: downloadResult.filePath,
+            fileSize: downloadResult.fileSize,
+            downloadDate: Date.now(),
+            status: 'completed',
+          });
+
+          clearDownloading(downloadId);
+
+          // Small delay between downloads to let AsyncStorage catch up
+          // Only add delay if not the last item
+          if (index < itemsToDownload.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        } catch (error) {
+          console.error('Error downloading surah:', error);
+          clearDownloading(downloadId);
+        }
+      }
+
+      Alert.alert(
+        'Download Complete',
+        'All loved surahs have been downloaded.',
+      );
+    } catch (error) {
+      console.error('Error in bulk download:', error);
+      Alert.alert('Download Error', 'Some downloads may have failed.');
+    } finally {
+      setIsDownloadingBulk(false);
     }
   }, [
-    filteredData,
-    lovedTracks,
-    updateQueue,
-    play,
-    queueContext,
-    addRecentTrack,
+    isDownloadingBulk,
+    lovedData,
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloadingWithRewayat,
+    isDownloading,
+    setDownloading,
+    addDownload,
+    clearDownloading,
+    setDownloadProgress,
   ]);
 
-  const handleScroll = Animated.event(
-    [{nativeEvent: {contentOffset: {y: scrollY}}}],
-    {
-      useNativeDriver: false,
-      listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        const offsetY = event.nativeEvent.contentOffset.y;
-        setIsStatusBarDark(offsetY > 100);
-      },
+  // Handle remove from loved
+  const handleRemoveFromLoved = useCallback(
+    (track: LovedTrack) => {
+      toggleLoved(track.reciterId, track.surahId, track.rewayatId || '');
     },
+    [toggleLoved],
   );
+
+  // Calculate download state for all loved tracks using custom hook
+  const downloadState = useCollectionDownloadState(lovedData);
 
   const ListHeaderComponent = useCallback(() => {
     return (
-      <View style={styles.headerContainer}>
-        <LinearGradient
-          colors={['purple', theme.colors.background] as [string, string]}
-          style={[
-            styles.gradientContainer,
-            {paddingTop: insets.top + moderateScale(20)},
-          ]}>
-          <CollectionCard
-            icon={
-              <HeartIcon
-                color={theme.colors.text}
-                size={moderateScale(80)}
-                filled={true}
-              />
-            }
-            title="Loved Surahs"
-            subtitle={`${lovedTracks.length} surahs`}
-          />
-        </LinearGradient>
-        <View style={styles.contentContainer}>
-          <CollectionActionButtons
-            onShufflePress={handleShuffleAll}
-            onPlayPress={handlePlayAll}
-          />
-          {showSearch && (
-            <View style={styles.searchBarContainer}>
-              <SearchBar
-                placeholder="Search loved surahs"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-          )}
-        </View>
-      </View>
+      <LovedHeader
+        title="Loved Surahs"
+        subtitle={`${lovedData.length} ${lovedData.length === 1 ? 'surah' : 'surahs'}`}
+        backgroundColor="#FF6B6B"
+        onPlayPress={handlePlayAll}
+        onShufflePress={handleShuffle}
+        onDownloadPress={handleBulkDownload}
+        theme={theme}
+        allDownloaded={downloadState.allDownloaded}
+        hasNoTracks={downloadState.hasNoTracks}
+      />
     );
   }, [
-    styles.headerContainer,
-    styles.gradientContainer,
-    styles.contentContainer,
-    styles.searchBarContainer,
-    theme.colors.background,
-    theme.colors.text,
-    insets.top,
-    lovedTracks.length,
-    handleShuffleAll,
+    lovedData.length,
     handlePlayAll,
-    showSearch,
-    searchQuery,
+    handleShuffle,
+    handleBulkDownload,
+    theme,
+    downloadState.allDownloaded,
+    downloadState.hasNoTracks,
   ]);
+
+  const renderItem: ListRenderItem<LovedTrackData> = ({item}) => {
+    const {track, reciter, surah} = item;
+
+    if (!reciter || !surah) {
+      return null;
+    }
+
+    const renderRightActions = () => (
+      <View style={styles.rightAction}>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleRemoveFromLoved(track)}>
+          <Icon
+            name="trash-2"
+            type="feather"
+            size={moderateScale(20)}
+            color="white"
+          />
+          <Text style={styles.deleteText}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+    );
+
+    return (
+      <Swipeable renderRightActions={renderRightActions}>
+        <View style={styles.listItem}>
+          <TrackItem
+            reciterId={track.reciterId}
+            surahId={track.surahId}
+            rewayatId={track.rewayatId}
+            onPress={() => handleSurahPress(track, reciter, surah)}
+            onPlayPress={() => handleSurahPress(track, reciter, surah)}
+          />
+        </View>
+      </Swipeable>
+    );
+  };
+
+  const getItemKey = (item: LovedTrackData) =>
+    `${item.track.reciterId}:${item.track.surahId}:${item.track.rewayatId || ''}`;
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emptyText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
+      <StatusBar barStyle="light-content" />
       <FlatList
-        data={filteredData}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        renderItem={ReciterTrackItem}
+        data={lovedData}
+        renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No loved surahs yet</Text>
         }
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        bounces={false}
       />
-      <Animated.View
-        style={[
-          styles.stickyHeader,
-          {
-            opacity: headerOpacity,
-            paddingTop: insets.top,
-          },
-        ]}>
-        <LinearGradient
-          colors={['purple', theme.colors.background] as [string, string]}
-          style={StyleSheet.absoluteFill}
-        />
-        <Text style={styles.stickyHeaderTitle}>Loved Surahs</Text>
-      </Animated.View>
-      <Animated.View
-        style={[
-          styles.backButton,
-          {
-            top: insets.top + moderateScale(10),
-            left: moderateScale(15),
-          },
-        ]}>
-        <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color="white"
-            />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
-      <Animated.View
-        style={[
-          styles.searchButton,
-          {
-            top: insets.top + moderateScale(10),
-            right: moderateScale(15),
-          },
-        ]}>
-        <TouchableOpacity
-          activeOpacity={0.99}
-          onPress={() => setShowSearch(!showSearch)}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(20)}
-              color="white"
-            />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(25)}
-              color={theme.colors.text}
-            />
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
     </View>
   );
 };

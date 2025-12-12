@@ -15,6 +15,7 @@ import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
+import {Ionicons} from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -36,6 +37,7 @@ interface SurahCardProps {
   onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
+  isDownloaded?: boolean;
   isLoading?: boolean;
   enableHaptics?: boolean;
   enableAnimation?: boolean;
@@ -56,6 +58,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   onOptionsPress,
   style,
   isLoved = false,
+  isDownloaded = false,
   enableHaptics = false,
   enableAnimation = false,
   reciterId,
@@ -237,7 +240,10 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       bottom: verticalScale(5),
       left: 0,
       right: 0,
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
+      gap: moderateScale(4),
     },
     optionsButton: {
       position: 'absolute',
@@ -339,6 +345,13 @@ export const SurahCard: React.FC<SurahCardProps> = ({
               size={moderateScale(14)}
               color={theme.colors.text}
               filled={true}
+            />
+          )}
+          {isDownloaded && (
+            <Ionicons
+              name="arrow-down-circle"
+              size={moderateScale(14)}
+              color={theme.colors.textSecondary}
             />
           )}
         </View>

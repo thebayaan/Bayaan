@@ -8,7 +8,6 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
@@ -17,6 +16,9 @@ import Color from 'color';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {CircularProgress} from '@/components/CircularProgress';
+import {Ionicons} from '@expo/vector-icons';
 
 interface TrackItemProps {
   reciterId: string;
@@ -24,10 +26,11 @@ interface TrackItemProps {
   rewayatId?: string;
   onPress: () => void;
   onPlayPress?: () => void;
+  hidePlayButton?: boolean;
 }
 
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
-  ({reciterId, surahId, rewayatId, onPress, onPlayPress}) => {
+  ({reciterId, surahId, rewayatId, onPress, onPlayPress, hidePlayButton}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const [reciter, setReciter] = useState<Reciter | null>(null);
@@ -37,6 +40,34 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const playbackStatus = usePlayerStore(state => state.playback.state);
     const currentIndex = usePlayerStore(state => state.queue.currentIndex);
     const tracks = usePlayerStore(state => state.queue.tracks);
+
+    // Get download state
+    const {
+      isDownloaded: checkIsDownloaded,
+      isDownloadedWithRewayat,
+      isDownloading,
+      isDownloadingWithRewayat,
+      getDownloadProgress,
+    } = useDownload();
+
+    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided
+    const isDownloadedState = reciterId
+      ? rewayatId
+        ? isDownloadedWithRewayat(reciterId, surahId, rewayatId)
+        : checkIsDownloaded(reciterId, surahId)
+      : false;
+
+    // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
+    const isCurrentlyDownloading = reciterId
+      ? rewayatId
+        ? isDownloadingWithRewayat(reciterId, surahId, rewayatId)
+        : isDownloading(reciterId, surahId)
+      : false;
+
+    // Get download progress
+    const downloadProgress = reciterId
+      ? getDownloadProgress(reciterId, surahId)
+      : 0;
 
     // Check if this item is the currently active track
     const isCurrentlyPlaying = useMemo(() => {
@@ -122,12 +153,15 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           <View style={styles.surahNameContainer}>
             <View style={styles.surahTextContainer}>
               <View style={styles.surahNameRow}>
-                {(onPlayPress || isCurrentlyPlaying) && (
+                <Text style={styles.surahName}>
+                  {surah.id + '. ' + surah.name}
+                </Text>
+                {(isCurrentlyPlaying || (onPlayPress && !hidePlayButton)) && (
                   <TouchableOpacity
                     style={styles.playIndicatorContainer}
                     onPress={handlePlayButtonPress}
                     activeOpacity={0.7}>
-                    {isCurrentlyPlaying ? (
+                    {isCurrentlyPlaying && (
                       <NowPlayingIndicator
                         isPlaying={
                           playbackStatus === TrackPlayerState.Playing ||
@@ -138,21 +172,28 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                         barWidth={moderateScale(2)}
                         gap={moderateScale(1.2)}
                       />
-                    ) : (
-                      <Icon
-                        name="play-circle"
-                        type="feather"
-                        size={moderateScale(16)}
-                        color={theme.colors.primary}
-                      />
                     )}
                   </TouchableOpacity>
                 )}
-                <Text style={styles.surahName}>
-                  {surah.id + '. ' + surah.name}
-                </Text>
               </View>
-              <Text style={styles.reciterName}>{reciter.name}</Text>
+              <View style={styles.reciterInfoRow}>
+                {isCurrentlyDownloading ? (
+                  <CircularProgress
+                    progress={downloadProgress}
+                    size={moderateScale(12)}
+                    strokeWidth={moderateScale(1.5)}
+                    color={theme.colors.textSecondary}
+                  />
+                ) : isDownloadedState ? (
+                  <Ionicons
+                    name="arrow-down-circle"
+                    size={moderateScale(12)}
+                    color={theme.colors.textSecondary}
+                    style={styles.downloadIcon}
+                  />
+                ) : null}
+                <Text style={styles.reciterName}>{reciter.name}</Text>
+              </View>
               {renderRewayatBadge()}
             </View>
 
@@ -172,17 +213,15 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(8),
-      marginHorizontal: moderateScale(12),
-      borderRadius: moderateScale(7),
-      marginVertical: moderateScale(3),
+      paddingHorizontal: moderateScale(18),
     },
     imageContainer: {
-      marginRight: moderateScale(10),
+      marginRight: moderateScale(12),
     },
     reciterImage: {
-      width: moderateScale(45),
-      height: moderateScale(45),
-      borderRadius: moderateScale(8),
+      width: moderateScale(50),
+      height: moderateScale(50),
+      borderRadius: moderateScale(10),
     },
     trackInfo: {
       flex: 1,
@@ -199,11 +238,11 @@ const createStyles = (theme: Theme) =>
     surahNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: moderateScale(0.5),
+      marginBottom: moderateScale(1),
     },
     surahName: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Bold',
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
     },
     surahGlyph: {
@@ -212,11 +251,19 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       textAlign: 'right',
     },
+    reciterInfoRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      marginBottom: moderateScale(3),
+    },
     reciterName: {
-      fontSize: moderateScale(11),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginVertical: moderateScale(1.5),
+      fontSize: moderateScale(12),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+    },
+    downloadIcon: {
+      marginTop: moderateScale(1),
     },
     rewayatBadge: {
       marginTop: moderateScale(3),
@@ -230,13 +277,13 @@ const createStyles = (theme: Theme) =>
       alignSelf: 'flex-start',
     },
     rewayatText: {
-      fontSize: moderateScale(9),
-      fontFamily: 'Manrope-Medium',
+      fontSize: moderateScale(10),
+      fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
       textTransform: 'capitalize',
     },
     playIndicatorContainer: {
-      marginRight: moderateScale(5),
+      marginLeft: moderateScale(6),
       justifyContent: 'center',
       alignItems: 'center',
     },

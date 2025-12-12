@@ -44,6 +44,7 @@ export const SurahList = React.forwardRef<
       onSurahPress,
       reciterId,
       isLoved,
+      isDownloaded,
       onOptionsPress,
       onScroll,
       ListHeaderComponent,
@@ -70,6 +71,7 @@ export const SurahList = React.forwardRef<
           onPress={() => onSurahPress(item)}
           style={styles.surahCard}
           isLoved={isLoved(reciterId, item.id.toString())}
+          isDownloaded={isDownloaded(reciterId, item.id.toString())}
           onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
           reciterId={reciterId}
           rewayatId={rewayatId}
@@ -80,6 +82,7 @@ export const SurahList = React.forwardRef<
         onSurahPress,
         styles.surahCard,
         isLoved,
+        isDownloaded,
         reciterId,
         onOptionsPress,
         rewayatId,
@@ -94,11 +97,19 @@ export const SurahList = React.forwardRef<
           onPress={onSurahPress}
           reciterId={reciterId}
           isLoved={isLoved(reciterId, item.id.toString())}
+          isDownloaded={isDownloaded(reciterId, item.id.toString())}
           onOptionsPress={onOptionsPress}
           rewayatId={rewayatId}
         />
       ),
-      [onSurahPress, reciterId, isLoved, onOptionsPress, rewayatId],
+      [
+        onSurahPress,
+        reciterId,
+        isLoved,
+        isDownloaded,
+        onOptionsPress,
+        rewayatId,
+      ],
     );
 
     // Shared ListHeader to avoid re-rendering issues

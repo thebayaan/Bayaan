@@ -21,6 +21,7 @@ interface PlayerContentProps {
   sleepBottomSheetRef: React.RefObject<BottomSheet>;
   summaryBottomSheetRef: React.RefObject<BottomSheet>;
   mushafLayoutSheetRef: React.RefObject<BottomSheet>;
+  optionsBottomSheetRef: React.RefObject<BottomSheet>;
 }
 
 const PlayerContent: React.FC<PlayerContentProps> = ({
@@ -28,6 +29,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   sleepBottomSheetRef,
   summaryBottomSheetRef,
   mushafLayoutSheetRef,
+  optionsBottomSheetRef,
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
@@ -98,6 +100,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     ? parseInt(currentTrack.surahId, 10)
     : 1;
 
+  const handleOptionsPress = useCallback(() => {
+    optionsBottomSheetRef.current?.snapToIndex(0);
+  }, [optionsBottomSheetRef]);
+
   return (
     <View style={styles.container}>
       <BottomSheetScrollView
@@ -106,7 +112,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled={Platform.OS === 'android'}>
         <View style={styles.contentContainer}>
-          <Header />
+          <Header onOptionsPress={handleOptionsPress} />
           <View style={styles.mainContent}>
             {/* Container for QuranView and QueueList */}
             <View

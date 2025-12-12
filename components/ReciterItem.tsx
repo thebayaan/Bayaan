@@ -11,10 +11,11 @@ interface ReciterItemProps {
   item: Reciter;
   onPress: (item: Reciter) => void;
   isSelected?: boolean;
+  secondaryText?: string;
 }
 
 export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
-  ({item, onPress, isSelected}) => {
+  ({item, onPress, isSelected, secondaryText}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
@@ -39,9 +40,10 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
           <Text style={styles.reciterRewayat} numberOfLines={1}>
-            {item.rewayat.length > 1
-              ? `${item.rewayat.length} rewayat available`
-              : item.rewayat[0]?.name || ''}
+            {secondaryText ||
+              (item.rewayat.length > 1
+                ? `${item.rewayat.length} rewayat available`
+                : item.rewayat[0]?.name || '')}
           </Text>
         </View>
         {isSelected && (

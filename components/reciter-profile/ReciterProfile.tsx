@@ -27,6 +27,7 @@ import {shuffleArray} from '@/utils/arrayUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useModal} from '@/components/providers/ModalProvider';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
+import {useDownload} from '@/services/player/store/downloadStore';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
 import {RewayatStyle} from '@/types/reciter';
@@ -89,6 +90,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
   const flatListRef = useRef<RNAnimated.FlatList>(null);
   const {isLovedWithRewayat} = useLoved();
+  const {isDownloaded} = useDownload();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {showSurahOptions, showRewayatInfo} = useModal();
   const {reciterPreferences, setReciterPreference} = useSettings();
@@ -569,6 +571,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       onSurahPress: handleSurahPress,
       reciterId: currentReciterId,
       isLoved: isLovedWithCurrentRewayat,
+      isDownloaded: isDownloaded,
       onOptionsPress: (surah: Surah) =>
         showSurahOptions(
           surah,
@@ -591,6 +594,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       handleSurahPress,
       currentReciterId,
       isLovedWithCurrentRewayat,
+      isDownloaded,
       showSurahOptions,
       handleAddToQueue,
       selectedRewayat?.id,

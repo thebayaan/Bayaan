@@ -12,6 +12,7 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
 import {HeartIcon} from '@/components/Icons';
 import {Icon} from '@rneui/themed';
+import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
@@ -23,21 +24,19 @@ import Animated, {
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from './NowPlayingIndicator';
-import {DownloadButton} from './DownloadButton';
-import {createTrack} from '@/utils/track';
-import {Track} from '@/types/audio';
+import {useDownload} from '@/services/player/store/downloadStore';
+import {CircularProgress} from '@/components/CircularProgress';
 
 interface SurahItemProps {
   item: Surah;
   onPress: (item: Surah) => void;
   reciterId?: string;
   isLoved?: boolean;
+  isDownloaded?: boolean;
   onOptionsPress?: (item: Surah) => void;
   enableHaptics?: boolean;
   enableAnimation?: boolean;
   rewayatId?: string;
-  showDownloadButton?: boolean;
-  reciterName?: string;
 }
 
 // Create Animated component
@@ -54,11 +53,35 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     enableHaptics = false,
     enableAnimation = false,
     rewayatId,
-    showDownloadButton = false,
-    reciterName,
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
+    const {
+      isDownloaded: checkIsDownloaded,
+      isDownloadedWithRewayat,
+      isDownloading,
+      isDownloadingWithRewayat,
+      getDownloadProgress,
+    } = useDownload();
+
+    // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use checkIsDownloaded
+    const isDownloadedState = reciterId
+      ? rewayatId
+        ? isDownloadedWithRewayat(reciterId, item.id.toString(), rewayatId)
+        : checkIsDownloaded(reciterId, item.id.toString())
+      : false;
+
+    // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
+    const isCurrentlyDownloading = reciterId
+      ? rewayatId
+        ? isDownloadingWithRewayat(reciterId, item.id.toString(), rewayatId)
+        : isDownloading(reciterId, item.id.toString())
+      : false;
+
+    // Get download progress
+    const downloadProgress = reciterId
+      ? getDownloadProgress(reciterId, item.id.toString())
+      : 0;
 
     // Get necessary state slices from player store
     const playbackStatus = usePlayerStore(state => state.playback.state);
@@ -150,43 +173,6 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       | 'makkah'
       | 'madinah';
 
-    // Create track for download functionality
-    const [track, setTrack] = React.useState<Track | null>(null);
-
-    React.useEffect(() => {
-      let isMounted = true;
-
-      const createDownloadTrack = async () => {
-        if (!showDownloadButton || !reciterId || !reciterName) {
-          if (isMounted) setTrack(null);
-          return;
-        }
-
-        try {
-          // Import the required modules for creating a track
-          const {RECITERS} = await import('@/data/reciterData');
-          const reciter = RECITERS.find(r => r.id === reciterId);
-
-          if (!reciter) {
-            if (isMounted) setTrack(null);
-            return;
-          }
-
-          const newTrack = await createTrack(reciter, item, rewayatId);
-          if (isMounted) setTrack(newTrack);
-        } catch (error) {
-          console.error('Failed to create download track:', error);
-          if (isMounted) setTrack(null);
-        }
-      };
-
-      createDownloadTrack();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [showDownloadButton, reciterId, reciterName, item, rewayatId]);
-
     // Choose Touchable component based on animation prop
     const TouchableComponent = enableAnimation
       ? AnimatedTouchableOpacity
@@ -195,12 +181,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     return (
       <TouchableComponent
         activeOpacity={0.99}
-        style={[
-          styles.surahItem,
-          animatedStyle,
-          // Optional: Add subtle highlight if playing?
-          // isCurrentlyPlaying && styles.playingHighlight,
-        ]}
+        style={[styles.surahItem, animatedStyle]}
         onPress={handlePress}
         onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
         delayLongPress={500}
@@ -230,15 +211,32 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             <Text style={styles.surahName}>{`${item.id}. ${item.name}`}</Text>
             {isLoved && (
               <HeartIcon
-                size={moderateScale(12)}
+                size={moderateScale(14)}
                 color={theme.colors.text}
                 filled={true}
               />
             )}
           </View>
-          <Text style={styles.surahSecondaryInfo}>
-            {item.translated_name_english}
-          </Text>
+          <View style={styles.secondaryInfoContainer}>
+            {isCurrentlyDownloading ? (
+              <CircularProgress
+                progress={downloadProgress}
+                size={moderateScale(12)}
+                strokeWidth={moderateScale(1.5)}
+                color={theme.colors.textSecondary}
+              />
+            ) : isDownloadedState ? (
+              <Ionicons
+                name="arrow-down-circle"
+                size={moderateScale(12)}
+                color={theme.colors.textSecondary}
+                style={styles.downloadIcon}
+              />
+            ) : null}
+            <Text style={styles.surahSecondaryInfo}>
+              {item.translated_name_english}
+            </Text>
+          </View>
           <View
             style={[
               styles.locationIndicator,
@@ -262,7 +260,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             </Text>
           </View>
         </View>
-        {/* Conditional Rendering: Indicator, Download Button, or Options Button */}
+        {/* Conditional Rendering: Indicator or Options Button */}
         <View style={styles.rightActionContainer}>
           {/* Check if this specific track is the current one loaded in the player */}
           {((): boolean => {
@@ -309,14 +307,6 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                 surahId={Number(item.id)}
               />
             </TouchableOpacity>
-          ) : showDownloadButton && track ? (
-            // Show download button if enabled and track is available
-            <DownloadButton
-              track={track}
-              size={18}
-              enableHaptics={enableHaptics}
-              showProgress={true}
-            />
           ) : onOptionsPress ? (
             <TouchableOpacity
               style={styles.optionsButton}
@@ -375,11 +365,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
+    secondaryInfoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      marginBottom: moderateScale(3),
+    },
     surahSecondaryInfo: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
-      marginBottom: moderateScale(3),
+    },
+    downloadIcon: {
+      marginTop: moderateScale(1),
     },
     surahGlyph: {
       fontSize: moderateScale(20),
