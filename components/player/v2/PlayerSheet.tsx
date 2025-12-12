@@ -14,7 +14,7 @@ import {SleepTimerModal} from './Modals/SleepTimerModal';
 import {ExtendedSummaryModal} from './SurahSummary/ExtendedSummaryModal';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {MushafLayoutModal} from './Modals/MushafLayoutModal';
-import {PlayerOptionsModal} from '@/components/player/PlayerOptionsModal';
+import {PlayerOptionsModal} from '@/components/player/v2/Modals/PlayerOptionsModal';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 
