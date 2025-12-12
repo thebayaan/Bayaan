@@ -138,8 +138,6 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     [loading?.stateRestoring, currentTrack],
   );
 
-  const isSheetOpen = sheetMode !== 'hidden';
-
   const surahNumber = useMemo(() => {
     if (!currentTrack?.surahId) return undefined;
     return parseInt(currentTrack.surahId, 10);
@@ -157,7 +155,6 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{translateY: translateY.value}, {scale: scale.value}],
     opacity: opacity.value,
-    zIndex: isSheetOpen ? -1 : 0,
   }));
 
   // Animation handlers
@@ -191,37 +188,14 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     });
   }, [translateY, opacity, scale]);
 
-  // Handle visibility and sheet state
+  // Handle visibility
   useEffect(() => {
-    if (!shouldShow) {
-      hidePlayer();
-      return;
-    }
-
-    if (isSheetOpen) {
-      translateY.value = withSpring(20, {
-        damping: 15,
-        stiffness: 150,
-      });
-      scale.value = withSpring(0.95, {
-        damping: 15,
-        stiffness: 150,
-      });
-      opacity.value = withTiming(0.8, {
-        duration: 200,
-      });
-    } else {
+    if (shouldShow) {
       showPlayer();
+    } else {
+      hidePlayer();
     }
-  }, [
-    shouldShow,
-    isSheetOpen,
-    showPlayer,
-    hidePlayer,
-    translateY,
-    scale,
-    opacity,
-  ]);
+  }, [shouldShow, showPlayer, hidePlayer]);
 
   const handlePress = useCallback(() => {
     setSheetMode('full');

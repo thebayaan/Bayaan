@@ -273,6 +273,7 @@ export const PlayerSheet = () => {
 const styles = StyleSheet.create({
   sheet: {
     zIndex: 2000,
+    elevation: 20,
   },
   background: {
     borderTopLeftRadius: 45,
