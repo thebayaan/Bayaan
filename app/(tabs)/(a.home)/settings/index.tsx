@@ -7,7 +7,6 @@ import {Theme, ThemeMode, PrimaryColor} from '@/utils/themeUtils';
 import {Icon} from '@rneui/base';
 import {primaryColors} from '@/styles/colorSchemes';
 import {clearPlayerCache} from '@/services/player/utils/storage';
-import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
 import Header from '@/components/Header';
@@ -159,6 +158,7 @@ export default function SettingsScreen() {
     useTheme();
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
+  const [pressedOption, setPressedOption] = React.useState<string | null>(null);
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
@@ -216,46 +216,46 @@ export default function SettingsScreen() {
           {paddingTop: insets.top + moderateScale(56)},
         ]}
         showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeInDown.delay(100)} style={styles.section}>
+        <View style={styles.section}>
           <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
             Theme
           </Text>
           <View style={styles.themeContainer}>
             {themeOptions.map((option, index) => (
               <TouchableOpacity
-                activeOpacity={0.7}
+                activeOpacity={1}
                 key={option.value}
                 style={[
                   styles.themeOption,
                   {
                     backgroundColor:
                       themeMode === option.value
-                        ? theme.colors.primary
+                        ? Color(theme.colors.text).alpha(0.1).toString()
                         : Color(theme.colors.card).alpha(0.5).toString(),
+                    borderWidth: themeMode === option.value ? 1.5 : 0,
+                    borderColor: theme.colors.text,
                   },
                   index === 0 && styles.firstThemeOption,
                   index === themeOptions.length - 1 && styles.lastThemeOption,
+                  pressedOption === `theme-${option.value}` && styles.optionPressed,
                 ]}
-                onPress={() => setThemeMode(option.value)}>
+                onPress={() => setThemeMode(option.value)}
+                onPressIn={() => setPressedOption(`theme-${option.value}`)}
+                onPressOut={() => setPressedOption(null)}>
                 <View style={styles.themeContent}>
                   <View style={[styles.iconContainer]}>
                     <Icon
                       name={option.icon}
                       type={option.iconType}
                       size={moderateScale(20)}
-                      color={
-                        themeMode === option.value ? 'white' : theme.colors.text
-                      }
+                      color={theme.colors.text}
                     />
                   </View>
                   <Text
                     style={[
                       styles.themeText,
                       {
-                        color:
-                          themeMode === option.value
-                            ? 'white'
-                            : theme.colors.text,
+                        color: theme.colors.text,
                         fontFamily:
                           themeMode === option.value
                             ? theme.fonts.semiBold
@@ -268,11 +268,9 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </Animated.View>
+        </View>
 
-        <Animated.View
-          entering={FadeInDown.delay(200)}
-          style={[styles.section, styles.colorSection]}>
+        <View style={[styles.section, styles.colorSection]}>
           <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
             Accent Color
           </Text>
@@ -283,10 +281,15 @@ export default function SettingsScreen() {
             {Object.entries(primaryColors).map(([color, value]) => {
               return (
                 <TouchableOpacity
-                  activeOpacity={0.7}
+                  activeOpacity={1}
                   key={color}
-                  style={styles.colorOptionContainer}
-                  onPress={() => setPrimaryColor(color as PrimaryColor)}>
+                  style={[
+                    styles.colorOptionContainer,
+                    pressedOption === `color-${color}` && styles.colorOptionPressed,
+                  ]}
+                  onPress={() => setPrimaryColor(color as PrimaryColor)}
+                  onPressIn={() => setPressedOption(`color-${color}`)}
+                  onPressOut={() => setPressedOption(null)}>
                   <View
                     style={[
                       styles.colorOption,
@@ -324,12 +327,11 @@ export default function SettingsScreen() {
               );
             })}
           </ScrollView>
-        </Animated.View>
+        </View>
 
         {settingsItems.map((section, sectionIndex) => (
-          <Animated.View
+          <View
             key={section.section}
-            entering={FadeInDown.delay(300 + sectionIndex * 100)}
             style={styles.section}>
             <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
               {section.section}
@@ -342,9 +344,12 @@ export default function SettingsScreen() {
                     styles.settingsItem,
                     styles.settingsItemCard,
                     itemIndex > 0 && styles.settingsItemMarginTop,
+                    pressedOption === `setting-${item.type}` && styles.optionPressed,
                   ]}
                   onPress={() => handleSettingPress(item.type)}
-                  activeOpacity={0.7}>
+                  onPressIn={() => setPressedOption(`setting-${item.type}`)}
+                  onPressOut={() => setPressedOption(null)}
+                  activeOpacity={1}>
                   <View style={styles.settingsItemContent}>
                     <View style={styles.settingsItemIcon}>
                       {item.iconType === 'custom' && item.icon === 'quran' ? (
@@ -392,7 +397,7 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-          </Animated.View>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -521,5 +526,11 @@ const createStyles = (theme: Theme) =>
     lastThemeOption: {
       borderTopRightRadius: moderateScale(12),
       borderBottomRightRadius: moderateScale(12),
+    },
+    optionPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    },
+    colorOptionPressed: {
+      opacity: 0.6,
     },
   });
