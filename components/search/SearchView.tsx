@@ -35,59 +35,11 @@ const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const SEARCH_SUGGESTIONS = {
-  surahs: [
-    {
-      id: 1,
-      name: 'Al-Fatiha',
-      arabic: 'الفاتحة',
-      translation: 'The Opening',
-    },
-    {
-      id: 2,
-      name: 'Al-Baqarah',
-      arabic: 'البقرة',
-      translation: 'The Cow',
-    },
-    {
-      id: 36,
-      name: 'Yasin',
-      arabic: 'يس',
-      translation: 'Ya Sin',
-    },
-    {
-      id: 55,
-      name: 'Ar-Rahman',
-      arabic: 'الرحمن',
-      translation: 'The Most Merciful',
-    },
-    {
-      id: 67,
-      name: 'Al-Mulk',
-      arabic: 'الملك',
-      translation: 'The Sovereignty',
-    },
-    {
-      id: 18,
-      name: 'Al-Kahf',
-      arabic: 'الكهف',
-      translation: 'The Cave',
-    },
-    {
-      id: 112,
-      name: 'Al-Ikhlas',
-      arabic: 'الإخلاص',
-      translation: 'The Sincerity',
-    },
-  ],
-  reciters: [
-    {id: 'alafasi', name: 'Mishary'},
-    {id: 'hussary', name: 'Hussary'},
-    {id: 'muaiqly', name: 'Maher'},
-    {id: 'juhany', name: 'Abdullah Al-Johany'},
-    {id: 'minshawi', name: 'Minshawi'},
-  ],
-};
+interface RecentSearchItem {
+  type: 'surah' | 'reciter';
+  item: Surah | Reciter;
+  timestamp: number;
+}
 
 interface SearchResult {
   type: 'surah' | 'reciter';
@@ -106,7 +58,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
@@ -203,7 +155,20 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
         const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
         if (storedSearches) {
-          setRecentSearches(JSON.parse(storedSearches));
+          const parsed = JSON.parse(storedSearches);
+          // Check if it's the old format (string[]) and clear it
+          if (
+            Array.isArray(parsed) &&
+            parsed.length > 0 &&
+            typeof parsed[0] === 'string'
+          ) {
+            // Old format, clear it
+            await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
+            setRecentSearches([]);
+          } else {
+            // New format
+            setRecentSearches(parsed);
+          }
         }
 
         setLoading(false);
@@ -255,13 +220,27 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   }, [performSearch]);
 
   const addToRecentSearches = useCallback(
-    async (searchQuery: string) => {
-      if (!searchQuery.trim()) return;
+    async (result: SearchResult) => {
+      const newItem: RecentSearchItem = {
+        type: result.type,
+        item: result.item,
+        timestamp: Date.now(),
+      };
 
-      const updatedSearches = [
-        searchQuery,
-        ...recentSearches.filter(item => item !== searchQuery),
-      ].slice(0, MAX_RECENT_SEARCHES);
+      // Remove duplicate if exists (same type and id)
+      const filteredSearches = recentSearches.filter(search => {
+        if (search.type !== result.type) return true;
+        if (search.type === 'surah') {
+          return (search.item as Surah).id !== (result.item as Surah).id;
+        } else {
+          return (search.item as Reciter).id !== (result.item as Reciter).id;
+        }
+      });
+
+      const updatedSearches = [newItem, ...filteredSearches].slice(
+        0,
+        MAX_RECENT_SEARCHES,
+      );
 
       setRecentSearches(updatedSearches);
       await AsyncStorage.setItem(
@@ -275,7 +254,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
       Keyboard.dismiss();
-      await addToRecentSearches(query);
+      await addToRecentSearches(result);
 
       if (result.type === 'reciter') {
         const reciter = result.item as Reciter;
@@ -320,7 +299,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     },
     [
       router,
-      query,
       addToRecentSearches,
       askEveryTime,
       defaultReciterSelection,
@@ -351,135 +329,29 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   );
 
   const renderRecentSearch = useCallback(
-    ({item}: {item: string}) => (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={styles.searchItem}
-        onPress={() => setQuery(item)}>
-        <View style={styles.searchIconContainer}>
-          <Icon
-            name="history"
-            type="material"
-            size={moderateScale(18)}
-            color={theme.colors.textSecondary}
+    ({item: recentItem}: {item: RecentSearchItem}) => {
+      const handlePress = () => {
+        handleResultPress({
+          type: recentItem.type,
+          item: recentItem.item,
+          score: 0,
+        });
+      };
+
+      if (recentItem.type === 'surah') {
+        return (
+          <SurahItem item={recentItem.item as Surah} onPress={handlePress} />
+        );
+      } else {
+        return (
+          <ReciterItem
+            item={recentItem.item as Reciter}
+            onPress={handlePress}
           />
-        </View>
-        <Text style={[styles.searchItemText, {color: theme.colors.text}]}>
-          {item}
-        </Text>
-      </TouchableOpacity>
-    ),
-    [setQuery, theme.colors],
-  );
-
-  const renderSuggestion = useCallback(
-    ({
-      item,
-      type,
-    }: {
-      item:
-        | (typeof SEARCH_SUGGESTIONS.surahs)[0]
-        | (typeof SEARCH_SUGGESTIONS.reciters)[0];
-      type: 'arabic' | 'english' | 'translation' | 'reciter' | 'number';
-    }) => (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={styles.suggestionButton}
-        onPress={() => {
-          if ('arabic' in item) {
-            switch (type) {
-              case 'arabic':
-                setQuery(item.arabic);
-                break;
-              case 'english':
-                setQuery(item.name);
-                break;
-              case 'translation':
-                setQuery(item.translation);
-                break;
-              case 'number':
-                setQuery(item.id.toString());
-                break;
-            }
-          } else {
-            setQuery(item.name);
-          }
-        }}>
-        <Icon
-          name="search"
-          type="feather"
-          size={moderateScale(14)}
-          color={theme.colors.text}
-          containerStyle={styles.searchIconContainer}
-        />
-        {'arabic' in item ? (
-          <Text
-            style={[
-              type === 'arabic'
-                ? styles.suggestionButtonArabic
-                : type === 'translation'
-                  ? styles.suggestionButtonTranslation
-                  : type === 'number'
-                    ? styles.suggestionButtonNumber
-                    : styles.suggestionButtonText,
-              {color: theme.colors.text},
-            ]}>
-            {type === 'arabic'
-              ? item.arabic
-              : type === 'translation'
-                ? item.translation
-                : type === 'number'
-                  ? `${item.id}`
-                  : item.name}
-          </Text>
-        ) : (
-          <Text
-            style={[styles.suggestionButtonText, {color: theme.colors.text}]}>
-            {item.name}
-          </Text>
-        )}
-      </TouchableOpacity>
-    ),
-    [setQuery, theme.colors],
-  );
-
-  const renderSuggestionRow = useCallback(
-    (
-      items:
-        | typeof SEARCH_SUGGESTIONS.surahs
-        | typeof SEARCH_SUGGESTIONS.reciters,
-      title: string,
-    ) => (
-      <View>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-            {title}
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.suggestionRow}>
-          {items.map((item, index) => (
-            <View
-              key={`${'id' in item ? item.id : index}`}
-              style={{flexDirection: 'row'}}>
-              {'arabic' in item ? (
-                <>
-                  {renderSuggestion({item, type: 'number'})}
-                  {renderSuggestion({item, type: 'arabic'})}
-                  {renderSuggestion({item, type: 'english'})}
-                  {renderSuggestion({item, type: 'translation'})}
-                </>
-              ) : (
-                renderSuggestion({item, type: 'reciter'})
-              )}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    ),
-    [renderSuggestion, theme.colors],
+        );
+      }
+    },
+    [handleResultPress],
   );
 
   const clearRecentSearches = useCallback(async () => {
@@ -495,7 +367,8 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   }
 
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <View
+      style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
         {Platform.OS === 'ios' ? (
           <BlurView
@@ -550,16 +423,11 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled">
-          <View>
-            {renderSuggestionRow(SEARCH_SUGGESTIONS.surahs, 'Surahs')}
-            {renderSuggestionRow(SEARCH_SUGGESTIONS.reciters, 'Reciters')}
-          </View>
-
-          {recentSearches.length > 0 && (
+          {recentSearches.length > 0 ? (
             <View>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-                  Recent Searches
+                  Recent searches
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
@@ -573,11 +441,36 @@ export function SearchView({onClose, visible}: SearchViewProps) {
               <FlatList
                 data={recentSearches}
                 renderItem={renderRecentSearch}
-                keyExtractor={item => item}
+                keyExtractor={(item, index) =>
+                  `${item.type}-${item.type === 'surah' ? (item.item as Surah).id : (item.item as Reciter).id}-${index}`
+                }
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
               />
+            </View>
+          ) : (
+            <View style={styles.emptyRecentContainer}>
+              <Icon
+                name="search"
+                type="feather"
+                size={moderateScale(48)}
+                color={theme.colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.emptyRecentText,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                No recent searches
+              </Text>
+              <Text
+                style={[
+                  styles.emptyRecentSubtext,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                Your search history will appear here
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -633,13 +526,13 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingVertical: moderateScale(20),
-    marginHorizontal: moderateScale(20),
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: moderateScale(12),
+    paddingHorizontal: moderateScale(16),
   },
   sectionTitle: {
     fontSize: moderateScale(18),
@@ -648,50 +541,6 @@ const styles = StyleSheet.create({
   clearButton: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-SemiBold',
-  },
-  suggestionRow: {
-    paddingHorizontal: moderateScale(8),
-  },
-  suggestionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(8),
-    marginHorizontal: moderateScale(4),
-    borderRadius: moderateScale(8),
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  suggestionButtonText: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-SemiBold',
-    marginLeft: moderateScale(8),
-  },
-  suggestionButtonArabic: {
-    fontSize: moderateScale(16),
-    fontFamily: 'Amiri-Bold',
-    marginLeft: moderateScale(8),
-  },
-  suggestionButtonTranslation: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-Medium',
-    fontStyle: 'italic',
-    marginLeft: moderateScale(8),
-  },
-  suggestionButtonNumber: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-Bold',
-    marginLeft: moderateScale(8),
-  },
-  searchItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(16),
-    paddingVertical: moderateScale(12),
-  },
-  searchIconContainer: {},
-  searchItemText: {
-    fontSize: moderateScale(16),
-    fontFamily: 'Manrope-Medium',
   },
   resultsContainer: {
     paddingTop: moderateScale(8),
@@ -715,5 +564,21 @@ const styles = StyleSheet.create({
   },
   footer: {
     height: moderateScale(20),
+  },
+  emptyRecentContainer: {
+    paddingVertical: moderateScale(60),
+    paddingHorizontal: moderateScale(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyRecentText: {
+    fontSize: moderateScale(16),
+    fontFamily: 'Manrope-SemiBold',
+    marginTop: moderateScale(16),
+  },
+  emptyRecentSubtext: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-Medium',
+    marginTop: moderateScale(4),
   },
 });
