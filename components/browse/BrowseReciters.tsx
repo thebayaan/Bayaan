@@ -40,17 +40,37 @@ interface BrowseRecitersProps {
   title?: string; // Optional custom title, defaults to "Browse All"
 }
 
+// Module-level cache for string normalizations
+const normalizationCache = new Map<string, string>();
+
 // Helper to normalize names by removing " Men Tariq..." variations
 const normalizeNameDetail = (name: string): string => {
-  const menTariqIndex = name.indexOf(' Men Tariq');
-  if (menTariqIndex !== -1) {
-    return name.substring(0, menTariqIndex).trim();
+  // Check cache first
+  const cached = normalizationCache.get(name);
+  if (cached !== undefined) {
+    return cached;
   }
-  return name;
+
+  // Compute normalization
+  const menTariqIndex = name.indexOf(' Men Tariq');
+  const normalized =
+    menTariqIndex !== -1 ? name.substring(0, menTariqIndex).trim() : name;
+
+  // Cache the result
+  normalizationCache.set(name, normalized);
+  return normalized;
 };
+
+// Module-level cache for primary teachers computation
+let cachedPrimaryTeachers: string[] | null = null;
 
 // Helper to get unique primary teacher names, ordered
 const getPrimaryTeachers = (): string[] => {
+  // Return cached result if available
+  if (cachedPrimaryTeachers !== null) {
+    return cachedPrimaryTeachers;
+  }
+
   const teachers = new Set<string>();
   const qariOrderFromImage = [
     "Nafi'",
@@ -100,7 +120,11 @@ const getPrimaryTeachers = (): string[] => {
   });
 
   const remainingTeachersSorted = Array.from(remainingTeachersSet).sort();
-  return [...orderedTeachers, ...remainingTeachersSorted];
+  const result = [...orderedTeachers, ...remainingTeachersSorted];
+
+  // Cache the result for future calls
+  cachedPrimaryTeachers = result;
+  return result;
 };
 
 // Helper to get students for a teacher
@@ -162,7 +186,8 @@ export default function BrowseReciters({
   });
   useFavoriteReciters();
 
-  const primaryTeachers = useMemo(() => getPrimaryTeachers(), []);
+  // Get cached primary teachers (computed once at module level)
+  const primaryTeachers = getPrimaryTeachers();
 
   // Use refs to track actual values for debugging
   const teacherRef = useRef<string | null>(null);

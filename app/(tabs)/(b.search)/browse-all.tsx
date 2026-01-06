@@ -1,9 +1,9 @@
 import React from 'react';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import BrowseSurahs from '@/components/browse/BrowseSurahs';
+import BrowseReciters from '@/components/browse/BrowseReciters';
 
-export default function BrowseAllSurahsScreen() {
+export default function BrowseAllRecitersScreen() {
   const router = useRouter();
   const {theme} = useTheme();
 
@@ -11,5 +11,5 @@ export default function BrowseAllSurahsScreen() {
     router.back();
   };
 
-  return <BrowseSurahs theme={theme} onBack={handleBack} />;
+  return <BrowseReciters theme={theme} onBack={handleBack} />;
 }
