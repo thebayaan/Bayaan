@@ -37,8 +37,8 @@ Bayaan is a cross-platform mobile application built with React Native and Expo, 
  prerequisites
 
 *   Node.js (LTS version recommended)
-*   Yarn (preferred package manager) and npm (both are used in this project)
-*   Expo CLI: `npm install -g expo-cli`
+*   npm (preferred package manager) and Yarn (both are used in this project)
+*   Expo CLI: `npm install -g @expo/cli`
 *   Watchman (for macOS): `brew install watchman`
 *   Development Environment Setup: Follow the [React Native Environment Setup](https://reactnative.dev/docs/environment-setup) guide for your specific OS. For Expo development, you might primarily need Node.js, Yarn, and the Expo Go app on your device/simulator.
 
@@ -49,13 +49,13 @@ Bayaan is a cross-platform mobile application built with React Native and Expo, 
     git clone <your-repository-url>
     cd Bayaan
     ```
-2.  **Install dependencies:** (Yarn is preferred, but both lockfiles exist)
+2.  **Install dependencies:** (npm is preferred, but both lockfiles exist)
     ```bash
-    # Using Yarn (preferred)
-    yarn install 
-    
-    # Or using npm
+    # Using npm (preferred)
     npm install 
+    
+    # Or using Yarn
+    yarn install 
     ```
 3.  **Set up environment variables:**
     Create a `.env` file in the root directory and add any necessary environment variables (e.g., API keys). Refer to `.env.example` if available or required configuration steps.
@@ -64,13 +64,13 @@ Bayaan is a cross-platform mobile application built with React Native and Expo, 
 
 1.  **Start the Metro bundler:**
     ```bash
-    # Using Yarn
-    yarn start
-    
-    # Using npm
+    # Using npm (preferred)
     npm start 
     # or
     # npx expo start
+    
+    # Using Yarn
+    yarn start
     ```
     This will start the Expo development server.
 2.  **Run on a device or simulator:**
@@ -80,7 +80,7 @@ Bayaan is a cross-platform mobile application built with React Native and Expo, 
 
 ## 🛠️ Available Scripts
 
-You can run the following scripts using either `yarn <script_name>` or `npm run <script_name>`:
+You can run the following scripts using either `npm run <script_name>` or `yarn <script_name>`:
 
 *   `start`: Starts the Expo development server.
 *   `android`: Builds the app and runs it on an Android emulator/device (requires native build setup).
