@@ -1,5 +1,5 @@
-import React, {useState, useCallback, useEffect} from 'react';
-import {View, Text, FlatList, TouchableOpacity} from 'react-native';
+import React, {useState, useCallback} from 'react';
+import {View, Text, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {
   ScaledSheet,
@@ -13,8 +13,6 @@ import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterStore} from '@/store/reciterStore';
 import {useRouter} from 'expo-router';
 import {ReciterImage} from '@/components/ReciterImage';
-import {BlurView} from '@react-native-community/blur';
-import {Icon} from '@rneui/base';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 

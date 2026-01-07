@@ -8,9 +8,11 @@ export default function SearchLayout() {
         headerShown: false,
       }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="browse-all" />
+      <Stack.Screen name="browse-all-surahs" />
+      <Stack.Screen name="system-playlist/[id]" />
       <Stack.Screen name="reciter/[id]" />
       <Stack.Screen name="reciter/browse" />
-      {/* Add other screens under Search tab here if needed */}
     </Stack>
   );
 }
