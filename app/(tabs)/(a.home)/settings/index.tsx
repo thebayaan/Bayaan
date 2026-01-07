@@ -237,7 +237,8 @@ export default function SettingsScreen() {
                   },
                   index === 0 && styles.firstThemeOption,
                   index === themeOptions.length - 1 && styles.lastThemeOption,
-                  pressedOption === `theme-${option.value}` && styles.optionPressed,
+                  pressedOption === `theme-${option.value}` &&
+                    styles.optionPressed,
                 ]}
                 onPress={() => setThemeMode(option.value)}
                 onPressIn={() => setPressedOption(`theme-${option.value}`)}
@@ -285,7 +286,8 @@ export default function SettingsScreen() {
                   key={color}
                   style={[
                     styles.colorOptionContainer,
-                    pressedOption === `color-${color}` && styles.colorOptionPressed,
+                    pressedOption === `color-${color}` &&
+                      styles.colorOptionPressed,
                   ]}
                   onPress={() => setPrimaryColor(color as PrimaryColor)}
                   onPressIn={() => setPressedOption(`color-${color}`)}
@@ -329,10 +331,8 @@ export default function SettingsScreen() {
           </ScrollView>
         </View>
 
-        {settingsItems.map((section, sectionIndex) => (
-          <View
-            key={section.section}
-            style={styles.section}>
+        {settingsItems.map(section => (
+          <View key={section.section} style={styles.section}>
             <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
               {section.section}
             </Text>
@@ -344,7 +344,8 @@ export default function SettingsScreen() {
                     styles.settingsItem,
                     styles.settingsItemCard,
                     itemIndex > 0 && styles.settingsItemMarginTop,
-                    pressedOption === `setting-${item.type}` && styles.optionPressed,
+                    pressedOption === `setting-${item.type}` &&
+                      styles.optionPressed,
                   ]}
                   onPress={() => handleSettingPress(item.type)}
                   onPressIn={() => setPressedOption(`setting-${item.type}`)}

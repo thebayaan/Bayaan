@@ -25,10 +25,12 @@ import {
   ReciterItemData,
   DownloadItemData,
   TrackItemData,
+  ReciterDownloadsItemData,
 } from '@/components/collection/CollectionGrid';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {ReciterItem} from '@/components/ReciterItem';
 import {TrackItem} from '@/components/TrackItem';
+import {ReciterDownloadsListItem} from '@/components/ReciterDownloadsListItem';
 import {useDownload} from '@/services/player/store/downloadStore';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useModal} from '@/components/providers/ModalProvider';
@@ -234,41 +236,76 @@ export default function CollectionScreen() {
       });
     }
 
-    // Add Individual Downloaded Tracks
+    // Add Downloads - grouped by reciter
     if (activeFilter === '' || activeFilter === 'downloads') {
-      downloads.forEach(download => {
-        items.push({
-          id: `download-${download.reciterId}-${download.surahId}-${download.rewayatId || 'default'}`,
-          type: 'track',
-          timestamp: download.downloadDate || 0,
-          data: {
-            reciterId: download.reciterId,
-            surahId: download.surahId,
-            rewayatId: download.rewayatId,
-            onPress: async () => {
-              try {
-                const [reciter, surah] = await Promise.all([
-                  getReciterById(download.reciterId),
-                  getSurahById(parseInt(download.surahId, 10)),
-                ]);
+      // Group downloads by reciterId
+      const downloadsByReciter = downloads.reduce(
+        (acc, download) => {
+          if (!acc[download.reciterId]) {
+            acc[download.reciterId] = [];
+          }
+          acc[download.reciterId].push(download);
+          return acc;
+        },
+        {} as Record<string, typeof downloads>,
+      );
 
-                if (reciter && surah) {
-                  const track = createDownloadedTrack(
-                    reciter,
-                    surah,
-                    download.filePath,
-                    download.rewayatId,
-                  );
-                  await updateQueue([track], 0);
-                  await play();
-                }
-              } catch (error) {
-                console.error('Error playing downloaded track:', error);
-              }
-            },
-          },
-        });
-      });
+      Object.entries(downloadsByReciter).forEach(
+        ([reciterId, reciterDownloads]) => {
+          const mostRecentTimestamp = Math.max(
+            ...reciterDownloads.map(d => d.downloadDate || 0),
+          );
+
+          if (reciterDownloads.length === 1) {
+            // Single download - show as individual track
+            const download = reciterDownloads[0];
+            items.push({
+              id: `download-${download.reciterId}-${download.surahId}-${download.rewayatId || 'default'}`,
+              type: 'track',
+              timestamp: download.downloadDate || 0,
+              data: {
+                reciterId: download.reciterId,
+                surahId: download.surahId,
+                rewayatId: download.rewayatId,
+                onPress: async () => {
+                  try {
+                    const [reciter, surah] = await Promise.all([
+                      getReciterById(download.reciterId),
+                      getSurahById(parseInt(download.surahId, 10)),
+                    ]);
+
+                    if (reciter && surah) {
+                      const track = createDownloadedTrack(
+                        reciter,
+                        surah,
+                        download.filePath,
+                        download.rewayatId,
+                      );
+                      await updateQueue([track], 0);
+                      await play();
+                    }
+                  } catch (error) {
+                    console.error('Error playing downloaded track:', error);
+                  }
+                },
+              },
+            });
+          } else {
+            // Multiple downloads from same reciter - show as stacked card
+            items.push({
+              id: `reciter-downloads-${reciterId}`,
+              type: 'reciter-downloads',
+              timestamp: mostRecentTimestamp,
+              data: {
+                reciterId,
+                downloadCount: reciterDownloads.length,
+                onPress: () =>
+                  router.push(`/collection/reciter-downloads/${reciterId}`),
+              },
+            });
+          }
+        },
+      );
     }
 
     // Sort by most recent first (descending order: highest timestamp at top)
@@ -416,6 +453,17 @@ export default function CollectionScreen() {
             rewayatId={trackData.rewayatId}
             onPress={trackData.onPress}
             onPlayPress={trackData.onPress}
+          />
+        );
+      }
+      case 'reciter-downloads': {
+        const reciterDownloadsData = item.data as ReciterDownloadsItemData;
+        return (
+          <ReciterDownloadsListItem
+            key={item.id}
+            reciterId={reciterDownloadsData.reciterId}
+            downloadCount={reciterDownloadsData.downloadCount}
+            onPress={reciterDownloadsData.onPress}
           />
         );
       }

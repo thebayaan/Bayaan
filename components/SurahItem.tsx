@@ -37,6 +37,7 @@ interface SurahItemProps {
   enableHaptics?: boolean;
   enableAnimation?: boolean;
   rewayatId?: string;
+  rewayatName?: string;
 }
 
 // Create Animated component
@@ -53,6 +54,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     enableHaptics = false,
     enableAnimation = false,
     rewayatId,
+    rewayatName,
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
@@ -80,7 +82,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
 
     // Get download progress
     const downloadProgress = reciterId
-      ? getDownloadProgress(reciterId, item.id.toString())
+      ? getDownloadProgress(reciterId, item.id.toString(), rewayatId)
       : 0;
 
     // Get necessary state slices from player store
@@ -237,28 +239,38 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
               {item.translated_name_english}
             </Text>
           </View>
-          <View
-            style={[
-              styles.locationIndicator,
-              {backgroundColor: Color(theme.colors.card).alpha(0.8).toString()},
-            ]}>
-            {revelationPlace === 'makkah' ? (
-              <MakkahIcon
-                size={moderateScale(13)}
-                color={theme.colors.textSecondary}
-                secondaryColor={Color(theme.colors.card).alpha(0.8).toString()}
-              />
-            ) : (
-              <MadinahIcon
-                size={moderateScale(13)}
-                color={theme.colors.textSecondary}
-              />
-            )}
-            <Text style={styles.locationText}>
-              {revelationPlace.charAt(0).toUpperCase() +
-                revelationPlace.slice(1)}
-            </Text>
-          </View>
+          {rewayatName ? (
+            <Text style={styles.rewayatText}>{rewayatName}</Text>
+          ) : (
+            <View
+              style={[
+                styles.locationIndicator,
+                {
+                  backgroundColor: Color(theme.colors.card)
+                    .alpha(0.8)
+                    .toString(),
+                },
+              ]}>
+              {revelationPlace === 'makkah' ? (
+                <MakkahIcon
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                  secondaryColor={Color(theme.colors.card)
+                    .alpha(0.8)
+                    .toString()}
+                />
+              ) : (
+                <MadinahIcon
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                />
+              )}
+              <Text style={styles.locationText}>
+                {revelationPlace.charAt(0).toUpperCase() +
+                  revelationPlace.slice(1)}
+              </Text>
+            </View>
+          )}
         </View>
         {/* Conditional Rendering: Indicator or Options Button */}
         <View style={styles.rightActionContainer}>
@@ -401,6 +413,12 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(9),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
+    },
+    rewayatText: {
+      fontSize: moderateScale(10),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      marginTop: moderateScale(2),
     },
     rightActionContainer: {
       width: moderateScale(35),

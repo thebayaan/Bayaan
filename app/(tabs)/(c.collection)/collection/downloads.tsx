@@ -177,7 +177,11 @@ export default function DownloadsScreen() {
 
   const handleRemoveDownload = useCallback(
     (download: DownloadedSurah) => {
-      removeDownload(download.reciterId, download.surahId);
+      removeDownload(
+        download.reciterId,
+        download.surahId,
+        download.rewayatId || undefined,
+      );
     },
     [removeDownload],
   );
