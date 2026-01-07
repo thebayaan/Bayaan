@@ -150,6 +150,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   const downloadProgress = getDownloadProgress(
     reciterId || '',
     surah.id.toString(),
+    rewayatId,
   );
 
   // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded

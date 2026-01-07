@@ -66,7 +66,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     // Get download progress
     const downloadProgress = reciterId
-      ? getDownloadProgress(reciterId, surahId)
+      ? getDownloadProgress(reciterId, surahId, rewayatId)
       : 0;
 
     // Check if this item is the currently active track
@@ -180,14 +180,14 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 {isCurrentlyDownloading ? (
                   <CircularProgress
                     progress={downloadProgress}
-                    size={moderateScale(12)}
+                    size={moderateScale(13)}
                     strokeWidth={moderateScale(1.5)}
                     color={theme.colors.textSecondary}
                   />
                 ) : isDownloadedState ? (
                   <Ionicons
                     name="arrow-down-circle"
-                    size={moderateScale(12)}
+                    size={moderateScale(13)}
                     color={theme.colors.textSecondary}
                     style={styles.downloadIcon}
                   />

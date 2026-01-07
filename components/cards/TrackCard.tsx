@@ -64,7 +64,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
 
   // Get download progress
   const downloadProgress = reciterId
-    ? getDownloadProgress(reciterId, surahId)
+    ? getDownloadProgress(reciterId, surahId, rewayatId)
     : 0;
 
   // Check if this item is the currently active track

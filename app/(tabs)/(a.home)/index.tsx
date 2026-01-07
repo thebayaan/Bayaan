@@ -316,9 +316,11 @@ function HomeScreen() {
           break;
         case 'useDefault':
           if (defaultReciter) {
-            playWithReciter(defaultReciter, surah.id.toString()).catch(error => {
-              console.error('Error playing with default reciter:', error);
-            });
+            playWithReciter(defaultReciter, surah.id.toString()).catch(
+              error => {
+                console.error('Error playing with default reciter:', error);
+              },
+            );
           } else {
             showSelectReciter(surah.id.toString(), 'home');
           }

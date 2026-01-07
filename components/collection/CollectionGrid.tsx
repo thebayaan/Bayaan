@@ -8,6 +8,7 @@ import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {LovedCard} from '@/components/cards/LovedCard';
 import {DownloadCard} from '@/components/cards/DownloadCard';
 import {TrackCard} from '@/components/cards/TrackCard';
+import {ReciterDownloadsStackCard} from '@/components/cards/ReciterDownloadsStackCard';
 
 export interface PlaylistItemData {
   name: string;
@@ -40,15 +41,28 @@ export interface TrackItemData {
   onPress: () => void;
 }
 
+export interface ReciterDownloadsItemData {
+  reciterId: string;
+  downloadCount: number;
+  onPress: () => void;
+}
+
 export interface CollectionItem {
   id: string;
-  type: 'playlist' | 'loved' | 'reciter' | 'download' | 'track';
+  type:
+    | 'playlist'
+    | 'loved'
+    | 'reciter'
+    | 'download'
+    | 'track'
+    | 'reciter-downloads';
   data:
     | PlaylistItemData
     | LovedItemData
     | ReciterItemData
     | DownloadItemData
-    | TrackItemData;
+    | TrackItemData
+    | ReciterDownloadsItemData;
 }
 
 interface CollectionGridProps {
@@ -184,6 +198,19 @@ export const CollectionGrid = React.memo(
                 surahId={trackData.surahId}
                 rewayatId={trackData.rewayatId}
                 onPress={trackData.onPress}
+                width={itemDimensions.width}
+                height={itemDimensions.width}
+              />
+            );
+          }
+          case 'reciter-downloads': {
+            const reciterDownloadsData = item.data as ReciterDownloadsItemData;
+            return (
+              <ReciterDownloadsStackCard
+                key={item.id}
+                reciterId={reciterDownloadsData.reciterId}
+                downloadCount={reciterDownloadsData.downloadCount}
+                onPress={reciterDownloadsData.onPress}
                 width={itemDimensions.width}
                 height={itemDimensions.width}
               />
