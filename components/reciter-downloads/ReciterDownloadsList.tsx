@@ -13,11 +13,9 @@ import {
   useDownload,
   DownloadedSurah,
 } from '@/services/player/store/downloadStore';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {shuffleArray} from '@/utils/arrayUtils';
-import {State as TrackPlayerState} from 'react-native-track-player';
 import TrackPlayer from 'react-native-track-player';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
@@ -40,7 +38,6 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 }) => {
   const {theme} = useTheme();
   const {downloads, removeDownload} = useDownload();
-  const {pause, playback} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const playerStore = usePlayerStore();
@@ -282,12 +279,6 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     if (downloadData.length === 0) return;
 
     try {
-      // If currently playing, pause
-      if (playback.state === TrackPlayerState.Playing) {
-        await pause();
-        return;
-      }
-
       const firstItem = downloadData.find(item => item.reciter && item.surah);
       if (!firstItem?.reciter || !firstItem?.surah) return;
 
@@ -370,7 +361,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
       console.error('Error playing all tracks:', error);
       currentOperationRef.current = null;
     }
-  }, [downloadData, pause, playback.state, queueContext, addRecentTrack]);
+  }, [downloadData, queueContext, addRecentTrack]);
 
   // Shuffle all tracks
   const handleShuffle = useCallback(async () => {

@@ -38,7 +38,11 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   setRate: (rate: number) => Promise<void>;
 
   // Queue Actions
-  updateQueue: (tracks: Track[], currentIndex?: number, startPosition?: number) => Promise<void>;
+  updateQueue: (
+    tracks: Track[],
+    currentIndex?: number,
+    startPosition?: number,
+  ) => Promise<void>;
   addToQueue: (tracks: Track[]) => Promise<void>;
   removeFromQueue: (indices: number[]) => Promise<void>;
   moveInQueue: (fromIndex: number, toIndex: number) => Promise<void>;
@@ -209,7 +213,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
         }
       },
 
-      updateQueue: async (tracks: Track[], currentIndex = 0, startPosition = 0) => {
+      updateQueue: async (
+        tracks: Track[],
+        currentIndex = 0,
+        startPosition = 0,
+      ) => {
         try {
           console.log('[PlayerStore] Updating queue:', {
             tracksCount: tracks.length,
@@ -227,24 +235,27 @@ export const usePlayerStore = create<PlayerStoreState>()(
             },
             // Optimistically set position if provided
             playback: {
-                ...state.playback,
-                position: startPosition,
-            }
+              ...state.playback,
+              position: startPosition,
+            },
           }));
 
           await TrackPlayer.reset();
           await TrackPlayer.add(tracks);
-          
+
           // Only skip if we're not at the start
           // For index 0, the player automatically sets it as the first item
           if (currentIndex > 0) {
             await TrackPlayer.skip(currentIndex);
           }
-          
+
           // Seek if a start position is provided
           if (startPosition > 0) {
-             console.log('[PlayerStore] Seeking to start position:', startPosition);
-             await TrackPlayer.seekTo(startPosition);
+            console.log(
+              '[PlayerStore] Seeking to start position:',
+              startPosition,
+            );
+            await TrackPlayer.seekTo(startPosition);
           }
 
           const queue = await TrackPlayer.getQueue();

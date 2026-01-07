@@ -170,13 +170,12 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     reciterImageContainer: {
       width: moderateScale(80),
       height: moderateScale(80),
-      borderRadius: moderateScale(6),
-      overflow: 'hidden',
       marginBottom: moderateScale(12),
     },
     reciterImage: {
-      width: '100%',
-      height: '100%',
+      width: moderateScale(80),
+      height: moderateScale(80),
+      borderRadius: moderateScale(6),
     },
     title: {
       fontSize: moderateScale(17),
