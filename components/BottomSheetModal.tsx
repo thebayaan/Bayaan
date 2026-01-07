@@ -3,6 +3,7 @@ import {View, StyleProp, ViewStyle, Platform, BackHandler} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetHandleProps,
+  BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import {BottomSheetDefaultBackdropProps} from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types';
 import {useTheme} from '@/hooks/useTheme';
@@ -45,6 +46,7 @@ interface BottomSheetModalProps {
   snapPoints?: string[];
   children: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  enableContentPanningGesture?: boolean;
 }
 
 const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
@@ -53,6 +55,7 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
   snapPoints = ['40%'],
   children,
   contentContainerStyle,
+  enableContentPanningGesture = true,
 }) => {
   const {theme} = useTheme();
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -111,15 +114,15 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       }}
       enablePanDownToClose={true}
       handleComponent={CustomHandle}
-      enableContentPanningGesture={Platform.OS === 'ios'}
+      enableContentPanningGesture={Platform.OS === 'ios' && enableContentPanningGesture}
       onClose={onClose}
       style={{
         zIndex: 3000,
         elevation: 3000,
       }}>
-      <View style={[styles(theme).contentContainer, contentContainerStyle]}>
+      <BottomSheetView style={[styles(theme).contentContainer, contentContainerStyle]}>
         {children}
-      </View>
+      </BottomSheetView>
     </BottomSheet>
   );
 };

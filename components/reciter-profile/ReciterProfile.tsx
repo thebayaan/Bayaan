@@ -6,6 +6,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   TouchableOpacity,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -33,6 +35,14 @@ import {useSettings} from '@/hooks/useSettings';
 import {RewayatStyle} from '@/types/reciter';
 import {Icon} from '@rneui/themed';
 import {HeartIcon} from '@/components/Icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import * as Crypto from 'expo-crypto';
+import { useLocalRecitersStore } from '@/store/localRecitersStore';
+import { useAllReciters } from '@/hooks/useAllReciters';
+import { Alert } from 'react-native';
+import BottomSheetModal from '@/components/BottomSheetModal';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -68,6 +78,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const styles = createSharedStyles(theme);
   const insets = useSafeAreaInsets();
   const [reciter, setReciter] = useState<Reciter | null>(null);
+  const { getReciterById } = useAllReciters();
+  const { updateLocalReciter } = useLocalRecitersStore();
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,6 +106,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {showSurahOptions, showRewayatInfo} = useModal();
   const {reciterPreferences, setReciterPreference} = useSettings();
+  const [showEditReciterModal, setShowEditReciterModal] = useState(false);
+  const [editableReciterName, setEditableReciterName] = useState('');
+  const [editableRewayat, setEditableRewayat] = useState<Rewayat[]>([]);
+  const [newRewayatName, setNewRewayatName] = useState('');
 
   // Retrieve persisted reciter profile settings
   const setReciterViewModeSetting = useSettings(
@@ -119,12 +135,20 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   }, [reciter, selectedRewayatId]);
 
   const availableSurahs = useMemo(() => {
+    if (reciter?.isLocal) return surahs;
     if (!selectedRewayat?.surah_list) return surahs;
     const validSurahs = selectedRewayat.surah_list.filter(
       (id): id is number => id !== null,
     );
     return surahs.filter(surah => validSurahs.includes(surah.id));
-  }, [surahs, selectedRewayat]);
+  }, [surahs, selectedRewayat, reciter?.isLocal]);
+
+  const playableSurahIds = useMemo(() => {
+    if (!selectedRewayat?.surah_list) return [];
+    return selectedRewayat.surah_list.filter(
+      (id): id is number => id !== null,
+    );
+  }, [selectedRewayat]);
 
   const filteredSurahsMemo = useMemo(() => {
     // Start with available surahs for the selected rewayat
@@ -173,25 +197,34 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     sortOption,
   ]);
 
+  const playableSurahs = useMemo(() => {
+    if (!reciter?.isLocal) return filteredSurahs;
+    if (playableSurahIds.length === 0) return [];
+    return filteredSurahs.filter(surah => playableSurahIds.includes(surah.id));
+  }, [filteredSurahs, reciter?.isLocal, playableSurahIds]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const reciterData = await getReciterById(currentReciterId);
+        const reciterData = getReciterById(currentReciterId);
         if (reciterData) {
           // Sort rewayat to prioritize Murattal Hafs A'n Assem
-          reciterData.rewayat = sortRewayat(reciterData.rewayat);
-          setReciter(reciterData);
+          // Clone to avoid mutation
+          const sortedRewayat = sortRewayat([...reciterData.rewayat]);
+          const processedReciter = { ...reciterData, rewayat: sortedRewayat };
+          
+          setReciter(processedReciter);
 
           // Use saved preference or default to first rewayat
           const savedRewayatId = reciterPreferences[currentReciterId];
           const validRewayat =
             savedRewayatId &&
-            reciterData.rewayat.find(r => r.id === savedRewayatId);
+            processedReciter.rewayat.find(r => r.id === savedRewayatId);
 
           if (validRewayat) {
             setSelectedRewayatId(validRewayat.id);
-          } else if (reciterData.rewayat.length > 0) {
-            setSelectedRewayatId(reciterData.rewayat[0].id);
+          } else if (processedReciter.rewayat.length > 0) {
+            setSelectedRewayatId(processedReciter.rewayat[0].id);
           }
         }
         const surahsData = await getAllSurahs();
@@ -201,7 +234,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       }
     };
     fetchData();
-  }, [currentReciterId, reciterPreferences]);
+  }, [currentReciterId, reciterPreferences, getReciterById]);
 
   useEffect(() => {
     const listener = headerOpacity.addListener(({value}) => {
@@ -224,16 +257,286 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const queueContext = QueueContext.getInstance();
   const {toggleFavorite, isFavoriteReciter} = useFavoriteReciters();
 
+  const handleAddAudio = useCallback(async (surah: Surah) => {
+    if (!reciter?.isLocal || !selectedRewayat) return;
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      const extension = asset.name.split('.').pop() || 'mp3';
+      const paddedSurahId = surah.id.toString().padStart(3, '0');
+      const fileName = `${paddedSurahId}.${extension}`;
+
+      // selectedRewayat.server is file://.../reciters/{id}
+      const destDir = selectedRewayat.server.replace('file://', '') + (selectedRewayat.server.endsWith('/') ? '' : '/');
+      
+      // Ensure directory exists
+      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+
+      const destPath = `${destDir}${fileName}`;
+
+      await FileSystem.copyAsync({
+        from: asset.uri,
+        to: destPath,
+      });
+
+      // Update Store
+      const existingIds = new Set(
+        (selectedRewayat.surah_list || []).filter(
+          (id): id is number => id !== null,
+        ),
+      );
+      existingIds.add(surah.id);
+
+      const updatedRewayat = {
+        ...selectedRewayat,
+        surah_list: Array.from(existingIds),
+        surah_total: existingIds.size,
+        fileExtension: extension,
+      };
+
+      const updatedReciter = {
+        ...reciter,
+        rewayat: reciter.rewayat.map(r => r.id === updatedRewayat.id ? updatedRewayat : r)
+      };
+
+      updateLocalReciter(updatedReciter);
+      setReciter(updatedReciter);
+      
+      Alert.alert('Success', `Added audio for ${surah.name}`);
+    } catch (error) {
+      console.error('Error adding audio:', error);
+      Alert.alert('Error', 'Failed to add audio file');
+    }
+  }, [reciter, selectedRewayat, updateLocalReciter]);
+
+  const handleEditImage = useCallback(async () => {
+    if (!reciter?.isLocal) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    const baseDirFromRewayat =
+      selectedRewayat?.server?.replace('file://', '') || '';
+    const reciterDir =
+      baseDirFromRewayat && baseDirFromRewayat.length > 0
+        ? baseDirFromRewayat.endsWith('/')
+          ? baseDirFromRewayat
+          : `${baseDirFromRewayat}/`
+        : `${FileSystem.documentDirectory}reciters/${reciter.id}/`;
+
+    try {
+      await FileSystem.makeDirectoryAsync(reciterDir, {intermediates: true});
+      const destPath = `${reciterDir}${reciter.id}-profile.jpg`;
+      await FileSystem.copyAsync({from: asset.uri, to: destPath});
+
+      const updatedReciter = {...reciter, image_url: destPath};
+      updateLocalReciter(updatedReciter);
+      setReciter(updatedReciter);
+    } catch (error) {
+      console.error('Error updating reciter image:', error);
+      Alert.alert('Error', 'Failed to update image');
+    }
+  }, [reciter, selectedRewayat, updateLocalReciter]);
+
+  const openEditReciterModal = useCallback(() => {
+    if (!reciter) return;
+    setEditableReciterName(reciter.name);
+    setEditableRewayat(reciter.rewayat);
+    setNewRewayatName('');
+    setShowEditReciterModal(true);
+  }, [reciter]);
+
+  const handleAddRewayatTab = useCallback(() => {
+    if (!reciter) return;
+    const trimmed = newRewayatName.trim();
+    if (!trimmed) return;
+    const baseServer =
+      reciter.rewayat[0]?.server ||
+      `file://${FileSystem.documentDirectory}reciters/${reciter.id}/`;
+    const newTab: Rewayat = {
+      id: Crypto.randomUUID(),
+      reciter_id: reciter.id,
+      name: trimmed,
+      style: 'murattal',
+      server: baseServer,
+      surah_total: 0,
+      surah_list: [],
+      source_type: 'local',
+      created_at: new Date().toISOString(),
+      isLocal: true,
+      fileExtension: 'mp3',
+    };
+    setEditableRewayat(prev => [...prev, newTab]);
+    setNewRewayatName('');
+  }, [newRewayatName, reciter]);
+
+  const handleRemoveRewayatTab = useCallback(
+    (id: string) => {
+      setEditableRewayat(prev => prev.filter(r => r.id !== id));
+    },
+    [setEditableRewayat],
+  );
+
+  const handleSaveReciterEdits = useCallback(() => {
+    if (!reciter) return;
+    const trimmedName = editableReciterName.trim();
+    if (!trimmedName) {
+      Alert.alert('Error', 'Reciter name cannot be empty');
+      return;
+    }
+    if (editableRewayat.length === 0) {
+      Alert.alert('Error', 'Add at least one tab');
+      return;
+    }
+
+    const updatedReciter: Reciter = {
+      ...reciter,
+      name: trimmedName,
+      rewayat: editableRewayat,
+    };
+
+    // Ensure selected rewayat still exists
+    let nextSelected = selectedRewayatId;
+    if (nextSelected && !editableRewayat.find(r => r.id === nextSelected)) {
+      nextSelected = editableRewayat[0].id;
+      setSelectedRewayatId(nextSelected);
+      setReciterPreference(reciter.id, nextSelected);
+    }
+
+    updateLocalReciter(updatedReciter);
+    setReciter(updatedReciter);
+    setShowEditReciterModal(false);
+  }, [
+    editableReciterName,
+    editableRewayat,
+    reciter,
+    selectedRewayatId,
+    setReciterPreference,
+    updateLocalReciter,
+  ]);
+
+  const renderEditModal = () => {
+    if (!reciter) return null;
+    return (
+      <BottomSheetModal
+        isVisible={showEditReciterModal}
+        onClose={() => setShowEditReciterModal(false)}
+        snapPoints={['65%']}>
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>Edit Reciter</Text>
+          <Text style={styles.modalLabel}>Reciter name</Text>
+          <TextInput
+            value={editableReciterName}
+            onChangeText={setEditableReciterName}
+            style={styles.modalInput}
+            placeholder="Reciter name"
+          />
+
+          <Text style={styles.modalLabel}>Tabs (rewayat)</Text>
+          <ScrollView
+            style={styles.modalList}
+            contentContainerStyle={styles.modalListContent}>
+            {editableRewayat.map(tab => (
+              <View key={tab.id} style={styles.modalTabRow}>
+                <TextInput
+                  value={tab.name}
+                  onChangeText={text =>
+                    setEditableRewayat(prev =>
+                      prev.map(r => (r.id === tab.id ? {...r, name: text} : r)),
+                    )
+                  }
+                  style={styles.modalInputFlex}
+                  placeholder="Tab name"
+                />
+                <TouchableOpacity
+                  onPress={() => handleRemoveRewayatTab(tab.id)}
+                  style={styles.modalRemove}>
+                  <Icon
+                    name="trash-2"
+                    type="feather"
+                    size={16}
+                    color="#c0392b"
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.modalAddRow}>
+            <TextInput
+              value={newRewayatName}
+              onChangeText={setNewRewayatName}
+              style={[styles.modalInputFlex, {marginRight: moderateScale(8)}]}
+              placeholder="New tab name"
+            />
+            <TouchableOpacity
+              style={styles.modalAddButton}
+              onPress={handleAddRewayatTab}>
+              <Text style={styles.modalAddText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalCancel]}
+              onPress={() => setShowEditReciterModal(false)}>
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalSave]}
+              onPress={handleSaveReciterEdits}>
+              <Text style={[styles.modalButtonText, styles.modalSaveText]}>
+                Save
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </BottomSheetModal>
+    );
+  };
+
   const handleSurahPress = useCallback(
     async (surah: Surah) => {
       if (!reciter || !selectedRewayat) return;
+
+      // For local reciters, block playback if audio not uploaded and only queue playable surahs
+      if (reciter.isLocal) {
+        const isUploaded = selectedRewayat.surah_list?.includes(surah.id);
+        if (!isUploaded) {
+          Alert.alert(
+            'Add Audio',
+            `Upload audio for ${surah.name}?`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Pick File', onPress: () => handleAddAudio(surah) },
+            ]
+          );
+          return;
+        }
+      }
+
       try {
-        const startIndex = filteredSurahs.findIndex(s => s.id === surah.id);
+        const sourceSurahs = reciter.isLocal ? playableSurahs : filteredSurahs;
+        const startIndex = sourceSurahs.findIndex(s => s.id === surah.id);
         if (startIndex === -1) return;
 
         const tracks = await createTracksForReciter(
           reciter,
-          filteredSurahs,
+          sourceSurahs,
           selectedRewayat.id,
         );
         const reorderedTracks = [
@@ -252,29 +555,36 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     [
       reciter,
       filteredSurahs,
+      playableSurahs,
       selectedRewayat,
       updateQueue,
       play,
       queueContext,
       addRecentTrack,
+      handleAddAudio,
     ],
   );
 
   const handlePlayAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
+    const sourceSurahs = reciter.isLocal ? playableSurahs : filteredSurahs;
+    if (reciter.isLocal && sourceSurahs.length === 0) {
+      Alert.alert('No audio', 'Please upload audio files before playing.');
+      return;
+    }
     try {
       const tracks = await createTracksForReciter(
         reciter,
-        filteredSurahs,
+        sourceSurahs,
         selectedRewayat.id,
       );
       await updateQueue(tracks, 0);
       await play();
 
-      if (filteredSurahs.length > 0) {
+      if (sourceSurahs.length > 0) {
         await addRecentTrack(
           reciter,
-          filteredSurahs[0],
+          sourceSurahs[0],
           0,
           0,
           selectedRewayat.id,
@@ -288,6 +598,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   }, [
     reciter,
     filteredSurahs,
+    playableSurahs,
     selectedRewayat,
     updateQueue,
     play,
@@ -297,10 +608,15 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   const handleShuffleAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
+    const sourceSurahs = reciter.isLocal ? playableSurahs : filteredSurahs;
+    if (reciter.isLocal && sourceSurahs.length === 0) {
+      Alert.alert('No audio', 'Please upload audio files before shuffling.');
+      return;
+    }
     try {
       const tracks = await createTracksForReciter(
         reciter,
-        filteredSurahs,
+        sourceSurahs,
         selectedRewayat.id,
       );
       const shuffledTracks = shuffleArray([...tracks]);
@@ -313,10 +629,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
       await play();
 
-      if (filteredSurahs.length > 0) {
+      if (sourceSurahs.length > 0) {
         const firstTrackSurahId = shuffledTracks[0].surahId;
         if (firstTrackSurahId) {
-          const firstSurah = filteredSurahs.find(
+          const firstSurah = sourceSurahs.find(
             s => s.id === parseInt(firstTrackSurahId, 10),
           );
           if (firstSurah) {
@@ -332,6 +648,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   }, [
     reciter,
     filteredSurahs,
+    playableSurahs,
     selectedRewayat,
     updateQueue,
     play,
@@ -667,7 +984,18 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                   onRewayatInfoPress={handleRewayatInfoPress}
                   showSearch={showSearch}
                   insets={insets}
+                  canEditImage={reciter.isLocal}
+                  onEditImage={handleEditImage}
                 />
+                {reciter.isLocal && (
+                  <View style={styles.localActionsRow}>
+                    <TouchableOpacity
+                      style={styles.localActionButton}
+                      onPress={openEditReciterModal}>
+                      <Text style={styles.localActionText}>Edit reciter</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 <View style={styles.contentContainer}>
                   <ActionButtons
                     onFavoritePress={handleToggleFavorite}
@@ -803,6 +1131,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
               </>
             }
           />
+          {renderEditModal()}
           <StickyHeader
             reciterName={reciter.name}
             headerOpacity={headerOpacity}

@@ -32,6 +32,8 @@ import {getSurahById} from '@/services/dataService';
 import {reciterImages} from '@/utils/reciterImages';
 import Header from '@/components/Header';
 import {useSettings} from '@/hooks/useSettings';
+import {useAllReciters} from '@/hooks/useAllReciters';
+import {useModal} from '@/components/providers/ModalProvider';
 
 interface BrowseRecitersProps {
   theme: Theme;
@@ -148,7 +150,9 @@ export default function BrowseReciters({
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {setReciterPreference} = useSettings();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
+  const {allReciters} = useAllReciters();
+  const {showAddReciterMenu, showAddReciterModal} = useModal();
+  
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
 
@@ -246,7 +250,7 @@ export default function BrowseReciters({
   }, [selectedTeacher, selectedStudent, primaryTeachers]);
 
   const filteredReciters = useMemo(() => {
-    let result = [...RECITERS];
+    let result = [...allReciters];
 
     if (surahId) {
       result = result.filter(reciter => {
@@ -342,7 +346,7 @@ export default function BrowseReciters({
     });
 
     return result;
-  }, [selectedTeacher, selectedStudent, searchQuery, surahId, advancedFilters]);
+  }, [selectedTeacher, selectedStudent, searchQuery, surahId, advancedFilters, allReciters]);
 
   const handleFilterModalPress = () => {
     setIsFilterModalVisible(true);
@@ -614,6 +618,13 @@ export default function BrowseReciters({
     }
   }, [isSearchFocused, handleSearchBlur]);
 
+  const handleAddReciter = useCallback(() => {
+    showAddReciterMenu(() => {
+      // Small timeout to allow menu to close first (handled in menu component but good to be safe)
+      showAddReciterModal();
+    });
+  }, [showAddReciterMenu, showAddReciterModal]);
+
   return (
     <TouchableWithoutFeedback onPress={handleOutsidePress}>
       <View style={styles.container}>
@@ -775,6 +786,18 @@ export default function BrowseReciters({
           theme={theme}
           initialFilters={advancedFilters}
         />
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.addReciterButton}
+          onPress={handleAddReciter}>
+          <Icon
+            name="plus"
+            type="feather"
+            size={moderateScale(22)}
+            color={theme.colors.background}
+          />
+        </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -786,6 +809,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    // modalContainer removed as modals are now global
     searchFilterContainer: {
       flexDirection: 'row',
       paddingHorizontal: moderateScale(16),
@@ -899,6 +923,23 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12),
       fontFamily: theme.fonts.medium,
       color: theme.colors.text,
+    },
+    addReciterButton: {
+      position: 'absolute',
+      bottom: moderateScale(24),
+      right: moderateScale(16),
+      width: moderateScale(54),
+      height: moderateScale(54),
+      borderRadius: moderateScale(20),
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      shadowOffset: {width: 0, height: 3},
+      elevation: 4,
+      zIndex: 5,
     },
     separatorChip: {
       paddingHorizontal: moderateScale(6),

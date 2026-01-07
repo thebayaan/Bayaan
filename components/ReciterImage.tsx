@@ -13,7 +13,7 @@ interface ReciterImageProps {
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({reciterName = '', style, profileIconSize}) => {
+  ({reciterName = '', imageUrl, style, profileIconSize}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
@@ -48,17 +48,23 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
       return reciterName.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-');
     }, [reciterName]);
 
-    const localImageSource = useMemo(() => {
+    const imageSource = useMemo(() => {
+      // Prioritize passed imageUrl (for local reciters or remote URLs)
+      if (imageUrl) {
+        return {uri: imageUrl};
+      }
+      
+      // Fallback to local static images based on name
       if (!formattedName) return null;
       return reciterImages[formattedName];
-    }, [formattedName]);
+    }, [imageUrl, formattedName]);
 
     return (
       <View style={[styles.container, style]}>
         <View style={styles.squircleMask} />
-        {localImageSource ? (
+        {imageSource ? (
           <Image
-            source={localImageSource}
+            source={imageSource}
             style={styles.image}
             resizeMode="cover"
           />

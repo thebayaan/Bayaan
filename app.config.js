@@ -6,6 +6,7 @@ const getVersionString = () => versionInfo.semanticVersion;
 
 module.exports = {
   expo: {
+    owner: 'osmansaeday',
     name: 'Bayaan',
     slug: 'Bayaan',
     scheme: 'bayaan',

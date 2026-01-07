@@ -37,6 +37,10 @@ export interface ReciterHeaderProps {
     left: number;
     right: number;
   };
+  /** Whether the reciter image can be edited (local reciters only) */
+  canEditImage?: boolean;
+  /** Handler to trigger image edit flow */
+  onEditImage?: () => void;
 }
 
 /**

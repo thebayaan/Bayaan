@@ -26,7 +26,7 @@ function createStyles(_theme: Theme) {
     },
     gridContainer: {
       paddingHorizontal: moderateScale(10),
-      paddingBottom: moderateScale(80),
+      paddingBottom: moderateScale(140), // extra space for floating add button
       paddingTop: moderateScale(8),
     },
     row: {

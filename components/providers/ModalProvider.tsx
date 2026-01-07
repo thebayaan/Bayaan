@@ -6,9 +6,8 @@ import {Surah} from '@/data/surahData';
 import {SurahOptionsModal} from '@/components/modals/SurahOptionsModal';
 import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
-import {SelectReciterModal} from '@/components/modals/SelectReciterModal';
-import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
-import type {RewayatStyle} from '@/types/reciter';
+import {AddReciterModal} from '@/components/modals/AddReciterModal';
+import {AddReciterMenuModal} from '@/components/modals/AddReciterMenuModal';
 
 interface ModalContextType {
   showSurahOptions: (
@@ -37,6 +36,8 @@ interface ModalContextType {
     playlistColor: string,
     onSave: (name: string, color: string) => void,
   ) => void;
+  showAddReciterMenu: (onAddReciter: () => void) => void;
+  showAddReciterModal: () => void;
 }
 
 const ModalContext = createContext<ModalContextType | null>(null);
@@ -60,6 +61,10 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const selectReciterRef = useRef<BottomSheet>(null);
   const playlistContextMenuRef = useRef<BottomSheet>(null);
   const editPlaylistModalRef = useRef<BottomSheet>(null);
+  const addReciterMenuRef = useRef<BottomSheet>(null);
+  
+  // State for AddReciterModal visibility
+  const [isAddReciterModalVisible, setIsAddReciterModalVisible] = React.useState(false);
 
   const [currentSurah, setCurrentSurah] = React.useState<Surah | null>(null);
   const [currentReciterId, setCurrentReciterId] = React.useState<
@@ -99,6 +104,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     playlistColor: string;
     onSave: (name: string, color: string) => void;
   } | null>(null);
+  
+  // Store the callback for adding reciter
+  const [onAddReciterCallback, setOnAddReciterCallback] = React.useState<(() => void) | null>(null);
 
   const showSurahOptions = useCallback(
     (
@@ -200,6 +208,17 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     [],
   );
 
+  const showAddReciterMenu = useCallback((onAddReciter: () => void) => {
+    setOnAddReciterCallback(() => onAddReciter);
+    setTimeout(() => {
+      addReciterMenuRef.current?.expand();
+    }, 50);
+  }, []);
+
+  const showAddReciterModal = useCallback(() => {
+    setIsAddReciterModalVisible(true);
+  }, []);
+
   const handleCloseSurahOptions = useCallback(() => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
@@ -225,6 +244,14 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     playlistContextMenuRef.current?.close();
     setPlaylistContextMenuParams(null);
   }, []);
+  
+  const handleCloseAddReciterMenu = useCallback(() => {
+    addReciterMenuRef.current?.close();
+  }, []);
+  
+  const handleCloseAddReciterModal = useCallback(() => {
+    setIsAddReciterModalVisible(false);
+  }, []);
 
   return (
     <ModalContext.Provider
@@ -235,6 +262,8 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
         showSelectReciter,
         showPlaylistContextMenu,
         showEditPlaylist,
+        showAddReciterMenu,
+        showAddReciterModal,
       }}>
       <View style={StyleSheet.absoluteFill}>{children}</View>
       <View style={styles.modalContainer}>
@@ -292,6 +321,25 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             onClose={handleClosePlaylistContextMenu}
           />
         )}
+        
+        <AddReciterMenuModal
+          bottomSheetRef={addReciterMenuRef}
+          onClose={handleCloseAddReciterMenu}
+          onAddReciter={() => {
+             // If a callback was provided via showAddReciterMenu, call it
+             // Otherwise fallback to opening the global modal
+             if (onAddReciterCallback) {
+                onAddReciterCallback();
+             } else {
+                showAddReciterModal();
+             }
+          }}
+        />
+        
+        <AddReciterModal
+          visible={isAddReciterModalVisible}
+          onClose={handleCloseAddReciterModal}
+        />
       </View>
     </ModalContext.Provider>
   );

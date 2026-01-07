@@ -23,6 +23,8 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   onRewayatInfoPress,
   showSearch,
   insets,
+  canEditImage = false,
+  onEditImage,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -42,12 +44,27 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
               : insets.top + moderateScale(50),
           },
         ]}>
-        <ReciterImage
-          reciterName={reciter.name}
-          imageUrl={reciter.image_url || undefined}
-          style={styles.reciterImage}
-          profileIconSize={moderateScale(40)}
-        />
+        <View style={styles.imageWrapper}>
+          <ReciterImage
+            reciterName={reciter.name}
+            imageUrl={reciter.image_url || undefined}
+            style={styles.reciterImage}
+            profileIconSize={moderateScale(40)}
+          />
+          {canEditImage && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.editBadge}
+              onPress={onEditImage}>
+              <Icon
+                name="edit-2"
+                type="feather"
+                size={moderateScale(14)}
+                color={theme.colors.background}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName} numberOfLines={2}>
             {reciter.name}
@@ -112,6 +129,25 @@ const createStyles = (theme: Theme) =>
       height: moderateScale(100),
       borderRadius: moderateScale(12),
       alignSelf: 'flex-start',
+    },
+    imageWrapper: {
+      position: 'relative',
+    },
+    editBadge: {
+      position: 'absolute',
+      bottom: moderateScale(6),
+      right: moderateScale(6),
+      width: moderateScale(28),
+      height: moderateScale(28),
+      borderRadius: moderateScale(10),
+      backgroundColor: theme.colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      shadowOffset: {width: 0, height: 2},
+      elevation: 3,
     },
     reciterInfo: {
       flex: 1,

@@ -17,6 +17,12 @@ export function generateAudioUrl(
     throw new Error('No rewayat found for reciter');
   }
 
+  // Handle local file system paths (custom reciters)
+  if (rewayat.server.startsWith('file://')) {
+    const extension = rewayat.fileExtension || 'mp3';
+    return `${rewayat.server}/${paddedSurahId}.${extension}`;
+  }
+
   // If the server URL is a Supabase storage URL
   if (rewayat.server.includes('supabase.co')) {
     return `${rewayat.server}/${paddedSurahId}.mp3`;

@@ -6,6 +6,7 @@ export interface Reciter {
   date: string;
   image_url: string | null;
   rewayat: Rewayat[];
+  isLocal?: boolean;
 }
 
 export interface Rewayat {
@@ -18,6 +19,8 @@ export interface Rewayat {
   surah_list: (number | null)[]; // Allow null values in the array
   source_type: string;
   created_at: string;
+  fileExtension?: string;
+  isLocal?: boolean;
 }
 
 export const RECITERS: Reciter[] = recitersData;
