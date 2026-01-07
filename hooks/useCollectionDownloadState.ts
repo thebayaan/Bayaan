@@ -77,4 +77,3 @@ export function useCollectionDownloadState(
     };
   }, [items, isDownloaded, isDownloadedWithRewayat]);
 }
-
