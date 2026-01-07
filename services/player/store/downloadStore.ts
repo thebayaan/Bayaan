@@ -93,7 +93,11 @@ interface DownloadStoreState {
 
   // Actions
   addDownload: (download: DownloadedSurah) => void;
-  removeDownload: (reciterId: string, surahId: string) => void;
+  removeDownload: (
+    reciterId: string,
+    surahId: string,
+    rewayatId?: string,
+  ) => void;
   clearDownloads: () => void;
 
   // Queries (these are the missing pieces!)
@@ -119,7 +123,11 @@ interface DownloadStoreState {
   setDownloading: (id: string) => void;
   clearDownloading: (id: string) => void;
   setDownloadProgress: (id: string, progress: number) => void;
-  getDownloadProgress: (reciterId: string, surahId: string) => number;
+  getDownloadProgress: (
+    reciterId: string,
+    surahId: string,
+    rewayatId?: string,
+  ) => number;
   reorderDownloads: (fromIndex: number, toIndex: number) => void;
   setError: (error: Error | null) => void;
 
@@ -200,11 +208,12 @@ export const useDownloadStore = create<DownloadStoreState>()(
       // Actions
       addDownload: (download: DownloadedSurah) => {
         set(state => {
-          // Check if download already exists
+          // Check if download already exists (must match reciterId, surahId, AND rewayatId)
           const exists = state.downloads.some(
             d =>
               d.reciterId === download.reciterId &&
-              d.surahId === download.surahId,
+              d.surahId === download.surahId &&
+              (d.rewayatId || '') === (download.rewayatId || ''),
           );
 
           if (exists) {
@@ -217,11 +226,26 @@ export const useDownloadStore = create<DownloadStoreState>()(
           };
         });
       },
-      removeDownload: async (reciterId: string, surahId: string) => {
+      removeDownload: async (
+        reciterId: string,
+        surahId: string,
+        rewayatId?: string,
+      ) => {
         const {downloads} = get();
-        const download = downloads.find(
-          d => d.reciterId === reciterId && d.surahId === surahId,
-        );
+        const download = downloads.find(d => {
+          const reciterMatch = d.reciterId === reciterId;
+          const surahMatch = d.surahId === surahId;
+
+          // If rewayatId is provided, match it exactly
+          if (rewayatId) {
+            return reciterMatch && surahMatch && d.rewayatId === rewayatId;
+          }
+
+          // If rewayatId is not provided, only match downloads without rewayatId
+          return (
+            reciterMatch && surahMatch && (!d.rewayatId || d.rewayatId === '')
+          );
+        });
 
         try {
           if (download) {
@@ -230,9 +254,26 @@ export const useDownloadStore = create<DownloadStoreState>()(
 
           // Remove from store
           set(state => ({
-            downloads: state.downloads.filter(
-              d => !(d.reciterId === reciterId && d.surahId === surahId),
-            ),
+            downloads: state.downloads.filter(d => {
+              const reciterMatch = d.reciterId === reciterId;
+              const surahMatch = d.surahId === surahId;
+
+              // If rewayatId is provided, only remove that specific one
+              if (rewayatId) {
+                return !(
+                  reciterMatch &&
+                  surahMatch &&
+                  d.rewayatId === rewayatId
+                );
+              }
+
+              // If rewayatId is not provided, only remove downloads without rewayatId
+              return !(
+                reciterMatch &&
+                surahMatch &&
+                (!d.rewayatId || d.rewayatId === '')
+              );
+            }),
           }));
         } catch (error) {
           console.error('Error removing download:', error);
@@ -269,12 +310,14 @@ export const useDownloadStore = create<DownloadStoreState>()(
       },
 
       // Queries
+      // Only matches downloads without a specific rewayatId (empty string)
       isDownloaded: (reciterId: string, surahId: string) => {
         const {downloads} = get();
         return downloads.some(
           d =>
             d.reciterId === reciterId &&
             d.surahId === surahId &&
+            (!d.rewayatId || d.rewayatId === '') &&
             d.status === 'completed',
         );
       },
@@ -294,6 +337,7 @@ export const useDownloadStore = create<DownloadStoreState>()(
         );
       },
 
+      // Only checks for downloads without a specific rewayatId
       isDownloading: (reciterId: string, surahId: string) => {
         const {downloading} = get();
         const id = `${reciterId}-${surahId}`;
@@ -310,10 +354,14 @@ export const useDownloadStore = create<DownloadStoreState>()(
         return downloading.includes(id);
       },
 
+      // Only gets downloads without a specific rewayatId (empty string)
       getDownload: (reciterId: string, surahId: string) => {
         const {downloads} = get();
         return downloads.find(
-          d => d.reciterId === reciterId && d.surahId === surahId,
+          d =>
+            d.reciterId === reciterId &&
+            d.surahId === surahId &&
+            (!d.rewayatId || d.rewayatId === ''),
         );
       },
 
@@ -347,9 +395,15 @@ export const useDownloadStore = create<DownloadStoreState>()(
         throttledSetProgress(set, id, progress);
       },
 
-      getDownloadProgress: (reciterId: string, surahId: string) => {
+      getDownloadProgress: (
+        reciterId: string,
+        surahId: string,
+        rewayatId?: string,
+      ) => {
         const {downloadProgress} = get();
-        const id = `${reciterId}-${surahId}`;
+        const id = rewayatId
+          ? `${reciterId}-${surahId}-${rewayatId}`
+          : `${reciterId}-${surahId}`;
         return downloadProgress[id] || 0;
       },
 

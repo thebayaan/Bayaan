@@ -1,4 +1,10 @@
-import {Animated, ViewStyle, StyleProp} from 'react-native';
+import {
+  Animated,
+  ViewStyle,
+  StyleProp,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 
@@ -87,7 +93,7 @@ export interface SurahListProps {
   /** Handler for surah options button press */
   onOptionsPress: (surah: Surah) => void;
   /** Scroll event handler */
-  onScroll: (event: any) => void;
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   /** List header component */
   ListHeaderComponent: React.ReactElement;
   /** Style for the list container */
