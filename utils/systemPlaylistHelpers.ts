@@ -10,9 +10,7 @@ import {getReciterById, getSurahById} from '@/services/dataService';
 /**
  * Get a system playlist by ID
  */
-export function getSystemPlaylistById(
-  id: string,
-): SystemPlaylist | undefined {
+export function getSystemPlaylistById(id: string): SystemPlaylist | undefined {
   return getPlaylistById(id);
 }
 
@@ -204,4 +202,3 @@ export function getItemsByReciter(
 
   return itemsByReciter;
 }
-

@@ -20,7 +20,6 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 import {Swipeable} from 'react-native-gesture-handler';
 import {Icon} from '@rneui/themed';
-import {State as TrackPlayerState} from 'react-native-track-player';
 import {PlaylistHeader} from './PlaylistHeader';
 import {useModal} from '@/components/providers/ModalProvider';
 import {useRouter} from 'expo-router';
@@ -53,7 +52,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     deletePlaylist,
     playlists,
   } = usePlaylists();
-  const {updateQueue, play, pause, playback} = useUnifiedPlayer();
+  const {updateQueue, play} = useUnifiedPlayer();
   const {showPlaylistContextMenu} = useModal();
 
   const [playlist, setPlaylist] = useState<UserPlaylist | null>(null);
@@ -248,13 +247,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     if (playlistData.length === 0) return;
 
     try {
-      // If currently playing, pause
-      if (playback.state === TrackPlayerState.Playing) {
-        await pause();
-        return;
-      }
-
-      // If paused or stopped, play all tracks
+      // Create tracks for all items in the playlist
       const trackPromises = playlistData.map(async item => {
         if (!item.reciter || !item.surah) return null;
         return await createTrack(
@@ -275,7 +268,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  }, [playlistData, updateQueue, play, pause, playback.state]);
+  }, [playlistData, updateQueue, play]);
 
   const handleShuffle = useCallback(async () => {
     if (playlistData.length === 0) return;

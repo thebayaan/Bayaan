@@ -75,8 +75,7 @@ export const SYSTEM_PLAYLISTS: SystemPlaylist[] = [
   {
     id: 'heart-softeners',
     title: 'Heart Softeners',
-    description:
-      'Emotional and touching recitations that deeply move the soul',
+    description: 'Emotional and touching recitations that deeply move the soul',
     backgroundColor: '#EC4899', // Pink
     type: 'surah-only',
     items: [
@@ -332,4 +331,3 @@ export function getSystemPlaylistsByColumn(): {
   );
   return {left, right};
 }
-
