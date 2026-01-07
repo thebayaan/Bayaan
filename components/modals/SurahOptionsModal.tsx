@@ -34,6 +34,7 @@ interface SurahOptionsModalProps {
   rewayatId?: string;
   onClose: () => void;
   onAddToQueue?: (surah: Surah) => Promise<void>;
+  isLocal?: boolean;
 }
 
 // Import surah info data
@@ -65,6 +66,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   rewayatId,
   onClose,
   onAddToQueue,
+  isLocal
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -280,6 +282,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
                 </Text>
               </TouchableOpacity>
 
+{!isLocal && (
               <TouchableOpacity
                 style={[
                   styles.option,
@@ -316,7 +319,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
                       : 'Download'}
                 </Text>
               </TouchableOpacity>
-
+              )}
               <TouchableOpacity
                 style={[
                   styles.option,

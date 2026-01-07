@@ -8,6 +8,7 @@ import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
 import {AddReciterModal} from '@/components/modals/AddReciterModal';
 import {AddReciterMenuModal} from '@/components/modals/AddReciterMenuModal';
+import {useAllReciters} from '@/hooks/useAllReciters';
 
 interface ModalContextType {
   showSurahOptions: (
@@ -107,6 +108,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   
   // Store the callback for adding reciter
   const [onAddReciterCallback, setOnAddReciterCallback] = React.useState<(() => void) | null>(null);
+
+  const {getReciterById} = useAllReciters();
+  const currentReciter = currentReciterId ? getReciterById(currentReciterId) : undefined;
 
   const showSurahOptions = useCallback(
     (
@@ -275,6 +279,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             rewayatId={currentRewayatId}
             onClose={handleCloseSurahOptions}
             onAddToQueue={queueHandler}
+            isLocal={currentReciter?.isLocal}
           />
         )}
         {rewayatInfo && (
