@@ -10,6 +10,7 @@ export default function SearchLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="browse-all" />
       <Stack.Screen name="browse-all-surahs" />
+      <Stack.Screen name="system-playlist/[id]" />
       <Stack.Screen name="reciter/[id]" />
       <Stack.Screen name="reciter/browse" />
     </Stack>

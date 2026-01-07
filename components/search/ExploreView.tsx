@@ -15,6 +15,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {noop} from 'lodash';
 import {useWindowDimensions} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
+import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
@@ -28,11 +29,11 @@ interface BentoTile {
   heightMultiplier: number; // Whole multiples of x only
   column: 'left' | 'right'; // Explicit column assignment
   order: number; // Order within the column (1 = top, 2 = second, etc.)
+  type: 'browse' | 'system-playlist'; // Distinguish between browse tiles and system playlists
 }
 
-// Define all tiles with explicit positioning and sizing
-const ALL_TILES: BentoTile[] = [
-  // Left Column
+// Browse tiles - always show these
+const BROWSE_TILES: BentoTile[] = [
   {
     id: 'all-reciters',
     title: 'Browse All',
@@ -42,46 +43,8 @@ const ALL_TILES: BentoTile[] = [
     heightMultiplier: 1,
     column: 'left',
     order: 1,
+    type: 'browse',
   },
-  {
-    id: 'favorite-reciters',
-    title: 'Favorite Reciters',
-    backgroundColor: '#059669',
-    route: '/favorite-reciters',
-    heightMultiplier: 2,
-    column: 'left',
-    order: 2,
-  },
-  {
-    id: 'most-recited',
-    title: 'Most Recited',
-    backgroundColor: '#2563EB',
-    route: '/most-recited',
-    heightMultiplier: 1,
-    column: 'left',
-    order: 3,
-  },
-  {
-    id: 'meccan',
-    title: 'Makkan',
-    subtitle: 'Surahs',
-    backgroundColor: '#BE123C',
-    route: '/meccan',
-    heightMultiplier: 2,
-    column: 'left',
-    order: 4,
-  },
-  {
-    id: 'best-for-tajweed',
-    title: 'Best for Tajweed',
-    backgroundColor: '#0D9488',
-    route: '/best-for-tajweed',
-    heightMultiplier: 1,
-    column: 'left',
-    order: 5,
-  },
-
-  // Right Column
   {
     id: 'all-surahs',
     title: 'Browse All',
@@ -91,54 +54,31 @@ const ALL_TILES: BentoTile[] = [
     heightMultiplier: 1,
     column: 'right',
     order: 1,
-  },
-  {
-    id: 'short-surahs',
-    title: 'Short Surahs',
-    backgroundColor: '#DC2626',
-    route: '/short-surahs',
-    heightMultiplier: 1,
-    column: 'right',
-    order: 2,
-  },
-  {
-    id: 'medinan',
-    title: 'Madinan',
-    subtitle: 'Surahs',
-    backgroundColor: '#15803D',
-    route: '/medinan',
-    heightMultiplier: 2,
-    column: 'right',
-    order: 3,
-  },
-  {
-    id: 'diverse-rewayat',
-    title: 'Diverse Rewayat',
-    backgroundColor: '#9333EA',
-    route: '/diverse-rewayat',
-    heightMultiplier: 2,
-    column: 'right',
-    order: 4,
-  },
-  {
-    id: 'best-for-memorization',
-    title: 'Best for Memorization',
-    backgroundColor: '#6366F1',
-    route: '/best-for-memorization',
-    heightMultiplier: 1,
-    column: 'right',
-    order: 5,
-  },
-  {
-    id: 'juz-amma',
-    title: 'Juz Amma',
-    backgroundColor: '#EA580C',
-    route: '/juz-amma',
-    heightMultiplier: 1,
-    column: 'right',
-    order: 6,
+    type: 'browse',
   },
 ];
+
+// Convert system playlists to BentoTiles
+function systemPlaylistToTile(playlist: SystemPlaylist): BentoTile {
+  return {
+    id: playlist.id,
+    title: playlist.title,
+    subtitle: playlist.subtitle,
+    backgroundColor: playlist.backgroundColor,
+    route: `/(tabs)/(b.search)/system-playlist/${playlist.id}`,
+    heightMultiplier: playlist.heightMultiplier,
+    column: playlist.column,
+    order: playlist.order + 1, // Offset by 1 to account for Browse All tiles
+    type: 'system-playlist',
+  };
+}
+
+// Get all tiles (browse + system playlists)
+function getAllTiles(): BentoTile[] {
+  const systemPlaylists = getAllSystemPlaylists();
+  const systemPlaylistTiles = systemPlaylists.map(systemPlaylistToTile);
+  return [...BROWSE_TILES, ...systemPlaylistTiles];
+}
 
 interface ExploreViewProps {
   onSearchPress: () => void;
@@ -151,12 +91,13 @@ interface ColumnLayout {
 
 // Simple function to organize tiles by their assigned columns and order
 function createExplicitLayout(): ColumnLayout {
-  const leftColumn = ALL_TILES.filter(tile => tile.column === 'left').sort(
-    (a, b) => a.order - b.order,
-  );
-  const rightColumn = ALL_TILES.filter(tile => tile.column === 'right').sort(
-    (a, b) => a.order - b.order,
-  );
+  const allTiles = getAllTiles();
+  const leftColumn = allTiles
+    .filter(tile => tile.column === 'left')
+    .sort((a, b) => a.order - b.order);
+  const rightColumn = allTiles
+    .filter(tile => tile.column === 'right')
+    .sort((a, b) => a.order - b.order);
 
   return {leftColumn, rightColumn};
 }
@@ -346,7 +287,7 @@ export function ExploreView({onSearchPress}: ExploreViewProps) {
   );
 }
 
-const createStyles = (theme: any) =>
+const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     content: {
       flex: 1,
