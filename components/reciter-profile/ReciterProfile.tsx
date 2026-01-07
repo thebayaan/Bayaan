@@ -42,6 +42,7 @@ import * as Crypto from 'expo-crypto';
 import { useLocalRecitersStore } from '@/store/localRecitersStore';
 import { useAllReciters } from '@/hooks/useAllReciters';
 import { Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 import BottomSheetModal from '@/components/BottomSheetModal';
 import Animated, {
   useSharedValue,
@@ -79,7 +80,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const insets = useSafeAreaInsets();
   const [reciter, setReciter] = useState<Reciter | null>(null);
   const { getReciterById } = useAllReciters();
-  const { updateLocalReciter } = useLocalRecitersStore();
+  const { updateLocalReciter, removeLocalReciter } = useLocalRecitersStore();
+  const router = useRouter();
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -103,7 +105,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const flatListRef = useRef<RNAnimated.FlatList>(null);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownload();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {addRecentTrack, removeReciterTracks} = useRecentlyPlayedStore();
   const {showSurahOptions, showRewayatInfo} = useModal();
   const {reciterPreferences, setReciterPreference} = useSettings();
   const [showEditReciterModal, setShowEditReciterModal] = useState(false);
@@ -429,13 +431,52 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     updateLocalReciter,
   ]);
 
+  const handleDeleteReciter = useCallback(() => {
+    if (!reciter) return;
+
+    Alert.alert(
+      'Delete Reciter',
+      `Are you sure you want to delete ${reciter.name}? This action cannot be undone and will delete all associated audio files.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // 1. Delete reciter folder
+              const reciterDir = `${FileSystem.documentDirectory}reciters/${reciter.id}/`;
+              const dirInfo = await FileSystem.getInfoAsync(reciterDir);
+              if (dirInfo.exists) {
+                await FileSystem.deleteAsync(reciterDir);
+              }
+
+              // 2. Remove from store
+              removeLocalReciter(reciter.id);
+              removeReciterTracks(reciter.id);
+
+              // 3. Go back
+              router.back();
+            } catch (error) {
+              console.error('Error deleting reciter:', error);
+              Alert.alert('Error', 'Failed to delete reciter files');
+            }
+          },
+        },
+      ],
+    );
+  }, [reciter, removeLocalReciter, router]);
+
   const renderEditModal = () => {
     if (!reciter) return null;
     return (
       <BottomSheetModal
         isVisible={showEditReciterModal}
         onClose={() => setShowEditReciterModal(false)}
-        snapPoints={['65%']}>
+        snapPoints={['73%']}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>Edit Reciter</Text>
           <Text style={styles.modalLabel}>Reciter name</Text>
@@ -504,6 +545,22 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
               </Text>
             </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={[
+              styles.modalButton,
+              {
+                marginTop: moderateScale(15),
+                backgroundColor: '#fee2e2',
+                borderWidth: 0,
+                flex: 0,
+                width: '100%',
+              },
+            ]}
+            onPress={handleDeleteReciter}>
+            <Text style={[styles.modalButtonText, {color: '#dc2626'}]}>
+              Delete Reciter
+            </Text>
+          </TouchableOpacity>
         </View>
       </BottomSheetModal>
     );

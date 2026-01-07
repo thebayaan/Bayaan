@@ -34,6 +34,7 @@ interface RecentlyPlayedState {
   getDuration: (reciterId: string, surahId: number) => number;
   reset: () => void;
   resetTrackProgress: (reciterId: string, surahId: number) => void;
+  removeReciterTracks: (reciterId: string) => void;
 }
 
 export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
@@ -185,6 +186,36 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
 
           // Sort tracks again to potentially bring the reset track to the top if needed?
           // No, let's keep the order, just reset progress where it is.
+
+          return {
+            recentTracks: updatedTracks,
+            progressMap: newProgressMap,
+            durationMap: newDurationMap,
+          };
+        });
+      },
+
+      removeReciterTracks: (reciterId: string) => {
+        set(state => {
+          const updatedTracks = state.recentTracks.filter(
+            track => track.reciter.id !== reciterId,
+          );
+
+          // Also clean up maps
+          const newProgressMap = {...state.progressMap};
+          const newDurationMap = {...state.durationMap};
+
+          Object.keys(newProgressMap).forEach(key => {
+            if (key.startsWith(`${reciterId}:`)) {
+              delete newProgressMap[key];
+            }
+          });
+
+          Object.keys(newDurationMap).forEach(key => {
+            if (key.startsWith(`${reciterId}:`)) {
+              delete newDurationMap[key];
+            }
+          });
 
           return {
             recentTracks: updatedTracks,
