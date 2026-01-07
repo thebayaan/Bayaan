@@ -3,30 +3,11 @@ import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
 import {QueueManager} from '../services/QueueManager';
 import {usePlayerStore} from '../store/playerStore';
+import {useLocalRecitersStore} from '../store/localRecitersStore';
 
 // Constants
 const RECITERS_KEY = 'bayaan_reciters';
 const RECITER_SERVERS_KEY = 'bayaan_reciter_servers';
-const DATA_VERSION = '2'; // Increment version due to structure change
-
-// Helper functions
-interface StoredData<T> {
-  version: string;
-  data: T;
-}
-
-async function getStoredData<T>(key: string): Promise<T | null> {
-  const storedItem = await AsyncStorage.getItem(key);
-  if (!storedItem) return null;
-
-  const {version, data}: StoredData<T> = JSON.parse(storedItem);
-  return version === DATA_VERSION ? data : null;
-}
-
-async function setStoredData<T>(key: string, data: T): Promise<void> {
-  const storedData: StoredData<T> = {version: DATA_VERSION, data};
-  await AsyncStorage.setItem(key, JSON.stringify(storedData));
-}
 
 // Surah-related functions
 export async function getAllSurahs(): Promise<Surah[]> {
@@ -51,23 +32,22 @@ export function searchSurahs(query: string): Surah[] {
 
 // Reciter-related functions
 export async function getAllReciters(): Promise<Reciter[]> {
-  const storedReciters = await getStoredData<Reciter[]>(RECITERS_KEY);
-
-  // If stored count doesn't match RECITERS count, update storage
-  if (!storedReciters || storedReciters.length !== RECITERS.length) {
-    await setStoredData(RECITERS_KEY, RECITERS);
-    return RECITERS;
-  }
-
-  return storedReciters;
+  const localReciters = useLocalRecitersStore.getState().localReciters;
+  return [...localReciters, ...RECITERS];
 }
 
 export async function getReciterById(id: string): Promise<Reciter | undefined> {
-  const reciters = await getAllReciters();
-  return reciters.find(reciter => reciter.id === id);
+  const localReciters = useLocalRecitersStore.getState().localReciters;
+  const local = localReciters.find(r => r.id === id);
+  if (local) return local;
+  return RECITERS.find(r => r.id === id);
 }
 
 export function getReciterName(reciterId: string): string | null {
+  const localReciters = useLocalRecitersStore.getState().localReciters;
+  const local = localReciters.find(r => r.id === reciterId);
+  if (local) return local.name;
+
   const reciter = RECITERS.find(r => r.id === reciterId);
   return reciter ? reciter.name : null;
 }
