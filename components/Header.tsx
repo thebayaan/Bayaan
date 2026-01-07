@@ -14,6 +14,8 @@ interface HeaderProps {
   containerStyle?: ViewStyle;
   titleStyle?: ViewStyle;
   backButtonStyle?: ViewStyle;
+  rightIcon?: React.ReactNode;
+  onRightIconPress?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,6 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   containerStyle,
   titleStyle,
   backButtonStyle,
+  rightIcon,
+  onRightIconPress,
 }) => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -77,6 +81,14 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, titleStyle]}>{title}</Text>
+        {rightIcon && (
+          <TouchableOpacity
+            style={styles.rightButton}
+            activeOpacity={0.7}
+            onPress={onRightIconPress}>
+            {rightIcon}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -124,6 +136,16 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       position: 'absolute',
       left: moderateScale(16),
+      zIndex: 1,
+    },
+    rightButton: {
+      padding: moderateScale(10),
+      width: moderateScale(44),
+      height: moderateScale(44),
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'absolute',
+      right: moderateScale(16),
       zIndex: 1,
     },
     headerTitle: {

@@ -633,6 +633,15 @@ export default function BrowseReciters({
           onBack={onBack}
           showBlur={true}
           containerStyle={{zIndex: 2}}
+          rightIcon={
+            <Icon
+              name="plus"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          }
+          onRightIconPress={handleAddReciter}
         />
 
         {/* Search and Filter Bar */}
@@ -786,18 +795,6 @@ export default function BrowseReciters({
           theme={theme}
           initialFilters={advancedFilters}
         />
-
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.addReciterButton}
-          onPress={handleAddReciter}>
-          <Icon
-            name="plus"
-            type="feather"
-            size={moderateScale(22)}
-            color={theme.colors.background}
-          />
-        </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -923,23 +920,6 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12),
       fontFamily: theme.fonts.medium,
       color: theme.colors.text,
-    },
-    addReciterButton: {
-      position: 'absolute',
-      bottom: moderateScale(24),
-      right: moderateScale(16),
-      width: moderateScale(54),
-      height: moderateScale(54),
-      borderRadius: moderateScale(20),
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOpacity: 0.2,
-      shadowRadius: 6,
-      shadowOffset: {width: 0, height: 3},
-      elevation: 4,
-      zIndex: 5,
     },
     separatorChip: {
       paddingHorizontal: moderateScale(6),
