@@ -16,6 +16,7 @@ import {useRecentRecitersStore} from '@/store/recentRecitersStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {QueueManager} from '@/services/QueueManager';
 import debounce from 'lodash/debounce';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 
 // Queue state management
 const QueueState = {
@@ -36,6 +37,7 @@ export const usePlayback = () => {
   const {addRecentReciter, updateProgress} = useRecentRecitersStore();
   const queueManager = QueueManager.getInstance();
   const loadTrack = usePlayerStore(state => state.loadAndPlayTrack);
+  const {updateQueue: updateQueueUnified, play: playUnified} = useUnifiedPlayer();
 
   // Queue state management
   let queueState: QueueStateType = QueueState.READY;
@@ -319,7 +321,7 @@ export const usePlayback = () => {
         `[DEBUG] Queue context set, nextLoadIndex: ${startIndex + INITIAL_BATCH_SIZE}`,
       );
 
-      // Get initial batch of available tracks
+      // Get initial batch of available surahs (but don't create all tracks yet!)
       const initialSurahs = getNextAvailableSurahs(
         reciter,
         allSurahs,
@@ -327,30 +329,86 @@ export const usePlayback = () => {
         INITIAL_BATCH_SIZE,
       );
 
-      const initialTracks = createTracksFromSurahs(reciter, initialSurahs);
-      console.log(`[DEBUG] Initial batch size: ${initialTracks.length} tracks`);
+      console.log(`[DEBUG] Initial batch size: ${initialSurahs.length} surahs`);
 
-      // Add to recently played
-      await addRecentReciter(reciter, surah, 0, 0);
+      // HYBRID APPROACH: Best of both worlds
+      // 1. Create ONLY first track → play immediately (fastest start)
+      // 2. Create remaining tracks in parallel while playing
+      // 3. Add remaining tracks all at once (single efficient add call)
+      if (initialSurahs.length > 0) {
+        const [firstSurah, ...remainingSurahs] = initialSurahs;
+        
+        // Optimize: Get artwork once (same for all tracks from same reciter)
+        const artwork = getReciterArtwork(reciter);
+        
+        // STEP 1: Create ONLY first track (instant - ~5ms)
+        const firstTrack = {
+          id: `${reciter.id}:${firstSurah.id}`,
+          url: generateSmartAudioUrl(reciter, firstSurah.id.toString()),
+          title: firstSurah.name,
+          artist: reciter.name,
+          reciterId: reciter.id,
+          artwork,
+          surahId: firstSurah.id.toString(),
+          reciterName: reciter.name,
+        };
 
-      // Play the first track with the start position
-      if (initialTracks.length > 0) {
-        const [firstTrack, ...remainingInitialTracks] = initialTracks;
-        console.log(`[DEBUG] Playing first track: ${firstTrack.title}`);
+        console.log(`[DEBUG] Playing first track immediately: ${firstTrack.title}`);
 
-        // Wait for the track to be played before queueing more
-        await queueManager.playTrackWithOptions(firstTrack, {
-          startPosition,
-          clearQueue: true,
-        });
-
-        // Queue the remaining initial tracks if any
-        if (remainingInitialTracks.length > 0) {
-          console.log(
-            `[DEBUG] Queueing ${remainingInitialTracks.length} remaining initial tracks`,
-          );
-          await queueManager.addToQueue(remainingInitialTracks);
+        // STEP 2: Add first track and start playback IMMEDIATELY
+        // This is the critical path - must be as fast as possible
+        await TrackPlayer.reset();
+        await TrackPlayer.add(firstTrack);
+        
+        if (startPosition !== undefined && startPosition > 0) {
+          await TrackPlayer.seekTo(startPosition);
         }
+        
+        await TrackPlayer.play();
+
+        // STEP 3: Create remaining tracks in parallel (while audio is playing!)
+        // This happens in background, doesn't block playback
+        if (remainingSurahs.length > 0) {
+          console.log(
+            `[DEBUG] Creating ${remainingSurahs.length} remaining tracks in parallel (background)`,
+          );
+          
+          // Create tracks in parallel using Promise.all (like continue playing)
+          // This is fast because all URL generation happens simultaneously
+          const remainingTracksPromise = Promise.all(
+            remainingSurahs.map(surah => ({
+              id: `${reciter.id}:${surah.id}`,
+              url: generateSmartAudioUrl(reciter, surah.id.toString()),
+              title: surah.name,
+              artist: reciter.name,
+              reciterId: reciter.id,
+              artwork, // Reuse pre-computed artwork
+              surahId: surah.id.toString(),
+              reciterName: reciter.name,
+            })),
+          );
+
+          // Add remaining tracks all at once when ready (single efficient add call)
+          remainingTracksPromise
+            .then(remainingTracks => {
+              console.log(
+                `[DEBUG] Adding ${remainingTracks.length} remaining tracks all at once`,
+              );
+              // Use addToQueue which adds all at once (not one by one)
+              return queueManager.addToQueue(remainingTracks);
+            })
+            .then(() => {
+              console.log(
+                `[DEBUG] Successfully added ${remainingSurahs.length} tracks to queue`,
+              );
+            })
+            .catch(error => {
+              console.error('[DEBUG] Error adding remaining tracks:', error);
+            });
+        }
+
+        // Add to recently played AFTER playback starts (non-blocking)
+        addRecentReciter(reciter, surah, 0, 0);
 
         // Set queue state to ready after initial setup is complete
         queueState = QueueState.READY;
@@ -393,9 +451,6 @@ export const usePlayback = () => {
     store.setIsLoading(true);
 
     try {
-      // First add to recent history
-      await addRecentReciter(reciter, surah, 0, 0);
-
       const track: Track = {
         id: `${reciter.id}:${surah.id}`,
         url: generateSmartAudioUrl(reciter, surah.id.toString()),
@@ -407,8 +462,12 @@ export const usePlayback = () => {
         surahId: surah.id.toString(),
       };
 
-      // Then play the track
+      // Play the track immediately - don't block on recent history
       await queueManager.playTrackWithOptions(track, {clearQueue: true});
+
+      // Add to recent history AFTER playback starts (non-blocking)
+      addRecentReciter(reciter, surah, 0, 0);
+
       store.setIsLoading(false);
     } catch (error) {
       console.error('Error in addToQueue:', error);

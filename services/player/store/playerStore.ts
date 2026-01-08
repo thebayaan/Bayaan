@@ -250,12 +250,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
             await TrackPlayer.seekTo(startPosition);
           }
 
-          const queue = await TrackPlayer.getQueue();
-          const currentTrack = await TrackPlayer.getCurrentTrack();
-
+          // Don't call getQueue() - it's slow and we already know the state!
+          // We just added these tracks, so we know the queue is exactly what we added
+          // This is the same optimization we did in QueueManager
           console.log('[PlayerStore] TrackPlayer state after update:', {
-            queueLength: queue.length,
-            currentTrackIndex: currentTrack,
+            queueLength: tracks.length,
+            currentTrackIndex: currentIndex,
             targetIndex: currentIndex,
           });
 
