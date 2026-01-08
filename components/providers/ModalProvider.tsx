@@ -8,7 +8,11 @@ import {RewayatInfoModal} from '@/components/modals/RewayatInfoModal';
 import {FavoriteRecitersModal} from '@/components/modals/FavoriteRecitersModal';
 import {AddReciterModal} from '@/components/modals/AddReciterModal';
 import {AddReciterMenuModal} from '@/components/modals/AddReciterMenuModal';
+import {BulkUploadModal} from '@/components/modals/BulkUploadModal';
+import {SelectReciterModal} from '@/components/modals/SelectReciterModal';
+import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
 import {useAllReciters} from '@/hooks/useAllReciters';
+import {RewayatStyle} from '@/types/reciter';
 
 interface ModalContextType {
   showSurahOptions: (
@@ -40,6 +44,7 @@ interface ModalContextType {
   ) => void;
   showAddReciterMenu: (onAddReciter: () => void) => void;
   showAddReciterModal: () => void;
+  showBulkUpload: (reciterId: string, onSuccess?: () => void) => void;
 }
 
 const ModalContext = createContext<ModalContextType | null>(null);
@@ -64,6 +69,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const playlistContextMenuRef = useRef<BottomSheet>(null);
   const editPlaylistModalRef = useRef<BottomSheet>(null);
   const addReciterMenuRef = useRef<BottomSheet>(null);
+  const bulkUploadModalRef = useRef<BottomSheet>(null);
   
   // State for AddReciterModal visibility
   const [isAddReciterModalVisible, setIsAddReciterModalVisible] = React.useState(false);
@@ -112,6 +118,10 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   
   // Store the callback for adding reciter
   const [onAddReciterCallback, setOnAddReciterCallback] = React.useState<(() => void) | null>(null);
+  const [bulkUploadReciterId, setBulkUploadReciterId] =
+    React.useState<string | null>(null);
+  const [onBulkUploadSuccess, setOnBulkUploadSuccess] =
+    React.useState<(() => void) | null>(null);
 
   const {getReciterById} = useAllReciters();
   const currentReciter = currentReciterId ? getReciterById(currentReciterId) : undefined;
@@ -229,6 +239,14 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     setIsAddReciterModalVisible(true);
   }, []);
 
+  const showBulkUpload = useCallback((reciterId: string, onSuccess?: () => void) => {
+    setBulkUploadReciterId(reciterId);
+    setOnBulkUploadSuccess(() => onSuccess || null);
+    setTimeout(() => {
+      bulkUploadModalRef.current?.expand();
+    }, 50);
+  }, []);
+
   const handleCloseSurahOptions = useCallback(() => {
     surahOptionsRef.current?.close();
     setCurrentSurah(null);
@@ -264,6 +282,12 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     setIsAddReciterModalVisible(false);
   }, []);
 
+  const handleCloseBulkUpload = useCallback(() => {
+    bulkUploadModalRef.current?.close();
+    setBulkUploadReciterId(null);
+    setOnBulkUploadSuccess(null);
+  }, []);
+
   return (
     <ModalContext.Provider
       value={{
@@ -275,6 +299,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
         showEditPlaylist,
         showAddReciterMenu,
         showAddReciterModal,
+        showBulkUpload,
       }}>
       <View style={StyleSheet.absoluteFill}>{children}</View>
       <View style={styles.modalContainer}>
@@ -353,6 +378,17 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
           visible={isAddReciterModalVisible}
           onClose={handleCloseAddReciterModal}
         />
+        {bulkUploadReciterId && (
+          <BulkUploadModal
+            bottomSheetRef={bulkUploadModalRef}
+            reciterId={bulkUploadReciterId}
+            onClose={handleCloseBulkUpload}
+            onSuccess={() => {
+              onBulkUploadSuccess?.();
+              handleCloseBulkUpload();
+            }}
+          />
+        )}
       </View>
     </ModalContext.Provider>
   );

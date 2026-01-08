@@ -130,4 +130,8 @@ export interface ActionButtonsProps {
   onPlayPress: () => void;
   /** Whether the reciter is in the user's favorites */
   isFavoriteReciter: boolean;
+  /** Whether the reciter is local (enables bulk upload) */
+  isLocal?: boolean;
+  /** Handler for bulk upload button */
+  onBulkUpload?: () => void;
 }

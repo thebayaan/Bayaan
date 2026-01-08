@@ -34,6 +34,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onShufflePress,
   onPlayPress,
   isFavoriteReciter,
+  isLocal,
+  onBulkUpload,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -42,6 +44,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   const favoriteScale = useSharedValue(1);
   const shuffleScale = useSharedValue(1);
   const playScale = useSharedValue(1);
+  const bulkScale = useSharedValue(1);
 
   const favoriteAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{scale: favoriteScale.value}],
@@ -55,13 +58,19 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     transform: [{scale: playScale.value}],
   }));
 
-  const handlePressIn = (button: 'favorite' | 'shuffle' | 'play') => {
+  const bulkAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: bulkScale.value}],
+  }));
+
+  const handlePressIn = (button: 'favorite' | 'shuffle' | 'play' | 'bulk') => {
     const scale =
       button === 'favorite'
         ? favoriteScale
         : button === 'shuffle'
           ? shuffleScale
-          : playScale;
+          : button === 'play'
+            ? playScale
+            : bulkScale;
 
     scale.value = withSpring(0.92, {
       damping: 15,
@@ -69,13 +78,15 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     });
   };
 
-  const handlePressOut = (button: 'favorite' | 'shuffle' | 'play') => {
+  const handlePressOut = (button: 'favorite' | 'shuffle' | 'play' | 'bulk') => {
     const scale =
       button === 'favorite'
         ? favoriteScale
         : button === 'shuffle'
           ? shuffleScale
-          : playScale;
+          : button === 'play'
+            ? playScale
+            : bulkScale;
 
     scale.value = withSpring(1, {
       damping: 15,
@@ -97,7 +108,22 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           color={isFavoriteReciter ? GOLD_COLOR : theme.colors.textSecondary}
         />
       </AnimatedTouchableOpacity>
+
       <View style={styles.rightAlignedButtons}>
+        {isLocal && (
+          <AnimatedTouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.circleButton, bulkAnimatedStyle]}
+            onPress={onBulkUpload}
+            onPressIn={() => handlePressIn('bulk')}
+            onPressOut={() => handlePressOut('bulk')}>
+            <Ionicons
+              name="cloud-upload-outline"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </AnimatedTouchableOpacity>
+        )}
         <AnimatedTouchableOpacity
           activeOpacity={0.7}
           style={[styles.circleButton, shuffleAnimatedStyle]}

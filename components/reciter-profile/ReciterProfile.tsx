@@ -107,13 +107,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownload();
   const {addRecentTrack, removeReciterTracks} = useRecentlyPlayedStore();
-  const {showSurahOptions, showRewayatInfo} = useModal();
+  const {showSurahOptions, showRewayatInfo, showBulkUpload} = useModal();
   const {reciterPreferences, setReciterPreference} = useSettings();
   const [showEditReciterModal, setShowEditReciterModal] = useState(false);
   const [editableReciterName, setEditableReciterName] = useState('');
   const [editableRewayat, setEditableRewayat] = useState<Rewayat[]>([]);
   const [newRewayatName, setNewRewayatName] = useState('');
-
   // Retrieve persisted reciter profile settings
   const setReciterViewModeSetting = useSettings(
     state => state.setReciterProfileViewMode,
@@ -254,6 +253,34 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
+
+  const handleBulkUploadSuccess = useCallback(() => {
+    if (currentReciterId) {
+      const updated = getReciterById(currentReciterId);
+      if (updated) setReciter(updated);
+    }
+  }, [currentReciterId, getReciterById]);
+
+  const handleOpenBulkUpload = useCallback(() => {
+    if (reciter?.id) {
+      showBulkUpload(reciter.id, handleBulkUploadSuccess);
+    }
+  }, [reciter?.id, showBulkUpload, handleBulkUploadSuccess]);
+
+  // Keep reciter state in sync with local store updates (e.g., bulk uploads)
+  useEffect(() => {
+    const unsubscribe = useLocalRecitersStore.subscribe(state => {
+      const updated = state.localReciters.find(r => r.id === currentReciterId);
+      if (updated) {
+        const processed = {
+          ...updated,
+          rewayat: sortRewayat([...updated.rewayat]),
+        };
+        setReciter(processed);
+      }
+    });
+    return unsubscribe;
+  }, [currentReciterId]);
 
   const {updateQueue, play, addToQueue} = useUnifiedPlayer();
   const playerStore = usePlayerStore();
@@ -1140,6 +1167,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                     onShufflePress={handleShuffleAll}
                     onPlayPress={handlePlayAll}
                     isFavoriteReciter={isFavoriteReciter(reciter.id)}
+                    isLocal={reciter.isLocal}
+                    onBulkUpload={handleOpenBulkUpload}
                   />
                   <View style={styles.optionsAndToggleRow}>
                     {/* Sort options (Left side) */}
