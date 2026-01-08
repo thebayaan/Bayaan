@@ -9,10 +9,11 @@ import {FlatList, ListRenderItem} from 'react-native';
 import {Swipeable} from 'react-native-gesture-handler';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
+import {DownloadedSurah} from '@/services/player/store/downloadStore';
 import {
-  useDownload,
-  DownloadedSurah,
-} from '@/services/player/store/downloadStore';
+  useDownloadActions,
+  useDownloads,
+} from '@/services/player/store/downloadSelectors';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {shuffleArray} from '@/utils/arrayUtils';
@@ -37,7 +38,8 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   reciterId,
 }) => {
   const {theme} = useTheme();
-  const {downloads, removeDownload} = useDownload();
+  const downloads = useDownloads();
+  const {removeDownload} = useDownloadActions();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const playerStore = usePlayerStore();
