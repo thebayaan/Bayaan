@@ -33,12 +33,16 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
 
 // Animated components
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
+import {LinearGradient} from 'expo-linear-gradient';
 import {Input} from '@/components/Input';
 
 interface BulkUploadModalProps {
@@ -72,6 +76,16 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({current: 0, total: 0});
   const [editingMappingId, setEditingMappingId] = useState<string | null>(null);
+  
+  const snapPoints = useMemo(() => {
+    switch(step) {
+      case 'pick': return ['40%'];
+      case 'mode': return ['55%']; // Smaller as requested
+      case 'uploading': return ['40%'];
+      case 'review': 
+      default: return ['90%'];
+    }
+  }, [step]);
   
   // Reset state when modal opens/closes if needed, but BaseModal handles mounting usually.
   
@@ -267,12 +281,9 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
         Found {files.length} files. How should we assign them?
       </Text>
       
-      <AnimatedButton 
+      <SmartMatchButton 
         onPress={() => applyMapping('smart')}
         theme={theme}
-        icon="auto-awesome"
-        title="Smart Match"
-        description='Auto-detect Surah from filenames (e.g. "001.mp3")'
         delay={100}
       />
 
@@ -293,6 +304,14 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
         description="Select Surahs one by one"
         delay={300}
       />
+
+      <View style={{marginTop: 10, alignItems: 'center'}}>
+        <TouchableOpacity onPress={() => { setFiles([]); setMappings([]); setStep('pick'); }}>
+            <Text style={{color: theme.colors.textSecondary, fontFamily: 'Manrope-Medium', textDecorationLine: 'underline'}}>
+                Go back & reselect files
+            </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -350,7 +369,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
   return (
     <BaseModal
       bottomSheetRef={bottomSheetRef}
-      snapPoints={['90%']}
+      snapPoints={snapPoints}
       title={
         step === 'pick' ? 'Bulk Upload' : 
         step === 'mode' ? 'Assignment Method' :
@@ -402,6 +421,46 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
 
     </BaseModal>
   );
+};
+
+// Sub-component for Smart Match with AI Gradient
+const SmartMatchButton = ({onPress, theme, delay}: any) => {
+    const scale = useSharedValue(1);
+    const opacity = useSharedValue(0.8);
+
+    useEffect(() => {
+        scale.value = withRepeat(withSequence(withTiming(1.02, {duration: 2000}), withTiming(1, {duration: 2000})), -1, true);
+        opacity.value = withRepeat(withSequence(withTiming(1, {duration: 1500}), withTiming(0.8, {duration: 1500})), -1, true);
+    }, []);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{scale: scale.value}],
+        opacity: opacity.value
+    }));
+
+    return (
+        <AnimatedTouchableOpacity
+            entering={FadeIn.delay(delay).springify()}
+            onPress={onPress}
+            activeOpacity={0.9}
+            style={[animatedStyle, {marginBottom: 10}]}
+        >
+            <LinearGradient
+                colors={['#6366f1', '#8b5cf6', '#3b82f6']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={[styles.modeButton, {borderWidth: 0}]}
+            >
+                <Icon name="auto-awesome" type="material" color="#fff" size={32} />
+                <View style={styles.modeTextContainer}>
+                    <Text style={[styles.modeTitle, {color: '#fff'}]}>Smart Match</Text>
+                    <Text style={[styles.modeDescription, {color: 'rgba(255,255,255,0.9)'}]}>
+                        Auto-detect Surah from filenames 
+                    </Text>
+                </View>
+            </LinearGradient>
+        </AnimatedTouchableOpacity>
+    );
 };
 
 // Sub-component for animated button
