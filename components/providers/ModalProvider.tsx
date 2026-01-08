@@ -16,6 +16,7 @@ interface ModalContextType {
     reciterId?: string,
     onAddToQueue?: (surah: Surah) => Promise<void>,
     rewayatId?: string,
+    onUpdateAudio?: (surah: Surah) => Promise<void>,
   ) => void;
   showRewayatInfo: (
     rewayat: RewayatStyle[],
@@ -89,6 +90,9 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const [queueHandler, setQueueHandler] = React.useState<
     ((surah: Surah) => Promise<void>) | undefined
   >();
+  const [onUpdateAudioHandler, setOnUpdateAudioHandler] = React.useState<
+    ((surah: Surah) => Promise<void>) | undefined
+  >();
 
   const [playlistContextMenuParams, setPlaylistContextMenuParams] =
     React.useState<{
@@ -118,11 +122,13 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
       reciterId?: string,
       onAddToQueue?: (surah: Surah) => Promise<void>,
       rewayatId?: string,
+      onUpdateAudio?: (surah: Surah) => Promise<void>,
     ) => {
       setCurrentSurah(surah);
       setCurrentReciterId(reciterId);
       setCurrentRewayatId(rewayatId);
       setQueueHandler(() => onAddToQueue);
+      setOnUpdateAudioHandler(() => onUpdateAudio);
       setTimeout(() => {
         surahOptionsRef.current?.expand();
       }, 50);
@@ -229,6 +235,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     setCurrentReciterId(undefined);
     setCurrentRewayatId(undefined);
     setQueueHandler(undefined);
+    setOnUpdateAudioHandler(undefined);
   }, []);
 
   const handleCloseRewayatInfo = useCallback(() => {
@@ -279,6 +286,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
             rewayatId={currentRewayatId}
             onClose={handleCloseSurahOptions}
             onAddToQueue={queueHandler}
+            onUpdateAudio={onUpdateAudioHandler}
             isLocal={currentReciter?.isLocal}
           />
         )}

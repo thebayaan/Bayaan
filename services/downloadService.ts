@@ -146,3 +146,30 @@ export async function removeDownload(download: DownloadedSurah): Promise<void> {
     );
   }
 }
+
+/**
+ * Replaces an audio file at the target path with a new file.
+ * Returns the size of the new file in bytes.
+ */
+export async function replaceAudioFile(targetPath: string, sourcePath: string): Promise<number> {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(targetPath);
+    if (fileInfo.exists) {
+      await FileSystem.deleteAsync(targetPath);
+    }
+    
+    // Copy the new file to the target path (copying preserves the source if needed, 
+    // but we can assume we want to place the file there).
+    // Using copyAsync to be safe with cached files from pickers.
+    await FileSystem.copyAsync({ from: sourcePath, to: targetPath });
+    
+    // Get new file size
+    const newFileInfo = await FileSystem.getInfoAsync(targetPath);
+    return newFileInfo.exists ? newFileInfo.size || 0 : 0;
+  } catch (error) {
+    console.error('Error replacing audio file:', targetPath, error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
+    throw new Error(`Failed to replace audio file at ${targetPath}: ${errorMessage}`);
+  }
+}
