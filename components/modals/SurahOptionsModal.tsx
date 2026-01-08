@@ -237,8 +237,9 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       setShowSummary(false);
+      onClose(); // Ensure the parent state is cleared when sheet is closed
     }
-  }, []);
+  }, [onClose]);
 
   return (
     <>
@@ -246,7 +247,9 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
         bottomSheetRef={bottomSheetRef}
         snapPoints={showSummary ? ['80%'] : ['60%']}
         title={showSummary ? `About ${surah.name}` : undefined}
-        onChange={handleSheetChange}>
+        onChange={handleSheetChange}
+        index={0}
+      >
         {showSummary ? (
           <ScrollView
             style={styles.scrollView}

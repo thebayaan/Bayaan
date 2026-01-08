@@ -22,6 +22,7 @@ interface RewayatInfoModalProps {
   availableRewayat: RewayatStyle[];
   onRewayatSelect?: (rewayatId: string) => void;
   selectedRewayatId?: string;
+  onClose?: () => void;
 }
 
 export const RewayatInfoModal: React.FC<RewayatInfoModalProps> = ({
@@ -29,6 +30,7 @@ export const RewayatInfoModal: React.FC<RewayatInfoModalProps> = ({
   availableRewayat,
   onRewayatSelect,
   selectedRewayatId,
+  onClose,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -56,9 +58,11 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
       bottomSheetRef={bottomSheetRef}
       snapPoints={['90%']}
       title="About Rewayat"
+      index={0}
       onChange={index => {
         if (index === -1) {
           setIsExpanded(false);
+          onClose?.();
         }
       }}>
       <ScrollView
