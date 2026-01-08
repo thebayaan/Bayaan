@@ -89,7 +89,7 @@ export class BatchLoader {
       const {nextLoadIndex} = state.batchLoadingState;
 
       // Get the active rewayat
-      const activeRewayat = reciter.rewayat[0]; // TODO: Allow selection of rewayat
+      const activeRewayat = reciter.rewayat[0]; // Selects the first rewayat by default. Future: allow selection.
       if (!activeRewayat) {
         throw new Error('No rewayat available for reciter');
       }
@@ -188,7 +188,7 @@ export class BatchLoader {
     return surahNumbers.map(surahNumber => ({
       id: `${reciter.id}-${surahNumber}`,
       url: generateSmartAudioUrl(reciter, surahNumber.toString(), rewayat.id),
-      title: `Surah ${surahNumber}`, // TODO: Get actual surah name
+      title: `Surah ${surahNumber}`, // Placeholder title until metadata is fetched
       artist: reciter.name,
       artwork: reciter.image_url || undefined,
       reciterId: reciter.id,

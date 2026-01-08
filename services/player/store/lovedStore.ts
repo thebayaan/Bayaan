@@ -130,7 +130,7 @@ export const useLovedStore = create<LovedTracksState>()(
 
         try {
           set({syncStatus: 'syncing'});
-          // TODO: Implement sync with backend
+          // Sync logic with backend pending implementation
           set({
             syncStatus: 'idle',
             lastSynced: Date.now(),

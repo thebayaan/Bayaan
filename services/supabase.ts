@@ -17,6 +17,7 @@ const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey;
 const mockClient = {
   auth: {
     getSession: () => Promise.resolve(null),
+    // Mock user retrieval for development/offline mode
     getUser: () => Promise.resolve(null),
     signOut: () => Promise.resolve(),
     onAuthStateChange: () => {

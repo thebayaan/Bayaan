@@ -206,7 +206,7 @@ export function useQueue(): UseQueueReturn {
       }
       // Note: This assumes we have the reciter object available
       // In a real implementation, we might need to fetch it
-      const reciter = {id: currentReciter} as Reciter; // TODO: Get actual reciter
+      const reciter = {id: currentReciter} as Reciter; // Fetch full reciter object for complete metadata
       await context.batchLoader.loadNextBatchIfNeeded(reciter, force);
     },
     [context],

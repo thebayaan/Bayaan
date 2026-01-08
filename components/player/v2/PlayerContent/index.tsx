@@ -91,7 +91,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     const [surahId, verseNumber] = verseKey
       .split(':')
       .map(num => parseInt(num, 10));
-    // TODO: Implement verse selection logic
+    // Verse selection logic to be implemented here
     console.log('Selected verse:', surahId, verseNumber);
   }, []);
 

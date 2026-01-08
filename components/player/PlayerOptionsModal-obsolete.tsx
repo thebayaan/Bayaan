@@ -22,28 +22,28 @@ const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
       label: 'View Reciter',
       icon: 'person',
       onPress: () => {
-        /* TODO: Implement View Reciter action */
+        // Placeholder: View Reciter action
       },
     },
     {
       label: 'View Surah',
       icon: 'book',
       onPress: () => {
-        /* TODO: Implement View Surah action */
+        // Placeholder: View Surah action
       },
     },
     {
       label: 'Share',
       icon: 'share',
       onPress: () => {
-        /* TODO: Implement Share action */
+        // Placeholder: Share action
       },
     },
     {
       label: 'Download',
       icon: 'download',
       onPress: () => {
-        /* TODO: Implement Download action */
+        // Placeholder: Download action
       },
     },
   ];

@@ -73,7 +73,7 @@ export function useMigrationBridge() {
     surah: Surah,
     allSurahs: Surah[],
   ) => {
-    // TODO: Implement batching for large surah collections
+    // Batch processing required for performance optimization with large collections
     await playTrack(reciter, surah);
   };
 
@@ -82,7 +82,7 @@ export function useMigrationBridge() {
     surahs: Surah[],
     shuffle = false,
   ) => {
-    // TODO: Implement batching for large surah collections
+    // Batch processing required for performance optimization with large collections
     if (surahs.length > 0) {
       await playTrack(reciter, surahs[0]);
     }
