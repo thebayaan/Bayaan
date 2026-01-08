@@ -30,6 +30,7 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {useModal} from '@/components/providers/ModalProvider';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useDownload} from '@/services/player/store/downloadStore';
+import {replaceAudioFile} from '@/services/downloadService';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
 import {RewayatStyle} from '@/types/reciter';
@@ -317,6 +318,80 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       Alert.alert('Error', 'Failed to add audio file');
     }
   }, [reciter, selectedRewayat, updateLocalReciter]);
+
+  const handleUpdateAudio = useCallback(async (surah: Surah) => {
+    if (!reciter?.isLocal) {
+      console.warn('handleUpdateAudio: Reciter is not local');
+      return;
+    }
+    
+    if (!selectedRewayat) {
+      console.warn('handleUpdateAudio: No selected rewayat');
+      Alert.alert('Error', 'Please select a recitation style first');
+      return;
+    }
+
+    try {
+      console.log('Opening document picker for surah:', surah.id);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        console.log('Document picker canceled');
+        return;
+      }
+
+      console.log('File picked:', result.assets[0].name);
+      const asset = result.assets[0];
+      const extension = asset.name.split('.').pop() || 'mp3';
+      const paddedSurahId = surah.id.toString().padStart(3, '0');
+      const fileName = `${paddedSurahId}.${extension}`;
+
+      // selectedRewayat.server is file://.../reciters/{id}
+      const destDir = selectedRewayat.server.replace('file://', '') + (selectedRewayat.server.endsWith('/') ? '' : '/');
+      
+      // Ensure directory exists
+      await FileSystem.makeDirectoryAsync(destDir, { intermediates: true });
+
+      const destPath = `${destDir}${fileName}`;
+
+      // This is for updating existing audio, so we use replaceAudioFile which we assume handles overwrite
+      await replaceAudioFile(destPath, asset.uri);
+
+      // Check if surah is already in the list and update if not (handling "Add" case via Update flow)
+      const existingIds = new Set(
+        (selectedRewayat.surah_list || []).filter(
+          (id): id is number => id !== null,
+        ),
+      );
+      
+      if (!existingIds.has(surah.id)) {
+        existingIds.add(surah.id);
+
+        const updatedRewayat = {
+          ...selectedRewayat,
+          surah_list: Array.from(existingIds),
+          surah_total: existingIds.size,
+          fileExtension: extension,
+        };
+
+        const updatedReciter = {
+          ...reciter,
+          rewayat: reciter.rewayat.map(r => r.id === updatedRewayat.id ? updatedRewayat : r)
+        };
+
+        updateLocalReciter(updatedReciter);
+        setReciter(updatedReciter);
+      }
+
+      Alert.alert('Success', `Updated audio for ${surah.name}`);
+    } catch (error) {
+      console.error('Error updating audio:', error);
+      Alert.alert('Error', 'Failed to update audio file: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  }, [reciter, selectedRewayat]);
 
   const handleEditImage = useCallback(async () => {
     if (!reciter?.isLocal) return;
@@ -946,12 +1021,15 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       reciterId: currentReciterId,
       isLoved: isLovedWithCurrentRewayat,
       isDownloaded: isDownloaded,
+      handleUpdateAudio: handleUpdateAudio,
+      reciter: reciter,
       onOptionsPress: (surah: Surah) =>
         showSurahOptions(
           surah,
           currentReciterId,
           handleAddToQueue,
           selectedRewayat?.id,
+          reciter?.isLocal ? () => handleUpdateAudio(surah) : undefined,
         ),
       onScroll: handleScroll,
       viewMode,
@@ -976,6 +1054,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       viewMode,
       sortOption,
       getColorForSurah,
+      handleUpdateAudio,
+      reciter,
     ],
   );
 
@@ -1005,14 +1085,15 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           onSurahPress={handleSurahPress}
           reciterId={currentReciterId}
           isLoved={isLovedWithCurrentRewayat}
-          onOptionsPress={(surah: Surah) =>
-            showSurahOptions(
-              surah,
-              currentReciterId,
-              handleAddToQueue,
-              selectedRewayat?.id,
-            )
-          }
+      onOptionsPress={(surah: Surah) =>
+        showSurahOptions(
+          surah,
+          currentReciterId,
+          handleAddToQueue,
+          selectedRewayat?.id,
+          reciter?.isLocal ? () => handleUpdateAudio(surah) : undefined
+        )
+      }
           searchQuery={searchQuery}
           onSearchChange={handleSearch}
           onCloseSearch={() => {

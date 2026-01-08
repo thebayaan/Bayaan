@@ -34,6 +34,7 @@ interface SurahOptionsModalProps {
   rewayatId?: string;
   onClose: () => void;
   onAddToQueue?: (surah: Surah) => Promise<void>;
+  onUpdateAudio?: (surah: Surah) => Promise<void>;
   isLocal?: boolean;
 }
 
@@ -66,7 +67,9 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
   rewayatId,
   onClose,
   onAddToQueue,
+  onUpdateAudio,
   isLocal
+  
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
@@ -116,6 +119,15 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
     }),
     [theme.colors.text, theme.colors.primary],
   );
+
+  const handleUpdateAudioPress = useCallback(() => {
+    onClose();
+    if (onUpdateAudio) {
+      onUpdateAudio(surah).catch(error => {
+        console.error('Error updating audio:', error);
+      });
+    }
+  }, [onUpdateAudio, surah, onClose]);
 
   const handleAddToQueue = useCallback(() => {
     onClose();
@@ -388,6 +400,28 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
                 />
                 <Text style={styles.optionText}>Learn About Surah</Text>
               </TouchableOpacity>
+              
+              {isLocal && onUpdateAudio && (
+                <TouchableOpacity
+                  style={[
+                    styles.option,
+                    pressedOption === 'updateAudio' && styles.optionPressed,
+                  ]}
+                  onPress={handleUpdateAudioPress}
+                  onPressIn={() => setPressedOption('updateAudio')}
+                  onPressOut={() => setPressedOption(null)}
+                  activeOpacity={1}>
+                  <Icon
+                    name="edit-3"
+                    type="feather"
+                    size={moderateScale(20)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>
+                    {isTrackDownloaded ? 'Update Audio File' : 'Add Audio File'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
