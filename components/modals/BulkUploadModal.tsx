@@ -122,7 +122,7 @@ export const BulkUploadModal: React.FC<BulkUploadModalProps> = ({
   const applyMapping = (mode: AssignmentMode) => {
     let newMappings: FileMapping[] = [];
     
-    // Sort files alphabetically for sequential, or keep original order?
+    // Sort files alphabetically for sequential, or keep original order
     // Sequential implies alphabetical usually.
     let sortedFiles = [...files];
     if (mode === 'sequential') {
