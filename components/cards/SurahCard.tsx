@@ -25,7 +25,10 @@ import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {
+  useIsDownloaded,
+  useIsDownloadedWithRewayat,
+} from '@/services/player/store/downloadSelectors';
 
 interface SurahCardProps {
   id: number;
@@ -68,14 +71,21 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   const {theme} = useTheme();
 
   // Get download state
-  const {isDownloaded: checkIsDownloaded, isDownloadedWithRewayat} =
-    useDownload();
+  const isDownloadedBase = useIsDownloaded(
+    reciterId || '__none__',
+    id.toString(),
+  );
+  const isDownloadedRewayat = useIsDownloadedWithRewayat(
+    reciterId || '__none__',
+    id.toString(),
+    rewayatId || '',
+  );
 
   // Calculate actual download state - use isDownloadedWithRewayat if rewayatId is provided
   const isActuallyDownloaded = reciterId
     ? rewayatId
-      ? isDownloadedWithRewayat(reciterId, id.toString(), rewayatId)
-      : checkIsDownloaded(reciterId, id.toString())
+      ? isDownloadedRewayat
+      : isDownloadedBase
     : isDownloaded; // Fallback to prop if no reciterId
 
   // Get necessary state slices from player store

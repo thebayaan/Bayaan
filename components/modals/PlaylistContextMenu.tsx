@@ -418,6 +418,7 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     <BaseModal
       bottomSheetRef={bottomSheetRef}
       snapPoints={['45%']}
+      index={0}
       onChange={index => {
         if (index === -1) {
           onClose();

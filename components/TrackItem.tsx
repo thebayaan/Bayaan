@@ -16,7 +16,12 @@ import Color from 'color';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {
+  useDownloadProgress,
+  useIsDownloaded,
+  useIsDownloadedWithRewayat,
+  useIsDownloading,
+} from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
 
@@ -41,33 +46,30 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const currentIndex = usePlayerStore(state => state.queue.currentIndex);
     const tracks = usePlayerStore(state => state.queue.tracks);
 
-    // Get download state
-    const {
-      isDownloaded: checkIsDownloaded,
-      isDownloadedWithRewayat,
-      isDownloading,
-      isDownloadingWithRewayat,
-      getDownloadProgress,
-    } = useDownload();
+    const downloadId = useMemo(
+      () =>
+        rewayatId
+          ? `${reciterId}-${surahId}-${rewayatId}`
+          : `${reciterId}-${surahId}`,
+      [reciterId, surahId, rewayatId],
+    );
 
     // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided
-    const isDownloadedState = reciterId
-      ? rewayatId
-        ? isDownloadedWithRewayat(reciterId, surahId, rewayatId)
-        : checkIsDownloaded(reciterId, surahId)
-      : false;
+    const isDownloadedBase = useIsDownloaded(reciterId, surahId);
+    const isDownloadedRewayat = useIsDownloadedWithRewayat(
+      reciterId,
+      surahId,
+      rewayatId || '',
+    );
+    const isDownloadedState = rewayatId
+      ? isDownloadedRewayat
+      : isDownloadedBase;
 
     // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
-    const isCurrentlyDownloading = reciterId
-      ? rewayatId
-        ? isDownloadingWithRewayat(reciterId, surahId, rewayatId)
-        : isDownloading(reciterId, surahId)
-      : false;
+    const isCurrentlyDownloading = useIsDownloading(downloadId);
 
     // Get download progress
-    const downloadProgress = reciterId
-      ? getDownloadProgress(reciterId, surahId, rewayatId)
-      : 0;
+    const downloadProgress = useDownloadProgress(downloadId);
 
     // Check if this item is the currently active track
     const isCurrentlyPlaying = useMemo(() => {
