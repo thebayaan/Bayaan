@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -182,15 +182,20 @@ const BentoTileComponent = React.memo(
 
 BentoTileComponent.displayName = 'BentoTileComponent';
 
-export function ExploreView({onSearchPress}: ExploreViewProps) {
+export const ExploreView = React.memo(function ExploreView({
+  onSearchPress,
+}: ExploreViewProps) {
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const {width} = useWindowDimensions();
 
-  const handleCategoryPress = (route: string) => {
-    router.push(route);
-  };
+  const handleCategoryPress = useCallback(
+    (route: string) => {
+      router.push(route);
+    },
+    [router],
+  );
 
   // Calculate tile dimensions based on screen width - strict two-column grid
   const tileDimensions = useMemo(() => {
@@ -213,26 +218,35 @@ export function ExploreView({onSearchPress}: ExploreViewProps) {
   // Create balanced layout
   const layout = useMemo(() => createExplicitLayout(), []);
 
-  // Render a column of tiles
-  const renderColumn = (tiles: BentoTile[], columnKey: string) => {
-    return (
-      <View key={columnKey} style={styles.column}>
-        {tiles.map(tile => (
-          <BentoTileComponent
-            key={tile.id}
-            tile={tile}
-            dimensions={{
-              width: tileDimensions.columnWidth,
-              height: tileDimensions.baseHeight * tile.heightMultiplier,
-            }}
-            onPress={() => handleCategoryPress(tile.route)}
-          />
-        ))}
-      </View>
-    );
-  };
+  // Memoize theme-dependent styles
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const styles = createStyles(theme);
+  // Render a column of tiles - memoized with useCallback
+  const renderColumn = useCallback(
+    (tiles: BentoTile[], columnKey: string) => {
+      return (
+        <View key={columnKey} style={styles.column}>
+          {tiles.map(tile => (
+            <BentoTileComponent
+              key={tile.id}
+              tile={tile}
+              dimensions={{
+                width: tileDimensions.columnWidth,
+                height: tileDimensions.baseHeight * tile.heightMultiplier,
+              }}
+              onPress={() => handleCategoryPress(tile.route)}
+            />
+          ))}
+        </View>
+      );
+    },
+    [
+      styles.column,
+      tileDimensions.columnWidth,
+      tileDimensions.baseHeight,
+      handleCategoryPress,
+    ],
+  );
 
   return (
     <View style={styles.content}>
@@ -285,7 +299,7 @@ export function ExploreView({onSearchPress}: ExploreViewProps) {
       </ScrollView>
     </View>
   );
-}
+});
 
 const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
