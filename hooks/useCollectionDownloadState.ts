@@ -1,5 +1,5 @@
 import {useMemo} from 'react';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
 
 interface CollectionItem {
   reciter: {id: string} | null;
@@ -28,7 +28,7 @@ interface DownloadState {
 export function useCollectionDownloadState(
   items: CollectionItem[],
 ): DownloadState {
-  const {isDownloaded, isDownloadedWithRewayat} = useDownload();
+  const {isDownloaded, isDownloadedWithRewayat} = useDownloadQueries();
 
   return useMemo(() => {
     // Empty collection

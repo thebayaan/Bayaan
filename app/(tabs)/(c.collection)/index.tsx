@@ -31,7 +31,7 @@ import {PlaylistItem} from '@/components/PlaylistItem';
 import {ReciterItem} from '@/components/ReciterItem';
 import {TrackItem} from '@/components/TrackItem';
 import {ReciterDownloadsListItem} from '@/components/ReciterDownloadsListItem';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useModal} from '@/components/providers/ModalProvider';
 import {HeartIcon, DownloadIcon} from '@/components/Icons';
@@ -77,7 +77,7 @@ export default function CollectionScreen() {
     name: string;
     color: string;
   } | null>(null);
-  const {downloads} = useDownload();
+  const downloads = useDownloads();
   const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
     usePlaylists();
   const {showPlaylistContextMenu} = useModal();

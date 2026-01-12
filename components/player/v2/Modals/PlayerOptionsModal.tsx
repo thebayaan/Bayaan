@@ -19,7 +19,13 @@ import RenderHtml, {
   defaultSystemFonts,
 } from 'react-native-render-html';
 import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {
+  useDownloadActions,
+  useDownloadProgress,
+  useIsDownloading,
+  useIsDownloaded,
+  useIsDownloadedWithRewayat,
+} from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
 import {SelectPlaylistModal} from '@/components/modals/SelectPlaylistModal';
 import {useLoved} from '@/hooks/useLoved';
@@ -70,6 +76,13 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
   const styles = createStyles(theme);
   const {width} = useWindowDimensions();
   const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
+  const downloadId = React.useMemo(
+    () =>
+      rewayatId
+        ? `${reciterId}-${surah.id}-${rewayatId}`
+        : `${reciterId}-${surah.id}`,
+    [reciterId, surah.id, rewayatId],
+  );
 
   const [showSummary, setShowSummary] = useState(false);
   const [pressedOption, setPressedOption] = useState<string | null>(null);
@@ -117,28 +130,26 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
     setShowSummary(true);
   }, []);
 
+  const downloadProgress = useDownloadProgress(downloadId);
+  const isTrackDownloadedBase = useIsDownloaded(
+    reciterId,
+    surah.id.toString(),
+  );
+  const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
+    reciterId,
+    surah.id.toString(),
+    rewayatId || '',
+  );
+  const isTrackDownloaded = rewayatId
+    ? isTrackDownloadedRewayat
+    : isTrackDownloadedBase;
+  const isCurrentlyDownloading = useIsDownloading(downloadId);
   const {
-    isDownloaded,
-    isDownloadedWithRewayat,
-    isDownloading,
-    isDownloadingWithRewayat,
     setDownloading,
     addDownload,
     clearDownloading,
     setDownloadProgress,
-    getDownloadProgress,
-  } = useDownload();
-
-  const downloadProgress = getDownloadProgress(
-    reciterId,
-    surah.id.toString(),
-    rewayatId,
-  );
-
-  // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
-  const isTrackDownloaded = rewayatId
-    ? isDownloadedWithRewayat(reciterId, surah.id.toString(), rewayatId)
-    : isDownloaded(reciterId, surah.id.toString());
+  } = useDownloadActions();
 
   const handleDownload = useCallback(async () => {
     if (isTrackDownloaded) {
@@ -146,21 +157,12 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
       return;
     }
 
-    // Check if downloading - use rewayat-aware check if rewayatId is provided
-    const isCurrentlyDownloading = rewayatId
-      ? isDownloadingWithRewayat(reciterId, surah.id.toString(), rewayatId)
-      : isDownloading(reciterId, surah.id.toString());
-
     if (isCurrentlyDownloading) {
       console.log('Track is already downloading');
       return;
     }
 
     try {
-      // Generate download ID with rewayatId if provided for proper tracking
-      const downloadId = rewayatId
-        ? `${reciterId}-${surah.id}-${rewayatId}`
-        : `${reciterId}-${surah.id}`;
       setDownloading(downloadId);
 
       const downloadResult = await downloadSurah(
@@ -185,9 +187,6 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
       clearDownloading(downloadId);
     } catch (error) {
       console.error('Download failed:', error);
-      const downloadId = rewayatId
-        ? `${reciterId}-${surah.id}-${rewayatId}`
-        : `${reciterId}-${surah.id}`;
       clearDownloading(downloadId);
     }
   }, [
@@ -195,12 +194,12 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
     surah.id,
     rewayatId,
     isTrackDownloaded,
-    isDownloading,
-    isDownloadingWithRewayat,
+    isCurrentlyDownloading,
     setDownloading,
     addDownload,
     clearDownloading,
     setDownloadProgress,
+    downloadId,
   ]);
 
   const handleAddToCollection = useCallback(() => {
@@ -266,15 +265,7 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
                 onPressIn={() => setPressedOption('download')}
                 onPressOut={() => setPressedOption(null)}
                 activeOpacity={1}>
-                {(
-                  rewayatId
-                    ? isDownloadingWithRewayat(
-                        reciterId,
-                        surah.id.toString(),
-                        rewayatId,
-                      )
-                    : isDownloading(reciterId, surah.id.toString())
-                ) ? (
+                {isCurrentlyDownloading ? (
                   <CircularProgress
                     progress={downloadProgress}
                     size={moderateScale(20)}
@@ -294,15 +285,7 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
                   />
                 )}
                 <Text style={[styles.optionText]}>
-                  {(
-                    rewayatId
-                      ? isDownloadingWithRewayat(
-                          reciterId,
-                          surah.id.toString(),
-                          rewayatId,
-                        )
-                      : isDownloading(reciterId, surah.id.toString())
-                  )
+                  {isCurrentlyDownloading
                     ? `Downloading ${Math.round(downloadProgress * 100)}%`
                     : isTrackDownloaded
                       ? 'Downloaded'
