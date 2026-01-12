@@ -1,3 +1,2 @@
 // src/services/index.ts
-export * from './auth';
-export * from './supabase';
+// Auth and Supabase services removed
