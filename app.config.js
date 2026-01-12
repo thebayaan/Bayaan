@@ -70,10 +70,6 @@ module.exports = {
     ],
     extra: {
       // Add your environment variables here
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-      postmarkApiKey: process.env.POSTMARK_API_KEY,
-      postmarkFromEmail: process.env.POSTMARK_FROM_EMAIL,
       eas: {
         projectId: 'e31ace41-2d1b-4777-8230-8c8264277d59',
       },
@@ -97,20 +93,6 @@ module.exports = {
         backgroundColor: '#8dc9d6',
       },
       screenOrientation: 'portrait',
-      intentFilters: [
-        {
-          action: 'VIEW',
-          autoVerify: true,
-          data: [
-            {
-              scheme: 'bayaan',
-              host: '*.supabase.co',
-              pathPrefix: '/auth/callback',
-            },
-          ],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
-      ],
     },
     updates: {
       enabled: true,
