@@ -20,6 +20,7 @@ import {
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
+import {runMigrations} from '@/utils/migrations';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -112,6 +113,11 @@ export default function RootLayout() {
           '[App] Starting initialization attempt:',
           initializationAttempts,
         );
+
+        // Run migrations to clean up stale data from previous versions
+        console.log('[App] Running migrations...');
+        await runMigrations();
+        console.log('[App] Migrations complete');
 
         // Setup player with error handling and retry
         console.log('[App] Setting up player...');
