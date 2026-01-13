@@ -36,12 +36,13 @@ export class QueueManager {
         : [trackOrTracks];
       const processedTracks = tracksToAdd.map(t => ensureTrackFields(t));
 
-      // Get current state
       const playerStore = usePlayerStore.getState();
-      const currentQueue = await this.getQueue();
 
-      // Add tracks to TrackPlayer
+      // Add tracks to TrackPlayer immediately (don't fetch queue first - it's slow!)
       await TrackPlayer.add(processedTracks);
+
+      // Get queue state from store instead of fetching from TrackPlayer (faster)
+      const currentQueue = playerStore.queue || [];
       const newQueue = [...currentQueue, ...processedTracks];
 
       // Update states
@@ -54,7 +55,7 @@ export class QueueManager {
 
       const duration = performance.now() - start;
       console.log(
-        `[QueueManager] Added ${processedTracks.length} track(s) in ${duration}ms`,
+        `[QueueManager] Added ${processedTracks.length} track(s) in ${duration.toFixed(2)}ms`,
       );
     } catch (error) {
       console.error('[QueueManager] Error adding track(s):', error);

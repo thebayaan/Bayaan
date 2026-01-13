@@ -713,12 +713,13 @@ export async function playbackService() {
         return;
       }
 
-      // Wait for track to be ready and get actual duration
+      // Wait for track to be ready and get actual duration and state
       let duration = track.duration || 0;
+      let actualState = State.Ready; // Default to Ready if we can't get state
       try {
-        // Wait for track to be ready
-        const state = await TrackPlayer.getState();
-        if (state === State.Ready || state === State.Playing) {
+        // Get the actual current state from TrackPlayer
+        actualState = await TrackPlayer.getState();
+        if (actualState === State.Ready || actualState === State.Playing) {
           const actualDuration = await TrackPlayer.getDuration();
           if (actualDuration > 0) {
             duration = actualDuration;
@@ -728,11 +729,12 @@ export async function playbackService() {
         console.warn('[PlaybackService] Error getting track duration:', error);
       }
 
-      // Update playback state with accurate duration
+      // Update playback state with accurate duration and actual state
+      // Don't override Playing state with Ready - use the actual state from TrackPlayer
       store.updatePlaybackState({
         position: 0,
         duration,
-        state: State.Ready,
+        state: actualState, // Use actual state instead of hardcoding Ready
       });
 
       // Update recently played with accurate duration

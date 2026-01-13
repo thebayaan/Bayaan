@@ -90,14 +90,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
+          // Don't set state optimistically - let TrackPlayer events update the state
+          // This prevents flickering when TrackPlayer goes through intermediate states
           await TrackPlayer.play();
-          set(state => ({
-            playback: {
-              ...state.playback,
-              state: TrackPlayerState.Playing,
-            },
-            loading: {...state.loading, trackLoading: false},
-          }));
+          // State will be updated by the PlaybackState event listener in playbackService
         } catch (error) {
           if (error instanceof Error) {
             set(state => ({
@@ -113,14 +109,10 @@ export const usePlayerStore = create<PlayerStoreState>()(
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
+          // Don't set state optimistically - let TrackPlayer events update the state
+          // This prevents flickering when TrackPlayer goes through intermediate states
           await TrackPlayer.pause();
-          set(state => ({
-            playback: {
-              ...state.playback,
-              state: TrackPlayerState.Paused,
-            },
-            loading: {...state.loading, trackLoading: false},
-          }));
+          // State will be updated by the PlaybackState event listener in playbackService
         } catch (error) {
           if (error instanceof Error) {
             set(state => ({
@@ -258,12 +250,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
             await TrackPlayer.seekTo(startPosition);
           }
 
-          const queue = await TrackPlayer.getQueue();
-          const currentTrack = await TrackPlayer.getCurrentTrack();
-
+          // Don't call getQueue() - it's slow and we already know the state!
+          // We just added these tracks, so we know the queue is exactly what we added
+          // This is the same optimization we did in QueueManager
           console.log('[PlayerStore] TrackPlayer state after update:', {
-            queueLength: queue.length,
-            currentTrackIndex: currentTrack,
+            queueLength: tracks.length,
+            currentTrackIndex: currentIndex,
             targetIndex: currentIndex,
           });
 
