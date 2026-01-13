@@ -5,7 +5,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/base';
 import Color from 'color';
-import Animated, {FadeIn} from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
@@ -139,7 +138,7 @@ export default function CreditsScreen() {
         style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeIn.delay(100)}>
+        <View>
           <Text style={[styles.introText, {color: theme.colors.textSecondary}]}>
             Bayaan wouldn&apos;t be possible without the incredible work of
             these projects, organizations, and individuals. We&apos;re deeply
@@ -148,10 +147,7 @@ export default function CreditsScreen() {
           </Text>
 
           {CREDITS.map((section, sectionIndex) => (
-            <Animated.View
-              key={section.section}
-              entering={FadeIn.delay(200 + sectionIndex * 100)}
-              style={styles.section}>
+            <View key={section.section} style={styles.section}>
               <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
                 {section.section}
               </Text>
@@ -196,14 +192,14 @@ export default function CreditsScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-            </Animated.View>
+            </View>
           ))}
 
           <Text
             style={[styles.footerText, {color: theme.colors.textSecondary}]}>
             Made with ❤️ by the Bayaan team
           </Text>
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -219,7 +215,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: moderateScale(24),
       paddingVertical: moderateScale(20),
       paddingBottom: moderateScale(160),
     },

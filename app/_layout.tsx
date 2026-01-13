@@ -17,6 +17,11 @@ import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {ModalProvider} from '@/components/providers/ModalProvider';
 import {
+  WhatsNewModal,
+  WhatsNewModalRef,
+} from '@/components/modals/WhatsNewModal';
+import {DevMenu} from '@/components/DevMenu';
+import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
@@ -50,6 +55,7 @@ export default function RootLayout() {
   const router = useRouter();
   const store = usePlayerStore();
   const initializationRef = useRef(false);
+  const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
 
   const [fontsLoaded, fontError] = useFonts({
@@ -324,6 +330,8 @@ export default function RootLayout() {
             </Stack>
             <FloatingPlayer />
             <PlayerSheet />
+            <WhatsNewModal ref={whatsNewModalRef} />
+            <DevMenu whatsNewModalRef={whatsNewModalRef} />
           </ModalProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

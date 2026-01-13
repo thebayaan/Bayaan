@@ -459,7 +459,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   const trackColor = {
     false: Color(theme.colors.textSecondary).alpha(0.3).toString(),
-    true: theme.colors.primary,
+    true: theme.colors.text,
   };
 
   // Determine sample text and segments based on font
@@ -551,7 +551,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.optionLabel}>Transliteration</Text>
           <Switch
             trackColor={trackColor}
-            thumbColor={theme.colors.card}
+            thumbColor="#FFFFFF"
             ios_backgroundColor={trackColor.false}
             onValueChange={toggleTransliteration}
             value={showTransliteration}
@@ -581,7 +581,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.optionLabel}>Translation</Text>
           <Switch
             trackColor={trackColor}
-            thumbColor={theme.colors.card}
+            thumbColor="#FFFFFF"
             ios_backgroundColor={trackColor.false}
             onValueChange={toggleTranslation}
             value={showTranslation}
@@ -735,7 +735,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.card,
     },
     fontFamilyButtonActive: {
-      backgroundColor: theme.colors.primary,
+      backgroundColor: theme.colors.text,
     },
     fontFamilyButtonText: {
       fontSize: moderateScale(12),
@@ -743,7 +743,7 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
     },
     fontFamilyButtonTextActive: {
-      color: theme.colors.text,
+      color: theme.colors.background,
       fontFamily: 'Manrope-SemiBold',
     },
   });
