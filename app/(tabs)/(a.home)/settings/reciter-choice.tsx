@@ -9,7 +9,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import Color from 'color';
 import {useSettings} from '@/hooks/useSettings';
-import Animated, {FadeIn} from 'react-native-reanimated';
 
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
@@ -50,7 +49,7 @@ export default function ReciterChoiceScreen() {
           {paddingTop: insets.top + moderateScale(56)},
         ]}
         showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeIn.delay(100)}>
+        <View>
           <Text style={[styles.subtitle, {color: theme.colors.textSecondary}]}>
             Choose how you want to select reciters when playing Surahs
           </Text>
@@ -172,7 +171,7 @@ export default function ReciterChoiceScreen() {
               </View>
             </View>
           )}
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );

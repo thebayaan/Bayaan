@@ -5,7 +5,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import Animated, {FadeInDown, FadeIn} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
@@ -65,7 +64,7 @@ const ActionSection = ({
       </Text>
     </View>
     <TouchableOpacity
-      style={[styles.actionButton, {backgroundColor: theme.colors.primary}]}
+      style={[styles.actionButton, {backgroundColor: theme.colors.text}]}
       onPress={onPress}
       activeOpacity={0.7}>
       <Text style={styles.actionButtonText}>{buttonLabel}</Text>
@@ -207,18 +206,14 @@ export default function StorageScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         {loading ? (
-          <Animated.View
-            entering={FadeIn.delay(100)}
-            style={styles.loadingContainer}>
+          <View style={styles.loadingContainer}>
             <Text
               style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
               Loading storage information...
             </Text>
-          </Animated.View>
+          </View>
         ) : error ? (
-          <Animated.View
-            entering={FadeIn.delay(100)}
-            style={styles.errorContainer}>
+          <View style={styles.errorContainer}>
             <Icon
               name="alert-circle"
               type="feather"
@@ -228,13 +223,11 @@ export default function StorageScreen() {
             <Text style={[styles.errorText, {color: theme.colors.text}]}>
               {error}
             </Text>
-          </Animated.View>
+          </View>
         ) : (
           <>
             {/* Progress Bar */}
-            <Animated.View
-              entering={FadeInDown.delay(100)}
-              style={styles.progressContainer}>
+            <View style={styles.progressContainer}>
               <View style={styles.progressBarContainer}>
                 <View
                   style={[
@@ -273,12 +266,10 @@ export default function StorageScreen() {
                   ]}
                 />
               </View>
-            </Animated.View>
+            </View>
 
             {/* Storage Breakdown */}
-            <Animated.View
-              entering={FadeInDown.delay(200)}
-              style={styles.breakdownContainer}>
+            <View style={styles.breakdownContainer}>
               <StorageCategory
                 color={colors.otherApps}
                 label="Other apps"
@@ -307,10 +298,10 @@ export default function StorageScreen() {
                 theme={theme}
                 styles={styles}
               />
-            </Animated.View>
+            </View>
 
             {/* Action Sections */}
-            <Animated.View entering={FadeInDown.delay(300)}>
+            <View>
               <ActionSection
                 title="Remove all downloads"
                 description="Remove all the Quran content you have downloaded for offline use."
@@ -332,7 +323,7 @@ export default function StorageScreen() {
                 styles={styles}
                 key="cache"
               />
-            </Animated.View>
+            </View>
           </>
         )}
       </ScrollView>
@@ -350,7 +341,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: moderateScale(20),
+      paddingHorizontal: moderateScale(24),
       paddingVertical: moderateScale(20),
       paddingBottom: moderateScale(160),
     },
