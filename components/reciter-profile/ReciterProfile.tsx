@@ -58,7 +58,7 @@ interface ReciterProfileProps {
 
 // Define types matching useSettings
 type ReciterProfileViewMode = 'card' | 'list';
-type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
+type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation' | 'juz';
 
 // Create a proper memoized wrapper for SurahList
 const MemoizedSurahList = React.memo(SurahList);
@@ -157,7 +157,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
     // Sort based on sortOption
     return [...filtered].sort((a, b) => {
-      if (sortOption === 'asc') {
+      if (sortOption === 'asc' || sortOption === 'juz') {
+        // For 'juz', sort by ID ascending (grouping is handled in SurahList)
         return a.id - b.id;
       } else if (sortOption === 'desc') {
         return b.id - a.id;
@@ -1034,6 +1035,32 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                               styles.activeOptionText,
                           ]}>
                           Rev
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'juz' && styles.activeOptionButton,
+                        ]}
+                        activeOpacity={1}
+                        onPress={() => changeSortOption('juz')}>
+                        <Icon
+                          name="layers"
+                          type="feather"
+                          size={moderateScale(14)}
+                          color={
+                            sortOption === 'juz'
+                              ? theme.colors.primary
+                              : theme.colors.textSecondary
+                          }
+                        />
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'juz' && styles.activeOptionText,
+                          ]}>
+                          Juz
                         </Text>
                       </TouchableOpacity>
                     </View>

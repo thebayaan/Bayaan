@@ -1,5 +1,5 @@
-import React from 'react';
-import {Text, Animated, View} from 'react-native';
+import React, {useMemo} from 'react';
+import {Text, Animated, View, SectionList} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
@@ -7,18 +7,20 @@ import {useTheme} from '@/hooks/useTheme';
 import {SurahListProps} from '@/components/reciter-profile/types';
 import {SurahItem} from '@/components/SurahItem';
 import {SurahCard} from '@/components/cards/SurahCard';
+import {JuzSectionHeader} from '@/components/JuzSectionHeader';
 import {Surah} from '@/data/surahData';
+import {groupSurahsByJuz, JuzSection} from '@/data/juzData';
 
 // Define types matching useSettings and ReciterProfile
 type ReciterProfileViewMode = 'card' | 'list';
-type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation'; // Include revelation order
+type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation' | 'juz';
 
-// Update props interface (consider moving this to types/reciter-profile.ts)
+// Update props interface
 interface UpdatedSurahListProps extends SurahListProps {
   viewMode: ReciterProfileViewMode;
   getColorForSurah: (id: number) => string;
   sortOption: ReciterProfileSortOption;
-  rewayatId?: string; // Add rewayatId prop
+  rewayatId?: string;
 }
 
 // Shared ItemSeparator component
@@ -29,10 +31,60 @@ const ItemSeparator = React.memo(() => {
 });
 ItemSeparator.displayName = 'ItemSeparator';
 
+// Card row component for card grid in section list
+const CardRow = React.memo(
+  ({
+    surahs,
+    onSurahPress,
+    reciterId,
+    isLoved,
+    isDownloaded,
+    onOptionsPress,
+    getColorForSurah,
+    rewayatId,
+    styles,
+  }: {
+    surahs: Surah[];
+    onSurahPress: (surah: Surah) => void;
+    reciterId: string;
+    isLoved: (id: string, surahId: string | number) => boolean;
+    isDownloaded: (id: string, surahId: string | number) => boolean;
+    onOptionsPress?: (surah: Surah) => void;
+    getColorForSurah: (id: number) => string;
+    rewayatId?: string;
+    styles: ReturnType<typeof createStyles>;
+  }) => (
+    <View style={styles.cardRow}>
+      {surahs.map(surah => (
+        <SurahCard
+          key={surah.id}
+          id={surah.id}
+          name={surah.name}
+          translatedName={surah.translated_name_english}
+          versesCount={surah.verses_count}
+          revelationPlace={surah.revelation_place}
+          color={getColorForSurah(surah.id)}
+          onPress={() => onSurahPress(surah)}
+          style={styles.surahCard}
+          isLoved={isLoved(reciterId, surah.id.toString())}
+          isDownloaded={isDownloaded(reciterId, surah.id.toString())}
+          onOptionsPress={onOptionsPress ? () => onOptionsPress(surah) : undefined}
+          reciterId={reciterId}
+          rewayatId={rewayatId}
+        />
+      ))}
+      {/* Add placeholder if odd number of cards */}
+      {surahs.length === 1 && <View style={styles.surahCard} />}
+    </View>
+  ),
+);
+CardRow.displayName = 'CardRow';
+
 /**
  * SurahList component for the ReciterProfile
  *
  * Displays surahs in either a list or grid view.
+ * Supports grouping by Juz when sortOption is 'juz'.
  */
 export const SurahList = React.forwardRef<
   Animated.FlatList,
@@ -50,6 +102,7 @@ export const SurahList = React.forwardRef<
       ListHeaderComponent,
       contentContainerStyle,
       viewMode,
+      sortOption,
       getColorForSurah,
       rewayatId,
     },
@@ -58,7 +111,30 @@ export const SurahList = React.forwardRef<
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
-    // Render a card item
+    // Group surahs by Juz for juz sort option
+    const juzSections = useMemo(() => {
+      if (sortOption !== 'juz') return [];
+      return groupSurahsByJuz(surahs);
+    }, [surahs, sortOption]);
+
+    // Prepare card rows for Juz sections (2 cards per row)
+    const juzCardSections = useMemo(() => {
+      if (sortOption !== 'juz' || viewMode !== 'card') return [];
+
+      return juzSections.map(section => {
+        // Group surahs into rows of 2
+        const rows: Surah[][] = [];
+        for (let i = 0; i < section.data.length; i += 2) {
+          rows.push(section.data.slice(i, i + 2));
+        }
+        return {
+          ...section,
+          data: rows,
+        };
+      });
+    }, [juzSections, viewMode, sortOption]);
+
+    // Render a card item for FlatList
     const renderCardItem = React.useCallback(
       ({item}: {item: Surah}) => (
         <SurahCard
@@ -72,7 +148,7 @@ export const SurahList = React.forwardRef<
           style={styles.surahCard}
           isLoved={isLoved(reciterId, item.id.toString())}
           isDownloaded={isDownloaded(reciterId, item.id.toString())}
-          onOptionsPress={() => onOptionsPress && onOptionsPress(item)}
+          onOptionsPress={onOptionsPress ? () => onOptionsPress(item) : undefined}
           reciterId={reciterId}
           rewayatId={rewayatId}
         />
@@ -102,14 +178,42 @@ export const SurahList = React.forwardRef<
           rewayatId={rewayatId}
         />
       ),
-      [
-        onSurahPress,
-        reciterId,
-        isLoved,
-        isDownloaded,
-        onOptionsPress,
-        rewayatId,
-      ],
+      [onSurahPress, reciterId, isLoved, isDownloaded, onOptionsPress, rewayatId],
+    );
+
+    // Render section header for Juz
+    const renderSectionHeader = React.useCallback(
+      ({section}: {section: JuzSection<Surah> | JuzSection<Surah[]>}) => (
+        <JuzSectionHeader
+          juzNumber={section.juzNumber}
+          juzName={section.juzName}
+          juzArabicName={section.juzArabicName}
+          surahCount={
+            Array.isArray(section.data[0])
+              ? (section.data as Surah[][]).reduce((acc, row) => acc + row.length, 0)
+              : section.data.length
+          }
+        />
+      ),
+      [],
+    );
+
+    // Render card row for SectionList
+    const renderCardRow = React.useCallback(
+      ({item}: {item: Surah[]}) => (
+        <CardRow
+          surahs={item}
+          onSurahPress={onSurahPress}
+          reciterId={reciterId}
+          isLoved={isLoved}
+          isDownloaded={isDownloaded}
+          onOptionsPress={onOptionsPress}
+          getColorForSurah={getColorForSurah}
+          rewayatId={rewayatId}
+          styles={styles}
+        />
+      ),
+      [onSurahPress, reciterId, isLoved, isDownloaded, onOptionsPress, getColorForSurah, rewayatId, styles],
     );
 
     // Shared ListHeader to avoid re-rendering issues
@@ -118,12 +222,78 @@ export const SurahList = React.forwardRef<
       [ListHeaderComponent],
     );
 
-    // Important: We use the same exact contentContainerStyle for both views
+    // Shared content container style
     const sharedContentContainerStyle = React.useMemo(
       () => [styles.listContentContainer, contentContainerStyle],
       [styles.listContentContainer, contentContainerStyle],
     );
 
+    // If sortOption is 'juz', use SectionList
+    if (sortOption === 'juz') {
+      return (
+        <View style={styles.surahsContainer}>
+          {/* Card View with Juz sections */}
+          <View
+            style={[
+              styles.viewContainer,
+              viewMode !== 'card' && styles.hiddenView,
+            ]}>
+            <SectionList
+              sections={juzCardSections}
+              renderItem={renderCardRow}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={(item, index) =>
+                `juz-card-row-${item.map(s => s.id).join('-')}-${index}`
+              }
+              ListHeaderComponent={HeaderMemo}
+              onScroll={viewMode === 'card' ? onScroll : undefined}
+              scrollEventThrottle={16}
+              contentContainerStyle={sharedContentContainerStyle}
+              stickySectionHeadersEnabled={false}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No surahs available</Text>
+              }
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              ItemSeparatorComponent={ItemSeparator}
+            />
+          </View>
+
+          {/* List View with Juz sections */}
+          <View
+            style={[
+              styles.viewContainer,
+              viewMode !== 'list' && styles.hiddenView,
+            ]}>
+            <SectionList
+              sections={juzSections}
+              renderItem={renderListItem}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={item => `juz-list-${item.id}`}
+              ListHeaderComponent={HeaderMemo}
+              onScroll={viewMode === 'list' ? onScroll : undefined}
+              scrollEventThrottle={16}
+              contentContainerStyle={sharedContentContainerStyle}
+              stickySectionHeadersEnabled={false}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>No surahs available</Text>
+              }
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              ItemSeparatorComponent={ItemSeparator}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    // For other sort options, use FlatList
     return (
       <View style={styles.surahsContainer}>
         {/* Card View */}
@@ -211,6 +381,12 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'space-between',
       marginBottom: moderateScale(16),
       paddingHorizontal: moderateScale(16),
+    },
+    cardRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: moderateScale(16),
+      marginBottom: moderateScale(16),
     },
     surahCard: {
       width: '47%',

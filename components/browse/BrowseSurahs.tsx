@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback} from 'react';
-import {View, FlatList, TouchableOpacity, Text} from 'react-native';
+import {View, FlatList, SectionList, TouchableOpacity, Text} from 'react-native';
 import {useRouter} from 'expo-router';
 import {
   moderateScale,
@@ -9,6 +9,7 @@ import {
 import {SURAHS, Surah} from '@/data/surahData';
 import {SurahCard} from '@/components/cards/SurahCard';
 import {SurahItem} from '@/components/SurahItem';
+import {JuzSectionHeader} from '@/components/JuzSectionHeader';
 import Header from '@/components/Header';
 import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -20,16 +21,51 @@ import {useModal} from '@/components/providers/ModalProvider';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {Theme} from '@/utils/themeUtils';
+import {groupSurahsByJuz, JuzSection} from '@/data/juzData';
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
-type SortOption = 'asc' | 'desc' | 'revelation';
+type SortOption = 'asc' | 'desc' | 'revelation' | 'juz';
 
 const ItemSeparator = React.memo(() => {
   const styles = useStyles();
   return <View style={styles.listSeparator} />;
 });
 ItemSeparator.displayName = 'ItemSeparator';
+
+// Card row component for card grid in section list
+const CardRow = React.memo(
+  ({
+    surahs,
+    onPress,
+    getColorForSurah,
+    styles,
+  }: {
+    surahs: Surah[];
+    onPress: (surah: Surah) => void;
+    getColorForSurah: (id: number) => string;
+    styles: ReturnType<typeof useStyles>;
+  }) => (
+    <View style={styles.cardRow}>
+      {surahs.map(surah => (
+        <SurahCard
+          key={surah.id}
+          id={surah.id}
+          name={surah.name}
+          translatedName={surah.translated_name_english}
+          versesCount={surah.verses_count}
+          revelationPlace={surah.revelation_place}
+          color={getColorForSurah(surah.id)}
+          onPress={() => onPress(surah)}
+          style={styles.surahCard}
+        />
+      ))}
+      {/* Add placeholder if odd number of cards */}
+      {surahs.length === 1 && <View style={styles.surahCard} />}
+    </View>
+  ),
+);
+CardRow.displayName = 'CardRow';
 
 const useStyles = () => {
   return ScaledSheet.create({
@@ -41,7 +77,7 @@ const useStyles = () => {
     },
     scrollView: {
       flex: 1,
-      marginTop: moderateScale(4), // Reduced from 10 to 4
+      marginTop: moderateScale(4),
     },
     scrollContent: {
       paddingBottom: verticalScale(100),
@@ -54,11 +90,11 @@ const useStyles = () => {
       paddingHorizontal: moderateScale(16),
       marginHorizontal: moderateScale(16),
       borderRadius: moderateScale(8),
-      marginBottom: moderateScale(2), // Reduced from 5 to 2
+      marginBottom: moderateScale(2),
     },
     surahsContainer: {
       flex: 1,
-      paddingTop: 0, // Removed padding at top of container
+      paddingTop: 0,
     },
     sortOptions: {
       flexDirection: 'row',
@@ -84,23 +120,30 @@ const useStyles = () => {
     },
     listContent: {
       paddingHorizontal: moderateScale(16),
-      paddingTop: 0, // Removed padding to bring content closer to options row
+      paddingTop: 0,
     },
     listViewContent: {
-      paddingHorizontal: 0, // Remove horizontal padding for list view to match SurahItem styling
+      paddingHorizontal: 0,
     },
     columnWrapper: {
       justifyContent: 'space-between',
-      marginBottom: moderateScale(16), // Space between rows in card view
+      marginBottom: moderateScale(16),
+    },
+    cardRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: moderateScale(16),
+      marginBottom: moderateScale(16),
     },
     surahCard: {
-      width: '48%', // Allow some space between cards
+      width: '48%',
     },
     listSeparator: {
       height: moderateScale(4),
     },
     viewContainer: {
       width: '100%',
+      flex: 1,
     },
     hiddenView: {
       display: 'none',
@@ -154,6 +197,11 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
       : [...SURAHS];
 
     // Then sort based on selected option
+    if (sortOption === 'juz') {
+      // For juz, sort by ID ascending (grouping is handled separately)
+      return result.sort((a, b) => a.id - b.id);
+    }
+
     switch (sortOption) {
       case 'asc':
         return result.sort((a, b) => a.id - b.id);
@@ -165,6 +213,29 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
         return result;
     }
   }, [searchQuery, sortOption]);
+
+  // Group surahs by Juz for juz sort option
+  const juzSections = useMemo(() => {
+    if (sortOption !== 'juz') return [];
+    return groupSurahsByJuz(displaySurahs);
+  }, [displaySurahs, sortOption]);
+
+  // Prepare card rows for Juz sections (2 cards per row)
+  const juzCardSections = useMemo(() => {
+    if (sortOption !== 'juz' || viewMode !== 'card') return [];
+
+    return juzSections.map(section => {
+      // Group surahs into rows of 2
+      const rows: Surah[][] = [];
+      for (let i = 0; i < section.data.length; i += 2) {
+        rows.push(section.data.slice(i, i + 2));
+      }
+      return {
+        ...section,
+        data: rows,
+      };
+    });
+  }, [juzSections, viewMode, sortOption]);
 
   // Function to generate a consistent color for each surah
   const getColorForSurah = useCallback((id: number): string => {
@@ -228,15 +299,15 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const toggleViewMode = () => {
     const newMode = viewMode === 'card' ? 'list' : 'card';
     setViewMode(newMode);
-    setBrowseViewModeSetting(newMode); // Persist the change
+    setBrowseViewModeSetting(newMode);
   };
 
   const changeSortOption = (option: SortOption) => {
     setSortOption(option);
-    setBrowseSortOptionSetting(option); // Persist the change
+    setBrowseSortOptionSetting(option);
   };
 
-  // Render a card item
+  // Render a card item for FlatList
   const renderCardItem = useCallback(
     ({item}: {item: Surah}) => (
       <SurahCard
@@ -259,6 +330,36 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
       <SurahItem item={item} onPress={handleSurahPress} />
     ),
     [handleSurahPress],
+  );
+
+  // Render section header for Juz
+  const renderSectionHeader = useCallback(
+    ({section}: {section: JuzSection<Surah> | JuzSection<Surah[]>}) => (
+      <JuzSectionHeader
+        juzNumber={section.juzNumber}
+        juzName={section.juzName}
+        juzArabicName={section.juzArabicName}
+        surahCount={
+          Array.isArray(section.data[0])
+            ? (section.data as Surah[][]).reduce((acc, row) => acc + row.length, 0)
+            : section.data.length
+        }
+      />
+    ),
+    [],
+  );
+
+  // Render card row for SectionList
+  const renderCardRow = useCallback(
+    ({item}: {item: Surah[]}) => (
+      <CardRow
+        surahs={item}
+        onPress={handleSurahPress}
+        getColorForSurah={getColorForSurah}
+        styles={styles}
+      />
+    ),
+    [handleSurahPress, getColorForSurah, styles],
   );
 
   // Sort and view options row
@@ -370,6 +471,41 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
             Rev
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.sortButton,
+            sortOption === 'juz' && {
+              backgroundColor: Color(theme.colors.primary)
+                .alpha(0.1)
+                .toString(),
+            },
+          ]}
+          activeOpacity={1}
+          onPress={() => changeSortOption('juz')}>
+          <Icon
+            name="layers"
+            type="feather"
+            size={moderateScale(14)}
+            color={
+              sortOption === 'juz'
+                ? theme.colors.primary
+                : theme.colors.textSecondary
+            }
+          />
+          <Text
+            style={[
+              styles.sortButtonText,
+              {
+                color:
+                  sortOption === 'juz'
+                    ? theme.colors.primary
+                    : theme.colors.textSecondary,
+              },
+            ]}>
+            Juz
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* View mode toggle */}
@@ -387,6 +523,124 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     </Animated.View>
   );
 
+  // Render content based on sort option
+  const renderContent = () => {
+    // For Juz view, use SectionList
+    if (sortOption === 'juz') {
+      return (
+        <Animated.View
+          entering={FadeIn.delay(200)}
+          style={styles.surahsContainer}>
+          {/* Card View with Juz sections */}
+          <View
+            style={[
+              styles.viewContainer,
+              viewMode !== 'card' && styles.hiddenView,
+            ]}>
+            <SectionList
+              sections={juzCardSections}
+              renderItem={renderCardRow}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={(item, index) =>
+                `juz-card-row-${item.map(s => s.id).join('-')}-${index}`
+              }
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[styles.listContent, styles.scrollContent]}
+              stickySectionHeadersEnabled={false}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              ItemSeparatorComponent={ItemSeparator}
+            />
+          </View>
+
+          {/* List View with Juz sections */}
+          <View
+            style={[
+              styles.viewContainer,
+              viewMode !== 'list' && styles.hiddenView,
+            ]}>
+            <SectionList
+              sections={juzSections}
+              renderItem={renderListItem}
+              renderSectionHeader={renderSectionHeader}
+              keyExtractor={item => `juz-list-${item.id}`}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.listContent,
+                styles.listViewContent,
+                styles.scrollContent,
+              ]}
+              stickySectionHeadersEnabled={false}
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              removeClippedSubviews={true}
+              ItemSeparatorComponent={ItemSeparator}
+            />
+          </View>
+        </Animated.View>
+      );
+    }
+
+    // For other views, use FlatList
+    return (
+      <Animated.View
+        entering={FadeIn.delay(200)}
+        style={styles.surahsContainer}>
+        {/* Card View */}
+        <View
+          style={[
+            styles.viewContainer,
+            viewMode !== 'card' && styles.hiddenView,
+          ]}>
+          <FlatList
+            data={displaySurahs}
+            renderItem={renderCardItem}
+            keyExtractor={item => `card-${item.id}`}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            contentContainerStyle={[styles.listContent, styles.scrollContent]}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            initialNumToRender={25}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            ItemSeparatorComponent={ItemSeparator}
+          />
+        </View>
+
+        {/* List View */}
+        <View
+          style={[
+            styles.viewContainer,
+            viewMode !== 'list' && styles.hiddenView,
+          ]}>
+          <FlatList
+            data={displaySurahs}
+            renderItem={renderListItem}
+            keyExtractor={item => `list-${item.id}`}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={true}
+            contentContainerStyle={[
+              styles.listContent,
+              styles.listViewContent,
+              styles.scrollContent,
+            ]}
+            numColumns={1}
+            initialNumToRender={25}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={true}
+            ItemSeparatorComponent={ItemSeparator}
+          />
+        </View>
+      </Animated.View>
+    );
+  };
+
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
@@ -395,59 +649,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
       <View
         style={[styles.content, {marginTop: insets.top + moderateScale(56)}]}>
         {renderOptionsRow()}
-
-        <Animated.View
-          entering={FadeIn.delay(200)}
-          style={styles.surahsContainer}>
-          {/* Card View */}
-          <View
-            style={[
-              styles.viewContainer,
-              viewMode !== 'card' && styles.hiddenView,
-            ]}>
-            <FlatList
-              data={displaySurahs}
-              renderItem={renderCardItem}
-              keyExtractor={item => `card-${item.id}`}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={true}
-              contentContainerStyle={[styles.listContent, styles.scrollContent]}
-              numColumns={2}
-              columnWrapperStyle={styles.columnWrapper}
-              initialNumToRender={25}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
-              ItemSeparatorComponent={ItemSeparator}
-            />
-          </View>
-
-          {/* List View */}
-          <View
-            style={[
-              styles.viewContainer,
-              viewMode !== 'list' && styles.hiddenView,
-            ]}>
-            <FlatList
-              data={displaySurahs}
-              renderItem={renderListItem}
-              keyExtractor={item => `list-${item.id}`}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={true}
-              contentContainerStyle={[
-                styles.listContent,
-                styles.listViewContent,
-                styles.scrollContent,
-              ]}
-              numColumns={1}
-              initialNumToRender={25}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
-              ItemSeparatorComponent={ItemSeparator}
-            />
-          </View>
-        </Animated.View>
+        {renderContent()}
       </View>
     </View>
   );

@@ -3,10 +3,10 @@ import {persist, createJSONStorage} from 'zustand/middleware';
 import {storage} from '@/utils/storage';
 
 type BrowseViewMode = 'card' | 'list';
-type BrowseSortOption = 'asc' | 'desc' | 'revelation';
+type BrowseSortOption = 'asc' | 'desc' | 'revelation' | 'juz';
 
 type ReciterProfileViewMode = 'card' | 'list';
-type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation'; // Add revelation option
+type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation' | 'juz';
 
 type CollectionViewMode = 'grid' | 'list';
 
