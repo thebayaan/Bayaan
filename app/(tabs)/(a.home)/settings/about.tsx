@@ -5,7 +5,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import Animated, {FadeIn} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import {VersionDisplay} from '@/components/VersionDisplay';
@@ -42,7 +41,7 @@ export default function AboutScreen() {
         style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeIn.delay(100)}>
+        <View>
           <View style={styles.logoContainer}>
             <Image
               source={require('@/assets/images/icon.png')}
@@ -51,7 +50,7 @@ export default function AboutScreen() {
             />
           </View>
 
-          <VersionDisplay showBuildType style={styles.version} />
+          <VersionDisplay style={styles.version} />
 
           <Text style={[styles.tagline, {color: theme.colors.text}]}>
             Your Companion for Quranic Recitation
@@ -89,6 +88,24 @@ export default function AboutScreen() {
             </Text>
             <View style={styles.featureList}>
               <Feature
+                title="Offline Downloads"
+                description="Download surahs for offline listening anytime, anywhere without internet connection"
+                theme={theme}
+                styles={styles}
+              />
+              <Feature
+                title="Custom Playlists"
+                description="Create and manage your own personalized playlists of your favorite recitations"
+                theme={theme}
+                styles={styles}
+              />
+              <Feature
+                title="Browse by Juz"
+                description="Easily navigate through the Quran with Juz-based organization and grouping"
+                theme={theme}
+                styles={styles}
+              />
+              <Feature
                 title="Advanced Audio Controls"
                 description="Precise playback control with continuous play and adjustable recitation speed"
                 theme={theme}
@@ -96,7 +113,7 @@ export default function AboutScreen() {
               />
               <Feature
                 title="High-Quality Audio"
-                description="Crystal clear recitations from the world's best Qaris with optimized streaming and offline support"
+                description="Crystal clear recitations from the world's best Qaris with optimized streaming"
                 theme={theme}
                 styles={styles}
               />
@@ -108,7 +125,7 @@ export default function AboutScreen() {
               />
               <Feature
                 title="Personalization"
-                description="Customize themes, reading preferences, and audio settings to your liking"
+                description="Customize themes, accent colors, and audio settings to your liking"
                 theme={theme}
                 styles={styles}
               />
@@ -126,32 +143,8 @@ export default function AboutScreen() {
             </Text>
             <View style={[styles.featureList, {marginTop: moderateScale(12)}]}>
               <Feature
-                title="Complete Offline Mode"
-                description="Download your favorite recitations for seamless offline access anytime, anywhere"
-                theme={theme}
-                styles={styles}
-              />
-              <Feature
-                title="Custom Playlists"
-                description="Create and share personalized collections of your favorite recitations"
-                theme={theme}
-                styles={styles}
-              />
-              <Feature
                 title="Multiple Translations"
                 description="Access Quran translations in various languages to better understand the meanings"
-                theme={theme}
-                styles={styles}
-              />
-              <Feature
-                title="Exclusive Content"
-                description="Special recitations and collections available only on Bayaan"
-                theme={theme}
-                styles={styles}
-              />
-              <Feature
-                title="Community Features"
-                description="Connect with others, share your journey, and grow together in your Quranic experience"
                 theme={theme}
                 styles={styles}
               />
@@ -173,6 +166,12 @@ export default function AboutScreen() {
                 theme={theme}
                 styles={styles}
               />
+              <Feature
+                title="Community Features"
+                description="Connect with others, share your journey, and grow together in your Quranic experience"
+                theme={theme}
+                styles={styles}
+              />
             </View>
           </View>
 
@@ -191,7 +190,7 @@ export default function AboutScreen() {
               blessed journey together.
             </Text>
           </View>
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -210,7 +209,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: moderateScale(24),
       paddingVertical: moderateScale(20),
       paddingBottom: moderateScale(160),
     },

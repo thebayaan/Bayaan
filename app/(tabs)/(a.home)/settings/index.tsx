@@ -121,6 +121,13 @@ const settingsItems = [
     section: 'About Bayaan',
     items: [
       {
+        title: "What's New",
+        type: 'whatsNew',
+        description: "See what's new in this version",
+        icon: 'gift',
+        iconType: 'feather',
+      },
+      {
         title: 'About Bayaan',
         type: 'about',
         description: 'Learn more about our mission',
@@ -182,6 +189,9 @@ export default function SettingsScreen() {
         await markAsRated();
         // Open the app store for review
         await openAppStoreForReview();
+        break;
+      case 'whatsNew':
+        router.push('/settings/whats-new');
         break;
       case 'support':
         await Linking.openURL('https://thebayaan.com/support');

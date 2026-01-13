@@ -1,0 +1,62 @@
+[
+  {
+    "version": "1.2.2",
+    "releaseDate": "2026-01-13",
+    "title": "Offline Mode, Playlists & More!",
+    "highlights": [
+      {
+        "title": "Offline Mode",
+        "description": "Download surahs for offline listening",
+        "icon": "download-outline"
+      },
+      {
+        "title": "Custom Playlists",
+        "description": "Create and manage your own playlists",
+        "icon": "list-outline"
+      },
+      {
+        "title": "Redesigned Search",
+        "description": "Beautiful bento layout with curated system playlists",
+        "icon": "grid-outline"
+      }
+    ],
+    "fullChangelog": {
+      "features": [
+        "Complete offline download system with progress tracking",
+        "Bulk download for playlists and collections",
+        "Create, edit, and manage custom playlists",
+        "Reorder and delete playlist items",
+        "Juz-based surah grouping in browse and reciter screens",
+        "Enhanced collection screen with rewayat-aware downloads",
+        "Download state indicators throughout the app",
+        "Storage management with usage breakdown"
+      ],
+      "improvements": [
+        "Eliminated navigation lag in explore view",
+        "Fixed play icon flickering",
+        "Optimized button interactions across the app",
+        "Significant performance boost for main UI",
+        "Improved FloatingPlayer visibility logic",
+        "Better audio player state management",
+        "Enhanced download performance to prevent freezing",
+        "Improved collection and playlist organization"
+      ],
+      "fixes": [
+        "Resolved TestFlight file corruption issues",
+        "Fixed audio playback race conditions",
+        "Fixed double-tap bugs",
+        "Corrected playback behavior inconsistencies",
+        "Fixed download UI freezing during operations",
+        "Resolved bottom sheet positioning issues",
+        "Fixed various TypeScript type issues"
+      ],
+      "technical": [
+        "Removed authentication and Supabase dependencies",
+        "Refactored download system architecture",
+        "Improved code organization and documentation",
+        "Updated dependencies for Android compatibility",
+        "Enhanced TypeScript type safety"
+      ]
+    }
+  }
+]
