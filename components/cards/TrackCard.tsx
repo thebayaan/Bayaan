@@ -59,9 +59,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
     surahId,
     rewayatId || '',
   );
-  const isDownloadedState = rewayatId
-    ? isDownloadedRewayat
-    : isDownloadedBase;
+  const isDownloadedState = rewayatId ? isDownloadedRewayat : isDownloadedBase;
 
   // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
   const isCurrentlyDownloading = useIsDownloading(downloadId);

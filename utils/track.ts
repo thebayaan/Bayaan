@@ -1,7 +1,7 @@
 import {Reciter} from '@/data/reciterData';
 import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
-import {generateAudioUrl, generateSmartAudioUrl} from './audioUtils';
+import {generateSmartAudioUrl} from './audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 
 /**

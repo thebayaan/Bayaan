@@ -101,7 +101,7 @@ const createStyles = (bottomInset: number) =>
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
-  const {playback, queue, loading, play, pause, sheetMode, setSheetMode} =
+  const {playback, queue, loading, play, pause, setSheetMode} =
     useUnifiedPlayer();
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const scale = useSharedValue(1);

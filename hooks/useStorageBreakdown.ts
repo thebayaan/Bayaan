@@ -1,5 +1,4 @@
 import {useState, useEffect} from 'react';
-import DeviceInfo from 'react-native-device-info';
 import {
   getDownloadsStorage,
   getCacheStorage,

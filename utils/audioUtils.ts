@@ -40,12 +40,12 @@ export function generateSmartAudioUrl(
 ): string {
   // Check if the surah is downloaded (with rewayat if provided)
   const downloadStore = useDownloadStore.getState();
-  
+
   // Use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
   const isDownloaded = rewayatId
     ? downloadStore.isDownloadedWithRewayat(reciter.id, surahId, rewayatId)
     : downloadStore.isDownloaded(reciter.id, surahId);
-  
+
   if (isDownloaded) {
     const download = downloadStore.getDownload(reciter.id, surahId);
     // Double-check that the download matches the rewayat (if specified)

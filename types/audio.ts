@@ -1,5 +1,4 @@
 import type {Track as RNTrackPlayerTrack} from 'react-native-track-player';
-import type {DownloadStatus} from '@/services/download/types';
 
 // Our base track type that extends the library's track type
 export interface Track extends RNTrackPlayerTrack {
@@ -7,16 +6,6 @@ export interface Track extends RNTrackPlayerTrack {
   reciterName: string;
   surahId?: string;
   rewayatId?: string;
-}
-
-// Extended track interface with download properties
-export interface DownloadableTrack extends Track {
-  isDownloaded: boolean;
-  downloadStatus: DownloadStatus;
-  downloadProgress?: number;
-  localPath?: string;
-  downloadDate?: Date;
-  fileSize?: number;
 }
 
 // Helper type for track conversion

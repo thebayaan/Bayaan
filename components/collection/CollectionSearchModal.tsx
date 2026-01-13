@@ -99,7 +99,7 @@ interface CollectionSearchModalProps {
 export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
   visible,
   onClose,
-  theme,
+  theme: _theme,
 }) => {
   // ============================================
   // STATE MANAGEMENT
@@ -244,7 +244,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           // For each item, check if it matches the query
           for (const item of items) {
             // Get surah information
-            const surah = getSurahById(parseInt(item.surahId));
+            const surah = getSurahById(parseInt(item.surahId, 10));
 
             if (surah) {
               // Check if surah name matches
@@ -306,7 +306,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
       if (!reciter) return;
 
       // Get surah info
-      const surah = getSurahById(parseInt(track.surahId));
+      const surah = getSurahById(parseInt(track.surahId, 10));
       if (!surah) return;
 
       // Check if reciter name, surah name, or arabic name matches
@@ -345,7 +345,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
       if (!reciter) return;
 
       // Get surah info
-      const surah = getSurahById(parseInt(download.surahId));
+      const surah = getSurahById(parseInt(download.surahId, 10));
       if (!surah) return;
 
       // Check if matches
@@ -473,7 +473,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         case 'playlist_item':
           // Navigate to the track inside the playlist
           if (result.metadata.kind === 'playlist_item') {
-            const {surah, item} = result.metadata.data;
+            const {item} = result.metadata.data;
             router.push({
               pathname: '/player',
               params: {

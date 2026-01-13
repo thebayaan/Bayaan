@@ -1,7 +1,7 @@
 // hooks/usePlayback.ts
 import {usePlayerStore} from '@/store/playerStore';
 import {useQueueStore} from '@/store/queueStore';
-import {generateAudioUrl, generateSmartAudioUrl} from '@/utils/audioUtils';
+import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {Track} from '@/types/audio';
 import {Reciter} from '@/data/reciterData';
@@ -38,7 +38,7 @@ export const usePlayback = () => {
   const {addRecentReciter, updateProgress} = useRecentRecitersStore();
   const queueManager = QueueManager.getInstance();
   const loadTrack = usePlayerStore(state => state.loadAndPlayTrack);
-  const {updateQueue: updateQueueUnified, play: playUnified} = useUnifiedPlayer();
+  useUnifiedPlayer();
 
   // Queue state management
   let queueState: QueueStateType = QueueState.READY;
@@ -338,13 +338,13 @@ export const usePlayback = () => {
       // 3. Add remaining tracks all at once (single efficient add call)
       if (initialSurahs.length > 0) {
         const [firstSurah, ...remainingSurahs] = initialSurahs;
-        
+
         // Optimize: Get artwork once (same for all tracks from same reciter)
         const artwork = getReciterArtwork(reciter);
-        
+
         // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
         useDownloadStore.getState(); // Trigger hydration if not already done
-        
+
         // STEP 1: Create ONLY first track (instant - ~5ms)
         // Use generateSmartAudioUrl - store is now warm, so check is fast (<1ms)
         const firstTrack = {
@@ -358,17 +358,19 @@ export const usePlayback = () => {
           reciterName: reciter.name,
         };
 
-        console.log(`[DEBUG] Playing first track immediately: ${firstTrack.title}`);
+        console.log(
+          `[DEBUG] Playing first track immediately: ${firstTrack.title}`,
+        );
 
         // STEP 2: Add first track and start playback IMMEDIATELY
         // This is the critical path - must be as fast as possible
         await TrackPlayer.reset();
         await TrackPlayer.add(firstTrack);
-        
+
         if (startPosition !== undefined && startPosition > 0) {
           await TrackPlayer.seekTo(startPosition);
         }
-        
+
         await TrackPlayer.play();
 
         // STEP 3: Create remaining tracks in parallel (while audio is playing!)
@@ -377,11 +379,11 @@ export const usePlayback = () => {
           console.log(
             `[DEBUG] Creating ${remainingSurahs.length} remaining tracks in parallel (background)`,
           );
-          
+
           // Create tracks in parallel using Promise.all (like continue playing)
           // This is fast because all URL generation happens simultaneously
           const remainingTracksPromise = Promise.all(
-            remainingSurahs.map(surah => ({
+            remainingSurahs.map(() => ({
               id: `${reciter.id}:${surah.id}`,
               url: generateSmartAudioUrl(reciter, surah.id.toString()),
               title: surah.name,

@@ -164,12 +164,8 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
     ? isTrackDownloadedRewayat
     : isTrackDownloadedBase;
   const isCurrentlyDownloading = useIsDownloading(downloadId);
-  const {
-    setDownloading,
-    addDownload,
-    clearDownloading,
-    setDownloadProgress,
-  } = useDownloadActions();
+  const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
+    useDownloadActions();
 
   const handleDownload = useCallback(async () => {
     if (!reciterId) return; // Use reciterId from props, not currentTrack
@@ -233,12 +229,15 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
     playlistModalRef.current?.close();
   }, []);
 
-  const handleSheetChange = useCallback((index: number) => {
-    if (index === -1) {
-      setShowSummary(false);
-      onClose(); // Ensure the parent state is cleared when sheet is closed
-    }
-  }, [onClose]);
+  const handleSheetChange = useCallback(
+    (index: number) => {
+      if (index === -1) {
+        setShowSummary(false);
+        onClose(); // Ensure the parent state is cleared when sheet is closed
+      }
+    },
+    [onClose],
+  );
 
   return (
     <>
@@ -247,8 +246,7 @@ export const SurahOptionsModal: React.FC<SurahOptionsModalProps> = ({
         snapPoints={showSummary ? ['80%'] : ['60%']}
         title={showSummary ? `About ${surah.name}` : undefined}
         onChange={handleSheetChange}
-        index={0}
-      >
+        index={0}>
         {showSummary ? (
           <ScrollView
             style={styles.scrollView}

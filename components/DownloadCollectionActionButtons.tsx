@@ -4,8 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {PlayIcon, TrashIcon, PauseIcon} from '@/components/Icons';
-import {Icon} from '@rneui/themed';
+import {PlayIcon, PauseIcon} from '@/components/Icons';
 
 interface DownloadCollectionActionButtonsProps {
   onPlayPress: () => void;

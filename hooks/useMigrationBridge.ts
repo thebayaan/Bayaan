@@ -2,21 +2,9 @@ import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {Track} from '@/types/audio';
-import {generateAudioUrl, generateSmartAudioUrl} from '@/utils/audioUtils';
+import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import TrackPlayer from 'react-native-track-player';
-
-async function debugTrackPlayer(message: string) {
-  const queue = await TrackPlayer.getQueue();
-  const track = await TrackPlayer.getCurrentTrack();
-  const state = await TrackPlayer.getState();
-  console.log(`[DEBUG] ${message}:`, {
-    queueLength: queue.length,
-    currentTrack: track,
-    state,
-    queue: queue.map(t => ({id: t.id, title: t.title})),
-  });
-}
 
 function createTrackFromSurah(reciter: Reciter, surah: Surah): Track {
   const track = {
@@ -34,12 +22,8 @@ function createTrackFromSurah(reciter: Reciter, surah: Surah): Track {
   return track;
 }
 
-function createTracksFromSurahs(reciter: Reciter, surahs: Surah[]): Track[] {
-  return surahs.map(surah => createTrackFromSurah(reciter, surah));
-}
-
 export function useMigrationBridge() {
-  const {updateQueue, play, setSheetMode, updateSettings} = useUnifiedPlayer();
+  const {updateQueue, play, setSheetMode} = useUnifiedPlayer();
 
   const playTrack = async (reciter: Reciter, surah: Surah) => {
     try {
@@ -68,20 +52,12 @@ export function useMigrationBridge() {
     }
   };
 
-  const playFromSurah = async (
-    reciter: Reciter,
-    surah: Surah,
-    allSurahs: Surah[],
-  ) => {
+  const playFromSurah = async (reciter: Reciter, surah: Surah) => {
     // TODO: Implement batching for large surah collections
     await playTrack(reciter, surah);
   };
 
-  const playAll = async (
-    reciter: Reciter,
-    surahs: Surah[],
-    shuffle = false,
-  ) => {
+  const playAll = async (reciter: Reciter, surahs: Surah[]) => {
     // TODO: Implement batching for large surah collections
     if (surahs.length > 0) {
       await playTrack(reciter, surahs[0]);
