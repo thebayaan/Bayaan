@@ -122,8 +122,9 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       setShowCreatePlaylist(false);
+      onClose();
     }
-  }, []);
+  }, [onClose]);
 
   const handleToggleLoved = useCallback(() => {
     if (!reciterId) return;
@@ -299,6 +300,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(15),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
+      marginLeft: moderateScale(12),
     },
     lovedTextActive: {
       color: '#FF6B6B',

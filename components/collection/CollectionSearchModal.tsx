@@ -33,7 +33,7 @@ import Color from 'color';
 import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {SearchInput} from '@/components/SearchInput';
 import {getSurahById, getAllReciters} from '@/services/dataService';
@@ -136,7 +136,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
   // Get all user's collection data
   const {favoriteReciters} = useFavoriteReciters(); // User's favorite reciters
   const {lovedTracks} = useLoved(); // Surahs they loved
-  const {downloads} = useDownload(); // Downloaded surahs
+  const downloads = useDownloads(); // Downloaded surahs
   const {playlists, getPlaylistItems} = usePlaylists(); // Playlists + function to get items
 
   // Get ALL reciters (not just favorites) for lookup

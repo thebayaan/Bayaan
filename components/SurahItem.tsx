@@ -24,7 +24,12 @@ import Animated, {
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from './NowPlayingIndicator';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {
+  useDownloadProgress,
+  useIsDownloaded,
+  useIsDownloadedWithRewayat,
+  useIsDownloading,
+} from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
 
 interface SurahItemProps {
@@ -58,32 +63,35 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
-    const {
-      isDownloaded: checkIsDownloaded,
-      isDownloadedWithRewayat,
-      isDownloading,
-      isDownloadingWithRewayat,
-      getDownloadProgress,
-    } = useDownload();
+    const downloadId = React.useMemo(
+      () =>
+        reciterId
+          ? rewayatId
+            ? `${reciterId}-${item.id}-${rewayatId}`
+            : `${reciterId}-${item.id}`
+          : '__none__',
+      [reciterId, item.id, rewayatId],
+    );
 
     // Calculate download state - use isDownloadedWithRewayat if rewayatId is provided, otherwise use checkIsDownloaded
-    const isDownloadedState = reciterId
-      ? rewayatId
-        ? isDownloadedWithRewayat(reciterId, item.id.toString(), rewayatId)
-        : checkIsDownloaded(reciterId, item.id.toString())
-      : false;
+    const isDownloadedBase = useIsDownloaded(
+      reciterId || '__none__',
+      item.id.toString(),
+    );
+    const isDownloadedRewayat = useIsDownloadedWithRewayat(
+      reciterId || '__none__',
+      item.id.toString(),
+      rewayatId || '',
+    );
+    const isDownloadedState = rewayatId
+      ? isDownloadedRewayat
+      : isDownloadedBase;
 
     // Check if currently downloading - use isDownloadingWithRewayat if rewayatId is provided
-    const isCurrentlyDownloading = reciterId
-      ? rewayatId
-        ? isDownloadingWithRewayat(reciterId, item.id.toString(), rewayatId)
-        : isDownloading(reciterId, item.id.toString())
-      : false;
+    const isCurrentlyDownloading = useIsDownloading(downloadId);
 
     // Get download progress
-    const downloadProgress = reciterId
-      ? getDownloadProgress(reciterId, item.id.toString(), rewayatId)
-      : 0;
+    const downloadProgress = useDownloadProgress(downloadId);
 
     // Get necessary state slices from player store
     const playbackStatus = usePlayerStore(state => state.playback.state);

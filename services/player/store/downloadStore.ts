@@ -460,34 +460,3 @@ export const useDownloadStore = create<DownloadStoreState>()(
     },
   ),
 );
-
-export const useDownload = () => {
-  const store = useDownloadStore();
-  return {
-    downloads: store.downloads,
-    downloading: store.downloading,
-    downloadProgress: store.downloadProgress,
-    error: store.error,
-    addDownload: store.addDownload,
-    removeDownload: store.removeDownload,
-    clearDownloads: store.clearDownloads,
-    isDownloaded: store.isDownloaded,
-    isDownloadedWithRewayat: store.isDownloadedWithRewayat,
-    isDownloading: store.isDownloading,
-    isDownloadingWithRewayat: store.isDownloadingWithRewayat,
-    getDownload: store.getDownload,
-    setDownloading: store.setDownloading,
-    clearDownloading: store.clearDownloading,
-    setDownloadProgress: store.setDownloadProgress,
-    getDownloadProgress: store.getDownloadProgress,
-    clearAllDownloads: store.clearAllDownloads,
-    reorderDownloads: store.reorderDownloads,
-    setDownloads: store.setDownloads,
-    playlists: store.playlists,
-    createPlaylist: store.createPlaylist,
-    deletePlaylist: store.deletePlaylist,
-    addToPlaylist: store.addToPlaylist,
-    removeFromPlaylist: store.removeFromPlaylist,
-    setError: store.setError,
-  };
-};

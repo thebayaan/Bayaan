@@ -182,6 +182,7 @@ export const SelectReciterModal: React.FC<SelectReciterModalProps> = ({
     <BaseModal
       bottomSheetRef={bottomSheetRef}
       snapPoints={['40%']}
+      index={0}
       onChange={index => {
         if (index === -1) {
           onClose();

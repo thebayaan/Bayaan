@@ -3,10 +3,11 @@ import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {TrackItem} from '@/components/TrackItem';
+import {DownloadedSurah} from '@/services/player/store/downloadStore';
 import {
-  useDownload,
-  DownloadedSurah,
-} from '@/services/player/store/downloadStore';
+  useDownloadActions,
+  useDownloads,
+} from '@/services/player/store/downloadSelectors';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
@@ -97,7 +98,8 @@ export default function DownloadsScreen() {
       zIndex: 10,
     },
   });
-  const {downloads, setDownloads, removeDownload} = useDownload();
+  const downloads = useDownloads();
+  const {setDownloads, removeDownload} = useDownloadActions();
   const {updateQueue, play, pause, playback} = useUnifiedPlayer();
   const router = useRouter();
   // State to store reciter and surah data for each download

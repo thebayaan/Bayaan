@@ -29,9 +29,10 @@ interface BaseModalProps {
   bottomSheetRef: React.RefObject<BottomSheet>;
   title?: string;
   children: React.ReactNode;
-  snapPoints?: string[];
+  snapPoints?: (string | number)[];
   titleAlign?: 'left' | 'center';
   onChange?: (index: number) => void;
+  index?: number;
 }
 
 export const BaseModal: React.FC<BaseModalProps> = ({
@@ -41,6 +42,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
   snapPoints = ['40%'],
   titleAlign = 'center',
   onChange,
+  index = -1,
 }) => {
   const {theme} = useTheme();
 
@@ -87,7 +89,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
       snapPoints={snapPoints}
       enablePanDownToClose
       backdropComponent={renderBackdrop}
-      index={-1}
+      index={index}
       onChange={onChange}
       style={styles.modal}
       handleComponent={CustomHandle}
