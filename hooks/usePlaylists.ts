@@ -39,6 +39,7 @@ export const usePlaylists = () => {
       );
       loadPlaylists();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only run on mount
 
   return {

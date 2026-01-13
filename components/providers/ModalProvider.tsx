@@ -1,4 +1,10 @@
-import React, {createContext, useContext, useCallback, useRef, useState} from 'react';
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useRef,
+  useState,
+} from 'react';
 import {View, StyleSheet} from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {Surah} from '@/data/surahData';
@@ -83,14 +89,13 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     ((surah: Surah) => Promise<void>) | undefined
   >();
 
-  const [playlistContextMenuParams, setPlaylistContextMenuParams] =
-    useState<{
-      playlistId: string;
-      playlistName: string;
-      playlistColor?: string;
-      onDelete: () => void;
-      onEdit?: () => void;
-    } | null>(null);
+  const [playlistContextMenuParams, setPlaylistContextMenuParams] = useState<{
+    playlistId: string;
+    playlistName: string;
+    playlistColor?: string;
+    onDelete: () => void;
+    onEdit?: () => void;
+  } | null>(null);
 
   const [, setEditPlaylistParams] = useState<{
     playlistId: string;
@@ -181,7 +186,6 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   );
 
   const handleCloseSurahOptions = useCallback(() => {
-
     setCurrentSurah(null);
     setCurrentReciterId(undefined);
     setCurrentRewayatId(undefined);

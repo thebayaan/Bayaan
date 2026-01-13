@@ -131,10 +131,7 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
   }, []);
 
   const downloadProgress = useDownloadProgress(downloadId);
-  const isTrackDownloadedBase = useIsDownloaded(
-    reciterId,
-    surah.id.toString(),
-  );
+  const isTrackDownloadedBase = useIsDownloaded(reciterId, surah.id.toString());
   const isTrackDownloadedRewayat = useIsDownloadedWithRewayat(
     reciterId,
     surah.id.toString(),
@@ -144,12 +141,8 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
     ? isTrackDownloadedRewayat
     : isTrackDownloadedBase;
   const isCurrentlyDownloading = useIsDownloading(downloadId);
-  const {
-    setDownloading,
-    addDownload,
-    clearDownloading,
-    setDownloadProgress,
-  } = useDownloadActions();
+  const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
+    useDownloadActions();
 
   const handleDownload = useCallback(async () => {
     if (isTrackDownloaded) {

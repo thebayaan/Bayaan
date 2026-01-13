@@ -6,8 +6,8 @@ import {
   PlayerEventEmitter,
 } from '../types/events';
 import type {SetupEvents} from '../types/setup';
-import type {PlayerError} from '../types/errors';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type EventListener = (...args: any[]) => void;
 
 /**
@@ -21,6 +21,7 @@ class EventEmitter {
     this.maxListeners = n;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   emit(event: string, ...args: any[]): boolean {
     const listeners = this.listeners.get(event);
     if (!listeners) return false;
@@ -39,7 +40,8 @@ class EventEmitter {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    const listeners = this.listeners.get(event)!;
+    const listeners = this.listeners.get(event);
+    if (!listeners) return this;
 
     if (listeners.size >= this.maxListeners) {
       console.warn(
@@ -54,6 +56,7 @@ class EventEmitter {
   }
 
   once(event: string, listener: EventListener): this {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onceWrapper = (...args: any[]) => {
       this.off(event, onceWrapper);
       listener(...args);
@@ -105,7 +108,10 @@ class PlayerEventEmitterImpl implements PlayerEventEmitter {
       this.handlers.set(type, new Set());
     }
 
-    const handlers = this.handlers.get(type)!;
+    const handlers = this.handlers.get(type);
+    if (!handlers) {
+      throw new Error(`Failed to get handlers for event type: ${type}`);
+    }
     handlers.add(handler as PlayerEventHandler<PlayerEventType>);
 
     return {

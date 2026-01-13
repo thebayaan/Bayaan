@@ -2,6 +2,7 @@ import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
+import type {Theme} from '@/utils/themeUtils';
 
 interface CollectionCardProps {
   icon: React.ReactNode;
@@ -26,7 +27,7 @@ export const CollectionCard: React.FC<CollectionCardProps> = ({
   );
 };
 
-const createStyles = (theme: any) =>
+const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       alignItems: 'center',

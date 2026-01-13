@@ -104,7 +104,7 @@ export class QueueOperationManager {
       }
       await TrackPlayer.play();
 
-      await this.context.updateState(state => ({
+      await this.context.updateState(() => ({
         loadingState: 'idle',
       }));
     } catch (error) {
@@ -192,7 +192,7 @@ export class QueueOperationManager {
    */
   private async handleClearQueue(): Promise<void> {
     try {
-      await this.context.updateState(state => ({
+      await this.context.updateState(() => ({
         tracks: [],
         currentIndex: -1,
         loadingState: 'idle',
