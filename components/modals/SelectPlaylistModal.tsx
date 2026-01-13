@@ -119,12 +119,15 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
     ],
   );
 
-  const handleSheetChange = useCallback((index: number) => {
-    if (index === -1) {
-      setShowCreatePlaylist(false);
-      onClose();
-    }
-  }, [onClose]);
+  const handleSheetChange = useCallback(
+    (index: number) => {
+      if (index === -1) {
+        setShowCreatePlaylist(false);
+        onClose();
+      }
+    },
+    [onClose],
+  );
 
   const handleToggleLoved = useCallback(() => {
     if (!reciterId) return;

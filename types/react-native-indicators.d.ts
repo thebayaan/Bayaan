@@ -1,8 +1,8 @@
 declare module 'react-native-indicators' {
-  import {Component} from 'react';
+  import {ComponentType} from 'react';
   import {ViewStyle} from 'react-native';
 
-  interface IndicatorProps {
+  interface PulseIndicatorProps {
     animationDuration?: number;
     color?: string;
     count?: number;
@@ -10,5 +10,7 @@ declare module 'react-native-indicators' {
     style?: ViewStyle;
   }
 
-  export class PulseIndicator extends Component<IndicatorProps> {}
+  export const PulseIndicator: ComponentType<PulseIndicatorProps> & {
+    new (props: PulseIndicatorProps): any;
+  };
 }

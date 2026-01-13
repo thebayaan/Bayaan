@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, TouchableOpacity, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
 import {Theme} from '@/utils/themeUtils';
@@ -12,7 +12,6 @@ interface SectionHeaderProps {
 }
 
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
-  title,
   onViewToggle,
   isGridView = false,
   theme,

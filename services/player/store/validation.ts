@@ -7,9 +7,24 @@ import {
   PlaybackSettings,
   UIState,
   StateValidationError,
+  PlayerState,
 } from '../types/state';
 import {State as TrackPlayerState} from 'react-native-track-player';
-import {Track} from '@/types/audio';
+
+/**
+ * Valid PlayerState values for validation
+ */
+const VALID_PLAYER_STATES: readonly PlayerState[] = [
+  'none',
+  'loading',
+  'buffering',
+  'ready',
+  'playing',
+  'paused',
+  'stopped',
+  'ended',
+  'error',
+] as const;
 
 /**
  * Type guard to check if a value is an Error
@@ -30,11 +45,11 @@ function validatePlaybackState(state: unknown): asserts state is PlaybackState {
   const playback = state as PlaybackState;
 
   // Validate state
-  if (!Object.values(TrackPlayerState).includes(playback.state)) {
+  if (!VALID_PLAYER_STATES.includes(playback.state)) {
     throw new StateValidationError(
       'Invalid playback state value',
       'state',
-      'TrackPlayerState',
+      'PlayerState',
       playback.state,
     );
   }

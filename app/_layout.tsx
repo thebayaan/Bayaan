@@ -22,7 +22,6 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
-import {restoreSession} from '@/services/player/utils/restoreSession';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -160,7 +159,6 @@ export default function RootLayout() {
 
         console.log('[App] Player setup complete');
 
-
         // PRE-WARM: Initialize stores BEFORE first play to prevent cold start lag
         // Zustand persist stores hydrate from AsyncStorage on first access
         // Pre-warming ensures hydration happens here (during app init) not during first play
@@ -169,11 +167,11 @@ export default function RootLayout() {
           // Calling getState() triggers hydration if not already done
           useDownloadStore.getState();
           console.log('[App] Download store pre-warmed');
-          
+
           // Pre-warm player store (used by playback)
           usePlayerStore.getState();
           console.log('[App] Player store pre-warmed');
-          
+
           // Small delay to allow hydration to complete (Zustand persist is async)
           // This ensures stores are fully hydrated before first play
           await new Promise(resolve => setTimeout(resolve, 50));
@@ -181,7 +179,6 @@ export default function RootLayout() {
         } catch (error) {
           console.debug('[App] Failed to pre-warm stores:', error);
         }
-
 
         // Mark app as ready without state restoration
         setIsPlayerReady(true);

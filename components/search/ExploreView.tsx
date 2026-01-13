@@ -260,7 +260,7 @@ export const ExploreView = React.memo(function ExploreView({
           },
         ]}>
         <TouchableOpacity
-          activeOpacity={0.7}
+          activeOpacity={1}
           onPress={onSearchPress}
           style={styles.searchButton}>
           <SearchInput

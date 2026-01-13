@@ -11,7 +11,6 @@ import Header from '@/components/Header';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
-import {clearCacheDirectory} from '@/services/storageService';
 import {Icon} from '@rneui/base';
 
 interface StorageCategoryProps {
@@ -79,20 +78,10 @@ export default function StorageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
-  const [isClearing, setIsClearing] = useState(false);
+  const [, setIsClearing] = useState(false);
 
-  const {
-    total,
-    free,
-    used,
-    downloads,
-    cache,
-    otherApps,
-    loading,
-    error,
-    rawData,
-    refresh,
-  } = useStorageBreakdown();
+  const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
+    useStorageBreakdown();
 
   const handleClearAllDownloads = () => {
     Alert.alert(
@@ -110,7 +99,7 @@ export default function StorageScreen() {
               // Refresh storage breakdown
               refresh();
               Alert.alert('Success', 'All downloads have been removed.');
-            } catch (error) {
+            } catch (downloadError) {
               Alert.alert('Error', 'Failed to remove downloads.');
             } finally {
               setIsClearing(false);
@@ -139,7 +128,7 @@ export default function StorageScreen() {
               // Refresh storage breakdown
               refresh();
               Alert.alert('Success', 'Cache has been cleared.');
-            } catch (error) {
+            } catch (cacheError) {
               Alert.alert('Error', 'Failed to clear cache.');
             } finally {
               setIsClearing(false);

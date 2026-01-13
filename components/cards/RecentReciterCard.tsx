@@ -63,7 +63,7 @@ export const RecentReciterCard = ({
   const {updateQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
-  
+
   // Track current operation to prevent race conditions
   const currentOperationRef = useRef<string | null>(null);
 
@@ -227,18 +227,22 @@ export const RecentReciterCard = ({
 
       // OPTIMIZED: Use hybrid approach - create first track, play immediately
       // Then create remaining tracks in background (same as ReciterProfile)
-      
+
       // Generate unique operation ID to prevent race conditions
       const operationId = `${Date.now()}-${reciter.id}-${surah.id}`;
       currentOperationRef.current = operationId;
-      
+
       // Get artwork once (same for all tracks)
       const artwork = getReciterArtwork(reciter);
-      
+
       // Create ONLY first track (instant!)
       const firstTrack = {
         id: `${reciter.id}:${surah.id}`,
-        url: generateSmartAudioUrl(reciter, surah.id.toString(), rewayatToUseId),
+        url: generateSmartAudioUrl(
+          reciter,
+          surah.id.toString(),
+          rewayatToUseId,
+        ),
         title: surah.name,
         artist: reciter.name,
         reciterId: reciter.id,
@@ -247,12 +251,12 @@ export const RecentReciterCard = ({
         reciterName: reciter.name,
         rewayatId: rewayatToUseId,
       };
-      
+
       const startPosition =
         isCurrentlyPlaying && trackProgress.position >= 0
           ? trackProgress.position
           : progress * duration;
-      
+
       // Add first track and play IMMEDIATELY (fast path - no blocking!)
       try {
         await TrackPlayer.reset();
@@ -267,7 +271,7 @@ export const RecentReciterCard = ({
         currentOperationRef.current = null; // Clear on error
         throw error;
       }
-      
+
       // Update store state IMMEDIATELY (synchronous, fast)
       const store = usePlayerStore.getState();
       store.updateQueueState({
@@ -277,18 +281,22 @@ export const RecentReciterCard = ({
         loading: false,
         endReached: false,
       });
-      
+
       // Get remaining surahs (reordered so selected is first)
       const remainingSurahs = [
         ...allSurahsForRewayat.slice(startIndex + 1),
         ...allSurahsForRewayat.slice(0, startIndex),
       ];
-      
+
       // Create remaining tracks in parallel (background - doesn't block playback!)
       if (remainingSurahs.length > 0) {
         Promise.all(
           remainingSurahs.map(async s => {
-            const url = generateSmartAudioUrl(reciter, s.id.toString(), rewayatToUseId);
+            const url = generateSmartAudioUrl(
+              reciter,
+              s.id.toString(),
+              rewayatToUseId,
+            );
             return {
               id: `${reciter.id}:${s.id}`,
               url,
@@ -305,19 +313,23 @@ export const RecentReciterCard = ({
           .then(remainingTracks => {
             // FIX: Check if operation is still valid (prevents race conditions)
             if (currentOperationRef.current !== operationId) {
-              console.log('[RecentReciterCard] Operation cancelled, skipping track addition');
+              console.log(
+                '[RecentReciterCard] Operation cancelled, skipping track addition',
+              );
               return;
             }
-            
+
             // Add remaining tracks to TrackPlayer (non-blocking)
             TrackPlayer.add(remainingTracks)
               .then(() => {
                 // FIX: Double-check operation is still valid before updating store
                 if (currentOperationRef.current !== operationId) {
-                  console.log('[RecentReciterCard] Operation cancelled, skipping store update');
+                  console.log(
+                    '[RecentReciterCard] Operation cancelled, skipping store update',
+                  );
                   return;
                 }
-                
+
                 // Update store with complete queue (non-blocking)
                 const completeQueue = [firstTrack, ...remainingTracks];
                 store.updateQueueState({
@@ -333,7 +345,7 @@ export const RecentReciterCard = ({
             console.error('Error creating remaining tracks:', error);
           });
       }
-      
+
       // Add to recently played AFTER playback starts (non-blocking)
       addRecentTrack(reciter, surah, progress, duration, rewayatToUseId);
 

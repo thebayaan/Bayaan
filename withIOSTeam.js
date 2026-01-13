@@ -4,6 +4,7 @@ const {withXcodeProject} = require('@expo/config-plugins');
 const TEAM_ID = 'S4W5Q2L53W'; // This should match what's in your app.config.js
 
 const withIOSTeam = config => {
+  // eslint-disable-next-line no-shadow
   return withXcodeProject(config, async config => {
     const xcodeProject = config.modResults;
 

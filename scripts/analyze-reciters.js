@@ -36,6 +36,7 @@ function extractRecitersData(filePath) {
         .replace(/:/g, ':')
         .replace(/as const/g, '');
 
+      // eslint-disable-next-line no-eval
       return eval(jsCompatibleString);
     } catch (evalError) {
       console.error('Error evaluating RECITERS array:', evalError);

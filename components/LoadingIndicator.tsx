@@ -2,8 +2,14 @@ import React from 'react';
 import {View, ActivityIndicator} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
-import {Theme} from '@/utils/themeUtils';
 import {PulseIndicator} from 'react-native-indicators';
+
+// Type assertion to work around type incompatibility with @types/react-native-indicators
+const PulseIndicatorComponent = PulseIndicator as React.ComponentType<{
+  color?: string;
+  size?: number;
+  animationDuration?: number;
+}>;
 
 interface LoadingIndicatorProps {
   variant?: 'default' | 'pulse';
@@ -34,7 +40,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
     switch (variant) {
       case 'pulse':
         return (
-          <PulseIndicator
+          <PulseIndicatorComponent
             color={indicatorColor}
             size={indicatorSize}
             animationDuration={1500}
