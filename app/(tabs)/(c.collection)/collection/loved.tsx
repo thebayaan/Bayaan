@@ -28,7 +28,10 @@ import {getReciterArtwork} from '@/utils/artworkUtils';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
-import {useDownload} from '@/services/player/store/downloadStore';
+import {
+  useDownloadActions,
+  useDownloadQueries,
+} from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 
@@ -60,7 +63,7 @@ const LovedScreen = () => {
     clearDownloading,
     addDownload,
     setDownloadProgress,
-  } = useDownload();
+  } = {...useDownloadQueries(), ...useDownloadActions()};
 
   const [lovedData, setLovedData] = useState<LovedTrackData[]>([]);
   const [loading, setLoading] = useState(true);

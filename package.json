@@ -97,7 +97,6 @@
     "@babel/core": "^7.20.0",
     "@babel/eslint-parser": "^7.25.1",
     "@react-native-community/eslint-config": "^3.2.0",
-    "@supabase/supabase-js": "^2.49.1",
     "@types/color": "^3.0.6",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.7",

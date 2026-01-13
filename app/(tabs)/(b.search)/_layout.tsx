@@ -6,6 +6,7 @@ export default function SearchLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        freezeOnBlur: true,
       }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="browse-all" />
