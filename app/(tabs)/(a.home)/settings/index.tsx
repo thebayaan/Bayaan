@@ -121,6 +121,13 @@ const settingsItems = [
     section: 'About Bayaan',
     items: [
       {
+        title: "What's New",
+        type: 'changelog',
+        description: 'See the latest updates and improvements',
+        icon: 'gift',
+        iconType: 'feather',
+      },
+      {
         title: 'About Bayaan',
         type: 'about',
         description: 'Learn more about our mission',
@@ -200,6 +207,9 @@ export default function SettingsScreen() {
         break;
       case 'credits':
         router.push('/settings/credits');
+        break;
+      case 'changelog':
+        router.push('/settings/changelog');
         break;
       default:
         break;

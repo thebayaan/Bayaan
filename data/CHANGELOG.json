@@ -1,0 +1,136 @@
+{
+  "versions": [
+    {
+      "version": "1.1.3",
+      "versionCode": 113,
+      "releaseDate": "2026-01-12",
+      "highlights": [
+        "Collection and playlist improvements",
+        "Enhanced search functionality",
+        "Code quality improvements"
+      ],
+      "changes": [
+        {
+          "category": "feature",
+          "title": "Collection and Playlist Refactor",
+          "description": "Comprehensive reorganization of collection and playlist features for better user experience and performance",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "feature",
+          "title": "Bulk Download for Playlists",
+          "description": "Download all tracks in a playlist or loved playlist with one tap",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "feature",
+          "title": "Enhanced Search",
+          "description": "Improved search functionality with better results and faster performance",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "improvement",
+          "title": "Storage Capabilities",
+          "description": "Added better storage management for downloaded content",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "bugfix",
+          "title": "Bottom Sheet Overlay Fix",
+          "description": "Fixed issue where bottom sheet would appear under the floating player",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "improvement",
+          "title": "Code Formatting",
+          "description": "Applied consistent code formatting across the entire codebase for better maintainability",
+          "platforms": ["ios", "android", "web"]
+        }
+      ]
+    },
+    {
+      "version": "1.1.2",
+      "versionCode": 112,
+      "releaseDate": "2026-01-05",
+      "highlights": [
+        "Performance improvements",
+        "Bug fixes"
+      ],
+      "changes": [
+        {
+          "category": "improvement",
+          "title": "Performance Optimizations",
+          "description": "General performance improvements throughout the app",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "bugfix",
+          "title": "Stability Improvements",
+          "description": "Fixed various crashes and improved app stability",
+          "platforms": ["ios", "android"]
+        }
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "versionCode": 110,
+      "releaseDate": "2025-12-20",
+      "highlights": [
+        "Playlist feature",
+        "New UI improvements"
+      ],
+      "changes": [
+        {
+          "category": "feature",
+          "title": "Playlists",
+          "description": "Create and manage custom playlists of your favorite recitations",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "improvement",
+          "title": "UI Refinements",
+          "description": "Various user interface improvements for a better experience",
+          "platforms": ["ios", "android"]
+        },
+        {
+          "category": "improvement",
+          "title": "Type Safety",
+          "description": "Enhanced type safety throughout the codebase for better reliability",
+          "platforms": ["ios", "android", "web"]
+        }
+      ]
+    }
+  ],
+  "categories": {
+    "feature": {
+      "label": "New Features",
+      "icon": "✨",
+      "color": "#4CAF50"
+    },
+    "improvement": {
+      "label": "Improvements",
+      "icon": "🔧",
+      "color": "#2196F3"
+    },
+    "bugfix": {
+      "label": "Bug Fixes",
+      "icon": "🐛",
+      "color": "#FF9800"
+    },
+    "ui": {
+      "label": "UI/UX",
+      "icon": "🎨",
+      "color": "#9C27B0"
+    },
+    "security": {
+      "label": "Security",
+      "icon": "🔒",
+      "color": "#F44336"
+    },
+    "performance": {
+      "label": "Performance",
+      "icon": "⚡",
+      "color": "#FFEB3B"
+    }
+  }
+}
