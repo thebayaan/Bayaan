@@ -1,8 +1,11 @@
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {clearAllDownloads as clearAllDownloadsService} from '@/services/downloadService';
-import {removeDownload as removeDownloadService} from '@/services/downloadService';
+import {
+  clearAllDownloads as clearAllDownloadsService,
+  removeDownload as removeDownloadService,
+  extractFilename,
+} from '@/services/downloadService';
 
 // Throttle utility to prevent excessive state updates during downloads
 const throttleMap = new Map<
@@ -457,6 +460,32 @@ export const useDownloadStore = create<DownloadStoreState>()(
         downloads: state.downloads,
         playlists: state.playlists,
       }),
+      // Migration: Convert absolute paths to relative paths (filenames only)
+      // This fixes the issue where iOS changes the app container UUID on updates,
+      // which would make stored absolute paths invalid
+      onRehydrateStorage: () => state => {
+        if (state && state.downloads.length > 0) {
+          const needsMigration = state.downloads.some(
+            d => d.filePath.startsWith('file://') || d.filePath.startsWith('/'),
+          );
+
+          if (needsMigration) {
+            console.log(
+              '[DownloadStore] Migrating absolute paths to relative paths...',
+            );
+            const migratedDownloads = state.downloads.map(download => ({
+              ...download,
+              filePath: extractFilename(download.filePath),
+            }));
+
+            // Update the store with migrated paths
+            useDownloadStore.setState({downloads: migratedDownloads});
+            console.log(
+              `[DownloadStore] Migrated ${migratedDownloads.length} downloads`,
+            );
+          }
+        }
+      },
     },
   ),
 );

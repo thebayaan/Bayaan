@@ -3,8 +3,37 @@ import {fetchAudioUrl} from './dataService';
 import {DownloadedSurah} from './player/store/downloadStore';
 
 interface DownloadResult {
-  filePath: string;
+  filePath: string; // This is now a RELATIVE path (just the filename)
   fileSize: number;
+}
+
+/**
+ * Resolves a relative file path (filename) to an absolute path.
+ * This is necessary because iOS changes the app container UUID on updates,
+ * so we store only the filename and reconstruct the full path at runtime.
+ * @param relativePath - The filename or relative path
+ * @returns The full absolute path using the current documentDirectory
+ */
+export function resolveFilePath(relativePath: string): string {
+  // If it's already an absolute path (legacy data), extract just the filename
+  if (relativePath.startsWith('file://') || relativePath.startsWith('/')) {
+    const filename = relativePath.split('/').pop() || relativePath;
+    return `${FileSystem.documentDirectory}${filename}`;
+  }
+  // Otherwise, it's already a relative path (just filename)
+  return `${FileSystem.documentDirectory}${relativePath}`;
+}
+
+/**
+ * Extracts just the filename from a path (for migration purposes)
+ * @param filePath - Full path or filename
+ * @returns Just the filename
+ */
+export function extractFilename(filePath: string): string {
+  if (filePath.startsWith('file://') || filePath.startsWith('/')) {
+    return filePath.split('/').pop() || filePath;
+  }
+  return filePath;
 }
 
 /**
@@ -50,8 +79,9 @@ export async function downloadSurah(
     const fileInfo = await FileSystem.getInfoAsync(localPath);
     if (fileInfo.exists) {
       console.log('File already exists:', localPath);
+      // Return only the filename (relative path) for storage
       return {
-        filePath: localPath,
+        filePath: fileName,
         fileSize: fileInfo.size || 0,
       };
     }
@@ -85,8 +115,10 @@ export async function downloadSurah(
 
     console.log('Download complete:', localPath, `Size: ${fileSize} bytes`);
 
+    // Return only the filename (relative path) for storage
+    // This ensures paths remain valid after app updates on iOS
     return {
-      filePath: localPath,
+      filePath: fileName,
       fileSize,
     };
   } catch (error) {
@@ -105,10 +137,12 @@ export async function clearAllDownloads(
   // Delete all files in parallel for better performance
   const deletePromises = downloads.map(async download => {
     try {
-      const fileInfo = await FileSystem.getInfoAsync(download.filePath);
+      // Resolve the relative path to absolute path
+      const absolutePath = resolveFilePath(download.filePath);
+      const fileInfo = await FileSystem.getInfoAsync(absolutePath);
       if (fileInfo.exists) {
-        await FileSystem.deleteAsync(download.filePath);
-        console.log('Deleted file:', download.filePath);
+        await FileSystem.deleteAsync(absolutePath);
+        console.log('Deleted file:', absolutePath);
       }
     } catch (error) {
       const errorMessage =
@@ -132,10 +166,12 @@ export async function clearAllDownloads(
 
 export async function removeDownload(download: DownloadedSurah): Promise<void> {
   try {
-    const fileInfo = await FileSystem.getInfoAsync(download.filePath);
+    // Resolve the relative path to absolute path
+    const absolutePath = resolveFilePath(download.filePath);
+    const fileInfo = await FileSystem.getInfoAsync(absolutePath);
     if (fileInfo.exists) {
-      await FileSystem.deleteAsync(download.filePath);
-      console.log('Deleted file:', download.filePath);
+      await FileSystem.deleteAsync(absolutePath);
+      console.log('Deleted file:', absolutePath);
     }
   } catch (error) {
     console.error('Error deleting file:', download.filePath, error);
