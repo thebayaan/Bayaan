@@ -3,6 +3,7 @@ import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
 import {generateSmartAudioUrl} from './audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
+import {resolveFilePath} from '@/services/downloadService';
 
 /**
  * Filters and returns available surahs for a given rewayat
@@ -108,9 +109,9 @@ export async function createTracksForRange(
  * Creates a Track object for a downloaded file using local file path
  * @param reciter - Reciter object
  * @param surah - Surah object
- * @param filePath - Local file path to the downloaded audio file
+ * @param filePath - Local file path (can be relative filename or absolute path)
  * @param rewayatId - Optional specific rewayat ID
- * @returns Track object with local file path
+ * @returns Track object with resolved absolute file path
  */
 export function createDownloadedTrack(
   reciter: Reciter,
@@ -118,9 +119,13 @@ export function createDownloadedTrack(
   filePath: string,
   rewayatId?: string,
 ): Track {
+  // Resolve the path to ensure it uses the current app container
+  // This is necessary because iOS changes the container UUID on app updates
+  const resolvedPath = resolveFilePath(filePath);
+
   return {
     id: `${reciter.id}-${surah.id}`,
-    url: filePath, // Use local file path instead of remote URL
+    url: resolvedPath, // Use resolved absolute path
     title: surah.name,
     artist: reciter.name,
     artwork: getReciterArtwork(reciter),

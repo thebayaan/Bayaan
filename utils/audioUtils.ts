@@ -1,5 +1,6 @@
 import {Reciter} from '@/data/reciterData';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
+import {resolveFilePath} from '@/services/downloadService';
 
 export function generateAudioUrl(
   reciter: Reciter,
@@ -54,10 +55,13 @@ export function generateSmartAudioUrl(
       download.status === 'completed' &&
       (!rewayatId || download.rewayatId === rewayatId)
     ) {
+      // Resolve the relative path to absolute path at runtime
+      // This ensures paths remain valid after iOS app updates
+      const absolutePath = resolveFilePath(download.filePath);
       console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId}${rewayatId ? ` (Rewayat: ${rewayatId})` : ''}: ${download.filePath}`,
+        `Using local file for ${reciter.name} - Surah ${surahId}${rewayatId ? ` (Rewayat: ${rewayatId})` : ''}: ${absolutePath}`,
       );
-      return download.filePath;
+      return absolutePath;
     }
   }
 
