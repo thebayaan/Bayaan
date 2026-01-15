@@ -10,8 +10,8 @@ import {AddReciterModal} from '@/components/modals/AddReciterModal';
 import {AddReciterMenuModal} from '@/components/modals/AddReciterMenuModal';
 import {BulkUploadModal} from '@/components/modals/BulkUploadModal';
 import {SelectReciterModal} from '@/components/modals/SelectReciterModal';
-import {SharedAudioImportModal} from '@/components/modals/SharedAudioImportModal';
 import {PlaylistContextMenu} from '@/components/modals/PlaylistContextMenu';
+import {SharedAudioImportModal} from '@/components/modals/SharedAudioImportModal';
 import {useAllReciters} from '@/hooks/useAllReciters';
 import {RewayatStyle} from '@/types/reciter';
 
@@ -72,7 +72,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   const editPlaylistModalRef = useRef<BottomSheet>(null);
   const addReciterMenuRef = useRef<BottomSheet>(null);
   const bulkUploadModalRef = useRef<BottomSheet>(null);
-  
+
   // State for AddReciterModal visibility
   const [isAddReciterModalVisible, setIsAddReciterModalVisible] = React.useState(false);
 
@@ -124,11 +124,10 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
     React.useState<string | null>(null);
   const [onBulkUploadSuccess, setOnBulkUploadSuccess] =
     React.useState<(() => void) | null>(null);
-  const [isSharedAudioModalVisible, setIsSharedAudioModalVisible] =
-    React.useState(false);
-  const [sharedAudioFiles, setSharedAudioFiles] = React.useState<
-    {path: string}[]
-  >([]);
+
+  // State for SharedAudioImportModal
+  const [sharedAudioFiles, setSharedAudioFiles] = React.useState<{path: string}[]>([]);
+  const [isSharedAudioImportVisible, setIsSharedAudioImportVisible] = React.useState(false);
 
   const {getReciterById} = useAllReciters();
   const currentReciter = currentReciterId ? getReciterById(currentReciterId) : undefined;
@@ -256,7 +255,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
 
   const showSharedAudioImport = useCallback((files: {path: string}[]) => {
     setSharedAudioFiles(files);
-    setIsSharedAudioModalVisible(true);
+    setIsSharedAudioImportVisible(true);
   }, []);
 
   const handleCloseSurahOptions = useCallback(() => {
@@ -301,7 +300,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
   }, []);
 
   const handleCloseSharedAudioImport = useCallback(() => {
-    setIsSharedAudioModalVisible(false);
+    setIsSharedAudioImportVisible(false);
     setSharedAudioFiles([]);
   }, []);
 
@@ -408,7 +407,7 @@ export const ModalProvider: React.FC<ModalProviderProps> = ({children}) => {
           />
         )}
         <SharedAudioImportModal
-          visible={isSharedAudioModalVisible}
+          visible={isSharedAudioImportVisible}
           files={sharedAudioFiles}
           onClose={handleCloseSharedAudioImport}
           onAddReciter={showAddReciterModal}

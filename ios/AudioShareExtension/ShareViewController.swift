@@ -132,59 +132,77 @@ open class ExpoAudioShareReceiverViewController: UIViewController {
             return
         }
 
+        // Clear old files first so we only have the current share's files
+        AudioShareStore.shared.clearStoredFiles(groupName: appGroupName)
+
         let group = DispatchGroup()
         var foundAudio = false
-        var storedFiles: [URL] = []
+        var storedFilesCount = 0
+        let storedFilesLock = NSLock()
 
         for attachment in item.attachments ?? [] {
-            // Check for audio types
+            // Check for audio types - prioritize specific types first
             let audioTypes = [
-                UTType.audio.identifier,
                 UTType.mp3.identifier,
                 UTType.mpeg4Audio.identifier,
-                UTType.wav.identifier,
-                "public.audio",
                 "com.apple.m4a-audio",
+                UTType.wav.identifier,
+                UTType.audio.identifier,
+                "public.audio",
                 kUTTypeAudio as String,
                 kUTTypeMP3 as String,
                 kUTTypeMPEG4Audio as String
             ]
 
+            var matchedType: String? = nil
             for typeId in audioTypes {
                 if attachment.hasItemConformingToTypeIdentifier(typeId) {
-                    foundAudio = true
-                    group.enter()
+                    matchedType = typeId
+                    break
+                }
+            }
 
-                    attachment.loadItem(forTypeIdentifier: typeId, options: nil) { [weak self] data, error in
-                        defer { group.leave() }
-                        guard let self = self else { return }
+            guard let typeId = matchedType else { continue }
 
-                        if let error = error {
-                            print("[ShareExtension] Error loading item: \(error)")
-                            return
-                        }
+            foundAudio = true
+            group.enter()
 
-                        var fileURL: URL?
+            print("[ShareExtension] Loading item with type: \(typeId)")
 
-                        if let url = data as? URL {
-                            fileURL = url
-                        } else if let data = data as? Data {
-                            // Save data to temp file
-                            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("shared_audio_\(UUID().uuidString).m4a")
-                            do {
-                                try data.write(to: tempURL)
-                                fileURL = tempURL
-                            } catch {
-                                print("[ShareExtension] Failed to write data: \(error)")
-                            }
-                        }
+            attachment.loadItem(forTypeIdentifier: typeId, options: nil) { [weak self] data, error in
+                defer { group.leave() }
+                guard let self = self else { return }
 
-                        if let url = fileURL {
-                            AudioShareStore.shared.storeFiles(urls: [url], groupName: self.appGroupName)
-                            storedFiles.append(url)
-                        }
+                if let error = error {
+                    print("[ShareExtension] Error loading item: \(error)")
+                    return
+                }
+
+                var fileURL: URL?
+
+                if let url = data as? URL {
+                    print("[ShareExtension] Received URL: \(url.path)")
+                    fileURL = url
+                } else if let data = data as? Data {
+                    print("[ShareExtension] Received Data: \(data.count) bytes")
+                    // Save data to temp file with proper extension
+                    let ext = typeId.contains("mp3") ? "mp3" : "m4a"
+                    let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("shared_audio_\(UUID().uuidString).\(ext)")
+                    do {
+                        try data.write(to: tempURL)
+                        fileURL = tempURL
+                    } catch {
+                        print("[ShareExtension] Failed to write data: \(error)")
                     }
-                    break // Found a matching type, no need to check others
+                } else {
+                    print("[ShareExtension] Unknown data type: \(type(of: data))")
+                }
+
+                if let url = fileURL {
+                    let stored = AudioShareStore.shared.storeFiles(urls: [url], groupName: self.appGroupName)
+                    storedFilesLock.lock()
+                    storedFilesCount += stored.count
+                    storedFilesLock.unlock()
                 }
             }
         }
@@ -193,10 +211,11 @@ open class ExpoAudioShareReceiverViewController: UIViewController {
             updateStatus(isProcessing: true, message: "Saving audio...")
             group.notify(queue: .main) { [weak self] in
                 guard let self = self else { return }
-                if storedFiles.isEmpty {
+                if storedFilesCount == 0 {
                     self.updateStatus(isProcessing: false, message: "Failed to save audio.")
                 } else {
-                    self.updateStatus(isProcessing: false, message: "Audio ready!")
+                    let fileWord = storedFilesCount == 1 ? "file" : "files"
+                    self.updateStatus(isProcessing: false, message: "\(storedFilesCount) \(fileWord) ready!")
                 }
             }
         } else {

@@ -10,36 +10,36 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		1F1B7B1E382243B2ACF40E3A /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25E08ADCD91647C0B98D5A0C /* ShareViewController.swift */; };
+		1E6FB21DBBE642E28245C31E /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8773E42A492549F58D355D92 /* MainInterface.storyboard */; };
+		26D6CA1B953F833A0696C818 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 36729B46D3F5DBE96E14BE53 /* PrivacyInfo.xcprivacy */; };
+		360906F32D164355BA868B76 /* AudioShareStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B64819CA17AE452782ACF550 /* AudioShareStore.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		5A7075167E3845A786818853 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = BF155C04271246DC951C8085 /* MainInterface.storyboard */; };
-		6ECDB71631C345E190BD166D /* AudioShareStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0E1A0BFDE1342B9BBD5726B /* AudioShareStore.swift */; };
+		7CE072281913495A88070B05 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAEF58B6157B4D549A0FB530 /* ShareViewController.swift */; };
 		96905EF65AED1B983A6B3ABC /* libPods-Bayaan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-Bayaan.a */; };
-		B168D85F9D7E4A48921CC835 /* AudioShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 87C72E0B7A8F4EDE9F1A99AC /* AudioShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
+		B1D7C5B350A64C3A8EB4962D /* AudioShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 4A599609424C49A4BED8A64F /* AudioShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		DAC5617901724814B608AF8A /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EC2475BA31445D09C829271 /* noop-file.swift */; };
-		FD67B545C4A944BAA49C8E2A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F984959662BEAB4BC92C0FFD /* PrivacyInfo.xcprivacy */; };
+		D5AB80D0CAFF484C8F6E9999 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B51D22249584AD39E5AFDC9 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		CC29F09EC29F428E901C6565 /* PBXContainerItemProxy */ = {
+		27EC690410904A76A80A2490 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = BF7F0EB923B74DFF92C6FD8D;
+			remoteGlobalIDString = D4727770901646A4BFE0B5F9;
 			remoteInfo = AudioShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		AB3EC861C9DB4F0B987E115E /* Embed App Extensions */ = {
+		C2D560970D8E449B9F008586 /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				B168D85F9D7E4A48921CC835 /* AudioShareExtension.appex in Embed App Extensions */,
+				B1D7C5B350A64C3A8EB4962D /* AudioShareExtension.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -47,28 +47,28 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0FB33972952B405594447D3B /* Bayaan-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "Bayaan-Bridging-Header.h"; path = "Bayaan/Bayaan-Bridging-Header.h"; sourceTree = "<group>"; };
+		1302F64FBA57464DAC7FFA0A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Bayaan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bayaan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = Bayaan/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = Bayaan/AppDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Bayaan/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Bayaan/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = Bayaan/main.m; sourceTree = "<group>"; };
-		25E08ADCD91647C0B98D5A0C /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		36729B46D3F5DBE96E14BE53 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Bayaan/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4A599609424C49A4BED8A64F /* AudioShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AudioShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-Bayaan.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Bayaan.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5B51D22249584AD39E5AFDC9 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "Bayaan/noop-file.swift"; sourceTree = "<group>"; };
 		6C2E3173556A471DD304B334 /* Pods-Bayaan.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.debug.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.debug.xcconfig"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-Bayaan.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.release.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.release.xcconfig"; sourceTree = "<group>"; };
-		7EC2475BA31445D09C829271 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "Bayaan/noop-file.swift"; sourceTree = "<group>"; };
-		87C72E0B7A8F4EDE9F1A99AC /* AudioShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AudioShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8773E42A492549F58D355D92 /* MainInterface.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
+		88D5E09CC38E4B38BE5B84AB /* AudioShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AudioShareExtension.entitlements; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Bayaan/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B64819CA17AE452782ACF550 /* AudioShareStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioShareStore.swift; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BF155C04271246DC951C8085 /* MainInterface.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
-		C4AA67F215ED49E0AE4AD730 /* AudioShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AudioShareExtension.entitlements; sourceTree = "<group>"; };
-		CC672433D57640E18046A17A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		CE3647567B18449D98F4B970 /* Bayaan-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "Bayaan-Bridging-Header.h"; path = "Bayaan/Bayaan-Bridging-Header.h"; sourceTree = "<group>"; };
-		E0E1A0BFDE1342B9BBD5726B /* AudioShareStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioShareStore.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F984959662BEAB4BC92C0FFD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = Bayaan/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Bayaan/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		FAEF58B6157B4D549A0FB530 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,7 +80,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		228E75E286444DC49B76464D /* Frameworks */ = {
+		FBCC4C1E6A8F4A15AD4AC654 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -90,14 +90,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		06867B004902401D944945DD /* AudioShareExtension */ = {
+		078AC1E662D14410910B28E7 /* AudioShareExtension */ = {
 			isa = PBXGroup;
 			children = (
-				25E08ADCD91647C0B98D5A0C /* ShareViewController.swift */,
-				E0E1A0BFDE1342B9BBD5726B /* AudioShareStore.swift */,
-				BF155C04271246DC951C8085 /* MainInterface.storyboard */,
-				CC672433D57640E18046A17A /* Info.plist */,
-				C4AA67F215ED49E0AE4AD730 /* AudioShareExtension.entitlements */,
+				FAEF58B6157B4D549A0FB530 /* ShareViewController.swift */,
+				B64819CA17AE452782ACF550 /* AudioShareStore.swift */,
+				8773E42A492549F58D355D92 /* MainInterface.storyboard */,
+				1302F64FBA57464DAC7FFA0A /* Info.plist */,
+				88D5E09CC38E4B38BE5B84AB /* AudioShareExtension.entitlements */,
 			);
 			name = AudioShareExtension;
 			path = AudioShareExtension;
@@ -113,9 +113,9 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				7EC2475BA31445D09C829271 /* noop-file.swift */,
-				CE3647567B18449D98F4B970 /* Bayaan-Bridging-Header.h */,
-				F984959662BEAB4BC92C0FFD /* PrivacyInfo.xcprivacy */,
+				5B51D22249584AD39E5AFDC9 /* noop-file.swift */,
+				0FB33972952B405594447D3B /* Bayaan-Bridging-Header.h */,
+				36729B46D3F5DBE96E14BE53 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Bayaan;
 			sourceTree = "<group>";
@@ -145,7 +145,7 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				D65327D7A22EEC0BE12398D9 /* Pods */,
 				D7E4C46ADA2E9064B798F356 /* ExpoModulesProviders */,
-				06867B004902401D944945DD /* AudioShareExtension */,
+				078AC1E662D14410910B28E7 /* AudioShareExtension */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -156,7 +156,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* Bayaan.app */,
-				87C72E0B7A8F4EDE9F1A99AC /* AudioShareExtension.appex */,
+				4A599609424C49A4BED8A64F /* AudioShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -203,32 +203,32 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Bayaan" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				0BF8D1F699F3251571DA2235 /* [Expo] Configure project */,
+				D669FF8BC3FEE868BF57A549 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				AB3EC861C9DB4F0B987E115E /* Embed App Extensions */,
-				57135A883B9424C614BD1AB9 /* [CP] Embed Pods Frameworks */,
+				C2D560970D8E449B9F008586 /* Embed App Extensions */,
+				CF2BA6F7137E8D9F2D463E02 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				62E9446A61EA463EBF796179 /* PBXTargetDependency */,
+				BE69D54C60184D55AAFB9E03 /* PBXTargetDependency */,
 			);
 			name = Bayaan;
 			productName = Bayaan;
 			productReference = 13B07F961A680F5B00A75B9A /* Bayaan.app */;
 			productType = "com.apple.product-type.application";
 		};
-		BF7F0EB923B74DFF92C6FD8D /* AudioShareExtension */ = {
+		D4727770901646A4BFE0B5F9 /* AudioShareExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = B5DE78DE1FE04AA9BFED5856 /* Build configuration list for PBXNativeTarget "AudioShareExtension" */;
+			buildConfigurationList = A2FDA660C3AB40EDA2E0FD57 /* Build configuration list for PBXNativeTarget "AudioShareExtension" */;
 			buildPhases = (
-				D01AB86D94D64D6D83C0D1C4 /* Sources */,
-				228E75E286444DC49B76464D /* Frameworks */,
-				ED6CD3F0183B4449AB0D2336 /* Resources */,
+				0301E6DC04B84C25AE590989 /* Sources */,
+				FBCC4C1E6A8F4A15AD4AC654 /* Frameworks */,
+				0131E6CC074844409386AF35 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -236,7 +236,7 @@
 			);
 			name = AudioShareExtension;
 			productName = AudioShareExtension;
-			productReference = 87C72E0B7A8F4EDE9F1A99AC /* AudioShareExtension.appex */;
+			productReference = 4A599609424C49A4BED8A64F /* AudioShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -251,7 +251,7 @@
 						DevelopmentTeam = S4W5Q2L53W;
 						LastSwiftMigration = 1250;
 					};
-					BF7F0EB923B74DFF92C6FD8D = {
+					D4727770901646A4BFE0B5F9 = {
 						CreatedOnToolsVersion = 15.0;
 						DevelopmentTeam = S4W5Q2L53W;
 						ProvisioningStyle = Automatic;
@@ -272,12 +272,20 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* Bayaan */,
-				BF7F0EB923B74DFF92C6FD8D /* AudioShareExtension */,
+				D4727770901646A4BFE0B5F9 /* AudioShareExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0131E6CC074844409386AF35 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1E6FB21DBBE642E28245C31E /* MainInterface.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		13B07F8E1A680F5B00A75B9A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -285,15 +293,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				FD67B545C4A944BAA49C8E2A /* PrivacyInfo.xcprivacy in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		ED6CD3F0183B4449AB0D2336 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				5A7075167E3845A786818853 /* MainInterface.storyboard in Resources */,
+				26D6CA1B953F833A0696C818 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -335,45 +335,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		0BF8D1F699F3251571DA2235 /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Bayaan/expo-configure-project.sh\"\n";
-		};
-		57135A883B9424C614BD1AB9 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ExpoSQLite/crsqlite.framework/crsqlite",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/crsqlite.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
@@ -426,9 +387,57 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		CF2BA6F7137E8D9F2D463E02 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ExpoSQLite/crsqlite.framework/crsqlite",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/crsqlite.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D669FF8BC3FEE868BF57A549 /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Bayaan/expo-configure-project.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0301E6DC04B84C25AE590989 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7CE072281913495A88070B05 /* ShareViewController.swift in Sources */,
+				360906F32D164355BA868B76 /* AudioShareStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		13B07F871A680F5B00A75B9A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -436,56 +445,21 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				DAC5617901724814B608AF8A /* noop-file.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D01AB86D94D64D6D83C0D1C4 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				1F1B7B1E382243B2ACF40E3A /* ShareViewController.swift in Sources */,
-				6ECDB71631C345E190BD166D /* AudioShareStore.swift in Sources */,
+				D5AB80D0CAFF484C8F6E9999 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		62E9446A61EA463EBF796179 /* PBXTargetDependency */ = {
+		BE69D54C60184D55AAFB9E03 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = BF7F0EB923B74DFF92C6FD8D /* AudioShareExtension */;
-			targetProxy = CC29F09EC29F428E901C6565 /* PBXContainerItemProxy */;
+			target = D4727770901646A4BFE0B5F9 /* AudioShareExtension */;
+			targetProxy = 27EC690410904A76A80A2490 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		0704D68AF53849A2B29824DB /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = AudioShareExtension/AudioShareExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = S4W5Q2L53W;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AudioShareExtension/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
-				MARKETING_VERSION = 1.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.AudioShareExtension;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 6C2E3173556A471DD304B334 /* Pods-Bayaan.debug.xcconfig */;
@@ -548,31 +522,31 @@
 			};
 			name = Release;
 		};
-		455F43B07C7347D68A669695 /* Debug */ = {
+		3EE8ABD9EEF84E45AADEFACE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = AudioShareExtension/AudioShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = S4W5Q2L53W;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AudioShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
 				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.AudioShareExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-			name = Debug;
+			name = Release;
 		};
 		83CBBA201A601CBA00E9B192 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -692,6 +666,32 @@
 			};
 			name = Release;
 		};
+		FFA5E285AFE948DAA2A5ECBD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = AudioShareExtension/AudioShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = S4W5Q2L53W;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AudioShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				PRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.AudioShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -713,11 +713,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B5DE78DE1FE04AA9BFED5856 /* Build configuration list for PBXNativeTarget "AudioShareExtension" */ = {
+		A2FDA660C3AB40EDA2E0FD57 /* Build configuration list for PBXNativeTarget "AudioShareExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				455F43B07C7347D68A669695 /* Debug */,
-				0704D68AF53849A2B29824DB /* Release */,
+				FFA5E285AFE948DAA2A5ECBD /* Debug */,
+				3EE8ABD9EEF84E45AADEFACE /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

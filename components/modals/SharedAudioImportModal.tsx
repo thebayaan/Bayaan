@@ -10,6 +10,7 @@ import {
 import BottomSheet from '@gorhom/bottom-sheet';
 import * as FileSystem from 'expo-file-system';
 import * as Crypto from 'expo-crypto';
+import AudioShare from 'expo-audio-share-receiver';
 import {useTheme} from '@/hooks/useTheme';
 import {BaseModal} from '@/components/modals/BaseModal';
 import {Button} from '@/components/Button';
@@ -224,6 +225,14 @@ export const SharedAudioImportModal: React.FC<SharedAudioImportModalProps> = ({
       };
 
       updateLocalReciter(updatedReciter);
+
+      // Clear any remaining shared files from the App Group container
+      try {
+        await AudioShare.clearSharedFiles();
+      } catch (err) {
+        console.warn('[SharedAudioImport] Failed to clear shared files', err);
+      }
+
       Alert.alert('Success', `Imported ${readyCount} file(s).`);
       handleClose();
     } catch (error) {
