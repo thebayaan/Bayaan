@@ -6254,7 +6254,7 @@ expo-asset@~11.0.5:
     invariant "^2.2.4"
     md5-file "^3.2.3"
 
-"expo-audio-share-receiver@file:../expo-audio-share-receiver":
+expo-audio-share-receiver@^0.1.0:
   version "0.1.0"
   resolved "file:../expo-audio-share-receiver"
   dependencies:
