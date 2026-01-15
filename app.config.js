@@ -123,6 +123,15 @@ module.exports = {
       'expo-router',
       'expo-sqlite',
       [
+        'expo-audio-share-receiver',
+        {
+          appGroupId: 'group.com.bayaan.audioShare',
+          urlSchemes: ['bayaan', 'exp+bayaan'],
+          urlPath: 'audioShare',
+          extensionName: 'Bayaan',
+        },
+      ],
+      [
         'expo-splash-screen',
         {
           image: './assets/images/splash-icon.png',

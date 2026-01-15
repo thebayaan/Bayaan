@@ -1,10 +1,3 @@
-//
-//  AudioShareStore.swift
-//  Bayaan
-//
-//  Created by Omar Khalil on 1/14/26.
-//
-
 import Foundation
 
 public class AudioShareStore {
