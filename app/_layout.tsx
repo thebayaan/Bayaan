@@ -15,6 +15,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {ModalProvider} from '@/components/providers/ModalProvider';
+import {SharedAudioLinkHandler} from '@/components/providers/SharedAudioLinkHandler';
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -299,6 +300,7 @@ export default function RootLayout() {
               }}>
               <Stack.Screen name="(tabs)" options={{headerShown: false}} />
             </Stack>
+            <SharedAudioLinkHandler />
             <FloatingPlayer />
             <PlayerSheet />
           </ModalProvider>
