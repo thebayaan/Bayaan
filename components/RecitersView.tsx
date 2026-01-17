@@ -80,7 +80,7 @@ const MemoizedFlatList = React.memo(
               : variant === 'featured'
                 ? 140
                 : variant === 'rewayat'
-                  ? 140
+                  ? 130
                   : 140,
         offset:
           (variant === 'circular'
@@ -90,7 +90,7 @@ const MemoizedFlatList = React.memo(
               : variant === 'featured'
                 ? 140
                 : variant === 'rewayat'
-                  ? 140
+                  ? 130
                   : 140) * index,
         index,
       })}
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   },
   sectionContent: {
     paddingHorizontal: moderateScale(16),
-    gap: moderateScale(12),
+    gap: moderateScale(8),
   },
 });
 
