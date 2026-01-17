@@ -38,6 +38,8 @@ interface BrowseRecitersProps {
   onBack: () => void;
   surahId?: number; // Optional surah ID for filtering
   title?: string; // Optional custom title, defaults to "Browse All"
+  subtitle?: string; // Optional subtitle description
+  preFilteredReciters?: Reciter[]; // Optional pre-filtered list of reciters
 }
 
 // Module-level cache for string normalizations
@@ -165,6 +167,8 @@ export default function BrowseReciters({
   onBack,
   surahId,
   title = 'Browse All',
+  subtitle,
+  preFilteredReciters,
 }: BrowseRecitersProps) {
   const router = useRouter();
   const {updateQueue, play} = useUnifiedPlayer();
@@ -271,7 +275,8 @@ export default function BrowseReciters({
   }, [selectedTeacher, selectedStudent, primaryTeachers]);
 
   const filteredReciters = useMemo(() => {
-    let result = [...RECITERS];
+    // Use preFilteredReciters if provided, otherwise use all reciters
+    let result = preFilteredReciters ? [...preFilteredReciters] : [...RECITERS];
 
     if (surahId) {
       result = result.filter(reciter => {
@@ -367,7 +372,14 @@ export default function BrowseReciters({
     });
 
     return result;
-  }, [selectedTeacher, selectedStudent, searchQuery, surahId, advancedFilters]);
+  }, [
+    selectedTeacher,
+    selectedStudent,
+    searchQuery,
+    surahId,
+    advancedFilters,
+    preFilteredReciters,
+  ]);
 
   const handleFilterModalPress = () => {
     setIsFilterModalVisible(true);
@@ -644,6 +656,7 @@ export default function BrowseReciters({
       <View style={styles.container}>
         <Header
           title={title}
+          subtitle={subtitle}
           onBack={onBack}
           showBlur={true}
           containerStyle={{zIndex: 2}}

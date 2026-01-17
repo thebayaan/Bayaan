@@ -24,6 +24,7 @@ export default function HomeLayout() {
       />
       <Stack.Screen name="settings/account" options={{headerShown: false}} />
       <Stack.Screen name="browse-all" options={{headerShown: false}} />
+      <Stack.Screen name="rewayat/[id]" options={{headerShown: false}} />
     </Stack>
   );
 }

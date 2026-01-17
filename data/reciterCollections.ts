@@ -3,7 +3,7 @@ import {RECITERS, Reciter} from './reciterData';
 // Featured Reciters - Spotlight reciters chosen by Bayaan
 const FEATURED_RECITER_NAMES = [
   'Abdullah Qarafi',
-  'Bandar Balila',
+  'Bandar Balilah',
   'Abdulrasheed Soufi',
   'Ahmad Talib bin Humaid',
   'Ahmad Alhuthaifi',
@@ -82,7 +82,6 @@ const DIVERSE_REWAYAT_RECITER_NAMES = [
   'Ali Al-Huzaifi',
   'Abdullah Basfar',
   'Ahmed Al-Ajmy',
-  'Bandar Balila',
   'Khalid Al-Qahtani',
 ];
 

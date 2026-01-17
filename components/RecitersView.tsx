@@ -18,17 +18,19 @@ import {
   getTajweedReciters,
   getMemorizationReciters,
   getBeginnerFriendlyReciters,
-  getDiverseRewayatReciters,
   getFeaturedReciters,
   getBayaanOriginalsReciters,
 } from '@/data/reciterCollections';
+import {getAllRewayatTypes, RewayatInfo} from '@/data/rewayatCollections';
+import RewayatCard from '@/components/cards/RewayatCard';
 import {useSettings} from '@/hooks/useSettings';
+import {useRouter} from 'expo-router';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
 }
 
-type SectionItem = Reciter | RecentlyPlayedTrack;
+type SectionItem = Reciter | RecentlyPlayedTrack | RewayatInfo;
 
 // Memoize the FlatList component
 const MemoizedFlatList = React.memo(
@@ -36,10 +38,12 @@ const MemoizedFlatList = React.memo(
     data,
     variant,
     onReciterPress,
+    onRewayatPress,
   }: {
     data: SectionItem[];
-    variant: 'recent' | 'circular' | 'default' | 'featured';
+    variant: 'recent' | 'circular' | 'default' | 'featured' | 'rewayat';
     onReciterPress: (reciter: Reciter) => void;
+    onRewayatPress?: (rewayat: RewayatInfo) => void;
     theme: Theme;
   }) => (
     <FlatList
@@ -49,12 +53,15 @@ const MemoizedFlatList = React.memo(
           item={item}
           variant={variant}
           onReciterPress={onReciterPress}
+          onRewayatPress={onRewayatPress}
         />
       )}
       keyExtractor={item =>
         'timestamp' in item
           ? `${item.reciter.id}-${item.surah.id}-${item.timestamp}`
-          : item.id
+          : 'displayName' in item
+            ? item.id
+            : item.id
       }
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -71,7 +78,9 @@ const MemoizedFlatList = React.memo(
               ? 200
               : variant === 'featured'
                 ? 140
-                : 140,
+                : variant === 'rewayat'
+                  ? 140
+                  : 140,
         offset:
           (variant === 'circular'
             ? 80
@@ -79,7 +88,9 @@ const MemoizedFlatList = React.memo(
               ? 200
               : variant === 'featured'
                 ? 140
-                : 140) * index,
+                : variant === 'rewayat'
+                  ? 140
+                  : 140) * index,
         index,
       })}
     />
@@ -88,6 +99,7 @@ const MemoizedFlatList = React.memo(
     prevProps.data === nextProps.data &&
     prevProps.variant === nextProps.variant &&
     prevProps.onReciterPress === nextProps.onReciterPress &&
+    prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -98,10 +110,12 @@ const RenderSectionItem = React.memo(
     item,
     variant,
     onReciterPress,
+    onRewayatPress,
   }: {
     item: SectionItem;
-    variant: 'recent' | 'circular' | 'default' | 'featured';
+    variant: 'recent' | 'circular' | 'default' | 'featured' | 'rewayat';
     onReciterPress: (reciter: Reciter) => void;
+    onRewayatPress?: (rewayat: RewayatInfo) => void;
   }) => {
     const {theme} = useTheme();
     const progress = useRecentlyPlayedStore(state =>
@@ -160,6 +174,18 @@ const RenderSectionItem = React.memo(
       );
     }
 
+    if (variant === 'rewayat' && 'displayName' in item) {
+      const rewayat = item as RewayatInfo;
+      return (
+        <RewayatCard
+          rewayat={rewayat}
+          onPress={() => onRewayatPress?.(rewayat)}
+          width={moderateScale(140)}
+          height={moderateScale(120)}
+        />
+      );
+    }
+
     const reciter = item as Reciter;
     return (
       <BrowseReciterCard
@@ -182,12 +208,14 @@ const Section = React.memo(
     data,
     variant,
     onReciterPress,
+    onRewayatPress,
     theme,
   }: {
     title: string;
     data: SectionItem[];
-    variant: 'recent' | 'circular' | 'default' | 'featured';
+    variant: 'recent' | 'circular' | 'default' | 'featured' | 'rewayat';
     onReciterPress: (reciter: Reciter) => void;
+    onRewayatPress?: (rewayat: RewayatInfo) => void;
     theme: Theme;
   }) => {
     if (!data.length) return null;
@@ -201,6 +229,7 @@ const Section = React.memo(
           data={data}
           variant={variant}
           onReciterPress={onReciterPress}
+          onRewayatPress={onRewayatPress}
           theme={theme}
         />
       </View>
@@ -210,6 +239,7 @@ const Section = React.memo(
     prevProps.data === nextProps.data &&
     prevProps.variant === nextProps.variant &&
     prevProps.onReciterPress === nextProps.onReciterPress &&
+    prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -217,13 +247,11 @@ Section.displayName = 'Section';
 
 function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
+  const router = useRouter();
   const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();
-  const {
-    incrementRecitersViewOpenCount,
-    shouldShowNewToQuran,
-  } = useSettings();
+  const {incrementRecitersViewOpenCount, shouldShowNewToQuran} = useSettings();
 
   // Track when the reciters view is opened
   useEffect(() => {
@@ -260,10 +288,15 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   );
   const tajweedReciters = useMemo(() => getTajweedReciters(10), []);
   const memorizationReciters = useMemo(() => getMemorizationReciters(10), []);
-  const diverseRewayatReciters = useMemo(
-    () => getDiverseRewayatReciters(10),
-    [],
-  );
+  const rewayatTypes = useMemo(() => getAllRewayatTypes(), []);
+
+  // Handler for rewayat card press
+  const handleRewayatPress = (rewayat: RewayatInfo) => {
+    router.push({
+      pathname: '/(tabs)/(a.home)/rewayat/[id]',
+      params: {id: rewayat.id},
+    });
+  };
 
   const showNewToQuran = shouldShowNewToQuran();
 
@@ -356,13 +389,14 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         />
       )}
 
-      {/* Style-based collections follow */}
-      {diverseRewayatReciters.length > 0 && (
+      {/* Rewayat collection - Browse by different narration styles */}
+      {rewayatTypes.length > 0 && (
         <Section
-          title="Diverse Rewayat"
-          data={diverseRewayatReciters}
-          variant="default"
+          title="Explore by Rewayat"
+          data={rewayatTypes}
+          variant="rewayat"
           onReciterPress={onReciterPress}
+          onRewayatPress={handleRewayatPress}
           theme={theme}
         />
       )}

@@ -14,6 +14,7 @@ export default function SearchLayout() {
       <Stack.Screen name="system-playlist/[id]" />
       <Stack.Screen name="reciter/[id]" />
       <Stack.Screen name="reciter/browse" />
+      <Stack.Screen name="rewayat/[id]" />
     </Stack>
   );
 }
