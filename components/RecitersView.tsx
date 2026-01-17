@@ -13,6 +13,9 @@ import {
   RecentlyPlayedTrack,
 } from '@/services/player/store/recentlyPlayedStore';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
+import {usePlaylists} from '@/hooks/usePlaylists';
+import {PlaylistCard} from '@/components/cards/PlaylistCard';
+import {UserPlaylist} from '@/services/playlist/PlaylistService';
 import {Theme} from '@/utils/themeUtils';
 import {RecitersHero} from '@/components/hero/RecitersHero';
 import {
@@ -31,7 +34,7 @@ interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
 }
 
-type SectionItem = Reciter | RecentlyPlayedTrack | RewayatInfo;
+type SectionItem = Reciter | RecentlyPlayedTrack | RewayatInfo | UserPlaylist;
 
 // Memoize the FlatList component
 const MemoizedFlatList = React.memo(
@@ -40,11 +43,19 @@ const MemoizedFlatList = React.memo(
     variant,
     onReciterPress,
     onRewayatPress,
+    onPlaylistPress,
   }: {
     data: SectionItem[];
-    variant: 'recent' | 'circular' | 'default' | 'featured' | 'rewayat';
+    variant:
+      | 'recent'
+      | 'circular'
+      | 'default'
+      | 'featured'
+      | 'rewayat'
+      | 'playlist';
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
+    onPlaylistPress?: (playlist: UserPlaylist) => void;
     theme: Theme;
   }) => (
     <FlatList
@@ -55,6 +66,7 @@ const MemoizedFlatList = React.memo(
           variant={variant}
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
+          onPlaylistPress={onPlaylistPress}
         />
       )}
       keyExtractor={item =>
@@ -62,7 +74,9 @@ const MemoizedFlatList = React.memo(
           ? `${item.reciter.id}-${item.surah.id}-${item.timestamp}`
           : 'displayName' in item
             ? item.id
-            : item.id
+            : 'itemCount' in item && 'color' in item
+              ? item.id
+              : item.id
       }
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -81,7 +95,9 @@ const MemoizedFlatList = React.memo(
                 ? 140
                 : variant === 'rewayat'
                   ? 130
-                  : 140,
+                  : variant === 'playlist'
+                    ? 120
+                    : 140,
         offset:
           (variant === 'circular'
             ? 80
@@ -91,7 +107,9 @@ const MemoizedFlatList = React.memo(
                 ? 140
                 : variant === 'rewayat'
                   ? 130
-                  : 140) * index,
+                  : variant === 'playlist'
+                    ? 120
+                    : 140) * index,
         index,
       })}
     />
@@ -101,6 +119,7 @@ const MemoizedFlatList = React.memo(
     prevProps.variant === nextProps.variant &&
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
+    prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -112,11 +131,19 @@ const RenderSectionItem = React.memo(
     variant,
     onReciterPress,
     onRewayatPress,
+    onPlaylistPress,
   }: {
     item: SectionItem;
-    variant: 'recent' | 'circular' | 'default' | 'featured' | 'rewayat';
+    variant:
+      | 'recent'
+      | 'circular'
+      | 'default'
+      | 'featured'
+      | 'rewayat'
+      | 'playlist';
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
+    onPlaylistPress?: (playlist: UserPlaylist) => void;
   }) => {
     const {theme} = useTheme();
     const progress = useRecentlyPlayedStore(state =>
@@ -181,8 +208,22 @@ const RenderSectionItem = React.memo(
         <RewayatCard
           rewayat={rewayat}
           onPress={() => onRewayatPress?.(rewayat)}
-          width={moderateScale(140)}
-          height={moderateScale(120)}
+          width={moderateScale(130)}
+          height={moderateScale(110)}
+        />
+      );
+    }
+
+    if (variant === 'playlist' && 'itemCount' in item && 'color' in item) {
+      const playlist = item as UserPlaylist;
+      return (
+        <PlaylistCard
+          name={playlist.name}
+          itemCount={playlist.itemCount}
+          color={playlist.color}
+          onPress={() => onPlaylistPress?.(playlist)}
+          width={moderateScale(110)}
+          height={moderateScale(110)}
         />
       );
     }
@@ -210,13 +251,21 @@ const Section = React.memo(
     variant,
     onReciterPress,
     onRewayatPress,
+    onPlaylistPress,
     theme,
   }: {
     title: string;
     data: SectionItem[];
-    variant: 'recent' | 'circular' | 'default' | 'featured' | 'rewayat';
+    variant:
+      | 'recent'
+      | 'circular'
+      | 'default'
+      | 'featured'
+      | 'rewayat'
+      | 'playlist';
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
+    onPlaylistPress?: (playlist: UserPlaylist) => void;
     theme: Theme;
   }) => {
     if (!data.length) return null;
@@ -231,6 +280,7 @@ const Section = React.memo(
           variant={variant}
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
+          onPlaylistPress={onPlaylistPress}
           theme={theme}
         />
       </View>
@@ -241,6 +291,7 @@ const Section = React.memo(
     prevProps.variant === nextProps.variant &&
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
+    prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -253,6 +304,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();
   const downloads = useDownloadStore(state => state.downloads);
+  const {playlists} = usePlaylists();
   const {incrementRecitersViewOpenCount, shouldShowNewToQuran} = useSettings();
 
   // Track when the reciters view is opened
@@ -320,6 +372,14 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     });
   };
 
+  // Handler for playlist card press
+  const handlePlaylistPress = (playlist: UserPlaylist) => {
+    router.push({
+      pathname: '/(tabs)/(c.collection)/playlist/[id]',
+      params: {id: playlist.id},
+    });
+  };
+
   const showNewToQuran = shouldShowNewToQuran();
 
   // Get random gradient colors from the utility
@@ -375,6 +435,18 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           data={favoriteRecitersSection}
           variant="circular"
           onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* User playlists - personal collections */}
+      {playlists.length > 0 && (
+        <Section
+          title="Your Playlists"
+          data={playlists}
+          variant="playlist"
+          onReciterPress={onReciterPress}
+          onPlaylistPress={handlePlaylistPress}
           theme={theme}
         />
       )}
