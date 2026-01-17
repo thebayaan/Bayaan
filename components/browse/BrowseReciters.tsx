@@ -38,6 +38,8 @@ interface BrowseRecitersProps {
   onBack: () => void;
   surahId?: number; // Optional surah ID for filtering
   title?: string; // Optional custom title, defaults to "Browse All"
+  initialTeacher?: string; // Optional initial teacher filter
+  initialStudent?: string; // Optional initial student filter
 }
 
 // Module-level cache for string normalizations
@@ -165,6 +167,8 @@ export default function BrowseReciters({
   onBack,
   surahId,
   title = 'Browse All',
+  initialTeacher,
+  initialStudent,
 }: BrowseRecitersProps) {
   const router = useRouter();
   const {updateQueue, play} = useUnifiedPlayer();
@@ -173,8 +177,12 @@ export default function BrowseReciters({
   const {setReciterPreference} = useSettings();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(
+    initialTeacher || null,
+  );
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(
+    initialStudent || null,
+  );
 
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
