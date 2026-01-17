@@ -1,58 +1,6 @@
 [
   {
     "version": "1.3",
-    "releaseDate": "2026-01-17",
-    "title": "Explore by Rewayat & Enhanced Browsing",
-    "highlights": [
-      {
-        "title": "Explore by Rewayat",
-        "description": "Browse reciters by their narration style (Warsh, Qalon, etc.)",
-        "icon": "library-outline"
-      },
-      {
-        "title": "Your Playlists Section",
-        "description": "Quick access to your playlists from the home screen",
-        "icon": "list-outline"
-      },
-      {
-        "title": "Fresh Content Every Session",
-        "description": "Sections shuffle on each app open for variety",
-        "icon": "shuffle-outline"
-      }
-    ],
-    "fullChangelog": {
-      "features": [
-        "New 'Explore by Rewayat' section with 11 different rewayat types",
-        "Browse reciters filtered by narration style",
-        "Your Playlists section on home screen",
-        "Session-based shuffle for fresh content on each app open",
-        "Expanded collection to include downloaded reciters",
-        "New exclusive reciters: Malik Ahmad, Hani Alhussaini, Ayyub Asif, Abdulrahman Mosad",
-        "Updated featured reciters lineup"
-      ],
-      "improvements": [
-        "Renamed 'Bayaan Originals' to 'Exclusives'",
-        "'New to Quran' section now only shows for first 5 app opens",
-        "Removed 'Trending Now' section for cleaner layout",
-        "Reduced card spacing for tighter, more polished look",
-        "Smaller card sizes for better content density",
-        "Improved reciter collection with favorites, loved, and downloads"
-      ],
-      "fixes": [
-        "Fixed spacing issues between rewayat cards",
-        "Fixed card sizing inconsistencies",
-        "Corrected rewayat filter navigation"
-      ],
-      "technical": [
-        "Added rewayat collections data module",
-        "Implemented seeded shuffle for deterministic randomization",
-        "Extended BrowseReciters with initial filter props",
-        "Added playlist and rewayat card variants to RecitersView"
-      ]
-    }
-  },
-  {
-    "version": "1.2.2",
     "releaseDate": "2026-01-13",
     "title": "Offline Mode, Playlists & More!",
     "highlights": [
