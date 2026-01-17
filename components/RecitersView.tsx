@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useEffect} from 'react';
 import {View, Text, ScrollView, StyleSheet, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -20,9 +20,9 @@ import {
   getBeginnerFriendlyReciters,
   getDiverseRewayatReciters,
   getFeaturedReciters,
-  getTrendingReciters,
   getBayaanOriginalsReciters,
 } from '@/data/reciterCollections';
+import {useSettings} from '@/hooks/useSettings';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
@@ -220,6 +220,15 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();
+  const {
+    incrementRecitersViewOpenCount,
+    shouldShowNewToQuran,
+  } = useSettings();
+
+  // Track when the reciters view is opened
+  useEffect(() => {
+    incrementRecitersViewOpenCount();
+  }, [incrementRecitersViewOpenCount]);
 
   const favoriteRecitersSection = useMemo(
     () => favoriteReciters.slice(0, 10),
@@ -241,7 +250,6 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
 
   // Get specialized reciter collections
   const featuredReciters = useMemo(() => getFeaturedReciters(8), []);
-  const trendingReciters = useMemo(() => getTrendingReciters(10), []);
   const bayaanOriginalsReciters = useMemo(
     () => getBayaanOriginalsReciters(6),
     [],
@@ -256,6 +264,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     () => getDiverseRewayatReciters(10),
     [],
   );
+
+  const showNewToQuran = shouldShowNewToQuran();
 
   // Get random gradient colors from the utility
 
@@ -281,8 +291,8 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         />
       )}
 
-      {/* Where to start - for new users who need guidance */}
-      {beginnerFriendlyReciters.length > 0 && (
+      {/* Where to start - for new users who need guidance (shown only first 5 times) */}
+      {showNewToQuran && beginnerFriendlyReciters.length > 0 && (
         <Section
           title="New to Quran? Start Here"
           data={beginnerFriendlyReciters}
@@ -314,23 +324,12 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         />
       )}
 
-      {/* Bayaan originals - exclusive content showcased prominently */}
+      {/* Exclusives - exclusive content showcased prominently */}
       {bayaanOriginalsReciters.length > 0 && (
         <Section
-          title="Bayaan Originals"
+          title="Exclusives"
           data={bayaanOriginalsReciters}
           variant="featured"
-          onReciterPress={onReciterPress}
-          theme={theme}
-        />
-      )}
-
-      {/* Trending - social proof for users */}
-      {trendingReciters.length > 0 && (
-        <Section
-          title="Trending Now"
-          data={trendingReciters}
-          variant="circular"
           onReciterPress={onReciterPress}
           theme={theme}
         />

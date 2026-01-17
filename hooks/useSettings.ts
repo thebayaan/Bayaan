@@ -31,6 +31,10 @@ interface SettingsState {
   // Collection settings
   collectionViewMode: CollectionViewMode;
   setCollectionViewMode: (mode: CollectionViewMode) => void;
+  // Onboarding tracking
+  recitersViewOpenCount: number;
+  incrementRecitersViewOpenCount: () => void;
+  shouldShowNewToQuran: () => boolean;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -65,6 +69,12 @@ export const useSettings = create<SettingsState>()(
       collectionViewMode: 'grid' as CollectionViewMode, // Default to grid view
       setCollectionViewMode: (mode: CollectionViewMode) =>
         set({collectionViewMode: mode}),
+      recitersViewOpenCount: 0,
+      incrementRecitersViewOpenCount: () =>
+        set(state => ({
+          recitersViewOpenCount: state.recitersViewOpenCount + 1,
+        })),
+      shouldShowNewToQuran: () => get().recitersViewOpenCount < 5,
     }),
     {
       name: 'settings-storage',
