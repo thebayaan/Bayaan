@@ -12,6 +12,7 @@ import {
   useRecentlyPlayedStore,
   RecentlyPlayedTrack,
 } from '@/services/player/store/recentlyPlayedStore';
+import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {Theme} from '@/utils/themeUtils';
 import {RecitersHero} from '@/components/hero/RecitersHero';
 import {
@@ -251,6 +252,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
   const {lovedTracks} = useLoved();
+  const downloads = useDownloadStore(state => state.downloads);
   const {incrementRecitersViewOpenCount, shouldShowNewToQuran} = useSettings();
 
   // Track when the reciters view is opened
@@ -264,17 +266,27 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   );
 
   const collectionReciters = useMemo(() => {
+    // Reciters from loved tracks
     const reciterIdsFromLoved = lovedTracks.map(track => track.reciterId);
+
+    // Reciters from downloads (completed only)
+    const reciterIdsFromDownloads = downloads
+      .filter(d => d.status === 'completed')
+      .map(d => d.reciterId);
+
+    // Combine all sources into a unique set
+    // Sources: favorites, loved tracks, downloads
     const uniqueReciterIds = new Set([
       ...favoriteReciters.map(r => r.id),
       ...reciterIdsFromLoved,
+      ...reciterIdsFromDownloads,
     ]);
 
     return Array.from(uniqueReciterIds)
       .map(id => RECITERS.find(r => r.id === id))
       .filter((r): r is Reciter => r !== undefined)
-      .slice(0, 5);
-  }, [favoriteReciters, lovedTracks]);
+      .slice(0, 10);
+  }, [favoriteReciters, lovedTracks, downloads]);
 
   // Get specialized reciter collections
   const featuredReciters = useMemo(() => getFeaturedReciters(8), []);
