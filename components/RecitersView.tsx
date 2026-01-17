@@ -70,7 +70,7 @@ const MemoizedFlatList = React.memo(
             : variant === 'recent'
               ? 200
               : variant === 'featured'
-                ? 180
+                ? 140
                 : 140,
         offset:
           (variant === 'circular'
@@ -78,7 +78,7 @@ const MemoizedFlatList = React.memo(
             : variant === 'recent'
               ? 200
               : variant === 'featured'
-                ? 180
+                ? 140
                 : 140) * index,
         index,
       })}
@@ -153,8 +153,8 @@ const RenderSectionItem = React.memo(
         <BrowseReciterCard
           reciter={reciter}
           onPress={() => onReciterPress(reciter)}
-          width={moderateScale(160)}
-          height={moderateScale(180)}
+          width={moderateScale(140)}
+          height={moderateScale(160)}
           theme={theme}
         />
       );
@@ -251,7 +251,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   // Get specialized reciter collections
   const featuredReciters = useMemo(() => getFeaturedReciters(8), []);
   const bayaanOriginalsReciters = useMemo(
-    () => getBayaanOriginalsReciters(6),
+    () => getBayaanOriginalsReciters(10),
     [],
   );
   const beginnerFriendlyReciters = useMemo(

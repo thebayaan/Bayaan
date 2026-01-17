@@ -2,27 +2,14 @@ import {RECITERS, Reciter} from './reciterData';
 
 // Featured Reciters - Spotlight reciters chosen by Bayaan
 const FEATURED_RECITER_NAMES = [
-  'Albaraa Basfar',
-  'Mishary Alafasi',
-  'Abdulbasit Abdulsamad',
-  'Mahmoud Khalil Al-Hussary',
-  'Mohammed Siddiq Al-Minshawi',
-  'Abdulrahman Alsudaes',
-  'Saud Al-Shuraim',
-  'Mohammed Ayyub',
-  'Mohammed Jibreel',
-  'Maher Al Meaqly',
-  'Hazem Hassan',
-  'Mohammed Hamed',
+  'Abdullah Qarafi',
+  'Bandar Balila',
+  'Abdulrasheed Soufi',
   'Ahmad Talib bin Humaid',
-  'Idrees Abkr',
-  'Abdullah Al-Johany',
-  'Ahmad Al-Ajmy',
-  'Saad Al-Ghamdi',
-  'Mahmoud Ali Albanna',
-  'Yasser Al-Dosari',
-  'Ayyub Asif',
-  'Haitham Aldukhain',
+  'Ahmad Alhuthaifi',
+  'Abdulrahman Al-Majed',
+  'Albaraa Basfar',
+  'Hasan Saleh',
 ];
 
 // Trending Reciters - Currently popular among users
@@ -39,6 +26,10 @@ const BAYAAN_ORIGINALS_RECITER_NAMES = [
   'Albaraa Basfar',
   'Hazem Hassan',
   'Mohammed Hamed',
+  'Malik Ahmad',
+  'Hani Alhussaini',
+  'Ayyub Asif',
+  'Abdulrahman Mosad',
 ];
 
 // Best for Tajweed - Reciters known for excellent tajweed and correct pronunciation
