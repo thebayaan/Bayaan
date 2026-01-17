@@ -3,7 +3,8 @@ import {TouchableOpacity, Text, View, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {RewayatInfo} from '@/data/rewayatCollections';
 import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/base';
+import {useTheme} from '@/hooks/useTheme';
+import Color from 'color';
 
 interface RewayatCardProps {
   rewayat: RewayatInfo;
@@ -12,19 +13,19 @@ interface RewayatCardProps {
   height?: number;
 }
 
-// Elegant gradient colors for each rewayat
+// Sophisticated gradient colors for each rewayat
 const gradientColors: Record<string, [string, string]> = {
-  'warsh-an-nafi': ['#667eea', '#764ba2'],
-  'qalon-an-nafi': ['#f093fb', '#f5576c'],
-  'aldorai-an-alkisaai': ['#4facfe', '#00f2fe'],
-  'aldori-an-abi-amr': ['#43e97b', '#38f9d7'],
-  'shubah-an-assem': ['#fa709a', '#fee140'],
-  'assosi-an-abi-amr': ['#30cfd0', '#330867'],
-  'albizi-an-ibn-katheer': ['#a8edea', '#fed6e3'],
-  'ibn-thakwan-an-ibn-amer': ['#ff9a9e', '#fecfef'],
-  'khalaf-an-hamzah': ['#ffecd2', '#fcb69f'],
-  'rowis-rawh-an-yakoob': ['#ff6e7f', '#bfe9ff'],
-  'warsh-tariq-alazraq': ['#e0c3fc', '#8ec5fc'],
+  'warsh-an-nafi': ['#6366f1', '#8b5cf6'],
+  'qalon-an-nafi': ['#ec4899', '#f43f5e'],
+  'aldorai-an-alkisaai': ['#06b6d4', '#3b82f6'],
+  'aldori-an-abi-amr': ['#10b981', '#14b8a6'],
+  'shubah-an-assem': ['#f59e0b', '#ef4444'],
+  'assosi-an-abi-amr': ['#8b5cf6', '#6366f1'],
+  'albizi-an-ibn-katheer': ['#ec4899', '#a855f7'],
+  'ibn-thakwan-an-ibn-amer': ['#f43f5e', '#fb923c'],
+  'khalaf-an-hamzah': ['#f97316', '#fb923c'],
+  'rowis-rawh-an-yakoob': ['#06b6d4', '#0ea5e9'],
+  'warsh-tariq-alazraq': ['#a855f7', '#ec4899'],
 };
 
 function RewayatCard({
@@ -33,13 +34,21 @@ function RewayatCard({
   width = moderateScale(140),
   height = moderateScale(120),
 }: RewayatCardProps) {
+  const {theme} = useTheme();
   const [isPressed, setIsPressed] = useState(false);
 
   // Get gradient colors for this rewayat, fallback to default
-  const colors = useMemo(
-    () => gradientColors[rewayat.id] || ['#667eea', '#764ba2'],
-    [rewayat.id],
-  );
+  const colors = useMemo(() => {
+    if (theme.isDarkMode) {
+      return gradientColors[rewayat.id] || ['#6366f1', '#8b5cf6'];
+    }
+    // Lighter versions for light mode
+    const darkColors = gradientColors[rewayat.id] || ['#6366f1', '#8b5cf6'];
+    return [
+      Color(darkColors[0]).lighten(0.3).hex(),
+      Color(darkColors[1]).lighten(0.3).hex(),
+    ] as [string, string];
+  }, [rewayat.id, theme.isDarkMode]);
 
   return (
     <TouchableOpacity
@@ -59,24 +68,14 @@ function RewayatCard({
         start={{x: 0, y: 0}}
         end={{x: 1, y: 1}}
         style={[styles.gradient, isPressed && styles.gradientPressed]}>
-        <View style={styles.overlay} />
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <Icon
-              name="book-open"
-              type="feather"
-              size={moderateScale(24)}
-              color="rgba(255, 255, 255, 0.9)"
-            />
-          </View>
           <Text style={styles.displayName} numberOfLines={2}>
             {rewayat.displayName}
           </Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.reciterCount} numberOfLines={1}>
-              {rewayat.reciterCount}
-            </Text>
-          </View>
+          <Text style={styles.description} numberOfLines={1}>
+            {rewayat.reciterCount}{' '}
+            {rewayat.reciterCount === 1 ? 'Reciter' : 'Reciters'}
+          </Text>
         </View>
       </LinearGradient>
     </TouchableOpacity>
@@ -85,70 +84,37 @@ function RewayatCard({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: moderateScale(16),
-    marginRight: moderateScale(12),
+    borderRadius: moderateScale(12),
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
   },
   gradient: {
-    flex: 1,
-    borderRadius: moderateScale(16),
-    padding: moderateScale(16),
-    justifyContent: 'space-between',
-    minHeight: moderateScale(120),
+    width: '100%',
+    height: '100%',
+    padding: moderateScale(14),
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   gradientPressed: {
-    opacity: 0.85,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    opacity: 0.8,
   },
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  iconContainer: {
-    marginBottom: verticalScale(8),
+    width: '100%',
   },
   displayName: {
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(16),
     fontWeight: '700',
-    textAlign: 'center',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 2,
-    letterSpacing: 0.3,
-    flex: 1,
-    justifyContent: 'center',
+    letterSpacing: 0.2,
+    marginBottom: verticalScale(6),
+    lineHeight: moderateScale(20),
   },
-  countBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: moderateScale(10),
-    paddingVertical: verticalScale(4),
-    borderRadius: moderateScale(12),
-    marginTop: verticalScale(8),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  reciterCount: {
+  description: {
     fontSize: moderateScale(11),
-    fontWeight: '600',
-    textAlign: 'center',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 1,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
+    letterSpacing: 0.3,
   },
 });
 
