@@ -7,16 +7,23 @@ import {SURAHS} from '@/data/surahData';
 export default function BrowseScreen() {
   const router = useRouter();
   const {theme} = useTheme();
-  const {surahId} = useLocalSearchParams<{surahId: string}>();
+  const {surahId, teacher, student, rewayatName} = useLocalSearchParams<{
+    surahId: string;
+    teacher: string;
+    student: string;
+    rewayatName: string;
+  }>();
 
   const handleBack = () => {
     router.back();
   };
 
-  // Get surah name if surahId is provided
-  const title = surahId
-    ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
-    : 'Browse All';
+  // Get title based on context
+  const title = rewayatName
+    ? rewayatName
+    : surahId
+      ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
+      : 'Browse All';
 
   return (
     <BrowseReciters
@@ -24,6 +31,8 @@ export default function BrowseScreen() {
       onBack={handleBack}
       surahId={surahId ? parseInt(surahId, 10) : undefined}
       title={title}
+      initialTeacher={teacher}
+      initialStudent={student}
     />
   );
 }
