@@ -1,4 +1,4 @@
-import React, {useMemo, useEffect} from 'react';
+import React, {useMemo, useEffect, useRef} from 'react';
 import {View, Text, ScrollView, StyleSheet, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -297,6 +297,24 @@ const Section = React.memo(
 
 Section.displayName = 'Section';
 
+// Seeded shuffle function for consistent shuffling within a session
+function seededShuffle<T>(array: T[], seed: number): T[] {
+  const shuffled = [...array];
+  let currentSeed = seed;
+
+  // Simple seeded random number generator
+  const random = () => {
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    return currentSeed / 233280;
+  };
+
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
   const router = useRouter();
@@ -307,14 +325,19 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const {playlists} = usePlaylists();
   const {incrementRecitersViewOpenCount, shouldShowNewToQuran} = useSettings();
 
+  // Generate a session seed once when the component first mounts
+  // This persists across re-renders but changes on app restart
+  const sessionSeed = useRef(Date.now()).current;
+
   // Track when the reciters view is opened
   useEffect(() => {
     incrementRecitersViewOpenCount();
   }, [incrementRecitersViewOpenCount]);
 
+  // Shuffle favorites for variety (uses session seed so consistent within session)
   const favoriteRecitersSection = useMemo(
-    () => favoriteReciters.slice(0, 10),
-    [favoriteReciters],
+    () => seededShuffle(favoriteReciters, sessionSeed).slice(0, 10),
+    [favoriteReciters, sessionSeed],
   );
 
   const collectionReciters = useMemo(() => {
@@ -334,25 +357,40 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       ...reciterIdsFromDownloads,
     ]);
 
-    return Array.from(uniqueReciterIds)
+    const reciters = Array.from(uniqueReciterIds)
       .map(id => RECITERS.find(r => r.id === id))
-      .filter((r): r is Reciter => r !== undefined)
-      .slice(0, 10);
-  }, [favoriteReciters, lovedTracks, downloads]);
+      .filter((r): r is Reciter => r !== undefined);
 
-  // Get specialized reciter collections
-  const featuredReciters = useMemo(() => getFeaturedReciters(8), []);
+    // Shuffle for variety
+    return seededShuffle(reciters, sessionSeed + 1).slice(0, 10);
+  }, [favoriteReciters, lovedTracks, downloads, sessionSeed]);
+
+  // Get specialized reciter collections with session-based shuffle
+  // Each collection uses a different offset to the seed for unique shuffles
+  const featuredReciters = useMemo(
+    () => seededShuffle(getFeaturedReciters(8), sessionSeed + 2),
+    [sessionSeed],
+  );
   const bayaanOriginalsReciters = useMemo(
-    () => getBayaanOriginalsReciters(10),
-    [],
+    () => seededShuffle(getBayaanOriginalsReciters(10), sessionSeed + 3),
+    [sessionSeed],
   );
   const beginnerFriendlyReciters = useMemo(
-    () => getBeginnerFriendlyReciters(10),
-    [],
+    () => seededShuffle(getBeginnerFriendlyReciters(10), sessionSeed + 4),
+    [sessionSeed],
   );
-  const tajweedReciters = useMemo(() => getTajweedReciters(10), []);
-  const memorizationReciters = useMemo(() => getMemorizationReciters(10), []);
-  const rewayatTypes = useMemo(() => getAllRewayatTypes(), []);
+  const tajweedReciters = useMemo(
+    () => seededShuffle(getTajweedReciters(10), sessionSeed + 5),
+    [sessionSeed],
+  );
+  const memorizationReciters = useMemo(
+    () => seededShuffle(getMemorizationReciters(10), sessionSeed + 6),
+    [sessionSeed],
+  );
+  const rewayatTypes = useMemo(
+    () => seededShuffle(getAllRewayatTypes(), sessionSeed + 7),
+    [sessionSeed],
+  );
 
   // Handler for rewayat card press
   const handleRewayatPress = (rewayat: RewayatInfo) => {
@@ -417,17 +455,6 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         />
       )}
 
-      {/* Featured section - showcase spotlighted content prominently */}
-      {featuredReciters.length > 0 && (
-        <Section
-          title="Featured Reciters"
-          data={featuredReciters}
-          variant="default"
-          onReciterPress={onReciterPress}
-          theme={theme}
-        />
-      )}
-
       {/* User favorites - personal relevance section */}
       {favoriteRecitersSection.length > 0 && (
         <Section
@@ -439,11 +466,22 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         />
       )}
 
+      {/* Featured section - showcase spotlighted content prominently */}
+      {featuredReciters.length > 0 && (
+        <Section
+          title="Featured Reciters"
+          data={featuredReciters}
+          variant="default"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
       {/* User playlists - personal collections */}
       {playlists.length > 0 && (
         <Section
           title="Your Playlists"
-          data={playlists.slice(0, 10)}
+          data={seededShuffle(playlists, sessionSeed + 8).slice(0, 10)}
           variant="playlist"
           onReciterPress={onReciterPress}
           onPlaylistPress={handlePlaylistPress}
