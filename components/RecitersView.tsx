@@ -443,7 +443,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       {playlists.length > 0 && (
         <Section
           title="Your Playlists"
-          data={playlists}
+          data={playlists.slice(0, 10)}
           variant="playlist"
           onReciterPress={onReciterPress}
           onPlaylistPress={handlePlaylistPress}
