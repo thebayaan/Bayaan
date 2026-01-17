@@ -38,8 +38,8 @@ interface BrowseRecitersProps {
   onBack: () => void;
   surahId?: number; // Optional surah ID for filtering
   title?: string; // Optional custom title, defaults to "Browse All"
-  subtitle?: string; // Optional subtitle description
-  preFilteredReciters?: Reciter[]; // Optional pre-filtered list of reciters
+  initialTeacher?: string; // Optional initial teacher filter
+  initialStudent?: string; // Optional initial student filter
 }
 
 // Module-level cache for string normalizations
@@ -167,8 +167,8 @@ export default function BrowseReciters({
   onBack,
   surahId,
   title = 'Browse All',
-  subtitle,
-  preFilteredReciters,
+  initialTeacher,
+  initialStudent,
 }: BrowseRecitersProps) {
   const router = useRouter();
   const {updateQueue, play} = useUnifiedPlayer();
@@ -177,8 +177,12 @@ export default function BrowseReciters({
   const {setReciterPreference} = useSettings();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<string | null>(
+    initialTeacher || null,
+  );
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(
+    initialStudent || null,
+  );
 
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -275,8 +279,7 @@ export default function BrowseReciters({
   }, [selectedTeacher, selectedStudent, primaryTeachers]);
 
   const filteredReciters = useMemo(() => {
-    // Use preFilteredReciters if provided, otherwise use all reciters
-    let result = preFilteredReciters ? [...preFilteredReciters] : [...RECITERS];
+    let result = [...RECITERS];
 
     if (surahId) {
       result = result.filter(reciter => {
@@ -372,14 +375,7 @@ export default function BrowseReciters({
     });
 
     return result;
-  }, [
-    selectedTeacher,
-    selectedStudent,
-    searchQuery,
-    surahId,
-    advancedFilters,
-    preFilteredReciters,
-  ]);
+  }, [selectedTeacher, selectedStudent, searchQuery, surahId, advancedFilters]);
 
   const handleFilterModalPress = () => {
     setIsFilterModalVisible(true);
@@ -656,7 +652,6 @@ export default function BrowseReciters({
       <View style={styles.container}>
         <Header
           title={title}
-          subtitle={subtitle}
           onBack={onBack}
           showBlur={true}
           containerStyle={{zIndex: 2}}
