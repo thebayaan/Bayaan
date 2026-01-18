@@ -87,7 +87,9 @@ export default function CollectionView({
     if ('id' in item) {
       return item.id;
     }
-    return `${item.reciterId}-${item.surahId}${item.rewayatId ? `-${item.rewayatId}` : ''}`;
+    return `${item.reciterId}-${item.surahId}${
+      item.rewayatId ? `-${item.rewayatId}` : ''
+    }`;
   };
 
   return (

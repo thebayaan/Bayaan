@@ -260,7 +260,9 @@ export default function CollectionScreen() {
             // Single download - show as individual track
             const download = reciterDownloads[0];
             items.push({
-              id: `download-${download.reciterId}-${download.surahId}-${download.rewayatId || 'default'}`,
+              id: `download-${download.reciterId}-${download.surahId}-${
+                download.rewayatId || 'default'
+              }`,
               type: 'track',
               timestamp: download.downloadDate || 0,
               data: {

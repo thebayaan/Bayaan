@@ -91,7 +91,7 @@ android {
         applicationId 'com.bayaan.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 240
+        versionCode 245
         versionName "1.3.0"
     }
     

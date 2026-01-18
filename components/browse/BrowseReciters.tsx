@@ -476,7 +476,9 @@ export default function BrowseReciters({
       console.log('------------ REWAYA SELECTION PROCESS ------------');
       console.log(`Reciter: ${reciter.name} (ID: ${reciter.id})`);
       console.log(
-        `Active Filters - Teacher: ${currentTeacher || 'None'}, Student: ${currentStudent || 'None'}`,
+        `Active Filters - Teacher: ${currentTeacher || 'None'}, Student: ${
+          currentStudent || 'None'
+        }`,
       );
 
       console.log(
@@ -618,7 +620,9 @@ export default function BrowseReciters({
         // we don't set a preference, allowing the reciter profile to use its default logic
         // or the user's manually selected preference if they previously visited this reciter
         console.log(
-          `Navigating to reciter profile: ${reciter.id}, preference ${selectedRewayatId ? `set to ${selectedRewayatId}` : 'not set'}`,
+          `Navigating to reciter profile: ${reciter.id}, preference ${
+            selectedRewayatId ? `set to ${selectedRewayatId}` : 'not set'
+          }`,
         );
 
         router.push({

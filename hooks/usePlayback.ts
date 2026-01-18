@@ -151,7 +151,11 @@ export const usePlayback = () => {
             currentReciter,
           });
           console.log(
-            `[DEBUG] Added ${nextTracks.length} tracks to queue. New nextLoadIndex: ${nextLoadIndex + nextSurahs.length}`,
+            `[DEBUG] Added ${
+              nextTracks.length
+            } tracks to queue. New nextLoadIndex: ${
+              nextLoadIndex + nextSurahs.length
+            }`,
           );
         } else {
           console.log(
@@ -319,7 +323,9 @@ export const usePlayback = () => {
         currentReciter: reciter,
       });
       console.log(
-        `[DEBUG] Queue context set, nextLoadIndex: ${startIndex + INITIAL_BATCH_SIZE}`,
+        `[DEBUG] Queue context set, nextLoadIndex: ${
+          startIndex + INITIAL_BATCH_SIZE
+        }`,
       );
 
       // Get initial batch of available surahs (but don't create all tracks yet!)

@@ -24,7 +24,11 @@ while ((match = pathRegex.exec(svgContent)) !== null && surahNumber <= 114) {
 
 // Generate TypeScript code
 const tsCode = `
-export const surahPaths: { [key: number]: string } = ${JSON.stringify(surahPaths, null, 2)};
+export const surahPaths: { [key: number]: string } = ${JSON.stringify(
+  surahPaths,
+  null,
+  2,
+)};
 `;
 
 // Write to file
