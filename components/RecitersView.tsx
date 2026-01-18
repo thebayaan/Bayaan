@@ -413,7 +413,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   // Handler for playlist card press
   const handlePlaylistPress = (playlist: UserPlaylist) => {
     router.push({
-      pathname: '/(tabs)/(c.collection)/playlist/[id]',
+      pathname: '/(tabs)/(a.home)/playlist/[id]',
       params: {id: playlist.id},
     });
   };
