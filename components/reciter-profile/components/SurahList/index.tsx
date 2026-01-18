@@ -8,10 +8,18 @@ import {SurahListProps} from '@/components/reciter-profile/types';
 import {SurahItem} from '@/components/SurahItem';
 import {SurahCard} from '@/components/cards/SurahCard';
 import {Surah} from '@/data/surahData';
+import {getJuzForSurah, getJuzName} from '@/data/juzData';
+import Color from 'color';
+import {LinearGradient} from 'expo-linear-gradient';
 
 // Define types matching useSettings and ReciterProfile
 type ReciterProfileViewMode = 'card' | 'list';
 type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation'; // Include revelation order
+
+// Type for list items - can be either a Juz header or surah
+type ListItem =
+  | {type: 'juz-header'; juzNumber: number; juzName: string}
+  | {type: 'surah'; surah: Surah};
 
 // Update props interface (consider moving this to types/reciter-profile.ts)
 interface UpdatedSurahListProps extends SurahListProps {
@@ -51,12 +59,47 @@ export const SurahList = React.forwardRef<
       contentContainerStyle,
       viewMode,
       getColorForSurah,
+      sortOption,
       rewayatId,
     },
     ref,
   ) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
+
+    // Prepare list data with Juz headers when in list view with asc/desc sort
+    const listData = React.useMemo(() => {
+      const shouldShowJuzHeaders =
+        viewMode === 'list' && (sortOption === 'asc' || sortOption === 'desc');
+
+      if (!shouldShowJuzHeaders) {
+        // No Juz headers - just return surahs wrapped in ListItem type
+        return surahs.map(surah => ({type: 'surah' as const, surah}));
+      }
+
+      // Add Juz headers
+      const data: ListItem[] = [];
+      let currentJuz: number | null = null;
+
+      surahs.forEach(surah => {
+        const surahJuz = getJuzForSurah(surah.id);
+
+        // Add Juz header when we encounter a new Juz
+        if (surahJuz !== currentJuz) {
+          currentJuz = surahJuz;
+          data.push({
+            type: 'juz-header',
+            juzNumber: surahJuz,
+            juzName: getJuzName(surahJuz),
+          });
+        }
+
+        // Add the surah
+        data.push({type: 'surah', surah});
+      });
+
+      return data;
+    }, [surahs, viewMode, sortOption]);
 
     // Render a card item
     const renderCardItem = React.useCallback(
@@ -89,19 +132,61 @@ export const SurahList = React.forwardRef<
       ],
     );
 
-    // Render a list item using SurahItem
+    // Render a list item (surah or Juz header)
     const renderListItem = React.useCallback(
-      ({item}: {item: Surah}) => (
-        <SurahItem
-          item={item}
-          onPress={onSurahPress}
-          reciterId={reciterId}
-          isLoved={isLoved(reciterId, item.id.toString())}
-          isDownloaded={isDownloaded(reciterId, item.id.toString())}
-          onOptionsPress={onOptionsPress}
-          rewayatId={rewayatId}
-        />
-      ),
+      ({item}: {item: ListItem}) => {
+        // Handle Juz header
+        if (item.type === 'juz-header') {
+          return (
+            <View style={styles.juzHeader}>
+              <LinearGradient
+                colors={['transparent', theme.colors.border]}
+                locations={[0, 0.5]}
+                start={{x: 0, y: 0.5}}
+                end={{x: 1, y: 0.5}}
+                style={styles.juzHeaderLine}
+              />
+              <View
+                style={[
+                  styles.juzHeaderPill,
+                  {
+                    backgroundColor: Color(theme.colors.text)
+                      .alpha(0.05)
+                      .toString(),
+                  },
+                ]}>
+                <Text
+                  style={[
+                    styles.juzHeaderText,
+                    {color: theme.colors.textSecondary},
+                  ]}>
+                  {item.juzName}
+                </Text>
+              </View>
+              <LinearGradient
+                colors={[theme.colors.border, 'transparent']}
+                locations={[0.5, 1]}
+                start={{x: 0, y: 0.5}}
+                end={{x: 1, y: 0.5}}
+                style={styles.juzHeaderLine}
+              />
+            </View>
+          );
+        }
+
+        // Handle surah
+        return (
+          <SurahItem
+            item={item.surah}
+            onPress={onSurahPress}
+            reciterId={reciterId}
+            isLoved={isLoved(reciterId, item.surah.id.toString())}
+            isDownloaded={isDownloaded(reciterId, item.surah.id.toString())}
+            onOptionsPress={onOptionsPress}
+            rewayatId={rewayatId}
+          />
+        );
+      },
       [
         onSurahPress,
         reciterId,
@@ -109,8 +194,23 @@ export const SurahList = React.forwardRef<
         isDownloaded,
         onOptionsPress,
         rewayatId,
+        styles.juzHeader,
+        styles.juzHeaderLine,
+        styles.juzHeaderPill,
+        styles.juzHeaderText,
+        theme.colors.textSecondary,
+        theme.colors.border,
+        theme.colors.text,
       ],
     );
+
+    // Key extractor for list items
+    const listKeyExtractor = React.useCallback((item: ListItem) => {
+      if (item.type === 'juz-header') {
+        return `juz-${item.juzNumber}`;
+      }
+      return `list-${item.surah.id}`;
+    }, []);
 
     // Shared ListHeader to avoid re-rendering issues
     const HeaderMemo = React.useMemo(
@@ -166,9 +266,9 @@ export const SurahList = React.forwardRef<
             ref={viewMode === 'list' ? ref : undefined}
             bounces={true}
             showsVerticalScrollIndicator={false}
-            data={surahs}
+            data={listData}
             renderItem={renderListItem}
-            keyExtractor={item => `list-${item.id}`}
+            keyExtractor={listKeyExtractor}
             ListHeaderComponent={HeaderMemo}
             onScroll={viewMode === 'list' ? onScroll : undefined}
             scrollEventThrottle={1}
@@ -224,5 +324,28 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       textAlign: 'center',
       marginTop: moderateScale(20),
+    },
+    juzHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+      marginTop: moderateScale(8),
+      marginBottom: moderateScale(-4),
+    },
+    juzHeaderLine: {
+      flex: 1,
+      height: 1,
+    },
+    juzHeaderPill: {
+      paddingHorizontal: moderateScale(12),
+      paddingVertical: moderateScale(5),
+      borderRadius: moderateScale(12),
+      marginHorizontal: moderateScale(8),
+    },
+    juzHeaderText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-SemiBold',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
     },
   });
