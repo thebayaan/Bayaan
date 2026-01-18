@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, TouchableOpacity, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -20,6 +20,7 @@ const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
 interface ReciterDownloadsHeaderProps {
+  reciterId: string;
   reciterName: string;
   reciterImageUrl?: string;
   subtitle: string;
@@ -29,6 +30,7 @@ interface ReciterDownloadsHeaderProps {
 }
 
 export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
+  reciterId,
   reciterName,
   reciterImageUrl,
   subtitle,
@@ -39,6 +41,10 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const styles = createStyles(theme, insets);
+
+  const handleReciterPress = () => {
+    router.push(`/reciter/${reciterId}`);
+  };
 
   // Animation values for button press feedback
   const shuffleScale = useSharedValue(1);
@@ -88,17 +94,21 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
-          {/* Reciter Image */}
-          <View style={styles.reciterImageContainer}>
-            <ReciterImage
-              reciterName={reciterName}
-              imageUrl={reciterImageUrl}
-              style={styles.reciterImage}
-            />
-          </View>
+          {/* Reciter Image - Tappable to navigate to reciter profile */}
+          <Pressable onPress={handleReciterPress}>
+            <View style={styles.reciterImageContainer}>
+              <ReciterImage
+                reciterName={reciterName}
+                imageUrl={reciterImageUrl}
+                style={styles.reciterImage}
+              />
+            </View>
+          </Pressable>
 
-          {/* Title and Subtitle */}
-          <Text style={styles.title}>{reciterName}</Text>
+          {/* Title and Subtitle - Title tappable to navigate to reciter profile */}
+          <Pressable onPress={handleReciterPress}>
+            <Text style={styles.title}>{reciterName}</Text>
+          </Pressable>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
       </LinearGradient>

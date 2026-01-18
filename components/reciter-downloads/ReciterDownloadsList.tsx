@@ -484,6 +484,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   const ListHeaderComponent = useCallback(() => {
     return (
       <ReciterDownloadsHeader
+        reciterId={reciterId}
         reciterName={reciter?.name || 'Reciter'}
         reciterImageUrl={reciter?.image_url || undefined}
         subtitle={`${downloadData.length} ${downloadData.length === 1 ? 'surah' : 'surahs'} downloaded`}
@@ -492,7 +493,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         theme={theme}
       />
     );
-  }, [reciter, downloadData.length, handlePlayAll, handleShuffle, theme]);
+  }, [reciterId, reciter, downloadData.length, handlePlayAll, handleShuffle, theme]);
 
   const renderItem: ListRenderItem<DownloadTrackData> = ({item}) => {
     const {download, reciter: itemReciter, surah, rewayatName} = item;
