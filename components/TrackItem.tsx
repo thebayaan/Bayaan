@@ -24,6 +24,7 @@ import {
 } from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
+import {GradientText} from '@/components/GradientText';
 
 interface TrackItemProps {
   reciterId: string;
@@ -71,8 +72,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     // Get download progress
     const downloadProgress = useDownloadProgress(downloadId);
 
-    // Check if this item is the currently active track
-    const isCurrentlyPlaying = useMemo(() => {
+    // Check if this is the current track (regardless of play state)
+    const isCurrentTrack = useMemo(() => {
       const currentTrack =
         tracks && currentIndex >= 0 && currentIndex < tracks.length
           ? tracks[currentIndex]
@@ -155,15 +156,21 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           <View style={styles.surahNameContainer}>
             <View style={styles.surahTextContainer}>
               <View style={styles.surahNameRow}>
-                <Text style={styles.surahName}>
-                  {surah.id + '. ' + surah.name}
-                </Text>
-                {(isCurrentlyPlaying || (onPlayPress && !hidePlayButton)) && (
+                {isCurrentTrack ? (
+                  <GradientText style={styles.surahName} surahId={surah.id}>
+                    {surah.id + '. ' + surah.name}
+                  </GradientText>
+                ) : (
+                  <Text style={styles.surahName}>
+                    {surah.id + '. ' + surah.name}
+                  </Text>
+                )}
+                {(isCurrentTrack || (onPlayPress && !hidePlayButton)) && (
                   <TouchableOpacity
                     style={styles.playIndicatorContainer}
                     onPress={handlePlayButtonPress}
                     activeOpacity={0.7}>
-                    {isCurrentlyPlaying && (
+                    {isCurrentTrack && (
                       <NowPlayingIndicator
                         isPlaying={
                           playbackStatus === TrackPlayerState.Playing ||

@@ -25,6 +25,7 @@ import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {State as TrackPlayerState} from 'react-native-track-player';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {GradientText} from '@/components/GradientText';
 import {
   useIsDownloaded,
   useIsDownloadedWithRewayat,
@@ -94,7 +95,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   const tracks = usePlayerStore(state => state.queue.tracks);
 
   // Check if this specific track is playing
-  const isCurrentlyPlaying = React.useMemo(() => {
+  const isCurrentTrack = React.useMemo(() => {
     // Get current track
     const currentTrack =
       tracks && currentIndex >= 0 && currentIndex < tracks.length
@@ -349,9 +350,15 @@ export const SurahCard: React.FC<SurahCardProps> = ({
         <View style={styles.divider} />
         <View style={styles.nameContainer}>
           <View style={styles.textBlock}>
-            <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
-              {name}
-            </Text>
+            {isCurrentTrack ? (
+              <GradientText style={styles.name} surahId={id}>
+                {name}
+              </GradientText>
+            ) : (
+              <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+                {name}
+              </Text>
+            )}
             <Text
               style={styles.translatedName}
               numberOfLines={1}
@@ -380,7 +387,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       </View>
 
       {/* Conditional Rendering: NowPlayingIndicator or Options Button */}
-      {isCurrentlyPlaying ? (
+      {isCurrentTrack ? (
         <TouchableOpacity
           style={styles.nowPlayingContainer}
           onPress={onOptionsPress ? handleOptionsPressWrapper : undefined}
