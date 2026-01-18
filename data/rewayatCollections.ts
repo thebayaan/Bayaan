@@ -28,7 +28,7 @@ export const REWAYAT_TYPES: RewayatInfo[] = [
     id: 'aldorai-an-alkisaai',
     name: "AlDorai A'n Al-Kisa'ai",
     displayName: 'Al-Dorai',
-    description: 'Narration of Al-Dorai from Al-Kisa\'i',
+    description: "Narration of Al-Dorai from Al-Kisa'i",
     reciterCount: 6,
   },
   {
@@ -111,4 +111,3 @@ export function getRewayatById(id: string): RewayatInfo | undefined {
 export function getRewayatByName(name: string): RewayatInfo | undefined {
   return REWAYAT_TYPES.find(r => r.name === name);
 }
-

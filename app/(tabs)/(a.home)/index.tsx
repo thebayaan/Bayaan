@@ -240,15 +240,7 @@ const Content = React.memo(
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingBottom: TOTAL_BOTTOM_PADDING,
-              }}>
-              <View style={contentStyles.contentContainer}>
-                <SurahsView onSurahPress={handleSurahPress} />
-              </View>
-            </ScrollView>
+            <SurahsView onSurahPress={handleSurahPress} />
           </View>
         )}
       </View>
