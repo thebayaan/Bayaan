@@ -80,13 +80,6 @@ export const REWAYAT_TYPES: RewayatInfo[] = [
     description: "Narration of Rowis and Rawh from Ya'qub Al-Hadrami",
     reciterCount: 2,
   },
-  {
-    id: 'warsh-tariq-alazraq',
-    name: "Warsh A'n Nafi' Men Tariq Alazraq",
-    displayName: 'Warsh (Alazraq)',
-    description: 'Warsh from the way of Alazraq',
-    reciterCount: 2,
-  },
 ];
 
 /**

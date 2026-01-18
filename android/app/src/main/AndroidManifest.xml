@@ -33,12 +33,6 @@
         <data android:scheme="com.bayaan.app"/>
         <data android:scheme="exp+bayaan"/>
       </intent-filter>
-      <intent-filter android:autoVerify="true" data-generated="true">
-        <action android:name="android.intent.action.VIEW"/>
-        <data android:scheme="bayaan" android:host="*.supabase.co" android:pathPrefix="/auth/callback"/>
-        <category android:name="android.intent.category.BROWSABLE"/>
-        <category android:name="android.intent.category.DEFAULT"/>
-      </intent-filter>
     </activity>
   </application>
 </manifest>
