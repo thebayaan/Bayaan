@@ -144,13 +144,22 @@ function analyzeReciters() {
 // Style options for filter
 export const STYLE_OPTIONS = [
   { label: 'All', value: 'all' },
-  ${sortedStyles.map(style => `{ label: '${style.charAt(0).toUpperCase() + style.slice(1)}', value: '${style}' }`).join(',\n  ')}
+  ${sortedStyles
+    .map(
+      style =>
+        `{ label: '${
+          style.charAt(0).toUpperCase() + style.slice(1)
+        }', value: '${style}' }`,
+    )
+    .join(',\n  ')}
 ];
 
 // Rewayat options for filter
 export const REWAYAT_OPTIONS = [
   { label: 'All', value: 'all' },
-  ${sortedRewayatNames.map(name => `{ label: '${name}', value: '${name}' }`).join(',\n  ')}
+  ${sortedRewayatNames
+    .map(name => `{ label: '${name}', value: '${name}' }`)
+    .join(',\n  ')}
 ];
   `);
 }

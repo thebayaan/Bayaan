@@ -93,7 +93,9 @@ class AppInitializer {
             // If this is a critical service, throw the error
             if (service.critical) {
               throw new Error(
-                `Critical service ${service.name} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                `Critical service ${service.name} failed: ${
+                  error instanceof Error ? error.message : 'Unknown error'
+                }`,
               );
             }
 

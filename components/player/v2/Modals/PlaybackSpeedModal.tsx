@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React from 'react';
 import {TouchableOpacity, Text, StyleSheet, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
@@ -80,4 +79,4 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     fontFamily: 'Manrope-SemiBold',
   },
-}); 
+});

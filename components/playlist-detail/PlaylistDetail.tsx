@@ -379,7 +379,9 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     return (
       <PlaylistHeader
         title={playlist.name}
-        subtitle={`${playlistData.length} ${playlistData.length === 1 ? 'surah' : 'surahs'}`}
+        subtitle={`${playlistData.length} ${
+          playlistData.length === 1 ? 'surah' : 'surahs'
+        }`}
         backgroundColor={playlist.color}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}

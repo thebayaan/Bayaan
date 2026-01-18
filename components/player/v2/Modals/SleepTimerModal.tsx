@@ -45,7 +45,9 @@ export const SleepTimerModal: React.FC<SleepTimerModalProps> = ({
           <Text style={[styles.remainingTime, {color: theme.colors.text}]}>
             {remainingTime < 1
               ? `${Math.round(remainingTime * 60)} seconds`
-              : `${Math.round(remainingTime)} ${remainingTime === 1 ? 'minute' : 'minutes'}`}{' '}
+              : `${Math.round(remainingTime)} ${
+                  remainingTime === 1 ? 'minute' : 'minutes'
+                }`}{' '}
             remaining
           </Text>
         )}

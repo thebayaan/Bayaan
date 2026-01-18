@@ -207,7 +207,9 @@ export const VerseItem = memo<VerseItemProps>(
           console.log('[Footnote Press] Inspecting verseData:', verseData);
           console.log('[Footnote Press] Inspecting verseData.f:', verseData.f);
           console.log(
-            `[Footnote Press] Keys in verseData.f: ${verseData.f ? Object.keys(verseData.f).join(', ') : 'N/A'}`,
+            `[Footnote Press] Keys in verseData.f: ${
+              verseData.f ? Object.keys(verseData.f).join(', ') : 'N/A'
+            }`,
           );
         }
         // --- End: Additional Logging ---

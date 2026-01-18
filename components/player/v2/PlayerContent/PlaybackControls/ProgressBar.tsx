@@ -66,7 +66,9 @@ export const ProgressBar = React.memo(() => {
         remainingSeconds < 10 ? '0' : ''
       }${remainingSeconds}`;
     } else {
-      return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+      return `${minutes}:${
+        remainingSeconds < 10 ? '0' : ''
+      }${remainingSeconds}`;
     }
   }, []);
 

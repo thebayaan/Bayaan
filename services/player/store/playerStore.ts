@@ -503,7 +503,9 @@ export const usePlayerStore = create<PlayerStoreState>()(
             : `${minutes} minute${minutes === 1 ? '' : 's'}`;
 
         console.log(
-          `[PlayerStore] Setting sleep timer for ${timeDisplay}, ending at ${new Date(sleepTimerEnd).toLocaleTimeString()}`,
+          `[PlayerStore] Setting sleep timer for ${timeDisplay}, ending at ${new Date(
+            sleepTimerEnd,
+          ).toLocaleTimeString()}`,
         );
 
         // Create an interval that checks if the timer has expired

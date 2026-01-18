@@ -55,7 +55,9 @@ export class QueueManager {
 
       const duration = performance.now() - start;
       console.log(
-        `[QueueManager] Added ${processedTracks.length} track(s) in ${duration.toFixed(2)}ms`,
+        `[QueueManager] Added ${
+          processedTracks.length
+        } track(s) in ${duration.toFixed(2)}ms`,
       );
     } catch (error) {
       console.error('[QueueManager] Error adding track(s):', error);

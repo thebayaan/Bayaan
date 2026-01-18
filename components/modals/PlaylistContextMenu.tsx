@@ -347,7 +347,9 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
             });
             Alert.alert(
               'Download Complete',
-              `Successfully downloaded ${itemsToDownload.length} item${itemsToDownload.length === 1 ? '' : 's'} from "${playlistName}".`,
+              `Successfully downloaded ${itemsToDownload.length} item${
+                itemsToDownload.length === 1 ? '' : 's'
+              } from "${playlistName}".`,
             );
           }
         }, 500);
