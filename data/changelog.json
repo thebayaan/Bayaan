@@ -29,7 +29,9 @@
         "Juz-based surah grouping in browse and reciter screens",
         "Enhanced collection screen with rewayat-aware downloads",
         "Download state indicators throughout the app",
-        "Storage management with usage breakdown"
+        "Storage management with usage breakdown",
+        "Gradient text highlighting for currently playing track",
+        "Juz section separators in browse all surahs screen"
       ],
       "improvements": [
         "Eliminated navigation lag in explore view",
@@ -39,7 +41,8 @@
         "Improved FloatingPlayer visibility logic",
         "Better audio player state management",
         "Enhanced download performance to prevent freezing",
-        "Improved collection and playlist organization"
+        "Improved collection and playlist organization",
+        "Better touch zones for surah list items"
       ],
       "fixes": [
         "Resolved TestFlight file corruption issues",
