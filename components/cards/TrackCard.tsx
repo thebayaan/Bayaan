@@ -17,6 +17,7 @@ import {
 } from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
+import {GradientText} from '@/components/GradientText';
 
 interface TrackCardProps {
   reciterId: string;
@@ -68,7 +69,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   const downloadProgress = useDownloadProgress(downloadId);
 
   // Check if this item is the currently active track
-  const isCurrentlyPlaying = useMemo(() => {
+  const isCurrentTrack = useMemo(() => {
     const currentTrack =
       tracks && currentIndex >= 0 && currentIndex < tracks.length
         ? tracks[currentIndex]
@@ -198,7 +199,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           imageUrl={reciter?.image_url || undefined}
           style={styles.reciterImage}
         />
-        {isCurrentlyPlaying && (
+        {isCurrentTrack && (
           <View style={styles.nowPlayingOverlay}>
             <NowPlayingIndicator
               isPlaying={
@@ -214,9 +215,15 @@ export const TrackCard: React.FC<TrackCardProps> = ({
         )}
       </View>
       <View style={styles.surahInfo}>
-        <Text style={styles.surahName} numberOfLines={1}>
-          {surah.id}. {surah.name}
-        </Text>
+        {isCurrentTrack ? (
+          <GradientText style={styles.surahName} surahId={surah.id}>
+            {surah.id + '. ' + surah.name}
+          </GradientText>
+        ) : (
+          <Text style={styles.surahName} numberOfLines={1}>
+            {surah.id}. {surah.name}
+          </Text>
+        )}
         <Text style={styles.surahGlyph}>{surahGlyph}</Text>
       </View>
       <View style={styles.reciterInfoRow}>
