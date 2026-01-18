@@ -493,7 +493,14 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         theme={theme}
       />
     );
-  }, [reciterId, reciter, downloadData.length, handlePlayAll, handleShuffle, theme]);
+  }, [
+    reciterId,
+    reciter,
+    downloadData.length,
+    handlePlayAll,
+    handleShuffle,
+    theme,
+  ]);
 
   const renderItem: ListRenderItem<DownloadTrackData> = ({item}) => {
     const {download, reciter: itemReciter, surah, rewayatName} = item;
