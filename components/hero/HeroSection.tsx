@@ -14,18 +14,18 @@ interface HeroSectionProps {
  */
 export function HeroSection({mainHero, randomHero = true}: HeroSectionProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, !randomHero && styles.containerNoRandom]}>
       {/* Main Hero Content */}
       {mainHero}
 
-      {/* Standard spacing between heroes */}
-      <View style={styles.spacing} />
-
-      {/* Random Recitation Hero */}
+      {/* Standard spacing between heroes - only show when randomHero is enabled */}
       {randomHero && (
-        <View style={styles.randomHeroContainer}>
-          <RandomRecitationHero isCompact={true} />
-        </View>
+        <>
+          <View style={styles.spacing} />
+          <View style={styles.randomHeroContainer}>
+            <RandomRecitationHero isCompact={true} />
+          </View>
+        </>
       )}
     </View>
   );
@@ -34,6 +34,9 @@ export function HeroSection({mainHero, randomHero = true}: HeroSectionProps) {
 const styles = StyleSheet.create({
   container: {
     marginBottom: moderateScale(16),
+  },
+  containerNoRandom: {
+    marginBottom: 0,
   },
   spacing: {
     height: verticalScale(10),

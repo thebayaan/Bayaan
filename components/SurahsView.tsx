@@ -1,110 +1,29 @@
-import React from 'react';
-import {View, Text, ScrollView, FlatList, StyleSheet} from 'react-native';
+import React, {useState, useMemo, useCallback} from 'react';
+import {
+  View,
+  Text,
+  SectionList,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale} from 'react-native-size-matters';
 import {SurahCard} from './cards/SurahCard';
+import {SurahItem} from './SurahItem';
 import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
 import {SurahsHero} from '@/components/hero/SurahsHero';
-import {GRADIENT_COLORS} from '@/utils/gradientColors'; // Import the constant
+import {GRADIENT_COLORS} from '@/utils/gradientColors';
+import {Icon} from '@rneui/themed';
+import {useSettings} from '@/hooks/useSettings';
+import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
 }
 
-interface SurahCollection {
-  id: string;
-  title: string;
-  surahs: number[];
-  description?: string;
-  color: string; // Keep as string, but we'll assign from GRADIENT_COLORS
-}
-
-const FEATURED_COLLECTIONS: SurahCollection[] = [
-  {
-    id: 'heart-of-quran',
-    title: 'Heart of Quran',
-    surahs: [36, 55, 56, 67, 18],
-    color: GRADIENT_COLORS[2], // Emerald
-  },
-  {
-    id: 'daily-adhkar',
-    title: 'Daily Adhkar Surahs',
-    surahs: [112, 113, 114, 1],
-    color: GRADIENT_COLORS[0], // Purple
-  },
-  {
-    id: 'juz-amma',
-    title: 'Juz Amma',
-    description: 'Last 37 Surahs',
-    surahs: Array.from({length: 37}, (_, i) => 78 + i),
-    color: GRADIENT_COLORS[1], // Blue
-  },
-  {
-    id: 'seven-long',
-    title: 'The Seven Long Surahs',
-    description: "Al-Sab' Al-Tiwal",
-    surahs: [2, 3, 4, 5, 6, 7, 9],
-    color: GRADIENT_COLORS[3], // Red
-  },
-];
-
-const BY_THEME: SurahCollection[] = [
-  {
-    id: 'prophets',
-    title: 'Stories of the Prophets',
-    surahs: [12, 19, 28, 71, 21, 14],
-    color: GRADIENT_COLORS[4], // Orange
-  },
-  {
-    id: 'mercy',
-    title: 'Mercy and Forgiveness',
-    surahs: [55, 40, 39, 9],
-    color: GRADIENT_COLORS[5], // Cyan
-  },
-  {
-    id: 'faith',
-    title: 'Faith and Belief',
-    surahs: [112, 109, 103, 2],
-    color: GRADIENT_COLORS[6], // Pink
-  },
-];
-
-const SPECIAL_CATEGORIES: SurahCollection[] = [
-  {
-    id: 'most-loved',
-    title: 'Most Loved by Community',
-    surahs: [55, 36, 18, 56, 67],
-    color: GRADIENT_COLORS[3], // Red (Same as seven-long)
-  },
-  {
-    id: 'most-recited',
-    title: 'Most Recited',
-    surahs: [1, 2, 36, 67, 18],
-    color: GRADIENT_COLORS[1], // Blue (Same as juz-amma)
-  },
-];
-
-// Cache for gradient colors to prevent recalculating on every render
-
-interface ThemeType {
-  colors: {
-    text: string;
-    textSecondary: string;
-    border: string;
-    background: string;
-    backgroundSecondary: string;
-  };
-  isDarkMode: boolean;
-  fonts: {
-    regular: string;
-    medium: string;
-    bold: string;
-    semiBold: string;
-  };
-}
-
-// Helper function to actually generate the colors
+type ViewMode = 'card' | 'list';
+type SortOption = 'asc' | 'desc' | 'revelation';
 
 function getSurahOfTheDay(): Surah {
   const today = new Date();
@@ -116,216 +35,348 @@ function getSurahOfTheDay(): Surah {
   return SURAHS[surahIndex];
 }
 
-// Create the AnimatedTouchableOpacity component once, outside of render functions
+// Group surahs into pairs for card view (2 columns)
+function groupSurahsIntoPairs(surahs: Surah[]): Surah[][] {
+  const pairs: Surah[][] = [];
+  for (let i = 0; i < surahs.length; i += 2) {
+    if (i + 1 < surahs.length) {
+      pairs.push([surahs[i], surahs[i + 1]]);
+    } else {
+      pairs.push([surahs[i]]);
+    }
+  }
+  return pairs;
+}
 
-// Create a function to generate collection styles based on theme and collection color
-const createCollectionStyles = (theme: ThemeType, collectionColor: string) =>
-  StyleSheet.create({
-    section: {
-      marginBottom: moderateScale(16),
-    },
-    sectionHeader: {
-      marginBottom: moderateScale(8),
-      paddingHorizontal: moderateScale(16),
-    },
-    sectionTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: 'Manrope-Bold',
-      color: Color(collectionColor).isDark()
-        ? theme.colors.text
-        : collectionColor,
-      marginBottom: verticalScale(2),
-    },
-    description: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.text,
-      marginTop: verticalScale(2),
-    },
-    sectionContent: {
-      paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(4),
-    },
-  });
+// Shared ItemSeparator component
+const ItemSeparator = React.memo(() => {
+  return <View style={styles.itemSeparator} />;
+});
+ItemSeparator.displayName = 'ItemSeparator';
 
-const ItemSeparator = () => <View style={{width: moderateScale(8)}} />;
-
-const CollectionSection = ({
-  title,
-  collection,
-  onSurahPress,
-}: {
-  title: string;
-  collection: SurahCollection;
-  onSurahPress: (surah: Surah) => void;
-}) => {
+export default function SurahsView({onSurahPress}: SurahsViewProps) {
   const {theme} = useTheme();
-  // Use the extracted styles with memoization
-  const styles = React.useMemo(
-    () => createCollectionStyles(theme, collection.color),
-    [theme, collection.color],
+
+  // Memoize the surah of the day to prevent recalculation
+  const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
+
+  // Retrieve persisted settings
+  const browseViewModeSetting = useSettings(state => state.browseViewMode);
+  const setBrowseViewModeSetting = useSettings(
+    state => state.setBrowseViewMode,
+  );
+  const browseSortOptionSetting = useSettings(state => state.browseSortOption);
+  const setBrowseSortOptionSetting = useSettings(
+    state => state.setBrowseSortOption,
   );
 
-  // Memoize the surahs array to avoid recreating on each render
-  const surahs = React.useMemo(
-    () => collection.surahs.map(id => SURAHS[id - 1]),
-    [collection.surahs],
+  // Initialize local state from persisted settings
+  const [viewMode, setViewMode] = useState<ViewMode>(browseViewModeSetting);
+  const [sortOption, setSortOption] = useState<SortOption>(
+    browseSortOptionSetting,
   );
 
-  // Memoize the renderItem function to avoid recreating on each render
-  const renderItem = React.useCallback(
-    ({item}: {item: Surah}) => (
-      <SurahCard
-        id={item.id}
-        name={item.name}
-        translatedName={item.translated_name_english}
-        versesCount={item.verses_count}
-        revelationPlace={item.revelation_place}
-        onPress={() => onSurahPress(item)}
-        color={collection.color}
-        enableAnimation
-      />
+  // Sort surahs based on selected option
+  const displaySurahs = useMemo(() => {
+    const result = [...SURAHS];
+
+    switch (sortOption) {
+      case 'asc':
+        return result.sort((a, b) => a.id - b.id);
+      case 'desc':
+        return result.sort((a, b) => b.id - a.id);
+      case 'revelation':
+        return result.sort((a, b) => a.revelation_order - b.revelation_order);
+      default:
+        return result;
+    }
+  }, [sortOption]);
+
+  // Prepare section data based on view mode
+  const sections = useMemo(() => {
+    if (viewMode === 'card') {
+      const pairs = groupSurahsIntoPairs(displaySurahs);
+      return [{title: 'surahs', data: pairs, viewMode: 'card' as const}];
+    } else {
+      return [
+        {
+          title: 'surahs',
+          data: displaySurahs.map(s => [s]),
+          viewMode: 'list' as const,
+        },
+      ];
+    }
+  }, [displaySurahs, viewMode]);
+
+  // Function to generate a consistent color for each surah
+  const getColorForSurah = useCallback((id: number): string => {
+    return GRADIENT_COLORS[id % GRADIENT_COLORS.length];
+  }, []);
+
+  const toggleViewMode = useCallback(() => {
+    const newMode = viewMode === 'card' ? 'list' : 'card';
+    setViewMode(newMode);
+    setBrowseViewModeSetting(newMode);
+  }, [viewMode, setBrowseViewModeSetting]);
+
+  const changeSortOption = useCallback(
+    (option: SortOption) => {
+      setSortOption(option);
+      setBrowseSortOptionSetting(option);
+    },
+    [setBrowseSortOptionSetting],
+  );
+
+  // Render item for SectionList
+  const renderItem = useCallback(
+    ({item, section}: {item: Surah[]; section: {viewMode: ViewMode}}) => {
+      if (section.viewMode === 'card') {
+        return (
+          <View style={styles.cardRow}>
+            {item.map(surah => (
+              <SurahCard
+                key={surah.id}
+                id={surah.id}
+                name={surah.name}
+                translatedName={surah.translated_name_english}
+                versesCount={surah.verses_count}
+                revelationPlace={surah.revelation_place}
+                color={getColorForSurah(surah.id)}
+                onPress={() => onSurahPress(surah)}
+                style={styles.surahCard}
+              />
+            ))}
+            {item.length === 1 && <View style={styles.surahCard} />}
+          </View>
+        );
+      } else {
+        return <SurahItem item={item[0]} onPress={onSurahPress} />;
+      }
+    },
+    [getColorForSurah, onSurahPress],
+  );
+
+  // Render section header (sticky sort options)
+  const renderSectionHeader = useCallback(
+    () => (
+      <View
+        style={[
+          styles.stickyHeader,
+          {backgroundColor: theme.colors.background},
+        ]}>
+        <View style={styles.optionsRow}>
+          {/* Sort options */}
+          <View style={styles.sortOptions}>
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                sortOption === 'asc' && {
+                  backgroundColor: Color(theme.colors.primary)
+                    .alpha(0.1)
+                    .toString(),
+                },
+              ]}
+              activeOpacity={1}
+              onPress={() => changeSortOption('asc')}>
+              <Icon
+                name="arrow-up"
+                type="feather"
+                size={moderateScale(14)}
+                color={
+                  sortOption === 'asc'
+                    ? theme.colors.primary
+                    : theme.colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  {
+                    color:
+                      sortOption === 'asc'
+                        ? theme.colors.primary
+                        : theme.colors.textSecondary,
+                  },
+                ]}>
+                Asc
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                sortOption === 'desc' && {
+                  backgroundColor: Color(theme.colors.primary)
+                    .alpha(0.1)
+                    .toString(),
+                },
+              ]}
+              activeOpacity={1}
+              onPress={() => changeSortOption('desc')}>
+              <Icon
+                name="arrow-down"
+                type="feather"
+                size={moderateScale(14)}
+                color={
+                  sortOption === 'desc'
+                    ? theme.colors.primary
+                    : theme.colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  {
+                    color:
+                      sortOption === 'desc'
+                        ? theme.colors.primary
+                        : theme.colors.textSecondary,
+                  },
+                ]}>
+                Desc
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                sortOption === 'revelation' && {
+                  backgroundColor: Color(theme.colors.primary)
+                    .alpha(0.1)
+                    .toString(),
+                },
+              ]}
+              activeOpacity={1}
+              onPress={() => changeSortOption('revelation')}>
+              <Icon
+                name="calendar"
+                type="feather"
+                size={moderateScale(14)}
+                color={
+                  sortOption === 'revelation'
+                    ? theme.colors.primary
+                    : theme.colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  {
+                    color:
+                      sortOption === 'revelation'
+                        ? theme.colors.primary
+                        : theme.colors.textSecondary,
+                  },
+                ]}>
+                Rev
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* View mode toggle */}
+          <TouchableOpacity
+            style={styles.viewModeButton}
+            onPress={toggleViewMode}
+            activeOpacity={1}>
+            <Icon
+              name={viewMode === 'card' ? 'list' : 'grid'}
+              type="feather"
+              size={moderateScale(16)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
     ),
-    [collection.color, onSurahPress],
+    [sortOption, viewMode, theme, changeSortOption, toggleViewMode],
   );
 
-  // Memoize the keyExtractor function
-  const keyExtractor = React.useCallback(
-    (item: Surah) => `surah-${item.id}`,
+  // List header (hero section)
+  const ListHeader = useMemo(
+    () => (
+      <View style={styles.heroContainer}>
+        <SurahsHero surahOfTheDay={surahOfTheDay} onSurahPress={onSurahPress} />
+      </View>
+    ),
+    [surahOfTheDay, onSurahPress],
+  );
+
+  const keyExtractor = useCallback(
+    (item: Surah[], index: number) =>
+      `row-${index}-${item.map(s => s.id).join('-')}`,
     [],
   );
 
-  // Memoize the content container style
-  const contentContainerStyle = React.useMemo(
-    () => [
-      styles.sectionContent,
-      {paddingRight: moderateScale(15) + moderateScale(8)},
-    ],
-    [styles.sectionContent],
-  );
-
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {collection.description && (
-          <Text style={styles.description}>{collection.description}</Text>
-        )}
-      </View>
-      <FlatList
-        data={surahs}
+    <View style={styles.container}>
+      <SectionList
+        sections={sections}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        ListHeaderComponent={ListHeader}
         keyExtractor={keyExtractor}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={contentContainerStyle}
-        snapToInterval={moderateScale(148)}
-        decelerationRate="fast"
-        snapToAlignment="start"
+        stickySectionHeadersEnabled={true}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.contentContainer}
         ItemSeparatorComponent={ItemSeparator}
+        initialNumToRender={25}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         removeClippedSubviews={true}
-        initialNumToRender={5}
-        maxToRenderPerBatch={5}
-        windowSize={3}
       />
     </View>
   );
-};
+}
 
-// Main component styles
-const mainStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: verticalScale(40),
+    paddingBottom: TOTAL_BOTTOM_PADDING,
   },
-  sectionHeader: {
-    fontSize: moderateScale(22),
-    fontFamily: 'Manrope-Bold',
-    marginVertical: verticalScale(8),
+  heroContainer: {
+    marginBottom: 0,
+  },
+  stickyHeader: {
+    paddingTop: moderateScale(12),
+    paddingBottom: moderateScale(12),
     paddingHorizontal: moderateScale(16),
   },
+  optionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sortOptions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(8),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(16),
+    marginRight: moderateScale(8),
+  },
+  sortButtonText: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-SemiBold',
+    marginLeft: moderateScale(4),
+  },
+  viewModeButton: {
+    padding: moderateScale(6),
+  },
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: moderateScale(16),
+  },
+  surahCard: {
+    width: '48%',
+  },
+  itemSeparator: {
+    height: moderateScale(12),
+  },
 });
-
-// Simple section header component
-const SectionHeader = React.memo(({title}: {title: string}) => {
-  const {theme} = useTheme();
-  return (
-    <Text style={[mainStyles.sectionHeader, {color: theme.colors.text}]}>
-      {title}
-    </Text>
-  );
-});
-
-SectionHeader.displayName = 'SectionHeader';
-
-// Custom function to create subtler gradient colors for both light and dark modes
-
-// Same SECTION_HEIGHT as ScrollingHero for consistency
-
-export default function SurahsView({onSurahPress}: SurahsViewProps) {
-  useTheme();
-
-  // Memoize the surah of the day to prevent recalculation
-  const surahOfTheDay = React.useMemo(() => getSurahOfTheDay(), []);
-
-  // Memoize the category renderers
-  const renderSpecialCategories = React.useMemo(
-    () =>
-      SPECIAL_CATEGORIES.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      )),
-    [onSurahPress],
-  );
-
-  const renderFeaturedCollections = React.useMemo(
-    () =>
-      FEATURED_COLLECTIONS.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      )),
-    [onSurahPress],
-  );
-
-  const renderThemeCollections = React.useMemo(
-    () =>
-      BY_THEME.map(collection => (
-        <CollectionSection
-          key={collection.id}
-          title={collection.title}
-          collection={collection}
-          onSurahPress={onSurahPress}
-        />
-      )),
-    [onSurahPress],
-  );
-
-  return (
-    <ScrollView
-      style={mainStyles.container}
-      contentContainerStyle={mainStyles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      removeClippedSubviews={true}
-      scrollEventThrottle={16}>
-      <SurahsHero surahOfTheDay={surahOfTheDay} onSurahPress={onSurahPress} />
-
-      {renderSpecialCategories}
-
-      <SectionHeader title="Featured Collections" />
-      {renderFeaturedCollections}
-
-      <SectionHeader title="By Theme" />
-      {renderThemeCollections}
-    </ScrollView>
-  );
-}
