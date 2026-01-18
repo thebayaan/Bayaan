@@ -20,10 +20,17 @@ import {useModal} from '@/components/providers/ModalProvider';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {Theme} from '@/utils/themeUtils';
+import {LinearGradient} from 'expo-linear-gradient';
+import {getJuzForSurah, getJuzName} from '@/data/juzData';
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
 type SortOption = 'asc' | 'desc' | 'revelation';
+
+// Type for list items - can be either a Juz header or surah
+type ListItem =
+  | {type: 'juz-header'; juzNumber: number; juzName: string}
+  | {type: 'surah'; surah: Surah};
 
 const ItemSeparator = React.memo(() => {
   const styles = useStyles();
@@ -105,6 +112,29 @@ const useStyles = () => {
     hiddenView: {
       display: 'none',
     },
+    juzHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+      marginTop: moderateScale(8),
+      marginBottom: moderateScale(4),
+    },
+    juzHeaderLine: {
+      flex: 1,
+      height: 1,
+    },
+    juzHeaderPill: {
+      paddingHorizontal: moderateScale(12),
+      paddingVertical: moderateScale(5),
+      borderRadius: moderateScale(12),
+      marginHorizontal: moderateScale(8),
+    },
+    juzHeaderText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-SemiBold',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
   });
 };
 
@@ -165,6 +195,46 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
         return result;
     }
   }, [searchQuery, sortOption]);
+
+  // Prepare list data with Juz headers (only for list view with asc/desc sort)
+  const listDataWithJuzHeaders = useMemo(() => {
+    const shouldShowJuzHeaders =
+      viewMode === 'list' && (sortOption === 'asc' || sortOption === 'desc');
+
+    if (!shouldShowJuzHeaders) {
+      // No Juz headers - just return surahs as ListItems
+      return displaySurahs.map(surah => ({
+        type: 'surah' as const,
+        surah,
+      }));
+    }
+
+    // Add Juz headers when Juz changes
+    const data: ListItem[] = [];
+    let currentJuz: number | null = null;
+
+    displaySurahs.forEach(surah => {
+      const surahJuz = getJuzForSurah(surah.id);
+
+      // Add Juz header when we encounter a new Juz
+      if (surahJuz !== currentJuz) {
+        currentJuz = surahJuz;
+        data.push({
+          type: 'juz-header',
+          juzNumber: surahJuz,
+          juzName: getJuzName(surahJuz),
+        });
+      }
+
+      // Add the surah
+      data.push({
+        type: 'surah',
+        surah,
+      });
+    });
+
+    return data;
+  }, [displaySurahs, viewMode, sortOption]);
 
   // Function to generate a consistent color for each surah
   const getColorForSurah = useCallback((id: number): string => {
@@ -253,12 +323,49 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     [getColorForSurah, handleSurahPress, styles.surahCard],
   );
 
-  // Render a list item using SurahItem
+  // Render a list item (either Juz header or SurahItem)
   const renderListItem = useCallback(
-    ({item}: {item: Surah}) => (
-      <SurahItem item={item} onPress={handleSurahPress} />
-    ),
-    [handleSurahPress],
+    ({item}: {item: ListItem}) => {
+      if (item.type === 'juz-header') {
+        return (
+          <View style={styles.juzHeader}>
+            <LinearGradient
+              colors={['transparent', theme.colors.border]}
+              locations={[0, 0.5]}
+              start={{x: 0, y: 0.5}}
+              end={{x: 1, y: 0.5}}
+              style={styles.juzHeaderLine}
+            />
+            <View
+              style={[
+                styles.juzHeaderPill,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.05)
+                    .toString(),
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.juzHeaderText,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                {item.juzName}
+              </Text>
+            </View>
+            <LinearGradient
+              colors={[theme.colors.border, 'transparent']}
+              locations={[0.5, 1]}
+              start={{x: 0, y: 0.5}}
+              end={{x: 1, y: 0.5}}
+              style={styles.juzHeaderLine}
+            />
+          </View>
+        );
+      }
+      return <SurahItem item={item.surah} onPress={handleSurahPress} />;
+    },
+    [handleSurahPress, styles, theme.colors],
   );
 
   // Sort and view options row
@@ -429,9 +536,13 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
               viewMode !== 'list' && styles.hiddenView,
             ]}>
             <FlatList
-              data={displaySurahs}
+              data={listDataWithJuzHeaders}
               renderItem={renderListItem}
-              keyExtractor={item => `list-${item.id}`}
+              keyExtractor={(item, index) =>
+                item.type === 'juz-header'
+                  ? `juz-${item.juzNumber}`
+                  : `list-${item.surah.id}-${index}`
+              }
               showsVerticalScrollIndicator={false}
               scrollEnabled={true}
               contentContainerStyle={[
