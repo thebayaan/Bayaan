@@ -487,7 +487,9 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         reciterId={reciterId}
         reciterName={reciter?.name || 'Reciter'}
         reciterImageUrl={reciter?.image_url || undefined}
-        subtitle={`${downloadData.length} ${downloadData.length === 1 ? 'surah' : 'surahs'} downloaded`}
+        subtitle={`${downloadData.length} ${
+          downloadData.length === 1 ? 'surah' : 'surahs'
+        } downloaded`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         theme={theme}
@@ -541,7 +543,9 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   };
 
   const getItemKey = (item: DownloadTrackData) =>
-    `${item.download.reciterId}:${item.download.surahId}:${item.download.rewayatId || ''}`;
+    `${item.download.reciterId}:${item.download.surahId}:${
+      item.download.rewayatId || ''
+    }`;
 
   if (loading) {
     return (

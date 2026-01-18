@@ -59,7 +59,9 @@ export function generateSmartAudioUrl(
       // This ensures paths remain valid after iOS app updates
       const absolutePath = resolveFilePath(download.filePath);
       console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId}${rewayatId ? ` (Rewayat: ${rewayatId})` : ''}: ${absolutePath}`,
+        `Using local file for ${reciter.name} - Surah ${surahId}${
+          rewayatId ? ` (Rewayat: ${rewayatId})` : ''
+        }: ${absolutePath}`,
       );
       return absolutePath;
     }
@@ -67,7 +69,9 @@ export function generateSmartAudioUrl(
 
   // Fall back to remote URL if not downloaded
   console.log(
-    `Using remote URL for ${reciter.name} - Surah ${surahId}${rewayatId ? ` (Rewayat: ${rewayatId})` : ''}`,
+    `Using remote URL for ${reciter.name} - Surah ${surahId}${
+      rewayatId ? ` (Rewayat: ${rewayatId})` : ''
+    }`,
   );
   return generateAudioUrl(reciter, surahId, rewayatId);
 }

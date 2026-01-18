@@ -736,7 +736,9 @@ const LovedScreen = () => {
     return (
       <LovedHeader
         title="Loved Surahs"
-        subtitle={`${lovedData.length} ${lovedData.length === 1 ? 'surah' : 'surahs'}`}
+        subtitle={`${lovedData.length} ${
+          lovedData.length === 1 ? 'surah' : 'surahs'
+        }`}
         backgroundColor="#FF6B6B"
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
@@ -795,7 +797,9 @@ const LovedScreen = () => {
   };
 
   const getItemKey = (item: LovedTrackData) =>
-    `${item.track.reciterId}:${item.track.surahId}:${item.track.rewayatId || ''}`;
+    `${item.track.reciterId}:${item.track.surahId}:${
+      item.track.rewayatId || ''
+    }`;
 
   if (loading) {
     return (

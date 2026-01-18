@@ -55,7 +55,9 @@ async function resizeForIOS(inputFile, theme, type = 'splash') {
   for (const size of sizes) {
     const outputFile = path.join(
       outputDir,
-      `${type === 'splash' ? 'splash_' : 'calligraphy-'}${theme}${size.suffix}.png`,
+      `${type === 'splash' ? 'splash_' : 'calligraphy-'}${theme}${
+        size.suffix
+      }.png`,
     );
     await sharp(inputFile)
       .resize(size.width, size.height, {

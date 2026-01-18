@@ -442,7 +442,11 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                 data={recentSearches}
                 renderItem={renderRecentSearch}
                 keyExtractor={(item, index) =>
-                  `${item.type}-${item.type === 'surah' ? (item.item as Surah).id : (item.item as Reciter).id}-${index}`
+                  `${item.type}-${
+                    item.type === 'surah'
+                      ? (item.item as Surah).id
+                      : (item.item as Reciter).id
+                  }-${index}`
                 }
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
