@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Self-Update Command
+
+When Claude learns something essential about this project that should be remembered for future sessions, use this command:
+
+```bash
+# Update CLAUDE.md with new learnings
+# Claude should edit this file directly when discovering:
+# - New patterns or conventions in the codebase
+# - Important configuration details
+# - Common issues and their solutions
+# - New services or features added
+# - Changes to the deployment process
+```
+
+**When to update this file:**
+- After discovering a non-obvious solution to a problem
+- When adding new features that require specific patterns
+- After debugging issues that took significant effort to resolve
+- When external services or APIs are integrated
+- When project conventions are established or changed
+
+---
+
 ## Common Commands
 
 ### Development
@@ -9,8 +32,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # Start the development server
 npm start
-# or
-yarn start
 
 # Start specific platform
 npm run ios        # Run on iOS simulator (macOS only)
@@ -60,27 +81,135 @@ npm run generate-reciter-images
 # Generate app icons
 npm run generate-icons
 
-# Fetch reciter data
+# Fetch reciter data from Supabase
 npm run fetch-reciters
 
 # Resize splash images
 npm run resize-splash-images
 ```
 
+---
+
+## Code Style and Conventions
+
+### TypeScript Guidelines
+
+- Write concise, type-safe TypeScript code
+- Use functional components and hooks over class components
+- Ensure components are modular, reusable, and maintainable
+- Organize files by feature, grouping related components, hooks, and styles
+- Enable strict typing in `tsconfig.json`
+- Avoid using `any`; strive for precise types
+- Utilize `React.FC` for defining functional components with props
+- Avoid enums; use maps instead
+- Use TypeScript interfaces for props and state
+
+### Naming Conventions
+
+- **Variables/Functions**: camelCase (e.g., `isFetchingData`, `handleUserInput`)
+- **Components**: PascalCase (e.g., `UserProfile`, `ChatScreen`)
+- **Directories**: lowercase with hyphens (e.g., `user-profile`, `chat-screen`)
+- **Files**: Match component name for components, camelCase for utilities
+
+### Syntax and Formatting
+
+- Use the `function` keyword for pure functions
+- Avoid unnecessary curly braces in conditionals; use concise syntax for simple statements
+- Use declarative JSX
+- Use Prettier for consistent code formatting
+
+### Component Structure Pattern
+
+Components follow a consistent pattern:
+```typescript
+// 1. Props interface at the top
+interface MyComponentProps {
+  title: string;
+  onPress: () => void;
+}
+
+// 2. Component definition
+export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
+  // 3. Hooks/state near the beginning
+  const [isLoading, setIsLoading] = useState(false);
+  const theme = useTheme();
+
+  // 4. Helper functions/handlers in the middle
+  const handlePress = useCallback(() => {
+    setIsLoading(true);
+    onPress();
+  }, [onPress]);
+
+  // 5. Return statement with JSX at the end
+  return (
+    <TouchableOpacity onPress={handlePress}>
+      <Text>{title}</Text>
+    </TouchableOpacity>
+  );
+};
+```
+
+---
+
+## Performance Optimization
+
+### React Native Best Practices
+
+- Minimize `useEffect`, `useState`, and heavy computations inside render methods
+- Use `React.memo()` for components with static props to prevent unnecessary re-renders
+- Optimize FlatLists with props like `removeClippedSubviews`, `maxToRenderPerBatch`, and `windowSize`
+- Use `getItemLayout` for FlatLists when items have a consistent size
+- Avoid anonymous functions in `renderItem` or event handlers to prevent re-renders
+- Minimize the use of useState and useEffect; prefer context and reducers for state management
+- Use Expo's AppLoading and SplashScreen for optimized app startup experience
+- Optimize images: use WebP format where supported, implement lazy loading with expo-image
+- Profile and monitor performance using React Native's built-in tools and Expo's debugging features
+- Use `useMemo` and `useCallback` hooks appropriately
+
+### UI and Styling
+
+- Use consistent styling through `StyleSheet.create()`
+- Ensure responsive design by considering different screen sizes and orientations
+- Optimize image handling using `react-native-fast-image`
+- Implement responsive design with Flexbox and Expo's `useWindowDimensions`
+- Implement dark mode support using Expo's `useColorScheme`
+- Ensure high accessibility (a11y) standards using ARIA roles and native accessibility props
+- Leverage `react-native-reanimated` and `react-native-gesture-handler` for performant animations
+
+### Safe Area Management
+
+- Use `SafeAreaProvider` from `react-native-safe-area-context` globally
+- Wrap top-level components with `SafeAreaView` to handle notches, status bars, and screen insets
+- Use `SafeAreaScrollView` for scrollable content
+- Avoid hardcoding padding or margins for safe areas
+
+---
+
 ## Architecture Overview
 
-Bayaan is a React Native/Expo application for Quran audio playback with the following architecture:
+Bayaan is a React Native/Expo application for Quran audio playback.
+
+### Tech Stack
+
+- **Framework:** React Native (0.76.9) with Expo SDK 52
+- **Navigation:** Expo Router v4 (file-based routing)
+- **State Management:** Zustand (4.5.5)
+- **Audio:** React Native Track Player (4.1.1)
+- **Storage:** AsyncStorage, Expo SQLite
+- **UI:** @gorhom/bottom-sheet, react-native-reanimated, moti
+- **Images:** react-native-fast-image
+- **i18n:** react-i18next
 
 ### Core Architecture Components
 
-1. **Expo Router (v4)**: File-based routing system for navigation
+1. **Expo Router (v4)**: File-based routing system
    - Route files in `/app` directory (similar to Next.js)
    - Nested routes in subdirectories
    - Layout files (`_layout.tsx`) provide shared UI elements
 
 2. **Zustand State Management**:
    - Global stores in `/store` directory
-   - Separate stores for different concerns (auth, player, queue, etc.)
+   - Separate stores for different concerns (player, queue, downloads, etc.)
    - Persistent state with AsyncStorage integration
 
 3. **Audio Playback System**:
@@ -88,43 +217,75 @@ Bayaan is a React Native/Expo application for Quran audio playback with the foll
    - Custom playback services in `/services/player`
    - Queue management in `/services/queue`
 
-4. **Reciter & Surah Data Management**:
-   - Static data in `/data` directory
-   - Dynamic loading via service layer
-   - Image caching with `react-native-fast-image`
+4. **App Initialization** (`services/AppInitializer.ts`):
+   - Central orchestrator for all service initialization
+   - Priority-based initialization order
+   - Critical vs non-critical service handling
+   - SQLite services must register here for preloading
 
-### Key Subsystems
+### Code Structure
 
-#### Audio Playback System
+```
+Bayaan/
+├── app/               # Expo Router screens and layouts
+│   ├── (auth)/        # Authentication screens
+│   ├── (tabs)/        # Main tab-based screens
+│   └── _layout.tsx    # Root layout component
+├── assets/            # Static assets (images, fonts)
+├── components/        # Reusable UI components
+├── constants/         # Constant values used across the app
+├── contexts/          # React Context providers
+├── data/              # Static data files (reciters.json, surahs.json)
+├── docs/              # Documentation
+├── hooks/             # Custom React hooks
+├── services/          # Global API services/utilities
+│   ├── player/        # Audio player service
+│   ├── queue/         # Queue management service
+│   ├── downloadService.ts  # Offline downloads
+│   └── AppInitializer.ts   # App startup orchestrator
+├── store/             # Zustand state management stores
+├── styles/            # Global styles and color schemes
+├── theme/             # Theme configuration
+├── types/             # TypeScript type definitions
+└── utils/             # Utility functions
+```
 
-The audio system consists of two main components:
+### Key Custom Hooks
 
-1. **Player Service** (`/services/player`):
-   - Unified state interface for player controls
-   - Event system for playback events
-   - Background playback service
-   - Error handling and recovery
+- `useUnifiedPlayer`: Interface to the audio playback system
+- `useQueue`: Queue management operations
+- `useTheme`: Theme context and utilities
+- `useReciterNavigation`: Navigation helpers for reciter screens
+- `usePlaylists`: Playlist management (preloaded via AppInitializer)
+- `useDownloads`: Download management for offline playback
 
-2. **Queue Service** (`/services/queue`):
-   - Queue management and operations
-   - Batch loading for efficient memory usage
-   - State synchronization with player
+---
 
-The `useUnifiedPlayer` hook connects components to this system.
+## Error Handling and Validation
 
-#### Authentication & User Data
+- Use Zod for runtime validation and error handling
+- Handle errors at the beginning of functions
+- Use early returns for error conditions to avoid deeply nested if statements
+- Avoid unnecessary else statements; use if-return pattern instead
+- Implement global error boundaries to catch and handle unexpected errors
 
-User authentication is managed through:
-- Auth contexts and hooks
-- Persistent state in Zustand stores
-- Service layer for API communication
+---
 
-#### UI Theming
+## Internationalization (i18n)
 
-The app supports dynamic themes (light/dark/system) through:
-- Theme context and hooks
-- Dynamic style generation
-- Color schemes in `/styles/colorSchemes.ts`
+- Use `react-i18next` for internationalization
+- Support multiple languages and RTL layouts
+- Ensure text scaling and font adjustments for accessibility
+
+---
+
+## Security
+
+- Sanitize user inputs to prevent XSS attacks
+- Use `react-native-encrypted-storage` for secure storage of sensitive data
+- Ensure secure communication with APIs using HTTPS
+
+---
 
 ## Git Workflow
 
@@ -136,86 +297,240 @@ The project follows a modified GitFlow workflow:
 - Hotfix branches: `hotfix/issue-description`
 - Release branches: `release/version-number`
 
-## Version Management
+### After Version Bump
 
-Bayaan uses a Git-based version management system:
-
-1. Semantic version (MAJOR.MINOR.PATCH) from Git tags
-2. Build number from Git commit count
-3. Version bump through npm scripts (`version:patch`, etc.)
-
-After bumping the version:
 ```bash
 git commit -am "Bump version to X.Y.Z"
 git push
 git push origin vX.Y.Z
 ```
 
-## Code Structure
-
-```
-Bayaan/
-├── app/               # Expo Router screens and layouts
-│   ├── (auth)/        # Authentication screens
-│   ├── (tabs)/        # Main tab-based screens
-│   ├── services/      # Route-specific services
-│   └── _layout.tsx    # Root layout component
-├── assets/            # Static assets (images, fonts)
-├── components/        # Reusable UI components
-├── constants/         # Constant values used across the app
-├── contexts/          # React Context providers
-├── data/              # Static data files
-├── hooks/             # Custom React hooks
-├── services/          # Global API services/utilities
-│   ├── player/        # Audio player service
-│   └── queue/         # Queue management service
-├── store/             # Zustand state management stores
-├── styles/            # Global styles or themes
-├── theme/             # Theme configuration
-├── types/             # TypeScript type definitions
-└── utils/             # Utility functions
-```
-
-## Important Patterns
-
-### Component Structure
-
-Components follow a consistent pattern:
-- Props interface at the top
-- Hooks/state near the beginning
-- Helper functions/handlers in the middle
-- Return statement with JSX at the end
-
-### Custom Hooks
-
-Custom hooks handle reusable logic:
-- `useUnifiedPlayer`: Interface to the audio playback system
-- `useQueue`: Queue management operations
-- `useTheme`: Theme context and utilities
-- `useReciterNavigation`: Navigation helpers for reciter screens
-
-### State Management
-
-Zustand stores are used for global state:
-- Independent slices for different concerns
-- Persistent state with AsyncStorage
-- Selectors for efficient component updates
+---
 
 ## Deployment Process
 
-For detailed deployment information, refer to DEPLOYMENT.md. In summary:
+For detailed deployment information, refer to `docs/deployment/deployment.md`.
+
+### Quick Summary
 
 1. Bump version using appropriate command
 2. Commit changes and push with version tag
-3. For Android:
-   - Generate fresh native build with `expo prebuild`
-   - Build release bundle with Gradle
-4. For iOS:
-   - Generate fresh native build with `expo prebuild`
-   - Use Xcode to build and archive
+3. **Android:**
+   ```bash
+   expo prebuild --platform android --clean
+   cd android && ./gradlew bundleRelease
+   ```
+   AAB location: `android/app/build/outputs/bundle/release/app-release.aab`
 
-## Testing Guidelines
+4. **iOS:**
+   ```bash
+   expo prebuild --platform ios --clean
+   cd ios && open Bayaan.xcworkspace
+   ```
+   In Xcode: Clean Build Folder → Build → Archive
 
-- Unit tests are located in `__tests__` directories
-- Jest is used as the testing framework
-- Run tests with `yarn test`
+### Keystore & Credentials
+
+- Keystore: `~/Documents/app-credentials/bayaan/keystore/bayaan-upload-key.keystore`
+- Credentials: `~/.gradle/gradle.properties` (BAYAAN_UPLOAD_* variables)
+- iOS Team ID: `S4W5Q2L53W` (auto-configured via `withIOSTeam.js` plugin)
+
+---
+
+## Adding/Updating Reciters in Supabase
+
+This section documents the complete process for adding new reciters or updating existing ones.
+
+### Supabase Configuration
+
+**Project Details:**
+- Project ID: `tncrklrswaounqmirayh`
+- Project URL: `https://tncrklrswaounqmirayh.supabase.co`
+- Environment variables: `~/Documents/Bayaan/.env`
+
+**Required Keys:**
+- `SUPABASE_URL` - Project URL
+- `SUPABASE_ANON_KEY` - For read operations
+- `SUPABASE_SERVICE_ROLE_KEY` - Required for storage uploads (bypasses RLS)
+
+### Database Schema
+
+#### `reciters` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| name | text | Reciter's display name |
+| date | text | Birth/death dates or era |
+| image_url | text | URL to reciter's image |
+
+#### `rewayat` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| reciter_id | uuid | Foreign key to reciters |
+| name | text | Rewayah name (e.g., "Hafs A'n Asim") |
+| style | text | Recitation style |
+| server | text | Base URL for audio files |
+| surah_total | integer | Total number of available surahs |
+| surah_list | text | Comma-separated list of surah numbers |
+| source_type | text | Source identifier ("supabase", "mp3quran") |
+
+### Storage Bucket Structure
+
+```
+quran-audio/
+└── reciters/
+    └── {reciter-folder-name}/
+        ├── 001.mp3    # Al-Fatiha
+        ├── 002.mp3    # Al-Baqarah
+        └── 114.mp3    # An-Nas
+```
+
+**File Naming Convention:**
+- 3-digit zero-padded surah numbers: `001.mp3`, `002.mp3`, ..., `114.mp3`
+- Folder names: lowercase with hyphens (e.g., `mohammed-jibreel`)
+
+### Step-by-Step Process
+
+#### 1. Download Recitations
+
+**From SoundCloud:**
+```bash
+cd /Users/osmansaeday/Documents/Recitations/{reciter-name}
+yt-dlp -x --audio-format mp3 --audio-quality 0 \
+  -o "%(playlist_index)03d.%(ext)s" \
+  --download-archive downloaded.txt \
+  "SOUNDCLOUD_PLAYLIST_URL"
+```
+
+**From MP3Quran.net:**
+```bash
+# API: https://mp3quran.net/api/v3/reciters?language=eng
+curl -o 001.mp3 "https://server{X}.mp3quran.net/{reciter}/001.mp3"
+```
+
+#### 2. Verify Downloaded Files
+
+```bash
+ls -1 *.mp3 | wc -l                    # Count files
+ls *.mp3 | sed 's/.mp3//' | sort -n    # Check for gaps
+ls -lh *.mp3                           # Check file sizes
+```
+
+#### 3. Check if Reciter Exists
+
+```sql
+SELECT * FROM reciters WHERE name ILIKE '%reciter name%';
+SELECT * FROM rewayat WHERE reciter_id = 'reciter-uuid';
+```
+
+#### 4a. Add NEW Reciter
+
+```sql
+INSERT INTO reciters (id, name, date, image_url)
+VALUES (gen_random_uuid(), 'Reciter Name', 'Era', 'image_url');
+
+INSERT INTO rewayat (id, reciter_id, name, style, server, surah_total, surah_list, source_type)
+VALUES (
+  gen_random_uuid(),
+  'reciter-uuid',
+  'Hafs A''n Asim',
+  'Murattal',
+  'https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/public/quran-audio/reciters/{folder}',
+  114,
+  '1,2,3,...,114',
+  'supabase'
+);
+```
+
+#### 4b. Update EXISTING Reciter
+
+```sql
+UPDATE rewayat SET
+  server = 'https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/public/quran-audio/reciters/{folder}',
+  surah_total = 114,
+  surah_list = '1,2,3,...,114',
+  source_type = 'supabase'
+WHERE id = 'rewayat-uuid';
+```
+
+#### 5. Upload to Supabase Storage
+
+**Important:** Use SERVICE_ROLE_KEY (anon key fails due to RLS).
+
+```bash
+cd /Users/osmansaeday/Documents/Recitations/{reciter-name}
+
+for file in *.mp3; do
+  curl -X POST "https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/quran-audio/reciters/{folder}/$file" \
+    -H "Authorization: Bearer {SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Content-Type: audio/mpeg" \
+    --data-binary "@$file"
+done
+```
+
+**For large files (>100MB):**
+```bash
+ffprobe {file}.mp3 2>&1 | grep -E "bitrate|Duration"
+ffmpeg -i {file}.mp3 -b:a 128k -y {file}_compressed.mp3
+mv {file}_compressed.mp3 {file}.mp3
+```
+
+#### 6. Verify Upload
+
+```bash
+curl -s "https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/list/quran-audio" \
+  -H "Authorization: Bearer {SERVICE_ROLE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"prefix":"reciters/{folder}/","limit":120}' | jq 'length'
+```
+
+#### 7. Update Frontend Data
+
+```bash
+cd /Users/osmansaeday/Bayaan/Bayaan
+npm run fetch-reciters
+```
+
+### Common Issues and Solutions
+
+| Issue | Solution |
+|-------|----------|
+| "Payload too large" | Compress to <100MB using ffmpeg at 128kbps |
+| "RLS policy violation" | Use SERVICE_ROLE_KEY instead of ANON_KEY |
+| Missing @supabase/supabase-js | Run `npm install @supabase/supabase-js` |
+| Incomplete SoundCloud downloads | Use `--download-archive downloaded.txt` to resume |
+| Files not playing | Verify 3-digit naming, check server URL has no trailing slash |
+
+### Audio Sources Reference
+
+| Source | URL Pattern |
+|--------|-------------|
+| MP3Quran.net | `https://server{X}.mp3quran.net/{reciter}/{surah}.mp3` |
+| Archive.org | `https://archive.org/download/{collection}/{file}` |
+| SoundCloud | Use yt-dlp with playlist URL |
+| Supabase | `https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/public/quran-audio/reciters/{folder}/{surah}.mp3` |
+
+### Local Recitations Directory
+
+```
+/Users/osmansaeday/Documents/Recitations/
+├── ahmed-bin-taleb/     # 109 surahs
+├── mohammed-jibreel/    # 114 surahs (complete)
+└── {other-reciters}/
+```
+
+---
+
+## Documentation Reference
+
+Additional documentation is available in the `docs/` directory:
+
+- **[App Initialization](docs/development/app-initialization.md)** - App startup process and service registration
+- **[Downloads Feature](docs/features/downloads.md)** - Offline download functionality
+- **[Player System](docs/features/player.md)** - Audio player architecture
+- **[Queue Management](docs/features/queue.md)** - Queue system
+- **[Deployment Guide](docs/deployment/deployment.md)** - Build and release procedures
+- **[Version Management](docs/deployment/version-management.md)** - Git-based versioning
+- **[Git Workflow](docs/development/git-workflow.md)** - Branching and collaboration
+
