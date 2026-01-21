@@ -28,7 +28,7 @@ import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
@@ -69,7 +69,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
-  const {showSelectReciter} = useModal();
 
   // Clear query and exit search mode when closing
   useEffect(() => {
@@ -265,7 +264,9 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       } else {
         const surah = result.item as Surah;
         if (askEveryTime) {
-          showSelectReciter(surah.id.toString(), 'search');
+          SheetManager.show('select-reciter', {
+            payload: {surahId: surah.id.toString(), source: 'search'},
+          });
           return;
         }
 
@@ -289,11 +290,15 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                 params: {reciterImageUrl: defaultReciter.image_url},
               });
             } else {
-              showSelectReciter(surah.id.toString(), 'search');
+              SheetManager.show('select-reciter', {
+                payload: {surahId: surah.id.toString(), source: 'search'},
+              });
             }
             break;
           default:
-            showSelectReciter(surah.id.toString(), 'search');
+            SheetManager.show('select-reciter', {
+              payload: {surahId: surah.id.toString(), source: 'search'},
+            });
         }
       }
     },
@@ -303,7 +308,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       askEveryTime,
       defaultReciterSelection,
       defaultReciter,
-      showSelectReciter,
     ],
   );
 

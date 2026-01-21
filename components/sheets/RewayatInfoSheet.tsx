@@ -1,45 +1,37 @@
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, ScrollView, Platform} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  Dimensions,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from './BaseModal';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {RewayatIcon} from '@/components/Icons';
 import ReadMore from '@fawazahmed/react-native-read-more';
 
-interface RewayatStyle {
-  id: string;
-  name: string;
-  style: string;
-  isSelected?: boolean;
-  onSelect?: () => void;
-}
-
-interface RewayatInfoModalProps {
-  bottomSheetRef: React.RefObject<BottomSheet>;
-  availableRewayat: RewayatStyle[];
-  onRewayatSelect?: (rewayatId: string) => void;
-  selectedRewayatId?: string;
-  onClose?: () => void;
-}
-
-export const RewayatInfoModal: React.FC<RewayatInfoModalProps> = ({
-  bottomSheetRef,
-  availableRewayat,
-  onRewayatSelect,
-  selectedRewayatId,
-  onClose,
-}) => {
+export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const [, setIsExpanded] = useState(false);
 
-  const handleRewayatSelect = (rewayatId: string) => {
-    if (onRewayatSelect) {
-      onRewayatSelect(rewayatId);
-    }
+  const payload = props.payload;
+  const availableRewayat = payload?.rewayat ?? [];
+  const selectedRewayatId = payload?.selectedId;
+
+  const handleRewayatSelect = async (rewayatId: string) => {
+    setIsExpanded(false);
+    await SheetManager.hide('rewayat-info', {
+      payload: rewayatId,
+    });
   };
 
   const explanationText = `A Rewayah (رواية, plural: Rewayat رِوَايَات) is a specific method of reciting the Quran that represents a particular transmission route within a larger Qira'at (قِرَاءَة, plural: Qira'at قِرَاءَات) tradition.
@@ -53,24 +45,30 @@ The most widely used Rewayah today is Hafs 'an Assem (حَفْص عَن عَاص
 
 Each Rewayah may have slight variations in pronunciation, elongation, or articulation points. These differences are purely phonetic and never alter the meaning of the Quranic text, as they all represent authentic ways of reciting the Quran that have been meticulously preserved.`;
 
+  if (availableRewayat.length === 0) {
+    return null;
+  }
+
   return (
-    <BaseModal
-      bottomSheetRef={bottomSheetRef}
-      snapPoints={['90%']}
-      title="About Rewayat"
-      index={0}
-      onChange={index => {
-        if (index === -1) {
-          setIsExpanded(false);
-          onClose?.();
-        }
-      }}>
+    <ActionSheet
+      id={props.sheetId}
+      containerStyle={[
+        styles.sheetContainer,
+        {backgroundColor: theme.colors.background},
+      ]}
+      indicatorStyle={[
+        styles.indicator,
+        {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()},
+      ]}
+      gestureEnabled={true}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>About Rewayat</Text>
+      </View>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         bounces={true}
         nestedScrollEnabled={Platform.OS === 'android'}
-        disableScrollViewPanResponder={Platform.OS === 'android'}
         scrollEventThrottle={16}>
         <View style={styles.content}>
           <View style={styles.iconContainer}>
@@ -114,21 +112,44 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
           </View>
         </View>
       </ScrollView>
-    </BaseModal>
+    </ActionSheet>
   );
 };
 
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
+    sheetContainer: {
+      borderTopLeftRadius: moderateScale(20),
+      borderTopRightRadius: moderateScale(20),
+      paddingTop: moderateScale(8),
+      height: SCREEN_HEIGHT * 0.85,
+    },
+    indicator: {
+      width: moderateScale(40),
+    },
+    headerContainer: {
+      alignItems: 'center',
+      paddingVertical: moderateScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+    },
+    headerTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
     scrollView: {
-      flex: 1,
+      height: '100%',
     },
     content: {
+      paddingHorizontal: moderateScale(20),
       paddingBottom: moderateScale(20),
     },
     iconContainer: {
       alignItems: 'center',
-      marginBottom: moderateScale(20),
+      marginVertical: moderateScale(20),
     },
     description: {
       fontSize: moderateScale(16),

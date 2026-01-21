@@ -23,7 +23,7 @@ import {StatusBar} from 'expo-status-bar';
 import {CollectionCard} from '@/components/CollectionCard';
 import SearchBar from '@/components/SearchBar';
 import {Reciter} from '@/data/reciterData';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {Ionicons} from '@expo/vector-icons';
 
 type ReciterListItem =
@@ -65,8 +65,6 @@ export default function FavoriteRecitersScreen() {
   const {width} = useWindowDimensions();
   const columns = calculateColumns(width);
   const itemWidth = calculateItemWidth(width, columns);
-  const {showFavoriteReciters} = useModal();
-
   const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
   const [isHeaderVisible, setIsHeaderVisible] = useState(false);
   const [isStatusBarDark, setIsStatusBarDark] = useState(false);
@@ -102,8 +100,8 @@ export default function FavoriteRecitersScreen() {
   );
 
   const handleOpenSelectReciters = useCallback(() => {
-    showFavoriteReciters();
-  }, [showFavoriteReciters]);
+    SheetManager.show('favorite-reciters');
+  }, []);
 
   return (
     <View style={styles.container}>

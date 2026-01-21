@@ -28,7 +28,7 @@ import {getReciterArtwork} from '@/utils/artworkUtils';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {shuffleArray} from '@/utils/arrayUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
@@ -96,7 +96,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
   const {addRecentTrack} = useRecentlyPlayedStore();
-  const {showSurahOptions, showRewayatInfo} = useModal();
   const {reciterPreferences, setReciterPreference} = useSettings();
 
   // Retrieve persisted reciter profile settings
@@ -664,10 +663,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }));
   }, [reciter?.rewayat]);
 
-  const handleRewayatInfoPress = useCallback(() => {
+  const handleRewayatInfoPress = useCallback(async () => {
     if (!reciter) return;
 
-    // Convert rewayat array to RewayatStyle array format expected by the modal
+    // Convert rewayat array to RewayatStyle array format expected by the sheet
     const rewayatStyles: RewayatStyle[] = reciter.rewayat.map(r => ({
       id: r.id,
       name: r.name,
@@ -675,8 +674,17 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       surah_list: r.surah_list,
     }));
 
-    showRewayatInfo(rewayatStyles, selectedRewayatId, handleRewayatChange);
-  }, [handleRewayatChange, reciter, selectedRewayatId, showRewayatInfo]);
+    const result = await SheetManager.show('rewayat-info', {
+      payload: {
+        rewayat: rewayatStyles,
+        selectedId: selectedRewayatId,
+      },
+    });
+
+    if (result) {
+      handleRewayatChange(result);
+    }
+  }, [handleRewayatChange, reciter, selectedRewayatId]);
 
   const dominantColors = useImageColors(reciter?.name);
   const isLoadingColors =
@@ -872,12 +880,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       isLoved: isLovedWithCurrentRewayat,
       isDownloaded: isDownloaded,
       onOptionsPress: (surah: Surah) =>
-        showSurahOptions(
-          surah,
-          currentReciterId,
-          handleAddToQueue,
-          selectedRewayat?.id,
-        ),
+        SheetManager.show('surah-options', {
+          payload: {
+            surah,
+            reciterId: currentReciterId,
+            rewayatId: selectedRewayat?.id,
+            onAddToQueue: handleAddToQueue,
+          },
+        }),
       onScroll: handleScroll,
       viewMode,
       sortOption,
@@ -894,7 +904,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       currentReciterId,
       isLovedWithCurrentRewayat,
       isDownloaded,
-      showSurahOptions,
       handleAddToQueue,
       selectedRewayat?.id,
       handleScroll,
@@ -931,12 +940,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           reciterId={currentReciterId}
           isLoved={isLovedWithCurrentRewayat}
           onOptionsPress={(surah: Surah) =>
-            showSurahOptions(
-              surah,
-              currentReciterId,
-              handleAddToQueue,
-              selectedRewayat?.id,
-            )
+            SheetManager.show('surah-options', {
+              payload: {
+                surah,
+                reciterId: currentReciterId,
+                rewayatId: selectedRewayat?.id,
+                onAddToQueue: handleAddToQueue,
+              },
+            })
           }
           searchQuery={searchQuery}
           onSearchChange={handleSearch}
