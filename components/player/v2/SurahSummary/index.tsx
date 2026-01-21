@@ -4,7 +4,6 @@ import * as Linking from 'expo-linking';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import BottomSheet from '@gorhom/bottom-sheet';
 import ReadMore from '@fawazahmed/react-native-read-more';
 
 type SurahInfo = {
@@ -18,12 +17,12 @@ type SurahInfo = {
 
 interface SurahSummaryProps {
   surahInfo: SurahInfo;
-  summaryBottomSheetRef: React.RefObject<BottomSheet>;
+  onReadMore: () => void;
 }
 
 export const SurahSummary: React.FC<SurahSummaryProps> = ({
   surahInfo,
-  summaryBottomSheetRef,
+  onReadMore,
 }) => {
   const {theme} = useTheme();
   const {queue} = useUnifiedPlayer();
@@ -33,10 +32,6 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
     ? parseInt(currentTrack.surahId, 10)
     : undefined;
   const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
-
-  const handleReadMore = () => {
-    summaryBottomSheetRef.current?.expand();
-  };
 
   const handleLinkPress = async () => {
     if (!surahNumber) return;
@@ -64,7 +59,7 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
           shadowColor: theme.colors.shadow,
         },
       ]}>
-      <TouchableOpacity activeOpacity={0.99} onPress={handleReadMore}>
+      <TouchableOpacity activeOpacity={0.99} onPress={onReadMore}>
         <Text style={[styles.title, {color: theme.colors.text}]}>
           About {currentSurahInfo.surah_name}
         </Text>
@@ -75,7 +70,7 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
           seeLessText="read full"
           seeMoreStyle={[styles.readMoreText, {color: theme.colors.text}]}
           seeLessStyle={[styles.readMoreText, {color: theme.colors.text}]}
-          onSeeLess={handleReadMore}>
+          onSeeLess={onReadMore}>
           {currentSurahInfo.short_text}
         </ReadMore>
       </TouchableOpacity>

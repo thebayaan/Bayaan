@@ -1,53 +1,55 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, TouchableOpacity, ScrollView, Alert} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Surah} from '@/data/surahData';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
-import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from './BaseModal';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useLoved} from '@/hooks/useLoved';
-import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {Icon} from '@rneui/themed';
 import Color from 'color';
 
-interface SelectPlaylistModalProps {
-  bottomSheetRef: React.RefObject<BottomSheet>;
-  surah: Surah;
-  reciterId: string;
-  rewayatId?: string;
-  onClose: () => void;
-  onPlaylistSelected?: (playlistId: string) => void;
-}
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
-  bottomSheetRef,
-  surah,
-  reciterId,
-  rewayatId,
-  onClose,
-  onPlaylistSelected,
-}) => {
+export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {playlists, createPlaylist, addToPlaylist} = usePlaylists();
   const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
-  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  const payload = props.payload;
+  const surah = payload?.surah;
+  const reciterId = payload?.reciterId ?? '';
+  const rewayatId = payload?.rewayatId;
 
   // Calculate loved state
   const isLovedState = reciterId
     ? rewayatId
-      ? isLovedWithRewayat(reciterId, surah.id.toString(), rewayatId)
-      : isLoved(reciterId, surah.id.toString())
+      ? isLovedWithRewayat(reciterId, surah?.id?.toString() ?? '', rewayatId)
+      : isLoved(reciterId, surah?.id?.toString() ?? '')
     : false;
+
+  const handleClose = useCallback(() => {
+    SheetManager.hide('select-playlist');
+  }, []);
 
   // Handle playlist selection
   const handlePlaylistSelect = useCallback(
     async (playlistId: string) => {
+      if (!surah) return;
       try {
         await addToPlaylist(
           playlistId,
@@ -57,28 +59,32 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
         );
 
         console.log(`Added ${surah.name} to playlist`);
-
-        // Call the callback if provided
-        if (onPlaylistSelected) {
-          onPlaylistSelected(playlistId);
-        }
-
-        // Close the modal
-        onClose();
+        handleClose();
       } catch (error) {
         console.error('Failed to add to playlist:', error);
         Alert.alert('Error', 'Failed to add surah to playlist');
       }
     },
-    [surah, reciterId, rewayatId, addToPlaylist, onClose, onPlaylistSelected],
+    [surah, reciterId, rewayatId, addToPlaylist, handleClose],
   );
 
-  // Handle creating new playlist
-  const handleCreatePlaylist = useCallback(
-    async (name: string, color: string) => {
+  // Get existing playlist colors for unique color selection
+  const existingColors = playlists.map(p => p.color);
+
+  // Handle showing create playlist sheet
+  const handleShowCreatePlaylist = useCallback(async () => {
+    if (!surah) return;
+
+    const result = await SheetManager.show('create-playlist', {
+      payload: {
+        existingColors,
+      },
+    });
+
+    if (result?.name && result?.color) {
       try {
         setIsCreating(true);
-        const newPlaylist = await createPlaylist(name, color);
+        const newPlaylist = await createPlaylist(result.name, result.color);
 
         // Small delay to ensure previous transaction is committed
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -91,56 +97,46 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
           rewayatId,
         );
 
-        console.log(`Created playlist "${name}" and added ${surah.name}`);
-
-        // Call the callback if provided
-        if (onPlaylistSelected) {
-          onPlaylistSelected(newPlaylist.id);
-        }
-
-        // Close both modals
-        setShowCreatePlaylist(false);
-        onClose();
+        console.log(
+          `Created playlist "${result.name}" and added ${surah.name}`,
+        );
+        handleClose();
       } catch (error) {
         console.error('Failed to create playlist:', error);
         Alert.alert('Error', 'Failed to create playlist');
       } finally {
         setIsCreating(false);
       }
-    },
-    [
-      surah,
-      reciterId,
-      rewayatId,
-      createPlaylist,
-      addToPlaylist,
-      onClose,
-      onPlaylistSelected,
-    ],
-  );
-
-  const handleSheetChange = useCallback(
-    (index: number) => {
-      if (index === -1) {
-        setShowCreatePlaylist(false);
-        onClose();
-      }
-    },
-    [onClose],
-  );
+    }
+  }, [
+    surah,
+    reciterId,
+    rewayatId,
+    existingColors,
+    createPlaylist,
+    addToPlaylist,
+    handleClose,
+  ]);
 
   const handleToggleLoved = useCallback(() => {
-    if (!reciterId) return;
+    if (!reciterId || !surah) return;
     toggleLoved(reciterId, surah.id.toString(), rewayatId || '');
-  }, [reciterId, surah.id, rewayatId, toggleLoved]);
+  }, [reciterId, surah, rewayatId, toggleLoved]);
+
+  if (!surah) {
+    return null;
+  }
 
   return (
     <>
-      <BaseModal
-        bottomSheetRef={bottomSheetRef}
-        snapPoints={['80%']}
-        title="Add to Collection"
-        onChange={handleSheetChange}>
+      <ActionSheet
+        id={props.sheetId}
+        containerStyle={styles.sheetContainer}
+        indicatorStyle={styles.indicator}
+        gestureEnabled={true}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.headerTitle}>Add to Collection</Text>
+        </View>
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.surahName}>{surah.name}</Text>
@@ -151,7 +147,8 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
 
           <ScrollView
             style={styles.scrollView}
-            showsVerticalScrollIndicator={false}>
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}>
             {/* Add to Loved Option */}
             {reciterId && (
               <TouchableOpacity
@@ -185,7 +182,7 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
             {/* Create New Playlist Button */}
             <TouchableOpacity
               style={styles.createButton}
-              onPress={() => setShowCreatePlaylist(true)}
+              onPress={handleShowCreatePlaylist}
               activeOpacity={0.7}
               disabled={isCreating}>
               <View style={styles.createButtonContent}>
@@ -232,28 +229,42 @@ export const SelectPlaylistModal: React.FC<SelectPlaylistModalProps> = ({
             )}
           </ScrollView>
         </View>
-      </BaseModal>
-
-      {/* Create Playlist Modal */}
-      <CreatePlaylistModal
-        visible={showCreatePlaylist}
-        onClose={() => setShowCreatePlaylist(false)}
-        onCreatePlaylist={handleCreatePlaylist}
-        theme={theme}
-      />
+      </ActionSheet>
     </>
   );
 };
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
+    sheetContainer: {
+      backgroundColor: theme.colors.background,
+      borderTopLeftRadius: moderateScale(20),
+      borderTopRightRadius: moderateScale(20),
+      paddingTop: moderateScale(8),
+      height: SCREEN_HEIGHT * 0.75,
+    },
+    indicator: {
+      backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
+      width: moderateScale(40),
+    },
+    headerContainer: {
+      alignItems: 'center',
+      paddingVertical: moderateScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+    },
+    headerTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
     container: {
       flex: 1,
-      paddingHorizontal: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
     },
     header: {
       alignItems: 'center',
-      marginBottom: moderateScale(24),
+      marginVertical: moderateScale(16),
       gap: moderateScale(4),
     },
     surahName: {
@@ -308,14 +319,6 @@ const createStyles = (theme: Theme) =>
     lovedTextActive: {
       color: '#FF6B6B',
     },
-    lovedCheckmark: {
-      width: moderateScale(28),
-      height: moderateScale(28),
-      borderRadius: moderateScale(14),
-      backgroundColor: Color('#FF6B6B').alpha(0.15).toString(),
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     createButton: {
       backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
       borderRadius: moderateScale(12),
@@ -341,7 +344,6 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-SemiBold',
       marginHorizontal: moderateScale(15),
-
       color: theme.colors.textSecondary,
       marginBottom: moderateScale(8),
       textTransform: 'uppercase',

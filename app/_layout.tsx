@@ -15,12 +15,13 @@ import {View, Text, Platform, StatusBar as RNStatusBar} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
-import {ModalProvider} from '@/components/providers/ModalProvider';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
 } from '@/components/modals/WhatsNewModal';
 import {DevMenu} from '@/components/DevMenu';
+import {SheetProvider} from 'react-native-actions-sheet';
+import '@/components/sheets/sheets'; // Register action sheets
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
@@ -317,7 +318,7 @@ export default function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{flex: 1}} onLayout={onLayoutRootView}>
-          <ModalProvider>
+          <SheetProvider>
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -332,7 +333,7 @@ export default function RootLayout() {
             <PlayerSheet />
             <WhatsNewModal ref={whatsNewModalRef} />
             <DevMenu whatsNewModalRef={whatsNewModalRef} />
-          </ModalProvider>
+          </SheetProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>
     </ErrorBoundary>

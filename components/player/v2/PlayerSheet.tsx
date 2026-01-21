@@ -9,14 +9,10 @@ import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
-import {PlaybackSpeedModal} from './Modals/PlaybackSpeedModal';
-import {SleepTimerModal} from './Modals/SleepTimerModal';
-import {ExtendedSummaryModal} from './SurahSummary/ExtendedSummaryModal';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {MushafLayoutModal} from './Modals/MushafLayoutModal';
-import {PlayerOptionsModal} from '@/components/player/v2/Modals/PlayerOptionsModal';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
+import {SheetManager} from 'react-native-actions-sheet';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -40,11 +36,6 @@ const CustomHandle = (_props: BottomSheetHandleProps) => {
 export const PlayerSheet = () => {
   const {theme} = useTheme();
   const bottomSheetRef = useRef<BottomSheet>(null);
-  const speedBottomSheetRef = useRef<BottomSheet>(null);
-  const sleepBottomSheetRef = useRef<BottomSheet>(null);
-  const summaryBottomSheetRef = useRef<BottomSheet>(null);
-  const mushafLayoutSheetRef = useRef<BottomSheet>(null);
-  const optionsBottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
 
@@ -156,7 +147,6 @@ export const PlayerSheet = () => {
   const handleSpeedChange = useCallback(
     (speed: number) => {
       setRate(speed);
-      speedBottomSheetRef.current?.close();
     },
     [setRate],
   );
@@ -164,14 +154,12 @@ export const PlayerSheet = () => {
   const handleSleepTimerChange = useCallback(
     (minutes: number) => {
       updateSettings({sleepTimer: minutes});
-      sleepBottomSheetRef.current?.close();
     },
     [updateSettings],
   );
 
   const handleTurnOffTimer = useCallback(() => {
     updateSettings({sleepTimer: 0});
-    sleepBottomSheetRef.current?.close();
   }, [updateSettings]);
 
   const handleGoToReciter = useCallback(() => {
@@ -183,17 +171,65 @@ export const PlayerSheet = () => {
     }, 100);
   }, [currentTrack, setSheetMode, navigateToReciterProfile]);
 
-  // Get current surah info for the summary modal
-  const surahNumber = currentTrack?.surahId
-    ? parseInt(currentTrack.surahId, 10)
-    : undefined;
-  const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
+  // Handlers for showing sheets via SheetManager
+  const handleShowSpeedSheet = useCallback(() => {
+    SheetManager.show('playback-speed', {
+      payload: {
+        currentSpeed: playback.rate,
+        onSpeedChange: handleSpeedChange,
+      },
+    });
+  }, [playback.rate, handleSpeedChange]);
 
-  // Get the full Surah object for the options modal
-  const currentSurahData = useMemo(() => {
-    if (!surahNumber) return undefined;
-    return SURAHS.find(s => s.id === surahNumber);
-  }, [surahNumber]);
+  const handleShowSleepTimerSheet = useCallback(() => {
+    SheetManager.show('sleep-timer', {
+      payload: {
+        sleepTimer: remainingTime || 0,
+        remainingTime,
+        onTimerChange: handleSleepTimerChange,
+        onTurnOffTimer: handleTurnOffTimer,
+      },
+    });
+  }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
+
+  const handleShowMushafLayoutSheet = useCallback(() => {
+    SheetManager.show('mushaf-layout');
+  }, []);
+
+  const handleShowSummarySheet = useCallback(() => {
+    const surahNumber = currentTrack?.surahId
+      ? parseInt(currentTrack.surahId, 10)
+      : undefined;
+    const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
+
+    if (currentSurahInfo) {
+      SheetManager.show('extended-summary', {
+        payload: {
+          surahInfo: currentSurahInfo,
+        },
+      });
+    }
+  }, [currentTrack?.surahId]);
+
+  const handleShowOptionsSheet = useCallback(() => {
+    const surahNumber = currentTrack?.surahId
+      ? parseInt(currentTrack.surahId, 10)
+      : undefined;
+    const currentSurahData = surahNumber
+      ? SURAHS.find(s => s.id === surahNumber)
+      : undefined;
+
+    if (currentSurahData && currentTrack?.reciterId) {
+      SheetManager.show('player-options', {
+        payload: {
+          surah: currentSurahData,
+          reciterId: currentTrack.reciterId,
+          rewayatId: currentTrack.rewayatId,
+          onGoToReciter: handleGoToReciter,
+        },
+      });
+    }
+  }, [currentTrack, handleGoToReciter]);
 
   // Only render modals once settings are loaded to prevent hydration issues
   if (!shouldShow) {
@@ -225,47 +261,13 @@ export const PlayerSheet = () => {
           {backgroundColor: theme.colors.background},
         ]}>
         <PlayerContent
-          speedBottomSheetRef={speedBottomSheetRef}
-          sleepBottomSheetRef={sleepBottomSheetRef}
-          summaryBottomSheetRef={summaryBottomSheetRef}
-          mushafLayoutSheetRef={mushafLayoutSheetRef}
-          optionsBottomSheetRef={optionsBottomSheetRef}
+          onSpeedPress={handleShowSpeedSheet}
+          onSleepTimerPress={handleShowSleepTimerSheet}
+          onMushafLayoutPress={handleShowMushafLayoutSheet}
+          onSummaryPress={handleShowSummarySheet}
+          onOptionsPress={handleShowOptionsSheet}
         />
       </BottomSheet>
-
-      <PlaybackSpeedModal
-        bottomSheetRef={speedBottomSheetRef}
-        onSpeedChange={handleSpeedChange}
-        currentSpeed={playback.rate}
-      />
-
-      <SleepTimerModal
-        bottomSheetRef={sleepBottomSheetRef}
-        onTimerChange={handleSleepTimerChange}
-        onTurnOffTimer={handleTurnOffTimer}
-        sleepTimer={remainingTime || 0}
-        remainingTime={remainingTime}
-      />
-
-      {currentSurahInfo && (
-        <ExtendedSummaryModal
-          bottomSheetRef={summaryBottomSheetRef}
-          surahInfo={currentSurahInfo}
-        />
-      )}
-
-      <MushafLayoutModal bottomSheetRef={mushafLayoutSheetRef} />
-
-      {currentSurahData && currentTrack?.reciterId && (
-        <PlayerOptionsModal
-          bottomSheetRef={optionsBottomSheetRef}
-          surah={currentSurahData}
-          reciterId={currentTrack.reciterId}
-          rewayatId={currentTrack.rewayatId}
-          onClose={() => optionsBottomSheetRef.current?.close()}
-          onGoToReciter={handleGoToReciter}
-        />
-      )}
     </>
   );
 };

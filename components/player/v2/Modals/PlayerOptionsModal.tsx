@@ -27,7 +27,7 @@ import {
   useIsDownloadedWithRewayat,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
-import {SelectPlaylistModal} from '@/components/modals/SelectPlaylistModal';
+import {SheetManager} from 'react-native-actions-sheet';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
@@ -86,7 +86,6 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
 
   const [showSummary, setShowSummary] = useState(false);
   const [pressedOption, setPressedOption] = useState<string | null>(null);
-  const playlistModalRef = React.useRef<BottomSheet>(null);
 
   // Get surah info
   const currentSurahInfo = surahInfo[surah.id];
@@ -196,12 +195,14 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
   ]);
 
   const handleAddToCollection = useCallback(() => {
-    playlistModalRef.current?.snapToIndex(0);
-  }, []);
-
-  const handleCollectionModalClose = useCallback(() => {
-    playlistModalRef.current?.close();
-  }, []);
+    SheetManager.show('select-playlist', {
+      payload: {
+        surah,
+        reciterId,
+        rewayatId,
+      },
+    });
+  }, [surah, reciterId, rewayatId]);
 
   const handleToggleLoved = useCallback(() => {
     toggleLoved(reciterId, surah.id.toString(), rewayatId || '');
@@ -361,14 +362,6 @@ export const PlayerOptionsModal: React.FC<PlayerOptionsModalProps> = ({
           </View>
         )}
       </BaseModal>
-
-      <SelectPlaylistModal
-        bottomSheetRef={playlistModalRef}
-        surah={surah}
-        reciterId={reciterId}
-        rewayatId={rewayatId}
-        onClose={handleCollectionModalClose}
-      />
     </>
   );
 };

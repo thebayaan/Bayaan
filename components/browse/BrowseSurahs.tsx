@@ -16,7 +16,7 @@ import Color from 'color';
 import Animated, {FadeIn} from 'react-native-reanimated';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {Theme} from '@/utils/themeUtils';
@@ -148,7 +148,6 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const insets = useSafeAreaInsets();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
-  const {showSelectReciter} = useModal();
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
   // Retrieve persisted settings
   const browseViewModeSetting = useSettings(state => state.browseViewMode);
@@ -243,10 +242,12 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
 
   const handleSurahPress = useCallback(
     (surah: Surah) => {
-      // For consistency and immediate feedback, always use showSelectReciter directly
+      // For consistency and immediate feedback, always show select reciter sheet
       // if askEveryTime is true
       if (askEveryTime) {
-        showSelectReciter(surah.id.toString(), 'home');
+        SheetManager.show('select-reciter', {
+          payload: {surahId: surah.id.toString(), source: 'home'},
+        });
         return;
       }
 
@@ -272,7 +273,9 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
               },
             );
           } else {
-            showSelectReciter(surah.id.toString(), 'home');
+            SheetManager.show('select-reciter', {
+              payload: {surahId: surah.id.toString(), source: 'home'},
+            });
           }
           break;
         case 'randomReciter':
@@ -281,7 +284,9 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
           });
           break;
         default:
-          showSelectReciter(surah.id.toString(), 'home');
+          SheetManager.show('select-reciter', {
+            payload: {surahId: surah.id.toString(), source: 'home'},
+          });
       }
     },
     [
@@ -289,7 +294,6 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
       defaultReciterSelection,
       defaultReciter,
       router,
-      showSelectReciter,
       playWithReciter,
       playWithRandomReciter,
     ],
