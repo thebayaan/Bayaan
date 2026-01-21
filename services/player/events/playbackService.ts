@@ -59,24 +59,28 @@ async function validateTrackState(): Promise<{
       };
     }
 
-    // Check if URL is accessible
-    try {
-      const response = await fetch(track.url, {method: 'HEAD'});
-      if (!response.ok) {
+    // Check if URL is accessible (only for remote URLs)
+    // Skip validation for local file:// URLs - fetch doesn't support them
+    // and TrackPlayer handles local file validation internally
+    if (!track.url.startsWith('file://')) {
+      try {
+        const response = await fetch(track.url, {method: 'HEAD'});
+        if (!response.ok) {
+          return {
+            isValid: false,
+            track,
+            duration: 0,
+            error: `Track URL not accessible: ${response.status}`,
+          };
+        }
+      } catch (error) {
         return {
           isValid: false,
           track,
           duration: 0,
-          error: `Track URL not accessible: ${response.status}`,
+          error: `Track URL error: ${(error as Error).message}`,
         };
       }
-    } catch (error) {
-      return {
-        isValid: false,
-        track,
-        duration: 0,
-        error: `Track URL error: ${(error as Error).message}`,
-      };
     }
 
     const duration = await TrackPlayer.getDuration();
@@ -196,9 +200,13 @@ async function recoverFromError(
       maxAttempts,
       'attempts',
     );
+    // Ensure loading states are cleared on failure
+    store.updateLoadingState({trackLoading: false});
     return false;
   } catch (error) {
     console.error('[PlaybackService] Recovery failed with error:', error);
+    // Ensure loading states are cleared on failure
+    store.updateLoadingState({trackLoading: false});
     return false;
   }
 }
@@ -619,6 +627,11 @@ export async function playbackService() {
               state: State.None,
               position: 0,
               duration: 0,
+            });
+            // Clear loading states to prevent stuck UI
+            store.updateLoadingState({
+              trackLoading: false,
+              queueLoading: false,
             });
           }
         }
