@@ -24,7 +24,7 @@ import {BlurView} from '@react-native-community/blur';
 import Animated from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
 import {EdgeInsets} from 'react-native-safe-area-context';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 
 interface HeaderProps {
@@ -278,17 +278,18 @@ function HomeScreen() {
     [router],
   );
 
-  const {showSelectReciter} = useModal();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
 
   const handleSurahPress = useCallback(
     (surah: Surah) => {
-      // For consistency and immediate feedback, always use showSelectReciter directly
+      // For consistency and immediate feedback, always show select reciter sheet
       // if askEveryTime is true
       if (askEveryTime) {
-        showSelectReciter(surah.id.toString(), 'home');
+        SheetManager.show('select-reciter', {
+          payload: {surahId: surah.id.toString(), source: 'home'},
+        });
         return;
       }
 
@@ -314,7 +315,9 @@ function HomeScreen() {
               },
             );
           } else {
-            showSelectReciter(surah.id.toString(), 'home');
+            SheetManager.show('select-reciter', {
+              payload: {surahId: surah.id.toString(), source: 'home'},
+            });
           }
           break;
         case 'randomReciter':
@@ -323,7 +326,9 @@ function HomeScreen() {
           });
           break;
         default:
-          showSelectReciter(surah.id.toString(), 'home');
+          SheetManager.show('select-reciter', {
+            payload: {surahId: surah.id.toString(), source: 'home'},
+          });
       }
     },
     [
@@ -331,7 +336,6 @@ function HomeScreen() {
       askEveryTime,
       defaultReciterSelection,
       defaultReciter,
-      showSelectReciter,
       playWithReciter,
       playWithRandomReciter,
     ],

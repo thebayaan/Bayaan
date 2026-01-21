@@ -10,9 +10,6 @@ import {
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import BottomSheet from '@gorhom/bottom-sheet';
-import {PlaybackSpeedModal} from '../../Modals/PlaybackSpeedModal';
-import {SleepTimerModal} from '../../Modals/SleepTimerModal';
 import {
   TimerIcon,
   RepeatIcon,
@@ -22,8 +19,8 @@ import {
 } from '@/components/Icons';
 
 interface ControlButtonsProps {
-  speedBottomSheetRef: React.RefObject<BottomSheet>;
-  sleepBottomSheetRef: React.RefObject<BottomSheet>;
+  onSpeedPress: () => void;
+  onSleepTimerPress: () => void;
   onQueuePress: () => void;
   showQueue: boolean;
   onMushafLayoutPress?: () => void;
@@ -49,28 +46,20 @@ interface Styles {
 }
 
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
-  speedBottomSheetRef,
-  sleepBottomSheetRef,
+  onSpeedPress,
+  onSleepTimerPress,
   onQueuePress,
   showQueue,
   onMushafLayoutPress,
 }) => {
   const {theme} = useTheme();
-  const {playback, setRate, settings, updateSettings} = useUnifiedPlayer();
+  const {playback, settings, updateSettings} = useUnifiedPlayer();
 
   const handleMushafLayoutPress = useCallback(() => {
     if (onMushafLayoutPress) {
       onMushafLayoutPress();
     }
   }, [onMushafLayoutPress]);
-
-  const handleSpeedPress = () => {
-    speedBottomSheetRef.current?.expand();
-  };
-
-  const handleSpeedChange = (speed: number) => {
-    setRate(speed);
-  };
 
   const handleRepeatPress = () => {
     const nextMode = {
@@ -82,27 +71,9 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     updateSettings({repeatMode: nextMode});
   };
 
-  const handleSleepPress = () => {
-    sleepBottomSheetRef.current?.expand();
-  };
-
-  const handleSleepTimerChange = (minutes: number) => {
-    updateSettings({sleepTimer: minutes});
-  };
-
-  const handleTurnOffTimer = () => {
-    updateSettings({sleepTimer: 0});
-  };
-
   // Check if timer is active based on sleepTimerEnd
   const isTimerActive =
     settings.sleepTimerEnd !== null && settings.sleepTimerEnd > Date.now();
-
-  // Calculate remaining time for display
-  const remainingTime =
-    isTimerActive && settings.sleepTimerEnd
-      ? Math.ceil((settings.sleepTimerEnd - Date.now()) / (60 * 1000))
-      : null;
 
   // Create subtle active background color with opacity
   const activeBackgroundColor = `${theme.colors.text}20`; // 20% opacity
@@ -128,7 +99,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         ]}>
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={handleSpeedPress}
+          onPress={onSpeedPress}
           style={[
             styles.button,
             styles.speedButton,
@@ -178,7 +149,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={handleSleepPress}
+          onPress={onSleepTimerPress}
           style={[
             styles.button,
             styles.sleepButton,
@@ -208,20 +179,6 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         ]}>
         <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
       </TouchableOpacity>
-
-      <PlaybackSpeedModal
-        bottomSheetRef={speedBottomSheetRef}
-        onSpeedChange={handleSpeedChange}
-        currentSpeed={playback.rate}
-      />
-
-      <SleepTimerModal
-        bottomSheetRef={sleepBottomSheetRef}
-        onTimerChange={handleSleepTimerChange}
-        onTurnOffTimer={handleTurnOffTimer}
-        sleepTimer={remainingTime || 0}
-        remainingTime={remainingTime}
-      />
     </View>
   );
 };

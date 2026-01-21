@@ -2,8 +2,7 @@ import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
-import BottomSheet from '@gorhom/bottom-sheet';
-import {BaseModal} from './BaseModal';
+import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {downloadSurah} from '@/services/downloadService';
@@ -12,27 +11,16 @@ import {ActivityIndicator} from 'react-native';
 import {CheckIcon} from '@/components/Icons';
 import {Ionicons} from '@expo/vector-icons';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
+import Color from 'color';
 
-interface PlaylistContextMenuProps {
-  bottomSheetRef: React.RefObject<BottomSheet>;
-  playlistId: string;
-  playlistName: string;
-  playlistColor?: string;
-  onDelete: () => void;
-  onClose: () => void;
-  onEdit?: () => void;
-  onShare?: () => void;
-}
-
-export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
-  bottomSheetRef,
-  playlistId,
-  playlistName,
-  onDelete,
-  onClose,
-  onEdit,
-}) => {
+export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   const {theme} = useTheme();
+  const payload = props.payload;
+  const playlistId = payload?.playlistId ?? '';
+  const playlistName = payload?.playlistName ?? '';
+  const onDelete = payload?.onDelete;
+  const onEdit = payload?.onEdit;
+
   const {getPlaylistItems} = usePlaylistsStore();
   const {
     addDownload,
@@ -49,10 +37,8 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
   const isMountedRef = useRef(true);
   const downloadCancelledRef = useRef(false);
   const lastProgressUpdateRef = useRef(0);
-  const progressUpdateThrottle = 50; // Update progress max once per 50ms (more responsive)
+  const progressUpdateThrottle = 50;
 
-  // Get playlist download progress from store (persists across unmounts)
-  // Subscribe to store changes to get reactive updates
   const playlistProgress = useDownloadStore(
     state => state.playlistDownloads[playlistId] || null,
   );
@@ -64,7 +50,6 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     playlistProgress || {current: 0, total: 0, percentage: 0},
   );
 
-  // Sync with store progress when it changes
   useEffect(() => {
     if (playlistProgress) {
       setDownloadProgressState(playlistProgress);
@@ -73,16 +58,13 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     }
   }, [playlistProgress]);
 
-  // Cleanup on unmount
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // Don't cancel downloads on unmount, let them continue in background
     };
   }, []);
 
-  // Get playlist items and transform to format compatible with useCollectionDownloadState
   const [playlistData, setPlaylistData] = useState<
     Array<{
       reciter: {id: string};
@@ -96,6 +78,7 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
   >([]);
 
   useEffect(() => {
+    if (!playlistId) return;
     const loadPlaylistData = async () => {
       const items = await getPlaylistItems(playlistId);
       const transformedData = items.map(item => ({
@@ -112,18 +95,20 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     loadPlaylistData();
   }, [getPlaylistItems, playlistId]);
 
-  // Calculate download state using custom hook
   const downloadState = useCollectionDownloadState(playlistData);
 
-  const handleEdit = () => {
+  const handleClose = useCallback(() => {
+    SheetManager.hide('playlist-context');
+  }, []);
+
+  const handleEdit = useCallback(() => {
     if (onEdit) {
-      // onEdit will handle closing the context menu
-      // No need to close here as it's handled in handleEditPlaylist
       onEdit();
     }
-  };
+    handleClose();
+  }, [onEdit, handleClose]);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     Alert.alert(
       'Delete Playlist',
       `Are you sure you want to delete "${playlistName}"? This action cannot be undone.`,
@@ -136,22 +121,23 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            onDelete();
-            onClose();
+            if (onDelete) {
+              onDelete();
+            }
+            handleClose();
           },
         },
       ],
     );
-  };
+  }, [playlistName, onDelete, handleClose]);
 
   const handleDownloadPlaylist = useCallback(async () => {
-    if (isDownloadingPlaylist) return;
+    if (isDownloadingPlaylist || !playlistId) return;
 
     downloadCancelledRef.current = false;
     isMountedRef.current = true;
 
     try {
-      // Initialize progress in store (persists across unmounts)
       const initialProgress = {
         current: 0,
         total: 0,
@@ -160,7 +146,6 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
       setPlaylistDownloadProgress(playlistId, initialProgress);
       setDownloadProgressState(initialProgress);
 
-      // Get all playlist items
       const playlistItems = await getPlaylistItems(playlistId);
 
       if (playlistItems.length === 0) {
@@ -171,7 +156,6 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
         return;
       }
 
-      // Filter out items that are already downloaded
       const itemsToDownload = playlistItems.filter(item => {
         if (item.rewayatId) {
           return !isDownloadedWithRewayat(
@@ -194,7 +178,6 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
         return;
       }
 
-      // Initialize progress
       const progress = {
         current: 0,
         total: itemsToDownload.length,
@@ -205,18 +188,15 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
         setDownloadProgressState(progress);
       }
 
-      // Download items sequentially with proper async yielding to prevent blocking
       const downloadItem = async (
         item: (typeof itemsToDownload)[0],
         index: number,
       ) => {
         const surahId = parseInt(item.surahId, 10);
-        // Generate download ID with rewayatId if provided for proper tracking
         const downloadId = item.rewayatId
           ? `${item.reciterId}-${surahId}-${item.rewayatId}`
           : `${item.reciterId}-${surahId}`;
 
-        // Skip if already downloading - use rewayat-aware check if rewayatId is provided
         const isCurrentlyDownloading = item.rewayatId
           ? isDownloadingWithRewayat(
               item.reciterId,
@@ -232,13 +212,11 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
         try {
           setDownloading(downloadId);
 
-          // Download with throttled progress tracking
           const downloadResult = await downloadSurah(
             surahId,
             item.reciterId,
             item.rewayatId,
             progressValue => {
-              // Throttle progress updates to prevent UI blocking
               const now = Date.now();
               if (
                 now - lastProgressUpdateRef.current <
@@ -248,12 +226,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
               }
               lastProgressUpdateRef.current = now;
 
-              // Calculate overall progress
               const itemProgress = progressValue / itemsToDownload.length;
               const completedProgress = index / itemsToDownload.length;
               const overallProgress = completedProgress + itemProgress;
 
-              // Update individual item progress (lightweight, store-only)
               setDownloadProgress(downloadId, progressValue);
 
               const newProgress = {
@@ -262,22 +238,17 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
                 percentage: Math.min(overallProgress * 100, 99),
               };
 
-              // ONLY update persistent store - let React subscription handle UI updates
-              // This prevents blocking when component is unmounted
-              // Use setTimeout to ensure this doesn't block the download callback
               setTimeout(() => {
                 setPlaylistDownloadProgress(playlistId, newProgress);
               }, 0);
             },
           );
 
-          // Check if cancelled before adding download
           if (downloadCancelledRef.current) {
             clearDownloading(downloadId);
             return;
           }
 
-          // Add to downloads
           addDownload({
             reciterId: item.reciterId,
             surahId: item.surahId,
@@ -290,15 +261,12 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
 
           clearDownloading(downloadId);
 
-          // Update progress after download completes
           const newProgress = {
             current: index + 1,
             total: itemsToDownload.length,
             percentage: ((index + 1) / itemsToDownload.length) * 100,
           };
 
-          // ONLY update persistent store - React subscription will update UI
-          // Use setTimeout to prevent blocking
           setTimeout(() => {
             setPlaylistDownloadProgress(playlistId, newProgress);
           }, 0);
@@ -308,22 +276,15 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
         }
       };
 
-      // Process downloads one at a time with proper yielding
       for (let i = 0; i < itemsToDownload.length; i++) {
-        // Check if cancelled
         if (downloadCancelledRef.current) {
           break;
         }
 
-        // Process this download
         await downloadItem(itemsToDownload[i], i);
-
-        // Yield to event loop after each download to keep UI responsive
-        // Small delay allows React/UI to process pending updates
         await new Promise(resolve => setTimeout(resolve, 10));
       }
 
-      // Complete
       if (!downloadCancelledRef.current) {
         const finalProgress = {
           current: itemsToDownload.length,
@@ -331,12 +292,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
           percentage: 100,
         };
 
-        // Update store asynchronously to prevent blocking
         setTimeout(() => {
           setPlaylistDownloadProgress(playlistId, finalProgress);
         }, 0);
 
-        // Wait a bit to show 100% before clearing
         setTimeout(() => {
           setPlaylistDownloadProgress(playlistId, null);
           if (isMountedRef.current) {
@@ -354,7 +313,6 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
           }
         }, 500);
       } else {
-        // Cancelled - clear progress
         setPlaylistDownloadProgress(playlistId, null);
       }
     } catch (error) {
@@ -388,6 +346,10 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
     isDownloadingWithRewayat,
   ]);
 
+  if (!playlistId) {
+    return null;
+  }
+
   const options = [
     {
       label: 'Edit Playlist',
@@ -417,15 +379,11 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
   ];
 
   return (
-    <BaseModal
-      bottomSheetRef={bottomSheetRef}
-      snapPoints={['45%']}
-      index={0}
-      onChange={index => {
-        if (index === -1) {
-          onClose();
-        }
-      }}>
+    <ActionSheet
+      id={props.sheetId}
+      containerStyle={[styles.sheetContainer, {backgroundColor: theme.colors.background}]}
+      indicatorStyle={[styles.indicator, {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()}]}
+      gestureEnabled={true}>
       <View style={styles.container}>
         <Text style={[styles.playlistName, {color: theme.colors.text}]}>
           {playlistName}
@@ -536,13 +494,22 @@ export const PlaylistContextMenu: React.FC<PlaylistContextMenuProps> = ({
           ))}
         </View>
       </View>
-    </BaseModal>
+    </ActionSheet>
   );
 };
 
 const styles = StyleSheet.create({
+  sheetContainer: {
+    borderTopLeftRadius: moderateScale(20),
+    borderTopRightRadius: moderateScale(20),
+    paddingTop: moderateScale(8),
+  },
+  indicator: {
+    width: moderateScale(40),
+  },
   container: {
     padding: moderateScale(16),
+    paddingBottom: moderateScale(40),
   },
   playlistName: {
     fontSize: moderateScale(18),
@@ -563,9 +530,7 @@ const styles = StyleSheet.create({
   optionDisabled: {
     opacity: 0.5,
   },
-  optionDestructive: {
-    // Background color is set inline for theme support
-  },
+  optionDestructive: {},
   optionText: {
     fontSize: moderateScale(16),
     marginLeft: moderateScale(12),

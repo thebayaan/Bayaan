@@ -15,7 +15,6 @@ import * as Haptics from 'expo-haptics';
 import {CollectionHeader} from '@/components/collection/CollectionHeader';
 import {FilterBar} from '@/components/collection/FilterBar';
 import {SectionHeader} from '@/components/collection/SectionHeader';
-import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
 import {CollectionSearchModal} from '@/components/collection/CollectionSearchModal';
 import {
   CollectionGrid,
@@ -33,7 +32,7 @@ import {TrackItem} from '@/components/TrackItem';
 import {ReciterDownloadsListItem} from '@/components/ReciterDownloadsListItem';
 import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {HeartIcon, DownloadIcon} from '@/components/Icons';
 import Color from 'color';
 import {TouchableOpacity} from 'react-native';
@@ -63,7 +62,6 @@ export default function CollectionScreen() {
     state => state.setCollectionViewMode,
   );
   const isGridView = collectionViewMode === 'grid';
-  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [, setSelectedPlaylist] = useState<{
     id: string;
@@ -71,47 +69,33 @@ export default function CollectionScreen() {
     color?: string;
   } | null>(null);
   const shouldClearPlaylistRef = useRef(true);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editPlaylistData, setEditPlaylistData] = useState<{
-    id: string;
-    name: string;
-    color: string;
-  } | null>(null);
   const downloads = useDownloads();
   const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
     usePlaylists();
-  const {showPlaylistContextMenu} = useModal();
   const {updateQueue, play} = useUnifiedPlayer();
 
-  // Handle navigation to existing screens
-  const handleNewPlaylist = () => {
-    setIsEditMode(false);
-    setEditPlaylistData(null);
-    setShowCreatePlaylist(true);
-  };
+  // Get existing playlist colors to avoid duplicates
+  const existingPlaylistColors = useMemo(
+    () => playlists.map(p => p.color).filter(Boolean) as string[],
+    [playlists],
+  );
 
-  const handleSavePlaylist = async (name: string, color: string) => {
-    try {
-      if (isEditMode && editPlaylistData) {
-        // Edit existing playlist
-        await updatePlaylist(editPlaylistData.id, {name, color});
-        setEditPlaylistData(null);
-        setIsEditMode(false);
-      } else {
-        // Create new playlist
-        await createPlaylist(name, color);
+  // Handle creating a new playlist
+  const handleNewPlaylist = useCallback(async () => {
+    const result = await SheetManager.show('create-playlist', {
+      payload: {
+        existingColors: existingPlaylistColors,
+      },
+    });
+
+    if (result?.name && result?.color) {
+      try {
+        await createPlaylist(result.name, result.color);
+      } catch (error: unknown) {
+        console.error('Failed to create playlist:', error);
       }
-      // Modal will close automatically
-    } catch (error: unknown) {
-      console.error('Failed to save playlist:', error);
     }
-  };
-
-  const handleClosePlaylistModal = () => {
-    setShowCreatePlaylist(false);
-    setIsEditMode(false);
-    setEditPlaylistData(null);
-  };
+  }, [existingPlaylistColors, createPlaylist]);
 
   const handlePlaylistLongPress = useCallback(
     (playlistId: string, playlistName: string, color?: string) => {
@@ -120,20 +104,32 @@ export default function CollectionScreen() {
       shouldClearPlaylistRef.current = true; // Reset flag when opening context menu
 
       // Create a closure that captures the playlist data for editing
-      const handleEditForThisPlaylist = () => {
+      const handleEditForThisPlaylist = async () => {
         // Prevent clearing selectedPlaylist BEFORE closing context menu
         shouldClearPlaylistRef.current = false;
 
-        // Set edit mode data and open the modal
-        setIsEditMode(true);
-        setEditPlaylistData({
-          id: playlistId,
-          name: playlistName,
-          color: color || '#6366F1',
+        // Show the create-playlist sheet in edit mode
+        const result = await SheetManager.show('create-playlist', {
+          payload: {
+            existingColors: existingPlaylistColors,
+            isEditMode: true,
+            initialName: playlistName,
+            initialColor: color || '#6366F1',
+          },
         });
-        setShowCreatePlaylist(true);
 
-        // Clear the flag after modal is fully opened
+        if (result?.name && result?.color) {
+          try {
+            await updatePlaylist(playlistId, {
+              name: result.name,
+              color: result.color,
+            });
+          } catch (error: unknown) {
+            console.error('Failed to update playlist:', error);
+          }
+        }
+
+        // Clear the flag after modal is fully closed
         setTimeout(() => {
           shouldClearPlaylistRef.current = true;
         }, 600);
@@ -150,15 +146,17 @@ export default function CollectionScreen() {
         }
       };
 
-      showPlaylistContextMenu(
-        playlistId,
-        playlistName,
-        handleDeleteForThisPlaylist,
-        handleEditForThisPlaylist,
-        color,
-      );
+      SheetManager.show('playlist-context', {
+        payload: {
+          playlistId,
+          playlistName,
+          playlistColor: color,
+          onDelete: handleDeleteForThisPlaylist,
+          onEdit: handleEditForThisPlaylist,
+        },
+      });
     },
-    [deletePlaylist, showPlaylistContextMenu],
+    [deletePlaylist, existingPlaylistColors, updatePlaylist],
   );
 
   const handleSearch = () => {
@@ -324,12 +322,6 @@ export default function CollectionScreen() {
     updateQueue,
     play,
   ]);
-
-  // Get existing playlist colors to avoid duplicates
-  const existingPlaylistColors = useMemo(
-    () => playlists.map(p => p.color).filter(Boolean) as string[],
-    [playlists],
-  );
 
   // Render function for list items
   const renderListItem = (item: CollectionItemType) => {
@@ -554,18 +546,6 @@ export default function CollectionScreen() {
 
         <View style={{height: moderateScale(100)}} />
       </ScrollView>
-
-      {/* Create Playlist Modal */}
-      <CreatePlaylistModal
-        visible={showCreatePlaylist}
-        onClose={handleClosePlaylistModal}
-        onCreatePlaylist={handleSavePlaylist}
-        theme={theme}
-        existingColors={existingPlaylistColors}
-        isEditMode={isEditMode}
-        initialName={editPlaylistData?.name}
-        initialColor={editPlaylistData?.color}
-      />
 
       {/* Collection Search Modal - DEEP SEARCH */}
       <CollectionSearchModal

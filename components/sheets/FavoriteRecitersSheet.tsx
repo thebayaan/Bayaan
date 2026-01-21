@@ -8,16 +8,16 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import {BaseModal} from '@/components/modals/BaseModal';
+import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import BottomSheet from '@gorhom/bottom-sheet';
 import {SearchInput} from '@/components/SearchInput';
 import {Icon} from '@rneui/themed';
 import Animated, {
@@ -26,18 +26,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-interface FavoriteRecitersModalProps {
-  bottomSheetRef: React.RefObject<BottomSheet>;
-  onClose: () => void;
-}
-
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
-export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
-  bottomSheetRef,
-  onClose,
-}) => {
+export const FavoriteRecitersSheet = (props: SheetProps<'favorite-reciters'>) => {
   const {theme} = useTheme();
   const {width} = useWindowDimensions();
   const styles = useMemo(() => {
@@ -49,11 +41,9 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const searchInputRef = useRef<TextInput>(null);
 
-  // Create animated values outside of callbacks
   const allButtonScale = useSharedValue(1);
   const favoritesButtonScale = useSharedValue(1);
 
-  // Pre-compute color values outside of worklets
   const allActiveBackgroundColor = useMemo(
     () => Color(theme.colors.text).alpha(0.1).toString(),
     [theme.colors.text],
@@ -87,13 +77,11 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
     [theme.colors.border],
   );
 
-  // Pre-compute additional colors for static elements
   const emptyIconColor = useMemo(
     () => Color(theme.colors.text).alpha(0.3).toString(),
     [theme.colors.text],
   );
 
-  // Create animated styles
   const allButtonAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{scale: allButtonScale.value}],
@@ -122,17 +110,14 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
     };
   });
 
-  // Calculate columns and dimensions
   const numColumns = useMemo(() => {
     const minCardWidth = moderateScale(95);
     return Math.max(3, Math.floor((width - moderateScale(32)) / minCardWidth));
   }, [width]);
 
-  // Filter reciters based on search query
   const filteredReciters = useMemo(() => {
     let result = [...RECITERS];
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(reciter => {
@@ -143,7 +128,6 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
       });
     }
 
-    // Apply category filter (can be expanded in the future)
     if (selectedCategory === 'favorites') {
       const favoriteIds = new Set(favoriteReciters.map(r => r.id));
       result = result.filter(reciter => favoriteIds.has(reciter.id));
@@ -183,22 +167,24 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
     [],
   );
 
-  // Calculate item width based on number of columns
   const itemWidth = useMemo(() => {
-    const totalHorizontalPadding = moderateScale(32); // Side padding
-    const gapSpace = moderateScale(8) * (numColumns - 1); // Gaps between items
+    const totalHorizontalPadding = moderateScale(32);
+    const gapSpace = moderateScale(8) * (numColumns - 1);
     const availableWidth = width - totalHorizontalPadding - gapSpace;
     return availableWidth / numColumns;
   }, [width, numColumns]);
 
-  // Render each reciter card
+  const handleClose = useCallback(() => {
+    SheetManager.hide('favorite-reciters');
+  }, []);
+
   const renderItem = useCallback(
     ({item}: {item: Reciter}) => {
       const isSelected = favoriteReciters.some(
         reciter => reciter.id === item.id,
       );
 
-      const cardSize = itemWidth * 0.85; // Adjust card size to be slightly smaller than the cell width
+      const cardSize = itemWidth * 0.85;
 
       return (
         <View
@@ -221,15 +207,14 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
   );
 
   return (
-    <BaseModal
-      bottomSheetRef={bottomSheetRef}
-      snapPoints={['90%']}
-      title="Favorite Reciters"
-      onChange={index => {
-        if (index === -1) {
-          onClose();
-        }
-      }}>
+    <ActionSheet
+      id={props.sheetId}
+      containerStyle={[styles.sheetContainer, {backgroundColor: theme.colors.background}]}
+      indicatorStyle={[styles.indicator, {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()}]}
+      gestureEnabled={true}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>Favorite Reciters</Text>
+      </View>
       <View style={styles.container}>
         <View style={styles.searchContainer}>
           <SearchInput
@@ -321,18 +306,41 @@ export const FavoriteRecitersModal: React.FC<FavoriteRecitersModalProps> = ({
         <TouchableOpacity
           style={styles.doneButton}
           activeOpacity={0.9}
-          onPress={onClose}>
+          onPress={handleClose}>
           <Text style={styles.doneButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
-    </BaseModal>
+    </ActionSheet>
   );
 };
 
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+
 const createStyles = (theme: Theme, dividerColor: string) =>
   StyleSheet.create({
+    sheetContainer: {
+      borderTopLeftRadius: moderateScale(20),
+      borderTopRightRadius: moderateScale(20),
+      paddingTop: moderateScale(8),
+      height: SCREEN_HEIGHT * 0.85,
+    },
+    indicator: {
+      width: moderateScale(40),
+    },
+    headerContainer: {
+      alignItems: 'center',
+      paddingVertical: moderateScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+    },
+    headerTitle: {
+      fontSize: moderateScale(18),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
     container: {
-      flex: 1,
+      height: '100%',
+      paddingHorizontal: moderateScale(16),
     },
     searchContainer: {
       paddingVertical: moderateScale(8),
@@ -366,7 +374,6 @@ const createStyles = (theme: Theme, dividerColor: string) =>
     divider: {
       height: 1,
       backgroundColor: dividerColor,
-      marginHorizontal: moderateScale(16),
     },
     resultsContainer: {
       paddingVertical: moderateScale(8),
@@ -378,7 +385,7 @@ const createStyles = (theme: Theme, dividerColor: string) =>
     },
     gridContainer: {
       paddingTop: moderateScale(8),
-      paddingBottom: moderateScale(80), // Extra padding for the done button
+      paddingBottom: moderateScale(80),
     },
     columnWrapper: {
       justifyContent: 'flex-start',

@@ -21,9 +21,8 @@ import DraggableFlatList, {
 import {Swipeable} from 'react-native-gesture-handler';
 import {Icon} from '@rneui/themed';
 import {PlaylistHeader} from './PlaylistHeader';
-import {useModal} from '@/components/providers/ModalProvider';
+import {SheetManager} from 'react-native-actions-sheet';
 import {useRouter} from 'expo-router';
-import {CreatePlaylistModal} from '@/components/collection/CreatePlaylistModal';
 import * as Haptics from 'expo-haptics';
 import {UserPlaylist} from '@/services/database/DatabaseService';
 
@@ -53,7 +52,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     playlists,
   } = usePlaylists();
   const {updateQueue, play} = useUnifiedPlayer();
-  const {showPlaylistContextMenu} = useModal();
 
   const [playlist, setPlaylist] = useState<UserPlaylist | null>(null);
   const [playlistData, setPlaylistData] = useState<
@@ -64,8 +62,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }>
   >([]);
   const [loading, setLoading] = useState(true);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
   const shouldClearPlaylistRef = useRef(true);
 
   const styles = StyleSheet.create({
@@ -301,6 +297,12 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }
   }, [playlistData, updateQueue, play]);
 
+  // Get existing playlist colors to avoid duplicates
+  const existingPlaylistColors = React.useMemo(
+    () => playlists.map(p => p.color).filter(Boolean) as string[],
+    [playlists],
+  );
+
   // Handle options button press
   const handleOptionsPress = useCallback(() => {
     if (!playlist) return;
@@ -309,15 +311,34 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     shouldClearPlaylistRef.current = true;
 
     // Create a closure that captures the playlist data for editing
-    const handleEditForThisPlaylist = () => {
+    const handleEditForThisPlaylist = async () => {
       // Prevent clearing playlist data BEFORE closing context menu
       shouldClearPlaylistRef.current = false;
 
-      // Set edit mode data and open the modal
-      setIsEditMode(true);
-      setShowEditModal(true);
+      // Show the create-playlist sheet in edit mode
+      const result = await SheetManager.show('create-playlist', {
+        payload: {
+          existingColors: existingPlaylistColors,
+          isEditMode: true,
+          initialName: playlist.name,
+          initialColor: playlist.color || '#6366F1',
+        },
+      });
 
-      // Clear the flag after modal is fully opened
+      if (result?.name && result?.color) {
+        try {
+          await updatePlaylist(playlist.id, {
+            name: result.name,
+            color: result.color,
+          });
+          // Reload playlist data to reflect changes
+          await loadPlaylistData();
+        } catch (error: unknown) {
+          console.error('Failed to update playlist:', error);
+        }
+      }
+
+      // Clear the flag after modal is fully closed
       setTimeout(() => {
         shouldClearPlaylistRef.current = true;
       }, 600);
@@ -334,44 +355,16 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       }
     };
 
-    showPlaylistContextMenu(
-      playlist.id,
-      playlist.name,
-      handleDeleteForThisPlaylist,
-      handleEditForThisPlaylist,
-      playlist.color,
-    );
-  }, [playlist, deletePlaylist, router, showPlaylistContextMenu]);
-
-  // Handle save playlist (for edit mode)
-  const handleSavePlaylist = useCallback(
-    async (name: string, color: string) => {
-      if (!playlist) return;
-
-      try {
-        await updatePlaylist(playlist.id, {name, color});
-        setShowEditModal(false);
-        setIsEditMode(false);
-        // Reload playlist data to reflect changes
-        await loadPlaylistData();
-      } catch (error: unknown) {
-        console.error('Failed to save playlist:', error);
-      }
-    },
-    [playlist, updatePlaylist, loadPlaylistData],
-  );
-
-  // Handle close edit modal
-  const handleCloseEditModal = useCallback(() => {
-    setShowEditModal(false);
-    setIsEditMode(false);
-  }, []);
-
-  // Get existing playlist colors to avoid duplicates
-  const existingPlaylistColors = React.useMemo(
-    () => playlists.map(p => p.color).filter(Boolean) as string[],
-    [playlists],
-  );
+    SheetManager.show('playlist-context', {
+      payload: {
+        playlistId: playlist.id,
+        playlistName: playlist.name,
+        playlistColor: playlist.color,
+        onDelete: handleDeleteForThisPlaylist,
+        onEdit: handleEditForThisPlaylist,
+      },
+    });
+  }, [playlist, deletePlaylist, router, existingPlaylistColors, updatePlaylist, loadPlaylistData]);
 
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;
@@ -477,18 +470,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
           <Text style={styles.emptyText}>No surahs in this playlist</Text>
         }
         bounces={false}
-      />
-
-      {/* Edit Playlist Modal */}
-      <CreatePlaylistModal
-        visible={showEditModal}
-        onClose={handleCloseEditModal}
-        onCreatePlaylist={handleSavePlaylist}
-        theme={theme}
-        existingColors={existingPlaylistColors}
-        isEditMode={isEditMode}
-        initialName={playlist?.name}
-        initialColor={playlist?.color}
       />
     </View>
   );
