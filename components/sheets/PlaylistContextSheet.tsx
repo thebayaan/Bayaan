@@ -105,10 +105,13 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   }, []);
 
   const handleEdit = useCallback(() => {
-    if (onEdit) {
-      onEdit();
-    }
     handleClose();
+    // Wait for context sheet to close before showing edit sheet
+    setTimeout(() => {
+      if (onEdit) {
+        onEdit();
+      }
+    }, 300);
   }, [onEdit, handleClose]);
 
   const handleDelete = useCallback(() => {
