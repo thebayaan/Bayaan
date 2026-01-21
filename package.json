@@ -20,7 +20,9 @@
     "version:patch": "node scripts/version-bump.js patch",
     "version:minor": "node scripts/version-bump.js minor",
     "version:major": "node scripts/version-bump.js major",
-    "version:current": "node scripts/generate-version.js"
+    "version:current": "node scripts/generate-version.js",
+    "ios:archive": "./scripts/ios-archive.sh",
+    "ios:archive:upload": "./scripts/ios-archive.sh --upload"
   },
   "jest": {
     "preset": "jest-expo"
