@@ -15,7 +15,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {SearchInput} from '@/components/SearchInput';
@@ -29,7 +32,9 @@ import Animated, {
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
-export const FavoriteRecitersSheet = (props: SheetProps<'favorite-reciters'>) => {
+export const FavoriteRecitersSheet = (
+  props: SheetProps<'favorite-reciters'>,
+) => {
   const {theme} = useTheme();
   const {width} = useWindowDimensions();
   const styles = useMemo(() => {
@@ -209,8 +214,14 @@ export const FavoriteRecitersSheet = (props: SheetProps<'favorite-reciters'>) =>
   return (
     <ActionSheet
       id={props.sheetId}
-      containerStyle={[styles.sheetContainer, {backgroundColor: theme.colors.background}]}
-      indicatorStyle={[styles.indicator, {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()}]}
+      containerStyle={[
+        styles.sheetContainer,
+        {backgroundColor: theme.colors.background},
+      ]}
+      indicatorStyle={[
+        styles.indicator,
+        {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()},
+      ]}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>Favorite Reciters</Text>

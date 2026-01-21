@@ -2,7 +2,10 @@ import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {downloadSurah} from '@/services/downloadService';
@@ -381,8 +384,14 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
   return (
     <ActionSheet
       id={props.sheetId}
-      containerStyle={[styles.sheetContainer, {backgroundColor: theme.colors.background}]}
-      indicatorStyle={[styles.indicator, {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()}]}
+      containerStyle={[
+        styles.sheetContainer,
+        {backgroundColor: theme.colors.background},
+      ]}
+      indicatorStyle={[
+        styles.indicator,
+        {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()},
+      ]}
       gestureEnabled={true}>
       <View style={styles.container}>
         <Text style={[styles.playlistName, {color: theme.colors.text}]}>

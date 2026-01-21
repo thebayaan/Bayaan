@@ -1,10 +1,20 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, TouchableOpacity, ScrollView, Alert, Dimensions} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, HeartIcon} from '@/components/Icons';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useLoved} from '@/hooks/useLoved';
 import {PlaylistItem} from '@/components/PlaylistItem';
@@ -87,7 +97,9 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
           rewayatId,
         );
 
-        console.log(`Created playlist "${result.name}" and added ${surah.name}`);
+        console.log(
+          `Created playlist "${result.name}" and added ${surah.name}`,
+        );
         handleClose();
       } catch (error) {
         console.error('Failed to create playlist:', error);
@@ -96,7 +108,15 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
         setIsCreating(false);
       }
     }
-  }, [surah, reciterId, rewayatId, existingColors, createPlaylist, addToPlaylist, handleClose]);
+  }, [
+    surah,
+    reciterId,
+    rewayatId,
+    existingColors,
+    createPlaylist,
+    addToPlaylist,
+    handleClose,
+  ]);
 
   const handleToggleLoved = useCallback(() => {
     if (!reciterId || !surah) return;

@@ -364,7 +364,14 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         onEdit: handleEditForThisPlaylist,
       },
     });
-  }, [playlist, deletePlaylist, router, existingPlaylistColors, updatePlaylist, loadPlaylistData]);
+  }, [
+    playlist,
+    deletePlaylist,
+    router,
+    existingPlaylistColors,
+    updatePlaylist,
+    loadPlaylistData,
+  ]);
 
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;

@@ -14,7 +14,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon} from '@/components/Icons';
 import {Input} from '@/components/Input';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 

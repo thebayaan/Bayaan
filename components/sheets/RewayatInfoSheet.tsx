@@ -1,8 +1,18 @@
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, ScrollView, Platform, Dimensions} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  Dimensions,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {RewayatIcon} from '@/components/Icons';
@@ -42,8 +52,14 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
   return (
     <ActionSheet
       id={props.sheetId}
-      containerStyle={[styles.sheetContainer, {backgroundColor: theme.colors.background}]}
-      indicatorStyle={[styles.indicator, {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()}]}
+      containerStyle={[
+        styles.sheetContainer,
+        {backgroundColor: theme.colors.background},
+      ]}
+      indicatorStyle={[
+        styles.indicator,
+        {backgroundColor: Color(theme.colors.text).alpha(0.3).toString()},
+      ]}
       gestureEnabled={true}>
       <View style={styles.headerContainer}>
         <Text style={styles.headerTitle}>About Rewayat</Text>

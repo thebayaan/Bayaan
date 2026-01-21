@@ -11,7 +11,10 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import {Icon} from '@rneui/themed';
 import {useLoved} from '@/hooks/useLoved';
 import {

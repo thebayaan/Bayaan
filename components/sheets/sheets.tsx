@@ -78,10 +78,12 @@ declare module 'react-native-actions-sheet' {
         initialName?: string;
         initialColor?: string;
       };
-      returnValue: {
-        name: string;
-        color: string;
-      } | undefined;
+      returnValue:
+        | {
+            name: string;
+            color: string;
+          }
+        | undefined;
     }>;
     'player-options': SheetDefinition<{
       payload: {

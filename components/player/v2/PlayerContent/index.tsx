@@ -151,10 +151,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 onMushafLayoutPress={onMushafLayoutPress}
               />
             </View>
-            <SurahSummary
-              surahInfo={surahInfo}
-              onReadMore={onSummaryPress}
-            />
+            <SurahSummary surahInfo={surahInfo} onReadMore={onSummaryPress} />
           </View>
         </View>
       </BottomSheetScrollView>

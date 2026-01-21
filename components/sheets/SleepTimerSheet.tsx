@@ -3,7 +3,10 @@ import {TouchableOpacity, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps, SheetManager} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+} from 'react-native-actions-sheet';
 import Color from 'color';
 
 const TIMER_OPTIONS = [5, 15, 30, 45, 60];
@@ -65,10 +68,7 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
             return (
               <TouchableOpacity
                 key={minutes}
-                style={[
-                  styles.option,
-                  isSelected && styles.selectedTimer,
-                ]}
+                style={[styles.option, isSelected && styles.selectedTimer]}
                 onPress={() => handleTimerSelect(minutes)}
                 activeOpacity={0.7}>
                 <Text
