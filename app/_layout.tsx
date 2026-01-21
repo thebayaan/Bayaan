@@ -28,6 +28,7 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {restoreSession} from '@/services/player/utils/restoreSession';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -185,6 +186,15 @@ export default function RootLayout() {
           console.log('[App] Store hydration complete');
         } catch (error) {
           console.debug('[App] Failed to pre-warm stores:', error);
+        }
+
+        // Restore previous session (floating player state)
+        try {
+          console.log('[App] Restoring previous session...');
+          await restoreSession();
+          console.log('[App] Session restored successfully');
+        } catch (error) {
+          console.debug('[App] Failed to restore session:', error);
         }
 
         // Mark app as ready without state restoration
