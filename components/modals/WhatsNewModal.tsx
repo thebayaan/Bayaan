@@ -19,7 +19,13 @@ import {useTheme} from '@/hooks/useTheme';
 import {Icon} from '@rneui/base';
 import {ChangelogEntry} from '@/types/changelog';
 import changelogData from '@/data/changelog.json';
-import {hasVersionChanged, markVersionAsSeen} from '@/utils/versionUtils';
+import {
+  hasVersionChanged,
+  markVersionAsSeen,
+  getMissedChangelogs,
+  getLastSeenVersion,
+  getCurrentVersion,
+} from '@/utils/versionUtils';
 import Animated, {FadeIn, ZoomIn} from 'react-native-reanimated';
 
 const {width} = Dimensions.get('window');
@@ -31,16 +37,16 @@ export interface WhatsNewModalRef {
 export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
   const {theme} = useTheme();
   const [visible, setVisible] = useState(false);
-  const [currentChangelog, setCurrentChangelog] =
-    useState<ChangelogEntry | null>(null);
+  const [changelogs, setChangelogs] = useState<ChangelogEntry[]>([]);
   const [pressedButton, setPressedButton] = useState(false);
 
   // Expose show method to parent components
   useImperativeHandle(ref, () => ({
     show: () => {
       if (changelogData.length > 0) {
+        // When manually shown, just show the latest
         const latestChangelog = changelogData[0] as ChangelogEntry;
-        setCurrentChangelog(latestChangelog);
+        setChangelogs([latestChangelog]);
         setVisible(true);
       }
     },
@@ -55,17 +61,30 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
         console.log('[WhatsNewModal] Changelog entries:', changelogData.length);
 
         if (versionChanged && changelogData.length > 0) {
-          const latestChangelog = changelogData[0] as ChangelogEntry;
-          setCurrentChangelog(latestChangelog);
-          console.log(
-            '[WhatsNewModal] Will show modal for version:',
-            latestChangelog.version,
+          const lastSeen = await getLastSeenVersion();
+          const current = getCurrentVersion();
+
+          // Get all missed changelogs between last seen and current
+          const missed = getMissedChangelogs(
+            changelogData as ChangelogEntry[],
+            lastSeen,
+            current,
           );
 
-          setTimeout(() => {
-            console.log('[WhatsNewModal] Opening modal...');
-            setVisible(true);
-          }, 800);
+          console.log('[WhatsNewModal] Missed changelogs:', missed.length);
+
+          if (missed.length > 0) {
+            setChangelogs(missed);
+            console.log(
+              '[WhatsNewModal] Will show modal for versions:',
+              missed.map(c => c.version).join(', '),
+            );
+
+            setTimeout(() => {
+              console.log('[WhatsNewModal] Opening modal...');
+              setVisible(true);
+            }, 800);
+          }
         } else {
           console.log('[WhatsNewModal] Not showing modal');
         }
@@ -82,9 +101,13 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
     markVersionAsSeen();
   }
 
-  if (!currentChangelog) {
+  if (changelogs.length === 0) {
     return null;
   }
+
+  // For display, show the latest version number in the header
+  const latestVersion = changelogs[0]?.version;
+  const hasMultipleVersions = changelogs.length > 1;
 
   return (
     <Modal
@@ -116,41 +139,75 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
             </Text>
 
             <Text style={[styles.version, {color: theme.colors.textSecondary}]}>
-              Version {currentChangelog.version}
+              {hasMultipleVersions
+                ? `Versions ${changelogs[changelogs.length - 1]?.version} - ${latestVersion}`
+                : `Version ${latestVersion}`}
             </Text>
 
             <ScrollView
               style={styles.scrollView}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}>
-              <View style={styles.highlightsContainer}>
-                {currentChangelog.highlights.map((highlight, index) => (
-                  <View key={index} style={styles.highlightCard}>
-                    <Icon
-                      name={highlight.icon}
-                      type="ionicon"
-                      size={moderateScale(26)}
-                      color={theme.colors.text}
-                    />
-                    <View style={styles.highlightTextContainer}>
+              {changelogs.map((changelog, changelogIndex) => (
+                <View key={changelog.version}>
+                  {hasMultipleVersions && (
+                    <View style={styles.versionDivider}>
+                      <View
+                        style={[
+                          styles.dividerLine,
+                          {backgroundColor: theme.colors.textSecondary},
+                        ]}
+                      />
                       <Text
                         style={[
-                          styles.highlightTitle,
-                          {color: theme.colors.text},
-                        ]}>
-                        {highlight.title}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.highlightDescription,
+                          styles.versionLabel,
                           {color: theme.colors.textSecondary},
                         ]}>
-                        {highlight.description}
+                        v{changelog.version}
                       </Text>
+                      <View
+                        style={[
+                          styles.dividerLine,
+                          {backgroundColor: theme.colors.textSecondary},
+                        ]}
+                      />
                     </View>
+                  )}
+
+                  <View style={styles.highlightsContainer}>
+                    {changelog.highlights.map((highlight, index) => (
+                      <View key={index} style={styles.highlightCard}>
+                        <Icon
+                          name={highlight.icon}
+                          type="ionicon"
+                          size={moderateScale(26)}
+                          color={theme.colors.text}
+                        />
+                        <View style={styles.highlightTextContainer}>
+                          <Text
+                            style={[
+                              styles.highlightTitle,
+                              {color: theme.colors.text},
+                            ]}>
+                            {highlight.title}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.highlightDescription,
+                              {color: theme.colors.textSecondary},
+                            ]}>
+                            {highlight.description}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
+
+                  {changelogIndex < changelogs.length - 1 && (
+                    <View style={styles.sectionSpacer} />
+                  )}
+                </View>
+              ))}
             </ScrollView>
 
             <TouchableOpacity
@@ -230,6 +287,23 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: moderateScale(8),
   },
+  versionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: moderateScale(12),
+    marginTop: moderateScale(4),
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    opacity: 0.2,
+  },
+  versionLabel: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-SemiBold',
+    paddingHorizontal: moderateScale(12),
+    opacity: 0.6,
+  },
   highlightsContainer: {
     width: '100%',
     gap: moderateScale(16),
@@ -253,6 +327,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Regular',
     lineHeight: moderateScale(18),
     opacity: 0.7,
+  },
+  sectionSpacer: {
+    height: moderateScale(8),
   },
   button: {
     paddingVertical: moderateScale(14),
