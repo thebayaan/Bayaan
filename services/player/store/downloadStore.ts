@@ -120,6 +120,11 @@ interface DownloadStoreState {
     reciterId: string,
     surahId: string,
   ) => DownloadedSurah | undefined;
+  getDownloadWithRewayat: (
+    reciterId: string,
+    surahId: string,
+    rewayatId: string,
+  ) => DownloadedSurah | undefined;
   setDownloads: (downloads: DownloadedSurah[]) => void;
   clearAllDownloads: () => Promise<void>;
   // Status management
@@ -365,6 +370,22 @@ export const useDownloadStore = create<DownloadStoreState>()(
             d.reciterId === reciterId &&
             d.surahId === surahId &&
             (!d.rewayatId || d.rewayatId === ''),
+        );
+      },
+
+      // Gets a download with a specific rewayatId
+      getDownloadWithRewayat: (
+        reciterId: string,
+        surahId: string,
+        rewayatId: string,
+      ) => {
+        const {downloads} = get();
+        return downloads.find(
+          d =>
+            d.reciterId === reciterId &&
+            d.surahId === surahId &&
+            d.rewayatId === rewayatId &&
+            d.status === 'completed',
         );
       },
 

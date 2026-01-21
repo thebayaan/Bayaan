@@ -39,29 +39,31 @@ export function generateSmartAudioUrl(
   surahId: string,
   rewayatId?: string,
 ): string {
-  // Check if the surah is downloaded (with rewayat if provided)
   const downloadStore = useDownloadStore.getState();
 
-  // Use isDownloadedWithRewayat if rewayatId is provided, otherwise use isDownloaded
-  const isDownloaded = rewayatId
-    ? downloadStore.isDownloadedWithRewayat(reciter.id, surahId, rewayatId)
-    : downloadStore.isDownloaded(reciter.id, surahId);
-
-  if (isDownloaded) {
-    const download = downloadStore.getDownload(reciter.id, surahId);
-    // Double-check that the download matches the rewayat (if specified)
-    if (
-      download &&
-      download.status === 'completed' &&
-      (!rewayatId || download.rewayatId === rewayatId)
-    ) {
+  // Check if downloaded with specific rewayat
+  if (rewayatId) {
+    const download = downloadStore.getDownloadWithRewayat(
+      reciter.id,
+      surahId,
+      rewayatId,
+    );
+    if (download) {
       // Resolve the relative path to absolute path at runtime
       // This ensures paths remain valid after iOS app updates
       const absolutePath = resolveFilePath(download.filePath);
       console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId}${
-          rewayatId ? ` (Rewayat: ${rewayatId})` : ''
-        }: ${absolutePath}`,
+        `Using local file for ${reciter.name} - Surah ${surahId} (Rewayat: ${rewayatId}): ${absolutePath}`,
+      );
+      return absolutePath;
+    }
+  } else {
+    // Check without rewayat (legacy downloads without rewayatId)
+    const download = downloadStore.getDownload(reciter.id, surahId);
+    if (download && download.status === 'completed') {
+      const absolutePath = resolveFilePath(download.filePath);
+      console.log(
+        `Using local file for ${reciter.name} - Surah ${surahId}: ${absolutePath}`,
       );
       return absolutePath;
     }
