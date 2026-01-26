@@ -291,11 +291,13 @@ Bayaan/
 
 The project follows a modified GitFlow workflow:
 
-- `main`: Production-ready code
-- `develop`: Integration branch for features
+- `main`: Production-ready code (source of truth, rarely committed to directly)
+- `develop`: **Primary development branch** — all PRs should target this branch
 - Feature branches: `feature/feature-name`
 - Hotfix branches: `hotfix/issue-description`
 - Release branches: `release/version-number`
+
+**IMPORTANT:** Always use `develop` as the base branch for PRs and feature work. Never target `main` directly unless doing a release merge.
 
 ### After Version Bump
 
