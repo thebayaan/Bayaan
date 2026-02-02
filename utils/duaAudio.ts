@@ -10,8 +10,9 @@
 
 /**
  * Static mapping of dua audio filenames to their require() statements
+ * In React Native, require() for assets returns a number (asset ID)
  */
-const audioAssets: Record<string, any> = {
+const audioAssets: Record<string, number> = {
   'dua_1.mp3': require('@/assets/audio/duas/dua_1.mp3'),
   'dua_2.mp3': require('@/assets/audio/duas/dua_2.mp3'),
   'dua_3.mp3': require('@/assets/audio/duas/dua_3.mp3'),
@@ -286,7 +287,7 @@ const audioAssets: Record<string, any> = {
  * @param audioFile - The audio filename (e.g., "dua_75.mp3")
  * @returns The require() source or null if not found
  */
-export function getAudioSource(audioFile: string | null): any {
+export function getAudioSource(audioFile: string | null): number | null {
   if (!audioFile) return null;
   return audioAssets[audioFile] ?? null;
 }

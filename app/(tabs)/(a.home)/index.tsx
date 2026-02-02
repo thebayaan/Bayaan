@@ -13,8 +13,10 @@ import {createStyles} from './_styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
+import DuasView from '@/components/DuasView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
+import {DuaCategory} from '@/types/dua';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import TabSelector from '@/components/TabSelector';
 import {useSettings} from '@/hooks/useSettings';
@@ -27,9 +29,11 @@ import {EdgeInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 
+type ViewOption = 'Reciters' | 'Surahs' | 'Duas';
+
 interface HeaderProps {
-  activeView: 'Reciters' | 'Surahs';
-  handleToggle: (option: 'Reciters' | 'Surahs') => void;
+  activeView: ViewOption;
+  handleToggle: (option: ViewOption) => void;
   handleSettingsPress: () => void;
   theme: Theme;
   insets: EdgeInsets;
@@ -130,7 +134,7 @@ const Header = React.memo(
           </View>
           <View style={headerStyles.centerContainer}>
             <TabSelector
-              options={['Reciters', 'Surahs']}
+              options={['Reciters', 'Surahs', 'Duas']}
               selectedOption={activeView}
               onSelect={handleToggle}
             />
@@ -159,9 +163,10 @@ const Header = React.memo(
 Header.displayName = 'Header';
 
 interface ContentProps {
-  activeView: 'Reciters' | 'Surahs';
+  activeView: ViewOption;
   handleReciterPress: (reciter: Reciter) => void;
   handleSurahPress: (surah: Surah) => void;
+  handleDuaCategoryPress: (category: DuaCategory) => void;
   insets: EdgeInsets;
 }
 
@@ -171,11 +176,13 @@ const Content = React.memo(
     activeView,
     handleReciterPress,
     handleSurahPress,
+    handleDuaCategoryPress,
     insets,
   }: ContentProps) => {
     // Track if each view has been rendered at least once
     const [hasViewedReciters, setHasViewedReciters] = React.useState(true); // Start with true as it's the default
     const [hasViewedSurahs, setHasViewedSurahs] = React.useState(true); // Changed to true to load both components immediately
+    const [hasViewedDuas, setHasViewedDuas] = React.useState(false); // Lazy load duas
 
     // Update the viewed state when active view changes
     React.useEffect(() => {
@@ -183,8 +190,10 @@ const Content = React.memo(
         setHasViewedReciters(true);
       } else if (activeView === 'Surahs' && !hasViewedSurahs) {
         setHasViewedSurahs(true);
+      } else if (activeView === 'Duas' && !hasViewedDuas) {
+        setHasViewedDuas(true);
       }
-    }, [activeView, hasViewedReciters, hasViewedSurahs]);
+    }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedDuas]);
 
     const contentStyles = StyleSheet.create({
       container: {
@@ -243,6 +252,18 @@ const Content = React.memo(
             <SurahsView onSurahPress={handleSurahPress} />
           </View>
         )}
+
+        {/* DuasView - only render if it has been viewed once */}
+        {hasViewedDuas && (
+          <View
+            style={[
+              activeView === 'Duas'
+                ? contentStyles.visibleView
+                : contentStyles.hiddenView,
+            ]}>
+            <DuasView onCategoryPress={handleDuaCategoryPress} />
+          </View>
+        )}
       </View>
     );
   },
@@ -250,6 +271,7 @@ const Content = React.memo(
     prevProps.activeView === nextProps.activeView &&
     prevProps.handleReciterPress === nextProps.handleReciterPress &&
     prevProps.handleSurahPress === nextProps.handleSurahPress &&
+    prevProps.handleDuaCategoryPress === nextProps.handleDuaCategoryPress &&
     prevProps.insets === nextProps.insets,
 );
 
@@ -260,11 +282,9 @@ function HomeScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const [activeView, setActiveView] = useState<'Reciters' | 'Surahs'>(
-    'Reciters',
-  );
+  const [activeView, setActiveView] = useState<ViewOption>('Reciters');
 
-  const handleToggle = useCallback((option: 'Reciters' | 'Surahs') => {
+  const handleToggle = useCallback((option: ViewOption) => {
     setActiveView(option);
   }, []);
 
@@ -345,6 +365,16 @@ function HomeScreen() {
     router.push('/settings');
   }, [router]);
 
+  const handleDuaCategoryPress = useCallback(
+    (category: DuaCategory) => {
+      router.push({
+        pathname: '/(tabs)/(a.home)/duas/[categoryId]',
+        params: {categoryId: category.id},
+      });
+    },
+    [router],
+  );
+
   return (
     <View style={styles.container}>
       <Header
@@ -358,6 +388,7 @@ function HomeScreen() {
         activeView={activeView}
         handleReciterPress={handleReciterPress}
         handleSurahPress={handleSurahPress}
+        handleDuaCategoryPress={handleDuaCategoryPress}
         insets={insets}
       />
     </View>
