@@ -1,5 +1,7 @@
 import {databaseService} from '@/services/database/DatabaseService';
+import {duaService} from '@/services/dua/DuaService';
 import {playlistService} from '@/services/playlist/PlaylistService';
+import {useDuaStore} from '@/store/duaStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 
 interface ServiceInitializer {
@@ -194,6 +196,34 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await usePlaylistsStore.getState().loadPlaylists();
+  },
+});
+
+/**
+ * Dua Service (Priority 4)
+ * Initializes the Dua database and seeds data (depends on Database)
+ * Non-critical - app can function without duas
+ */
+appInitializer.registerService({
+  name: 'Dua Service',
+  priority: 4,
+  critical: false,
+  initialize: async () => {
+    await duaService.initialize();
+  },
+});
+
+/**
+ * Dua Store Data (Priority 5)
+ * Loads dua categories from database into Zustand store
+ * Non-critical - can be loaded later if fails
+ */
+appInitializer.registerService({
+  name: 'Dua Store Data',
+  priority: 5,
+  critical: false,
+  initialize: async () => {
+    await useDuaStore.getState().loadCategories();
   },
 });
 
