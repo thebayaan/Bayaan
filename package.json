@@ -49,6 +49,7 @@
     "deno": "^0.1.1",
     "dotenv": "^16.4.7",
     "expo": "^52.0.25",
+    "expo-audio": "~1.1.1",
     "expo-blur": "~14.0.2",
     "expo-constants": "~17.0.7",
     "expo-dev-client": "~5.0.19",
