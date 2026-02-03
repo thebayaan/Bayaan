@@ -1196,6 +1196,24 @@
         "general"
       ],
       "dhikr_count": 1
+    },
+    {
+      "id": "quranic-duas",
+      "title": "Quranic Duas (Rabbana)",
+      "audio_url": null,
+      "broad_tags": [
+        "spiritual"
+      ],
+      "dhikr_count": 40
+    },
+    {
+      "id": "names-of-allah",
+      "title": "99 Names of Allah",
+      "audio_url": null,
+      "broad_tags": [
+        "spiritual"
+      ],
+      "dhikr_count": 99
     }
   ],
   "adhkar": [
@@ -1210,7 +1228,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/75.mp3",
       "order_index": 0,
-      "audio_file": "dua_75.mp3"
+      "audio_file": "adhkar_75.mp3"
     },
     {
       "id": "76",
@@ -1223,7 +1241,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/76.mp3",
       "order_index": 1,
-      "audio_file": "dua_76.mp3"
+      "audio_file": "adhkar_76.mp3"
     },
     {
       "id": "77",
@@ -1236,7 +1254,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/77.mp3",
       "order_index": 2,
-      "audio_file": "dua_77.mp3"
+      "audio_file": "adhkar_77.mp3"
     },
     {
       "id": "78",
@@ -1249,7 +1267,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/78.mp3",
       "order_index": 3,
-      "audio_file": "dua_78.mp3"
+      "audio_file": "adhkar_78.mp3"
     },
     {
       "id": "79",
@@ -1262,7 +1280,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/79.mp3",
       "order_index": 4,
-      "audio_file": "dua_79.mp3"
+      "audio_file": "adhkar_79.mp3"
     },
     {
       "id": "80",
@@ -1275,7 +1293,7 @@
       "repeat_count": 4,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/80.mp3",
       "order_index": 5,
-      "audio_file": "dua_80.mp3"
+      "audio_file": "adhkar_80.mp3"
     },
     {
       "id": "81",
@@ -1288,7 +1306,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/81.mp3",
       "order_index": 6,
-      "audio_file": "dua_81.mp3"
+      "audio_file": "adhkar_81.mp3"
     },
     {
       "id": "82",
@@ -1301,7 +1319,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/82.mp3",
       "order_index": 7,
-      "audio_file": "dua_82.mp3"
+      "audio_file": "adhkar_82.mp3"
     },
     {
       "id": "83",
@@ -1314,7 +1332,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/83.mp3",
       "order_index": 8,
-      "audio_file": "dua_83.mp3"
+      "audio_file": "adhkar_83.mp3"
     },
     {
       "id": "84",
@@ -1327,7 +1345,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/84.mp3",
       "order_index": 9,
-      "audio_file": "dua_84.mp3"
+      "audio_file": "adhkar_84.mp3"
     },
     {
       "id": "85",
@@ -1340,7 +1358,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/85.mp3",
       "order_index": 10,
-      "audio_file": "dua_85.mp3"
+      "audio_file": "adhkar_85.mp3"
     },
     {
       "id": "86",
@@ -1353,7 +1371,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/86.mp3",
       "order_index": 11,
-      "audio_file": "dua_86.mp3"
+      "audio_file": "adhkar_86.mp3"
     },
     {
       "id": "87",
@@ -1366,7 +1384,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/87.mp3",
       "order_index": 12,
-      "audio_file": "dua_87.mp3"
+      "audio_file": "adhkar_87.mp3"
     },
     {
       "id": "88",
@@ -1379,7 +1397,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/88.mp3",
       "order_index": 13,
-      "audio_file": "dua_88.mp3"
+      "audio_file": "adhkar_88.mp3"
     },
     {
       "id": "89",
@@ -1392,7 +1410,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/89.mp3",
       "order_index": 14,
-      "audio_file": "dua_89.mp3"
+      "audio_file": "adhkar_89.mp3"
     },
     {
       "id": "90",
@@ -1405,7 +1423,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/90.mp3",
       "order_index": 15,
-      "audio_file": "dua_90.mp3"
+      "audio_file": "adhkar_90.mp3"
     },
     {
       "id": "91",
@@ -1418,7 +1436,7 @@
       "repeat_count": 100,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/91.mp3",
       "order_index": 16,
-      "audio_file": "dua_91.mp3"
+      "audio_file": "adhkar_91.mp3"
     },
     {
       "id": "92",
@@ -1431,7 +1449,7 @@
       "repeat_count": 10,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/92.mp3",
       "order_index": 17,
-      "audio_file": "dua_92.mp3"
+      "audio_file": "adhkar_92.mp3"
     },
     {
       "id": "93",
@@ -1444,7 +1462,7 @@
       "repeat_count": 100,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/93.mp3",
       "order_index": 18,
-      "audio_file": "dua_93.mp3"
+      "audio_file": "adhkar_93.mp3"
     },
     {
       "id": "94",
@@ -1457,7 +1475,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/94.mp3",
       "order_index": 19,
-      "audio_file": "dua_94.mp3"
+      "audio_file": "adhkar_94.mp3"
     },
     {
       "id": "95",
@@ -1470,7 +1488,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/95.mp3",
       "order_index": 20,
-      "audio_file": "dua_95.mp3"
+      "audio_file": "adhkar_95.mp3"
     },
     {
       "id": "96",
@@ -1483,7 +1501,7 @@
       "repeat_count": 100,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/96.mp3",
       "order_index": 21,
-      "audio_file": "dua_96.mp3"
+      "audio_file": "adhkar_96.mp3"
     },
     {
       "id": "97",
@@ -1496,7 +1514,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/97.mp3",
       "order_index": 22,
-      "audio_file": "dua_97.mp3"
+      "audio_file": "adhkar_97.mp3"
     },
     {
       "id": "98",
@@ -1509,7 +1527,7 @@
       "repeat_count": 10,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/98.mp3",
       "order_index": 23,
-      "audio_file": "dua_98.mp3"
+      "audio_file": "adhkar_98.mp3"
     },
     {
       "id": "99",
@@ -1522,7 +1540,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/99.mp3",
       "order_index": 0,
-      "audio_file": "dua_99.mp3"
+      "audio_file": "adhkar_99.mp3"
     },
     {
       "id": "100",
@@ -1535,7 +1553,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/100.mp3",
       "order_index": 1,
-      "audio_file": "dua_100.mp3"
+      "audio_file": "adhkar_100.mp3"
     },
     {
       "id": "101",
@@ -1548,7 +1566,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/101.mp3",
       "order_index": 2,
-      "audio_file": "dua_101.mp3"
+      "audio_file": "adhkar_101.mp3"
     },
     {
       "id": "102",
@@ -1561,7 +1579,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/102.mp3",
       "order_index": 3,
-      "audio_file": "dua_102.mp3"
+      "audio_file": "adhkar_102.mp3"
     },
     {
       "id": "103",
@@ -1574,7 +1592,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/103.mp3",
       "order_index": 4,
-      "audio_file": "dua_103.mp3"
+      "audio_file": "adhkar_103.mp3"
     },
     {
       "id": "104",
@@ -1587,7 +1605,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/104.mp3",
       "order_index": 5,
-      "audio_file": "dua_104.mp3"
+      "audio_file": "adhkar_104.mp3"
     },
     {
       "id": "105",
@@ -1600,7 +1618,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/105.mp3",
       "order_index": 6,
-      "audio_file": "dua_105.mp3"
+      "audio_file": "adhkar_105.mp3"
     },
     {
       "id": "106",
@@ -1613,7 +1631,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/106.mp3",
       "order_index": 7,
-      "audio_file": "dua_106.mp3"
+      "audio_file": "adhkar_106.mp3"
     },
     {
       "id": "107",
@@ -1626,7 +1644,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/107.mp3",
       "order_index": 8,
-      "audio_file": "dua_107.mp3"
+      "audio_file": "adhkar_107.mp3"
     },
     {
       "id": "108",
@@ -1639,7 +1657,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/108.mp3",
       "order_index": 9,
-      "audio_file": "dua_108.mp3"
+      "audio_file": "adhkar_108.mp3"
     },
     {
       "id": "109",
@@ -1652,7 +1670,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/109.mp3",
       "order_index": 10,
-      "audio_file": "dua_109.mp3"
+      "audio_file": "adhkar_109.mp3"
     },
     {
       "id": "110",
@@ -1665,7 +1683,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/110.mp3",
       "order_index": 11,
-      "audio_file": "dua_110.mp3"
+      "audio_file": "adhkar_110.mp3"
     },
     {
       "id": "111",
@@ -1678,7 +1696,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/111.mp3",
       "order_index": 12,
-      "audio_file": "dua_111.mp3"
+      "audio_file": "adhkar_111.mp3"
     },
     {
       "id": "1",
@@ -1691,7 +1709,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/1.mp3",
       "order_index": 0,
-      "audio_file": "dua_1.mp3"
+      "audio_file": "adhkar_1.mp3"
     },
     {
       "id": "2",
@@ -1704,7 +1722,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/2.mp3",
       "order_index": 1,
-      "audio_file": "dua_2.mp3"
+      "audio_file": "adhkar_2.mp3"
     },
     {
       "id": "3",
@@ -1717,7 +1735,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/3.mp3",
       "order_index": 2,
-      "audio_file": "dua_3.mp3"
+      "audio_file": "adhkar_3.mp3"
     },
     {
       "id": "4",
@@ -1730,7 +1748,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/4.mp3",
       "order_index": 3,
-      "audio_file": "dua_4.mp3"
+      "audio_file": "adhkar_4.mp3"
     },
     {
       "id": "10",
@@ -1743,7 +1761,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/10.mp3",
       "order_index": 0,
-      "audio_file": "dua_10.mp3"
+      "audio_file": "adhkar_10.mp3"
     },
     {
       "id": "11",
@@ -1756,7 +1774,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/11.mp3",
       "order_index": 0,
-      "audio_file": "dua_11.mp3"
+      "audio_file": "adhkar_11.mp3"
     },
     {
       "id": "12",
@@ -1769,7 +1787,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/12.mp3",
       "order_index": 0,
-      "audio_file": "dua_12.mp3"
+      "audio_file": "adhkar_12.mp3"
     },
     {
       "id": "13",
@@ -1782,7 +1800,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/13.mp3",
       "order_index": 0,
-      "audio_file": "dua_13.mp3"
+      "audio_file": "adhkar_13.mp3"
     },
     {
       "id": "14",
@@ -1795,7 +1813,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/14.mp3",
       "order_index": 1,
-      "audio_file": "dua_14.mp3"
+      "audio_file": "adhkar_14.mp3"
     },
     {
       "id": "15",
@@ -1808,7 +1826,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/15.mp3",
       "order_index": 2,
-      "audio_file": "dua_15.mp3"
+      "audio_file": "adhkar_15.mp3"
     },
     {
       "id": "16",
@@ -1821,7 +1839,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/16.mp3",
       "order_index": 0,
-      "audio_file": "dua_16.mp3"
+      "audio_file": "adhkar_16.mp3"
     },
     {
       "id": "17",
@@ -1834,7 +1852,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/17.mp3",
       "order_index": 1,
-      "audio_file": "dua_17.mp3"
+      "audio_file": "adhkar_17.mp3"
     },
     {
       "id": "18",
@@ -1847,7 +1865,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/18.mp3",
       "order_index": 0,
-      "audio_file": "dua_18.mp3"
+      "audio_file": "adhkar_18.mp3"
     },
     {
       "id": "19",
@@ -1860,7 +1878,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/19.mp3",
       "order_index": 0,
-      "audio_file": "dua_19.mp3"
+      "audio_file": "adhkar_19.mp3"
     },
     {
       "id": "20",
@@ -1873,7 +1891,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/20.mp3",
       "order_index": 0,
-      "audio_file": "dua_20.mp3"
+      "audio_file": "adhkar_20.mp3"
     },
     {
       "id": "21",
@@ -1886,7 +1904,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/21.mp3",
       "order_index": 0,
-      "audio_file": "dua_21.mp3"
+      "audio_file": "adhkar_21.mp3"
     },
     {
       "id": "22",
@@ -1899,7 +1917,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/22.mp3",
       "order_index": 0,
-      "audio_file": "dua_22.mp3"
+      "audio_file": "adhkar_22.mp3"
     },
     {
       "id": "23",
@@ -1912,7 +1930,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/23.mp3",
       "order_index": 1,
-      "audio_file": "dua_23.mp3"
+      "audio_file": "adhkar_23.mp3"
     },
     {
       "id": "24",
@@ -1925,7 +1943,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/24.mp3",
       "order_index": 2,
-      "audio_file": "dua_24.mp3"
+      "audio_file": "adhkar_24.mp3"
     },
     {
       "id": "25",
@@ -1938,7 +1956,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/25.mp3",
       "order_index": 3,
-      "audio_file": "dua_25.mp3"
+      "audio_file": "adhkar_25.mp3"
     },
     {
       "id": "26",
@@ -1951,7 +1969,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/26.mp3",
       "order_index": 4,
-      "audio_file": "dua_26.mp3"
+      "audio_file": "adhkar_26.mp3"
     },
     {
       "id": "5",
@@ -1964,7 +1982,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/5.mp3",
       "order_index": 0,
-      "audio_file": "dua_5.mp3"
+      "audio_file": "adhkar_5.mp3"
     },
     {
       "id": "6",
@@ -1977,7 +1995,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/6.mp3",
       "order_index": 0,
-      "audio_file": "dua_6.mp3"
+      "audio_file": "adhkar_6.mp3"
     },
     {
       "id": "7",
@@ -1990,7 +2008,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/7.mp3",
       "order_index": 0,
-      "audio_file": "dua_7.mp3"
+      "audio_file": "adhkar_7.mp3"
     },
     {
       "id": "8",
@@ -2003,7 +2021,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/8.mp3",
       "order_index": 1,
-      "audio_file": "dua_8.mp3"
+      "audio_file": "adhkar_8.mp3"
     },
     {
       "id": "9",
@@ -2016,7 +2034,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/9.mp3",
       "order_index": 0,
-      "audio_file": "dua_9.mp3"
+      "audio_file": "adhkar_9.mp3"
     },
     {
       "id": "27",
@@ -2029,7 +2047,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/27.mp3",
       "order_index": 0,
-      "audio_file": "dua_27.mp3"
+      "audio_file": "adhkar_27.mp3"
     },
     {
       "id": "28",
@@ -2042,7 +2060,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/28.mp3",
       "order_index": 1,
-      "audio_file": "dua_28.mp3"
+      "audio_file": "adhkar_28.mp3"
     },
     {
       "id": "29",
@@ -2055,7 +2073,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/29.mp3",
       "order_index": 2,
-      "audio_file": "dua_29.mp3"
+      "audio_file": "adhkar_29.mp3"
     },
     {
       "id": "30",
@@ -2068,7 +2086,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/30.mp3",
       "order_index": 3,
-      "audio_file": "dua_30.mp3"
+      "audio_file": "adhkar_30.mp3"
     },
     {
       "id": "31",
@@ -2081,7 +2099,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/31.mp3",
       "order_index": 4,
-      "audio_file": "dua_31.mp3"
+      "audio_file": "adhkar_31.mp3"
     },
     {
       "id": "32",
@@ -2094,7 +2112,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/32.mp3",
       "order_index": 5,
-      "audio_file": "dua_32.mp3"
+      "audio_file": "adhkar_32.mp3"
     },
     {
       "id": "33",
@@ -2107,7 +2125,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/33.mp3",
       "order_index": 0,
-      "audio_file": "dua_33.mp3"
+      "audio_file": "adhkar_33.mp3"
     },
     {
       "id": "34",
@@ -2120,7 +2138,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/34.mp3",
       "order_index": 1,
-      "audio_file": "dua_34.mp3"
+      "audio_file": "adhkar_34.mp3"
     },
     {
       "id": "35",
@@ -2133,7 +2151,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/35.mp3",
       "order_index": 2,
-      "audio_file": "dua_35.mp3"
+      "audio_file": "adhkar_35.mp3"
     },
     {
       "id": "36",
@@ -2146,7 +2164,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/36.mp3",
       "order_index": 3,
-      "audio_file": "dua_36.mp3"
+      "audio_file": "adhkar_36.mp3"
     },
     {
       "id": "37",
@@ -2159,7 +2177,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/37.mp3",
       "order_index": 4,
-      "audio_file": "dua_37.mp3"
+      "audio_file": "adhkar_37.mp3"
     },
     {
       "id": "38",
@@ -2172,7 +2190,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/38.mp3",
       "order_index": 0,
-      "audio_file": "dua_38.mp3"
+      "audio_file": "adhkar_38.mp3"
     },
     {
       "id": "39",
@@ -2185,7 +2203,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/39.mp3",
       "order_index": 1,
-      "audio_file": "dua_39.mp3"
+      "audio_file": "adhkar_39.mp3"
     },
     {
       "id": "40",
@@ -2198,7 +2216,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/40.mp3",
       "order_index": 2,
-      "audio_file": "dua_40.mp3"
+      "audio_file": "adhkar_40.mp3"
     },
     {
       "id": "41",
@@ -2211,7 +2229,7 @@
       "repeat_count": 3,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/41.mp3",
       "order_index": 0,
-      "audio_file": "dua_41.mp3"
+      "audio_file": "adhkar_41.mp3"
     },
     {
       "id": "42",
@@ -2224,7 +2242,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/42.mp3",
       "order_index": 1,
-      "audio_file": "dua_42.mp3"
+      "audio_file": "adhkar_42.mp3"
     },
     {
       "id": "43",
@@ -2237,7 +2255,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/43.mp3",
       "order_index": 2,
-      "audio_file": "dua_43.mp3"
+      "audio_file": "adhkar_43.mp3"
     },
     {
       "id": "44",
@@ -2250,7 +2268,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/44.mp3",
       "order_index": 3,
-      "audio_file": "dua_44.mp3"
+      "audio_file": "adhkar_44.mp3"
     },
     {
       "id": "45",
@@ -2263,7 +2281,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/45.mp3",
       "order_index": 4,
-      "audio_file": "dua_45.mp3"
+      "audio_file": "adhkar_45.mp3"
     },
     {
       "id": "46",
@@ -2276,7 +2294,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/46.mp3",
       "order_index": 5,
-      "audio_file": "dua_46.mp3"
+      "audio_file": "adhkar_46.mp3"
     },
     {
       "id": "47",
@@ -2289,7 +2307,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/47.mp3",
       "order_index": 6,
-      "audio_file": "dua_47.mp3"
+      "audio_file": "adhkar_47.mp3"
     },
     {
       "id": "48",
@@ -2302,7 +2320,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/48.mp3",
       "order_index": 0,
-      "audio_file": "dua_48.mp3"
+      "audio_file": "adhkar_48.mp3"
     },
     {
       "id": "49",
@@ -2315,7 +2333,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/49.mp3",
       "order_index": 1,
-      "audio_file": "dua_49.mp3"
+      "audio_file": "adhkar_49.mp3"
     },
     {
       "id": "50",
@@ -2328,7 +2346,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/50.mp3",
       "order_index": 0,
-      "audio_file": "dua_50.mp3"
+      "audio_file": "adhkar_50.mp3"
     },
     {
       "id": "51",
@@ -2341,7 +2359,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/51.mp3",
       "order_index": 1,
-      "audio_file": "dua_51.mp3"
+      "audio_file": "adhkar_51.mp3"
     },
     {
       "id": "52",
@@ -2354,7 +2372,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/52.mp3",
       "order_index": 0,
-      "audio_file": "dua_52.mp3"
+      "audio_file": "adhkar_52.mp3"
     },
     {
       "id": "53",
@@ -2367,7 +2385,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/53.mp3",
       "order_index": 0,
-      "audio_file": "dua_53.mp3"
+      "audio_file": "adhkar_53.mp3"
     },
     {
       "id": "54",
@@ -2380,7 +2398,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/54.mp3",
       "order_index": 1,
-      "audio_file": "dua_54.mp3"
+      "audio_file": "adhkar_54.mp3"
     },
     {
       "id": "55",
@@ -2393,7 +2411,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/55.mp3",
       "order_index": 0,
-      "audio_file": "dua_55.mp3"
+      "audio_file": "adhkar_55.mp3"
     },
     {
       "id": "56",
@@ -2406,7 +2424,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/56.mp3",
       "order_index": 1,
-      "audio_file": "dua_56.mp3"
+      "audio_file": "adhkar_56.mp3"
     },
     {
       "id": "57",
@@ -2419,7 +2437,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/57.mp3",
       "order_index": 2,
-      "audio_file": "dua_57.mp3"
+      "audio_file": "adhkar_57.mp3"
     },
     {
       "id": "58",
@@ -2432,7 +2450,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/58.mp3",
       "order_index": 3,
-      "audio_file": "dua_58.mp3"
+      "audio_file": "adhkar_58.mp3"
     },
     {
       "id": "59",
@@ -2445,7 +2463,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/59.mp3",
       "order_index": 4,
-      "audio_file": "dua_59.mp3"
+      "audio_file": "adhkar_59.mp3"
     },
     {
       "id": "60",
@@ -2458,7 +2476,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/60.mp3",
       "order_index": 5,
-      "audio_file": "dua_60.mp3"
+      "audio_file": "adhkar_60.mp3"
     },
     {
       "id": "61",
@@ -2471,7 +2489,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/61.mp3",
       "order_index": 6,
-      "audio_file": "dua_61.mp3"
+      "audio_file": "adhkar_61.mp3"
     },
     {
       "id": "62",
@@ -2484,7 +2502,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/62.mp3",
       "order_index": 7,
-      "audio_file": "dua_62.mp3"
+      "audio_file": "adhkar_62.mp3"
     },
     {
       "id": "63",
@@ -2497,7 +2515,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/63.mp3",
       "order_index": 8,
-      "audio_file": "dua_63.mp3"
+      "audio_file": "adhkar_63.mp3"
     },
     {
       "id": "64",
@@ -2510,7 +2528,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/64.mp3",
       "order_index": 9,
-      "audio_file": "dua_64.mp3"
+      "audio_file": "adhkar_64.mp3"
     },
     {
       "id": "65",
@@ -2523,7 +2541,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/65.mp3",
       "order_index": 10,
-      "audio_file": "dua_65.mp3"
+      "audio_file": "adhkar_65.mp3"
     },
     {
       "id": "66",
@@ -2536,7 +2554,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/66.mp3",
       "order_index": 0,
-      "audio_file": "dua_66.mp3"
+      "audio_file": "adhkar_66.mp3"
     },
     {
       "id": "67",
@@ -2549,7 +2567,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/67.mp3",
       "order_index": 1,
-      "audio_file": "dua_67.mp3"
+      "audio_file": "adhkar_67.mp3"
     },
     {
       "id": "68",
@@ -2562,7 +2580,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/68.mp3",
       "order_index": 2,
-      "audio_file": "dua_68.mp3"
+      "audio_file": "adhkar_68.mp3"
     },
     {
       "id": "69",
@@ -2575,7 +2593,7 @@
       "repeat_count": 33,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/69.mp3",
       "order_index": 3,
-      "audio_file": "dua_69.mp3"
+      "audio_file": "adhkar_69.mp3"
     },
     {
       "id": "70",
@@ -2588,7 +2606,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/70.mp3",
       "order_index": 4,
-      "audio_file": "dua_70.mp3"
+      "audio_file": "adhkar_70.mp3"
     },
     {
       "id": "71",
@@ -2601,7 +2619,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/71.mp3",
       "order_index": 5,
-      "audio_file": "dua_71.mp3"
+      "audio_file": "adhkar_71.mp3"
     },
     {
       "id": "72",
@@ -2614,7 +2632,7 @@
       "repeat_count": 10,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/73.mp3",
       "order_index": 6,
-      "audio_file": "dua_72.mp3"
+      "audio_file": "adhkar_72.mp3"
     },
     {
       "id": "73",
@@ -2627,7 +2645,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/73.mp3",
       "order_index": 7,
-      "audio_file": "dua_73.mp3"
+      "audio_file": "adhkar_73.mp3"
     },
     {
       "id": "74",
@@ -2640,7 +2658,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/74.mp3",
       "order_index": 0,
-      "audio_file": "dua_74.mp3"
+      "audio_file": "adhkar_74.mp3"
     },
     {
       "id": "112",
@@ -2653,7 +2671,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/112.mp3",
       "order_index": 0,
-      "audio_file": "dua_112.mp3"
+      "audio_file": "adhkar_112.mp3"
     },
     {
       "id": "113",
@@ -2666,7 +2684,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/113.mp3",
       "order_index": 0,
-      "audio_file": "dua_113.mp3"
+      "audio_file": "adhkar_113.mp3"
     },
     {
       "id": "114",
@@ -2679,7 +2697,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/114.mp3",
       "order_index": 0,
-      "audio_file": "dua_114.mp3"
+      "audio_file": "adhkar_114.mp3"
     },
     {
       "id": "115",
@@ -2692,7 +2710,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/115.mp3",
       "order_index": 1,
-      "audio_file": "dua_115.mp3"
+      "audio_file": "adhkar_115.mp3"
     },
     {
       "id": "116",
@@ -2705,7 +2723,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/116.mp3",
       "order_index": 0,
-      "audio_file": "dua_116.mp3"
+      "audio_file": "adhkar_116.mp3"
     },
     {
       "id": "117",
@@ -2718,7 +2736,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/117.mp3",
       "order_index": 1,
-      "audio_file": "dua_117.mp3"
+      "audio_file": "adhkar_117.mp3"
     },
     {
       "id": "118",
@@ -2731,7 +2749,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/118.mp3",
       "order_index": 2,
-      "audio_file": "dua_118.mp3"
+      "audio_file": "adhkar_118.mp3"
     },
     {
       "id": "119",
@@ -2744,7 +2762,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/119.mp3",
       "order_index": 0,
-      "audio_file": "dua_119.mp3"
+      "audio_file": "adhkar_119.mp3"
     },
     {
       "id": "120",
@@ -2757,7 +2775,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/120.mp3",
       "order_index": 0,
-      "audio_file": "dua_120.mp3"
+      "audio_file": "adhkar_120.mp3"
     },
     {
       "id": "121",
@@ -2770,7 +2788,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/121.mp3",
       "order_index": 1,
-      "audio_file": "dua_121.mp3"
+      "audio_file": "adhkar_121.mp3"
     },
     {
       "id": "122",
@@ -2783,7 +2801,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/122.mp3",
       "order_index": 0,
-      "audio_file": "dua_122.mp3"
+      "audio_file": "adhkar_122.mp3"
     },
     {
       "id": "123",
@@ -2796,7 +2814,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/123.mp3",
       "order_index": 1,
-      "audio_file": "dua_123.mp3"
+      "audio_file": "adhkar_123.mp3"
     },
     {
       "id": "124",
@@ -2809,7 +2827,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/124.mp3",
       "order_index": 2,
-      "audio_file": "dua_124.mp3"
+      "audio_file": "adhkar_124.mp3"
     },
     {
       "id": "125",
@@ -2822,7 +2840,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/125.mp3",
       "order_index": 3,
-      "audio_file": "dua_125.mp3"
+      "audio_file": "adhkar_125.mp3"
     },
     {
       "id": "126",
@@ -2835,7 +2853,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/126.mp3",
       "order_index": 0,
-      "audio_file": "dua_126.mp3"
+      "audio_file": "adhkar_126.mp3"
     },
     {
       "id": "127",
@@ -2848,7 +2866,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/127.mp3",
       "order_index": 1,
-      "audio_file": "dua_127.mp3"
+      "audio_file": "adhkar_127.mp3"
     },
     {
       "id": "128",
@@ -2861,7 +2879,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/128.mp3",
       "order_index": 2,
-      "audio_file": "dua_128.mp3"
+      "audio_file": "adhkar_128.mp3"
     },
     {
       "id": "129",
@@ -2874,7 +2892,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/129.mp3",
       "order_index": 0,
-      "audio_file": "dua_129.mp3"
+      "audio_file": "adhkar_129.mp3"
     },
     {
       "id": "130",
@@ -2887,7 +2905,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/130.mp3",
       "order_index": 1,
-      "audio_file": "dua_130.mp3"
+      "audio_file": "adhkar_130.mp3"
     },
     {
       "id": "131",
@@ -2900,7 +2918,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/131.mp3",
       "order_index": 0,
-      "audio_file": "dua_131.mp3"
+      "audio_file": "adhkar_131.mp3"
     },
     {
       "id": "132",
@@ -2913,7 +2931,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/132.mp3",
       "order_index": 0,
-      "audio_file": "dua_132.mp3"
+      "audio_file": "adhkar_132.mp3"
     },
     {
       "id": "133",
@@ -2926,7 +2944,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/133.mp3",
       "order_index": 0,
-      "audio_file": "dua_133.mp3"
+      "audio_file": "adhkar_133.mp3"
     },
     {
       "id": "134",
@@ -2939,7 +2957,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/134.mp3",
       "order_index": 1,
-      "audio_file": "dua_134.mp3"
+      "audio_file": "adhkar_134.mp3"
     },
     {
       "id": "135",
@@ -2952,7 +2970,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/135.mp3",
       "order_index": 2,
-      "audio_file": "dua_135.mp3"
+      "audio_file": "adhkar_135.mp3"
     },
     {
       "id": "136",
@@ -2965,7 +2983,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/136.mp3",
       "order_index": 0,
-      "audio_file": "dua_136.mp3"
+      "audio_file": "adhkar_136.mp3"
     },
     {
       "id": "137",
@@ -2978,7 +2996,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/137.mp3",
       "order_index": 1,
-      "audio_file": "dua_137.mp3"
+      "audio_file": "adhkar_137.mp3"
     },
     {
       "id": "138",
@@ -2991,7 +3009,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/138.mp3",
       "order_index": 0,
-      "audio_file": "dua_138.mp3"
+      "audio_file": "adhkar_138.mp3"
     },
     {
       "id": "139",
@@ -3004,7 +3022,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/139.mp3",
       "order_index": 0,
-      "audio_file": "dua_139.mp3"
+      "audio_file": "adhkar_139.mp3"
     },
     {
       "id": "140",
@@ -3017,7 +3035,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/140.mp3",
       "order_index": 0,
-      "audio_file": "dua_140.mp3"
+      "audio_file": "adhkar_140.mp3"
     },
     {
       "id": "141",
@@ -3030,7 +3048,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/141.mp3",
       "order_index": 0,
-      "audio_file": "dua_141.mp3"
+      "audio_file": "adhkar_141.mp3"
     },
     {
       "id": "142",
@@ -3043,7 +3061,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/142.mp3",
       "order_index": 1,
-      "audio_file": "dua_142.mp3"
+      "audio_file": "adhkar_142.mp3"
     },
     {
       "id": "143",
@@ -3056,7 +3074,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/143.mp3",
       "order_index": 2,
-      "audio_file": "dua_143.mp3"
+      "audio_file": "adhkar_143.mp3"
     },
     {
       "id": "144",
@@ -3069,7 +3087,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/144.mp3",
       "order_index": 0,
-      "audio_file": "dua_144.mp3"
+      "audio_file": "adhkar_144.mp3"
     },
     {
       "id": "145",
@@ -3082,7 +3100,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/145.mp3",
       "order_index": 0,
-      "audio_file": "dua_145.mp3"
+      "audio_file": "adhkar_145.mp3"
     },
     {
       "id": "146",
@@ -3095,7 +3113,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/146.mp3",
       "order_index": 0,
-      "audio_file": "dua_146.mp3"
+      "audio_file": "adhkar_146.mp3"
     },
     {
       "id": "147",
@@ -3108,7 +3126,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/147.mp3",
       "order_index": 0,
-      "audio_file": "dua_147.mp3"
+      "audio_file": "adhkar_147.mp3"
     },
     {
       "id": "148",
@@ -3121,7 +3139,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/148.mp3",
       "order_index": 1,
-      "audio_file": "dua_148.mp3"
+      "audio_file": "adhkar_148.mp3"
     },
     {
       "id": "149",
@@ -3134,7 +3152,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/49.mp3",
       "order_index": 0,
-      "audio_file": "dua_149.mp3"
+      "audio_file": "adhkar_149.mp3"
     },
     {
       "id": "150",
@@ -3147,7 +3165,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/150.mp3",
       "order_index": 0,
-      "audio_file": "dua_150.mp3"
+      "audio_file": "adhkar_150.mp3"
     },
     {
       "id": "151",
@@ -3160,7 +3178,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/151.mp3",
       "order_index": 1,
-      "audio_file": "dua_151.mp3"
+      "audio_file": "adhkar_151.mp3"
     },
     {
       "id": "152",
@@ -3173,7 +3191,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/152.mp3",
       "order_index": 2,
-      "audio_file": "dua_152.mp3"
+      "audio_file": "adhkar_152.mp3"
     },
     {
       "id": "153",
@@ -3186,7 +3204,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/153.mp3",
       "order_index": 0,
-      "audio_file": "dua_153.mp3"
+      "audio_file": "adhkar_153.mp3"
     },
     {
       "id": "154",
@@ -3199,7 +3217,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/154.mp3",
       "order_index": 0,
-      "audio_file": "dua_154.mp3"
+      "audio_file": "adhkar_154.mp3"
     },
     {
       "id": "155",
@@ -3212,7 +3230,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/155.mp3",
       "order_index": 0,
-      "audio_file": "dua_155.mp3"
+      "audio_file": "adhkar_155.mp3"
     },
     {
       "id": "156",
@@ -3225,7 +3243,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/156.mp3",
       "order_index": 0,
-      "audio_file": "dua_156.mp3"
+      "audio_file": "adhkar_156.mp3"
     },
     {
       "id": "157",
@@ -3238,7 +3256,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/157.mp3",
       "order_index": 1,
-      "audio_file": "dua_157.mp3"
+      "audio_file": "adhkar_157.mp3"
     },
     {
       "id": "158",
@@ -3251,7 +3269,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/158.mp3",
       "order_index": 2,
-      "audio_file": "dua_158.mp3"
+      "audio_file": "adhkar_158.mp3"
     },
     {
       "id": "159",
@@ -3264,7 +3282,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/159.mp3",
       "order_index": 3,
-      "audio_file": "dua_159.mp3"
+      "audio_file": "adhkar_159.mp3"
     },
     {
       "id": "160",
@@ -3277,7 +3295,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/160.mp3",
       "order_index": 0,
-      "audio_file": "dua_160.mp3"
+      "audio_file": "adhkar_160.mp3"
     },
     {
       "id": "161",
@@ -3290,7 +3308,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/161.mp3",
       "order_index": 1,
-      "audio_file": "dua_161.mp3"
+      "audio_file": "adhkar_161.mp3"
     },
     {
       "id": "162",
@@ -3303,7 +3321,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/162.mp3",
       "order_index": 0,
-      "audio_file": "dua_162.mp3"
+      "audio_file": "adhkar_162.mp3"
     },
     {
       "id": "163",
@@ -3316,7 +3334,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/163.mp3",
       "order_index": 0,
-      "audio_file": "dua_163.mp3"
+      "audio_file": "adhkar_163.mp3"
     },
     {
       "id": "164",
@@ -3329,7 +3347,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/164.mp3",
       "order_index": 0,
-      "audio_file": "dua_164.mp3"
+      "audio_file": "adhkar_164.mp3"
     },
     {
       "id": "165",
@@ -3342,7 +3360,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/165.mp3",
       "order_index": 0,
-      "audio_file": "dua_165.mp3"
+      "audio_file": "adhkar_165.mp3"
     },
     {
       "id": "166",
@@ -3355,7 +3373,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/166.mp3",
       "order_index": 0,
-      "audio_file": "dua_166.mp3"
+      "audio_file": "adhkar_166.mp3"
     },
     {
       "id": "167",
@@ -3368,7 +3386,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/167.mp3",
       "order_index": 1,
-      "audio_file": "dua_167.mp3"
+      "audio_file": "adhkar_167.mp3"
     },
     {
       "id": "168",
@@ -3381,7 +3399,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/168.mp3",
       "order_index": 0,
-      "audio_file": "dua_168.mp3"
+      "audio_file": "adhkar_168.mp3"
     },
     {
       "id": "169",
@@ -3394,7 +3412,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/169.mp3",
       "order_index": 0,
-      "audio_file": "dua_169.mp3"
+      "audio_file": "adhkar_169.mp3"
     },
     {
       "id": "170",
@@ -3407,7 +3425,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/170.mp3",
       "order_index": 1,
-      "audio_file": "dua_170.mp3"
+      "audio_file": "adhkar_170.mp3"
     },
     {
       "id": "171",
@@ -3420,7 +3438,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/171.mp3",
       "order_index": 2,
-      "audio_file": "dua_171.mp3"
+      "audio_file": "adhkar_171.mp3"
     },
     {
       "id": "172",
@@ -3433,7 +3451,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/172.mp3",
       "order_index": 0,
-      "audio_file": "dua_172.mp3"
+      "audio_file": "adhkar_172.mp3"
     },
     {
       "id": "173",
@@ -3446,7 +3464,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/173.mp3",
       "order_index": 0,
-      "audio_file": "dua_173.mp3"
+      "audio_file": "adhkar_173.mp3"
     },
     {
       "id": "174",
@@ -3459,7 +3477,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/174.mp3",
       "order_index": 0,
-      "audio_file": "dua_174.mp3"
+      "audio_file": "adhkar_174.mp3"
     },
     {
       "id": "175",
@@ -3472,7 +3490,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/175.mp3",
       "order_index": 0,
-      "audio_file": "dua_175.mp3"
+      "audio_file": "adhkar_175.mp3"
     },
     {
       "id": "176",
@@ -3485,7 +3503,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/176.mp3",
       "order_index": 0,
-      "audio_file": "dua_176.mp3"
+      "audio_file": "adhkar_176.mp3"
     },
     {
       "id": "177",
@@ -3498,7 +3516,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/177.mp3",
       "order_index": 1,
-      "audio_file": "dua_177.mp3"
+      "audio_file": "adhkar_177.mp3"
     },
     {
       "id": "178",
@@ -3511,7 +3529,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/178.mp3",
       "order_index": 0,
-      "audio_file": "dua_178.mp3"
+      "audio_file": "adhkar_178.mp3"
     },
     {
       "id": "179",
@@ -3524,7 +3542,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/179.mp3",
       "order_index": 1,
-      "audio_file": "dua_179.mp3"
+      "audio_file": "adhkar_179.mp3"
     },
     {
       "id": "180",
@@ -3537,7 +3555,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/180.mp3",
       "order_index": 0,
-      "audio_file": "dua_180.mp3"
+      "audio_file": "adhkar_180.mp3"
     },
     {
       "id": "181",
@@ -3550,7 +3568,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/181.mp3",
       "order_index": 1,
-      "audio_file": "dua_181.mp3"
+      "audio_file": "adhkar_181.mp3"
     },
     {
       "id": "182",
@@ -3563,7 +3581,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/182.mp3",
       "order_index": 0,
-      "audio_file": "dua_182.mp3"
+      "audio_file": "adhkar_182.mp3"
     },
     {
       "id": "183",
@@ -3576,7 +3594,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/183.mp3",
       "order_index": 0,
-      "audio_file": "dua_183.mp3"
+      "audio_file": "adhkar_183.mp3"
     },
     {
       "id": "184",
@@ -3589,7 +3607,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/184.mp3",
       "order_index": 0,
-      "audio_file": "dua_184.mp3"
+      "audio_file": "adhkar_184.mp3"
     },
     {
       "id": "185",
@@ -3602,7 +3620,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/185.mp3",
       "order_index": 0,
-      "audio_file": "dua_185.mp3"
+      "audio_file": "adhkar_185.mp3"
     },
     {
       "id": "186",
@@ -3615,7 +3633,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/186.mp3",
       "order_index": 0,
-      "audio_file": "dua_186.mp3"
+      "audio_file": "adhkar_186.mp3"
     },
     {
       "id": "187",
@@ -3628,7 +3646,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/187.mp3",
       "order_index": 0,
-      "audio_file": "dua_187.mp3"
+      "audio_file": "adhkar_187.mp3"
     },
     {
       "id": "188",
@@ -3641,7 +3659,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/188.mp3",
       "order_index": 0,
-      "audio_file": "dua_188.mp3"
+      "audio_file": "adhkar_188.mp3"
     },
     {
       "id": "189",
@@ -3654,7 +3672,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/189.mp3",
       "order_index": 0,
-      "audio_file": "dua_189.mp3"
+      "audio_file": "adhkar_189.mp3"
     },
     {
       "id": "190",
@@ -3667,7 +3685,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/190.mp3",
       "order_index": 0,
-      "audio_file": "dua_190.mp3"
+      "audio_file": "adhkar_190.mp3"
     },
     {
       "id": "191",
@@ -3680,7 +3698,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/191.mp3",
       "order_index": 0,
-      "audio_file": "dua_191.mp3"
+      "audio_file": "adhkar_191.mp3"
     },
     {
       "id": "192",
@@ -3693,7 +3711,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/192.mp3",
       "order_index": 0,
-      "audio_file": "dua_192.mp3"
+      "audio_file": "adhkar_192.mp3"
     },
     {
       "id": "193",
@@ -3706,7 +3724,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/193.mp3",
       "order_index": 0,
-      "audio_file": "dua_193.mp3"
+      "audio_file": "adhkar_193.mp3"
     },
     {
       "id": "194",
@@ -3719,7 +3737,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/194.mp3",
       "order_index": 0,
-      "audio_file": "dua_194.mp3"
+      "audio_file": "adhkar_194.mp3"
     },
     {
       "id": "195",
@@ -3732,7 +3750,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/195.mp3",
       "order_index": 0,
-      "audio_file": "dua_195.mp3"
+      "audio_file": "adhkar_195.mp3"
     },
     {
       "id": "196",
@@ -3745,7 +3763,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/196.mp3",
       "order_index": 0,
-      "audio_file": "dua_196.mp3"
+      "audio_file": "adhkar_196.mp3"
     },
     {
       "id": "197",
@@ -3758,7 +3776,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/197.mp3",
       "order_index": 0,
-      "audio_file": "dua_197.mp3"
+      "audio_file": "adhkar_197.mp3"
     },
     {
       "id": "198",
@@ -3771,7 +3789,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/198.mp3",
       "order_index": 0,
-      "audio_file": "dua_198.mp3"
+      "audio_file": "adhkar_198.mp3"
     },
     {
       "id": "199",
@@ -3784,7 +3802,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/199.mp3",
       "order_index": 0,
-      "audio_file": "dua_199.mp3"
+      "audio_file": "adhkar_199.mp3"
     },
     {
       "id": "200",
@@ -3797,7 +3815,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/200.mp3",
       "order_index": 0,
-      "audio_file": "dua_200.mp3"
+      "audio_file": "adhkar_200.mp3"
     },
     {
       "id": "201",
@@ -3810,7 +3828,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/201.mp3",
       "order_index": 0,
-      "audio_file": "dua_201.mp3"
+      "audio_file": "adhkar_201.mp3"
     },
     {
       "id": "202",
@@ -3823,7 +3841,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/202.mp3",
       "order_index": 0,
-      "audio_file": "dua_202.mp3"
+      "audio_file": "adhkar_202.mp3"
     },
     {
       "id": "203",
@@ -3836,7 +3854,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/203.mp3",
       "order_index": 0,
-      "audio_file": "dua_203.mp3"
+      "audio_file": "adhkar_203.mp3"
     },
     {
       "id": "204",
@@ -3849,7 +3867,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/204.mp3",
       "order_index": 0,
-      "audio_file": "dua_204.mp3"
+      "audio_file": "adhkar_204.mp3"
     },
     {
       "id": "205",
@@ -3862,7 +3880,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/205.mp3",
       "order_index": 0,
-      "audio_file": "dua_205.mp3"
+      "audio_file": "adhkar_205.mp3"
     },
     {
       "id": "206",
@@ -3875,7 +3893,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/206.mp3",
       "order_index": 0,
-      "audio_file": "dua_206.mp3"
+      "audio_file": "adhkar_206.mp3"
     },
     {
       "id": "207",
@@ -3888,7 +3906,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/207.mp3",
       "order_index": 0,
-      "audio_file": "dua_207.mp3"
+      "audio_file": "adhkar_207.mp3"
     },
     {
       "id": "208",
@@ -3901,7 +3919,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/208.mp3",
       "order_index": 0,
-      "audio_file": "dua_208.mp3"
+      "audio_file": "adhkar_208.mp3"
     },
     {
       "id": "209",
@@ -3914,7 +3932,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/209.mp3",
       "order_index": 0,
-      "audio_file": "dua_209.mp3"
+      "audio_file": "adhkar_209.mp3"
     },
     {
       "id": "210",
@@ -3927,7 +3945,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/210.mp3",
       "order_index": 0,
-      "audio_file": "dua_210.mp3"
+      "audio_file": "adhkar_210.mp3"
     },
     {
       "id": "211",
@@ -3940,7 +3958,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/211.mp3",
       "order_index": 0,
-      "audio_file": "dua_211.mp3"
+      "audio_file": "adhkar_211.mp3"
     },
     {
       "id": "212",
@@ -3953,7 +3971,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/212.mp3",
       "order_index": 0,
-      "audio_file": "dua_212.mp3"
+      "audio_file": "adhkar_212.mp3"
     },
     {
       "id": "213",
@@ -3966,7 +3984,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/213.mp3",
       "order_index": 1,
-      "audio_file": "dua_213.mp3"
+      "audio_file": "adhkar_213.mp3"
     },
     {
       "id": "214",
@@ -3979,7 +3997,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/214.mp3",
       "order_index": 0,
-      "audio_file": "dua_214.mp3"
+      "audio_file": "adhkar_214.mp3"
     },
     {
       "id": "215",
@@ -3992,7 +4010,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/215.mp3",
       "order_index": 0,
-      "audio_file": "dua_215.mp3"
+      "audio_file": "adhkar_215.mp3"
     },
     {
       "id": "216",
@@ -4005,7 +4023,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/216.mp3",
       "order_index": 0,
-      "audio_file": "dua_216.mp3"
+      "audio_file": "adhkar_216.mp3"
     },
     {
       "id": "217",
@@ -4018,7 +4036,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/217.mp3",
       "order_index": 0,
-      "audio_file": "dua_217.mp3"
+      "audio_file": "adhkar_217.mp3"
     },
     {
       "id": "218",
@@ -4031,7 +4049,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/218.mp3",
       "order_index": 0,
-      "audio_file": "dua_218.mp3"
+      "audio_file": "adhkar_218.mp3"
     },
     {
       "id": "219",
@@ -4044,7 +4062,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/219.mp3",
       "order_index": 0,
-      "audio_file": "dua_219.mp3"
+      "audio_file": "adhkar_219.mp3"
     },
     {
       "id": "220",
@@ -4057,7 +4075,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/220.mp3",
       "order_index": 1,
-      "audio_file": "dua_220.mp3"
+      "audio_file": "adhkar_220.mp3"
     },
     {
       "id": "221",
@@ -4070,7 +4088,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/221.mp3",
       "order_index": 2,
-      "audio_file": "dua_221.mp3"
+      "audio_file": "adhkar_221.mp3"
     },
     {
       "id": "222",
@@ -4083,7 +4101,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/222.mp3",
       "order_index": 3,
-      "audio_file": "dua_222.mp3"
+      "audio_file": "adhkar_222.mp3"
     },
     {
       "id": "223",
@@ -4096,7 +4114,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/223.mp3",
       "order_index": 4,
-      "audio_file": "dua_223.mp3"
+      "audio_file": "adhkar_223.mp3"
     },
     {
       "id": "224",
@@ -4109,7 +4127,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/224.mp3",
       "order_index": 0,
-      "audio_file": "dua_224.mp3"
+      "audio_file": "adhkar_224.mp3"
     },
     {
       "id": "225",
@@ -4122,7 +4140,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/225.mp3",
       "order_index": 1,
-      "audio_file": "dua_225.mp3"
+      "audio_file": "adhkar_225.mp3"
     },
     {
       "id": "226",
@@ -4135,7 +4153,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/226.mp3",
       "order_index": 2,
-      "audio_file": "dua_226.mp3"
+      "audio_file": "adhkar_226.mp3"
     },
     {
       "id": "227",
@@ -4148,7 +4166,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/227.mp3",
       "order_index": 0,
-      "audio_file": "dua_227.mp3"
+      "audio_file": "adhkar_227.mp3"
     },
     {
       "id": "228",
@@ -4161,7 +4179,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/228.mp3",
       "order_index": 0,
-      "audio_file": "dua_228.mp3"
+      "audio_file": "adhkar_228.mp3"
     },
     {
       "id": "229",
@@ -4174,7 +4192,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/229.mp3",
       "order_index": 0,
-      "audio_file": "dua_229.mp3"
+      "audio_file": "adhkar_229.mp3"
     },
     {
       "id": "230",
@@ -4187,7 +4205,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/230.mp3",
       "order_index": 0,
-      "audio_file": "dua_230.mp3"
+      "audio_file": "adhkar_230.mp3"
     },
     {
       "id": "231",
@@ -4200,7 +4218,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/231.mp3",
       "order_index": 0,
-      "audio_file": "dua_231.mp3"
+      "audio_file": "adhkar_231.mp3"
     },
     {
       "id": "232",
@@ -4213,7 +4231,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/232.mp3",
       "order_index": 0,
-      "audio_file": "dua_232.mp3"
+      "audio_file": "adhkar_232.mp3"
     },
     {
       "id": "233",
@@ -4226,7 +4244,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/233.mp3",
       "order_index": 0,
-      "audio_file": "dua_233.mp3"
+      "audio_file": "adhkar_233.mp3"
     },
     {
       "id": "234",
@@ -4239,7 +4257,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/234.mp3",
       "order_index": 0,
-      "audio_file": "dua_234.mp3"
+      "audio_file": "adhkar_234.mp3"
     },
     {
       "id": "235",
@@ -4252,7 +4270,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/235.mp3",
       "order_index": 0,
-      "audio_file": "dua_235.mp3"
+      "audio_file": "adhkar_235.mp3"
     },
     {
       "id": "236",
@@ -4265,7 +4283,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/236.mp3",
       "order_index": 0,
-      "audio_file": "dua_236.mp3"
+      "audio_file": "adhkar_236.mp3"
     },
     {
       "id": "237",
@@ -4278,7 +4296,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/237.mp3",
       "order_index": 0,
-      "audio_file": "dua_237.mp3"
+      "audio_file": "adhkar_237.mp3"
     },
     {
       "id": "238",
@@ -4291,7 +4309,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/238.mp3",
       "order_index": 0,
-      "audio_file": "dua_238.mp3"
+      "audio_file": "adhkar_238.mp3"
     },
     {
       "id": "239",
@@ -4304,7 +4322,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/239.mp3",
       "order_index": 0,
-      "audio_file": "dua_239.mp3"
+      "audio_file": "adhkar_239.mp3"
     },
     {
       "id": "240",
@@ -4317,7 +4335,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/240.mp3",
       "order_index": 0,
-      "audio_file": "dua_240.mp3"
+      "audio_file": "adhkar_240.mp3"
     },
     {
       "id": "241",
@@ -4330,7 +4348,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/241.mp3",
       "order_index": 1,
-      "audio_file": "dua_241.mp3"
+      "audio_file": "adhkar_241.mp3"
     },
     {
       "id": "242",
@@ -4343,7 +4361,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/242.mp3",
       "order_index": 0,
-      "audio_file": "dua_242.mp3"
+      "audio_file": "adhkar_242.mp3"
     },
     {
       "id": "243",
@@ -4356,7 +4374,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/243.mp3",
       "order_index": 0,
-      "audio_file": "dua_243.mp3"
+      "audio_file": "adhkar_243.mp3"
     },
     {
       "id": "244",
@@ -4369,7 +4387,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/244.mp3",
       "order_index": 0,
-      "audio_file": "dua_244.mp3"
+      "audio_file": "adhkar_244.mp3"
     },
     {
       "id": "245",
@@ -4382,7 +4400,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/245.mp3",
       "order_index": 0,
-      "audio_file": "dua_245.mp3"
+      "audio_file": "adhkar_245.mp3"
     },
     {
       "id": "246",
@@ -4395,7 +4413,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/246.mp3",
       "order_index": 0,
-      "audio_file": "dua_246.mp3"
+      "audio_file": "adhkar_246.mp3"
     },
     {
       "id": "247",
@@ -4408,7 +4426,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/247.mp3",
       "order_index": 0,
-      "audio_file": "dua_247.mp3"
+      "audio_file": "adhkar_247.mp3"
     },
     {
       "id": "248",
@@ -4421,7 +4439,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/248.mp3",
       "order_index": 0,
-      "audio_file": "dua_248.mp3"
+      "audio_file": "adhkar_248.mp3"
     },
     {
       "id": "249",
@@ -4434,7 +4452,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/249.mp3",
       "order_index": 1,
-      "audio_file": "dua_249.mp3"
+      "audio_file": "adhkar_249.mp3"
     },
     {
       "id": "250",
@@ -4447,7 +4465,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/250.mp3",
       "order_index": 2,
-      "audio_file": "dua_250.mp3"
+      "audio_file": "adhkar_250.mp3"
     },
     {
       "id": "251",
@@ -4460,7 +4478,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/251.mp3",
       "order_index": 3,
-      "audio_file": "dua_251.mp3"
+      "audio_file": "adhkar_251.mp3"
     },
     {
       "id": "252",
@@ -4473,7 +4491,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/252.mp3",
       "order_index": 4,
-      "audio_file": "dua_252.mp3"
+      "audio_file": "adhkar_252.mp3"
     },
     {
       "id": "253",
@@ -4486,7 +4504,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/253.mp3",
       "order_index": 5,
-      "audio_file": "dua_253.mp3"
+      "audio_file": "adhkar_253.mp3"
     },
     {
       "id": "254",
@@ -4499,7 +4517,7 @@
       "repeat_count": 100,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/254.mp3",
       "order_index": 0,
-      "audio_file": "dua_254.mp3"
+      "audio_file": "adhkar_254.mp3"
     },
     {
       "id": "255",
@@ -4512,7 +4530,7 @@
       "repeat_count": 10,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/255.mp3",
       "order_index": 1,
-      "audio_file": "dua_255.mp3"
+      "audio_file": "adhkar_255.mp3"
     },
     {
       "id": "256",
@@ -4525,7 +4543,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/256.mp3",
       "order_index": 2,
-      "audio_file": "dua_256.mp3"
+      "audio_file": "adhkar_256.mp3"
     },
     {
       "id": "257",
@@ -4538,7 +4556,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/257.mp3",
       "order_index": 3,
-      "audio_file": "dua_257.mp3"
+      "audio_file": "adhkar_257.mp3"
     },
     {
       "id": "258",
@@ -4551,7 +4569,7 @@
       "repeat_count": 100,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/258.mp3",
       "order_index": 4,
-      "audio_file": "dua_258.mp3"
+      "audio_file": "adhkar_258.mp3"
     },
     {
       "id": "259",
@@ -4564,7 +4582,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/259.mp3",
       "order_index": 5,
-      "audio_file": "dua_259.mp3"
+      "audio_file": "adhkar_259.mp3"
     },
     {
       "id": "260",
@@ -4577,7 +4595,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/260.mp3",
       "order_index": 6,
-      "audio_file": "dua_260.mp3"
+      "audio_file": "adhkar_260.mp3"
     },
     {
       "id": "261",
@@ -4590,7 +4608,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/261.mp3",
       "order_index": 7,
-      "audio_file": "dua_261.mp3"
+      "audio_file": "adhkar_261.mp3"
     },
     {
       "id": "262",
@@ -4603,7 +4621,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/262.mp3",
       "order_index": 8,
-      "audio_file": "dua_262.mp3"
+      "audio_file": "adhkar_262.mp3"
     },
     {
       "id": "263",
@@ -4616,7 +4634,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/263.mp3",
       "order_index": 9,
-      "audio_file": "dua_263.mp3"
+      "audio_file": "adhkar_263.mp3"
     },
     {
       "id": "264",
@@ -4629,7 +4647,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/264.mp3",
       "order_index": 10,
-      "audio_file": "dua_264.mp3"
+      "audio_file": "adhkar_264.mp3"
     },
     {
       "id": "265",
@@ -4642,7 +4660,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/265.mp3",
       "order_index": 11,
-      "audio_file": "dua_265.mp3"
+      "audio_file": "adhkar_265.mp3"
     },
     {
       "id": "266",
@@ -4655,7 +4673,7 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/266.mp3",
       "order_index": 0,
-      "audio_file": "dua_266.mp3"
+      "audio_file": "adhkar_266.mp3"
     },
     {
       "id": "267",
@@ -4668,7 +4686,1814 @@
       "repeat_count": 1,
       "audio_url": "http://www.hisnmuslim.com/audio/ar/267.mp3",
       "order_index": 0,
-      "audio_file": "dua_267.mp3"
+      "audio_file": "adhkar_267.mp3"
+    },
+    {
+      "id": "quranic-1",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا تَقَبَّلْ مِنَّا إِنَّكَ أَنْتَ السَّمِيعُ الْعَلِيمُ",
+      "translation": "Our Lord, accept [this] from us. Indeed, You are the Hearing, the Knowing.",
+      "transliteration": "Rabbana taqabbal minna innaka antas-Samee'ul-'Aleem",
+      "instruction": "Surah 2, Ayah 127 (2:127)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 0,
+      "audio_file": "adhkar_268.mp3"
+    },
+    {
+      "id": "quranic-2",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا وَاجْعَلْنَا مُسْلِمَيْنِ لَكَ وَمِنْ ذُرِّيَّتِنَا أُمَّةً مُسْلِمَةً لَكَ وَأَرِنَا مَنَاسِكَنَا وَتُبْ عَلَيْنَا إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ",
+      "translation": "Our Lord, and make us Muslims [in submission] to You and from our descendants a Muslim nation [in submission] to You. And show us our rites and accept our repentance. Indeed, You are the Accepting of repentance, the Merciful.",
+      "transliteration": "Rabbana waj'alna Muslimayni laka wa min dhurriyyatina ummatan Muslimatan laka wa arina manasikana wa tub 'alayna innaka antat-Tawwabur-Raheem",
+      "instruction": "Surah 2, Ayah 128 (2:128)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 1,
+      "audio_file": "adhkar_269.mp3"
+    },
+    {
+      "id": "quranic-3",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+      "translation": "Our Lord, give us in this world [that which is] good and in the Hereafter [that which is] good and protect us from the punishment of the Fire.",
+      "transliteration": "Rabbana aatina fid-dunya hasanatan wa fil-aakhirati hasanatan wa qina 'adhaban-naar",
+      "instruction": "Surah 2, Ayah 201 (2:201)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 2,
+      "audio_file": "adhkar_270.mp3"
+    },
+    {
+      "id": "quranic-4",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا أَفْرِغْ عَلَيْنَا صَبْرًا وَثَبِّتْ أَقْدَامَنَا وَانْصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ",
+      "translation": "Our Lord, pour upon us patience and plant firmly our feet and give us victory over the disbelieving people.",
+      "transliteration": "Rabbana afrigh 'alayna sabran wa thabbit aqdaamana wansurna 'alal-qawmil-kaafireen",
+      "instruction": "Surah 2, Ayah 250 (2:250)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 3,
+      "audio_file": "adhkar_271.mp3"
+    },
+    {
+      "id": "quranic-5",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "سَمِعْنَا وَأَطَعْنَا غُفْرَانَكَ رَبَّنَا وَإِلَيْكَ الْمَصِيرُ",
+      "translation": "We hear and we obey. [We seek] Your forgiveness, our Lord, and to You is the [final] destination.",
+      "transliteration": "Sami'na wa ata'na ghufranaka Rabbana wa ilaykal-maseer",
+      "instruction": "Surah 2, Ayah 285 (2:285)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 4,
+      "audio_file": "adhkar_272.mp3"
+    },
+    {
+      "id": "quranic-6",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا لَا تُؤَاخِذْنَا إِنْ نَسِينَا أَوْ أَخْطَأْنَا",
+      "translation": "Our Lord, do not impose blame upon us if we have forgotten or erred.",
+      "transliteration": "Rabbana la tu'aakhidhna in naseena aw akhta'na",
+      "instruction": "Surah 2, Ayah 286 (2:286)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 5,
+      "audio_file": "adhkar_273.mp3"
+    },
+    {
+      "id": "quranic-7",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِنْ قَبْلِنَا",
+      "translation": "Our Lord, and lay not upon us a burden like that which You laid upon those before us.",
+      "transliteration": "Rabbana wa la tahmil 'alayna isran kama hamaltahu 'alal-ladheena min qablina",
+      "instruction": "Surah 2, Ayah 286 (2:286)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 6,
+      "audio_file": "adhkar_274.mp3"
+    },
+    {
+      "id": "quranic-8",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا وَلَا تُحَمِّلْنَا مَا لَا طَاقَةَ لَنَا بِهِ وَاعْفُ عَنَّا وَاغْفِرْ لَنَا وَارْحَمْنَا أَنْتَ مَوْلَانَا فَانْصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ",
+      "translation": "Our Lord, and burden us not with that which we have no ability to bear. And pardon us; and forgive us; and have mercy upon us. You are our protector, so give us victory over the disbelieving people.",
+      "transliteration": "Rabbana wa la tuhammilna ma la taqata lana bihi wa'fu 'anna waghfir lana warhamna anta mawlana fansurna 'alal-qawmil-kaafireen",
+      "instruction": "Surah 2, Ayah 286 (2:286)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 7,
+      "audio_file": "adhkar_275.mp3"
+    },
+    {
+      "id": "quranic-9",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا وَهَبْ لَنَا مِنْ لَدُنْكَ رَحْمَةً إِنَّكَ أَنْتَ الْوَهَّابُ",
+      "translation": "Our Lord, let not our hearts deviate after You have guided us and grant us from Yourself mercy. Indeed, You are the Bestower.",
+      "transliteration": "Rabbana la tuzigh quloobana ba'da idh hadaytana wa hab lana min ladunka rahmatan innaka antal-Wahhaab",
+      "instruction": "Surah 3, Ayah 8 (3:8)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 8,
+      "audio_file": "adhkar_276.mp3"
+    },
+    {
+      "id": "quranic-10",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا إِنَّكَ جَامِعُ النَّاسِ لِيَوْمٍ لَا رَيْبَ فِيهِ إِنَّ اللَّهَ لَا يُخْلِفُ الْمِيعَادَ",
+      "translation": "Our Lord, surely You will gather the people for a Day about which there is no doubt. Indeed, Allah does not fail in His promise.",
+      "transliteration": "Rabbana innaka jaami'un-naasi li-yawmin la rayba feehi innallaha la yukhliful-mee'aad",
+      "instruction": "Surah 3, Ayah 9 (3:9)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 9,
+      "audio_file": "adhkar_277.mp3"
+    },
+    {
+      "id": "quranic-11",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا إِنَّنَا آمَنَّا فَاغْفِرْ لَنَا ذُنُوبَنَا وَقِنَا عَذَابَ النَّارِ",
+      "translation": "Our Lord, indeed we have believed, so forgive us our sins and protect us from the punishment of the Fire.",
+      "transliteration": "Rabbana innana aamanna faghfir lana dhunoobana wa qina 'adhaban-naar",
+      "instruction": "Surah 3, Ayah 16 (3:16)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 10,
+      "audio_file": "adhkar_278.mp3"
+    },
+    {
+      "id": "quranic-12",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا آمَنَّا بِمَا أَنْزَلْتَ وَاتَّبَعْنَا الرَّسُولَ فَاكْتُبْنَا مَعَ الشَّاهِدِينَ",
+      "translation": "Our Lord, we have believed in what You revealed and have followed the messenger, so register us among the witnesses.",
+      "transliteration": "Rabbana aamanna bima anzalta wattaba'nar-rasoola faktubna ma'ash-shaahideen",
+      "instruction": "Surah 3, Ayah 53 (3:53)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 11,
+      "audio_file": "adhkar_279.mp3"
+    },
+    {
+      "id": "quranic-13",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا اغْفِرْ لَنَا ذُنُوبَنَا وَإِسْرَافَنَا فِي أَمْرِنَا وَثَبِّتْ أَقْدَامَنَا وَانْصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ",
+      "translation": "Our Lord, forgive us our sins and the excess [committed] in our affairs and plant firmly our feet and give us victory over the disbelieving people.",
+      "transliteration": "Rabbana ighfir lana dhunoobana wa israafana fee amrina wa thabbit aqdaamana wansurna 'alal-qawmil-kaafireen",
+      "instruction": "Surah 3, Ayah 147 (3:147)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 12,
+      "audio_file": "adhkar_280.mp3"
+    },
+    {
+      "id": "quranic-14",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا مَا خَلَقْتَ هَذَا بَاطِلًا سُبْحَانَكَ فَقِنَا عَذَابَ النَّارِ",
+      "translation": "Our Lord, You did not create this aimlessly; exalted are You [above such a thing]; then protect us from the punishment of the Fire.",
+      "transliteration": "Rabbana ma khalaqta hadha baatilan subhaanaka faqina 'adhaban-naar",
+      "instruction": "Surah 3, Ayah 191 (3:191)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 13,
+      "audio_file": "adhkar_281.mp3"
+    },
+    {
+      "id": "quranic-15",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا إِنَّكَ مَنْ تُدْخِلِ النَّارَ فَقَدْ أَخْزَيْتَهُ وَمَا لِلظَّالِمِينَ مِنْ أَنْصَارٍ",
+      "translation": "Our Lord, indeed whoever You admit to the Fire - You have disgraced him, and for the wrongdoers there are no helpers.",
+      "transliteration": "Rabbana innaka man tudkhilin-naara faqad akhzaytahu wa ma lidh-dhaalimeena min ansaar",
+      "instruction": "Surah 3, Ayah 192 (3:192)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 14,
+      "audio_file": "adhkar_282.mp3"
+    },
+    {
+      "id": "quranic-16",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا إِنَّنَا سَمِعْنَا مُنَادِيًا يُنَادِي لِلْإِيمَانِ أَنْ آمِنُوا بِرَبِّكُمْ فَآمَنَّا رَبَّنَا فَاغْفِرْ لَنَا ذُنُوبَنَا وَكَفِّرْ عَنَّا سَيِّئَاتِنَا وَتَوَفَّنَا مَعَ الْأَبْرَارِ",
+      "translation": "Our Lord, indeed we have heard a caller calling to faith, [saying], 'Believe in your Lord,' and we have believed. Our Lord, so forgive us our sins and remove from us our misdeeds and cause us to die with the righteous.",
+      "transliteration": "Rabbana innana sami'na munadiyan yunaadee lil-eemani an aaminoo bi-Rabbikum fa-aamanna Rabbana faghfir lana dhunoobana wa kaffir 'anna sayyi'aatina wa tawaffana ma'al-abraar",
+      "instruction": "Surah 3, Ayah 193 (3:193)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 15,
+      "audio_file": "adhkar_283.mp3"
+    },
+    {
+      "id": "quranic-17",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا وَآتِنَا مَا وَعَدْتَنَا عَلَى رُسُلِكَ وَلَا تُخْزِنَا يَوْمَ الْقِيَامَةِ إِنَّكَ لَا تُخْلِفُ الْمِيعَادَ",
+      "translation": "Our Lord, and grant us what You promised us through Your messengers and do not disgrace us on the Day of Resurrection. Indeed, You do not fail in [Your] promise.",
+      "transliteration": "Rabbana wa aatina ma wa'adtana 'ala rusulika wa la tukhzina yawmal-qiyaamati innaka la tukhliful-mee'aad",
+      "instruction": "Surah 3, Ayah 194 (3:194)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 16,
+      "audio_file": "adhkar_284.mp3"
+    },
+    {
+      "id": "quranic-18",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا آمَنَّا فَاكْتُبْنَا مَعَ الشَّاهِدِينَ",
+      "translation": "Our Lord, we have believed, so register us among the witnesses.",
+      "transliteration": "Rabbana aamanna faktubna ma'ash-shaahideen",
+      "instruction": "Surah 5, Ayah 83 (5:83)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 17,
+      "audio_file": "adhkar_285.mp3"
+    },
+    {
+      "id": "quranic-19",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "اللَّهُمَّ رَبَّنَا أَنْزِلْ عَلَيْنَا مَائِدَةً مِنَ السَّمَاءِ تَكُونُ لَنَا عِيدًا لِأَوَّلِنَا وَآخِرِنَا وَآيَةً مِنْكَ وَارْزُقْنَا وَأَنْتَ خَيْرُ الرَّازِقِينَ",
+      "translation": "O Allah, our Lord, send down to us a table [spread with food] from the heaven to be for us a festival for the first of us and the last of us and a sign from You. And provide for us, and You are the best of providers.",
+      "transliteration": "Allahumma Rabbana anzil 'alayna maa'idatan minas-samaa'i takoonu lana 'eedan li-awwalina wa aakhirina wa aayatan minka warzuqna wa anta khayrur-raaziqeen",
+      "instruction": "Surah 5, Ayah 114 (5:114)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 18,
+      "audio_file": "adhkar_286.mp3"
+    },
+    {
+      "id": "quranic-20",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا ظَلَمْنَا أَنْفُسَنَا وَإِنْ لَمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ",
+      "translation": "Our Lord, we have wronged ourselves, and if You do not forgive us and have mercy upon us, we will surely be among the losers.",
+      "transliteration": "Rabbana dhalamna anfusana wa in lam taghfir lana wa tarhamna lanakoonanna minal-khaasireen",
+      "instruction": "Surah 7, Ayah 23 (7:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 19,
+      "audio_file": "adhkar_287.mp3"
+    },
+    {
+      "id": "quranic-21",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا لَا تَجْعَلْنَا مَعَ الْقَوْمِ الظَّالِمِينَ",
+      "translation": "Our Lord, do not place us with the wrongdoing people.",
+      "transliteration": "Rabbana la taj'alna ma'al-qawmidh-dhaalimeen",
+      "instruction": "Surah 7, Ayah 47 (7:47)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 20,
+      "audio_file": "adhkar_288.mp3"
+    },
+    {
+      "id": "quranic-22",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا افْتَحْ بَيْنَنَا وَبَيْنَ قَوْمِنَا بِالْحَقِّ وَأَنْتَ خَيْرُ الْفَاتِحِينَ",
+      "translation": "Our Lord, decide between us and our people in truth, and You are the best of those who give decision.",
+      "transliteration": "Rabbana iftah baynana wa bayna qawmina bil-haqqi wa anta khayrul-faatiheen",
+      "instruction": "Surah 7, Ayah 89 (7:89)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 21,
+      "audio_file": "adhkar_289.mp3"
+    },
+    {
+      "id": "quranic-23",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا أَفْرِغْ عَلَيْنَا صَبْرًا وَتَوَفَّنَا مُسْلِمِينَ",
+      "translation": "Our Lord, pour upon us patience and let us die as Muslims [in submission to You].",
+      "transliteration": "Rabbana afrigh 'alayna sabran wa tawaffana muslimeen",
+      "instruction": "Surah 7, Ayah 126 (7:126)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 22,
+      "audio_file": "adhkar_290.mp3"
+    },
+    {
+      "id": "quranic-24",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا لَا تَجْعَلْنَا فِتْنَةً لِلْقَوْمِ الظَّالِمِينَ وَنَجِّنَا بِرَحْمَتِكَ مِنَ الْقَوْمِ الْكَافِرِينَ",
+      "translation": "Our Lord, make us not [objects of] trial for the wrongdoing people. And save us by Your mercy from the disbelieving people.",
+      "transliteration": "Rabbana la taj'alna fitnatan lil-qawmidh-dhaalimeen wa najjina bi-rahmatika minal-qawmil-kaafireen",
+      "instruction": "Surah 10, Ayah 85 (10:85-86)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 23,
+      "audio_file": "adhkar_291.mp3"
+    },
+    {
+      "id": "quranic-25",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا إِنَّكَ تَعْلَمُ مَا نُخْفِي وَمَا نُعْلِنُ وَمَا يَخْفَى عَلَى اللَّهِ مِنْ شَيْءٍ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ",
+      "translation": "Our Lord, indeed You know what we conceal and what we declare, and nothing is hidden from Allah on the earth or in the heaven.",
+      "transliteration": "Rabbana innaka ta'lamu ma nukhfee wa ma nu'lin wa ma yakhfa 'alallahi min shay'in fil-ardi wa la fis-samaa'",
+      "instruction": "Surah 14, Ayah 38 (14:38)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 24,
+      "audio_file": "adhkar_292.mp3"
+    },
+    {
+      "id": "quranic-26",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبِّ اجْعَلْنِي مُقِيمَ الصَّلَاةِ وَمِنْ ذُرِّيَّتِي رَبَّنَا وَتَقَبَّلْ دُعَاءِ",
+      "translation": "My Lord, make me an establisher of prayer, and [many] from my descendants. Our Lord, and accept my supplication.",
+      "transliteration": "Rabbij'alnee muqeemas-salaati wa min dhurriyyatee Rabbana wa taqabbal du'aa",
+      "instruction": "Surah 14, Ayah 40 (14:40)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 25,
+      "audio_file": "adhkar_293.mp3"
+    },
+    {
+      "id": "quranic-27",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ",
+      "translation": "Our Lord, forgive me and my parents and the believers the Day the account is established.",
+      "transliteration": "Rabbanagh-fir lee wa liwaalidayya wa lil-mu'mineena yawma yaqoomul-hisaab",
+      "instruction": "Surah 14, Ayah 41 (14:41)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 26,
+      "audio_file": "adhkar_294.mp3"
+    },
+    {
+      "id": "quranic-28",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا آتِنَا مِنْ لَدُنْكَ رَحْمَةً وَهَيِّئْ لَنَا مِنْ أَمْرِنَا رَشَدًا",
+      "translation": "Our Lord, grant us from Yourself mercy and prepare for us from our affair right guidance.",
+      "transliteration": "Rabbana aatina min ladunka rahmatan wa hayyi' lana min amrina rashada",
+      "instruction": "Surah 18, Ayah 10 (18:10)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 27,
+      "audio_file": "adhkar_295.mp3"
+    },
+    {
+      "id": "quranic-29",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا آمَنَّا فَاغْفِرْ لَنَا وَارْحَمْنَا وَأَنْتَ خَيْرُ الرَّاحِمِينَ",
+      "translation": "Our Lord, we have believed, so forgive us and have mercy upon us, and You are the best of the merciful.",
+      "transliteration": "Rabbana aamanna faghfir lana warhamna wa anta khayrur-raahimeen",
+      "instruction": "Surah 23, Ayah 109 (23:109)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 28,
+      "audio_file": "adhkar_296.mp3"
+    },
+    {
+      "id": "quranic-30",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبِّ اغْفِرْ وَارْحَمْ وَأَنْتَ خَيْرُ الرَّاحِمِينَ",
+      "translation": "My Lord, forgive and have mercy, and You are the best of the merciful.",
+      "transliteration": "Rabbighfir warham wa anta khayrur-raahimeen",
+      "instruction": "Surah 23, Ayah 118 (23:118)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 29,
+      "audio_file": "adhkar_297.mp3"
+    },
+    {
+      "id": "quranic-31",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا اصْرِفْ عَنَّا عَذَابَ جَهَنَّمَ إِنَّ عَذَابَهَا كَانَ غَرَامًا إِنَّهَا سَاءَتْ مُسْتَقَرًّا وَمُقَامًا",
+      "translation": "Our Lord, avert from us the punishment of Hell. Indeed, its punishment is ever adhering; Indeed, it is evil as a settlement and residence.",
+      "transliteration": "Rabbanas-rif 'anna 'adhaba jahannama inna 'adhaabaha kaana gharaama innaha saa'at mustaqarran wa muqaama",
+      "instruction": "Surah 25, Ayah 65 (25:65-66)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 30,
+      "audio_file": "adhkar_298.mp3"
+    },
+    {
+      "id": "quranic-32",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا",
+      "translation": "Our Lord, grant us from among our wives and offspring comfort to our eyes and make us an example for the righteous.",
+      "transliteration": "Rabbana hab lana min azwaajina wa dhurriyyaatina qurrata a'yunin waj'alna lil-muttaqeena imaama",
+      "instruction": "Surah 25, Ayah 74 (25:74)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 31,
+      "audio_file": "adhkar_299.mp3"
+    },
+    {
+      "id": "quranic-33",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "الْحَمْدُ لِلَّهِ الَّذِي أَذْهَبَ عَنَّا الْحَزَنَ إِنَّ رَبَّنَا لَغَفُورٌ شَكُورٌ",
+      "translation": "Praise to Allah, who has removed from us [all] sorrow. Indeed, our Lord is Forgiving and Appreciative.",
+      "transliteration": "Al-hamdu lillahil-ladhee adhhaba 'annal-hazan inna Rabbana la-Ghafoorun Shakoor",
+      "instruction": "Surah 35, Ayah 34 (35:34)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 32,
+      "audio_file": "adhkar_300.mp3"
+    },
+    {
+      "id": "quranic-34",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا وَسِعْتَ كُلَّ شَيْءٍ رَحْمَةً وَعِلْمًا فَاغْفِرْ لِلَّذِينَ تَابُوا وَاتَّبَعُوا سَبِيلَكَ وَقِهِمْ عَذَابَ الْجَحِيمِ",
+      "translation": "Our Lord, You have encompassed all things in mercy and knowledge, so forgive those who have repented and followed Your way and protect them from the punishment of Hellfire.",
+      "transliteration": "Rabbana wasi'ta kulla shay'in rahmatan wa 'ilman faghfir lilladheena taaboo wattaba'oo sabeelaka wa qihim 'adhaabal-jaheem",
+      "instruction": "Surah 40, Ayah 7 (40:7)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 33,
+      "audio_file": "adhkar_301.mp3"
+    },
+    {
+      "id": "quranic-35",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا وَأَدْخِلْهُمْ جَنَّاتِ عَدْنٍ الَّتِي وَعَدْتَهُمْ وَمَنْ صَلَحَ مِنْ آبَائِهِمْ وَأَزْوَاجِهِمْ وَذُرِّيَّاتِهِمْ إِنَّكَ أَنْتَ الْعَزِيزُ الْحَكِيمُ وَقِهِمُ السَّيِّئَاتِ",
+      "translation": "Our Lord, and admit them to gardens of perpetual residence which You have promised them and whoever was righteous among their fathers, their spouses and their offspring. Indeed, it is You who is the Exalted in Might, the Wise. And protect them from evil.",
+      "transliteration": "Rabbana wa adkhilhum jannaati 'adninil-latee wa'adtahum wa man salaha min aabaa'ihim wa azwaajihim wa dhurriyyaatihim innaka antal-'Azeezul-Hakeem wa qihimus-sayyi'aat",
+      "instruction": "Surah 40, Ayah 8 (40:8-9)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 34,
+      "audio_file": "adhkar_302.mp3"
+    },
+    {
+      "id": "quranic-36",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا اغْفِرْ لَنَا وَلِإِخْوَانِنَا الَّذِينَ سَبَقُونَا بِالْإِيمَانِ وَلَا تَجْعَلْ فِي قُلُوبِنَا غِلًّا لِلَّذِينَ آمَنُوا رَبَّنَا إِنَّكَ رَءُوفٌ رَحِيمٌ",
+      "translation": "Our Lord, forgive us and our brothers who preceded us in faith and put not in our hearts [any] resentment toward those who have believed. Our Lord, indeed You are Kind and Merciful.",
+      "transliteration": "Rabbana ighfir lana wa li-ikhwaaninalla-dheena sabaqoona bil-eemaani wa la taj'al fee quloobina ghillal-lilladheena aamanoo Rabbana innaka Ra'oofur-Raheem",
+      "instruction": "Surah 59, Ayah 10 (59:10)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 35,
+      "audio_file": "adhkar_303.mp3"
+    },
+    {
+      "id": "quranic-37",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا عَلَيْكَ تَوَكَّلْنَا وَإِلَيْكَ أَنَبْنَا وَإِلَيْكَ الْمَصِيرُ",
+      "translation": "Our Lord, upon You we have relied, and to You we have returned, and to You is the destination.",
+      "transliteration": "Rabbana 'alayka tawakkalna wa ilayka anabna wa ilaykal-maseer",
+      "instruction": "Surah 60, Ayah 4 (60:4)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 36,
+      "audio_file": "adhkar_304.mp3"
+    },
+    {
+      "id": "quranic-38",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا لَا تَجْعَلْنَا فِتْنَةً لِلَّذِينَ كَفَرُوا وَاغْفِرْ لَنَا رَبَّنَا إِنَّكَ أَنْتَ الْعَزِيزُ الْحَكِيمُ",
+      "translation": "Our Lord, make us not [objects of] torment for the disbelievers and forgive us, our Lord. Indeed, it is You who is the Exalted in Might, the Wise.",
+      "transliteration": "Rabbana la taj'alna fitnatan lilladheena kafaroo waghfir lana Rabbana innaka antal-'Azeezul-Hakeem",
+      "instruction": "Surah 60, Ayah 5 (60:5)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 37,
+      "audio_file": "adhkar_305.mp3"
+    },
+    {
+      "id": "quranic-39",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبَّنَا أَتْمِمْ لَنَا نُورَنَا وَاغْفِرْ لَنَا إِنَّكَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+      "translation": "Our Lord, perfect for us our light and forgive us. Indeed, You are over all things competent.",
+      "transliteration": "Rabbana atmim lana noorana waghfir lana innaka 'ala kulli shay'in qadeer",
+      "instruction": "Surah 66, Ayah 8 (66:8)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 38,
+      "audio_file": "adhkar_306.mp3"
+    },
+    {
+      "id": "quranic-40",
+      "category_id": "quranic-duas",
+      "category_name": "Quranic Duas (Rabbana)",
+      "arabic": "رَبِّ ابْنِ لِي عِنْدَكَ بَيْتًا فِي الْجَنَّةِ وَنَجِّنِي مِنْ فِرْعَوْنَ وَعَمَلِهِ وَنَجِّنِي مِنَ الْقَوْمِ الظَّالِمِينَ",
+      "translation": "My Lord, build for me near You a house in Paradise and save me from Pharaoh and his deeds and save me from the wrongdoing people.",
+      "transliteration": "Rabbib-nee lee 'indaka baytan fil-jannati wa najjinee min Fir'awna wa 'amalihi wa najjinee minal-qawmidh-dhaalimeen",
+      "instruction": "Surah 66, Ayah 11 (66:11)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 39,
+      "audio_file": "adhkar_307.mp3"
+    },
+    {
+      "id": "name-1",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّحْمَنُ",
+      "translation": "The Beneficent",
+      "transliteration": "Ar Rahmaan",
+      "instruction": "He who wills goodness and mercy for all His creatures | Quran: (1:3) (17:110)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 0,
+      "audio_file": "adhkar_308.mp3"
+    },
+    {
+      "id": "name-2",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّحِيمُ",
+      "translation": "The Merciful",
+      "transliteration": "Ar Raheem",
+      "instruction": "He who acts with extreme kindness  | Quran: (2:163) (3: 31) (4:100) (5:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 1,
+      "audio_file": "adhkar_309.mp3"
+    },
+    {
+      "id": "name-3",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمَلِكُ",
+      "translation": "The King / Eternal Lord",
+      "transliteration": "Al Malik",
+      "instruction": "The Sovereign Lord, The One with the complete Dominion, the One Whose Dominion is clear from imperfection  | Quran: (20:114)(23:116)(59:23)(62:1)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 2,
+      "audio_file": "adhkar_310.mp3"
+    },
+    {
+      "id": "name-4",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْقُدُّوسُ",
+      "translation": "The Purest",
+      "transliteration": "Al Quddus",
+      "instruction": "The One who is pure from any imperfection and clear from children and adversaries | Quran: (59:23) (62:1)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 3,
+      "audio_file": "adhkar_311.mp3"
+    },
+    {
+      "id": "name-5",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "السَّلاَمُ",
+      "translation": "The Source of Peace",
+      "transliteration": "As Salaam",
+      "instruction": "The one who provides peace, calm and serenity. By citing this name, we declare peace for ourselves and for those around us. | Quran: (59:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 4,
+      "audio_file": "adhkar_312.mp3"
+    },
+    {
+      "id": "name-6",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُؤْمِنُ",
+      "translation": "The inspirer of faith",
+      "transliteration": "Al Mu'min",
+      "instruction": "This name is mysterious even for Muslims because \\\"Al-Mu'min\\\" comes from the name \\\"Al-iman\\\" which means to believe, from where comes the name \\\"Al-Mu'minoune\\\" which means believers, it is is the name of the Koran for people who believe in 6 things: the oneness of God, the existence of angels, holy books (Torah, Gospel and Psalms (Zabor) unmodified and the Koran), the prophets, the last day (the day of judgment) and fate its evil and its good. The exact meaning of this name is very difficult to pin down in its original meaning but can be understood from a deeper and more mystical point of view. | Quran: (59:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 5,
+      "audio_file": "adhkar_313.mp3"
+    },
+    {
+      "id": "name-7",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُهَيْمِنُ",
+      "translation": "The Guardian",
+      "transliteration": "Al Muhaymin",
+      "instruction": "Whoever dominates His creation and by His omnipotence in all aspects, no state or aspect in this world or the other escapes His will. | Quran: (59:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 6,
+      "audio_file": "adhkar_314.mp3"
+    },
+    {
+      "id": "name-8",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْعَزِيزُ",
+      "translation": "The Precious / The Most Mighty",
+      "transliteration": "Al Azeez",
+      "instruction": "The Glorious by His supremacy and His greatness, El-Aziz means in a sense the one who is dear and precious in the eyes of His creatures. He is not the servant of any creature, and no creature dictates to him what to do. | Quran: (3:6)(4:15 8)(9:40)(4 8:7)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 7,
+      "audio_file": "adhkar_315.mp3"
+    },
+    {
+      "id": "name-9",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْجَبَّارُ",
+      "translation": "The Compeller",
+      "transliteration": "Al Jabbaar",
+      "instruction": "The grandiose, the ultimate powerful by His greatness and His unlimited strength. When He destroys the oppressors (unjust and sinners) He applies His sentence with righteousness. | Quran: (59:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 8,
+      "audio_file": "adhkar_316.mp3"
+    },
+    {
+      "id": "name-10",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُتَكَبِّرُ",
+      "translation": "The Greatest",
+      "transliteration": "Al Mutakabbir",
+      "instruction": "He who is superior to His creatures, no creature has the right to claim greatness. | Quran: (59:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 9,
+      "audio_file": "adhkar_317.mp3"
+    },
+    {
+      "id": "name-11",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْخَالِقُ",
+      "translation": "The Creator",
+      "transliteration": "Al Khaaliq",
+      "instruction": "The Creator of all existences, living or dead, mobile or frozen. | Quran: (6:102)(13:16)(39:62)(40:62)(59:24)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 10,
+      "audio_file": "adhkar_318.mp3"
+    },
+    {
+      "id": "name-12",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَارِئُ",
+      "translation": "The Maker of Order",
+      "transliteration": "Al Baari",
+      "instruction": "He who lifts His creation above all faults or imperfections. | Quran: (59:24)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 11,
+      "audio_file": "adhkar_319.mp3"
+    },
+    {
+      "id": "name-13",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُصَوِّرُ",
+      "translation": "The Shaper of Beauty",
+      "transliteration": "Al Musawwir",
+      "instruction": "The one who gives the look and the appearance to each creation from the inside as well as from the outside. In lost Arabic, literally, this word means sculptor and, in modern Arabic, literally means designer. | Quran: (59:24)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 12,
+      "audio_file": "adhkar_320.mp3"
+    },
+    {
+      "id": "name-14",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْغَفَّارُ",
+      "translation": "The Forgiving",
+      "transliteration": "Al Ghaffaar",
+      "instruction": "Is the One who forgives what He wants to whom He wants. | Quran: (20:82)(38:66)(39:5)(40:42)(71:10)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 13,
+      "audio_file": "adhkar_321.mp3"
+    },
+    {
+      "id": "name-15",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْقَهَّارُ",
+      "translation": "The Subduer",
+      "transliteration": "Al Qahhaar",
+      "instruction": "Is the One who is almighty to submit all creation to His will. | Quran: (13:16)(14:48)(38:65)(39:4)(40:16)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 14,
+      "audio_file": "adhkar_322.mp3"
+    },
+    {
+      "id": "name-16",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَهَّابُ",
+      "translation": "The Giver of All",
+      "transliteration": "Al Wahhaab",
+      "instruction": "Is the One who gives immensely without receiving anything in return | Quran: (3:8)(38:9)(38:35)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 15,
+      "audio_file": "adhkar_323.mp3"
+    },
+    {
+      "id": "name-17",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّزَّاقُ",
+      "translation": "The Sustainer",
+      "transliteration": "Ar Razzaaq",
+      "instruction": "Is the One who makes distribute to every creature what it needs. | Quran: (51:58)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 16,
+      "audio_file": "adhkar_324.mp3"
+    },
+    {
+      "id": "name-18",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْفَتَّاحُ",
+      "translation": "The Opener",
+      "transliteration": "Al Fattaah",
+      "instruction": "Is He Who alone knows the keys to the future and the unknown, by His knowledge and by His wisdom. This name is often associated with the following name \"Al-‘Alīm\". | Quran: (34:26)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 17,
+      "audio_file": "adhkar_325.mp3"
+    },
+    {
+      "id": "name-19",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "اَلْعَلِيْمُ",
+      "translation": "The Knower of all",
+      "transliteration": "Al 'Aleem",
+      "instruction": "The one from whom nothing can hide, for He knows everything and is aware of everything. | Quran: (2:158)(3:92)(4:35)(24:41)(33:40)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 18,
+      "audio_file": "adhkar_326.mp3"
+    },
+    {
+      "id": "name-20",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْقَابِضُ",
+      "translation": "The Constrictor",
+      "transliteration": "Al Qaabid",
+      "instruction": "Is the One who restricts His good according to wisdom. | Quran: (2:245)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 19,
+      "audio_file": "adhkar_327.mp3"
+    },
+    {
+      "id": "name-21",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَاسِطُ",
+      "translation": "The Reliever",
+      "transliteration": "Al Baasit",
+      "instruction": "Is the One who frees, increases and multiplies his good according to wisdom. | Quran: (2:245)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 20,
+      "audio_file": "adhkar_328.mp3"
+    },
+    {
+      "id": "name-22",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْخَافِضُ",
+      "translation": "The Abaser",
+      "transliteration": "Al Khaafid",
+      "instruction": "Is the One who destines the oppressors and the proud to demeanor and chastisement. | Quran: (95:5)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 21,
+      "audio_file": "adhkar_329.mp3"
+    },
+    {
+      "id": "name-23",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّافِعُ",
+      "translation": "The Exalter",
+      "transliteration": "Ar Raafi'",
+      "instruction": "The Breeder in the sense of raising, the one who elevates the honor, the status and the prestige of a being in this lower world and in the hereafter. | Quran: (58:11)(6:83)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 22,
+      "audio_file": "adhkar_330.mp3"
+    },
+    {
+      "id": "name-24",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُعِزُّ",
+      "translation": "The Bestower of Honour",
+      "transliteration": "Al Mu'iz",
+      "instruction": "One who offers honor and precious value. | Quran: (3:26)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 23,
+      "audio_file": "adhkar_331.mp3"
+    },
+    {
+      "id": "name-25",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "المُذِلُّ",
+      "translation": "The Humiliator",
+      "transliteration": "Al Mudhil",
+      "instruction": "Is the One who can humiliate and devalue any valiant. | Quran: (3:26)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 24,
+      "audio_file": "adhkar_332.mp3"
+    },
+    {
+      "id": "name-26",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "السَّمِيعُ",
+      "translation": "The Hearer of all",
+      "transliteration": "As Samee'",
+      "instruction": "One who hears any noise or sound in His kingdom emanating from any creature and also One who listens to the invocations of His creatures to respond to their invocations. | Quran: (2:127)(2:256)(8:17)(49:1)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 25,
+      "audio_file": "adhkar_333.mp3"
+    },
+    {
+      "id": "name-27",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَصِيرُ",
+      "translation": "The Seer of all",
+      "transliteration": "Al Baseer",
+      "instruction": "Is the One from whom nothing that exists or comes into existence can escape without the slightest use of an eye, instrument or organ. | Quran: (4:58)(17:1)(42:11)(42:27)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 26,
+      "audio_file": "adhkar_334.mp3"
+    },
+    {
+      "id": "name-28",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَكَمُ",
+      "translation": "The Judge",
+      "transliteration": "Al Hakam",
+      "instruction": "He is the One who judges and decides between creatures here below and in the hereafter and He who ensures equity between the creatures and no one else will and will not be able to decide between them and judge them; and the Judgment in the hereafter will be perfectly just and appropriate. | Quran: (22:69)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 27,
+      "audio_file": "adhkar_335.mp3"
+    },
+    {
+      "id": "name-29",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْعَدْلُ",
+      "translation": "The Just",
+      "transliteration": "Al 'Adl",
+      "instruction": "Is the One who is free from all forms of injustice and / or oppression. | Quran: (6:115)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 28,
+      "audio_file": "adhkar_336.mp3"
+    },
+    {
+      "id": "name-30",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "اللَّطِيفُ",
+      "translation": "The Subtle One",
+      "transliteration": "Al Lateef",
+      "instruction": "Is the One who grants his creatures His gentleness and His benevolence. | Quran: (6:103)(22:63)(31:16)(33:34)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 29,
+      "audio_file": "adhkar_337.mp3"
+    },
+    {
+      "id": "name-31",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْخَبِيرُ",
+      "translation": "The All Aware",
+      "transliteration": "Al Khabeer",
+      "instruction": "He is the One from whom cannot be hidden the reality of everything that exists, that is to say the truth of things; no detail escapes Him, neither the thing as a whole, nor each of its parts; and to claim to be able to hide things from the One who creates everything is a delusion and a disbelief. | Quran: (6:18)(17:30)(49:13)(59:18)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 30,
+      "audio_file": "adhkar_338.mp3"
+    },
+    {
+      "id": "name-32",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَلِيمُ",
+      "translation": "The Forebearing",
+      "transliteration": "Al Haleem",
+      "instruction": "Is the One whose patience towards the disbeliefs of sinners exceeds all imagination (it is possible that forgiveness will be granted to them). | Quran: (2:235)(17:44)(22:59)(35:41)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 31,
+      "audio_file": "adhkar_339.mp3"
+    },
+    {
+      "id": "name-33",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْعَظِيمُ",
+      "translation": "The Maginificent",
+      "transliteration": "Al 'Azeem",
+      "instruction": "This name is difficult to translate because it includes several French words that do not share the same spiritual meaning, but it can be approached as follows: \"Al-Adhīm\" He who is Gigantic Majestic and Fantastically Grandiose far from any bodily or material imperfection | Quran: (2:255)(42:4)(56:96)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 32,
+      "audio_file": "adhkar_340.mp3"
+    },
+    {
+      "id": "name-34",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْغَفُورُ",
+      "translation": "The Great Forgiver",
+      "transliteration": "Al Ghafoor",
+      "instruction": "Is the One who forgives immensely over and over again. | Quran: (2:173)(8:69)(16:110)(41:32)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 33,
+      "audio_file": "adhkar_341.mp3"
+    },
+    {
+      "id": "name-35",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الشَّكُورُ",
+      "translation": "The Rewarder of Thankfulness",
+      "transliteration": "Ash Shakoor",
+      "instruction": "Is the One who shows His gratitude for worshipers, however incredibly easy to perform. | Quran: (35:30)(35:34)(42:23)(64:17)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 34,
+      "audio_file": "adhkar_342.mp3"
+    },
+    {
+      "id": "name-36",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْعَلِيُّ",
+      "translation": "The Highest",
+      "transliteration": "Al 'Aliyy",
+      "instruction": "Is the One who is above all that He created perfectly and unimaginably. | Quran: (4:34)(31:30)(42:4)(42:51)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 35,
+      "audio_file": "adhkar_343.mp3"
+    },
+    {
+      "id": "name-37",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْكَبِيرُ",
+      "translation": "The Greatest",
+      "transliteration": "Al Kabeer",
+      "instruction": "The Great: One who is greater than His creation, a greatness that only He knows. | Quran: (13:9)(22:62)(31:30)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 36,
+      "audio_file": "adhkar_344.mp3"
+    },
+    {
+      "id": "name-38",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَفِيظُ",
+      "translation": "The Preserver",
+      "transliteration": "Al Hafeez",
+      "instruction": "Is the One who protects and preserves His good. | Quran: (11:57)(34:21)(42:6)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 37,
+      "audio_file": "adhkar_345.mp3"
+    },
+    {
+      "id": "name-39",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "المُقيِت",
+      "translation": "The Sustainer",
+      "transliteration": "Al Muqeet",
+      "instruction": "this word is among the lost words of the ancient Arabic language; very difficult to translate even in modern Arabic}. It would mean: Is the One who leaves no detail when He judges, even the most trivial. | Quran: (4:85)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 38,
+      "audio_file": "adhkar_346.mp3"
+    },
+    {
+      "id": "name-40",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحسِيبُ",
+      "translation": "The Reckoner, The Sufficient",
+      "transliteration": "Al Haseeb",
+      "instruction": "He is the One who will count all the facts of His creatures without forgetting or error. | Quran: (4:6)(4:86)(33:39)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 39,
+      "audio_file": "adhkar_347.mp3"
+    },
+    {
+      "id": "name-41",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْجَلِيلُ",
+      "translation": "The Majestic",
+      "transliteration": "Al Jaleel",
+      "instruction": "Is the One who is perfectly exempt from being compared to His creatures or from being like Him. | Quran: (55:27)(39:14)(7:143)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 40,
+      "audio_file": "adhkar_348.mp3"
+    },
+    {
+      "id": "name-42",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْكَرِيمُ",
+      "translation": "The Most Generous, The Most Esteemed",
+      "transliteration": "Al Kareem",
+      "instruction": "Is the One who flooded His creation with His generosity. | Quran: (27:40)(82:6)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 41,
+      "audio_file": "adhkar_349.mp3"
+    },
+    {
+      "id": "name-43",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّقِيبُ",
+      "translation": "The Watchful One",
+      "transliteration": "Ar Raqeeb",
+      "instruction": "Is the One who observes and beholds all that He has created (and the actions of creatures are also creations). | Quran: (4:1)(5:117)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 42,
+      "audio_file": "adhkar_350.mp3"
+    },
+    {
+      "id": "name-44",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُجِيبُ",
+      "translation": "The Responder to Prayer",
+      "transliteration": "Al Mujeeb ",
+      "instruction": "Is the One who answers the invocations of His creatures if He wills and to whom He wills. | Quran: (11:61)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 43,
+      "audio_file": "adhkar_351.mp3"
+    },
+    {
+      "id": "name-45",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَاسِعُ",
+      "translation": "The All-Encompassing, the Boundless",
+      "transliteration": "Al Waasi'",
+      "instruction": "This name in Arabic means: immensely wide, but to qualify God it is understood that He has filled every void and has contained all things in a way that only He knows. | Quran: (2:268)(3:73)(5:54)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 44,
+      "audio_file": "adhkar_352.mp3"
+    },
+    {
+      "id": "name-46",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَكِيمُ",
+      "translation": "The Perfectly Wise",
+      "transliteration": "Al Hakeem",
+      "instruction": "He whose Wisdom has dazzled, dazzled and will dazzle any conscious and intelligent mind. | Quran: (31:27)(46:2)(57:1)(66:2)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 45,
+      "audio_file": "adhkar_353.mp3"
+    },
+    {
+      "id": "name-47",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَدُودُ",
+      "translation": "The Most Loving",
+      "transliteration": "Al Wudood",
+      "instruction": "This word in Arabic means: The one who draws near to his beloved by mercy, pity and beneficence, but when one reads this name in the \"Koran\", one feels each time different meanings which are difficult to translate into words}. We can try to translate it: The one who draws near to His servants out of pity although they move away from Him and do not glorify Him. | Quran: (11:90)(85:14)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 46,
+      "audio_file": "adhkar_354.mp3"
+    },
+    {
+      "id": "name-48",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمَجِيدُ",
+      "translation": "The Glorious One, The Most Honorable",
+      "transliteration": "Al Majeed",
+      "instruction": "Is the One who is glorified in the infinitely past, present and eternal. | Quran: (11:73) ",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 47,
+      "audio_file": "adhkar_355.mp3"
+    },
+    {
+      "id": "name-49",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَاعِثُ",
+      "translation": "The Resurrector",
+      "transliteration": "Al Baa'ith",
+      "instruction": "Is the One who raises the dead and deploys life in whatever He wants, be they men, animals or simply earth. | Quran: (22:7)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 48,
+      "audio_file": "adhkar_356.mp3"
+    },
+    {
+      "id": "name-50",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الشَّهِيدُ",
+      "translation": "The Witness",
+      "transliteration": "Ash Shaheed",
+      "instruction": "Le T\\u00E9moin : Allah est l'ultime et parfait t\\u00E9moin de tout ce qui s'est pass\\u00E9 dans Son royaume, avec des preuves claires et flagrantes, parfaitement irr\\u00E9prochables. | Quran: (4:166)(22:17)(41:53)(48:28)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 49,
+      "audio_file": "adhkar_357.mp3"
+    },
+    {
+      "id": "name-51",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَقُّ",
+      "translation": "The Truth",
+      "transliteration": "Al Haqq",
+      "instruction": "Is the One who holds the absolute Truth. | Quran: (6:62)(22:6)(23:116)(24:25)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 50,
+      "audio_file": "adhkar_358.mp3"
+    },
+    {
+      "id": "name-52",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَكِيلُ",
+      "translation": "The Trustee",
+      "transliteration": "Al Wakeel",
+      "instruction": "Is the One who guarantees the sustenance of creatures and the One from whom nothing of their every state can be concealed | Quran: (3:173)(4:171)(28:28)(73:9)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 51,
+      "audio_file": "adhkar_359.mp3"
+    },
+    {
+      "id": "name-53",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْقَوِيُّ",
+      "translation": "The Possessor of all strength",
+      "transliteration": "Al Qawiyy",
+      "instruction": "The Mighty: Allah is the most powerful, the strongest, his strength has no limit and is not described with definitions of physical strength. | Quran: (22:40)(22:74)(42:19)(57:25)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 52,
+      "audio_file": "adhkar_360.mp3"
+    },
+    {
+      "id": "name-54",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمَتِينُ",
+      "translation": "The Forceful",
+      "transliteration": "Al Mateen",
+      "instruction": "The Enduring: An endurance worthy of Him, unlimited, indefatigable, and which is not marred by any weakness, without pause, without interruption and which no factor can attenuate. | Quran: (51:58)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 53,
+      "audio_file": "adhkar_361.mp3"
+    },
+    {
+      "id": "name-55",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَلِيُّ",
+      "translation": "The Protector",
+      "transliteration": "Al Waliyy",
+      "instruction": "Is the One who preserves the believing servants, so the prophets and those who follow them are those who are the \"preserved people\" in the sense that they have been guided to the obligatory thanks to Him who makes them exist, that is, that is to say with regard to Allah | Quran: (4:45)(7:196)(42:28)(45:19)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 54,
+      "audio_file": "adhkar_362.mp3"
+    },
+    {
+      "id": "name-56",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَمِيدُ",
+      "translation": "The Praised",
+      "transliteration": "Al Hameed",
+      "instruction": "Is the One who deserves the thanksgiving, the glorification and the song of praise more than any other | Quran: (14:8)(31:12)(31:26)(41:42)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 55,
+      "audio_file": "adhkar_363.mp3"
+    },
+    {
+      "id": "name-57",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُحْصِي",
+      "translation": "The All-Enumerating, The Counter",
+      "transliteration": "Al Muhsi",
+      "instruction": "Literally translated as the counter but means the One who counts every creature, every act, every speck of dust in his kingdom and of whom nothing escapes his knowledge | Quran: (72:28)(78:29)(82:10-12)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 56,
+      "audio_file": "adhkar_364.mp3"
+    },
+    {
+      "id": "name-58",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُبْدِئُ",
+      "translation": "The Originator",
+      "transliteration": "Al Mubdi",
+      "instruction": "Is the One who gives a beginning to what does not exist without a beginning, without a model, that is to say, the One who creates creatures | Quran: (10:34)(27:64)(29:19)(85:13)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 57,
+      "audio_file": "adhkar_365.mp3"
+    },
+    {
+      "id": "name-59",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُعِيدُ",
+      "translation": "The Restorer",
+      "transliteration": "Al Mu'eed",
+      "instruction": "Is the One who brings the living back to death after life and the One who brings the dead back to life after death | Quran: (10:34)(27:64)(29:19)(85:13)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 58,
+      "audio_file": "adhkar_366.mp3"
+    },
+    {
+      "id": "name-60",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُحْيِي",
+      "translation": "The Giver of life",
+      "transliteration": "Al Muhiy",
+      "instruction": "Is the One who gives life to a mixture of maniyy, that is to say of seminal liquid, devoid of soul and makes him a living being and the One who gives life to the bodies of humans, jinns and angels by reuniting them with their souls during the resurrection | Quran: (7:158)(15:23)(30:50)(57:2)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 59,
+      "audio_file": "adhkar_367.mp3"
+    },
+    {
+      "id": "name-61",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "اَلْمُمِيتُ",
+      "translation": "The Taker of life",
+      "transliteration": "Al Mumeet",
+      "instruction": "He is the One who kills living beings and the One who cancels out the power of the powerful of this world by death | Quran: (3:156)(7:158)(15:23)(57:2)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 60,
+      "audio_file": "adhkar_368.mp3"
+    },
+    {
+      "id": "name-62",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْحَيُّ",
+      "translation": "The Ever Living",
+      "transliteration": "Al Haiyy",
+      "instruction": "The Living One: Is the One who does not come into existence and yet exists, and the One who possesses a hayah and this attribute is not a life as is the hayah of creatures made up of a combination of soul, flesh and of blood Imam At-Tahawiyy said in his treatise on belief that \"he who attributes to Allah an attribute in a sense which is among those which can be attributed to human beings is disbeliever\" | Quran: (2:255)(3:2)(25:58)(40:65)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 61,
+      "audio_file": "adhkar_369.mp3"
+    },
+    {
+      "id": "name-63",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْقَيُّومُ",
+      "translation": "The Self Existing",
+      "transliteration": "Al Qayyoom",
+      "instruction": "Is the One who exists, is eternal and does not change and the One who is not affected by non-existence or annihilation and is in no way affected by controlling and creating the acts of human beings | Quran: (2:255)(3:2)(20:111)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 62,
+      "audio_file": "adhkar_370.mp3"
+    },
+    {
+      "id": "name-64",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَاجِدُ",
+      "translation": "The Perceiver",
+      "transliteration": "Al Waajid",
+      "instruction": "Is the One who does not need anything and is not reached or concerned with want, lack or need | Quran: (38:44)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 63,
+      "audio_file": "adhkar_371.mp3"
+    },
+    {
+      "id": "name-65",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمَاجِدُ",
+      "translation": "The Glorious",
+      "transliteration": "Al Maajid",
+      "instruction": "Is the One who is better than any other and the One who bestows innumerable benefits very widely and without compensation | Quran: (11:73)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 64,
+      "audio_file": "adhkar_372.mp3"
+    },
+    {
+      "id": "name-66",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْواحِدُ",
+      "translation": "The Only One",
+      "transliteration": "Al Waahid",
+      "instruction": "The Unique: Is the One who has no alter ego, whether in His Being, in His Act, or in His Attributes. Nothing is like him | Quran: (2:163)(5:73)(9:31)(18:110)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 65,
+      "audio_file": "adhkar_373.mp3"
+    },
+    {
+      "id": "name-67",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "اَلاَحَدُ",
+      "translation": "The One",
+      "transliteration": "Al Ahad",
+      "instruction": "The One: Is He Who has uniqueness as an attribute | Quran: (112:1)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 66,
+      "audio_file": "adhkar_374.mp3"
+    },
+    {
+      "id": "name-68",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الصَّمَدُ",
+      "translation": "The Supreme Provider",
+      "transliteration": "As Samad",
+      "instruction": "Is the One to whom we can rely for any business and who can be called upon for all our needs; One who has no children or parents, neither like nor equivalent, according to Al-Hakim's explanation; The One who needs nothing and the One who everything needs, in order to exist, etc. | Quran: (112:2)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 67,
+      "audio_file": "adhkar_375.mp3"
+    },
+    {
+      "id": "name-69",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْقَادِرُ",
+      "translation": "The Powerful",
+      "transliteration": "Al Qaadir",
+      "instruction": "Is the One who is unaffected by weakness, the One whose power is absolute and dominates all creatures and the One whom absolutely nothing can weaken | Quran: (6:65)(36:81)(46:33)(75:40)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 68,
+      "audio_file": "adhkar_376.mp3"
+    },
+    {
+      "id": "name-70",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُقْتَدِرُ",
+      "translation": "The Creator of all power",
+      "transliteration": "Al Muqtadir",
+      "instruction": "Is the One who is mighty over all things and the One whose capacities are absolutely limitless | Quran: (18:45)(54:42)(54:55)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 69,
+      "audio_file": "adhkar_377.mp3"
+    },
+    {
+      "id": "name-71",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُقَدِّمُ",
+      "translation": "The Expediter",
+      "transliteration": "Al Muqaddim",
+      "instruction": "Is He who is free from the characteristics of creatures and better than any creature; He who fixes the speed of events, accelerates certain things in the eyes of people according to a destiny and grants each thing a value, a rank, a time and characteristics which suit Him according to wisdom | Quran: (16:61)(17:34)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 70,
+      "audio_file": "adhkar_378.mp3"
+    },
+    {
+      "id": "name-72",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُؤَخِّرُ",
+      "translation": "The Delayer",
+      "transliteration": "Al Mu’akhir",
+      "instruction": "Is He who is free from the characteristics of creatures and better than any creature; The one who intends the slowness of events and slows down certain things in the eyes of people according to a destiny and grants each thing a value, a rank, a time and characteristics which suit it according to a wisdom (cf no 71) | Quran: (71:4)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 71,
+      "audio_file": "adhkar_379.mp3"
+    },
+    {
+      "id": "name-73",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الأوَّلُ",
+      "translation": "The First",
+      "transliteration": "Al Awwal",
+      "instruction": "The First: Is the One who exists without creatures, without beginning and without time; One who is exempt from being created, from the appearance of a new attribute and from change, One who exists without coming into existence | Quran: (57:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 72,
+      "audio_file": "adhkar_380.mp3"
+    },
+    {
+      "id": "name-74",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الآخِرُ",
+      "translation": "The Last",
+      "transliteration": "Al Aakhir",
+      "instruction": "The Last: Is the One who exists without interruption while the creatures are annihilated at every moment; He who is eternal, He who annihilates and is exempt from being annihilated and the disappearance of one or more attributes; The one that exists without being concerned by the notion of end and annihilation | Quran: (57:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 73,
+      "audio_file": "adhkar_381.mp3"
+    },
+    {
+      "id": "name-75",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الظَّاهِرُ",
+      "translation": "The Manifest",
+      "transliteration": "Az Zaahir",
+      "instruction": "Is the One whose existence is manifested in everything by proofs, from the point of view of power and domination and not what would be present in any body from the point of view of place, image and how | Quran: (57:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 74,
+      "audio_file": "adhkar_382.mp3"
+    },
+    {
+      "id": "name-76",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَاطِنُ",
+      "translation": "The Hidden",
+      "transliteration": "Al Baatin",
+      "instruction": "Is the One who is preserved from the delusions of creatures attempting to attribute to the Creator human characteristics or characteristics of creatures and the One who creates the characteristics of creatures and their images | Quran: (57:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 75,
+      "audio_file": "adhkar_383.mp3"
+    },
+    {
+      "id": "name-77",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَالِي",
+      "translation": "The Governor",
+      "transliteration": "Al Waali",
+      "instruction": "Is the One who owns, manages and controls all things and the One who creates everything according to wisdom | Quran: (13:11)(22:7)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 76,
+      "audio_file": "adhkar_384.mp3"
+    },
+    {
+      "id": "name-78",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُتَعَالِي",
+      "translation": "The Supreme One",
+      "transliteration": "Al Muta’ali",
+      "instruction": "Is the One who is free from the attributes of creatures and the One whose power over creatures is boundless | Quran: (13:9)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 77,
+      "audio_file": "adhkar_385.mp3"
+    },
+    {
+      "id": "name-79",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَرُّ",
+      "translation": "The Doer of Good",
+      "transliteration": "Al Barr",
+      "instruction": "Is the One who has the ability to bestow faith and blessings on all creatures, and among them some are grateful and some are not: the former are called Muslims or believers and others are called non-Muslims or non-Muslims. -believers | Quran: (52:28)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 78,
+      "audio_file": "adhkar_386.mp3"
+    },
+    {
+      "id": "name-80",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "التَّوَابُ",
+      "translation": "The Guide to Repentence",
+      "transliteration": "At Tawwaab",
+      "instruction": "Is the One who grants forgiveness to those who repent every time they repent | Quran: (2:128)(4:64)(49:12)(110:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 79,
+      "audio_file": "adhkar_387.mp3"
+    },
+    {
+      "id": "name-81",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُنْتَقِمُ",
+      "translation": "The Avenger",
+      "transliteration": "Al Muntaqim",
+      "instruction": "Is the avenger | Quran: (32:22)(43:41)(44:16)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 80,
+      "audio_file": "adhkar_388.mp3"
+    },
+    {
+      "id": "name-82",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "العَفُوُّ",
+      "translation": "The Forgiver",
+      "transliteration": "Al Afuww",
+      "instruction": "Is the One who sets aside and forgives sin and the One who preserves in every seemingly hopeless situation a door to honor, maintenance and blessings or to immediate repentance | Quran: (4:99)(4:149)(22:60) ",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 81,
+      "audio_file": "adhkar_389.mp3"
+    },
+    {
+      "id": "name-83",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّؤُوفُ",
+      "translation": "The Most Kind",
+      "transliteration": "Ar Ra’oof",
+      "instruction": "Is the One who can offer an immensity of benefits without counterpart and without necessity | Quran: (3:30)(9:117)(57:9)(59:10)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 82,
+      "audio_file": "adhkar_390.mp3"
+    },
+    {
+      "id": "name-84",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "مَالِكُ الْمُلْكِ",
+      "translation": "The Owner / Soverign of All",
+      "transliteration": "Maalik Ul Mulk",
+      "instruction": "Is the One who creates and attributes according to a destiny all sovereignty, domination, property and all broad power which are granted to certain creatures in this lower world | Quran: (3:26)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 83,
+      "audio_file": "adhkar_391.mp3"
+    },
+    {
+      "id": "name-85",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "ذُوالْجَلاَلِ وَالإكْرَامِ",
+      "translation": "Possessor of Majesty and Bounty",
+      "transliteration": "Dhu Al Jalaali Wa Al Ikraam",
+      "instruction": "That is, Allah is the One who is better than any other in reality and all the evidence confirms this and denies the contrary so it is not valid to dispute this point, to deny it or to be hostile against this subject; is the One who fills with blessings those who will have understood this who will know the general holiness, will have success and will be well guided on the Day of Judgment | Quran: (55:27)(55:78)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 84,
+      "audio_file": "adhkar_392.mp3"
+    },
+    {
+      "id": "name-86",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُقْسِطُ",
+      "translation": "The Equitable One",
+      "transliteration": "Al Muqsit",
+      "instruction": "Is the One who judges according to the greatest justice, the One who is free from all forms of injustice and tyranny, and the One who has absolutely no accountability | Quran: (7:29)(3:18)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 85,
+      "audio_file": "adhkar_393.mp3"
+    },
+    {
+      "id": "name-87",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْجَامِعُ",
+      "translation": "The Gatherer",
+      "transliteration": "Al Jaami'",
+      "instruction": "Is the One who gathers creatures together on a day of which there is no doubt, the Day of Judgment | Quran: (3:9)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 86,
+      "audio_file": "adhkar_394.mp3"
+    },
+    {
+      "id": "name-88",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْغَنِيُّ",
+      "translation": "The Rich One",
+      "transliteration": "Al Ghaniyy",
+      "instruction": "Is the One who has no need of creatures and whose creatures cannot do without al-Ghaniyy [who is the One who makes them exist and keeps them in existence and constantly changes them] | Quran: (3:97)(39:7)(47:38)(57:24)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 87,
+      "audio_file": "adhkar_395.mp3"
+    },
+    {
+      "id": "name-89",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْمُغْنِي",
+      "translation": "The Enricher",
+      "transliteration": "Al Mughi",
+      "instruction": "Is the One who satisfies the needs of creatures and the One who brings them their sustenance | Quran: (9:28)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 88,
+      "audio_file": "adhkar_396.mp3"
+    },
+    {
+      "id": "name-90",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "اَلْمَانِعُ",
+      "translation": "The Preventer of harm",
+      "transliteration": "Al Maani'",
+      "instruction": "Is the One who intends for each creature his victories, his protections and the One from whom they must always be preserved according to a destiny | Quran: (67:21)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 89,
+      "audio_file": "adhkar_397.mp3"
+    },
+    {
+      "id": "name-91",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الضَّارَّ",
+      "translation": "The Creator of the harmful",
+      "transliteration": "Ad Daaarr",
+      "instruction": "Is the One who is almighty to bring inevitably the nuisance which must reach a creature according to a destiny | Quran: (6:17)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 90,
+      "audio_file": "adhkar_398.mp3"
+    },
+    {
+      "id": "name-92",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "النَّافِعُ",
+      "translation": "The Bestower of Benefits",
+      "transliteration": "An Naafi’",
+      "instruction": "Is the One who is almighty to bring inevitably the profit that a creature must receive according to a destiny | Quran: (30:37)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 91,
+      "audio_file": "adhkar_399.mp3"
+    },
+    {
+      "id": "name-93",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "النُّورُ",
+      "translation": "The Light",
+      "transliteration": "An Noor",
+      "instruction": "The Light: Is the One who guides to their goal those who are prey to temptation and puts them in the right direction according to a destiny; Allah is the One who guides believers to the light of faith, creates light and is not a light that is only a creature | Quran: (24:35)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 92,
+      "audio_file": "adhkar_400.mp3"
+    },
+    {
+      "id": "name-94",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْهَادِي",
+      "translation": "The Guider",
+      "transliteration": "Al Haadi",
+      "instruction": "Is the One who intends for certain creatures the benefit of being well guided and of knowing righteousness | Quran: (25:31)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 93,
+      "audio_file": "adhkar_401.mp3"
+    },
+    {
+      "id": "name-95",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْبَدِيعُ",
+      "translation": "The Incomparable Originator",
+      "transliteration": "Al Badi'",
+      "instruction": "Is the One who brings creatures and this world into existence, not from pre-existing matter or in the image of an earlier model, but on the contrary without precursor, model and unprecedented | Quran: (2:117)(6:101)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 94,
+      "audio_file": "adhkar_402.mp3"
+    },
+    {
+      "id": "name-96",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "اَلْبَاقِي",
+      "translation": "The Everlasting One",
+      "transliteration": "Al Baaqi",
+      "instruction": "Is the One whose existence free from annihilation and change is imposed on sound reason which cannot claim the contrary | Quran: (55:27)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 95,
+      "audio_file": "adhkar_403.mp3"
+    },
+    {
+      "id": "name-97",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الْوَارِثُ",
+      "translation": "The Inhertior",
+      "transliteration": "Al Waarith",
+      "instruction": "Is the One who exists and does not change as creatures are wiped out | Quran: (15:23)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 96,
+      "audio_file": "adhkar_404.mp3"
+    },
+    {
+      "id": "name-98",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الرَّشِيدُ",
+      "translation": "The Most Righteous Guide",
+      "transliteration": "Ar Rasheed",
+      "instruction": "Is the One who guides creatures to what is in their best interests | Quran: (2:256)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 97,
+      "audio_file": "adhkar_405.mp3"
+    },
+    {
+      "id": "name-99",
+      "category_id": "names-of-allah",
+      "category_name": "99 Names of Allah",
+      "arabic": "الصَّبُورُ",
+      "translation": "The Patient One",
+      "transliteration": "As Saboor",
+      "instruction": "Is the One who delays the punishment of sinners by adjusting the accounts of each until a definite day and gives them their ease and time until a time of which they all do not know the date. | Quran: (2:153)(3:200)(103:3)",
+      "repeat_count": 1,
+      "audio_url": null,
+      "order_index": 98,
+      "audio_file": "adhkar_406.mp3"
     }
   ],
   "meta": {

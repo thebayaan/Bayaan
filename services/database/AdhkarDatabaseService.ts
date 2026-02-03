@@ -66,6 +66,13 @@ interface SuperCategoryRow {
   category_ids: string; // JSON array stored as string
 }
 
+// Data version - increment when seed data changes to trigger re-seed
+// Version 1: Initial adhkar data (267 items)
+// Version 2: Added Quranic Duas (40 items, total 307)
+// Version 3: Fixed audio file naming (dua_X.mp3 -> adhkar_X.mp3)
+// Version 4: Added 99 Names of Allah (99 items, total 406)
+const DATA_VERSION = 4;
+
 class AdhkarDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
   private initPromise: Promise<void> | null = null;
@@ -175,6 +182,14 @@ class AdhkarDatabaseService {
       );
     `);
 
+    // Create meta table for version tracking
+    await this.db.execAsync(`
+      CREATE TABLE IF NOT EXISTS adhkar_meta (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `);
+
     // Create indexes for better performance
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_adhkar_category ON adhkar(category_id);
@@ -187,6 +202,40 @@ class AdhkarDatabaseService {
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_super_categories_section ON super_categories(section);
     `);
+  }
+
+  // Get current data version from database
+  private async getDataVersion(): Promise<number> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const result = (await this.db.getFirstAsync(
+      `SELECT value FROM adhkar_meta WHERE key = 'data_version'`,
+    )) as {value: string} | null;
+
+    return result ? parseInt(result.value, 10) : 0;
+  }
+
+  // Set data version in database
+  private async setDataVersion(version: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO adhkar_meta (key, value) VALUES ('data_version', ?)`,
+      [version.toString()],
+    );
+  }
+
+  // Check if database needs re-seeding (version mismatch)
+  async needsReseed(): Promise<boolean> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const currentVersion = await this.getDataVersion();
+    return currentVersion < DATA_VERSION;
+  }
+
+  // Update data version to current after successful seeding
+  async updateDataVersion(): Promise<void> {
+    await this.setDataVersion(DATA_VERSION);
   }
 
   // Get all categories with their tags
@@ -729,11 +778,33 @@ class AdhkarDatabaseService {
           '126',
         ],
       },
+      {
+        id: 'quranic-duas',
+        title: 'Quranic Duas',
+        arabic_title: 'أدعية قرآنية',
+        color: '#0D9488',
+        height_multiplier: 2,
+        column: 'left',
+        sort_order: 7,
+        section: 'main',
+        category_ids: ['quranic-duas'],
+      },
     ];
 
     // Define all super categories (Other)
     // Bento layout pattern - Left: 1, 2, 3, 1... (last=1) | Right: 1, 3, 1, 2... (last=2)
     const otherAdhkar = [
+      {
+        id: 'names-of-allah',
+        title: '99 Names of Allah',
+        arabic_title: 'أسماء الله الحسنى',
+        color: '#8B5CF6',
+        height_multiplier: 2,
+        column: 'left',
+        sort_order: 0,
+        section: 'other',
+        category_ids: ['names-of-allah'],
+      },
       {
         id: 'clothes',
         title: 'Clothes',
