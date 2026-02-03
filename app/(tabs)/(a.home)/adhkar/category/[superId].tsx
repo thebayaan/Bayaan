@@ -39,7 +39,7 @@ const SuperCategoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
 
-  const {getSuperCategoryById, setCurrentDhikr} = useAdhkar();
+  const {getSuperCategoryById, setCurrentDhikr, setAdhkarList} = useAdhkar();
 
   // Local state for the combined list data
   const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
@@ -114,13 +114,10 @@ const SuperCategoryScreen: React.FC = () => {
     return items;
   }, [categoryGroups]);
 
-  // Count total adhkar
-  const totalAdhkar = useMemo(() => {
-    return categoryGroups.reduce((sum, g) => sum + g.adhkar.length, 0);
-  }, [categoryGroups]);
-
   const handleDhikrPress = useCallback(
     (item: Extract<ListItem, {type: 'dhikr'}>) => {
+      // Set all adhkar from this super category for paging
+      setAdhkarList(allAdhkar);
       // Set the current dhikr in the store with global index for swipe navigation
       setCurrentDhikr(item.dhikr, item.globalIndex);
 
@@ -128,13 +125,11 @@ const SuperCategoryScreen: React.FC = () => {
         pathname: '/(tabs)/(a.home)/adhkar/dhikr/[dhikrId]',
         params: {
           dhikrId: item.dhikr.id,
-          categoryId: item.categoryId,
-          categoryShortTitle: item.categoryShortTitle,
           superCategoryTitle: superCategory?.title,
         },
       });
     },
-    [router, setCurrentDhikr, superCategory?.title],
+    [router, setCurrentDhikr, setAdhkarList, allAdhkar, superCategory?.title],
   );
 
   const renderItem = useCallback(
@@ -165,8 +160,6 @@ const SuperCategoryScreen: React.FC = () => {
     }
     return `dhikr-${item.dhikr.id}-${index}`;
   }, []);
-
-  const getItemType = useCallback((item: ListItem) => item.type, []);
 
   // Handle early return states
   if (!superId) {
@@ -210,15 +203,6 @@ const SuperCategoryScreen: React.FC = () => {
             <Text style={styles.emptyText}>No adhkar found</Text>
           </View>
         }
-        ListHeaderComponent={
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerText}>
-              {totalAdhkar} {totalAdhkar === 1 ? 'dhikr' : 'adhkar'}
-              {categoryGroups.length > 1 &&
-                ` in ${categoryGroups.length} categories`}
-            </Text>
-          </View>
-        }
       />
     </View>
   );
@@ -237,15 +221,6 @@ const createStyles = (theme: Theme) =>
     },
     listContent: {
       paddingBottom: moderateScale(100),
-    },
-    headerInfo: {
-      paddingHorizontal: moderateScale(16),
-      marginBottom: moderateScale(8),
-    },
-    headerText: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.medium,
-      color: theme.colors.textSecondary,
     },
     emptyContainer: {
       flex: 1,

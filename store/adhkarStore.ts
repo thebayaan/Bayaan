@@ -53,6 +53,9 @@ interface AdhkarState {
   resetCount: (dhikrId: string) => Promise<void>;
   getCount: (dhikrId: string) => number;
 
+  // Direct adhkar list setter (for super category navigation)
+  setAdhkarList: (adhkar: Dhikr[]) => void;
+
   // Reset
   reset: () => void;
 }
@@ -109,7 +112,9 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
 
       // Load favorites
       const favorites = await adhkarService.getFavorites();
-      const favoriteIds = new Set(favorites.map((f: DhikrFavorite) => f.dhikrId));
+      const favoriteIds = new Set(
+        favorites.map((f: DhikrFavorite) => f.dhikrId),
+      );
 
       // Load counts (this can be slow, so we do it after categories are loaded)
       const counts = await adhkarService.getAllCounts();
@@ -205,11 +210,15 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
     if (direction === 'prev') {
       // Wrap around to the end if at the beginning
       newIndex =
-        currentDhikrIndex > 0 ? currentDhikrIndex - 1 : adhkarInCategory.length - 1;
+        currentDhikrIndex > 0
+          ? currentDhikrIndex - 1
+          : adhkarInCategory.length - 1;
     } else {
       // Wrap around to the beginning if at the end
       newIndex =
-        currentDhikrIndex < adhkarInCategory.length - 1 ? currentDhikrIndex + 1 : 0;
+        currentDhikrIndex < adhkarInCategory.length - 1
+          ? currentDhikrIndex + 1
+          : 0;
     }
 
     set({
@@ -249,7 +258,9 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       set({error: null});
 
       const favorites = await adhkarService.getFavorites();
-      const favoriteIds = new Set(favorites.map((f: DhikrFavorite) => f.dhikrId));
+      const favoriteIds = new Set(
+        favorites.map((f: DhikrFavorite) => f.dhikrId),
+      );
 
       set({favorites: favoriteIds});
     } catch (err) {
@@ -306,6 +317,14 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
   // Get the current count for a dhikr (synchronous, from cached state)
   getCount: (dhikrId: string) => {
     return get().dhikrCounts[dhikrId] ?? 0;
+  },
+
+  // Set adhkar list directly (used for super category navigation)
+  setAdhkarList: (adhkar: Dhikr[]) => {
+    set({
+      adhkarInCategory: adhkar,
+      selectedCategory: null, // Clear selected category since we're using a custom list
+    });
   },
 
   // Reset all state to initial values
