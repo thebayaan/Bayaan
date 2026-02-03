@@ -1,15 +1,15 @@
 /**
- * Dua Audio Asset Mapping Utility
+ * Adhkar Audio Asset Mapping Utility
  *
- * Maps dua audio filenames to their require() statements.
+ * Maps dhikr audio filenames to their require() statements.
  * Required because React Native's bundler needs static require() calls
  * for local assets - dynamic requires are not supported.
  *
- * Contains mappings for all 267 dua audio files.
+ * Contains mappings for all 267 dhikr audio files.
  */
 
 /**
- * Static mapping of dua audio filenames to their require() statements
+ * Static mapping of dhikr audio filenames to their require() statements
  * In React Native, require() for assets returns a number (asset ID)
  */
 const audioAssets: Record<string, number> = {
@@ -283,7 +283,7 @@ const audioAssets: Record<string, number> = {
 };
 
 /**
- * Get the audio source for a dua by its audio filename
+ * Get the audio source for a dhikr by its audio filename
  * @param audioFile - The audio filename (e.g., "dua_75.mp3")
  * @returns The require() source or null if not found
  */

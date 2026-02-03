@@ -1,10 +1,10 @@
-import {DuaBroadTag} from '@/types/dua';
+import {AdhkarBroadTag} from '@/types/adhkar';
 
 /**
- * Color mapping for dua broad tags
+ * Color mapping for adhkar broad tags
  * Used for CategoryCard gradients and section headers
  */
-export const DUA_TAG_COLORS: Record<DuaBroadTag, string> = {
+export const ADHKAR_TAG_COLORS: Record<AdhkarBroadTag, string> = {
   daily: '#4F46E5', // Indigo - morning/evening adhkar
   prayer: '#059669', // Emerald - salah related
   protection: '#7C3AED', // Violet - protection duas
@@ -22,14 +22,14 @@ export const DUA_TAG_COLORS: Record<DuaBroadTag, string> = {
 /**
  * Get color for a tag, with fallback
  */
-export function getTagColor(tag: DuaBroadTag | string): string {
-  return DUA_TAG_COLORS[tag as DuaBroadTag] ?? DUA_TAG_COLORS.general;
+export function getTagColor(tag: AdhkarBroadTag | string): string {
+  return ADHKAR_TAG_COLORS[tag as AdhkarBroadTag] ?? ADHKAR_TAG_COLORS.general;
 }
 
 /**
  * Display names for tags (for section headers)
  */
-export const DUA_TAG_NAMES: Record<DuaBroadTag, string> = {
+export const ADHKAR_TAG_NAMES: Record<AdhkarBroadTag, string> = {
   daily: 'Daily Adhkar',
   prayer: 'Prayer',
   protection: 'Protection',
@@ -47,7 +47,7 @@ export const DUA_TAG_NAMES: Record<DuaBroadTag, string> = {
 /**
  * Order of tags for display (most important first)
  */
-export const DUA_TAG_ORDER: DuaBroadTag[] = [
+export const ADHKAR_TAG_ORDER: AdhkarBroadTag[] = [
   'daily',
   'prayer',
   'protection',
