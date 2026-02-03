@@ -21,6 +21,7 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
+import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -82,6 +83,10 @@ const DhikrDetailScreen: React.FC = () => {
   // Get favorite functions from hook
   const {isFavorite, toggleFavorite} = useAdhkar();
 
+  // Get audio store actions
+  const setAudio = useAdhkarAudioStore(state => state.setAudio);
+  const stopAudio = useAdhkarAudioStore(state => state.stop);
+
   // Load data on mount - this runs after navigation completes
   useEffect(() => {
     async function loadData() {
@@ -122,6 +127,20 @@ const DhikrDetailScreen: React.FC = () => {
   const currentDhikr = useMemo(() => {
     return adhkarList[currentIndex] || null;
   }, [adhkarList, currentIndex]);
+
+  // Update audio store when current dhikr changes (on swipe)
+  useEffect(() => {
+    if (currentDhikr) {
+      setAudio(currentDhikr.audioFile);
+    }
+  }, [currentDhikr, setAudio]);
+
+  // Stop audio when leaving the screen
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, [stopAudio]);
 
   // Dynamic title based on current dhikr's category
   const displayTitle = useMemo(() => {

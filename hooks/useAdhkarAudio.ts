@@ -1,17 +1,40 @@
 /**
  * useAdhkarAudio Hook
  *
- * Custom hook for adhkar audio playback using expo-audio.
- * Provides a clean interface for playing dhikr audio files with
- * controls, status, and formatted time strings.
+ * Custom hook for adhkar audio playback.
+ * - Uses Zustand store for user intent (play/pause, loop)
+ * - Uses Context for player status (progress, duration) and direct seek
+ *
+ * This separation avoids feedback loops between store and player.
  */
 
-import {useCallback, useMemo} from 'react';
-import {useAudioPlayer, useAudioPlayerStatus, AudioPlayer} from 'expo-audio';
-import {getAudioSource} from '@/utils/adhkarAudio';
+import {useMemo} from 'react';
+import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
+import {useAdhkarAudioPlayer} from '@/components/adhkar/AdhkarAudioProvider';
+
+interface UseAdhkarAudioReturn {
+  // Status
+  isPlaying: boolean;
+  isLooping: boolean;
+  currentTime: number;
+  duration: number;
+  progress: number;
+
+  // Controls
+  play: () => void;
+  pause: () => void;
+  toggle: () => void;
+  replay: () => void;
+  seekToProgress: (progress: number) => void;
+  toggleLooping: () => void;
+
+  // Formatted time strings
+  currentTimeFormatted: string;
+  durationFormatted: string;
+}
 
 /**
- * Format seconds to M:SS string (e.g., 90 -> "1:30")
+ * Format seconds to M:SS string
  */
 function formatTime(seconds: number): string {
   if (!seconds || !isFinite(seconds)) return '0:00';
@@ -20,121 +43,62 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-interface UseAdhkarAudioReturn {
-  // Player instance (for advanced use)
-  player: AudioPlayer;
-
-  // Status
-  isPlaying: boolean;
-  isLoaded: boolean;
-  currentTime: number; // seconds
-  duration: number; // seconds
-  progress: number; // 0-1 percentage
-
-  // Controls
-  play: () => void;
-  pause: () => void;
-  toggle: () => void;
-  replay: () => void; // seek to 0 and play
-  seekTo: (seconds: number) => void;
-  seekToProgress: (progress: number) => void; // 0-1 percentage
-
-  // Formatted time strings
-  currentTimeFormatted: string; // "0:45"
-  durationFormatted: string; // "2:30"
-}
-
 /**
  * Hook for adhkar audio playback
- * @param audioFile - The audio filename (e.g., "dhikr_75.mp3") or null
+ * @param audioFile - The audio filename (e.g., "adhkar_75.mp3") or null
  * @returns Audio player controls and status
  */
 export function useAdhkarAudio(audioFile: string | null): UseAdhkarAudioReturn {
-  // Get the audio source from the mapping
-  const source = useMemo(() => getAudioSource(audioFile), [audioFile]);
+  // Get user intent from store
+  const isPlaying = useAdhkarAudioStore(state => state.isPlaying);
+  const isLooping = useAdhkarAudioStore(state => state.isLooping);
+  const currentAudioFile = useAdhkarAudioStore(state => state.currentAudioFile);
+  const play = useAdhkarAudioStore(state => state.play);
+  const pause = useAdhkarAudioStore(state => state.pause);
+  const toggle = useAdhkarAudioStore(state => state.toggle);
+  const toggleLooping = useAdhkarAudioStore(state => state.toggleLooping);
 
-  // Create the audio player with the source
-  const player = useAudioPlayer(source);
+  // Get player status from context (direct from player, no store)
+  const {progress, duration, currentTime, seek} = useAdhkarAudioPlayer();
 
-  // Get real-time status from the player
-  const status = useAudioPlayerStatus(player);
-
-  // Extract status values with safe defaults
-  const isPlaying = status?.playing ?? false;
-  const isLoaded = status?.isLoaded ?? false;
-  const currentTime = status?.currentTime ?? 0;
-  const duration = status?.duration ?? 0;
-
-  // Calculate progress (0-1), handling division by zero
-  const progress = useMemo(() => {
-    if (!duration || duration === 0) return 0;
-    return Math.min(Math.max(currentTime / duration, 0), 1);
-  }, [currentTime, duration]);
+  // Check if this hook's audio file is the currently active one
+  const isActive = currentAudioFile === audioFile;
 
   // Format time strings
   const currentTimeFormatted = useMemo(
     () => formatTime(currentTime),
     [currentTime],
   );
-  const durationFormatted = useMemo(() => formatTime(duration), [duration]);
 
-  // Control functions
-  const play = useCallback(() => {
-    if (source) {
-      player.play();
-    }
-  }, [player, source]);
-
-  const pause = useCallback(() => {
-    player.pause();
-  }, [player]);
-
-  const toggle = useCallback(() => {
-    if (isPlaying) {
-      player.pause();
-    } else if (source) {
-      player.play();
-    }
-  }, [player, isPlaying, source]);
-
-  const replay = useCallback(() => {
-    if (source) {
-      player.seekTo(0);
-      player.play();
-    }
-  }, [player, source]);
-
-  const seekTo = useCallback(
-    (seconds: number) => {
-      player.seekTo(seconds);
-    },
-    [player],
+  const durationFormatted = useMemo(
+    () => formatTime(duration),
+    [duration],
   );
 
-  const seekToProgress = useCallback(
-    (progressValue: number) => {
-      if (duration > 0) {
-        const seconds = progressValue * duration;
-        player.seekTo(seconds);
-      }
-    },
-    [player, duration],
-  );
+  // Replay function
+  const replay = () => {
+    seek(0);
+    play();
+  };
 
   return {
-    player,
-    isPlaying,
-    isLoaded,
-    currentTime,
-    duration,
-    progress,
+    // Only return playing state if this is the active audio
+    isPlaying: isActive ? isPlaying : false,
+    isLooping,
+    currentTime: isActive ? currentTime : 0,
+    duration: isActive ? duration : 0,
+    progress: isActive ? progress : 0,
+
+    // Controls
     play,
     pause,
     toggle,
     replay,
-    seekTo,
-    seekToProgress,
-    currentTimeFormatted,
-    durationFormatted,
+    seekToProgress: seek,
+    toggleLooping,
+
+    // Formatted strings
+    currentTimeFormatted: isActive ? currentTimeFormatted : '0:00',
+    durationFormatted: isActive ? durationFormatted : '0:00',
   };
 }
