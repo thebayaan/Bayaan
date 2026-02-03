@@ -17,7 +17,7 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 
 // Base height unit for bento cards (Spotify-style proportions)
 // 1x cards are short/wide, 2x cards span two 1x cards + gap
-const ROW_HEIGHT_UNIT = 55;
+const ROW_HEIGHT_UNIT = 62;
 
 interface AdhkarViewProps {
   onSuperCategoryPress: (superCategory: SuperCategory) => void;
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: moderateScale(8),
+    paddingTop: 0,
   },
   centerContainer: {
     flex: 1,
