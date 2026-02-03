@@ -1,5 +1,11 @@
 import React, {useMemo, useCallback, useEffect, useState} from 'react';
-import {View, SectionList, Text, TouchableOpacity} from 'react-native';
+import {
+  View,
+  SectionList,
+  FlatList,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -14,7 +20,6 @@ import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 
-// Item type for section data
 interface DhikrItem {
   dhikr: Dhikr;
   index: number;
@@ -22,7 +27,6 @@ interface DhikrItem {
   categoryShortTitle: string;
 }
 
-// Section type for SectionList
 interface Section {
   title: string;
   shortTitle: string;
@@ -36,24 +40,20 @@ interface CategoryGroup {
   adhkar: Dhikr[];
 }
 
-const SuperCategoryScreen: React.FC = () => {
+const SuperCategoryListScreen: React.FC = () => {
   const {superId} = useLocalSearchParams<{superId: string}>();
   const router = useRouter();
   const {theme} = useTheme();
-
-  // Memoize styles to prevent recreation on every render
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {getSuperCategoryById} = useAdhkar();
 
-  // Local state for the combined list data
   const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
     null,
   );
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Load data on mount
   useEffect(() => {
     async function loadData() {
       if (!superId) return;
@@ -75,7 +75,6 @@ const SuperCategoryScreen: React.FC = () => {
     loadData();
   }, [superId]);
 
-  // Get super category from store as fallback for title
   const storedSuperCategory = useMemo(() => {
     if (!superId) return undefined;
     return getSuperCategoryById(superId);
@@ -84,10 +83,14 @@ const SuperCategoryScreen: React.FC = () => {
   const displayTitle =
     superCategory?.title || storedSuperCategory?.title || 'Loading...';
 
-  // Build sections for SectionList - include categoryShortTitle in each item
-  const sections: Section[] = useMemo(() => {
-    let globalIndex = 0;
+  // Determine if this is a single-category super category
+  const isSingleCategory = categoryGroups.length === 1;
 
+  // Build sections for SectionList (multi-category view)
+  const sections: Section[] = useMemo(() => {
+    if (isSingleCategory) return [];
+
+    let globalIndex = 0;
     return categoryGroups.map(group => {
       const shortTitle = shortenCategoryTitle(group.categoryTitle);
       const data: DhikrItem[] = group.adhkar.map((dhikr, index) => {
@@ -108,22 +111,33 @@ const SuperCategoryScreen: React.FC = () => {
         data,
       };
     });
-  }, [categoryGroups]);
+  }, [categoryGroups, isSingleCategory]);
+
+  // Build flat list for single-category view
+  const flatAdhkarList: DhikrItem[] = useMemo(() => {
+    if (!isSingleCategory || categoryGroups.length === 0) return [];
+
+    const group = categoryGroups[0];
+    const shortTitle = shortenCategoryTitle(group.categoryTitle);
+    return group.adhkar.map((dhikr, index) => ({
+      dhikr,
+      index,
+      globalIndex: index,
+      categoryShortTitle: shortTitle,
+    }));
+  }, [categoryGroups, isSingleCategory]);
 
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
 
-  // Navigate first, let destination load data (deferred approach for performance)
   const handleDhikrPress = useCallback(
     (item: DhikrItem) => {
-      // Navigate immediately with minimal params
-      // The dhikr reader will load its own data using superId
       router.push({
-        pathname: '/(tabs)/(a.home)/adhkar/dhikr/[dhikrId]',
+        pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
         params: {
-          dhikrId: item.dhikr.id,
           superId: superId,
+          dhikrId: item.dhikr.id,
           globalIndex: item.globalIndex.toString(),
           categoryShortTitle: item.categoryShortTitle,
           superCategoryTitle: superCategory?.title,
@@ -134,15 +148,13 @@ const SuperCategoryScreen: React.FC = () => {
   );
 
   const renderItem = useCallback(
-    ({item}: {item: DhikrItem}) => {
-      return (
-        <DhikrListItem
-          dhikr={item.dhikr}
-          index={item.index}
-          onPress={() => handleDhikrPress(item)}
-        />
-      );
-    },
+    ({item}: {item: DhikrItem}) => (
+      <DhikrListItem
+        dhikr={item.dhikr}
+        index={item.index}
+        onPress={() => handleDhikrPress(item)}
+      />
+    ),
     [handleDhikrPress],
   );
 
@@ -155,7 +167,6 @@ const SuperCategoryScreen: React.FC = () => {
     [],
   );
 
-  // Memoize the ListEmptyComponent
   const ListEmptyComponent = useMemo(
     () => (
       <View style={styles.emptyContainer}>
@@ -165,12 +176,10 @@ const SuperCategoryScreen: React.FC = () => {
     [styles.emptyContainer, styles.emptyText],
   );
 
-  // Handle early return states
   if (!superId) {
     return null;
   }
 
-  // Inline header component
   const InlineHeader = (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
@@ -209,19 +218,34 @@ const SuperCategoryScreen: React.FC = () => {
     <View style={styles.container}>
       {InlineHeader}
 
-      <SectionList
-        sections={sections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={keyExtractor}
-        stickySectionHeadersEnabled={true}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={20}
-        maxToRenderPerBatch={15}
-        windowSize={7}
-        ListEmptyComponent={ListEmptyComponent}
-      />
+      {isSingleCategory ? (
+        <FlatList
+          data={flatAdhkarList}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+          ListEmptyComponent={ListEmptyComponent}
+        />
+      ) : (
+        <SectionList
+          sections={sections}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={keyExtractor}
+          stickySectionHeadersEnabled={true}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={20}
+          maxToRenderPerBatch={15}
+          windowSize={7}
+          ListEmptyComponent={ListEmptyComponent}
+        />
+      )}
     </View>
   );
 };
@@ -276,4 +300,4 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default SuperCategoryScreen;
+export default SuperCategoryListScreen;

@@ -166,8 +166,7 @@ interface ContentProps {
   activeView: ViewOption;
   handleReciterPress: (reciter: Reciter) => void;
   handleSurahPress: (surah: Surah) => void;
-  handleSuperCategoryPress: (category: SuperCategory) => void;
-  handleDirectCategoryPress: (categoryId: string, title: string) => void;
+  handleCategoryPress: (category: SuperCategory) => void;
   insets: EdgeInsets;
 }
 
@@ -177,8 +176,7 @@ const Content = React.memo(
     activeView,
     handleReciterPress,
     handleSurahPress,
-    handleSuperCategoryPress,
-    handleDirectCategoryPress,
+    handleCategoryPress,
     insets,
   }: ContentProps) => {
     // Track if each view has been rendered at least once
@@ -263,10 +261,7 @@ const Content = React.memo(
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <AdhkarView
-              onSuperCategoryPress={handleSuperCategoryPress}
-              onDirectCategoryPress={handleDirectCategoryPress}
-            />
+            <AdhkarView onCategoryPress={handleCategoryPress} />
           </View>
         )}
       </View>
@@ -276,9 +271,7 @@ const Content = React.memo(
     prevProps.activeView === nextProps.activeView &&
     prevProps.handleReciterPress === nextProps.handleReciterPress &&
     prevProps.handleSurahPress === nextProps.handleSurahPress &&
-    prevProps.handleSuperCategoryPress === nextProps.handleSuperCategoryPress &&
-    prevProps.handleDirectCategoryPress ===
-      nextProps.handleDirectCategoryPress &&
+    prevProps.handleCategoryPress === nextProps.handleCategoryPress &&
     prevProps.insets === nextProps.insets,
 );
 
@@ -372,23 +365,12 @@ function HomeScreen() {
     router.push('/settings');
   }, [router]);
 
-  // Navigate to super category (shows subcategories)
-  const handleSuperCategoryPress = useCallback(
+  // Navigate to adhkar category (unified route)
+  const handleCategoryPress = useCallback(
     (category: SuperCategory) => {
       router.push({
-        pathname: '/(tabs)/(a.home)/adhkar/category/[superId]',
+        pathname: '/(tabs)/(a.home)/adhkar/[superId]',
         params: {superId: category.id},
-      });
-    },
-    [router],
-  );
-
-  // Navigate directly to a category's adhkar (skip subcategory screen)
-  const handleDirectCategoryPress = useCallback(
-    (categoryId: string, title: string) => {
-      router.push({
-        pathname: '/(tabs)/(a.home)/adhkar/[categoryId]',
-        params: {categoryId, title},
       });
     },
     [router],
@@ -407,8 +389,7 @@ function HomeScreen() {
         activeView={activeView}
         handleReciterPress={handleReciterPress}
         handleSurahPress={handleSurahPress}
-        handleSuperCategoryPress={handleSuperCategoryPress}
-        handleDirectCategoryPress={handleDirectCategoryPress}
+        handleCategoryPress={handleCategoryPress}
         insets={insets}
       />
     </View>

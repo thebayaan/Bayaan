@@ -8,9 +8,7 @@ export default function AdhkarLayout() {
         screenOptions={{
           headerShown: false,
         }}>
-        <Stack.Screen name="[categoryId]" />
-        <Stack.Screen name="category/[superId]" />
-        <Stack.Screen name="dhikr/[dhikrId]" />
+        <Stack.Screen name="[superId]" />
       </Stack>
     </AdhkarAudioProvider>
   );

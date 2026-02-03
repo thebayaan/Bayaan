@@ -113,7 +113,7 @@ const createStyles = (theme: Theme) =>
       textAlign: 'right',
       writingDirection: 'rtl',
       marginBottom: moderateScale(6),
-      lineHeight: moderateScale(28),
+      lineHeight: moderateScale(38),
     },
     translationText: {
       fontSize: moderateScale(13),

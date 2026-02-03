@@ -1,12 +1,17 @@
-import React, {useMemo, useCallback} from 'react';
-import {View, Text, ScrollView, StyleSheet, useWindowDimensions} from 'react-native';
+import React, {useMemo} from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
-import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 
 // Base height unit for bento cards (Spotify-style proportions)
@@ -14,8 +19,7 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 const ROW_HEIGHT_UNIT = 62;
 
 interface AdhkarViewProps {
-  onSuperCategoryPress: (superCategory: SuperCategory) => void;
-  onDirectCategoryPress: (categoryId: string, title: string) => void;
+  onCategoryPress: (superCategory: SuperCategory) => void;
 }
 
 // Memoized section header
@@ -88,10 +92,7 @@ function organizeByColumn(categories: SuperCategory[]): {
   return {leftColumn, rightColumn};
 }
 
-export const AdhkarView: React.FC<AdhkarViewProps> = ({
-  onSuperCategoryPress,
-  onDirectCategoryPress,
-}) => {
+export const AdhkarView: React.FC<AdhkarViewProps> = ({onCategoryPress}) => {
   const {theme} = useTheme();
   const {
     error,
@@ -123,23 +124,6 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
   const otherLayout = useMemo(
     () => organizeByColumn(otherSuperCategories),
     [otherSuperCategories],
-  );
-
-  // Handle category press with smart navigation
-  const handleCategoryPress = useCallback(
-    (category: SuperCategory) => {
-      // If category has only 1 subcategory, skip to adhkar directly
-      if (adhkarService.shouldSkipSubcategoryScreen(category)) {
-        const firstCategoryId = adhkarService.getFirstCategoryId(category);
-        if (firstCategoryId) {
-          onDirectCategoryPress(firstCategoryId, category.title);
-        }
-      } else {
-        // Show subcategory list
-        onSuperCategoryPress(category);
-      }
-    },
-    [onSuperCategoryPress, onDirectCategoryPress],
   );
 
   // Loading state - only show if data hasn't been preloaded by AppInitializer
@@ -179,13 +163,13 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
           categories={mainLayout.leftColumn}
           columnWidth={tileDimensions.columnWidth}
           baseHeight={tileDimensions.baseHeight}
-          onPress={handleCategoryPress}
+          onPress={onCategoryPress}
         />
         <BentoColumn
           categories={mainLayout.rightColumn}
           columnWidth={tileDimensions.columnWidth}
           baseHeight={tileDimensions.baseHeight}
-          onPress={handleCategoryPress}
+          onPress={onCategoryPress}
         />
       </View>
 
@@ -196,13 +180,13 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
           categories={otherLayout.leftColumn}
           columnWidth={tileDimensions.columnWidth}
           baseHeight={tileDimensions.baseHeight}
-          onPress={handleCategoryPress}
+          onPress={onCategoryPress}
         />
         <BentoColumn
           categories={otherLayout.rightColumn}
           columnWidth={tileDimensions.columnWidth}
           baseHeight={tileDimensions.baseHeight}
-          onPress={handleCategoryPress}
+          onPress={onCategoryPress}
         />
       </View>
     </ScrollView>
