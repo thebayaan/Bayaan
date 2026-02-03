@@ -1,14 +1,14 @@
 /**
- * useDuaAudio Hook
+ * useAdhkarAudio Hook
  *
- * Custom hook for dua audio playback using expo-audio.
- * Provides a clean interface for playing dua audio files with
+ * Custom hook for adhkar audio playback using expo-audio.
+ * Provides a clean interface for playing dhikr audio files with
  * controls, status, and formatted time strings.
  */
 
 import {useCallback, useMemo} from 'react';
 import {useAudioPlayer, useAudioPlayerStatus, AudioPlayer} from 'expo-audio';
-import {getAudioSource} from '@/utils/duaAudio';
+import {getAudioSource} from '@/utils/adhkarAudio';
 
 /**
  * Format seconds to M:SS string (e.g., 90 -> "1:30")
@@ -20,7 +20,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-interface UseDuaAudioReturn {
+interface UseAdhkarAudioReturn {
   // Player instance (for advanced use)
   player: AudioPlayer;
 
@@ -45,11 +45,11 @@ interface UseDuaAudioReturn {
 }
 
 /**
- * Hook for dua audio playback
- * @param audioFile - The audio filename (e.g., "dua_75.mp3") or null
+ * Hook for adhkar audio playback
+ * @param audioFile - The audio filename (e.g., "dhikr_75.mp3") or null
  * @returns Audio player controls and status
  */
-export function useDuaAudio(audioFile: string | null): UseDuaAudioReturn {
+export function useAdhkarAudio(audioFile: string | null): UseAdhkarAudioReturn {
   // Get the audio source from the mapping
   const source = useMemo(() => getAudioSource(audioFile), [audioFile]);
 
