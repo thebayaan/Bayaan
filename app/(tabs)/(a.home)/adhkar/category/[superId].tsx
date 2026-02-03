@@ -44,7 +44,7 @@ const SuperCategoryScreen: React.FC = () => {
   // Memoize styles to prevent recreation on every render
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const {getSuperCategoryById, setCurrentDhikr, setAdhkarList} = useAdhkar();
+  const {getSuperCategoryById} = useAdhkar();
 
   // Local state for the combined list data
   const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
@@ -52,7 +52,6 @@ const SuperCategoryScreen: React.FC = () => {
   );
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [allAdhkar, setAllAdhkar] = useState<Dhikr[]>([]);
 
   // Load data on mount
   useEffect(() => {
@@ -65,10 +64,6 @@ const SuperCategoryScreen: React.FC = () => {
         if (data) {
           setSuperCategory(data.superCategory);
           setCategoryGroups(data.categoryGroups);
-
-          // Flatten all adhkar for navigation
-          const flatAdhkar = data.categoryGroups.flatMap(g => g.adhkar);
-          setAllAdhkar(flatAdhkar);
         }
       } catch (error) {
         console.error('Failed to load super category data:', error);
@@ -88,15 +83,6 @@ const SuperCategoryScreen: React.FC = () => {
 
   const displayTitle =
     superCategory?.title || storedSuperCategory?.title || 'Loading...';
-
-  // Build category titles map for the store
-  const categoryTitlesMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    categoryGroups.forEach(group => {
-      map[group.categoryId] = shortenCategoryTitle(group.categoryTitle);
-    });
-    return map;
-  }, [categoryGroups]);
 
   // Build sections for SectionList - include categoryShortTitle in each item
   const sections: Section[] = useMemo(() => {
@@ -128,30 +114,23 @@ const SuperCategoryScreen: React.FC = () => {
     router.back();
   }, [router]);
 
+  // Navigate first, let destination load data (deferred approach for performance)
   const handleDhikrPress = useCallback(
     (item: DhikrItem) => {
-      // Set all adhkar from this super category for paging, with category titles map
-      setAdhkarList(allAdhkar, categoryTitlesMap);
-      // Set the current dhikr in the store with global index for swipe navigation
-      setCurrentDhikr(item.dhikr, item.globalIndex);
-
+      // Navigate immediately with minimal params
+      // The dhikr reader will load its own data using superId
       router.push({
         pathname: '/(tabs)/(a.home)/adhkar/dhikr/[dhikrId]',
         params: {
           dhikrId: item.dhikr.id,
+          superId: superId,
+          globalIndex: item.globalIndex.toString(),
           categoryShortTitle: item.categoryShortTitle,
           superCategoryTitle: superCategory?.title,
         },
       });
     },
-    [
-      router,
-      setCurrentDhikr,
-      setAdhkarList,
-      allAdhkar,
-      categoryTitlesMap,
-      superCategory?.title,
-    ],
+    [router, superId, superCategory?.title],
   );
 
   const renderItem = useCallback(
