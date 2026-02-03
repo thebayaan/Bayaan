@@ -13,10 +13,10 @@ import {createStyles} from './_styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
-import DuasView from '@/components/DuasView';
+import AdhkarView from '@/components/AdhkarView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
-import {DuaCategory} from '@/types/dua';
+import {SuperCategory} from '@/types/adhkar';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import TabSelector from '@/components/TabSelector';
 import {useSettings} from '@/hooks/useSettings';
@@ -29,7 +29,7 @@ import {EdgeInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 
-type ViewOption = 'Reciters' | 'Surahs' | 'Duas';
+type ViewOption = 'Reciters' | 'Surahs' | 'Adhkar';
 
 interface HeaderProps {
   activeView: ViewOption;
@@ -134,7 +134,7 @@ const Header = React.memo(
           </View>
           <View style={headerStyles.centerContainer}>
             <TabSelector
-              options={['Reciters', 'Surahs', 'Duas']}
+              options={['Reciters', 'Surahs', 'Adhkar']}
               selectedOption={activeView}
               onSelect={handleToggle}
             />
@@ -166,7 +166,8 @@ interface ContentProps {
   activeView: ViewOption;
   handleReciterPress: (reciter: Reciter) => void;
   handleSurahPress: (surah: Surah) => void;
-  handleDuaCategoryPress: (category: DuaCategory) => void;
+  handleSuperCategoryPress: (category: SuperCategory) => void;
+  handleDirectCategoryPress: (categoryId: string, title: string) => void;
   insets: EdgeInsets;
 }
 
@@ -176,13 +177,14 @@ const Content = React.memo(
     activeView,
     handleReciterPress,
     handleSurahPress,
-    handleDuaCategoryPress,
+    handleSuperCategoryPress,
+    handleDirectCategoryPress,
     insets,
   }: ContentProps) => {
     // Track if each view has been rendered at least once
     const [hasViewedReciters, setHasViewedReciters] = React.useState(true); // Start with true as it's the default
     const [hasViewedSurahs, setHasViewedSurahs] = React.useState(true); // Changed to true to load both components immediately
-    const [hasViewedDuas, setHasViewedDuas] = React.useState(false); // Lazy load duas
+    const [hasViewedAdhkar, setHasViewedAdhkar] = React.useState(false); // Lazy load adhkar
 
     // Update the viewed state when active view changes
     React.useEffect(() => {
@@ -190,10 +192,10 @@ const Content = React.memo(
         setHasViewedReciters(true);
       } else if (activeView === 'Surahs' && !hasViewedSurahs) {
         setHasViewedSurahs(true);
-      } else if (activeView === 'Duas' && !hasViewedDuas) {
-        setHasViewedDuas(true);
+      } else if (activeView === 'Adhkar' && !hasViewedAdhkar) {
+        setHasViewedAdhkar(true);
       }
-    }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedDuas]);
+    }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedAdhkar]);
 
     const contentStyles = StyleSheet.create({
       container: {
@@ -253,15 +255,18 @@ const Content = React.memo(
           </View>
         )}
 
-        {/* DuasView - only render if it has been viewed once */}
-        {hasViewedDuas && (
+        {/* AdhkarView - only render if it has been viewed once */}
+        {hasViewedAdhkar && (
           <View
             style={[
-              activeView === 'Duas'
+              activeView === 'Adhkar'
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <DuasView onCategoryPress={handleDuaCategoryPress} />
+            <AdhkarView
+              onSuperCategoryPress={handleSuperCategoryPress}
+              onDirectCategoryPress={handleDirectCategoryPress}
+            />
           </View>
         )}
       </View>
@@ -271,7 +276,9 @@ const Content = React.memo(
     prevProps.activeView === nextProps.activeView &&
     prevProps.handleReciterPress === nextProps.handleReciterPress &&
     prevProps.handleSurahPress === nextProps.handleSurahPress &&
-    prevProps.handleDuaCategoryPress === nextProps.handleDuaCategoryPress &&
+    prevProps.handleSuperCategoryPress === nextProps.handleSuperCategoryPress &&
+    prevProps.handleDirectCategoryPress ===
+      nextProps.handleDirectCategoryPress &&
     prevProps.insets === nextProps.insets,
 );
 
@@ -365,11 +372,23 @@ function HomeScreen() {
     router.push('/settings');
   }, [router]);
 
-  const handleDuaCategoryPress = useCallback(
-    (category: DuaCategory) => {
+  // Navigate to super category (shows subcategories)
+  const handleSuperCategoryPress = useCallback(
+    (category: SuperCategory) => {
       router.push({
-        pathname: '/(tabs)/(a.home)/duas/[categoryId]',
-        params: {categoryId: category.id},
+        pathname: '/(tabs)/(a.home)/adhkar/category/[superId]',
+        params: {superId: category.id},
+      });
+    },
+    [router],
+  );
+
+  // Navigate directly to a category's adhkar (skip subcategory screen)
+  const handleDirectCategoryPress = useCallback(
+    (categoryId: string, title: string) => {
+      router.push({
+        pathname: '/(tabs)/(a.home)/adhkar/[categoryId]',
+        params: {categoryId, title},
       });
     },
     [router],
@@ -388,7 +407,8 @@ function HomeScreen() {
         activeView={activeView}
         handleReciterPress={handleReciterPress}
         handleSurahPress={handleSurahPress}
-        handleDuaCategoryPress={handleDuaCategoryPress}
+        handleSuperCategoryPress={handleSuperCategoryPress}
+        handleDirectCategoryPress={handleDirectCategoryPress}
         insets={insets}
       />
     </View>

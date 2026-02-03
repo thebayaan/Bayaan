@@ -1,7 +1,7 @@
 import {databaseService} from '@/services/database/DatabaseService';
-import {duaService} from '@/services/dua/DuaService';
+import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
-import {useDuaStore} from '@/store/duaStore';
+import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 
 interface ServiceInitializer {
@@ -200,30 +200,30 @@ appInitializer.registerService({
 });
 
 /**
- * Dua Service (Priority 4)
- * Initializes the Dua database and seeds data (depends on Database)
- * Non-critical - app can function without duas
+ * Adhkar Service (Priority 4)
+ * Initializes the Adhkar database and seeds data (depends on Database)
+ * Non-critical - app can function without adhkar
  */
 appInitializer.registerService({
-  name: 'Dua Service',
+  name: 'Adhkar Service',
   priority: 4,
   critical: false,
   initialize: async () => {
-    await duaService.initialize();
+    await adhkarService.initialize();
   },
 });
 
 /**
- * Dua Store Data (Priority 5)
- * Loads dua categories from database into Zustand store
+ * Adhkar Store Data (Priority 5)
+ * Loads adhkar categories from database into Zustand store
  * Non-critical - can be loaded later if fails
  */
 appInitializer.registerService({
-  name: 'Dua Store Data',
+  name: 'Adhkar Store Data',
   priority: 5,
   critical: false,
   initialize: async () => {
-    await useDuaStore.getState().loadCategories();
+    await useAdhkarStore.getState().loadCategories();
   },
 });
 
