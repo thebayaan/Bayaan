@@ -1,31 +1,41 @@
 import React, {useEffect, useCallback, useRef, useState, useMemo} from 'react';
-import {View, Text, TouchableOpacity, InteractionManager} from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  Dimensions,
+  ViewToken,
+} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
-import PagerView from 'react-native-pager-view';
+// PagerView kept for potential revert
+// import PagerView from 'react-native-pager-view';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {DhikrReader} from '@/components/adhkar/DhikrReader';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr} from '@/types/adhkar';
+import {adhkarService} from '@/services/adhkar/AdhkarService';
+import {shortenCategoryTitle} from '@/utils/adhkarUtils';
+
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 // Memoized page component to prevent unnecessary re-renders
 const DhikrPage = React.memo(function DhikrPage({
   dhikr,
   isFavorite,
   onFavoriteToggle,
-  style,
 }: {
   dhikr: Dhikr;
   isFavorite: boolean;
   onFavoriteToggle: () => void;
-  style: object;
 }) {
   return (
-    <View style={style}>
+    <View style={{width: SCREEN_WIDTH, flex: 1}}>
       <DhikrReader
         dhikr={dhikr}
         isFavorite={isFavorite}
@@ -35,62 +45,91 @@ const DhikrPage = React.memo(function DhikrPage({
   );
 });
 
+interface CategoryTitleMap {
+  [categoryId: string]: string;
+}
+
 const DhikrDetailScreen: React.FC = () => {
-  const {dhikrId, categoryId, categoryShortTitle, superCategoryTitle} =
-    useLocalSearchParams<{
-      dhikrId: string;
-      categoryId?: string;
-      categoryShortTitle?: string;
-      superCategoryTitle?: string;
-    }>();
+  const {
+    dhikrId,
+    superId,
+    globalIndex: globalIndexParam,
+    categoryShortTitle: initialCategoryTitle,
+    superCategoryTitle,
+  } = useLocalSearchParams<{
+    dhikrId: string;
+    superId?: string;
+    globalIndex?: string;
+    categoryShortTitle?: string;
+    superCategoryTitle?: string;
+  }>();
+
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const pagerRef = useRef<PagerView>(null);
+  const flatListRef = useRef<FlatList<Dhikr>>(null);
 
-  // Track if the pager is ready (for loading other pages after initial render)
-  const [pagerReady, setPagerReady] = useState(false);
+  // Parse initial index from params
+  const initialIndex = globalIndexParam ? parseInt(globalIndexParam, 10) : 0;
 
-  const {
-    currentDhikr,
-    currentDhikrIndex,
-    adhkarInCategory,
-    selectedCategory,
-    selectCategory,
-    setCurrentDhikr,
-    isFavorite,
-    toggleFavorite,
-    getCategoryTitle,
-    loading,
-  } = useAdhkar();
+  // Local state - load data in this screen for faster navigation
+  const [adhkarList, setAdhkarList] = useState<Dhikr[]>([]);
+  const [categoryTitles, setCategoryTitles] = useState<CategoryTitleMap>({});
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  // Load category if we have categoryId but no selected category
+  // Get favorite functions from hook
+  const {isFavorite, toggleFavorite} = useAdhkar();
+
+  // Load data on mount - this runs after navigation completes
   useEffect(() => {
-    if (categoryId && !selectedCategory) {
-      selectCategory(categoryId);
-    }
-  }, [categoryId, selectedCategory, selectCategory]);
+    async function loadData() {
+      if (!superId) {
+        // If no superId, we can't load the list
+        // This might happen for direct navigation - handle gracefully
+        setIsDataLoaded(true);
+        return;
+      }
 
-  // Set current dhikr if we navigated directly with dhikrId
-  useEffect(() => {
-    if (dhikrId && adhkarInCategory.length > 0 && !currentDhikr) {
-      const index = adhkarInCategory.findIndex(d => d.id === dhikrId);
-      if (index !== -1) {
-        setCurrentDhikr(adhkarInCategory[index], index);
+      try {
+        const data = await adhkarService.getAdhkarForSuperCategory(superId);
+        if (data) {
+          // Flatten all adhkar
+          const flatAdhkar = data.categoryGroups.flatMap(g => g.adhkar);
+          setAdhkarList(flatAdhkar);
+
+          // Build category titles map
+          const titlesMap: CategoryTitleMap = {};
+          data.categoryGroups.forEach(group => {
+            titlesMap[group.categoryId] = shortenCategoryTitle(
+              group.categoryTitle,
+            );
+          });
+          setCategoryTitles(titlesMap);
+        }
+      } catch (error) {
+        console.error('Failed to load adhkar data:', error);
+      } finally {
+        setIsDataLoaded(true);
       }
     }
-  }, [dhikrId, adhkarInCategory, currentDhikr, setCurrentDhikr]);
 
-  // After initial render and interactions complete, enable the full pager
-  useEffect(() => {
-    if (currentDhikr && adhkarInCategory.length > 1) {
-      const task = InteractionManager.runAfterInteractions(() => {
-        setPagerReady(true);
-      });
-      return () => task.cancel();
+    loadData();
+  }, [superId]);
+
+  // Current dhikr based on index
+  const currentDhikr = useMemo(() => {
+    return adhkarList[currentIndex] || null;
+  }, [adhkarList, currentIndex]);
+
+  // Dynamic title based on current dhikr's category
+  const displayTitle = useMemo(() => {
+    if (currentDhikr && categoryTitles[currentDhikr.categoryId]) {
+      return categoryTitles[currentDhikr.categoryId];
     }
-  }, [currentDhikr, adhkarInCategory.length]);
+    return initialCategoryTitle || superCategoryTitle || 'Dhikr';
+  }, [currentDhikr, categoryTitles, initialCategoryTitle, superCategoryTitle]);
 
   const handleBack = useCallback(() => {
     router.back();
@@ -103,98 +142,88 @@ const DhikrDetailScreen: React.FC = () => {
     [toggleFavorite],
   );
 
-  // Handle page change
-  const handlePageSelected = useCallback(
-    (e: {nativeEvent: {position: number}}) => {
-      const index = e.nativeEvent.position;
-      if (adhkarInCategory[index]) {
-        setCurrentDhikr(adhkarInCategory[index], index);
+  // Handle viewable items change for FlatList
+  const onViewableItemsChanged = useRef(
+    ({viewableItems}: {viewableItems: ViewToken[]}) => {
+      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+        setCurrentIndex(viewableItems[0].index);
       }
     },
-    [adhkarInCategory, setCurrentDhikr],
+  ).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
+
+  // getItemLayout for instant scroll positioning (no measurement needed)
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: SCREEN_WIDTH,
+      offset: SCREEN_WIDTH * index,
+      index,
+    }),
+    [],
   );
 
-  // Navigation info
-  const totalAdhkar = adhkarInCategory.length;
-  const isDataReady = !loading && currentDhikr && adhkarInCategory.length > 0;
+  // Render item for FlatList
+  const renderItem = useCallback(
+    ({item}: {item: Dhikr}) => {
+      return (
+        <DhikrPage
+          dhikr={item}
+          isFavorite={isFavorite(item.id)}
+          onFavoriteToggle={() => handleFavoriteToggle(item)}
+        />
+      );
+    },
+    [isFavorite, handleFavoriteToggle],
+  );
 
-  // Dynamic title: look up category title based on current dhikr
-  // This updates when swiping to a dhikr from a different category
-  const displayTitle = useMemo(() => {
-    if (currentDhikr) {
-      // First try to get title from the store's category titles map
-      const dynamicTitle = getCategoryTitle(currentDhikr.categoryId);
-      if (dynamicTitle) {
-        return dynamicTitle;
-      }
-    }
-    // Fall back to route params
-    return (
-      categoryShortTitle ||
-      superCategoryTitle ||
-      selectedCategory?.title ||
-      'Dhikr'
-    );
-  }, [
-    currentDhikr,
-    getCategoryTitle,
-    categoryShortTitle,
-    superCategoryTitle,
-    selectedCategory?.title,
-  ]);
-
-  // Memoize the pages to prevent recreation on every render
-  const pages = useMemo(() => {
-    if (!isDataReady || !pagerReady) return null;
-    return adhkarInCategory.map(dhikr => (
-      <DhikrPage
-        key={dhikr.id}
-        dhikr={dhikr}
-        isFavorite={isFavorite(dhikr.id)}
-        onFavoriteToggle={() => handleFavoriteToggle(dhikr)}
-        style={styles.page}
-      />
-    ));
-  }, [
-    adhkarInCategory,
-    isFavorite,
-    handleFavoriteToggle,
-    styles.page,
-    isDataReady,
-    pagerReady,
-  ]);
+  const keyExtractor = useCallback((item: Dhikr) => item.id, []);
 
   // Handle missing dhikrId
   if (!dhikrId) {
     return null;
   }
 
+  const totalAdhkar = adhkarList.length;
+
+  // Header component (used in both loading and loaded states)
+  const Header = (
+    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={1}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Icon
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {displayTitle}
+          </Text>
+          {totalAdhkar > 1 && (
+            <Text style={styles.positionText}>
+              {currentIndex + 1} of {totalAdhkar}
+            </Text>
+          )}
+        </View>
+        <View style={styles.headerPlaceholder} />
+      </View>
+    </SafeAreaView>
+  );
+
   // Still loading data
-  if (loading || !currentDhikr) {
+  if (!isDataLoaded) {
     return (
       <View style={styles.container}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBack}
-              activeOpacity={1}
-              hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-              <Icon
-                name="arrow-left"
-                type="feather"
-                size={moderateScale(24)}
-                color={theme.colors.text}
-              />
-            </TouchableOpacity>
-            <View style={styles.titleContainer}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
-                {displayTitle}
-              </Text>
-            </View>
-            <View style={styles.headerPlaceholder} />
-          </View>
-        </SafeAreaView>
+        {Header}
         <View style={styles.loadingContainer}>
           <LoadingIndicator />
         </View>
@@ -202,66 +231,46 @@ const DhikrDetailScreen: React.FC = () => {
     );
   }
 
-  // Render header and content
+  // No data available
+  if (adhkarList.length === 0) {
+    return (
+      <View style={styles.container}>
+        {Header}
+        <View style={styles.loadingContainer}>
+          <Text style={styles.emptyText}>No adhkar found</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Custom Header - always visible */}
-      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-        <View style={styles.header}>
-          {/* Back Button */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-            activeOpacity={1}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
+      {Header}
 
-          {/* Title with position */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {displayTitle}
-            </Text>
-            {totalAdhkar > 1 ? (
-              <Text style={styles.positionText}>
-                {currentDhikrIndex + 1} of {totalAdhkar}
-              </Text>
-            ) : null}
-          </View>
-
-          {/* Placeholder for symmetry */}
-          <View style={styles.headerPlaceholder} />
-        </View>
-      </SafeAreaView>
-
-      {/* Content area */}
-      <View style={[styles.pagerContainer, {paddingBottom: insets.bottom}]}>
-        {pagerReady && totalAdhkar > 1 ? (
-          // Full pager with all pages (after interactions complete)
-          <PagerView
-            ref={pagerRef}
-            style={styles.pager}
-            initialPage={currentDhikrIndex}
-            onPageSelected={handlePageSelected}
-            overdrag={true}
-            offscreenPageLimit={2}>
-            {pages}
-          </PagerView>
-        ) : (
-          // Show just the current dhikr immediately (no pager overhead)
-          <View style={styles.page}>
-            <DhikrReader
-              dhikr={currentDhikr}
-              isFavorite={isFavorite(currentDhikr.id)}
-              onFavoriteToggle={() => handleFavoriteToggle(currentDhikr)}
-            />
-          </View>
-        )}
+      {/* Horizontal FlatList with paging - much better virtualization than PagerView */}
+      <View style={[styles.listContainer, {paddingBottom: insets.bottom}]}>
+        <FlatList
+          ref={flatListRef}
+          data={adhkarList}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={initialIndex}
+          getItemLayout={getItemLayout}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          // Performance optimizations
+          windowSize={3}
+          maxToRenderPerBatch={2}
+          removeClippedSubviews={true}
+          initialNumToRender={1}
+          // Smooth scrolling
+          decelerationRate="fast"
+          snapToInterval={SCREEN_WIDTH}
+          snapToAlignment="start"
+        />
       </View>
     </View>
   );
@@ -308,15 +317,13 @@ const createStyles = (theme: Theme) =>
     headerPlaceholder: {
       width: moderateScale(40),
     },
-    pagerContainer: {
+    listContainer: {
       flex: 1,
     },
-    pager: {
-      flex: 1,
-    },
-    page: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
+    emptyText: {
+      fontSize: moderateScale(15),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
     },
   });
 

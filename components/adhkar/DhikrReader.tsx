@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -40,6 +40,17 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
 }) => {
   const {theme} = useTheme();
   const [showInstruction, setShowInstruction] = useState(false);
+
+  // Lazy load audio controls after first paint for better performance
+  const [showControls, setShowControls] = useState(false);
+
+  useEffect(() => {
+    // Defer audio controls rendering until after first paint
+    const timer = requestAnimationFrame(() => {
+      setShowControls(true);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, []);
 
   // Settings from store
   const {
@@ -106,17 +117,19 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
           </View>
         ) : null}
 
-        {/* Audio Controls with action buttons */}
-        <View style={styles.audioSection}>
-          <AdhkarAudioControls
-            audioFile={dhikr.audioFile}
-            onCopy={handleOpenCopyOptions}
-            onBookmark={onFavoriteToggle}
-            onShare={handleShare}
-            onSettings={handleOpenSettings}
-            isBookmarked={isFavorite}
-          />
-        </View>
+        {/* Audio Controls with action buttons - lazy loaded for performance */}
+        {showControls && (
+          <View style={styles.audioSection}>
+            <AdhkarAudioControls
+              audioFile={dhikr.audioFile}
+              onCopy={handleOpenCopyOptions}
+              onBookmark={onFavoriteToggle}
+              onShare={handleShare}
+              onSettings={handleOpenSettings}
+              isBookmarked={isFavorite}
+            />
+          </View>
+        )}
 
         {/* Divider */}
         {showTranslation && dhikr.translation ? (
