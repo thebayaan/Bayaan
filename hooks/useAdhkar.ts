@@ -13,8 +13,12 @@ export function useAdhkar() {
   // Get state and actions from the Zustand store
   const allCategories = useAdhkarStore(state => state.allCategories);
   const groupedCategories = useAdhkarStore(state => state.groupedCategories);
-  const mainSuperCategories = useAdhkarStore(state => state.mainSuperCategories);
-  const otherSuperCategories = useAdhkarStore(state => state.otherSuperCategories);
+  const mainSuperCategories = useAdhkarStore(
+    state => state.mainSuperCategories,
+  );
+  const otherSuperCategories = useAdhkarStore(
+    state => state.otherSuperCategories,
+  );
   const superCategoriesLoaded = useAdhkarStore(
     state => state.superCategoriesLoaded,
   );
@@ -29,16 +33,21 @@ export function useAdhkar() {
 
   // Actions
   const loadCategories = useAdhkarStore(state => state.loadCategories);
-  const loadSuperCategories = useAdhkarStore(state => state.loadSuperCategories);
+  const loadSuperCategories = useAdhkarStore(
+    state => state.loadSuperCategories,
+  );
   const selectCategory = useAdhkarStore(state => state.selectCategory);
   const setCurrentDhikr = useAdhkarStore(state => state.setCurrentDhikr);
   const navigateToDhikr = useAdhkarStore(state => state.navigateToDhikr);
-  const getSuperCategoryById = useAdhkarStore(state => state.getSuperCategoryById);
+  const getSuperCategoryById = useAdhkarStore(
+    state => state.getSuperCategoryById,
+  );
   const toggleFavorite = useAdhkarStore(state => state.toggleFavorite);
   const loadFavorites = useAdhkarStore(state => state.loadFavorites);
   const incrementCount = useAdhkarStore(state => state.incrementCount);
   const resetCount = useAdhkarStore(state => state.resetCount);
   const getCount = useAdhkarStore(state => state.getCount);
+  const setAdhkarList = useAdhkarStore(state => state.setAdhkarList);
   const reset = useAdhkarStore(state => state.reset);
 
   // Helper function to check if a dhikr is favorited
@@ -90,6 +99,7 @@ export function useAdhkar() {
     loadSuperCategories,
     selectCategory,
     setCurrentDhikr,
+    setAdhkarList,
     navigateToDhikr,
     getSuperCategoryById,
     toggleFavorite,
