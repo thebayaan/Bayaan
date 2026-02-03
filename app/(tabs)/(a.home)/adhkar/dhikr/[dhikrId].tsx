@@ -37,10 +37,13 @@ const DhikrPage = React.memo(function DhikrPage({
 });
 
 const DhikrDetailScreen: React.FC = () => {
-  const {dhikrId, categoryId} = useLocalSearchParams<{
-    dhikrId: string;
-    categoryId?: string;
-  }>();
+  const {dhikrId, categoryId, categoryShortTitle, superCategoryTitle} =
+    useLocalSearchParams<{
+      dhikrId: string;
+      categoryId?: string;
+      categoryShortTitle?: string;
+      superCategoryTitle?: string;
+    }>();
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -115,6 +118,13 @@ const DhikrDetailScreen: React.FC = () => {
   const totalAdhkar = adhkarInCategory.length;
   const isDataReady = !loading && currentDhikr && adhkarInCategory.length > 0;
 
+  // Title: prefer short title from params, fall back to super category or selected category
+  const displayTitle =
+    categoryShortTitle ||
+    superCategoryTitle ||
+    selectedCategory?.title ||
+    'Dhikr';
+
   // Memoize the pages to prevent recreation on every render
   const pages = useMemo(() => {
     if (!isDataReady || !pagerReady) return null;
@@ -161,7 +171,7 @@ const DhikrDetailScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.titleContainer}>
               <Text style={styles.headerTitle} numberOfLines={1}>
-                {selectedCategory?.title || 'Dhikr'}
+                {displayTitle}
               </Text>
             </View>
             <View style={styles.headerPlaceholder} />
@@ -197,7 +207,7 @@ const DhikrDetailScreen: React.FC = () => {
           {/* Title with position */}
           <View style={styles.titleContainer}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {selectedCategory?.title || 'Dhikr'}
+              {displayTitle}
             </Text>
             {totalAdhkar > 1 ? (
               <Text style={styles.positionText}>

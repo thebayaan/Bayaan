@@ -41,7 +41,7 @@ function TabSelector<T extends string>({
           <React.Fragment key={option}>
             <TouchableOpacity
               style={styles.tabButton}
-              activeOpacity={0.7}
+              activeOpacity={1}
               onPress={() => onSelect(option)}>
               <Text
                 style={[

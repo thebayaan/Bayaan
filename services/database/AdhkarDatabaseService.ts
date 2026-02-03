@@ -278,6 +278,32 @@ class AdhkarDatabaseService {
     }));
   }
 
+  // Get all adhkar for multiple category IDs (for super category view)
+  async getAdhkarByCategoryIds(categoryIds: string[]): Promise<Dhikr[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    if (categoryIds.length === 0) return [];
+
+    // Build placeholders for IN clause
+    const placeholders = categoryIds.map(() => '?').join(', ');
+
+    const adhkar = (await this.db.getAllAsync(
+      `SELECT * FROM adhkar WHERE category_id IN (${placeholders}) ORDER BY category_id, sort_order`,
+      categoryIds,
+    )) as DhikrRow[];
+
+    return adhkar.map(dhikr => ({
+      id: dhikr.id,
+      categoryId: dhikr.category_id,
+      arabic: dhikr.arabic,
+      translation: dhikr.translation,
+      transliteration: dhikr.transliteration,
+      instruction: dhikr.instruction,
+      repeatCount: dhikr.repeat_count,
+      audioFile: dhikr.audio_file,
+      sortOrder: dhikr.sort_order,
+    }));
+  }
+
   // Get a single dhikr by ID
   async getDhikr(id: string): Promise<Dhikr | null> {
     if (!this.db) throw new Error('Database not initialized');

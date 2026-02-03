@@ -38,7 +38,9 @@ class AdhkarService {
         // Seed database if empty
         const isSeeded = await adhkarDatabaseService.isDatabaseSeeded();
         if (!isSeeded) {
-          await adhkarDatabaseService.seedDatabase(adhkarSeedData as AdhkarSeedData);
+          await adhkarDatabaseService.seedDatabase(
+            adhkarSeedData as AdhkarSeedData,
+          );
         }
 
         // Seed super categories if empty
@@ -74,7 +76,9 @@ class AdhkarService {
   }
 
   // Get all categories grouped by their primary broad tag
-  async getGroupedCategories(): Promise<Record<AdhkarBroadTag, AdhkarCategory[]>> {
+  async getGroupedCategories(): Promise<
+    Record<AdhkarBroadTag, AdhkarCategory[]>
+  > {
     await this.initialize();
 
     const allCategories = await adhkarDatabaseService.getAllCategories();
@@ -157,6 +161,51 @@ class AdhkarService {
   // Get the first category ID for direct navigation
   getFirstCategoryId(superCategory: SuperCategory): string | undefined {
     return superCategory.categoryIds[0];
+  }
+
+  // Get all adhkar for a super category, organized by category
+  async getAdhkarForSuperCategory(superId: string): Promise<{
+    superCategory: SuperCategory;
+    categoryGroups: Array<{
+      categoryId: string;
+      categoryTitle: string;
+      adhkar: Dhikr[];
+    }>;
+  } | null> {
+    await this.initialize();
+
+    const superCategory = await adhkarDatabaseService.getSuperCategory(superId);
+    if (!superCategory) return null;
+
+    // Get all categories
+    const allCategories = await adhkarDatabaseService.getAllCategories();
+
+    // Get adhkar for all category IDs in this super category
+    const adhkar = await adhkarDatabaseService.getAdhkarByCategoryIds(
+      superCategory.categoryIds,
+    );
+
+    // Group adhkar by category
+    const categoryGroups: Array<{
+      categoryId: string;
+      categoryTitle: string;
+      adhkar: Dhikr[];
+    }> = [];
+
+    for (const categoryId of superCategory.categoryIds) {
+      const category = allCategories.find(c => c.id === categoryId);
+      const categoryAdhkar = adhkar.filter(d => d.categoryId === categoryId);
+
+      if (category && categoryAdhkar.length > 0) {
+        categoryGroups.push({
+          categoryId: category.id,
+          categoryTitle: category.title,
+          adhkar: categoryAdhkar,
+        });
+      }
+    }
+
+    return {superCategory, categoryGroups};
   }
 
   // ============================================
@@ -254,7 +303,9 @@ class AdhkarService {
 
     // Get adhkar for each category and their counts
     for (const category of allCategories) {
-      const adhkar = await adhkarDatabaseService.getAdhkarInCategory(category.id);
+      const adhkar = await adhkarDatabaseService.getAdhkarInCategory(
+        category.id,
+      );
       for (const dhikr of adhkar) {
         const count = await this.getDhikrCount(dhikr.id);
         if (count > 0) {

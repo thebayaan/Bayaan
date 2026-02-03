@@ -1,4 +1,4 @@
-import React, {useMemo, useCallback} from 'react';
+import React, {useMemo, useCallback, useEffect, useState} from 'react';
 import {View, FlatList, Text} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -6,69 +6,180 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {CategoryCard} from '@/components/adhkar/CategoryCard';
+import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
+import {CategorySectionHeader} from '@/components/adhkar/CategorySectionHeader';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import Header from '@/components/Header';
-import {AdhkarCategory} from '@/types/adhkar';
+import {Dhikr, SuperCategory} from '@/types/adhkar';
+import {adhkarService} from '@/services/adhkar/AdhkarService';
+import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 
-const SubcategoryScreen: React.FC = () => {
+// List item types for the combined list
+type ListItem =
+  | {type: 'header'; categoryId: string; title: string; shortTitle: string}
+  | {
+      type: 'dhikr';
+      dhikr: Dhikr;
+      categoryId: string;
+      categoryShortTitle: string;
+      index: number;
+      globalIndex: number;
+    };
+
+interface CategoryGroup {
+  categoryId: string;
+  categoryTitle: string;
+  adhkar: Dhikr[];
+}
+
+const SuperCategoryScreen: React.FC = () => {
   const {superId} = useLocalSearchParams<{superId: string}>();
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
 
-  const {categories, loading, getSuperCategoryById} = useAdhkar();
+  const {getSuperCategoryById, setCurrentDhikr} = useAdhkar();
 
-  // Get the super category from the store (database)
-  const superCategory = useMemo(() => {
+  // Local state for the combined list data
+  const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
+    null,
+  );
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [allAdhkar, setAllAdhkar] = useState<Dhikr[]>([]);
+
+  // Load data on mount
+  useEffect(() => {
+    async function loadData() {
+      if (!superId) return;
+
+      setLoading(true);
+      try {
+        const data = await adhkarService.getAdhkarForSuperCategory(superId);
+        if (data) {
+          setSuperCategory(data.superCategory);
+          setCategoryGroups(data.categoryGroups);
+
+          // Flatten all adhkar for navigation
+          const flatAdhkar = data.categoryGroups.flatMap(g => g.adhkar);
+          setAllAdhkar(flatAdhkar);
+        }
+      } catch (error) {
+        console.error('Failed to load super category data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [superId]);
+
+  // Get super category from store as fallback for title
+  const storedSuperCategory = useMemo(() => {
     if (!superId) return undefined;
     return getSuperCategoryById(superId);
   }, [superId, getSuperCategoryById]);
 
-  // Filter categories to only show subcategories of this super category
-  const subcategories = useMemo(() => {
-    if (!superCategory || !categories.length) return [];
+  // Build the combined list data
+  const listData: ListItem[] = useMemo(() => {
+    const items: ListItem[] = [];
+    let globalIndex = 0;
 
-    return categories.filter(cat => superCategory.categoryIds.includes(cat.id));
-  }, [superCategory, categories]);
+    for (const group of categoryGroups) {
+      const shortTitle = shortenCategoryTitle(group.categoryTitle);
 
-  const handleSubcategoryPress = useCallback(
-    (category: AdhkarCategory) => {
+      // Add header
+      items.push({
+        type: 'header',
+        categoryId: group.categoryId,
+        title: group.categoryTitle,
+        shortTitle,
+      });
+
+      // Add adhkar
+      for (let i = 0; i < group.adhkar.length; i++) {
+        items.push({
+          type: 'dhikr',
+          dhikr: group.adhkar[i],
+          categoryId: group.categoryId,
+          categoryShortTitle: shortTitle,
+          index: i,
+          globalIndex,
+        });
+        globalIndex++;
+      }
+    }
+
+    return items;
+  }, [categoryGroups]);
+
+  // Count total adhkar
+  const totalAdhkar = useMemo(() => {
+    return categoryGroups.reduce((sum, g) => sum + g.adhkar.length, 0);
+  }, [categoryGroups]);
+
+  const handleDhikrPress = useCallback(
+    (item: Extract<ListItem, {type: 'dhikr'}>) => {
+      // Set the current dhikr in the store with global index for swipe navigation
+      setCurrentDhikr(item.dhikr, item.globalIndex);
+
       router.push({
-        pathname: '/(tabs)/(a.home)/adhkar/[categoryId]',
-        params: {categoryId: category.id},
+        pathname: '/(tabs)/(a.home)/adhkar/dhikr/[dhikrId]',
+        params: {
+          dhikrId: item.dhikr.id,
+          categoryId: item.categoryId,
+          categoryShortTitle: item.categoryShortTitle,
+          superCategoryTitle: superCategory?.title,
+        },
       });
     },
-    [router],
+    [router, setCurrentDhikr, superCategory?.title],
   );
 
-  const renderSubcategory = useCallback(
-    ({item}: {item: AdhkarCategory}) => (
-      <View style={styles.cardWrapper}>
-        <CategoryCard
-          category={item}
-          tagColor={superCategory?.color || '#6366F1'}
-          onPress={() => handleSubcategoryPress(item)}
-          width={undefined} // Full width
-          height={moderateScale(100)}
+  const renderItem = useCallback(
+    ({item, index}: {item: ListItem; index: number}) => {
+      if (item.type === 'header') {
+        return (
+          <CategorySectionHeader
+            title={item.shortTitle}
+            isFirst={index === 0}
+          />
+        );
+      }
+
+      return (
+        <DhikrListItem
+          dhikr={item.dhikr}
+          index={item.index}
+          onPress={() => handleDhikrPress(item)}
         />
-      </View>
-    ),
-    [superCategory, handleSubcategoryPress, styles.cardWrapper],
+      );
+    },
+    [handleDhikrPress],
   );
 
-  const keyExtractor = useCallback((item: AdhkarCategory) => item.id, []);
+  const keyExtractor = useCallback((item: ListItem, index: number) => {
+    if (item.type === 'header') {
+      return `header-${item.categoryId}`;
+    }
+    return `dhikr-${item.dhikr.id}-${index}`;
+  }, []);
+
+  const getItemType = useCallback((item: ListItem) => item.type, []);
 
   // Handle early return states
-  if (!superId || !superCategory) {
+  if (!superId) {
     return null;
   }
+
+  const displayTitle =
+    superCategory?.title || storedSuperCategory?.title || 'Loading...';
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title="Loading..." onBack={() => router.back()} />
+        <Header title={displayTitle} onBack={() => router.back()} />
         <View style={styles.loadingContainer}>
           <LoadingIndicator />
         </View>
@@ -78,28 +189,33 @@ const SubcategoryScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={superCategory.title} onBack={() => router.back()} />
+      <Header title={displayTitle} onBack={() => router.back()} />
 
       <FlatList
-        data={subcategories}
-        renderItem={renderSubcategory}
+        data={listData}
+        renderItem={renderItem}
         keyExtractor={keyExtractor}
+        getItemLayout={undefined}
         contentContainerStyle={[
           styles.listContent,
           {paddingTop: insets.top + moderateScale(56)},
         ]}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No subcategories found</Text>
+            <Text style={styles.emptyText}>No adhkar found</Text>
           </View>
         }
         ListHeaderComponent={
           <View style={styles.headerInfo}>
             <Text style={styles.headerText}>
-              {subcategories.length}{' '}
-              {subcategories.length === 1 ? 'category' : 'categories'}
+              {totalAdhkar} {totalAdhkar === 1 ? 'dhikr' : 'adhkar'}
+              {categoryGroups.length > 1 &&
+                ` in ${categoryGroups.length} categories`}
             </Text>
           </View>
         }
@@ -120,14 +236,11 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     listContent: {
-      paddingHorizontal: moderateScale(16),
       paddingBottom: moderateScale(100),
     },
-    cardWrapper: {
-      marginBottom: moderateScale(12),
-    },
     headerInfo: {
-      marginBottom: moderateScale(16),
+      paddingHorizontal: moderateScale(16),
+      marginBottom: moderateScale(8),
     },
     headerText: {
       fontSize: moderateScale(13),
@@ -147,4 +260,4 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default SubcategoryScreen;
+export default SuperCategoryScreen;

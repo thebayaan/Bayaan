@@ -1,4 +1,4 @@
-import React, {useEffect, useCallback} from 'react';
+import React, {useEffect, useCallback, useMemo} from 'react';
 import {View, FlatList, Text} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import Header from '@/components/Header';
 import {Dhikr} from '@/types/adhkar';
+import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 
 const CategoryDetailScreen: React.FC = () => {
   const {categoryId, title} = useLocalSearchParams<{
@@ -36,16 +37,27 @@ const CategoryDetailScreen: React.FC = () => {
     }
   }, [categoryId, selectCategory]);
 
+  // Compute the short title for display and navigation
+  const shortTitle = useMemo(() => {
+    if (title) return title;
+    if (selectedCategory) return shortenCategoryTitle(selectedCategory.title);
+    return 'Dhikr';
+  }, [title, selectedCategory]);
+
   const handleDhikrPress = useCallback(
     (dhikr: Dhikr, index: number) => {
       // Set current dhikr in store before navigating
       setCurrentDhikr(dhikr, index);
       router.push({
         pathname: '/adhkar/dhikr/[dhikrId]',
-        params: {dhikrId: dhikr.id, categoryId: categoryId},
+        params: {
+          dhikrId: dhikr.id,
+          categoryId: categoryId,
+          categoryShortTitle: shortTitle,
+        },
       });
     },
-    [router, categoryId, setCurrentDhikr],
+    [router, categoryId, setCurrentDhikr, shortTitle],
   );
 
   const renderDhikrItem = useCallback(
@@ -79,10 +91,7 @@ const CategoryDetailScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Header
-        title={title || selectedCategory.title}
-        onBack={() => router.back()}
-      />
+      <Header title={shortTitle} onBack={() => router.back()} />
 
       <FlatList
         data={adhkarInCategory}
@@ -99,7 +108,9 @@ const CategoryDetailScreen: React.FC = () => {
         removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No adhkar found in this category</Text>
+            <Text style={styles.emptyText}>
+              No adhkar found in this category
+            </Text>
           </View>
         }
       />
