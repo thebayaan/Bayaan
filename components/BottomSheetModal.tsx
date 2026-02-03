@@ -2,9 +2,9 @@ import React, {useCallback, useRef, useEffect} from 'react';
 import {View, StyleProp, ViewStyle, Platform, BackHandler} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
+  BottomSheetBackdropProps,
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
-import {BottomSheetDefaultBackdropProps} from '@gorhom/bottom-sheet/lib/typescript/components/bottomSheetBackdrop/types';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
@@ -86,9 +86,7 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
   }, [isVisible, onClose]);
 
   const renderBackdrop = useCallback(
-    (
-      props: React.JSX.IntrinsicAttributes & BottomSheetDefaultBackdropProps,
-    ) => (
+    (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         disappearsOnIndex={-1}
@@ -110,6 +108,7 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
         borderTopRightRadius: moderateScale(25),
       }}
       enablePanDownToClose={true}
+      enableDynamicSizing={false}
       handleComponent={CustomHandle}
       enableContentPanningGesture={Platform.OS === 'ios'}
       onClose={onClose}

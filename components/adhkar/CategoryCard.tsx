@@ -73,7 +73,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
           style={styles.gradient}>
           <View style={styles.countContainer}>
             <Text style={styles.countText}>
-              {category.dhikrCount} {category.dhikrCount === 1 ? 'dhikr' : 'adhkar'}
+              {category.dhikrCount}{' '}
+              {category.dhikrCount === 1 ? 'dhikr' : 'adhkar'}
             </Text>
           </View>
           <View style={styles.titleContainer}>

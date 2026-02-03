@@ -12,7 +12,7 @@ export const lightColors = {
   border: '#a4a4a4',
   shadow: '#000000',
   error: '#DC2626',
-  card: '#e4e2d8',
+  card: '#dcdeda',
   tertiary: '#5645a1',
 };
 
