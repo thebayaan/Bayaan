@@ -35,19 +35,27 @@ class AdhkarService {
       try {
         await adhkarDatabaseService.initialize();
 
-        // Seed database if empty
+        // Check if we need to re-seed due to data version change
+        const needsReseed = await adhkarDatabaseService.needsReseed();
+
+        // Seed database if empty or version changed
         const isSeeded = await adhkarDatabaseService.isDatabaseSeeded();
-        if (!isSeeded) {
+        if (!isSeeded || needsReseed) {
           await adhkarDatabaseService.seedDatabase(
             adhkarSeedData as AdhkarSeedData,
           );
         }
 
-        // Seed super categories if empty
+        // Seed super categories if empty or version changed
         const areSuperCategoriesSeeded =
           await adhkarDatabaseService.areSuperCategoriesSeeded();
-        if (!areSuperCategoriesSeeded) {
+        if (!areSuperCategoriesSeeded || needsReseed) {
           await adhkarDatabaseService.seedSuperCategories();
+        }
+
+        // Update data version after successful seeding
+        if (needsReseed) {
+          await adhkarDatabaseService.updateDataVersion();
         }
       } catch (error) {
         console.error('Failed to initialize adhkar service:', error);
