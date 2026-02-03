@@ -54,7 +54,14 @@ interface AdhkarState {
   getCount: (dhikrId: string) => number;
 
   // Direct adhkar list setter (for super category navigation)
-  setAdhkarList: (adhkar: Dhikr[]) => void;
+  setAdhkarList: (
+    adhkar: Dhikr[],
+    categoryTitles?: Record<string, string>,
+  ) => void;
+
+  // Category title lookup (for dhikr reader)
+  categoryTitlesMap: Record<string, string>;
+  getCategoryTitle: (categoryId: string) => string | undefined;
 
   // Reset
   reset: () => void;
@@ -89,6 +96,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
   currentDhikrIndex: 0,
   favorites: new Set<string>(),
   dhikrCounts: {},
+  categoryTitlesMap: {},
   loading: true, // Start as loading to indicate we haven't loaded yet
   categoriesLoaded: false,
   error: null,
@@ -320,11 +328,25 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
   },
 
   // Set adhkar list directly (used for super category navigation)
-  setAdhkarList: (adhkar: Dhikr[]) => {
+  // categoryTitles is a map of categoryId -> short title
+  setAdhkarList: (adhkar: Dhikr[], categoryTitles?: Record<string, string>) => {
     set({
       adhkarInCategory: adhkar,
       selectedCategory: null, // Clear selected category since we're using a custom list
+      categoryTitlesMap: categoryTitles || {},
     });
+  },
+
+  // Get category title from the map (used for dhikr reader when paging)
+  getCategoryTitle: (categoryId: string) => {
+    const {categoryTitlesMap, allCategories} = get();
+    // First try the custom map (from super category navigation)
+    if (categoryTitlesMap[categoryId]) {
+      return categoryTitlesMap[categoryId];
+    }
+    // Fall back to allCategories
+    const category = allCategories.find(c => c.id === categoryId);
+    return category?.title;
   },
 
   // Reset all state to initial values
@@ -341,6 +363,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       currentDhikrIndex: 0,
       favorites: new Set<string>(),
       dhikrCounts: {},
+      categoryTitlesMap: {},
       loading: true,
       categoriesLoaded: false,
       error: null,

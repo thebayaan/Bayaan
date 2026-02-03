@@ -48,6 +48,7 @@ export function useAdhkar() {
   const resetCount = useAdhkarStore(state => state.resetCount);
   const getCount = useAdhkarStore(state => state.getCount);
   const setAdhkarList = useAdhkarStore(state => state.setAdhkarList);
+  const getCategoryTitle = useAdhkarStore(state => state.getCategoryTitle);
   const reset = useAdhkarStore(state => state.reset);
 
   // Helper function to check if a dhikr is favorited
@@ -106,6 +107,7 @@ export function useAdhkar() {
     loadFavorites,
     incrementCount,
     resetCount,
+    getCategoryTitle,
     reset,
   };
 }
