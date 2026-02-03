@@ -1,12 +1,5 @@
 import React, {useMemo, useCallback} from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  useWindowDimensions,
-} from 'react-native';
+import {View, Text, ScrollView, StyleSheet, useWindowDimensions} from 'react-native';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
@@ -14,6 +7,7 @@ import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 
 // Base height unit for bento cards (Spotify-style proportions)
 // 1x cards are short/wide, 2x cards span two 1x cards + gap
@@ -100,7 +94,6 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
 }) => {
   const {theme} = useTheme();
   const {
-    loading,
     error,
     mainSuperCategories,
     otherSuperCategories,
@@ -149,11 +142,11 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
     [onSuperCategoryPress, onDirectCategoryPress],
   );
 
-  // Loading state
-  if (loading || !superCategoriesLoaded) {
+  // Loading state - only show if data hasn't been preloaded by AppInitializer
+  if (!superCategoriesLoaded) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LoadingIndicator />
       </View>
     );
   }
