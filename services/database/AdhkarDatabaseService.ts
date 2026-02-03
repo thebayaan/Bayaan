@@ -71,7 +71,8 @@ interface SuperCategoryRow {
 // Version 2: Added Quranic Duas (40 items, total 307)
 // Version 3: Fixed audio file naming (dua_X.mp3 -> adhkar_X.mp3)
 // Version 4: Added 99 Names of Allah (99 items, total 406)
-const DATA_VERSION = 4;
+// Version 5: Balanced "Other" section bento grid (left=14, right=14)
+const DATA_VERSION = 5;
 
 class AdhkarDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -854,7 +855,7 @@ class AdhkarDatabaseService {
         title: 'Istikharah',
         arabic_title: 'الاستخارة',
         color: '#8B5CF6',
-        height_multiplier: 3,
+        height_multiplier: 2,
         column: 'left',
         sort_order: 3,
         section: 'other',
@@ -949,7 +950,7 @@ class AdhkarDatabaseService {
         title: 'Hajj & Umrah',
         arabic_title: 'الحج والعمرة',
         color: '#F59E0B',
-        height_multiplier: 3,
+        height_multiplier: 2,
         column: 'left',
         sort_order: 6,
         section: 'other',
@@ -993,7 +994,7 @@ class AdhkarDatabaseService {
         title: 'Ruqyah & Illness',
         arabic_title: 'الرقية والمرض',
         color: '#10B981',
-        height_multiplier: 2,
+        height_multiplier: 3,
         column: 'right',
         sort_order: 7,
         section: 'other',
