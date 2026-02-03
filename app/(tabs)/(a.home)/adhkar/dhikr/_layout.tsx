@@ -1,13 +1,12 @@
 import {Stack} from 'expo-router';
 
-export default function DuasLayout() {
+export default function DhikrDetailLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
       }}>
-      <Stack.Screen name="[categoryId]" />
-      <Stack.Screen name="dua/[duaId]" />
+      <Stack.Screen name="[dhikrId]" />
     </Stack>
   );
 }
