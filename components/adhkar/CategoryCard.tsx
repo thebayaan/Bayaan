@@ -4,10 +4,10 @@ import {LinearGradient} from 'expo-linear-gradient';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
-import {DuaCategory} from '@/types/dua';
+import {AdhkarCategory} from '@/types/adhkar';
 
 interface CategoryCardProps {
-  category: DuaCategory;
+  category: AdhkarCategory;
   tagColor: string;
   onPress: () => void;
   width?: number;
@@ -73,7 +73,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
           style={styles.gradient}>
           <View style={styles.countContainer}>
             <Text style={styles.countText}>
-              {category.duaCount} {category.duaCount === 1 ? 'dua' : 'duas'}
+              {category.dhikrCount} {category.dhikrCount === 1 ? 'dhikr' : 'adhkar'}
             </Text>
           </View>
           <View style={styles.titleContainer}>
