@@ -88,6 +88,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
       ref={bottomSheetRef}
       snapPoints={snapPoints}
       enablePanDownToClose
+      enableDynamicSizing={false}
       backdropComponent={renderBackdrop}
       index={index}
       onChange={onChange}

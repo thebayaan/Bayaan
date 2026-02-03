@@ -65,7 +65,9 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
   );
 };
 
-export const AdhkarCopyOptionsSheet = (props: SheetProps<'adhkar-copy-options'>) => {
+export const AdhkarCopyOptionsSheet = (
+  props: SheetProps<'adhkar-copy-options'>,
+) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const dhikr = props.payload?.dhikr as Dhikr | undefined;
