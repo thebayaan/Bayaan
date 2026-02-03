@@ -5,6 +5,14 @@ import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {SuperCategory} from '@/types/adhkar';
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+} from 'react-native-reanimated';
+
+const AnimatedTouchableOpacity =
+  Animated.createAnimatedComponent(TouchableOpacity);
 
 interface AdhkarBentoCardProps {
   category: SuperCategory;
@@ -21,6 +29,29 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
 }: AdhkarBentoCardProps) {
   const {theme} = useTheme();
 
+  // Bouncy scale animation
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: scale.value}],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, {
+      damping: 20,
+      stiffness: 400,
+      mass: 0.5,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: 20,
+      stiffness: 400,
+      mass: 0.5,
+    });
+  };
+
   // Subtle gradient incorporating the category's color (same pattern as ExploreView)
   const baseColor = Color(category.color);
   const gradientColors = [
@@ -35,34 +66,34 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
   const styles = createStyles(theme, width, height, category.color);
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={onPress}
-        style={styles.touchable}>
-        <LinearGradient
-          colors={gradientColors}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={styles.gradient}>
-          <View style={styles.content}>
-            <View
-              style={[
-                styles.textContainer,
-                isLargeCard
-                  ? styles.topLeftContainer
-                  : styles.centerLeftContainer,
-              ]}>
-              <Text
-                style={[styles.title, {fontSize: titleSize}]}
-                numberOfLines={isLargeCard ? 2 : 2}>
-                {category.title}
-              </Text>
-            </View>
+    <AnimatedTouchableOpacity
+      activeOpacity={1}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[styles.container, animatedStyle]}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.gradient}>
+        <View style={styles.content}>
+          <View
+            style={[
+              styles.textContainer,
+              isLargeCard
+                ? styles.topLeftContainer
+                : styles.centerLeftContainer,
+            ]}>
+            <Text
+              style={[styles.title, {fontSize: titleSize}]}
+              numberOfLines={isLargeCard ? 2 : 2}>
+              {category.title}
+            </Text>
           </View>
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
+        </View>
+      </LinearGradient>
+    </AnimatedTouchableOpacity>
   );
 });
 
@@ -76,14 +107,11 @@ const createStyles = (
     container: {
       width,
       height,
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(8),
       overflow: 'hidden',
       marginBottom: moderateScale(8),
       borderWidth: 1,
       borderColor: Color(color).alpha(0.15).toString(),
-    },
-    touchable: {
-      flex: 1,
     },
     gradient: {
       flex: 1,
