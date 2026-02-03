@@ -1,5 +1,5 @@
-// Broad tag type for categorizing duas
-export type DuaBroadTag =
+// Broad tag type for categorizing adhkar
+export type AdhkarBroadTag =
   | 'daily'
   | 'prayer'
   | 'protection'
@@ -14,15 +14,15 @@ export type DuaBroadTag =
   | 'general';
 
 // Category from database
-export interface DuaCategory {
+export interface AdhkarCategory {
   id: string;
   title: string;
-  duaCount: number;
-  broadTags: DuaBroadTag[];
+  dhikrCount: number;
+  broadTags: AdhkarBroadTag[];
 }
 
-// Individual dua
-export interface Dua {
+// Individual dhikr
+export interface Dhikr {
   id: string;
   categoryId: string;
   arabic: string;
@@ -35,23 +35,39 @@ export interface Dua {
 }
 
 // For favorites tracking
-export interface DuaFavorite {
-  duaId: string;
+export interface DhikrFavorite {
+  dhikrId: string;
   createdAt: number;
 }
 
 // For tasbeeh counter with daily reset tracking
-export interface DuaCount {
-  duaId: string;
+export interface DhikrCount {
+  dhikrId: string;
   count: number;
   lastUpdated: number; // Unix timestamp for daily reset check
 }
 
+// Super category section type
+export type SuperCategorySection = 'main' | 'other';
+
+// Super category (Life With Allah-style groupings)
+export interface SuperCategory {
+  id: string;
+  title: string;
+  arabicTitle: string | null;
+  color: string;
+  heightMultiplier: number; // 1, 2, or 3 (bento layout)
+  column: 'left' | 'right';
+  sortOrder: number;
+  section: SuperCategorySection;
+  categoryIds: string[]; // References to adhkar_categories.id
+}
+
 // Seed data structure (matches JSON file format)
-export interface DuaSeedData {
+export interface AdhkarSeedData {
   meta: {
     total_categories: number;
-    total_duas: number;
+    total_adhkar: number;
     audio_source: string;
     source_book: string;
   };
@@ -59,9 +75,9 @@ export interface DuaSeedData {
     id: string;
     title: string;
     broad_tags: string[];
-    dua_count: number;
+    dhikr_count: number;
   }>;
-  duas: Array<{
+  adhkar: Array<{
     id: string;
     category_id: string;
     arabic: string;
