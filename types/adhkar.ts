@@ -65,7 +65,7 @@ export interface SuperCategory {
 
 // Seed data structure (matches JSON file format)
 export interface AdhkarSeedData {
-  meta: {
+  meta?: {
     total_categories: number;
     total_adhkar: number;
     audio_source: string;
