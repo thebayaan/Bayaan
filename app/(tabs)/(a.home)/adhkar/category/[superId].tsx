@@ -13,13 +13,13 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
-import Color from 'color';
 
 // Item type for section data
 interface DhikrItem {
   dhikr: Dhikr;
   index: number;
   globalIndex: number;
+  categoryShortTitle: string;
 }
 
 // Section type for SectionList
@@ -40,7 +40,9 @@ const SuperCategoryScreen: React.FC = () => {
   const {superId} = useLocalSearchParams<{superId: string}>();
   const router = useRouter();
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+
+  // Memoize styles to prevent recreation on every render
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {getSuperCategoryById, setCurrentDhikr, setAdhkarList} = useAdhkar();
 
@@ -84,7 +86,19 @@ const SuperCategoryScreen: React.FC = () => {
     return getSuperCategoryById(superId);
   }, [superId, getSuperCategoryById]);
 
-  // Build sections for SectionList
+  const displayTitle =
+    superCategory?.title || storedSuperCategory?.title || 'Loading...';
+
+  // Build category titles map for the store
+  const categoryTitlesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    categoryGroups.forEach(group => {
+      map[group.categoryId] = shortenCategoryTitle(group.categoryTitle);
+    });
+    return map;
+  }, [categoryGroups]);
+
+  // Build sections for SectionList - include categoryShortTitle in each item
   const sections: Section[] = useMemo(() => {
     let globalIndex = 0;
 
@@ -95,6 +109,7 @@ const SuperCategoryScreen: React.FC = () => {
           dhikr,
           index,
           globalIndex,
+          categoryShortTitle: shortTitle,
         };
         globalIndex++;
         return item;
@@ -115,8 +130,8 @@ const SuperCategoryScreen: React.FC = () => {
 
   const handleDhikrPress = useCallback(
     (item: DhikrItem) => {
-      // Set all adhkar from this super category for paging
-      setAdhkarList(allAdhkar);
+      // Set all adhkar from this super category for paging, with category titles map
+      setAdhkarList(allAdhkar, categoryTitlesMap);
       // Set the current dhikr in the store with global index for swipe navigation
       setCurrentDhikr(item.dhikr, item.globalIndex);
 
@@ -124,11 +139,19 @@ const SuperCategoryScreen: React.FC = () => {
         pathname: '/(tabs)/(a.home)/adhkar/dhikr/[dhikrId]',
         params: {
           dhikrId: item.dhikr.id,
+          categoryShortTitle: item.categoryShortTitle,
           superCategoryTitle: superCategory?.title,
         },
       });
     },
-    [router, setCurrentDhikr, setAdhkarList, allAdhkar, superCategory?.title],
+    [
+      router,
+      setCurrentDhikr,
+      setAdhkarList,
+      allAdhkar,
+      categoryTitlesMap,
+      superCategory?.title,
+    ],
   );
 
   const renderItem = useCallback(
@@ -153,15 +176,22 @@ const SuperCategoryScreen: React.FC = () => {
     [],
   );
 
+  // Memoize the ListEmptyComponent
+  const ListEmptyComponent = useMemo(
+    () => (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No adhkar found</Text>
+      </View>
+    ),
+    [styles.emptyContainer, styles.emptyText],
+  );
+
   // Handle early return states
   if (!superId) {
     return null;
   }
 
-  const displayTitle =
-    superCategory?.title || storedSuperCategory?.title || 'Loading...';
-
-  // Inline header component (not absolutely positioned)
+  // Inline header component
   const InlineHeader = (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
@@ -208,15 +238,10 @@ const SuperCategoryScreen: React.FC = () => {
         stickySectionHeadersEnabled={true}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={15}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews={true}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No adhkar found</Text>
-          </View>
-        }
+        initialNumToRender={20}
+        maxToRenderPerBatch={15}
+        windowSize={7}
+        ListEmptyComponent={ListEmptyComponent}
       />
     </View>
   );
@@ -230,8 +255,6 @@ const createStyles = (theme: Theme) =>
     },
     headerSafeArea: {
       backgroundColor: theme.colors.background,
-      borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.2).toString(),
     },
     header: {
       height: moderateScale(56),

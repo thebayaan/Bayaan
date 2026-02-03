@@ -5,7 +5,6 @@ import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
 import PagerView from 'react-native-pager-view';
-import Color from 'color';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -47,7 +46,7 @@ const DhikrDetailScreen: React.FC = () => {
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const pagerRef = useRef<PagerView>(null);
 
   // Track if the pager is ready (for loading other pages after initial render)
@@ -62,6 +61,7 @@ const DhikrDetailScreen: React.FC = () => {
     setCurrentDhikr,
     isFavorite,
     toggleFavorite,
+    getCategoryTitle,
     loading,
   } = useAdhkar();
 
@@ -118,12 +118,30 @@ const DhikrDetailScreen: React.FC = () => {
   const totalAdhkar = adhkarInCategory.length;
   const isDataReady = !loading && currentDhikr && adhkarInCategory.length > 0;
 
-  // Title: prefer short title from params, fall back to super category or selected category
-  const displayTitle =
-    categoryShortTitle ||
-    superCategoryTitle ||
-    selectedCategory?.title ||
-    'Dhikr';
+  // Dynamic title: look up category title based on current dhikr
+  // This updates when swiping to a dhikr from a different category
+  const displayTitle = useMemo(() => {
+    if (currentDhikr) {
+      // First try to get title from the store's category titles map
+      const dynamicTitle = getCategoryTitle(currentDhikr.categoryId);
+      if (dynamicTitle) {
+        return dynamicTitle;
+      }
+    }
+    // Fall back to route params
+    return (
+      categoryShortTitle ||
+      superCategoryTitle ||
+      selectedCategory?.title ||
+      'Dhikr'
+    );
+  }, [
+    currentDhikr,
+    getCategoryTitle,
+    categoryShortTitle,
+    superCategoryTitle,
+    selectedCategory?.title,
+  ]);
 
   // Memoize the pages to prevent recreation on every render
   const pages = useMemo(() => {
@@ -262,8 +280,6 @@ const createStyles = (theme: Theme) =>
     },
     headerSafeArea: {
       backgroundColor: theme.colors.background,
-      borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.2).toString(),
     },
     header: {
       height: moderateScale(56),
