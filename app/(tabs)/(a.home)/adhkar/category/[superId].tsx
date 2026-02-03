@@ -1,18 +1,19 @@
 import React, {useMemo, useCallback, useEffect, useState} from 'react';
-import {View, SectionList, Text} from 'react-native';
+import {View, SectionList, Text, TouchableOpacity} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {Icon} from '@rneui/themed';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
 import {CategorySectionHeader} from '@/components/adhkar/CategorySectionHeader';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import Header from '@/components/Header';
 import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
+import Color from 'color';
 
 // Item type for section data
 interface DhikrItem {
@@ -39,7 +40,6 @@ const SuperCategoryScreen: React.FC = () => {
   const {superId} = useLocalSearchParams<{superId: string}>();
   const router = useRouter();
   const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
 
   const {getSuperCategoryById, setCurrentDhikr, setAdhkarList} = useAdhkar();
@@ -109,6 +109,10 @@ const SuperCategoryScreen: React.FC = () => {
     });
   }, [categoryGroups]);
 
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
+
   const handleDhikrPress = useCallback(
     (item: DhikrItem) => {
       // Set all adhkar from this super category for paging
@@ -157,10 +161,34 @@ const SuperCategoryScreen: React.FC = () => {
   const displayTitle =
     superCategory?.title || storedSuperCategory?.title || 'Loading...';
 
+  // Inline header component (not absolutely positioned)
+  const InlineHeader = (
+    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={0.7}
+          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <Icon
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {displayTitle}
+        </Text>
+        <View style={styles.headerPlaceholder} />
+      </View>
+    </SafeAreaView>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header title={displayTitle} onBack={() => router.back()} />
+        {InlineHeader}
         <View style={styles.loadingContainer}>
           <LoadingIndicator />
         </View>
@@ -170,7 +198,7 @@ const SuperCategoryScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Header title={displayTitle} onBack={() => router.back()} />
+      {InlineHeader}
 
       <SectionList
         sections={sections}
@@ -178,10 +206,7 @@ const SuperCategoryScreen: React.FC = () => {
         renderSectionHeader={renderSectionHeader}
         keyExtractor={keyExtractor}
         stickySectionHeadersEnabled={true}
-        contentContainerStyle={[
-          styles.listContent,
-          {paddingTop: insets.top + moderateScale(56)},
-        ]}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         initialNumToRender={15}
         maxToRenderPerBatch={10}
@@ -202,6 +227,31 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    headerSafeArea: {
+      backgroundColor: theme.colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.2).toString(),
+    },
+    header: {
+      height: moderateScale(56),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: moderateScale(16),
+    },
+    backButton: {
+      padding: moderateScale(8),
+    },
+    headerTitle: {
+      flex: 1,
+      fontSize: moderateScale(18),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    headerPlaceholder: {
+      width: moderateScale(40),
     },
     loadingContainer: {
       flex: 1,
