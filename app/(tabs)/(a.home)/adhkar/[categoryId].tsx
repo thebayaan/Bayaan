@@ -1,31 +1,33 @@
 import React, {useEffect, useCallback} from 'react';
 import {View, FlatList, Text} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {useDuas} from '@/hooks/useDuas';
+import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {DuaListItem} from '@/components/duas/DuaListItem';
+import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import Header from '@/components/Header';
-import {Dua} from '@/types/dua';
+import {Dhikr} from '@/types/adhkar';
 
 const CategoryDetailScreen: React.FC = () => {
-  const {categoryId} = useLocalSearchParams<{categoryId: string}>();
+  const {categoryId, title} = useLocalSearchParams<{
+    categoryId: string;
+    title?: string;
+  }>();
   const router = useRouter();
   const {theme} = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
 
   const {
     selectedCategory,
-    duasInCategory,
+    adhkarInCategory,
     selectCategory,
-    isFavorite,
-    toggleFavorite,
-    setCurrentDua,
+    setCurrentDhikr,
     loading,
-  } = useDuas();
+  } = useAdhkar();
 
   // Load category data when categoryId changes
   useEffect(() => {
@@ -34,39 +36,30 @@ const CategoryDetailScreen: React.FC = () => {
     }
   }, [categoryId, selectCategory]);
 
-  const handleDuaPress = useCallback(
-    (dua: Dua, index: number) => {
-      // Set current dua in store before navigating
-      setCurrentDua(dua, index);
+  const handleDhikrPress = useCallback(
+    (dhikr: Dhikr, index: number) => {
+      // Set current dhikr in store before navigating
+      setCurrentDhikr(dhikr, index);
       router.push({
-        pathname: '/duas/dua/[duaId]',
-        params: {duaId: dua.id, categoryId: categoryId},
+        pathname: '/adhkar/dhikr/[dhikrId]',
+        params: {dhikrId: dhikr.id, categoryId: categoryId},
       });
     },
-    [router, categoryId, setCurrentDua],
+    [router, categoryId, setCurrentDhikr],
   );
 
-  const handleFavoritePress = useCallback(
-    (duaId: string) => {
-      toggleFavorite(duaId);
-    },
-    [toggleFavorite],
-  );
-
-  const renderDuaItem = useCallback(
-    ({item, index}: {item: Dua; index: number}) => (
-      <DuaListItem
-        dua={item}
+  const renderDhikrItem = useCallback(
+    ({item, index}: {item: Dhikr; index: number}) => (
+      <DhikrListItem
+        dhikr={item}
         index={index}
-        isFavorite={isFavorite(item.id)}
-        onPress={() => handleDuaPress(item, index)}
-        onFavoritePress={() => handleFavoritePress(item.id)}
+        onPress={() => handleDhikrPress(item, index)}
       />
     ),
-    [isFavorite, handleDuaPress, handleFavoritePress],
+    [handleDhikrPress],
   );
 
-  const keyExtractor = useCallback((item: Dua) => item.id, []);
+  const keyExtractor = useCallback((item: Dhikr) => item.id, []);
 
   // Handle early return states
   if (!categoryId) {
@@ -75,24 +68,30 @@ const CategoryDetailScreen: React.FC = () => {
 
   if (loading || !selectedCategory) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.container}>
         <Header title="Loading..." onBack={() => router.back()} />
         <View style={styles.loadingContainer}>
           <LoadingIndicator />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header title={selectedCategory.title} onBack={() => router.back()} />
+      <Header
+        title={title || selectedCategory.title}
+        onBack={() => router.back()}
+      />
 
       <FlatList
-        data={duasInCategory}
-        renderItem={renderDuaItem}
+        data={adhkarInCategory}
+        renderItem={renderDhikrItem}
         keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          {paddingTop: insets.top + moderateScale(56)},
+        ]}
         showsVerticalScrollIndicator={false}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
@@ -100,7 +99,7 @@ const CategoryDetailScreen: React.FC = () => {
         removeClippedSubviews={true}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No duas found in this category</Text>
+            <Text style={styles.emptyText}>No adhkar found in this category</Text>
           </View>
         }
       />
@@ -120,7 +119,6 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
     },
     listContent: {
-      paddingTop: moderateScale(70),
       paddingBottom: moderateScale(100),
     },
     emptyContainer: {
