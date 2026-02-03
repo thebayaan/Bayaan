@@ -6,16 +6,15 @@ import {Theme} from '@/utils/themeUtils';
 
 interface CategorySectionHeaderProps {
   title: string;
-  isFirst?: boolean;
 }
 
 export const CategorySectionHeader: React.FC<CategorySectionHeaderProps> =
-  React.memo(({title, isFirst = false}) => {
+  React.memo(({title}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
     return (
-      <View style={[styles.container, isFirst && styles.firstContainer]}>
+      <View style={styles.container}>
         <Text style={styles.title}>{title}</Text>
       </View>
     );
@@ -26,12 +25,10 @@ CategorySectionHeader.displayName = 'CategorySectionHeader';
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
+      backgroundColor: theme.colors.background,
       paddingHorizontal: moderateScale(16),
-      paddingTop: moderateScale(24),
+      paddingTop: moderateScale(16),
       paddingBottom: moderateScale(8),
-    },
-    firstContainer: {
-      paddingTop: moderateScale(8),
     },
     title: {
       fontSize: moderateScale(14),

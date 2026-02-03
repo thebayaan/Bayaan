@@ -1,5 +1,5 @@
 import React, {useMemo, useCallback, useEffect, useState} from 'react';
-import {View, FlatList, Text} from 'react-native';
+import {View, SectionList, Text} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -14,17 +14,20 @@ import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 
-// List item types for the combined list
-type ListItem =
-  | {type: 'header'; categoryId: string; title: string; shortTitle: string}
-  | {
-      type: 'dhikr';
-      dhikr: Dhikr;
-      categoryId: string;
-      categoryShortTitle: string;
-      index: number;
-      globalIndex: number;
-    };
+// Item type for section data
+interface DhikrItem {
+  dhikr: Dhikr;
+  index: number;
+  globalIndex: number;
+}
+
+// Section type for SectionList
+interface Section {
+  title: string;
+  shortTitle: string;
+  categoryId: string;
+  data: DhikrItem[];
+}
 
 interface CategoryGroup {
   categoryId: string;
@@ -81,41 +84,33 @@ const SuperCategoryScreen: React.FC = () => {
     return getSuperCategoryById(superId);
   }, [superId, getSuperCategoryById]);
 
-  // Build the combined list data
-  const listData: ListItem[] = useMemo(() => {
-    const items: ListItem[] = [];
+  // Build sections for SectionList
+  const sections: Section[] = useMemo(() => {
     let globalIndex = 0;
 
-    for (const group of categoryGroups) {
+    return categoryGroups.map(group => {
       const shortTitle = shortenCategoryTitle(group.categoryTitle);
-
-      // Add header
-      items.push({
-        type: 'header',
-        categoryId: group.categoryId,
-        title: group.categoryTitle,
-        shortTitle,
+      const data: DhikrItem[] = group.adhkar.map((dhikr, index) => {
+        const item = {
+          dhikr,
+          index,
+          globalIndex,
+        };
+        globalIndex++;
+        return item;
       });
 
-      // Add adhkar
-      for (let i = 0; i < group.adhkar.length; i++) {
-        items.push({
-          type: 'dhikr',
-          dhikr: group.adhkar[i],
-          categoryId: group.categoryId,
-          categoryShortTitle: shortTitle,
-          index: i,
-          globalIndex,
-        });
-        globalIndex++;
-      }
-    }
-
-    return items;
+      return {
+        title: group.categoryTitle,
+        shortTitle,
+        categoryId: group.categoryId,
+        data,
+      };
+    });
   }, [categoryGroups]);
 
   const handleDhikrPress = useCallback(
-    (item: Extract<ListItem, {type: 'dhikr'}>) => {
+    (item: DhikrItem) => {
       // Set all adhkar from this super category for paging
       setAdhkarList(allAdhkar);
       // Set the current dhikr in the store with global index for swipe navigation
@@ -133,16 +128,7 @@ const SuperCategoryScreen: React.FC = () => {
   );
 
   const renderItem = useCallback(
-    ({item, index}: {item: ListItem; index: number}) => {
-      if (item.type === 'header') {
-        return (
-          <CategorySectionHeader
-            title={item.shortTitle}
-            isFirst={index === 0}
-          />
-        );
-      }
-
+    ({item}: {item: DhikrItem}) => {
       return (
         <DhikrListItem
           dhikr={item.dhikr}
@@ -154,12 +140,14 @@ const SuperCategoryScreen: React.FC = () => {
     [handleDhikrPress],
   );
 
-  const keyExtractor = useCallback((item: ListItem, index: number) => {
-    if (item.type === 'header') {
-      return `header-${item.categoryId}`;
-    }
-    return `dhikr-${item.dhikr.id}-${index}`;
+  const renderSectionHeader = useCallback(({section}: {section: Section}) => {
+    return <CategorySectionHeader title={section.shortTitle} />;
   }, []);
+
+  const keyExtractor = useCallback(
+    (item: DhikrItem) => `dhikr-${item.dhikr.id}`,
+    [],
+  );
 
   // Handle early return states
   if (!superId) {
@@ -184,11 +172,12 @@ const SuperCategoryScreen: React.FC = () => {
     <View style={styles.container}>
       <Header title={displayTitle} onBack={() => router.back()} />
 
-      <FlatList
-        data={listData}
+      <SectionList
+        sections={sections}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         keyExtractor={keyExtractor}
-        getItemLayout={undefined}
+        stickySectionHeadersEnabled={true}
         contentContainerStyle={[
           styles.listContent,
           {paddingTop: insets.top + moderateScale(56)},
