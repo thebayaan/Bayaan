@@ -1,109 +1,83 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  GestureResponderEvent,
-} from 'react-native';
+import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {HeartIcon} from '@/components/Icons';
-import {Dua} from '@/types/dua';
+import {Dhikr} from '@/types/adhkar';
 import Color from 'color';
+import {Icon} from '@rneui/themed';
 
-interface DuaListItemProps {
-  dua: Dua;
+interface DhikrListItemProps {
+  dhikr: Dhikr;
   index: number;
-  isFavorite: boolean;
   onPress: () => void;
-  onFavoritePress: () => void;
 }
 
-export const DuaListItem: React.FC<DuaListItemProps> = React.memo(
-  ({dua, index, isFavorite, onPress, onFavoritePress}) => {
+export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
+  ({dhikr, index, onPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
-
-    const handleFavoritePress = React.useCallback(
-      (e: GestureResponderEvent) => {
-        e.stopPropagation();
-        onFavoritePress();
-      },
-      [onFavoritePress],
-    );
 
     const displayNumber = index + 1;
 
     return (
       <TouchableOpacity
-        activeOpacity={0.7}
+        activeOpacity={1}
         style={styles.container}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`Dua ${displayNumber}, ${dua.translation || dua.arabic}`}
-        accessibilityHint="Tap to view dua details">
-        {/* Left side - Index badge */}
+        accessibilityLabel={`Dhikr ${displayNumber}, ${dhikr.translation || dhikr.arabic}`}
+        accessibilityHint="Tap to view dhikr details">
+        {/* Left side - Index number */}
         <View style={styles.indexContainer}>
-          <View style={styles.indexBadge}>
-            <Text style={styles.indexText}>{displayNumber}</Text>
-          </View>
+          <Text style={styles.indexText}>{displayNumber}</Text>
         </View>
 
         {/* Middle content */}
         <View style={styles.contentContainer}>
           {/* Arabic text */}
-          {dua.arabic ? (
+          {dhikr.arabic ? (
             <Text
               style={styles.arabicText}
               numberOfLines={1}
               ellipsizeMode="tail">
-              {dua.arabic}
+              {dhikr.arabic}
             </Text>
           ) : null}
 
           {/* Translation */}
-          {dua.translation ? (
+          {dhikr.translation ? (
             <Text
               style={styles.translationText}
               numberOfLines={2}
               ellipsizeMode="tail">
-              {dua.translation}
+              {dhikr.translation}
             </Text>
           ) : null}
 
           {/* Repeat indicator */}
-          {dua.repeatCount > 1 ? (
+          {dhikr.repeatCount > 1 ? (
             <View style={styles.repeatContainer}>
-              <Text style={styles.repeatText}>Repeat {dua.repeatCount}x</Text>
+              <Text style={styles.repeatText}>{dhikr.repeatCount}x</Text>
             </View>
           ) : null}
         </View>
 
-        {/* Right side - Favorite button */}
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={handleFavoritePress}
-          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
-          accessibilityRole="button"
-          accessibilityLabel={
-            isFavorite ? 'Remove from favorites' : 'Add to favorites'
-          }
-          accessibilityState={{selected: isFavorite}}>
-          <HeartIcon
-            size={moderateScale(20)}
-            color={
-              isFavorite ? theme.colors.primary : theme.colors.textSecondary
-            }
-            filled={isFavorite}
+        {/* Right side - Chevron */}
+        <View style={styles.chevronContainer}>
+          <Icon
+            name="chevron-right"
+            type="feather"
+            size={moderateScale(18)}
+            color={theme.colors.textSecondary}
           />
-        </TouchableOpacity>
+        </View>
       </TouchableOpacity>
     );
   },
 );
 
-DuaListItem.displayName = 'DuaListItem';
+DhikrListItem.displayName = 'DhikrListItem';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
@@ -114,29 +88,23 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(12),
       padding: moderateScale(14),
       marginHorizontal: moderateScale(16),
-      marginVertical: moderateScale(6),
+      marginVertical: moderateScale(5),
       borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.15).toString(),
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
     },
     indexContainer: {
+      width: moderateScale(28),
+      alignItems: 'center',
       marginRight: moderateScale(12),
     },
-    indexBadge: {
-      width: moderateScale(28),
-      height: moderateScale(28),
-      borderRadius: moderateScale(14),
-      backgroundColor: Color(theme.colors.primary).alpha(0.15).toString(),
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     indexText: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(14),
       fontFamily: theme.fonts.semiBold,
-      color: theme.colors.primary,
+      color: theme.colors.textSecondary,
     },
     contentContainer: {
       flex: 1,
-      marginRight: moderateScale(12),
+      marginRight: moderateScale(8),
     },
     arabicText: {
       fontSize: moderateScale(17),
@@ -156,7 +124,7 @@ const createStyles = (theme: Theme) =>
     repeatContainer: {
       marginTop: moderateScale(8),
       alignSelf: 'flex-start',
-      backgroundColor: Color(theme.colors.primary).alpha(0.1).toString(),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
       paddingHorizontal: moderateScale(8),
       paddingVertical: moderateScale(3),
       borderRadius: moderateScale(4),
@@ -164,9 +132,9 @@ const createStyles = (theme: Theme) =>
     repeatText: {
       fontSize: moderateScale(11),
       fontFamily: theme.fonts.medium,
-      color: theme.colors.primary,
+      color: theme.colors.textSecondary,
     },
-    favoriteButton: {
-      padding: moderateScale(4),
+    chevronContainer: {
+      opacity: 0.5,
     },
   });

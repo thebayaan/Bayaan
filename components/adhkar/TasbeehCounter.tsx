@@ -5,24 +5,24 @@ import {Icon} from '@rneui/themed';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
-import {useDuas} from '@/hooks/useDuas';
+import {useAdhkar} from '@/hooks/useAdhkar';
 import {Theme} from '@/utils/themeUtils';
 
 interface TasbeehCounterProps {
-  duaId: string;
-  targetCount: number; // From dua.repeatCount
+  dhikrId: string;
+  targetCount: number; // From dhikr.repeatCount
 }
 
 // Success color constant
 const SUCCESS_COLOR = '#22C55E';
 
 export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
-  duaId,
+  dhikrId,
   targetCount,
 }) => {
   const {theme} = useTheme();
-  const {getCount, incrementCount, resetCount} = useDuas();
-  const count = getCount(duaId);
+  const {getCount, incrementCount, resetCount} = useAdhkar();
+  const count = getCount(dhikrId);
 
   // Animation for tap feedback
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -53,7 +53,7 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
     animateTap();
 
     // Increment count
-    const newCount = await incrementCount(duaId);
+    const newCount = await incrementCount(dhikrId);
 
     // Light haptic on every tap
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -62,12 +62,12 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
     if (newCount === targetCount) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-  }, [duaId, incrementCount, targetCount, animateTap]);
+  }, [dhikrId, incrementCount, targetCount, animateTap]);
 
   const handleReset = useCallback(async () => {
-    await resetCount(duaId);
+    await resetCount(dhikrId);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [duaId, resetCount]);
+  }, [dhikrId, resetCount]);
 
   const styles = createStyles(theme, targetReached);
 
