@@ -2,7 +2,7 @@ import {adhkarDatabaseService} from '@/services/database/AdhkarDatabaseService';
 import type {
   AdhkarCategory,
   Dhikr,
-  DhikrFavorite,
+  SavedDhikr,
   AdhkarBroadTag,
   AdhkarSeedData,
   SuperCategory,
@@ -14,7 +14,7 @@ import adhkarSeedData from '@/data/adhkar.json';
 export type {
   AdhkarCategory,
   Dhikr,
-  DhikrFavorite,
+  SavedDhikr,
   AdhkarBroadTag,
   SuperCategory,
   SuperCategorySection,
@@ -248,26 +248,26 @@ class AdhkarService {
   }
 
   // ============================================
-  // Favorites
+  // Saved Adhkar
   // ============================================
 
-  // Toggle favorite status for a dhikr
-  async toggleFavorite(dhikrId: string): Promise<boolean> {
+  // Toggle saved status for a dhikr
+  async toggleSaved(dhikrId: string): Promise<boolean> {
     await this.initialize();
-    return await adhkarDatabaseService.toggleFavorite(dhikrId);
+    return await adhkarDatabaseService.toggleSaved(dhikrId);
   }
 
-  // Get all favorites
-  async getFavorites(): Promise<DhikrFavorite[]> {
+  // Get all saved adhkar
+  async getSaved(): Promise<SavedDhikr[]> {
     await this.initialize();
-    return await adhkarDatabaseService.getFavorites();
+    return await adhkarDatabaseService.getSaved();
   }
 
-  // Check if a dhikr is favorited
-  async isFavorite(dhikrId: string): Promise<boolean> {
+  // Check if a dhikr is saved
+  async isSaved(dhikrId: string): Promise<boolean> {
     await this.initialize();
-    const favorites = await adhkarDatabaseService.getFavorites();
-    return favorites.some(fav => fav.dhikrId === dhikrId);
+    const saved = await adhkarDatabaseService.getSaved();
+    return saved.some(s => s.dhikrId === dhikrId);
   }
 
   // ============================================

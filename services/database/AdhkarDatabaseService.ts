@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import type {
   AdhkarCategory,
   Dhikr,
-  DhikrFavorite,
+  SavedDhikr,
   DhikrCount,
   AdhkarBroadTag,
   AdhkarSeedData,
@@ -29,7 +29,7 @@ interface DhikrRow {
   sort_order: number;
 }
 
-interface FavoriteRow {
+interface SavedRow {
   dhikr_id: string;
   created_at: number;
 }
@@ -151,7 +151,7 @@ class AdhkarDatabaseService {
       );
     `);
 
-    // Create user favorites table
+    // Create saved adhkar table (keeping table name for backwards compatibility)
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS dhikr_favorites (
         dhikr_id TEXT PRIMARY KEY,
@@ -378,50 +378,50 @@ class AdhkarDatabaseService {
     };
   }
 
-  // Toggle favorite status for a dhikr
-  async toggleFavorite(dhikrId: string): Promise<boolean> {
+  // Toggle saved status for a dhikr
+  async toggleSaved(dhikrId: string): Promise<boolean> {
     if (!this.db) throw new Error('Database not initialized');
 
     const db = this.db;
-    let isFavorite = false;
+    let isSaved = false;
 
     await db.withTransactionAsync(async () => {
-      // Check if already favorited
+      // Check if already saved
       const existing = (await db.getFirstAsync(
         `SELECT dhikr_id FROM dhikr_favorites WHERE dhikr_id = ?`,
         [dhikrId],
-      )) as FavoriteRow | null;
+      )) as SavedRow | null;
 
       if (existing) {
-        // Remove from favorites
+        // Remove from saved
         await db.runAsync(`DELETE FROM dhikr_favorites WHERE dhikr_id = ?`, [
           dhikrId,
         ]);
-        isFavorite = false;
+        isSaved = false;
       } else {
-        // Add to favorites
+        // Add to saved
         await db.runAsync(
           `INSERT INTO dhikr_favorites (dhikr_id, created_at) VALUES (?, ?)`,
           [dhikrId, Date.now()],
         );
-        isFavorite = true;
+        isSaved = true;
       }
     });
 
-    return isFavorite;
+    return isSaved;
   }
 
-  // Get all favorite dhikr IDs
-  async getFavorites(): Promise<DhikrFavorite[]> {
+  // Get all saved dhikr IDs
+  async getSaved(): Promise<SavedDhikr[]> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const favorites = (await this.db.getAllAsync(
+    const saved = (await this.db.getAllAsync(
       `SELECT dhikr_id, created_at FROM dhikr_favorites ORDER BY created_at DESC`,
-    )) as FavoriteRow[];
+    )) as SavedRow[];
 
-    return favorites.map(fav => ({
-      dhikrId: fav.dhikr_id,
-      createdAt: fav.created_at,
+    return saved.map(s => ({
+      dhikrId: s.dhikr_id,
+      createdAt: s.created_at,
     }));
   }
 

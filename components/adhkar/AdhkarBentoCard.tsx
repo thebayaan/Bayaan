@@ -107,7 +107,7 @@ const createStyles = (
     container: {
       width,
       height,
-      borderRadius: moderateScale(8),
+      borderRadius: moderateScale(20),
       overflow: 'hidden',
       marginBottom: moderateScale(8),
       borderWidth: 1,

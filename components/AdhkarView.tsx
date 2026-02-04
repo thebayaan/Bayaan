@@ -13,6 +13,7 @@ import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
 
 // Base height unit for bento cards (Spotify-style proportions)
 // 1x cards are short/wide, 2x cards span two 1x cards + gap
@@ -20,6 +21,7 @@ const ROW_HEIGHT_UNIT = 62;
 
 interface AdhkarViewProps {
   onCategoryPress: (superCategory: SuperCategory) => void;
+  onSavedPress: () => void;
 }
 
 // Memoized section header
@@ -92,13 +94,14 @@ function organizeByColumn(categories: SuperCategory[]): {
   return {leftColumn, rightColumn};
 }
 
-export const AdhkarView: React.FC<AdhkarViewProps> = ({onCategoryPress}) => {
+export const AdhkarView: React.FC<AdhkarViewProps> = ({onCategoryPress, onSavedPress}) => {
   const {theme} = useTheme();
   const {
     error,
     mainSuperCategories,
     otherSuperCategories,
     superCategoriesLoaded,
+    savedIds,
   } = useAdhkar();
   const {width} = useWindowDimensions();
 
@@ -152,13 +155,21 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({onCategoryPress}) => {
       contentContainerStyle={[
         styles.scrollContent,
         {
-          paddingHorizontal: tileDimensions.horizontalPadding,
           paddingBottom: TOTAL_BOTTOM_PADDING,
         },
       ]}
       showsVerticalScrollIndicator={false}>
+      {/* Saved Hero Section - only shows when there are saved adhkar */}
+      <SavedAdhkarHero savedCount={savedIds.size} onPress={onSavedPress} />
+
       {/* Main Section */}
-      <View style={styles.bentoGrid}>
+      <View style={[
+        styles.bentoGrid,
+        {
+          paddingHorizontal: tileDimensions.horizontalPadding,
+          marginTop: savedIds.size > 0 ? moderateScale(8) : 0,
+        }
+      ]}>
         <BentoColumn
           categories={mainLayout.leftColumn}
           columnWidth={tileDimensions.columnWidth}
@@ -174,8 +185,10 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({onCategoryPress}) => {
       </View>
 
       {/* Other Section */}
-      <SectionHeader title="Other" theme={theme} />
-      <View style={styles.bentoGrid}>
+      <View style={{paddingHorizontal: tileDimensions.horizontalPadding}}>
+        <SectionHeader title="Other" theme={theme} />
+      </View>
+      <View style={[styles.bentoGrid, {paddingHorizontal: tileDimensions.horizontalPadding}]}>
         <BentoColumn
           categories={otherLayout.leftColumn}
           columnWidth={tileDimensions.columnWidth}

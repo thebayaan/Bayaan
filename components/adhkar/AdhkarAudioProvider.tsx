@@ -134,7 +134,8 @@ const AudioPlayerManager: React.FC<{
   };
 
   return (
-    <AdhkarAudioContext.Provider value={{progress, duration, currentTime, seek}}>
+    <AdhkarAudioContext.Provider
+      value={{progress, duration, currentTime, seek}}>
       {children}
     </AdhkarAudioContext.Provider>
   );

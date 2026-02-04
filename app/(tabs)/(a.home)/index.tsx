@@ -167,6 +167,7 @@ interface ContentProps {
   handleReciterPress: (reciter: Reciter) => void;
   handleSurahPress: (surah: Surah) => void;
   handleCategoryPress: (category: SuperCategory) => void;
+  handleSavedPress: () => void;
   insets: EdgeInsets;
 }
 
@@ -177,6 +178,7 @@ const Content = React.memo(
     handleReciterPress,
     handleSurahPress,
     handleCategoryPress,
+    handleSavedPress,
     insets,
   }: ContentProps) => {
     // Track if each view has been rendered at least once
@@ -261,7 +263,7 @@ const Content = React.memo(
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <AdhkarView onCategoryPress={handleCategoryPress} />
+            <AdhkarView onCategoryPress={handleCategoryPress} onSavedPress={handleSavedPress} />
           </View>
         )}
       </View>
@@ -272,6 +274,7 @@ const Content = React.memo(
     prevProps.handleReciterPress === nextProps.handleReciterPress &&
     prevProps.handleSurahPress === nextProps.handleSurahPress &&
     prevProps.handleCategoryPress === nextProps.handleCategoryPress &&
+    prevProps.handleSavedPress === nextProps.handleSavedPress &&
     prevProps.insets === nextProps.insets,
 );
 
@@ -376,6 +379,11 @@ function HomeScreen() {
     [router],
   );
 
+  // Navigate to saved adhkar
+  const handleSavedPress = useCallback(() => {
+    router.push('/(tabs)/(a.home)/adhkar/saved');
+  }, [router]);
+
   return (
     <View style={styles.container}>
       <Header
@@ -390,6 +398,7 @@ function HomeScreen() {
         handleReciterPress={handleReciterPress}
         handleSurahPress={handleSurahPress}
         handleCategoryPress={handleCategoryPress}
+        handleSavedPress={handleSavedPress}
         insets={insets}
       />
     </View>

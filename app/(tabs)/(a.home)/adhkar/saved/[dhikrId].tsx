@@ -16,9 +16,8 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {DhikrReader} from '@/components/adhkar/DhikrReader';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import {Dhikr} from '@/types/adhkar';
+import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
-import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
@@ -43,23 +42,13 @@ const DhikrPage = React.memo(function DhikrPage({
   );
 });
 
-interface CategoryTitleMap {
-  [categoryId: string]: string;
-}
-
-const DhikrReaderScreen: React.FC = () => {
+const SavedDhikrReaderScreen: React.FC = () => {
   const {
-    superId,
     dhikrId,
     globalIndex: globalIndexParam,
-    categoryShortTitle: initialCategoryTitle,
-    superCategoryTitle,
   } = useLocalSearchParams<{
-    superId: string;
     dhikrId: string;
     globalIndex?: string;
-    categoryShortTitle?: string;
-    superCategoryTitle?: string;
   }>();
 
   const router = useRouter();
@@ -71,45 +60,46 @@ const DhikrReaderScreen: React.FC = () => {
   const initialIndex = globalIndexParam ? parseInt(globalIndexParam, 10) : 0;
 
   const [adhkarList, setAdhkarList] = useState<Dhikr[]>([]);
-  const [categoryTitles, setCategoryTitles] = useState<CategoryTitleMap>({});
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const {isSaved, toggleSaved} = useAdhkar();
+  const {isSaved, toggleSaved, savedIds} = useAdhkar();
 
   const setAudio = useAdhkarAudioStore(state => state.setAudio);
   const stopAudio = useAdhkarAudioStore(state => state.stop);
 
+  // Load saved adhkar
   useEffect(() => {
     async function loadData() {
-      if (!superId) {
-        setIsDataLoaded(true);
-        return;
-      }
-
       try {
-        const data = await adhkarService.getAdhkarForSuperCategory(superId);
-        if (data) {
-          const flatAdhkar = data.categoryGroups.flatMap(g => g.adhkar);
-          setAdhkarList(flatAdhkar);
+        const saved = await adhkarService.getSaved();
 
-          const titlesMap: CategoryTitleMap = {};
-          data.categoryGroups.forEach(group => {
-            titlesMap[group.categoryId] = shortenCategoryTitle(
-              group.categoryTitle,
-            );
-          });
-          setCategoryTitles(titlesMap);
-        }
+        // Fetch full dhikr data for each saved item
+        const adhkarPromises = saved.map((s: SavedDhikr) =>
+          adhkarService.getDhikr(s.dhikrId)
+        );
+        const adhkarResults = await Promise.all(adhkarPromises);
+
+        // Filter out nulls
+        const validAdhkar = adhkarResults.filter((d): d is Dhikr => d !== null);
+        setAdhkarList(validAdhkar);
       } catch (error) {
-        console.error('Failed to load adhkar data:', error);
+        console.error('Failed to load saved adhkar:', error);
       } finally {
         setIsDataLoaded(true);
       }
     }
 
     loadData();
-  }, [superId]);
+  }, []);
+
+  // Update list when saved items change (item unsaved)
+  useEffect(() => {
+    if (isDataLoaded) {
+      // Filter current list to only include items still saved
+      setAdhkarList(prev => prev.filter(d => savedIds.has(d.id)));
+    }
+  }, [savedIds, isDataLoaded]);
 
   const currentDhikr = useMemo(() => {
     return adhkarList[currentIndex] || null;
@@ -126,13 +116,6 @@ const DhikrReaderScreen: React.FC = () => {
       stopAudio();
     };
   }, [stopAudio]);
-
-  const displayTitle = useMemo(() => {
-    if (currentDhikr && categoryTitles[currentDhikr.categoryId]) {
-      return categoryTitles[currentDhikr.categoryId];
-    }
-    return initialCategoryTitle || superCategoryTitle || 'Dhikr';
-  }, [currentDhikr, categoryTitles, initialCategoryTitle, superCategoryTitle]);
 
   const handleBack = useCallback(() => {
     router.back();
@@ -181,7 +164,7 @@ const DhikrReaderScreen: React.FC = () => {
 
   const keyExtractor = useCallback((item: Dhikr) => item.id, []);
 
-  if (!dhikrId || !superId) {
+  if (!dhikrId) {
     return null;
   }
 
@@ -203,9 +186,7 @@ const DhikrReaderScreen: React.FC = () => {
           />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {displayTitle}
-          </Text>
+          <Text style={styles.headerTitle}>Saved</Text>
           {totalAdhkar > 1 && (
             <Text style={styles.positionText}>
               {currentIndex + 1} of {totalAdhkar}
@@ -233,7 +214,7 @@ const DhikrReaderScreen: React.FC = () => {
       <View style={styles.container}>
         {Header}
         <View style={styles.loadingContainer}>
-          <Text style={styles.emptyText}>No adhkar found</Text>
+          <Text style={styles.emptyText}>No saved adhkar</Text>
         </View>
       </View>
     );
@@ -320,4 +301,4 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default DhikrReaderScreen;
+export default SavedDhikrReaderScreen;

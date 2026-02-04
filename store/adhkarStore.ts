@@ -4,7 +4,7 @@ import {
   AdhkarCategory,
   Dhikr,
   AdhkarBroadTag,
-  DhikrFavorite,
+  SavedDhikr,
   SuperCategory,
 } from '@/services/adhkar/AdhkarService';
 
@@ -24,8 +24,8 @@ interface AdhkarState {
   currentDhikr: Dhikr | null;
   currentDhikrIndex: number;
 
-  // Favorites (Set of dhikr IDs)
-  favorites: Set<string>;
+  // Saved adhkar (Set of dhikr IDs)
+  savedIds: Set<string>;
 
   // Tasbeeh counts
   dhikrCounts: Record<string, number>;
@@ -44,9 +44,9 @@ interface AdhkarState {
   navigateToDhikr: (direction: 'prev' | 'next') => void;
   getSuperCategoryById: (id: string) => SuperCategory | undefined;
 
-  // Favorites
-  toggleFavorite: (dhikrId: string) => Promise<void>;
-  loadFavorites: () => Promise<void>;
+  // Saved
+  toggleSaved: (dhikrId: string) => Promise<void>;
+  loadSaved: () => Promise<void>;
 
   // Tasbeeh
   incrementCount: (dhikrId: string) => Promise<number>;
@@ -94,7 +94,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
   adhkarInCategory: [],
   currentDhikr: null,
   currentDhikrIndex: 0,
-  favorites: new Set<string>(),
+  savedIds: new Set<string>(),
   dhikrCounts: {},
   categoryTitlesMap: {},
   loading: true, // Start as loading to indicate we haven't loaded yet
@@ -118,10 +118,10 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
         adhkarService.getGroupedCategories(),
       ]);
 
-      // Load favorites
-      const favorites = await adhkarService.getFavorites();
-      const favoriteIds = new Set(
-        favorites.map((f: DhikrFavorite) => f.dhikrId),
+      // Load saved adhkar
+      const saved = await adhkarService.getSaved();
+      const savedIds = new Set(
+        saved.map((s: SavedDhikr) => s.dhikrId),
       );
 
       // Load counts (this can be slow, so we do it after categories are loaded)
@@ -130,7 +130,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       set({
         allCategories,
         groupedCategories,
-        favorites: favoriteIds,
+        savedIds,
         dhikrCounts: counts,
         loading: false,
         categoriesLoaded: true,
@@ -235,45 +235,45 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
     });
   },
 
-  // Toggle favorite status for a dhikr
-  toggleFavorite: async (dhikrId: string) => {
+  // Toggle saved status for a dhikr
+  toggleSaved: async (dhikrId: string) => {
     try {
       set({error: null});
 
-      const isFavorite = await adhkarService.toggleFavorite(dhikrId);
+      const isSaved = await adhkarService.toggleSaved(dhikrId);
 
-      // Update favorites Set immutably
-      const currentFavorites = get().favorites;
-      const newFavorites = new Set(currentFavorites);
+      // Update savedIds Set immutably
+      const currentSavedIds = get().savedIds;
+      const newSavedIds = new Set(currentSavedIds);
 
-      if (isFavorite) {
-        newFavorites.add(dhikrId);
+      if (isSaved) {
+        newSavedIds.add(dhikrId);
       } else {
-        newFavorites.delete(dhikrId);
+        newSavedIds.delete(dhikrId);
       }
 
-      set({favorites: newFavorites});
+      set({savedIds: newSavedIds});
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to toggle favorite';
+        err instanceof Error ? err.message : 'Failed to toggle saved';
       set({error: errorMessage});
     }
   },
 
-  // Load all favorites from database
-  loadFavorites: async () => {
+  // Load all saved adhkar from database
+  loadSaved: async () => {
     try {
       set({error: null});
 
-      const favorites = await adhkarService.getFavorites();
-      const favoriteIds = new Set(
-        favorites.map((f: DhikrFavorite) => f.dhikrId),
+      const saved = await adhkarService.getSaved();
+      const savedIds = new Set(
+        saved.map((s: SavedDhikr) => s.dhikrId),
       );
 
-      set({favorites: favoriteIds});
+      set({savedIds});
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to load favorites';
+        err instanceof Error ? err.message : 'Failed to load saved';
       set({error: errorMessage});
     }
   },
@@ -361,7 +361,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       adhkarInCategory: [],
       currentDhikr: null,
       currentDhikrIndex: 0,
-      favorites: new Set<string>(),
+      savedIds: new Set<string>(),
       dhikrCounts: {},
       categoryTitlesMap: {},
       loading: true,

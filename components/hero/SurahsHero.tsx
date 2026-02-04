@@ -182,9 +182,9 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateScale(2),
     },
     heroTitle: {
-      fontSize: moderateScale(8),
+      fontSize: moderateScale(10),
       fontFamily: 'Manrope-Bold',
-      letterSpacing: moderateScale(0.5),
+      letterSpacing: moderateScale(0.8),
       color: theme.colors.textSecondary,
     },
     revelationPlace: {
