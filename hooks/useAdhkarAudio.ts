@@ -16,6 +16,7 @@ interface UseAdhkarAudioReturn {
   // Status
   isPlaying: boolean;
   isLooping: boolean;
+  hasInteracted: boolean;
   currentTime: number;
   duration: number;
   progress: number;
@@ -52,6 +53,7 @@ export function useAdhkarAudio(audioFile: string | null): UseAdhkarAudioReturn {
   // Get user intent from store
   const isPlaying = useAdhkarAudioStore(state => state.isPlaying);
   const isLooping = useAdhkarAudioStore(state => state.isLooping);
+  const hasInteracted = useAdhkarAudioStore(state => state.hasInteracted);
   const currentAudioFile = useAdhkarAudioStore(state => state.currentAudioFile);
   const play = useAdhkarAudioStore(state => state.play);
   const pause = useAdhkarAudioStore(state => state.pause);
@@ -82,6 +84,7 @@ export function useAdhkarAudio(audioFile: string | null): UseAdhkarAudioReturn {
     // Only return playing state if this is the active audio
     isPlaying: isActive ? isPlaying : false,
     isLooping,
+    hasInteracted: isActive ? hasInteracted : false,
     currentTime: isActive ? currentTime : 0,
     duration: isActive ? duration : 0,
     progress: isActive ? progress : 0,
