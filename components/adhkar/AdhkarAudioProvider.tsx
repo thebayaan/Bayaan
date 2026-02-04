@@ -99,9 +99,17 @@ const AudioPlayerManager: React.FC<{
 
     if (duration > 0 && currentTime >= duration - 0.1 && !status.playing) {
       hasHandledEnd.current = true;
+      // Reset to beginning before pausing so play button works correctly
+      if (player) {
+        try {
+          player.seekTo(0);
+        } catch {
+          // Ignore seek errors during cleanup
+        }
+      }
       pause();
     }
-  }, [status, isLooping, pause]);
+  }, [status, isLooping, pause, player]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -1,3 +1,11 @@
+/**
+ * DhikrListItem
+ *
+ * Manuscript-inspired design for dhikr list items.
+ * Ornate header with number, centered Arabic text,
+ * translation as annotation, and subtle footer metadata.
+ */
+
 import React from 'react';
 import {View, Text, TouchableOpacity} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -5,7 +13,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Dhikr} from '@/types/adhkar';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
 
 interface DhikrListItemProps {
   dhikr: Dhikr;
@@ -19,58 +26,43 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
     const styles = createStyles(theme);
 
     const displayNumber = index + 1;
+    const hasAudio = !!dhikr.audioFile;
 
     return (
       <TouchableOpacity
-        activeOpacity={1}
+        activeOpacity={0.85}
         style={styles.container}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`Dhikr ${displayNumber}, ${dhikr.translation || dhikr.arabic}`}
-        accessibilityHint="Tap to view dhikr details">
-        {/* Left side - Index number */}
-        <View style={styles.indexContainer}>
-          <Text style={styles.indexText}>{displayNumber}</Text>
+        accessibilityLabel={dhikr.translation || dhikr.arabic}>
+        {/* Ornate top border pattern */}
+        <View style={styles.ornamentBar}>
+          <View style={styles.ornamentLeft} />
+          <View style={styles.ornamentCenter}>
+            <Text style={styles.ornamentNumber}>{displayNumber}</Text>
+          </View>
+          <View style={styles.ornamentRight} />
         </View>
 
-        {/* Middle content */}
-        <View style={styles.contentContainer}>
-          {/* Arabic text */}
-          {dhikr.arabic ? (
-            <Text
-              style={styles.arabicText}
-              numberOfLines={1}
-              ellipsizeMode="tail">
-              {dhikr.arabic}
-            </Text>
-          ) : null}
+        {/* Arabic text */}
+        <View style={styles.arabicContainer}>
+          <Text style={styles.arabicText}>{dhikr.arabic}</Text>
+        </View>
 
-          {/* Translation */}
-          {dhikr.translation ? (
-            <Text
-              style={styles.translationText}
-              numberOfLines={2}
-              ellipsizeMode="tail">
-              {dhikr.translation}
-            </Text>
-          ) : null}
+        {/* Translation */}
+        {dhikr.translation ? (
+          <View style={styles.annotationContainer}>
+            <View style={styles.annotationLine} />
+            <Text style={styles.translationText}>{dhikr.translation}</Text>
+          </View>
+        ) : null}
 
-          {/* Repeat indicator */}
+        {/* Footer with metadata */}
+        <View style={styles.footer}>
           {dhikr.repeatCount > 1 ? (
-            <View style={styles.repeatContainer}>
-              <Text style={styles.repeatText}>{dhikr.repeatCount}x</Text>
-            </View>
+            <Text style={styles.repeatText}>Repeat {dhikr.repeatCount}×</Text>
           ) : null}
-        </View>
-
-        {/* Right side - Chevron */}
-        <View style={styles.chevronContainer}>
-          <Icon
-            name="chevron-right"
-            type="feather"
-            size={moderateScale(18)}
-            color={theme.colors.textSecondary}
-          />
+          {hasAudio ? <View style={styles.audioIndicator} /> : null}
         </View>
       </TouchableOpacity>
     );
@@ -79,62 +71,108 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
 
 DhikrListItem.displayName = 'DhikrListItem';
 
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
+const createStyles = (theme: Theme) => {
+  const isDark =
+    theme.colors.background === '#000000' ||
+    Color(theme.colors.background).luminosity() < 0.5;
+
+  const parchmentBg = isDark
+    ? Color(theme.colors.card).lighten(0.1).toString()
+    : Color('#F5F0E6').mix(Color(theme.colors.card), 0.3).toString();
+
+  const inkColor = isDark
+    ? Color(theme.colors.text).alpha(0.9).toString()
+    : Color('#2C1810').mix(Color(theme.colors.text), 0.5).toString();
+
+  const goldAccent = isDark ? '#C9A85C' : '#8B7355';
+
+  return ScaledSheet.create({
     container: {
+      backgroundColor: parchmentBg,
+      marginHorizontal: moderateScale(16),
+      marginVertical: moderateScale(10),
+      borderRadius: moderateScale(16),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: Color(goldAccent).alpha(0.3).toString(),
+    },
+    ornamentBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
-      padding: moderateScale(14),
-      marginHorizontal: moderateScale(16),
-      marginVertical: moderateScale(5),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      paddingVertical: moderateScale(8),
+      backgroundColor: Color(goldAccent).alpha(0.08).toString(),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(goldAccent).alpha(0.2).toString(),
     },
-    indexContainer: {
-      width: moderateScale(28),
-      alignItems: 'center',
-      marginRight: moderateScale(12),
+    ornamentLeft: {
+      flex: 1,
+      height: 1,
+      backgroundColor: Color(goldAccent).alpha(0.4).toString(),
+      marginLeft: moderateScale(16),
     },
-    indexText: {
+    ornamentCenter: {
+      paddingHorizontal: moderateScale(20),
+    },
+    ornamentNumber: {
       fontSize: moderateScale(14),
       fontFamily: theme.fonts.semiBold,
-      color: theme.colors.textSecondary,
+      color: goldAccent,
     },
-    contentContainer: {
+    ornamentRight: {
       flex: 1,
-      marginRight: moderateScale(8),
+      height: 1,
+      backgroundColor: Color(goldAccent).alpha(0.4).toString(),
+      marginRight: moderateScale(16),
+    },
+    arabicContainer: {
+      padding: moderateScale(20),
+      paddingBottom: moderateScale(16),
     },
     arabicText: {
-      fontSize: moderateScale(17),
+      fontSize: moderateScale(18),
       fontFamily: 'QPC',
-      color: theme.colors.text,
-      textAlign: 'right',
+      color: inkColor,
+      textAlign: 'center',
       writingDirection: 'rtl',
-      marginBottom: moderateScale(6),
-      lineHeight: moderateScale(38),
+      lineHeight: moderateScale(40),
+    },
+    annotationContainer: {
+      paddingHorizontal: moderateScale(20),
+      paddingBottom: moderateScale(16),
+    },
+    annotationLine: {
+      height: 1,
+      backgroundColor: Color(inkColor).alpha(0.1).toString(),
+      marginBottom: moderateScale(12),
     },
     translationText: {
       fontSize: moderateScale(13),
       fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      lineHeight: moderateScale(18),
+      color: Color(inkColor).alpha(0.7).toString(),
+      textAlign: 'center',
+      lineHeight: moderateScale(20),
+      fontStyle: 'italic',
     },
-    repeatContainer: {
-      marginTop: moderateScale(8),
-      alignSelf: 'flex-start',
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
-      paddingHorizontal: moderateScale(8),
-      paddingVertical: moderateScale(3),
-      borderRadius: moderateScale(4),
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: moderateScale(12),
+      paddingVertical: moderateScale(10),
+      backgroundColor: Color(goldAccent).alpha(0.05).toString(),
+      borderTopWidth: 1,
+      borderTopColor: Color(goldAccent).alpha(0.15).toString(),
     },
     repeatText: {
       fontSize: moderateScale(11),
       fontFamily: theme.fonts.medium,
-      color: theme.colors.textSecondary,
+      color: Color(goldAccent).darken(0.2).toString(),
     },
-    chevronContainer: {
-      opacity: 0.5,
+    audioIndicator: {
+      width: moderateScale(6),
+      height: moderateScale(6),
+      borderRadius: moderateScale(3),
+      backgroundColor: goldAccent,
     },
   });
+};
