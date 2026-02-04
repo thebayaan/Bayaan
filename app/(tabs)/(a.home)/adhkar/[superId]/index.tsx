@@ -16,9 +16,11 @@ import {Theme} from '@/utils/themeUtils';
 import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
 import {CategorySectionHeader} from '@/components/adhkar/CategorySectionHeader';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {PlayAllButton} from '@/components/adhkar/PlayAllButton';
 import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
+import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -47,6 +49,19 @@ const SuperCategoryListScreen: React.FC = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {getSuperCategoryById} = useAdhkar();
+
+  // Play All store
+  const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
+  const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
+  const startPlayAll = useAdhkarPlayAllStore(state => state.startPlayAll);
+  const stopPlayAll = useAdhkarPlayAllStore(state => state.stopPlayAll);
+
+  // Check if this super category supports Play All
+  const isPlayAllEligible =
+    superId === 'morning-adhkar' || superId === 'evening-adhkar';
+
+  // Check if currently playing this category
+  const isThisCategoryPlaying = isPlayAllMode && playAllSourceId === superId;
 
   const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
     null,
@@ -127,9 +142,64 @@ const SuperCategoryListScreen: React.FC = () => {
     }));
   }, [categoryGroups, isSingleCategory]);
 
+  // Build full adhkar list for Play All (works for both single and multi-category)
+  const allAdhkarForPlayAll: Dhikr[] = useMemo(() => {
+    if (categoryGroups.length === 0) return [];
+    return categoryGroups.flatMap(group => group.adhkar);
+  }, [categoryGroups]);
+
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
+
+  // Play All handler
+  const handlePlayAll = useCallback(() => {
+    if (!superId) return;
+
+    if (isThisCategoryPlaying) {
+      // Stop if already playing this category
+      stopPlayAll();
+      return;
+    }
+
+    if (allAdhkarForPlayAll.length === 0) return;
+
+    const sourceType = superId === 'morning-adhkar' ? 'morning' : 'evening';
+    startPlayAll(
+      allAdhkarForPlayAll,
+      0,
+      sourceType as 'morning' | 'evening',
+      superId,
+    );
+
+    // Navigate to reader with first dhikr
+    const firstDhikr = allAdhkarForPlayAll[0];
+    const firstCategoryTitle =
+      categoryGroups.length > 0
+        ? shortenCategoryTitle(categoryGroups[0].categoryTitle)
+        : '';
+
+    router.push({
+      pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
+      params: {
+        superId,
+        dhikrId: firstDhikr.id,
+        globalIndex: '0',
+        categoryShortTitle: firstCategoryTitle,
+        superCategoryTitle: superCategory?.title,
+        playAll: 'true',
+      },
+    });
+  }, [
+    superId,
+    isThisCategoryPlaying,
+    allAdhkarForPlayAll,
+    categoryGroups,
+    superCategory?.title,
+    startPlayAll,
+    stopPlayAll,
+    router,
+  ]);
 
   const handleDhikrPress = useCallback(
     (item: DhikrItem) => {
@@ -198,7 +268,15 @@ const SuperCategoryListScreen: React.FC = () => {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {displayTitle}
         </Text>
-        <View style={styles.headerPlaceholder} />
+        {isPlayAllEligible ? (
+          <PlayAllButton
+            onPress={handlePlayAll}
+            isPlaying={isThisCategoryPlaying}
+            disabled={loading || allAdhkarForPlayAll.length === 0}
+          />
+        ) : (
+          <View style={styles.headerPlaceholder} />
+        )}
       </View>
     </SafeAreaView>
   );
