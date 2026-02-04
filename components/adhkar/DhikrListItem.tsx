@@ -30,7 +30,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
 
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={1}
         style={styles.container}
         onPress={onPress}
         accessibilityRole="button"
