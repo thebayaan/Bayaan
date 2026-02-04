@@ -1,10 +1,5 @@
 import React, {useEffect, useState, useCallback, useMemo} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-} from 'react-native';
+import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useRouter} from 'expo-router';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -47,7 +42,7 @@ const SavedAdhkarScreen: React.FC = () => {
 
         // Fetch full dhikr data for each saved item
         const adhkarPromises = saved.map((s: SavedDhikr) =>
-          adhkarService.getDhikr(s.dhikrId)
+          adhkarService.getDhikr(s.dhikrId),
         );
         const adhkarResults = await Promise.all(adhkarPromises);
 

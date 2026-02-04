@@ -86,7 +86,6 @@ const DhikrReaderScreen: React.FC = () => {
   const playAllIndex = useAdhkarPlayAllStore(state => state.currentIndex);
   const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
   const goToIndex = useAdhkarPlayAllStore(state => state.goToIndex);
-  const stopPlayAll = useAdhkarPlayAllStore(state => state.stopPlayAll);
 
   // Check if this reader is the active Play All source
   const isThisPlayAllSource = isPlayAllMode && playAllSourceId === superId;
@@ -158,7 +157,13 @@ const DhikrReaderScreen: React.FC = () => {
         isScrollingFromPlayAll.current = false;
       }, 300);
     }
-  }, [isThisPlayAllSource, playAllIndex, currentIndex, isDataLoaded, adhkarList.length]);
+  }, [
+    isThisPlayAllSource,
+    playAllIndex,
+    currentIndex,
+    isDataLoaded,
+    adhkarList.length,
+  ]);
 
   const displayTitle = useMemo(() => {
     if (currentDhikr && categoryTitles[currentDhikr.categoryId]) {

@@ -44,10 +44,7 @@ const DhikrPage = React.memo(function DhikrPage({
 });
 
 const SavedDhikrReaderScreen: React.FC = () => {
-  const {
-    dhikrId,
-    globalIndex: globalIndexParam,
-  } = useLocalSearchParams<{
+  const {dhikrId, globalIndex: globalIndexParam} = useLocalSearchParams<{
     dhikrId: string;
     globalIndex?: string;
   }>();
@@ -86,7 +83,7 @@ const SavedDhikrReaderScreen: React.FC = () => {
 
         // Fetch full dhikr data for each saved item
         const adhkarPromises = saved.map((s: SavedDhikr) =>
-          adhkarService.getDhikr(s.dhikrId)
+          adhkarService.getDhikr(s.dhikrId),
         );
         const adhkarResults = await Promise.all(adhkarPromises);
 
@@ -147,7 +144,13 @@ const SavedDhikrReaderScreen: React.FC = () => {
         isScrollingFromPlayAll.current = false;
       }, 300);
     }
-  }, [isThisPlayAllSource, playAllIndex, currentIndex, isDataLoaded, adhkarList.length]);
+  }, [
+    isThisPlayAllSource,
+    playAllIndex,
+    currentIndex,
+    isDataLoaded,
+    adhkarList.length,
+  ]);
 
   const handleBack = useCallback(() => {
     router.back();
