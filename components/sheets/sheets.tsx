@@ -1,6 +1,7 @@
 import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
+import type {Dhikr} from '@/types/adhkar';
 
 // Import sheet components
 import {SurahOptionsSheet} from './SurahOptionsSheet';
@@ -15,6 +16,8 @@ import {PlaybackSpeedSheet} from './PlaybackSpeedSheet';
 import {SleepTimerSheet} from './SleepTimerSheet';
 import {MushafLayoutSheet} from './MushafLayoutSheet';
 import {ExtendedSummarySheet} from './ExtendedSummarySheet';
+import {AdhkarLayoutSheet} from './AdhkarLayoutSheet';
+import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -29,6 +32,8 @@ registerSheet('playback-speed', PlaybackSpeedSheet);
 registerSheet('sleep-timer', SleepTimerSheet);
 registerSheet('mushaf-layout', MushafLayoutSheet);
 registerSheet('extended-summary', ExtendedSummarySheet);
+registerSheet('adhkar-layout', AdhkarLayoutSheet);
+registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -115,6 +120,12 @@ declare module 'react-native-actions-sheet' {
           surah_name: string;
           text: string;
         };
+      };
+    }>;
+    'adhkar-layout': SheetDefinition;
+    'adhkar-copy-options': SheetDefinition<{
+      payload: {
+        dhikr: Dhikr;
       };
     }>;
   }

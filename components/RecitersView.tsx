@@ -71,7 +71,7 @@ const MemoizedFlatList = React.memo(
       )}
       keyExtractor={item =>
         'timestamp' in item
-          ? `${item.reciter.id}-${item.surah.id}-${item.timestamp}`
+          ? `${item.reciter?.id ?? 'unknown'}-${item.surah?.id ?? 'unknown'}-${item.timestamp}`
           : 'displayName' in item
             ? item.id
             : 'itemCount' in item && 'color' in item
@@ -147,13 +147,13 @@ const RenderSectionItem = React.memo(
   }) => {
     const {theme} = useTheme();
     const progress = useRecentlyPlayedStore(state =>
-      'timestamp' in item
+      'timestamp' in item && item.reciter?.id && item.surah?.id
         ? state.getProgress(item.reciter.id, item.surah.id)
         : 0,
     );
 
     const duration = useRecentlyPlayedStore(state =>
-      'timestamp' in item
+      'timestamp' in item && item.reciter?.id && item.surah?.id
         ? state.getDuration(item.reciter.id, item.surah.id)
         : 0,
     );
@@ -329,6 +329,19 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   // This persists across re-renders but changes on app restart
   const sessionSeed = useRef(Date.now()).current;
 
+  // Filter out any corrupted recent tracks (missing reciter or surah data)
+  const validRecentTracks = useMemo(
+    () =>
+      recentTracks.filter(
+        track =>
+          track.reciter?.id &&
+          track.reciter?.name &&
+          track.surah?.id &&
+          track.surah?.name,
+      ),
+    [recentTracks],
+  );
+
   // Track when the reciters view is opened
   useEffect(() => {
     incrementRecitersViewOpenCount();
@@ -434,10 +447,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       <RecitersHero />
 
       {/* Recently played tracks - high priority for immediate access */}
-      {recentTracks.length > 0 && (
+      {validRecentTracks.length > 0 && (
         <Section
           title="Continue Listening"
-          data={recentTracks}
+          data={validRecentTracks}
           variant="recent"
           onReciterPress={onReciterPress}
           theme={theme}

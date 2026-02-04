@@ -69,6 +69,7 @@ export const MushafLayoutModal: React.FC<MushafLayoutModalProps> = ({
       index={-1}
       snapPoints={snapPoints}
       enablePanDownToClose={true}
+      enableDynamicSizing={false}
       backdropComponent={renderBackdrop}
       handleComponent={handleComponent}
       backgroundStyle={[

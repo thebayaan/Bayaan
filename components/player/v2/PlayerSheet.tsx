@@ -250,6 +250,7 @@ export const PlayerSheet = () => {
         snapPoints={snapPoints}
         onChange={handleSheetChanges}
         enablePanDownToClose
+        enableDynamicSizing={false}
         backdropComponent={renderBackdrop}
         index={currentIndex}
         animateOnMount={false}

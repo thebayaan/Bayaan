@@ -4,34 +4,34 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 
-interface TabSelectorProps {
-  options: ['Reciters', 'Surahs'];
-  selectedOption: 'Reciters' | 'Surahs';
-  onSelect: (option: 'Reciters' | 'Surahs') => void;
+interface TabSelectorProps<T extends string> {
+  options: T[];
+  selectedOption: T;
+  onSelect: (option: T) => void;
 }
 
-const TabSelector: React.FC<TabSelectorProps> = ({
+function TabSelector<T extends string>({
   options,
   selectedOption,
   onSelect,
-}) => {
+}: TabSelectorProps<T>) {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const styles = createStyles(theme, options.length);
 
   // Animation for the sliding indicator
   const indicatorPosition = useRef(
-    new Animated.Value(selectedOption === 'Reciters' ? 0 : 1),
+    new Animated.Value(options.indexOf(selectedOption)),
   ).current;
 
   // Update indicator position when selected option changes
   useEffect(() => {
     Animated.spring(indicatorPosition, {
-      toValue: selectedOption === 'Reciters' ? 0 : 1,
+      toValue: options.indexOf(selectedOption),
       tension: 300,
       friction: 30,
       useNativeDriver: true,
     }).start();
-  }, [selectedOption, indicatorPosition]);
+  }, [selectedOption, indicatorPosition, options]);
 
   return (
     <View style={styles.container}>
@@ -41,7 +41,7 @@ const TabSelector: React.FC<TabSelectorProps> = ({
           <React.Fragment key={option}>
             <TouchableOpacity
               style={styles.tabButton}
-              activeOpacity={0.7}
+              activeOpacity={1}
               onPress={() => onSelect(option)}>
               <Text
                 style={[
@@ -57,18 +57,18 @@ const TabSelector: React.FC<TabSelectorProps> = ({
                 </>
               )}
             </TouchableOpacity>
-            {index === 0 && <View style={styles.separator} />}
+            {index < options.length - 1 && <View style={styles.separator} />}
           </React.Fragment>
         ))}
       </View>
     </View>
   );
-};
+}
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, optionCount: number) =>
   StyleSheet.create({
     container: {
-      width: moderateScale(160),
+      width: moderateScale(80 * optionCount),
       height: moderateScale(40),
       alignSelf: 'center',
     },
