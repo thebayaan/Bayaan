@@ -26,7 +26,7 @@ export function useAdhkar() {
   const adhkarInCategory = useAdhkarStore(state => state.adhkarInCategory);
   const currentDhikr = useAdhkarStore(state => state.currentDhikr);
   const currentDhikrIndex = useAdhkarStore(state => state.currentDhikrIndex);
-  const favorites = useAdhkarStore(state => state.favorites);
+  const savedIds = useAdhkarStore(state => state.savedIds);
   const loading = useAdhkarStore(state => state.loading);
   const categoriesLoaded = useAdhkarStore(state => state.categoriesLoaded);
   const error = useAdhkarStore(state => state.error);
@@ -42,8 +42,8 @@ export function useAdhkar() {
   const getSuperCategoryById = useAdhkarStore(
     state => state.getSuperCategoryById,
   );
-  const toggleFavorite = useAdhkarStore(state => state.toggleFavorite);
-  const loadFavorites = useAdhkarStore(state => state.loadFavorites);
+  const toggleSaved = useAdhkarStore(state => state.toggleSaved);
+  const loadSaved = useAdhkarStore(state => state.loadSaved);
   const incrementCount = useAdhkarStore(state => state.incrementCount);
   const resetCount = useAdhkarStore(state => state.resetCount);
   const getCount = useAdhkarStore(state => state.getCount);
@@ -51,9 +51,9 @@ export function useAdhkar() {
   const getCategoryTitle = useAdhkarStore(state => state.getCategoryTitle);
   const reset = useAdhkarStore(state => state.reset);
 
-  // Helper function to check if a dhikr is favorited
-  const isFavorite = (dhikrId: string): boolean => {
-    return favorites.has(dhikrId);
+  // Helper function to check if a dhikr is saved
+  const isSaved = (dhikrId: string): boolean => {
+    return savedIds.has(dhikrId);
   };
 
   // Safety fallback: Load categories if not already loaded by AppInitializer
@@ -88,9 +88,9 @@ export function useAdhkar() {
     currentDhikr,
     currentDhikrIndex,
 
-    // Favorites
-    favorites,
-    isFavorite,
+    // Saved
+    savedIds,
+    isSaved,
 
     // Counts
     getCount,
@@ -103,8 +103,8 @@ export function useAdhkar() {
     setAdhkarList,
     navigateToDhikr,
     getSuperCategoryById,
-    toggleFavorite,
-    loadFavorites,
+    toggleSaved,
+    loadSaved,
     incrementCount,
     resetCount,
     getCategoryTitle,

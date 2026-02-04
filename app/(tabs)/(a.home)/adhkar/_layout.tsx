@@ -9,6 +9,7 @@ export default function AdhkarLayout() {
           headerShown: false,
         }}>
         <Stack.Screen name="[superId]" />
+        <Stack.Screen name="saved" />
       </Stack>
     </AdhkarAudioProvider>
   );

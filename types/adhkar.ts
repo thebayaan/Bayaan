@@ -34,8 +34,8 @@ export interface Dhikr {
   sortOrder: number;
 }
 
-// For favorites tracking
-export interface DhikrFavorite {
+// For saved adhkar tracking
+export interface SavedDhikr {
   dhikrId: string;
   createdAt: number;
 }

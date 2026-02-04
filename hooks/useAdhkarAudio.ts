@@ -70,10 +70,7 @@ export function useAdhkarAudio(audioFile: string | null): UseAdhkarAudioReturn {
     [currentTime],
   );
 
-  const durationFormatted = useMemo(
-    () => formatTime(duration),
-    [duration],
-  );
+  const durationFormatted = useMemo(() => formatTime(duration), [duration]);
 
   // Replay function
   const replay = () => {

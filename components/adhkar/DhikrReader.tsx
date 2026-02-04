@@ -29,14 +29,14 @@ if (
 
 interface DhikrReaderProps {
   dhikr: Dhikr;
-  isFavorite: boolean;
-  onFavoriteToggle: () => void;
+  isSaved: boolean;
+  onSaveToggle: () => void;
 }
 
 export const DhikrReader: React.FC<DhikrReaderProps> = ({
   dhikr,
-  isFavorite,
-  onFavoriteToggle,
+  isSaved,
+  onSaveToggle,
 }) => {
   const {theme} = useTheme();
   const [showInstruction, setShowInstruction] = useState(false);
@@ -123,10 +123,10 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
             <AdhkarAudioControls
               audioFile={dhikr.audioFile}
               onCopy={handleOpenCopyOptions}
-              onBookmark={onFavoriteToggle}
+              onBookmark={onSaveToggle}
               onShare={handleShare}
               onSettings={handleOpenSettings}
-              isBookmarked={isFavorite}
+              isBookmarked={isSaved}
             />
           </View>
         )}

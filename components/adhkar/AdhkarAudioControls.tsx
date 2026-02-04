@@ -141,12 +141,12 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   }
                   accessibilityState={{selected: isBookmarked}}>
                   <Icon
-                    name="bookmark"
-                    type="feather"
+                    name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                    type="ionicon"
                     size={moderateScale(18)}
                     color={
                       isBookmarked
-                        ? theme.colors.primary
+                        ? theme.colors.text
                         : theme.colors.textSecondary
                     }
                   />
@@ -274,12 +274,12 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 }
                 accessibilityState={{selected: isBookmarked}}>
                 <Icon
-                  name="bookmark"
-                  type="feather"
+                  name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                  type="ionicon"
                   size={moderateScale(18)}
                   color={
                     isBookmarked
-                      ? theme.colors.primary
+                      ? theme.colors.text
                       : theme.colors.textSecondary
                   }
                 />
