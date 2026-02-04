@@ -19,6 +19,7 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
+import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -67,6 +68,15 @@ const SavedDhikrReaderScreen: React.FC = () => {
 
   const setAudio = useAdhkarAudioStore(state => state.setAudio);
   const stopAudio = useAdhkarAudioStore(state => state.stop);
+
+  // Play All store
+  const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
+  const playAllIndex = useAdhkarPlayAllStore(state => state.currentIndex);
+  const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
+  const goToIndex = useAdhkarPlayAllStore(state => state.goToIndex);
+
+  // Check if this reader is the active Play All source
+  const isThisPlayAllSource = isPlayAllMode && playAllSourceId === 'saved';
 
   // Load saved adhkar
   useEffect(() => {
@@ -117,6 +127,28 @@ const SavedDhikrReaderScreen: React.FC = () => {
     };
   }, [stopAudio]);
 
+  // Sync FlatList scroll when Play All index changes
+  const isScrollingFromPlayAll = useRef(false);
+  useEffect(() => {
+    if (
+      isThisPlayAllSource &&
+      playAllIndex !== currentIndex &&
+      isDataLoaded &&
+      adhkarList.length > 0
+    ) {
+      isScrollingFromPlayAll.current = true;
+      flatListRef.current?.scrollToIndex({
+        index: playAllIndex,
+        animated: true,
+      });
+      setCurrentIndex(playAllIndex);
+      // Reset flag after animation completes
+      setTimeout(() => {
+        isScrollingFromPlayAll.current = false;
+      }, 300);
+    }
+  }, [isThisPlayAllSource, playAllIndex, currentIndex, isDataLoaded, adhkarList.length]);
+
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
@@ -128,13 +160,24 @@ const SavedDhikrReaderScreen: React.FC = () => {
     [toggleSaved],
   );
 
-  const onViewableItemsChanged = useRef(
+  const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-        setCurrentIndex(viewableItems[0].index);
+        const newIndex = viewableItems[0].index;
+        setCurrentIndex(newIndex);
+
+        // Sync Play All store when user manually swipes (not from Play All auto-scroll)
+        if (
+          isThisPlayAllSource &&
+          newIndex !== playAllIndex &&
+          !isScrollingFromPlayAll.current
+        ) {
+          goToIndex(newIndex);
+        }
       }
     },
-  ).current;
+    [isThisPlayAllSource, playAllIndex, goToIndex],
+  );
 
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 50,
