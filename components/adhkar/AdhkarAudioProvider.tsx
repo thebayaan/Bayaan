@@ -108,8 +108,11 @@ const AudioPlayerManager: React.FC<{
 
   // Handle playback end
   const hasHandledEnd = useRef(false);
-  // Track the audio source we last handled end for (prevents duplicate handling)
-  const lastHandledAudioSource = useRef<number | null>(null);
+  // Track the audio source that we're currently tracking for end detection
+  // This prevents stale status values from triggering advanceToNext on new tracks
+  const currentTrackingSource = useRef<number | null>(null);
+  // Track when we started playing the current track (for minimum play time check)
+  const trackStartTime = useRef<number>(0);
 
   useEffect(() => {
     if (shouldPlay) {
@@ -117,9 +120,11 @@ const AudioPlayerManager: React.FC<{
     }
   }, [shouldPlay]);
 
-  // Reset hasHandledEnd when audio source changes
+  // When audio source changes, reset tracking state and record start time
   useEffect(() => {
     hasHandledEnd.current = false;
+    currentTrackingSource.current = audioSource;
+    trackStartTime.current = Date.now();
   }, [audioSource]);
 
   useEffect(() => {
@@ -128,26 +133,27 @@ const AudioPlayerManager: React.FC<{
 
     if (!status || effectiveLooping || hasHandledEnd.current) return;
 
+    // CRITICAL: Only process end detection for the audio source we're currently tracking
+    // This prevents stale status values from a previous track from triggering advancement
+    if (currentTrackingSource.current !== audioSource) {
+      return;
+    }
+
     const currentTime = status.currentTime ?? 0;
     const duration = status.duration ?? 0;
 
-    // Additional guard: ensure we have valid duration and the track actually played
-    // (currentTime > 1 second means the track actually started playing)
-    const trackActuallyPlayed = currentTime > 1;
+    // Ensure the track has been playing for at least 2 seconds
+    // This prevents false triggers during track transitions when status may have stale values
+    const timeSinceStart = Date.now() - trackStartTime.current;
+    const minimumPlayTime = 2000; // 2 seconds
 
     if (
       duration > 0 &&
       currentTime >= duration - 0.1 &&
       !status.playing &&
-      trackActuallyPlayed
+      timeSinceStart > minimumPlayTime
     ) {
-      // Prevent handling the same audio source twice
-      if (lastHandledAudioSource.current === audioSource) {
-        return;
-      }
-
       hasHandledEnd.current = true;
-      lastHandledAudioSource.current = audioSource;
 
       if (isPlayAllMode) {
         // In Play All mode, advance to next track
