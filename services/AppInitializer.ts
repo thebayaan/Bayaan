@@ -1,5 +1,7 @@
 import {databaseService} from '@/services/database/DatabaseService';
+import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
+import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 
 interface ServiceInitializer {
@@ -194,6 +196,34 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await usePlaylistsStore.getState().loadPlaylists();
+  },
+});
+
+/**
+ * Adhkar Service (Priority 4)
+ * Initializes the Adhkar database and seeds data (depends on Database)
+ * Non-critical - app can function without adhkar
+ */
+appInitializer.registerService({
+  name: 'Adhkar Service',
+  priority: 4,
+  critical: false,
+  initialize: async () => {
+    await adhkarService.initialize();
+  },
+});
+
+/**
+ * Adhkar Store Data (Priority 5)
+ * Loads adhkar categories from database into Zustand store
+ * Non-critical - can be loaded later if fails
+ */
+appInitializer.registerService({
+  name: 'Adhkar Store Data',
+  priority: 5,
+  critical: false,
+  initialize: async () => {
+    await useAdhkarStore.getState().loadCategories();
   },
 });
 

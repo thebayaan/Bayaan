@@ -13,8 +13,10 @@ import {createStyles} from './_styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
+import AdhkarView from '@/components/AdhkarView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
+import {SuperCategory} from '@/types/adhkar';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import TabSelector from '@/components/TabSelector';
 import {useSettings} from '@/hooks/useSettings';
@@ -27,9 +29,11 @@ import {EdgeInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 
+type ViewOption = 'Reciters' | 'Surahs' | 'Adhkar';
+
 interface HeaderProps {
-  activeView: 'Reciters' | 'Surahs';
-  handleToggle: (option: 'Reciters' | 'Surahs') => void;
+  activeView: ViewOption;
+  handleToggle: (option: ViewOption) => void;
   handleSettingsPress: () => void;
   theme: Theme;
   insets: EdgeInsets;
@@ -130,7 +134,7 @@ const Header = React.memo(
           </View>
           <View style={headerStyles.centerContainer}>
             <TabSelector
-              options={['Reciters', 'Surahs']}
+              options={['Reciters', 'Surahs', 'Adhkar']}
               selectedOption={activeView}
               onSelect={handleToggle}
             />
@@ -159,9 +163,11 @@ const Header = React.memo(
 Header.displayName = 'Header';
 
 interface ContentProps {
-  activeView: 'Reciters' | 'Surahs';
+  activeView: ViewOption;
   handleReciterPress: (reciter: Reciter) => void;
   handleSurahPress: (surah: Surah) => void;
+  handleCategoryPress: (category: SuperCategory) => void;
+  handleSavedPress: () => void;
   insets: EdgeInsets;
 }
 
@@ -171,11 +177,14 @@ const Content = React.memo(
     activeView,
     handleReciterPress,
     handleSurahPress,
+    handleCategoryPress,
+    handleSavedPress,
     insets,
   }: ContentProps) => {
     // Track if each view has been rendered at least once
     const [hasViewedReciters, setHasViewedReciters] = React.useState(true); // Start with true as it's the default
     const [hasViewedSurahs, setHasViewedSurahs] = React.useState(true); // Changed to true to load both components immediately
+    const [hasViewedAdhkar, setHasViewedAdhkar] = React.useState(false); // Lazy load adhkar
 
     // Update the viewed state when active view changes
     React.useEffect(() => {
@@ -183,8 +192,10 @@ const Content = React.memo(
         setHasViewedReciters(true);
       } else if (activeView === 'Surahs' && !hasViewedSurahs) {
         setHasViewedSurahs(true);
+      } else if (activeView === 'Adhkar' && !hasViewedAdhkar) {
+        setHasViewedAdhkar(true);
       }
-    }, [activeView, hasViewedReciters, hasViewedSurahs]);
+    }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedAdhkar]);
 
     const contentStyles = StyleSheet.create({
       container: {
@@ -243,6 +254,18 @@ const Content = React.memo(
             <SurahsView onSurahPress={handleSurahPress} />
           </View>
         )}
+
+        {/* AdhkarView - only render if it has been viewed once */}
+        {hasViewedAdhkar && (
+          <View
+            style={[
+              activeView === 'Adhkar'
+                ? contentStyles.visibleView
+                : contentStyles.hiddenView,
+            ]}>
+            <AdhkarView onCategoryPress={handleCategoryPress} onSavedPress={handleSavedPress} />
+          </View>
+        )}
       </View>
     );
   },
@@ -250,6 +273,8 @@ const Content = React.memo(
     prevProps.activeView === nextProps.activeView &&
     prevProps.handleReciterPress === nextProps.handleReciterPress &&
     prevProps.handleSurahPress === nextProps.handleSurahPress &&
+    prevProps.handleCategoryPress === nextProps.handleCategoryPress &&
+    prevProps.handleSavedPress === nextProps.handleSavedPress &&
     prevProps.insets === nextProps.insets,
 );
 
@@ -260,11 +285,9 @@ function HomeScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const [activeView, setActiveView] = useState<'Reciters' | 'Surahs'>(
-    'Reciters',
-  );
+  const [activeView, setActiveView] = useState<ViewOption>('Reciters');
 
-  const handleToggle = useCallback((option: 'Reciters' | 'Surahs') => {
+  const handleToggle = useCallback((option: ViewOption) => {
     setActiveView(option);
   }, []);
 
@@ -345,6 +368,22 @@ function HomeScreen() {
     router.push('/settings');
   }, [router]);
 
+  // Navigate to adhkar category (unified route)
+  const handleCategoryPress = useCallback(
+    (category: SuperCategory) => {
+      router.push({
+        pathname: '/(tabs)/(a.home)/adhkar/[superId]',
+        params: {superId: category.id},
+      });
+    },
+    [router],
+  );
+
+  // Navigate to saved adhkar
+  const handleSavedPress = useCallback(() => {
+    router.push('/(tabs)/(a.home)/adhkar/saved');
+  }, [router]);
+
   return (
     <View style={styles.container}>
       <Header
@@ -358,6 +397,8 @@ function HomeScreen() {
         activeView={activeView}
         handleReciterPress={handleReciterPress}
         handleSurahPress={handleSurahPress}
+        handleCategoryPress={handleCategoryPress}
+        handleSavedPress={handleSavedPress}
         insets={insets}
       />
     </View>
