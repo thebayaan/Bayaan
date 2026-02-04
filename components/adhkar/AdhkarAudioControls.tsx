@@ -188,8 +188,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
       return (
         <View style={styles.container}>
           {/* Progress Bar Row (animated) */}
-          <Animated.View
-            style={[styles.progressRow, progressRowAnimatedStyle]}>
+          <Animated.View style={[styles.progressRow, progressRowAnimatedStyle]}>
             <Slider
               style={styles.slider}
               value={progress}
@@ -210,7 +209,7 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
             <TouchableOpacity
               style={styles.playButton}
               onPress={handleToggle}
-              activeOpacity={0.7}
+              activeOpacity={1}
               accessibilityRole="button"
               accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}>
               {isPlaying ? (
@@ -241,7 +240,9 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
               accessibilityState={{selected: isLooping}}>
               <RepeatIcon
                 size={moderateScale(20)}
-                color={isLooping ? theme.colors.text : theme.colors.textSecondary}
+                color={
+                  isLooping ? theme.colors.text : theme.colors.textSecondary
+                }
               />
             </TouchableOpacity>
 
