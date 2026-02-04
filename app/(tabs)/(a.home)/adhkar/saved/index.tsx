@@ -13,9 +13,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
+import {PlayAllButton} from '@/components/adhkar/PlayAllButton';
 import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkar} from '@/hooks/useAdhkar';
+import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 
 const SavedAdhkarScreen: React.FC = () => {
@@ -23,6 +25,15 @@ const SavedAdhkarScreen: React.FC = () => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {savedIds} = useAdhkar();
+
+  // Play All store
+  const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
+  const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
+  const startPlayAll = useAdhkarPlayAllStore(state => state.startPlayAll);
+  const stopPlayAll = useAdhkarPlayAllStore(state => state.stopPlayAll);
+
+  // Check if currently playing saved adhkar
+  const isSavedPlaying = isPlayAllMode && playAllSourceId === 'saved';
 
   const [adhkarList, setAdhkarList] = useState<Dhikr[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +81,30 @@ const SavedAdhkarScreen: React.FC = () => {
     [router],
   );
 
+  // Play All handler
+  const handlePlayAll = useCallback(() => {
+    if (isSavedPlaying) {
+      // Stop if already playing saved
+      stopPlayAll();
+      return;
+    }
+
+    if (adhkarList.length === 0) return;
+
+    startPlayAll(adhkarList, 0, 'saved', 'saved');
+
+    // Navigate to reader with first dhikr
+    const firstDhikr = adhkarList[0];
+    router.push({
+      pathname: '/(tabs)/(a.home)/adhkar/saved/[dhikrId]',
+      params: {
+        dhikrId: firstDhikr.id,
+        globalIndex: '0',
+        playAll: 'true',
+      },
+    });
+  }, [isSavedPlaying, adhkarList, startPlayAll, stopPlayAll, router]);
+
   const renderItem = useCallback(
     ({item, index}: {item: Dhikr; index: number}) => (
       <DhikrListItem
@@ -102,7 +137,11 @@ const SavedAdhkarScreen: React.FC = () => {
           <Text style={styles.headerTitle}>Saved</Text>
           <Text style={styles.countText}>{adhkarList.length} adhkar</Text>
         </View>
-        <View style={styles.headerPlaceholder} />
+        <PlayAllButton
+          onPress={handlePlayAll}
+          isPlaying={isSavedPlaying}
+          disabled={isLoading || adhkarList.length === 0}
+        />
       </View>
     </SafeAreaView>
   );
