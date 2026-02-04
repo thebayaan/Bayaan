@@ -108,6 +108,8 @@ const AudioPlayerManager: React.FC<{
 
   // Handle playback end
   const hasHandledEnd = useRef(false);
+  // Track the audio source we last handled end for (prevents duplicate handling)
+  const lastHandledAudioSource = useRef<number | null>(null);
 
   useEffect(() => {
     if (shouldPlay) {
@@ -129,13 +131,26 @@ const AudioPlayerManager: React.FC<{
     const currentTime = status.currentTime ?? 0;
     const duration = status.duration ?? 0;
 
-    if (duration > 0 && currentTime >= duration - 0.1 && !status.playing) {
+    // Additional guard: ensure we have valid duration and the track actually played
+    // (currentTime > 1 second means the track actually started playing)
+    const trackActuallyPlayed = currentTime > 1;
+
+    if (
+      duration > 0 &&
+      currentTime >= duration - 0.1 &&
+      !status.playing &&
+      trackActuallyPlayed
+    ) {
+      // Prevent handling the same audio source twice
+      if (lastHandledAudioSource.current === audioSource) {
+        return;
+      }
+
       hasHandledEnd.current = true;
+      lastHandledAudioSource.current = audioSource;
 
       if (isPlayAllMode) {
         // In Play All mode, advance to next track
-        // Note: Don't reset hasHandledEnd here - let the audioSource change effect handle it
-        // This prevents rapid-fire advanceToNext calls before the source actually changes
         advanceToNext();
         // If no next track, advanceToNext() already calls stopPlayAll()
       } else {
@@ -150,7 +165,7 @@ const AudioPlayerManager: React.FC<{
         pause();
       }
     }
-  }, [status, isLooping, isPlayAllMode, pause, player, advanceToNext]);
+  }, [status, isLooping, isPlayAllMode, pause, player, advanceToNext, audioSource]);
 
   // Cleanup on unmount
   useEffect(() => {
