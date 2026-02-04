@@ -41,7 +41,9 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
       const {
         isPlaying,
         isLooping,
+        hasInteracted,
         progress,
+        duration,
         toggle,
         toggleLooping,
         seekToProgress,
@@ -62,8 +64,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
         toggle();
       };
 
-      // Show progress bar when playing or has progress
-      const showProgressBar = isPlaying || progress > 0;
+      // Show progress bar once user has interacted (pressed play) and player is loaded
+      const showProgressBar = hasInteracted && duration > 0;
 
       // Active background color for repeat button
       const activeBackgroundColor = `${theme.colors.text}20`;

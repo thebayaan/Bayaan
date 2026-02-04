@@ -19,6 +19,7 @@ interface AdhkarAudioState {
   // User intent (not player state)
   isPlaying: boolean;
   isLooping: boolean;
+  hasInteracted: boolean; // True once play is pressed, reset on page change
 
   // Actions
   setAudio: (audioFile: string | null) => void;
@@ -36,6 +37,7 @@ export const useAdhkarAudioStore = create<AdhkarAudioState>((set, get) => ({
   audioSource: null,
   isPlaying: false,
   isLooping: false,
+  hasInteracted: false,
 
   // Set the current audio file (called when swiping to new dhikr)
   setAudio: (audioFile: string | null) => {
@@ -51,6 +53,7 @@ export const useAdhkarAudioStore = create<AdhkarAudioState>((set, get) => ({
       currentAudioFile: audioFile,
       audioSource: source,
       isPlaying: false,
+      hasInteracted: false,
     });
   },
 
@@ -65,7 +68,7 @@ export const useAdhkarAudioStore = create<AdhkarAudioState>((set, get) => ({
       mainPlayerState.pause();
     }
 
-    set({isPlaying: true});
+    set({isPlaying: true, hasInteracted: true});
   },
 
   // Pause audio
