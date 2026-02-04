@@ -134,11 +134,9 @@ const AudioPlayerManager: React.FC<{
 
       if (isPlayAllMode) {
         // In Play All mode, advance to next track
-        const hasNext = advanceToNext();
-        if (hasNext) {
-          // Reset for next track - the source change will trigger new playback
-          hasHandledEnd.current = false;
-        }
+        // Note: Don't reset hasHandledEnd here - let the audioSource change effect handle it
+        // This prevents rapid-fire advanceToNext calls before the source actually changes
+        advanceToNext();
         // If no next track, advanceToNext() already calls stopPlayAll()
       } else {
         // Single-dhikr mode: Reset to beginning before pausing
