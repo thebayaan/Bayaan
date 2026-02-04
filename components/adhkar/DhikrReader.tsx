@@ -249,7 +249,7 @@ const createStyles = (theme: Theme, fontSizes?: FontSizes) =>
     },
     arabicText: {
       fontSize: moderateScale(fontSizes?.arabicFontSize ?? 28),
-      fontFamily: 'QPC',
+      fontFamily: 'ScheherazadeNew-Regular',
       color: theme.colors.text,
       textAlign: 'right',
       writingDirection: 'rtl',

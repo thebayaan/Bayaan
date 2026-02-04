@@ -2,11 +2,11 @@
  * PlayAllButton Component
  *
  * Button to start/stop "Play All" adhkar playback.
- * Matches the play button style from AdhkarAudioControls.
+ * Matches the play button style from AdhkarAudioControls with text label.
  */
 
 import React, {useMemo} from 'react';
-import {TouchableOpacity} from 'react-native';
+import {TouchableOpacity, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -25,21 +25,27 @@ export const PlayAllButton: React.FC<PlayAllButtonProps> = React.memo(
 
     return (
       <TouchableOpacity
-        style={[styles.button, disabled && styles.disabled]}
+        style={[styles.container, disabled && styles.disabled]}
         onPress={onPress}
         disabled={disabled}
         activeOpacity={1}
         hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
         accessibilityRole="button"
         accessibilityLabel={isPlaying ? 'Pause all' : 'Play all'}>
-        {isPlaying ? (
-          <PauseIcon
-            size={moderateScale(14)}
-            color={theme.colors.background}
-          />
-        ) : (
-          <PlayIcon size={moderateScale(14)} color={theme.colors.background} />
-        )}
+        <View style={styles.button}>
+          {isPlaying ? (
+            <PauseIcon
+              size={moderateScale(14)}
+              color={theme.colors.background}
+            />
+          ) : (
+            <PlayIcon
+              size={moderateScale(14)}
+              color={theme.colors.background}
+            />
+          )}
+        </View>
+        <Text style={styles.text}>{isPlaying ? 'Pause' : 'Play All'}</Text>
       </TouchableOpacity>
     );
   },
@@ -49,6 +55,11 @@ PlayAllButton.displayName = 'PlayAllButton';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(6),
+    },
     button: {
       width: moderateScale(36),
       height: moderateScale(36),
@@ -57,6 +68,11 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       alignItems: 'center',
       paddingLeft: moderateScale(2), // Visual centering for play icon
+    },
+    text: {
+      fontSize: moderateScale(13),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.text,
     },
     disabled: {
       opacity: 0.5,

@@ -130,7 +130,7 @@ const createStyles = (theme: Theme) => {
     },
     arabicText: {
       fontSize: moderateScale(18),
-      fontFamily: 'QPC',
+      fontFamily: 'ScheherazadeNew-Regular',
       color: inkColor,
       textAlign: 'center',
       writingDirection: 'rtl',
