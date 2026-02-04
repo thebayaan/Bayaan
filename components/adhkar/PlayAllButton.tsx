@@ -56,9 +56,13 @@ PlayAllButton.displayName = 'PlayAllButton';
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
+      // Fixed width container to prevent header title from shifting
+      width: moderateScale(90),
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'flex-end',
       gap: moderateScale(6),
+      marginRight: moderateScale(4),
     },
     button: {
       width: moderateScale(36),
