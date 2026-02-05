@@ -164,7 +164,8 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
     if (name) artist = name;
 
     // Resolve rewayah name to rewayat UUID so the player can look it up
-    if (recitation.rewayah) {
+    // Only for surah recitations — other categories don't need rewayah display
+    if (recitation.type === 'surah' && recitation.rewayah) {
       const reciter = RECITERS.find(r => r.id === recitation.reciterId);
       if (reciter) {
         const match = reciter.rewayat.find(
