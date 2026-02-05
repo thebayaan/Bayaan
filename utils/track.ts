@@ -178,8 +178,6 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
     duration: recitation.duration || 0,
     isUserUpload: true,
     userRecitationId: recitation.id,
-    rewayahName: recitation.rewayah || undefined,
-    styleName: recitation.style || undefined,
   };
 }
 

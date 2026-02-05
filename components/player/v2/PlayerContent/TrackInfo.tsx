@@ -105,15 +105,14 @@ export const TrackInfo = () => {
               numberOfLines={1}>
               {currentTrack?.artist || ''}
             </Text>
-            {(rewayat || currentTrack?.rewayahName) && (
+            {rewayat && (
               <Text
                 style={[
                   styles.rewayatText,
                   {color: theme.colors.textSecondary},
                 ]}>
-                {rewayat
-                  ? `${rewayat.name}${rewayat.style ? ` • ${rewayat.style}` : ''}`
-                  : `${currentTrack?.rewayahName}${currentTrack?.styleName ? ` • ${currentTrack.styleName}` : ''}`}
+                {rewayat.name}
+                {rewayat.style ? ` • ${rewayat.style}` : ''}
               </Text>
             )}
           </View>

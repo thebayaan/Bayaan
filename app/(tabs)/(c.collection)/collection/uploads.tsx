@@ -39,23 +39,34 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-function getSubtitleText(item: UploadedRecitation): string {
-  if (item.type === null) return 'Untagged';
+function getDisplayTitle(item: UploadedRecitation): string {
   if (item.type === 'surah' && item.surahNumber) {
     const surah = getSurahById(item.surahNumber);
-    return surah ? surah.name : `Surah ${item.surahNumber}`;
+    if (surah) return surah.name;
   }
-  if (item.type === 'other') {
-    return item.title || item.category || 'Other';
+  if (item.type === 'other' && item.title) {
+    return item.title;
   }
-  return 'Untagged';
+  return item.originalFilename;
 }
 
-function getReciterDisplayName(item: UploadedRecitation): string | null {
+function getDisplaySubtitle(item: UploadedRecitation): string {
+  const parts: string[] = [];
+
   if (item.reciterId) {
-    return getReciterName(item.reciterId) || null;
+    const name = getReciterName(item.reciterId);
+    if (name) parts.push(name);
   }
-  return null;
+
+  if (item.type === null) {
+    parts.push('Untagged');
+  } else if (item.type === 'other' && item.category) {
+    const label =
+      item.category.charAt(0).toUpperCase() + item.category.slice(1);
+    parts.push(label);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : item.originalFilename;
 }
 
 export default function UploadsScreen() {
@@ -307,8 +318,8 @@ export default function UploadsScreen() {
 
   const renderItem = useCallback(
     ({item, index}: ListRenderItemInfo<UploadedRecitation>) => {
-      const subtitle = getSubtitleText(item);
-      const reciterName = getReciterDisplayName(item);
+      const displayTitle = getDisplayTitle(item);
+      const displaySubtitle = getDisplaySubtitle(item);
       const duration = formatDuration(item.duration);
 
       return (
@@ -330,12 +341,11 @@ export default function UploadsScreen() {
                 style={styles.itemName}
                 numberOfLines={1}
                 ellipsizeMode="middle">
-                {item.originalFilename}
+                {displayTitle}
               </Text>
               <View style={styles.itemSecondaryRow}>
                 <Text style={styles.itemSecondaryText} numberOfLines={1}>
-                  {subtitle}
-                  {reciterName ? ` · ${reciterName}` : ''}
+                  {displaySubtitle}
                 </Text>
               </View>
               <Text style={styles.itemTertiaryText}>{duration}</Text>

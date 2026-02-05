@@ -8,8 +8,6 @@ export interface Track extends RNTrackPlayerTrack {
   rewayatId?: string;
   isUserUpload?: boolean;
   userRecitationId?: string;
-  rewayahName?: string;
-  styleName?: string;
 }
 
 // Helper type for track conversion
@@ -37,7 +35,5 @@ export function ensureTrackFields(track: TrackWithOptionalFields): Track {
     rewayatId: track.rewayatId,
     isUserUpload: track.isUserUpload,
     userRecitationId: track.userRecitationId,
-    rewayahName: track.rewayahName,
-    styleName: track.styleName,
   };
 }

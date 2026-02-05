@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useMemo} from 'react';
+import React, {useState, useCallback, useMemo, useEffect} from 'react';
 import {
   View,
   Text,
@@ -110,6 +110,44 @@ export const OrganizeRecitationSheet = (
         recitation?.rewayah !== DEFAULT_REWAYAH) ||
       (recitation?.style !== null && recitation?.style !== DEFAULT_STYLE),
   );
+
+  // Sync state when the sheet reopens with a different/updated recitation
+  useEffect(() => {
+    if (!recitation) return;
+    setType(recitation.type ?? null);
+    setSurahNumber(recitation.surahNumber ?? null);
+    setStartVerse(recitation.startVerse ?? null);
+    setEndVerse(recitation.endVerse ?? null);
+    setTitle(recitation.title ?? '');
+    setCategory(recitation.category ?? null);
+    setReciterId(recitation.reciterId ?? null);
+    setCustomReciterId(recitation.customReciterId ?? null);
+    setRewayah(recitation.rewayah || DEFAULT_REWAYAH);
+    setStyle(recitation.style || DEFAULT_STYLE);
+    setShowMoreOptions(
+      (recitation.rewayah !== null && recitation.rewayah !== DEFAULT_REWAYAH) ||
+        (recitation.style !== null && recitation.style !== DEFAULT_STYLE),
+    );
+    // Reset search state
+    setSurahQuery('');
+    setShowSurahResults(false);
+    setReciterQuery('');
+    setShowReciterResults(false);
+    // Resolve reciter display name
+    if (recitation.reciterId) {
+      setReciterDisplayName(getReciterName(recitation.reciterId) ?? '');
+    } else if (recitation.customReciterId) {
+      const cr = customReciters.find(r => r.id === recitation.customReciterId);
+      setReciterDisplayName(cr?.name ?? '');
+    } else {
+      setReciterDisplayName('');
+    }
+  }, [
+    recitation?.id,
+    recitation?.type,
+    recitation?.rewayah,
+    recitation?.style,
+  ]);
 
   const hasChanges = useMemo(() => {
     if (!recitation) return false;
