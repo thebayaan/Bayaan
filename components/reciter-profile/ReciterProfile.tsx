@@ -34,7 +34,6 @@ import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
-import {RewayatStyle} from '@/types/reciter';
 import {Icon} from '@rneui/themed';
 import {HeartIcon} from '@/components/Icons';
 import Animated, {
@@ -649,29 +648,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }));
   }, [reciter?.rewayat]);
 
-  const handleRewayatInfoPress = useCallback(async () => {
-    if (!reciter) return;
-
-    // Convert rewayat array to RewayatStyle array format expected by the sheet
-    const rewayatStyles: RewayatStyle[] = reciter.rewayat.map(r => ({
-      id: r.id,
-      name: r.name,
-      style: r.style,
-      surah_list: r.surah_list,
-    }));
-
-    const result = await SheetManager.show('rewayat-info', {
-      payload: {
-        rewayat: rewayatStyles,
-        selectedId: selectedRewayatId,
-      },
-    });
-
-    if (result) {
-      handleRewayatChange(result);
-    }
-  }, [handleRewayatChange, reciter, selectedRewayatId]);
-
   const dominantColors = useImageColors(reciter?.name);
   const isLoadingColors =
     !dominantColors.primary || dominantColors.primary === theme.colors.primary;
@@ -992,8 +968,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
               <>
                 <ReciterHeader
                   reciter={reciter}
-                  selectedRewayatId={selectedRewayatId}
-                  onRewayatInfoPress={handleRewayatInfoPress}
                   showSearch={showSearch}
                   insets={insets}
                 />

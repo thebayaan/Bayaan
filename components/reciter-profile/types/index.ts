@@ -24,10 +24,6 @@ export interface ReciterProfileProps {
 export interface ReciterHeaderProps {
   /** The reciter object containing all reciter information */
   reciter: Reciter;
-  /** The currently selected rewayat ID */
-  selectedRewayatId?: string;
-  /** Handler for when the rewayat info button is pressed */
-  onRewayatInfoPress: () => void;
   /** Whether the search bar is visible */
   showSearch: boolean;
   /** Safe area insets for proper padding */
