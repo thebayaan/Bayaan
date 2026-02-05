@@ -50,6 +50,8 @@ import {StickyHeader} from './components/StickyHeader';
 import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
+import {RewayatTabBar} from './components/RewayatTabBar';
+import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
 
 interface ReciterProfileProps {
@@ -88,6 +90,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     useSettings(state => state.reciterProfileViewMode),
   );
   const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
+  const [activeTab, setActiveTab] = useState<string>('');
   const flatListRef = useRef<RNAnimated.FlatList>(null);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
@@ -845,6 +848,49 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     });
   }, [heartScale]);
 
+  // Uploads for this reciter
+  const reciterUploads = useUploadsStore(state =>
+    state.recitations.filter(r => r.reciterId === currentReciterId),
+  );
+  const hasUploads = reciterUploads.length > 0;
+
+  // Build tabs array: "My Uploads" (if uploads exist) + one tab per rewayat
+  const tabs = useMemo(() => {
+    const result: Array<{id: string; label: string}> = [];
+    if (hasUploads) {
+      result.push({id: 'uploads', label: 'My Uploads'});
+    }
+    if (reciter?.rewayat) {
+      reciter.rewayat.forEach(r => {
+        const style =
+          r.style.charAt(0).toUpperCase() + r.style.slice(1).toLowerCase();
+        result.push({id: r.id, label: `${r.name} · ${style}`});
+      });
+    }
+    return result;
+  }, [hasUploads, reciter?.rewayat]);
+
+  // Initialize activeTab when reciter loads or uploads change
+  useEffect(() => {
+    if (activeTab === '' && tabs.length > 0) {
+      // Default to first rewayat if no uploads, or 'uploads' if has uploads
+      const defaultTab = hasUploads
+        ? 'uploads'
+        : selectedRewayatId || tabs[0].id;
+      setActiveTab(defaultTab);
+    }
+  }, [tabs, activeTab, hasUploads, selectedRewayatId]);
+
+  const handleTabChange = useCallback(
+    (tabId: string) => {
+      setActiveTab(tabId);
+      if (tabId !== 'uploads') {
+        handleRewayatChange(tabId);
+      }
+    },
+    [handleRewayatChange],
+  );
+
   // Create a stable reference to data and callbacks used by SurahList to prevent re-renders
   const surahListProps = useMemo(
     () => ({
@@ -958,43 +1004,51 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                     onPlayPress={handlePlayAll}
                     isFavoriteReciter={isFavoriteReciter(reciter.id)}
                   />
-                  <View style={styles.controlsRow}>
-                    <View style={styles.rightControlsContainer}>
-                      {/* Heart (Loved) Filter Button */}
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          {
-                            marginRight: moderateScale(15),
-                            marginTop: moderateScale(4),
-                          },
-                        ]}
-                        onPress={toggleShowLovedOnly}>
-                        <Animated.View style={heartAnimatedStyle}>
-                          <HeartIcon
-                            size={moderateScale(22)}
-                            color={
-                              showLovedOnly
-                                ? theme.colors.error
-                                : theme.colors.textSecondary
-                            }
-                            filled={true}
-                          />
-                        </Animated.View>
-                      </Pressable>
-
-                      {/* View mode toggle */}
-                      <Pressable
-                        style={styles.viewModeButton}
-                        onPress={toggleViewMode}>
-                        <Icon
-                          name={viewMode === 'card' ? 'list' : 'grid'}
-                          type="feather"
-                          size={moderateScale(16)}
-                          color={theme.colors.text}
+                </View>
+                {tabs.length > 0 && (
+                  <RewayatTabBar
+                    tabs={tabs}
+                    activeTabId={activeTab}
+                    onTabChange={handleTabChange}
+                    theme={theme}
+                  />
+                )}
+                <View style={styles.controlsRow}>
+                  <View style={styles.rightControlsContainer}>
+                    {/* Heart (Loved) Filter Button */}
+                    <Pressable
+                      style={[
+                        styles.optionButton,
+                        {
+                          marginRight: moderateScale(15),
+                          marginTop: moderateScale(4),
+                        },
+                      ]}
+                      onPress={toggleShowLovedOnly}>
+                      <Animated.View style={heartAnimatedStyle}>
+                        <HeartIcon
+                          size={moderateScale(22)}
+                          color={
+                            showLovedOnly
+                              ? theme.colors.error
+                              : theme.colors.textSecondary
+                          }
+                          filled={true}
                         />
-                      </Pressable>
-                    </View>
+                      </Animated.View>
+                    </Pressable>
+
+                    {/* View mode toggle */}
+                    <Pressable
+                      style={styles.viewModeButton}
+                      onPress={toggleViewMode}>
+                      <Icon
+                        name={viewMode === 'card' ? 'list' : 'grid'}
+                        type="feather"
+                        size={moderateScale(16)}
+                        color={theme.colors.text}
+                      />
+                    </Pressable>
                   </View>
                 </View>
               </>
