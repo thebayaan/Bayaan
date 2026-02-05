@@ -6,6 +6,8 @@ export interface Track extends RNTrackPlayerTrack {
   reciterName: string;
   surahId?: string;
   rewayatId?: string;
+  isUserUpload?: boolean;
+  userRecitationId?: string;
 }
 
 // Helper type for track conversion
@@ -31,5 +33,7 @@ export function ensureTrackFields(track: TrackWithOptionalFields): Track {
     // Our optional fields
     surahId: track.surahId,
     rewayatId: track.rewayatId,
+    isUserUpload: track.isUserUpload,
+    userRecitationId: track.userRecitationId,
   };
 }

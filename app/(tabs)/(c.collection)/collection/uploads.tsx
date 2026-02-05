@@ -18,6 +18,8 @@ import {MicrophoneIcon} from '@/components/Icons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {FilterBar} from '@/components/collection/FilterBar';
 import {useUploadsStore} from '@/store/uploadsStore';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById} from '@/services/dataService';
 import type {UploadedRecitation} from '@/types/uploads';
 
@@ -53,6 +55,7 @@ export default function UploadsScreen() {
   const router = useRouter();
   const {recitations, totalCount, importFile, importFiles, loadRecitations} =
     useUploadsStore();
+  const {updateQueue, play} = useUnifiedPlayer();
 
   const [activeFilter, setActiveFilter] = useState<string>('');
 
@@ -108,6 +111,19 @@ export default function UploadsScreen() {
       console.error('Error importing files:', error);
     }
   }, [importFile, importFiles]);
+
+  const handlePlayRecitation = useCallback(
+    async (item: UploadedRecitation, index: number) => {
+      try {
+        const tracks = filteredRecitations.map(createUserUploadTrack);
+        await updateQueue(tracks, index);
+        await play();
+      } catch (error) {
+        console.error('Error playing uploaded recitation:', error);
+      }
+    },
+    [filteredRecitations, updateQueue, play],
+  );
 
   const handleFilterChange = useCallback((filterId: string) => {
     setActiveFilter(filterId);
@@ -204,12 +220,15 @@ export default function UploadsScreen() {
   });
 
   const renderItem = useCallback(
-    ({item}: ListRenderItemInfo<UploadedRecitation>) => {
+    ({item, index}: ListRenderItemInfo<UploadedRecitation>) => {
       const subtitle = getSubtitleText(item);
       const duration = formatDuration(item.duration);
 
       return (
-        <TouchableOpacity style={styles.itemContainer} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.itemContainer}
+          activeOpacity={0.7}
+          onPress={() => handlePlayRecitation(item, index)}>
           <View style={styles.itemIconContainer}>
             <Icon
               name="music"
@@ -233,7 +252,7 @@ export default function UploadsScreen() {
         </TouchableOpacity>
       );
     },
-    [styles],
+    [styles, handlePlayRecitation],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);

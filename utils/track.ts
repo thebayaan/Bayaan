@@ -4,6 +4,9 @@ import {Surah} from '@/data/surahData';
 import {generateSmartAudioUrl} from './audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {resolveFilePath} from '@/services/downloadService';
+import type {UploadedRecitation} from '@/types/uploads';
+import {resolveRecitationPath} from '@/services/uploads/UploadsService';
+import {getSurahById, getReciterName} from '@/services/dataService';
 
 /**
  * Filters and returns available surahs for a given rewayat
@@ -135,6 +138,46 @@ export function createDownloadedTrack(
     rewayatId: rewayatId || reciter.rewayat[0].id,
     duration: 0, // Will be set by TrackPlayer
     description: `${surah.translated_name_english} - ${surah.name}`,
+  };
+}
+
+/**
+ * Creates a Track object from an uploaded recitation
+ */
+export function createUserUploadTrack(recitation: UploadedRecitation): Track {
+  const url = resolveRecitationPath(recitation.filePath);
+
+  // Build title from tags, fallback to original filename
+  let title = recitation.originalFilename;
+  if (recitation.type === 'surah' && recitation.surahNumber) {
+    const surah = getSurahById(recitation.surahNumber);
+    if (surah) title = surah.name;
+  } else if (recitation.type === 'other' && recitation.title) {
+    title = recitation.title;
+  }
+
+  // Build artist from reciter tags, fallback to 'My Recitations'
+  let artist = 'My Recitations';
+  if (recitation.reciterId) {
+    const name = getReciterName(recitation.reciterId);
+    if (name) artist = name;
+  }
+
+  return {
+    id: `upload-${recitation.id}`,
+    url,
+    title,
+    artist,
+    artwork: '',
+    surahId: recitation.surahNumber
+      ? String(recitation.surahNumber)
+      : undefined,
+    reciterId: recitation.reciterId || '',
+    reciterName: artist,
+    rewayatId: recitation.rewayah || undefined,
+    duration: recitation.duration || 0,
+    isUserUpload: true,
+    userRecitationId: recitation.id,
   };
 }
 
