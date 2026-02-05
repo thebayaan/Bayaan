@@ -13,7 +13,6 @@ import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Icon} from '@rneui/themed';
-import * as DocumentPicker from 'expo-document-picker';
 import {MicrophoneIcon} from '@/components/Icons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {FilterBar} from '@/components/collection/FilterBar';
@@ -83,6 +82,7 @@ export default function UploadsScreen() {
 
   const handleImportFile = useCallback(async () => {
     try {
+      const DocumentPicker = await import('expo-document-picker');
       const result = await DocumentPicker.getDocumentAsync({
         type: [
           'audio/mpeg',
