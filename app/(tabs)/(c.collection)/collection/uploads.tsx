@@ -21,7 +21,8 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createUserUploadTrack} from '@/utils/track';
-import {getSurahById} from '@/services/dataService';
+import {getSurahById, getReciterName} from '@/services/dataService';
+import Color from 'color';
 import type {UploadedRecitation} from '@/types/uploads';
 
 const UPLOAD_FILTERS = [
@@ -48,6 +49,13 @@ function getSubtitleText(item: UploadedRecitation): string {
     return item.title || item.category || 'Other';
   }
   return 'Untagged';
+}
+
+function getReciterDisplayName(item: UploadedRecitation): string | null {
+  if (item.reciterId) {
+    return getReciterName(item.reciterId) || null;
+  }
+  return null;
 }
 
 export default function UploadsScreen() {
@@ -235,48 +243,61 @@ export default function UploadsScreen() {
       position: 'absolute',
       zIndex: 10,
     },
-    itemContainer: {
+    // SurahItem-style row layout
+    itemRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(12),
-      marginHorizontal: moderateScale(12),
-      marginVertical: moderateScale(3),
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
+      backgroundColor: theme.colors.background,
+    },
+    itemPlayZone: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(8),
+      paddingLeft: moderateScale(12),
     },
     itemIconContainer: {
-      width: moderateScale(40),
-      height: moderateScale(40),
-      borderRadius: moderateScale(20),
-      backgroundColor: 'rgba(139, 92, 246, 0.15)',
+      width: moderateScale(44),
+      height: moderateScale(44),
+      borderRadius: moderateScale(10),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: moderateScale(12),
+      marginRight: moderateScale(10),
     },
-    itemTextContainer: {
+    itemInfoContainer: {
       flex: 1,
     },
-    itemFilename: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.semiBold,
+    itemName: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
     },
-    itemSubtitle: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      marginTop: moderateScale(2),
+    itemSecondaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      marginBottom: moderateScale(2),
     },
-    itemDuration: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.medium,
+    itemSecondaryText: {
+      fontSize: moderateScale(11),
+      fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
-      marginLeft: moderateScale(8),
     },
-    editButton: {
-      padding: moderateScale(6),
-      marginLeft: moderateScale(4),
+    itemTertiaryText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+    },
+    itemOptionsZone: {
+      width: '20%',
+      minWidth: moderateScale(50),
+      maxWidth: moderateScale(70),
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingRight: moderateScale(12),
+      alignSelf: 'stretch',
     },
     filterContainer: {
       paddingTop: moderateScale(4),
@@ -287,50 +308,56 @@ export default function UploadsScreen() {
   const renderItem = useCallback(
     ({item, index}: ListRenderItemInfo<UploadedRecitation>) => {
       const subtitle = getSubtitleText(item);
+      const reciterName = getReciterDisplayName(item);
       const duration = formatDuration(item.duration);
 
       return (
-        <Pressable
-          style={styles.itemContainer}
-          onPress={() => handlePlayRecitation(item, index)}
-          onLongPress={() => handleLongPress(item, index)}>
-          <View style={styles.itemIconContainer}>
+        <View style={styles.itemRow}>
+          <Pressable
+            style={styles.itemPlayZone}
+            onPress={() => handlePlayRecitation(item, index)}
+            onLongPress={() => handleLongPress(item, index)}>
+            <View style={styles.itemIconContainer}>
+              <Icon
+                name="music"
+                type="feather"
+                size={moderateScale(18)}
+                color={theme.colors.textSecondary}
+              />
+            </View>
+            <View style={styles.itemInfoContainer}>
+              <Text
+                style={styles.itemName}
+                numberOfLines={1}
+                ellipsizeMode="middle">
+                {item.originalFilename}
+              </Text>
+              <View style={styles.itemSecondaryRow}>
+                <Text style={styles.itemSecondaryText} numberOfLines={1}>
+                  {subtitle}
+                  {reciterName ? ` · ${reciterName}` : ''}
+                </Text>
+              </View>
+              <Text style={styles.itemTertiaryText}>{duration}</Text>
+            </View>
+          </Pressable>
+          <Pressable
+            style={styles.itemOptionsZone}
+            onPress={() => handleOrganize(item)}>
             <Icon
-              name="music"
+              name="more-horizontal"
               type="feather"
               size={moderateScale(18)}
-              color="#8B5CF6"
-            />
-          </View>
-          <View style={styles.itemTextContainer}>
-            <Text
-              style={styles.itemFilename}
-              numberOfLines={1}
-              ellipsizeMode="middle">
-              {item.originalFilename}
-            </Text>
-            <Text style={styles.itemSubtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          </View>
-          <Text style={styles.itemDuration}>{duration}</Text>
-          <Pressable
-            style={styles.editButton}
-            onPress={() => handleOrganize(item)}
-            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
-            <Icon
-              name="edit-2"
-              type="feather"
-              size={moderateScale(14)}
-              color={theme.colors.textSecondary}
+              color={theme.colors.text}
             />
           </Pressable>
-        </Pressable>
+        </View>
       );
     },
     [
       styles,
       theme.colors.textSecondary,
+      theme.colors.text,
       handlePlayRecitation,
       handleLongPress,
       handleOrganize,
