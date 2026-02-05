@@ -2,7 +2,7 @@ import React, {useState, useCallback, useMemo, useEffect} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   FlatList,
   StyleSheet,
   ListRenderItemInfo,
@@ -290,9 +290,8 @@ export default function UploadsScreen() {
       const duration = formatDuration(item.duration);
 
       return (
-        <TouchableOpacity
+        <Pressable
           style={styles.itemContainer}
-          activeOpacity={0.7}
           onPress={() => handlePlayRecitation(item, index)}
           onLongPress={() => handleLongPress(item, index)}>
           <View style={styles.itemIconContainer}>
@@ -315,7 +314,7 @@ export default function UploadsScreen() {
             </Text>
           </View>
           <Text style={styles.itemDuration}>{duration}</Text>
-          <TouchableOpacity
+          <Pressable
             style={styles.editButton}
             onPress={() => handleOrganize(item)}
             hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
@@ -325,8 +324,8 @@ export default function UploadsScreen() {
               size={moderateScale(14)}
               color={theme.colors.textSecondary}
             />
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </Pressable>
+        </Pressable>
       );
     },
     [
@@ -412,14 +411,14 @@ export default function UploadsScreen() {
             left: moderateScale(15),
           },
         ]}>
-        <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()}>
           <Icon
             name="arrow-left"
             type="feather"
             size={moderateScale(24)}
             color="white"
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
       <View
         style={[
@@ -429,14 +428,14 @@ export default function UploadsScreen() {
             right: moderateScale(15),
           },
         ]}>
-        <TouchableOpacity activeOpacity={0.99} onPress={handleImportFile}>
+        <Pressable onPress={handleImportFile}>
           <Icon
             name="plus"
             type="feather"
             size={moderateScale(24)}
             color="white"
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

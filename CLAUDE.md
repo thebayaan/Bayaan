@@ -168,6 +168,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 
 ### UI and Styling
 
+- **Use `Pressable` instead of `TouchableOpacity`** — the opacity flash on press is unwanted. Use `Pressable` for all interactive elements.
 - Use consistent styling through `StyleSheet.create()`
 - Ensure responsive design by considering different screen sizes and orientations
 - Optimize image handling using `react-native-fast-image`

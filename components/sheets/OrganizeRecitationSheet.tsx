@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Keyboard,
   Dimensions,
@@ -297,16 +297,16 @@ export const OrganizeRecitationSheet = (
       keyboardHandlerEnabled={true}>
       {/* Header */}
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+        <Pressable onPress={handleClose} style={styles.headerButton}>
           <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.headerTitle}>Organize</Text>
-        <TouchableOpacity
+        <Pressable
           onPress={handleSave}
           style={[styles.headerButton, {opacity: hasChanges ? 1 : 0.4}]}
           disabled={!hasChanges}>
           <Text style={styles.saveText}>Save</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -340,7 +340,7 @@ export const OrganizeRecitationSheet = (
         {/* Type Chips */}
         <Text style={styles.sectionLabel}>Type</Text>
         <View style={styles.chipRow}>
-          <TouchableOpacity
+          <Pressable
             style={[styles.chip, type === 'surah' && styles.chipSelected]}
             onPress={() => handleTypeSelect('surah')}>
             <Text
@@ -350,8 +350,8 @@ export const OrganizeRecitationSheet = (
               ]}>
               Surah
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             style={[styles.chip, type === 'other' && styles.chipSelected]}
             onPress={() => handleTypeSelect('other')}>
             <Text
@@ -361,7 +361,7 @@ export const OrganizeRecitationSheet = (
               ]}>
               Other
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Surah Picker Section */}
@@ -378,7 +378,7 @@ export const OrganizeRecitationSheet = (
                     {selectedSurah.name_arabic}
                   </Text>
                 </View>
-                <TouchableOpacity
+                <Pressable
                   onPress={handleClearSurah}
                   style={styles.clearButton}>
                   <Icon
@@ -387,7 +387,7 @@ export const OrganizeRecitationSheet = (
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             ) : (
               <>
@@ -419,7 +419,7 @@ export const OrganizeRecitationSheet = (
                 {showSurahResults && surahResults.length > 0 && (
                   <View style={styles.resultsList}>
                     {surahResults.map(surah => (
-                      <TouchableOpacity
+                      <Pressable
                         key={surah.id}
                         style={styles.resultItem}
                         onPress={() => handleSelectSurah(surah)}>
@@ -433,7 +433,7 @@ export const OrganizeRecitationSheet = (
                         <Text style={styles.resultArabic}>
                           {surah.name_arabic}
                         </Text>
-                      </TouchableOpacity>
+                      </Pressable>
                     ))}
                   </View>
                 )}
@@ -509,7 +509,7 @@ export const OrganizeRecitationSheet = (
             </Text>
             <View style={styles.chipRow}>
               {CATEGORY_OPTIONS.map(opt => (
-                <TouchableOpacity
+                <Pressable
                   key={opt.id}
                   style={[
                     styles.chip,
@@ -523,7 +523,7 @@ export const OrganizeRecitationSheet = (
                     ]}>
                     {opt.label}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           </View>
@@ -548,7 +548,7 @@ export const OrganizeRecitationSheet = (
                     />
                   )}
                 </View>
-                <TouchableOpacity
+                <Pressable
                   onPress={handleClearReciter}
                   style={styles.clearButton}>
                   <Icon
@@ -557,7 +557,7 @@ export const OrganizeRecitationSheet = (
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             ) : (
               <>
@@ -590,7 +590,7 @@ export const OrganizeRecitationSheet = (
                   (hasReciterResults || showCreateOption) && (
                     <View style={styles.resultsList}>
                       {reciterResults.system.map(r => (
-                        <TouchableOpacity
+                        <Pressable
                           key={r.id}
                           style={styles.resultItem}
                           onPress={() =>
@@ -607,10 +607,10 @@ export const OrganizeRecitationSheet = (
                               .alpha(0.4)
                               .toString()}
                           />
-                        </TouchableOpacity>
+                        </Pressable>
                       ))}
                       {reciterResults.custom.map(r => (
-                        <TouchableOpacity
+                        <Pressable
                           key={r.id}
                           style={styles.resultItem}
                           onPress={() =>
@@ -622,10 +622,10 @@ export const OrganizeRecitationSheet = (
                               Custom reciter
                             </Text>
                           </View>
-                        </TouchableOpacity>
+                        </Pressable>
                       ))}
                       {showCreateOption && (
-                        <TouchableOpacity
+                        <Pressable
                           style={styles.resultItem}
                           onPress={handleCreateReciter}>
                           <Icon
@@ -643,7 +643,7 @@ export const OrganizeRecitationSheet = (
                               Create "{reciterQuery.trim()}"
                             </Text>
                           </View>
-                        </TouchableOpacity>
+                        </Pressable>
                       )}
                     </View>
                   )}
@@ -674,7 +674,7 @@ export const OrganizeRecitationSheet = (
         )}
 
         {/* Delete Button */}
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+        <Pressable style={styles.deleteButton} onPress={handleDelete}>
           <Icon
             name="trash-2"
             type="feather"
@@ -682,7 +682,7 @@ export const OrganizeRecitationSheet = (
             color="#EF4444"
           />
           <Text style={styles.deleteText}>Delete Recitation</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </ActionSheet>
   );
