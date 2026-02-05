@@ -348,7 +348,12 @@ export default function UploadsScreen() {
                   {displaySubtitle}
                 </Text>
               </View>
-              <Text style={styles.itemTertiaryText}>{duration}</Text>
+              {item.rewayah && (
+                <Text style={styles.itemTertiaryText}>
+                  {item.rewayah}
+                  {item.style ? ` · ${item.style}` : ''}
+                </Text>
+              )}
             </View>
           </Pressable>
           <Pressable

@@ -1,4 +1,4 @@
-import {Reciter} from '@/data/reciterData';
+import {Reciter, RECITERS} from '@/data/reciterData';
 import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
 import {generateSmartAudioUrl} from './audioUtils';
@@ -158,9 +158,23 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
 
   // Build artist from reciter tags, fallback to 'My Recitations'
   let artist = 'My Recitations';
+  let resolvedRewayatId: string | undefined;
   if (recitation.reciterId) {
     const name = getReciterName(recitation.reciterId);
     if (name) artist = name;
+
+    // Resolve rewayah name to rewayat UUID so the player can look it up
+    if (recitation.rewayah) {
+      const reciter = RECITERS.find(r => r.id === recitation.reciterId);
+      if (reciter) {
+        const match = reciter.rewayat.find(
+          rw =>
+            rw.name === recitation.rewayah &&
+            (!recitation.style || rw.style === recitation.style),
+        );
+        if (match) resolvedRewayatId = match.id;
+      }
+    }
   }
 
   return {
@@ -174,7 +188,7 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
       : undefined,
     reciterId: recitation.reciterId || '',
     reciterName: artist,
-    rewayatId: recitation.rewayah || undefined,
+    rewayatId: resolvedRewayatId,
     duration: recitation.duration || 0,
     isUserUpload: true,
     userRecitationId: recitation.id,
