@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {View, Text, Pressable, Alert} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useRouter} from 'expo-router';
@@ -156,9 +156,13 @@ export const ReciterUploadsSection: React.FC<ReciterUploadsSectionProps> = ({
     }
   }, [importFile, reciterId]);
 
+  const [expanded, setExpanded] = useState(false);
+  const COLLAPSED_COUNT = 3;
+
   if (uploads.length === 0) return null;
 
-  const displayItems = uploads.slice(0, 5);
+  const hasMore = uploads.length > COLLAPSED_COUNT;
+  const displayItems = expanded ? uploads : uploads.slice(0, COLLAPSED_COUNT);
 
   return (
     <View style={styles.container}>
@@ -215,6 +219,25 @@ export const ReciterUploadsSection: React.FC<ReciterUploadsSectionProps> = ({
           </Pressable>
         </View>
       ))}
+
+      {/* Show More / Show Less */}
+      {hasMore && (
+        <Pressable
+          style={styles.showMoreButton}
+          onPress={() => setExpanded(prev => !prev)}>
+          <Text style={styles.showMoreText}>
+            {expanded
+              ? 'Show Less'
+              : `Show ${uploads.length - COLLAPSED_COUNT} More`}
+          </Text>
+          <Icon
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            type="feather"
+            size={moderateScale(14)}
+            color={theme.colors.textSecondary}
+          />
+        </Pressable>
+      )}
 
       {/* Add Recitation Button */}
       <Pressable style={styles.addButton} onPress={handleAddRecitation}>
@@ -294,6 +317,18 @@ const createStyles = (theme: Theme) =>
     itemOptionsZone: {
       paddingHorizontal: moderateScale(12),
       paddingVertical: moderateScale(8),
+    },
+    showMoreButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      gap: moderateScale(4),
+    },
+    showMoreText: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
     },
     addButton: {
       flexDirection: 'row',
