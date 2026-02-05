@@ -54,6 +54,7 @@
     "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.7",
     "expo-dev-client": "~5.0.19",
+    "expo-document-picker": "~13.0.3",
     "expo-font": "~13.0.3",
     "expo-haptics": "~14.0.1",
     "expo-linear-gradient": "~14.0.2",

@@ -73,7 +73,11 @@ class UploadsService {
     // Check file size (warn but don't block)
     try {
       const fileInfo = await FileSystem.getInfoAsync(destination, {size: true});
-      if (fileInfo.exists && fileInfo.size && fileInfo.size > LARGE_FILE_WARNING_BYTES) {
+      if (
+        fileInfo.exists &&
+        fileInfo.size &&
+        fileInfo.size > LARGE_FILE_WARNING_BYTES
+      ) {
         console.warn(
           `Large file imported: ${originalFilename} (${(fileInfo.size / (1024 * 1024)).toFixed(1)}MB). ` +
             'Consider compressing audio files over 100MB.',

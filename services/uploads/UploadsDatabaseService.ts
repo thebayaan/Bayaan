@@ -286,10 +286,7 @@ class UploadsDatabaseService {
 
     const db = this.db;
     await db.withTransactionAsync(async () => {
-      await db.runAsync(
-        `DELETE FROM uploaded_recitations WHERE id = ?`,
-        [id],
-      );
+      await db.runAsync(`DELETE FROM uploaded_recitations WHERE id = ?`, [id]);
     });
   }
 
@@ -303,12 +300,7 @@ class UploadsDatabaseService {
       await db.runAsync(
         `INSERT INTO custom_reciters (id, name, image_uri, created_at)
          VALUES (?, ?, ?, ?)`,
-        [
-          reciter.id,
-          reciter.name,
-          reciter.imageUri,
-          reciter.createdAt,
-        ],
+        [reciter.id, reciter.name, reciter.imageUri, reciter.createdAt],
       );
     });
   }
@@ -341,10 +333,7 @@ class UploadsDatabaseService {
 
     const db = this.db;
     await db.withTransactionAsync(async () => {
-      await db.runAsync(
-        `DELETE FROM custom_reciters WHERE id = ?`,
-        [id],
-      );
+      await db.runAsync(`DELETE FROM custom_reciters WHERE id = ?`, [id]);
     });
   }
 

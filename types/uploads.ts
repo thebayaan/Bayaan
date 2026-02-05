@@ -56,7 +56,9 @@ export interface CustomReciterRow {
 
 // Mapping helpers
 
-export function mapRecitationRow(row: UploadedRecitationRow): UploadedRecitation {
+export function mapRecitationRow(
+  row: UploadedRecitationRow,
+): UploadedRecitation {
   return {
     id: row.id,
     filePath: row.file_path,

@@ -5992,6 +5992,11 @@ expo-dev-menu@6.0.25:
   dependencies:
     expo-dev-menu-interface "1.9.3"
 
+expo-document-picker@~13.0.3:
+  version "13.0.3"
+  resolved "https://registry.yarnpkg.com/expo-document-picker/-/expo-document-picker-13.0.3.tgz#9ec9b056447d11a68d61e93d33c2211fd01b460f"
+  integrity sha512-348xcsiA/YhgWm1SuJNNdb5cUDpRJYCyIk8MhOU2MEDxbVRR+Q1TiUBTCIMVqaWHcxsFQzP56Wwv9n24qjeILg==
+
 expo-eas-client@~0.13.3:
   version "0.13.3"
   resolved "https://registry.npmjs.org/expo-eas-client/-/expo-eas-client-0.13.3.tgz"
