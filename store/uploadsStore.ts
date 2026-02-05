@@ -207,3 +207,9 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
     return get().recitations.filter(r => r.type === 'other');
   },
 }));
+
+/** Lookup a custom reciter name by ID from the store's cached state */
+export function getCustomReciterName(id: string): string | null {
+  const cr = useUploadsStore.getState().customReciters.find(r => r.id === id);
+  return cr?.name ?? null;
+}

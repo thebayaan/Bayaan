@@ -303,7 +303,7 @@ export const OrganizeRecitationSheet = (
   const hasReciterResults =
     reciterResults.system.length > 0 || reciterResults.custom.length > 0;
 
-  const showCreateOption = reciterQuery.trim().length > 0 && !hasReciterResults;
+  const showCreateOption = reciterQuery.trim().length > 0;
 
   const handleSelectSystemReciter = useCallback((id: string, name: string) => {
     setReciterId(id);
@@ -346,8 +346,6 @@ export const OrganizeRecitationSheet = (
     },
     [],
   );
-
-  const isSystemReciter = reciterId !== null;
 
   if (!recitation) return null;
 
@@ -602,14 +600,6 @@ export const OrganizeRecitationSheet = (
                   <Text style={styles.selectedItemText}>
                     {reciterDisplayName}
                   </Text>
-                  {isSystemReciter && (
-                    <Icon
-                      name="check-circle"
-                      type="feather"
-                      size={moderateScale(14)}
-                      color={theme.colors.textSecondary}
-                    />
-                  )}
                 </View>
                 <Pressable
                   onPress={handleClearReciter}
@@ -652,41 +642,6 @@ export const OrganizeRecitationSheet = (
                 {showReciterResults &&
                   (hasReciterResults || showCreateOption) && (
                     <View style={styles.resultsList}>
-                      {reciterResults.system.map(r => (
-                        <Pressable
-                          key={r.id}
-                          style={styles.resultItem}
-                          onPress={() =>
-                            handleSelectSystemReciter(r.id, r.name)
-                          }>
-                          <View style={styles.resultTextContainer}>
-                            <Text style={styles.resultName}>{r.name}</Text>
-                          </View>
-                          <Icon
-                            name="check-circle"
-                            type="feather"
-                            size={moderateScale(12)}
-                            color={Color(theme.colors.textSecondary)
-                              .alpha(0.4)
-                              .toString()}
-                          />
-                        </Pressable>
-                      ))}
-                      {reciterResults.custom.map(r => (
-                        <Pressable
-                          key={r.id}
-                          style={styles.resultItem}
-                          onPress={() =>
-                            handleSelectCustomReciter(r.id, r.name)
-                          }>
-                          <View style={styles.resultTextContainer}>
-                            <Text style={styles.resultName}>{r.name}</Text>
-                            <Text style={styles.resultTranslation}>
-                              Custom reciter
-                            </Text>
-                          </View>
-                        </Pressable>
-                      ))}
                       {showCreateOption && (
                         <Pressable
                           style={styles.resultItem}
@@ -708,6 +663,33 @@ export const OrganizeRecitationSheet = (
                           </View>
                         </Pressable>
                       )}
+                      {reciterResults.system.map(r => (
+                        <Pressable
+                          key={r.id}
+                          style={styles.resultItem}
+                          onPress={() =>
+                            handleSelectSystemReciter(r.id, r.name)
+                          }>
+                          <View style={styles.resultTextContainer}>
+                            <Text style={styles.resultName}>{r.name}</Text>
+                          </View>
+                        </Pressable>
+                      ))}
+                      {reciterResults.custom.map(r => (
+                        <Pressable
+                          key={r.id}
+                          style={styles.resultItem}
+                          onPress={() =>
+                            handleSelectCustomReciter(r.id, r.name)
+                          }>
+                          <View style={styles.resultTextContainer}>
+                            <Text style={styles.resultName}>{r.name}</Text>
+                            <Text style={styles.resultTranslation}>
+                              Custom reciter
+                            </Text>
+                          </View>
+                        </Pressable>
+                      ))}
                     </View>
                   )}
               </>
@@ -810,6 +792,7 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
+      paddingBottom: 0,
       height: SCREEN_HEIGHT * 0.9,
     },
     indicator: {

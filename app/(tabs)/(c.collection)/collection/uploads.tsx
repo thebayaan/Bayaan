@@ -18,7 +18,7 @@ import {MicrophoneIcon} from '@/components/Icons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {FilterBar} from '@/components/collection/FilterBar';
 import {SheetManager} from 'react-native-actions-sheet';
-import {useUploadsStore} from '@/store/uploadsStore';
+import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById, getReciterName} from '@/services/dataService';
@@ -54,6 +54,9 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
 
   if (item.reciterId) {
     const name = getReciterName(item.reciterId);
+    if (name) parts.push(name);
+  } else if (item.customReciterId) {
+    const name = getCustomReciterName(item.customReciterId);
     if (name) parts.push(name);
   }
 
