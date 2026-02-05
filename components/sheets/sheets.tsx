@@ -2,6 +2,7 @@ import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
 import type {Dhikr} from '@/types/adhkar';
+import type {UploadedRecitation} from '@/types/uploads';
 
 // Import sheet components
 import {SurahOptionsSheet} from './SurahOptionsSheet';
@@ -18,6 +19,7 @@ import {MushafLayoutSheet} from './MushafLayoutSheet';
 import {ExtendedSummarySheet} from './ExtendedSummarySheet';
 import {AdhkarLayoutSheet} from './AdhkarLayoutSheet';
 import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
+import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -34,6 +36,7 @@ registerSheet('mushaf-layout', MushafLayoutSheet);
 registerSheet('extended-summary', ExtendedSummarySheet);
 registerSheet('adhkar-layout', AdhkarLayoutSheet);
 registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
+registerSheet('organize-recitation', OrganizeRecitationSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -126,6 +129,12 @@ declare module 'react-native-actions-sheet' {
     'adhkar-copy-options': SheetDefinition<{
       payload: {
         dhikr: Dhikr;
+      };
+    }>;
+    'organize-recitation': SheetDefinition<{
+      payload: {
+        recitation: UploadedRecitation;
+        prefillReciterId?: string;
       };
     }>;
   }
