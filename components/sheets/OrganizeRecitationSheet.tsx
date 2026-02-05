@@ -83,7 +83,7 @@ export const OrganizeRecitationSheet = (
     recitation?.category ?? null,
   );
   const [reciterId, setReciterId] = useState<string | null>(
-    recitation?.reciterId ?? null,
+    recitation?.reciterId ?? payload?.prefillReciterId ?? null,
   );
   const [customReciterId, setCustomReciterId] = useState<string | null>(
     recitation?.customReciterId ?? null,
@@ -95,6 +95,9 @@ export const OrganizeRecitationSheet = (
     if (recitation?.customReciterId) {
       const cr = customReciters.find(r => r.id === recitation.customReciterId);
       return cr?.name ?? '';
+    }
+    if (payload?.prefillReciterId) {
+      return getReciterName(payload.prefillReciterId) ?? '';
     }
     return '';
   });
@@ -139,6 +142,9 @@ export const OrganizeRecitationSheet = (
     } else if (recitation.customReciterId) {
       const cr = customReciters.find(r => r.id === recitation.customReciterId);
       setReciterDisplayName(cr?.name ?? '');
+    } else if (payload?.prefillReciterId) {
+      setReciterId(payload.prefillReciterId);
+      setReciterDisplayName(getReciterName(payload.prefillReciterId) ?? '');
     } else {
       setReciterDisplayName('');
     }
@@ -147,6 +153,7 @@ export const OrganizeRecitationSheet = (
     recitation?.type,
     recitation?.rewayah,
     recitation?.style,
+    payload?.prefillReciterId,
   ]);
 
   const hasChanges = useMemo(() => {
