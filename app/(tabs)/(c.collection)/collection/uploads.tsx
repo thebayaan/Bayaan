@@ -1,0 +1,341 @@
+import React, {useState, useCallback, useMemo, useEffect} from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  ListRenderItemInfo,
+} from 'react-native';
+import {useTheme} from '@/hooks/useTheme';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useRouter} from 'expo-router';
+import {moderateScale} from 'react-native-size-matters';
+import {LinearGradient} from 'expo-linear-gradient';
+import {Icon} from '@rneui/themed';
+import * as DocumentPicker from 'expo-document-picker';
+import {MicrophoneIcon} from '@/components/Icons';
+import {CollectionCard} from '@/components/CollectionCard';
+import {FilterBar} from '@/components/collection/FilterBar';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {getSurahById} from '@/services/dataService';
+import type {UploadedRecitation} from '@/types/uploads';
+
+const UPLOAD_FILTERS = [
+  {id: 'all', label: 'All'},
+  {id: 'untagged', label: 'Untagged'},
+  {id: 'reciters', label: 'Reciters'},
+  {id: 'other', label: 'Other'},
+];
+
+function formatDuration(seconds: number | null): string {
+  if (seconds === null || seconds === undefined) return 'Unknown';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function getSubtitleText(item: UploadedRecitation): string {
+  if (item.type === null) return 'Untagged';
+  if (item.type === 'surah' && item.surahNumber) {
+    const surah = getSurahById(item.surahNumber);
+    return surah ? surah.name : `Surah ${item.surahNumber}`;
+  }
+  if (item.type === 'other') {
+    return item.title || item.category || 'Other';
+  }
+  return 'Untagged';
+}
+
+export default function UploadsScreen() {
+  const {theme} = useTheme();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const {recitations, totalCount, importFile, importFiles, loadRecitations} =
+    useUploadsStore();
+
+  const [activeFilter, setActiveFilter] = useState<string>('');
+
+  useEffect(() => {
+    loadRecitations();
+  }, [loadRecitations]);
+
+  const filteredRecitations = useMemo(() => {
+    const filterId = activeFilter || 'all';
+
+    switch (filterId) {
+      case 'untagged':
+        return recitations.filter(r => r.type === null);
+      case 'reciters':
+        return recitations.filter(
+          r => r.reciterId !== null || r.customReciterId !== null,
+        );
+      case 'other':
+        return recitations.filter(r => r.type === 'other');
+      case 'all':
+      default:
+        return recitations;
+    }
+  }, [recitations, activeFilter]);
+
+  const handleImportFile = useCallback(async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'audio/mpeg',
+          'audio/mp4',
+          'audio/x-m4a',
+          'audio/wav',
+          'audio/aac',
+        ],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const files = result.assets.map(asset => ({
+        uri: asset.uri,
+        name: asset.name || 'Unknown',
+      }));
+
+      if (files.length === 1) {
+        await importFile(files[0].uri, files[0].name);
+      } else if (files.length > 1) {
+        await importFiles(files);
+      }
+    } catch (error) {
+      console.error('Error importing files:', error);
+    }
+  }, [importFile, importFiles]);
+
+  const handleFilterChange = useCallback((filterId: string) => {
+    setActiveFilter(filterId);
+  }, []);
+
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    headerContainer: {
+      width: '100%',
+      overflow: 'hidden',
+    },
+    gradientContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingBottom: moderateScale(20),
+      overflow: 'hidden',
+      backgroundColor: '#8B5CF6',
+    },
+    contentContainer: {
+      paddingHorizontal: moderateScale(16),
+      paddingBottom: moderateScale(10),
+    },
+    listContentContainer: {
+      flexGrow: 1,
+      paddingBottom: moderateScale(65),
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: moderateScale(60),
+      paddingHorizontal: moderateScale(32),
+    },
+    emptyText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: moderateScale(24),
+    },
+    backButton: {
+      position: 'absolute',
+      zIndex: 10,
+    },
+    addButton: {
+      position: 'absolute',
+      zIndex: 10,
+    },
+    itemContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(12),
+      marginHorizontal: moderateScale(12),
+      marginVertical: moderateScale(3),
+      backgroundColor: theme.colors.card,
+      borderRadius: moderateScale(12),
+    },
+    itemIconContainer: {
+      width: moderateScale(40),
+      height: moderateScale(40),
+      borderRadius: moderateScale(20),
+      backgroundColor: 'rgba(139, 92, 246, 0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: moderateScale(12),
+    },
+    itemTextContainer: {
+      flex: 1,
+    },
+    itemFilename: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.text,
+    },
+    itemSubtitle: {
+      fontSize: moderateScale(12),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      marginTop: moderateScale(2),
+    },
+    itemDuration: {
+      fontSize: moderateScale(12),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.textSecondary,
+      marginLeft: moderateScale(8),
+    },
+    filterContainer: {
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(8),
+    },
+  });
+
+  const renderItem = useCallback(
+    ({item}: ListRenderItemInfo<UploadedRecitation>) => {
+      const subtitle = getSubtitleText(item);
+      const duration = formatDuration(item.duration);
+
+      return (
+        <TouchableOpacity style={styles.itemContainer} activeOpacity={0.7}>
+          <View style={styles.itemIconContainer}>
+            <Icon
+              name="music"
+              type="feather"
+              size={moderateScale(18)}
+              color="#8B5CF6"
+            />
+          </View>
+          <View style={styles.itemTextContainer}>
+            <Text
+              style={styles.itemFilename}
+              numberOfLines={1}
+              ellipsizeMode="middle">
+              {item.originalFilename}
+            </Text>
+            <Text style={styles.itemSubtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
+          <Text style={styles.itemDuration}>{duration}</Text>
+        </TouchableOpacity>
+      );
+    },
+    [styles],
+  );
+
+  const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
+
+  const ListHeaderComponent = useCallback(() => {
+    return (
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#8B5CF6', theme.colors.background] as [string, string]}
+          style={[
+            styles.gradientContainer,
+            {paddingTop: insets.top + moderateScale(20)},
+          ]}>
+          <CollectionCard
+            icon={
+              <MicrophoneIcon
+                color={theme.colors.text}
+                size={moderateScale(80)}
+              />
+            }
+            title="Uploads"
+            subtitle={`${totalCount} recitation${totalCount !== 1 ? 's' : ''}`}
+          />
+        </LinearGradient>
+        <View style={[styles.contentContainer, styles.filterContainer]}>
+          <FilterBar
+            filters={UPLOAD_FILTERS}
+            activeFilter={activeFilter}
+            onFilterChange={handleFilterChange}
+            theme={theme}
+          />
+        </View>
+      </View>
+    );
+  }, [
+    styles.headerContainer,
+    styles.gradientContainer,
+    styles.contentContainer,
+    styles.filterContainer,
+    theme,
+    insets.top,
+    totalCount,
+    activeFilter,
+    handleFilterChange,
+  ]);
+
+  const ListEmptyComponent = useCallback(() => {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>
+          No uploads yet. Tap + to add recitations.
+        </Text>
+      </View>
+    );
+  }, [styles.emptyContainer, styles.emptyText]);
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={filteredRecitations}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        contentContainerStyle={styles.listContentContainer}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      />
+      <View
+        style={[
+          styles.backButton,
+          {
+            top: insets.top + moderateScale(10),
+            left: moderateScale(15),
+          },
+        ]}>
+        <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
+          <Icon
+            name="arrow-left"
+            type="feather"
+            size={moderateScale(24)}
+            color="white"
+          />
+        </TouchableOpacity>
+      </View>
+      <View
+        style={[
+          styles.addButton,
+          {
+            top: insets.top + moderateScale(10),
+            right: moderateScale(15),
+          },
+        ]}>
+        <TouchableOpacity activeOpacity={0.99} onPress={handleImportFile}>
+          <Icon
+            name="plus"
+            type="feather"
+            size={moderateScale(24)}
+            color="white"
+          />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}

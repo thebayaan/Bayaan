@@ -25,6 +25,7 @@ import {
   DownloadItemData,
   TrackItemData,
   ReciterDownloadsItemData,
+  UploadItemData,
 } from '@/components/collection/CollectionGrid';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -33,18 +34,20 @@ import {ReciterDownloadsListItem} from '@/components/ReciterDownloadsListItem';
 import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {SheetManager} from 'react-native-actions-sheet';
-import {HeartIcon, DownloadIcon} from '@/components/Icons';
+import {HeartIcon, DownloadIcon, MicrophoneIcon} from '@/components/Icons';
 import Color from 'color';
 import {TouchableOpacity} from 'react-native';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {createDownloadedTrack} from '@/utils/track';
+import {useUploadsStore} from '@/store/uploadsStore';
 
 // Filter options
 const FILTERS = [
   {id: 'playlists', label: 'Playlists'},
   {id: 'reciters', label: 'Reciters'},
   {id: 'downloads', label: 'Downloads'},
+  {id: 'uploads', label: 'Uploads'},
   {id: 'loved', label: 'Loved'},
 ];
 
@@ -73,6 +76,8 @@ export default function CollectionScreen() {
   const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
     usePlaylists();
   const {updateQueue, play} = useUnifiedPlayer();
+  const {recitations: uploadedRecitations, totalCount: uploadsTotalCount} =
+    useUploadsStore();
 
   // Get existing playlist colors to avoid duplicates
   const existingPlaylistColors = useMemo(
@@ -308,6 +313,24 @@ export default function CollectionScreen() {
       );
     }
 
+    // Add Uploads Collection Card
+    if (activeFilter === '' || activeFilter === 'uploads') {
+      const mostRecentUploadTimestamp =
+        uploadedRecitations.length > 0
+          ? Math.max(...uploadedRecitations.map(r => r.dateAdded || 0))
+          : 0;
+
+      items.push({
+        id: 'uploads-collection',
+        type: 'upload',
+        timestamp: mostRecentUploadTimestamp,
+        data: {
+          itemCount: uploadsTotalCount,
+          onPress: () => router.push('/collection/uploads'),
+        },
+      });
+    }
+
     // Sort by most recent first (descending order: highest timestamp at top)
     // b.timestamp - a.timestamp means newer items (higher timestamp) come first
     return items.sort((a, b) => b.timestamp - a.timestamp);
@@ -316,6 +339,8 @@ export default function CollectionScreen() {
     lovedTracks,
     favoriteReciters,
     downloads,
+    uploadedRecitations,
+    uploadsTotalCount,
     activeFilter,
     router,
     handlePlaylistLongPress,
@@ -459,6 +484,43 @@ export default function CollectionScreen() {
             downloadCount={reciterDownloadsData.downloadCount}
             onPress={reciterDownloadsData.onPress}
           />
+        );
+      }
+      case 'upload': {
+        const uploadData = item.data as UploadItemData;
+        const uploadColor = '#8B5CF6';
+        return (
+          <View key={item.id} style={styles.listItemWrapper}>
+            <TouchableOpacity
+              activeOpacity={0.99}
+              onPress={uploadData.onPress}
+              style={styles.listItem}>
+              <View
+                style={[
+                  styles.listItemIcon,
+                  {
+                    backgroundColor: Color(uploadColor).alpha(0.15).toString(),
+                    borderColor: Color(uploadColor).alpha(0.3).toString(),
+                  },
+                ]}>
+                <MicrophoneIcon color={uploadColor} size={moderateScale(24)} />
+              </View>
+              <View style={styles.listItemInfo}>
+                <Text style={[styles.listItemName, {color: theme.colors.text}]}>
+                  Uploads
+                </Text>
+                <Text
+                  style={[
+                    styles.listItemSubtitle,
+                    {color: theme.colors.textSecondary},
+                  ]}
+                  numberOfLines={1}>
+                  Uploaded • {uploadData.itemCount}{' '}
+                  {uploadData.itemCount === 1 ? 'recitation' : 'recitations'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         );
       }
       default:
