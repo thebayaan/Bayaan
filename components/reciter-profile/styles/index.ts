@@ -17,20 +17,15 @@ export const createSharedStyles = (theme: Theme) =>
       paddingTop: moderateScale(10),
       paddingBottom: moderateScale(10),
     },
-    optionsAndToggleRow: {
+    controlsRow: {
       height: moderateScale(40),
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       marginHorizontal: moderateScale(16),
       borderRadius: moderateScale(8),
       marginBottom: moderateScale(2),
       backgroundColor: theme.colors.background,
-      marginTop: moderateScale(10),
-    },
-    sortOptionsContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
     },
     rightControlsContainer: {
       flexDirection: 'row',
@@ -44,32 +39,10 @@ export const createSharedStyles = (theme: Theme) =>
       borderRadius: moderateScale(16),
       marginRight: moderateScale(8),
     },
-    activeOptionButton: {
-      backgroundColor: Color(theme.colors.primary).alpha(0.1).toString(),
-    },
-    optionButtonText: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-SemiBold',
-      marginLeft: moderateScale(4),
-      color: theme.colors.textSecondary,
-    },
-    activeOptionText: {
-      color: theme.colors.primary,
-    },
     viewModeButton: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(6),
-    },
-    toggleContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    toggleLabel: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginRight: moderateScale(8),
     },
     text: {
       color: theme.colors.text,
@@ -86,21 +59,5 @@ export const createSharedStyles = (theme: Theme) =>
     textSecondary: {
       color: theme.colors.textSecondary,
       fontFamily: 'Manrope-Regular',
-    },
-    showAllSurahsButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: moderateScale(14),
-      marginHorizontal: moderateScale(16),
-      marginTop: moderateScale(8),
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      gap: moderateScale(6),
-    },
-    showAllSurahsText: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
     },
   });

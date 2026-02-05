@@ -6,7 +6,6 @@ import {
   Animated as RNAnimated,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -51,8 +50,6 @@ import {StickyHeader} from './components/StickyHeader';
 import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
-import {ReciterUploadsSection} from './components/ReciterUploadsSection';
-import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
 
 interface ReciterProfileProps {
@@ -62,7 +59,6 @@ interface ReciterProfileProps {
 
 // Define types matching useSettings
 type ReciterProfileViewMode = 'card' | 'list';
-type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
 
 // Create a proper memoized wrapper for SurahList
 const MemoizedSurahList = React.memo(SurahList);
@@ -91,11 +87,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
     useSettings(state => state.reciterProfileViewMode),
   );
-  const [sortOption, setSortOption] = useState<ReciterProfileSortOption>(
-    useSettings(state => state.reciterProfileSortOption),
-  );
   const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
-  const [showAllSurahs, setShowAllSurahs] = useState(false);
   const flatListRef = useRef<RNAnimated.FlatList>(null);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
@@ -105,9 +97,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   // Retrieve persisted reciter profile settings
   const setReciterViewModeSetting = useSettings(
     state => state.setReciterProfileViewMode,
-  );
-  const setReciterSortOptionSetting = useSettings(
-    state => state.setReciterProfileSortOption,
   );
 
   const headerOpacity = scrollY.interpolate({
@@ -159,17 +148,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         )
       : surahsToProcess;
 
-    // Sort based on sortOption
-    return [...filtered].sort((a, b) => {
-      if (sortOption === 'asc') {
-        return a.id - b.id;
-      } else if (sortOption === 'desc') {
-        return b.id - a.id;
-      } else if (sortOption === 'revelation') {
-        return a.revelation_order - b.revelation_order;
-      }
-      return 0;
-    });
+    // Sort ascending by default
+    return [...filtered].sort((a, b) => a.id - b.id);
   }, [
     availableSurahs,
     showLovedOnly,
@@ -177,7 +157,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     currentReciterId,
     selectedRewayat,
     searchQuery,
-    sortOption,
   ]);
 
   useEffect(() => {
@@ -832,15 +811,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     });
   }, [viewMode, setReciterViewModeSetting, scrollPosition]);
 
-  // Callback to change sort option
-  const changeSortOption = useCallback(
-    (option: ReciterProfileSortOption) => {
-      setSortOption(option);
-      setReciterSortOptionSetting(option);
-    },
-    [setReciterSortOptionSetting],
-  );
-
   // Function to generate a consistent color for each surah (similar to browse-all)
   const getColorForSurah = useCallback((id: number): string => {
     const colors = [
@@ -875,28 +845,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     });
   }, [heartScale]);
 
-  const reciterUploads = useUploadsStore(state =>
-    state.recitations.filter(r => r.reciterId === currentReciterId),
-  );
-  const hasUploads = reciterUploads.length > 0;
-  const COLLAPSED_SURAH_COUNT = 10;
-
-  const displayedSurahs = useMemo(() => {
-    if (hasUploads && !showAllSurahs) {
-      return filteredSurahs.slice(0, COLLAPSED_SURAH_COUNT);
-    }
-    return filteredSurahs;
-  }, [filteredSurahs, hasUploads, showAllSurahs]);
-
-  const hiddenSurahCount =
-    hasUploads && !showAllSurahs
-      ? Math.max(0, filteredSurahs.length - COLLAPSED_SURAH_COUNT)
-      : 0;
-
   // Create a stable reference to data and callbacks used by SurahList to prevent re-renders
   const surahListProps = useMemo(
     () => ({
-      surahs: displayedSurahs,
+      surahs: filteredSurahs,
       onSurahPress: handleSurahPress,
       reciterId: currentReciterId,
       isLoved: isLovedWithCurrentRewayat,
@@ -912,7 +864,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         }),
       onScroll: handleScroll,
       viewMode,
-      sortOption,
+      sortOption: 'asc' as const,
       getColorForSurah,
       rewayatId: selectedRewayat?.id,
       maintainVisibleContentPosition: {
@@ -921,7 +873,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       },
     }),
     [
-      displayedSurahs,
+      filteredSurahs,
       handleSurahPress,
       currentReciterId,
       isLovedWithCurrentRewayat,
@@ -930,7 +882,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       selectedRewayat?.id,
       handleScroll,
       viewMode,
-      sortOption,
       getColorForSurah,
     ],
   );
@@ -1007,94 +958,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                     onPlayPress={handlePlayAll}
                     isFavoriteReciter={isFavoriteReciter(reciter.id)}
                   />
-                  <View style={styles.optionsAndToggleRow}>
-                    {/* Sort options (Left side) */}
-                    <View style={styles.sortOptionsContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'asc' && styles.activeOptionButton,
-                        ]}
-                        activeOpacity={1}
-                        onPress={() => changeSortOption('asc')}>
-                        <Icon
-                          name="arrow-up"
-                          type="feather"
-                          size={moderateScale(14)}
-                          color={
-                            sortOption === 'asc'
-                              ? theme.colors.primary
-                              : theme.colors.textSecondary
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.optionButtonText,
-                            sortOption === 'asc' && styles.activeOptionText,
-                          ]}>
-                          Asc
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'desc' && styles.activeOptionButton,
-                        ]}
-                        activeOpacity={1}
-                        onPress={() => changeSortOption('desc')}>
-                        <Icon
-                          name="arrow-down"
-                          type="feather"
-                          size={moderateScale(14)}
-                          color={
-                            sortOption === 'desc'
-                              ? theme.colors.primary
-                              : theme.colors.textSecondary
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.optionButtonText,
-                            sortOption === 'desc' && styles.activeOptionText,
-                          ]}>
-                          Desc
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'revelation' &&
-                            styles.activeOptionButton,
-                        ]}
-                        activeOpacity={1}
-                        onPress={() => changeSortOption('revelation')}>
-                        <Icon
-                          name="calendar"
-                          type="feather"
-                          size={moderateScale(14)}
-                          color={
-                            sortOption === 'revelation'
-                              ? theme.colors.primary
-                              : theme.colors.textSecondary
-                          }
-                        />
-                        <Text
-                          style={[
-                            styles.optionButtonText,
-                            sortOption === 'revelation' &&
-                              styles.activeOptionText,
-                          ]}>
-                          Rev
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Right side controls (Heart + View Toggle) */}
+                  <View style={styles.controlsRow}>
                     <View style={styles.rightControlsContainer}>
                       {/* Heart (Loved) Filter Button */}
-                      <TouchableOpacity
+                      <Pressable
                         style={[
                           styles.optionButton,
                           {
@@ -1102,7 +969,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                             marginTop: moderateScale(4),
                           },
                         ]}
-                        activeOpacity={1}
                         onPress={toggleShowLovedOnly}>
                         <Animated.View style={heartAnimatedStyle}>
                           <HeartIcon
@@ -1115,62 +981,23 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                             filled={true}
                           />
                         </Animated.View>
-                      </TouchableOpacity>
+                      </Pressable>
 
                       {/* View mode toggle */}
-                      <TouchableOpacity
+                      <Pressable
                         style={styles.viewModeButton}
-                        onPress={toggleViewMode}
-                        activeOpacity={1}>
+                        onPress={toggleViewMode}>
                         <Icon
                           name={viewMode === 'card' ? 'list' : 'grid'}
                           type="feather"
                           size={moderateScale(16)}
                           color={theme.colors.text}
                         />
-                      </TouchableOpacity>
+                      </Pressable>
                     </View>
                   </View>
                 </View>
               </>
-            }
-            ListFooterComponent={
-              hasUploads ? (
-                <View>
-                  {hiddenSurahCount > 0 && (
-                    <Pressable
-                      style={styles.showAllSurahsButton}
-                      onPress={() => setShowAllSurahs(true)}>
-                      <Text style={styles.showAllSurahsText}>
-                        Show All {filteredSurahs.length} Surahs
-                      </Text>
-                      <Icon
-                        name="chevron-down"
-                        type="feather"
-                        size={moderateScale(14)}
-                        color={theme.colors.textSecondary}
-                      />
-                    </Pressable>
-                  )}
-                  {showAllSurahs && (
-                    <Pressable
-                      style={styles.showAllSurahsButton}
-                      onPress={() => setShowAllSurahs(false)}>
-                      <Text style={styles.showAllSurahsText}>Show Less</Text>
-                      <Icon
-                        name="chevron-up"
-                        type="feather"
-                        size={moderateScale(14)}
-                        color={theme.colors.textSecondary}
-                      />
-                    </Pressable>
-                  )}
-                  <ReciterUploadsSection
-                    reciterId={currentReciterId}
-                    reciterName={reciter.name}
-                  />
-                </View>
-              ) : null
             }
           />
           <StickyHeader
