@@ -18,13 +18,28 @@ import ActionSheet, {
 import Color from 'color';
 import {Icon} from '@rneui/themed';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {searchSurahs, getSurahById} from '@/services/dataService';
+import {
+  searchSurahs,
+  getSurahById,
+  getReciterName,
+} from '@/services/dataService';
+import {RECITERS} from '@/data/reciterData';
 import type {Surah} from '@/data/surahData';
 import type {UploadedRecitation} from '@/types/uploads';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 type RecitationType = 'surah' | 'other';
+
+const CATEGORY_OPTIONS: {
+  id: UploadedRecitation['category'];
+  label: string;
+}[] = [
+  {id: 'dua', label: "Du'a"},
+  {id: 'lecture', label: 'Lecture'},
+  {id: 'tafsir', label: 'Tafsir'},
+  {id: 'other', label: 'Other'},
+];
 
 function formatDuration(seconds: number | null): string {
   if (seconds === null || seconds === undefined) return 'Unknown duration';
@@ -38,7 +53,8 @@ export const OrganizeRecitationSheet = (
 ) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const {updateTags, deleteRecitation} = useUploadsStore();
+  const {updateTags, deleteRecitation, customReciters, createCustomReciter} =
+    useUploadsStore();
 
   const payload = props.payload;
   const recitation = payload?.recitation;
@@ -66,7 +82,16 @@ export const OrganizeRecitationSheet = (
   const [customReciterId, setCustomReciterId] = useState<string | null>(
     recitation?.customReciterId ?? null,
   );
-  const [reciterDisplayName, setReciterDisplayName] = useState<string>('');
+  const [reciterDisplayName, setReciterDisplayName] = useState<string>(() => {
+    if (recitation?.reciterId) {
+      return getReciterName(recitation.reciterId) ?? '';
+    }
+    if (recitation?.customReciterId) {
+      const cr = customReciters.find(r => r.id === recitation.customReciterId);
+      return cr?.name ?? '';
+    }
+    return '';
+  });
   const [rewayah, setRewayah] = useState<string>(recitation?.rewayah ?? '');
 
   const hasChanges = useMemo(() => {
@@ -198,6 +223,68 @@ export const OrganizeRecitationSheet = (
     },
     [selectedSurah],
   );
+
+  // Reciter search (shared by both types)
+  const [reciterQuery, setReciterQuery] = useState('');
+  const [showReciterResults, setShowReciterResults] = useState(false);
+
+  const reciterResults = useMemo(() => {
+    if (!reciterQuery.trim()) return {system: [], custom: []};
+    const q = reciterQuery.toLowerCase();
+    const system = RECITERS.filter(r => r.name.toLowerCase().includes(q)).slice(
+      0,
+      5,
+    );
+    const custom = customReciters
+      .filter(r => r.name.toLowerCase().includes(q))
+      .slice(0, 3);
+    return {system, custom};
+  }, [reciterQuery, customReciters]);
+
+  const hasReciterResults =
+    reciterResults.system.length > 0 || reciterResults.custom.length > 0;
+
+  const showCreateOption = reciterQuery.trim().length > 0 && !hasReciterResults;
+
+  const handleSelectSystemReciter = useCallback((id: string, name: string) => {
+    setReciterId(id);
+    setCustomReciterId(null);
+    setReciterDisplayName(name);
+    setReciterQuery('');
+    setShowReciterResults(false);
+  }, []);
+
+  const handleSelectCustomReciter = useCallback((id: string, name: string) => {
+    setCustomReciterId(id);
+    setReciterId(null);
+    setReciterDisplayName(name);
+    setReciterQuery('');
+    setShowReciterResults(false);
+    setRewayah('');
+  }, []);
+
+  const handleCreateReciter = useCallback(async () => {
+    const name = reciterQuery.trim();
+    if (!name) return;
+    const newReciter = await createCustomReciter(name);
+    handleSelectCustomReciter(newReciter.id, newReciter.name);
+  }, [reciterQuery, createCustomReciter, handleSelectCustomReciter]);
+
+  const handleClearReciter = useCallback(() => {
+    setReciterId(null);
+    setCustomReciterId(null);
+    setReciterDisplayName('');
+    setRewayah('');
+  }, []);
+
+  const handleCategorySelect = useCallback(
+    (cat: UploadedRecitation['category']) => {
+      setCategory(prev => (prev === cat ? null : cat));
+    },
+    [],
+  );
+
+  const isSystemReciter = reciterId !== null;
 
   if (!recitation) return null;
 
@@ -392,6 +479,194 @@ export const OrganizeRecitationSheet = (
                   <Text style={styles.verseCountHint}>
                     of {selectedSurah.verses_count} verses
                   </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Other Type Section */}
+        {type === 'other' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Title</Text>
+            <View style={styles.searchInputContainer}>
+              <TextInput
+                style={[styles.searchInput, {paddingLeft: 0}]}
+                placeholder="e.g., Morning Adhkar"
+                placeholderTextColor={Color(theme.colors.textSecondary)
+                  .alpha(0.5)
+                  .toString()}
+                value={title}
+                onChangeText={setTitle}
+                keyboardAppearance="dark"
+                autoCapitalize="sentences"
+                maxLength={100}
+              />
+            </View>
+
+            <Text style={[styles.sectionLabel, {marginTop: moderateScale(16)}]}>
+              Category
+            </Text>
+            <View style={styles.chipRow}>
+              {CATEGORY_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[
+                    styles.chip,
+                    category === opt.id && styles.chipSelected,
+                  ]}
+                  onPress={() => handleCategorySelect(opt.id)}>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      category === opt.id && styles.chipTextSelected,
+                    ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Reciter Search (shared by both types) */}
+        {type !== null && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Reciter</Text>
+            {reciterDisplayName ? (
+              <View style={styles.selectedItemRow}>
+                <View style={styles.selectedItemChip}>
+                  <Text style={styles.selectedItemText}>
+                    {reciterDisplayName}
+                  </Text>
+                  {isSystemReciter && (
+                    <Icon
+                      name="check-circle"
+                      type="feather"
+                      size={moderateScale(14)}
+                      color={theme.colors.textSecondary}
+                    />
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={handleClearReciter}
+                  style={styles.clearButton}>
+                  <Icon
+                    name="x"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.searchInputContainer}>
+                  <Icon
+                    name="search"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={theme.colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search reciters..."
+                    placeholderTextColor={Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString()}
+                    value={reciterQuery}
+                    onChangeText={text => {
+                      setReciterQuery(text);
+                      setShowReciterResults(true);
+                    }}
+                    onFocus={() => setShowReciterResults(true)}
+                    keyboardAppearance="dark"
+                    returnKeyType="search"
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
+                </View>
+                {showReciterResults &&
+                  (hasReciterResults || showCreateOption) && (
+                    <View style={styles.resultsList}>
+                      {reciterResults.system.map(r => (
+                        <TouchableOpacity
+                          key={r.id}
+                          style={styles.resultItem}
+                          onPress={() =>
+                            handleSelectSystemReciter(r.id, r.name)
+                          }>
+                          <View style={styles.resultTextContainer}>
+                            <Text style={styles.resultName}>{r.name}</Text>
+                          </View>
+                          <Icon
+                            name="check-circle"
+                            type="feather"
+                            size={moderateScale(12)}
+                            color={Color(theme.colors.textSecondary)
+                              .alpha(0.4)
+                              .toString()}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                      {reciterResults.custom.map(r => (
+                        <TouchableOpacity
+                          key={r.id}
+                          style={styles.resultItem}
+                          onPress={() =>
+                            handleSelectCustomReciter(r.id, r.name)
+                          }>
+                          <View style={styles.resultTextContainer}>
+                            <Text style={styles.resultName}>{r.name}</Text>
+                            <Text style={styles.resultTranslation}>
+                              Custom reciter
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                      {showCreateOption && (
+                        <TouchableOpacity
+                          style={styles.resultItem}
+                          onPress={handleCreateReciter}>
+                          <Icon
+                            name="plus-circle"
+                            type="feather"
+                            size={moderateScale(16)}
+                            color={theme.colors.text}
+                          />
+                          <View
+                            style={[
+                              styles.resultTextContainer,
+                              {marginLeft: moderateScale(10)},
+                            ]}>
+                            <Text style={styles.resultName}>
+                              Create "{reciterQuery.trim()}"
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+              </>
+            )}
+
+            {/* Rewayah field — only for system reciters */}
+            {isSystemReciter && (
+              <View style={styles.rewayahContainer}>
+                <Text style={styles.verseRangeLabel}>Rewayah (optional)</Text>
+                <View style={styles.searchInputContainer}>
+                  <TextInput
+                    style={[styles.searchInput, {paddingLeft: 0}]}
+                    placeholder="e.g., Hafs A'n Asim"
+                    placeholderTextColor={Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString()}
+                    value={rewayah}
+                    onChangeText={setRewayah}
+                    keyboardAppearance="dark"
+                    autoCapitalize="words"
+                    autoCorrect={false}
+                  />
                 </View>
               </View>
             )}
@@ -650,6 +925,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Regular',
       color: theme.colors.textSecondary,
       marginLeft: moderateScale(4),
+    },
+    rewayahContainer: {
+      marginTop: moderateScale(14),
     },
     deleteButton: {
       flexDirection: 'row',
