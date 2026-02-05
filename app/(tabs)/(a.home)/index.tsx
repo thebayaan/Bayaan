@@ -263,7 +263,10 @@ const Content = React.memo(
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <AdhkarView onCategoryPress={handleCategoryPress} onSavedPress={handleSavedPress} />
+            <AdhkarView
+              onCategoryPress={handleCategoryPress}
+              onSavedPress={handleSavedPress}
+            />
           </View>
         )}
       </View>

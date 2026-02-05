@@ -15,6 +15,7 @@ import Animated, {useAnimatedStyle, withSpring} from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarAudio} from '@/hooks/useAdhkarAudio';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
+import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, PauseIcon, RepeatIcon} from '@/components/Icons';
 import Color from 'color';
@@ -39,12 +40,12 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
       const styles = useMemo(() => createStyles(theme), [theme]);
 
       const {
-        isPlaying,
+        isPlaying: singleIsPlaying,
         isLooping,
-        hasInteracted,
+        hasInteracted: singleHasInteracted,
         progress,
         duration,
-        toggle,
+        toggle: singleToggle,
         toggleLooping,
         seekToProgress,
       } = useAdhkarAudio(audioFile);
@@ -55,13 +56,28 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
         state => state.currentAudioFile,
       );
 
+      // Play All store
+      const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
+      const playAllIsPlaying = useAdhkarPlayAllStore(state => state.isPlaying);
+      const playAllToggle = useAdhkarPlayAllStore(state => state.toggle);
+
+      // Use Play All state when in Play All mode
+      const isPlaying = isPlayAllMode ? playAllIsPlaying : singleIsPlaying;
+      const hasInteracted = isPlayAllMode ? true : singleHasInteracted;
+
       const handleToggle = () => {
-        // If the store doesn't have this audio file set, set it now
+        if (isPlayAllMode) {
+          // In Play All mode, toggle the Play All store
+          playAllToggle();
+          return;
+        }
+
+        // Single-dhikr mode: If the store doesn't have this audio file set, set it now
         if (audioFile && currentAudioFile !== audioFile) {
           setAudio(audioFile);
         }
 
-        toggle();
+        singleToggle();
       };
 
       // Show progress bar once user has interacted (pressed play) and player is loaded

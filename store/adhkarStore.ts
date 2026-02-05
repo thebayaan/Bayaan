@@ -120,9 +120,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
 
       // Load saved adhkar
       const saved = await adhkarService.getSaved();
-      const savedIds = new Set(
-        saved.map((s: SavedDhikr) => s.dhikrId),
-      );
+      const savedIds = new Set(saved.map((s: SavedDhikr) => s.dhikrId));
 
       // Load counts (this can be slow, so we do it after categories are loaded)
       const counts = await adhkarService.getAllCounts();
@@ -266,9 +264,7 @@ export const useAdhkarStore = create<AdhkarState>((set, get) => ({
       set({error: null});
 
       const saved = await adhkarService.getSaved();
-      const savedIds = new Set(
-        saved.map((s: SavedDhikr) => s.dhikrId),
-      );
+      const savedIds = new Set(saved.map((s: SavedDhikr) => s.dhikrId));
 
       set({savedIds});
     } catch (err) {

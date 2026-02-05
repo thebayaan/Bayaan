@@ -30,7 +30,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
 
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
+        activeOpacity={1}
         style={styles.container}
         onPress={onPress}
         accessibilityRole="button"
@@ -61,8 +61,9 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
         <View style={styles.footer}>
           {dhikr.repeatCount > 1 ? (
             <Text style={styles.repeatText}>Repeat {dhikr.repeatCount}×</Text>
-          ) : null}
-          {hasAudio ? <View style={styles.audioIndicator} /> : null}
+          ) : (
+            <View style={styles.audioIndicator} />
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -130,7 +131,7 @@ const createStyles = (theme: Theme) => {
     },
     arabicText: {
       fontSize: moderateScale(18),
-      fontFamily: 'QPC',
+      fontFamily: 'ScheherazadeNew-Regular',
       color: inkColor,
       textAlign: 'center',
       writingDirection: 'rtl',

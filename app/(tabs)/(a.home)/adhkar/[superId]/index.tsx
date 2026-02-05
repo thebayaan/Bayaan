@@ -16,9 +16,11 @@ import {Theme} from '@/utils/themeUtils';
 import {DhikrListItem} from '@/components/adhkar/DhikrListItem';
 import {CategorySectionHeader} from '@/components/adhkar/CategorySectionHeader';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {PlayAllButton} from '@/components/adhkar/PlayAllButton';
 import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
+import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -47,6 +49,15 @@ const SuperCategoryListScreen: React.FC = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const {getSuperCategoryById} = useAdhkar();
+
+  // Play All store
+  const isPlayAllMode = useAdhkarPlayAllStore(state => state.isPlayAllMode);
+  const playAllSourceId = useAdhkarPlayAllStore(state => state.sourceId);
+  const startPlayAll = useAdhkarPlayAllStore(state => state.startPlayAll);
+  const stopPlayAll = useAdhkarPlayAllStore(state => state.stopPlayAll);
+
+  // Check if currently playing this category
+  const isThisCategoryPlaying = isPlayAllMode && playAllSourceId === superId;
 
   const [superCategory, setSuperCategory] = useState<SuperCategory | null>(
     null,
@@ -127,9 +138,66 @@ const SuperCategoryListScreen: React.FC = () => {
     }));
   }, [categoryGroups, isSingleCategory]);
 
+  // Build full adhkar list for Play All (works for both single and multi-category)
+  const allAdhkarForPlayAll: Dhikr[] = useMemo(() => {
+    if (categoryGroups.length === 0) return [];
+    return categoryGroups.flatMap(group => group.adhkar);
+  }, [categoryGroups]);
+
   const handleBack = useCallback(() => {
     router.back();
   }, [router]);
+
+  // Play All handler
+  const handlePlayAll = useCallback(() => {
+    if (!superId) return;
+
+    if (isThisCategoryPlaying) {
+      // Stop if already playing this category
+      stopPlayAll();
+      return;
+    }
+
+    if (allAdhkarForPlayAll.length === 0) return;
+
+    // Determine source type based on superId
+    let sourceType: 'morning' | 'evening' | 'saved' | 'other' = 'other';
+    if (superId === 'morning-adhkar') {
+      sourceType = 'morning';
+    } else if (superId === 'evening-adhkar') {
+      sourceType = 'evening';
+    }
+
+    startPlayAll(allAdhkarForPlayAll, 0, sourceType, superId);
+
+    // Navigate to reader with first dhikr
+    const firstDhikr = allAdhkarForPlayAll[0];
+    const firstCategoryTitle =
+      categoryGroups.length > 0
+        ? shortenCategoryTitle(categoryGroups[0].categoryTitle)
+        : '';
+
+    router.push({
+      pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
+      params: {
+        superId,
+        dhikrId: firstDhikr.id,
+        globalIndex: '0',
+        categoryShortTitle: firstCategoryTitle,
+        superCategoryTitle: superCategory?.title,
+        playAll: 'true',
+      },
+    });
+  }, [
+    superId,
+    isThisCategoryPlaying,
+    allAdhkarForPlayAll,
+    categoryGroups,
+    superCategory?.title,
+    startPlayAll,
+    stopPlayAll,
+    router,
+  ]);
 
   const handleDhikrPress = useCallback(
     (item: DhikrItem) => {
@@ -183,22 +251,30 @@ const SuperCategoryListScreen: React.FC = () => {
   const InlineHeader = (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}
-          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerSide}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={1}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {displayTitle}
         </Text>
-        <View style={styles.headerPlaceholder} />
+        <View style={styles.headerSide}>
+          <PlayAllButton
+            onPress={handlePlayAll}
+            isPlaying={isThisCategoryPlaying}
+            disabled={loading || allAdhkarForPlayAll.length === 0}
+          />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -263,8 +339,12 @@ const createStyles = (theme: Theme) =>
       height: moderateScale(56),
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: moderateScale(8),
+    },
+    headerSide: {
+      width: moderateScale(80),
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     backButton: {
       padding: moderateScale(8),
@@ -275,9 +355,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
       textAlign: 'center',
-    },
-    headerPlaceholder: {
-      width: moderateScale(40),
     },
     loadingContainer: {
       flex: 1,
