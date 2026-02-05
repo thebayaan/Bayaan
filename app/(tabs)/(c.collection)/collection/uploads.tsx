@@ -26,9 +26,8 @@ import Color from 'color';
 import type {UploadedRecitation} from '@/types/uploads';
 
 const UPLOAD_FILTERS = [
-  {id: 'all', label: 'All'},
   {id: 'untagged', label: 'Untagged'},
-  {id: 'reciters', label: 'Reciters'},
+  {id: 'reciters', label: 'Recitations'},
   {id: 'other', label: 'Other'},
 ];
 
@@ -209,112 +208,7 @@ export default function UploadsScreen() {
     [handlePlayRecitation, handleOrganize, handleDeleteWithConfirm],
   );
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    headerContainer: {
-      width: '100%',
-      overflow: 'hidden',
-    },
-    gradientContainer: {
-      width: '100%',
-      alignItems: 'center',
-      paddingBottom: moderateScale(20),
-      overflow: 'hidden',
-      backgroundColor: '#8B5CF6',
-    },
-    contentContainer: {
-      paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(10),
-    },
-    listContentContainer: {
-      flexGrow: 1,
-      paddingBottom: moderateScale(65),
-    },
-    emptyContainer: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: moderateScale(60),
-      paddingHorizontal: moderateScale(32),
-    },
-    emptyText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: moderateScale(24),
-    },
-    backButton: {
-      position: 'absolute',
-      zIndex: 10,
-    },
-    addButton: {
-      position: 'absolute',
-      zIndex: 10,
-    },
-    // SurahItem-style row layout
-    itemRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.colors.background,
-    },
-    itemPlayZone: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(8),
-      paddingLeft: moderateScale(12),
-    },
-    itemIconContainer: {
-      width: moderateScale(44),
-      height: moderateScale(44),
-      borderRadius: moderateScale(10),
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: moderateScale(10),
-    },
-    itemInfoContainer: {
-      flex: 1,
-    },
-    itemName: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
-    },
-    itemSecondaryRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-      marginBottom: moderateScale(2),
-    },
-    itemSecondaryText: {
-      fontSize: moderateScale(11),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-    },
-    itemTertiaryText: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
-    },
-    itemOptionsZone: {
-      width: '20%',
-      minWidth: moderateScale(50),
-      maxWidth: moderateScale(70),
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: moderateScale(8),
-      paddingRight: moderateScale(12),
-      alignSelf: 'stretch',
-    },
-    filterContainer: {
-      paddingTop: moderateScale(4),
-      paddingBottom: moderateScale(8),
-    },
-  });
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const renderItem = useCallback(
     ({item, index}: ListRenderItemInfo<UploadedRecitation>) => {
@@ -348,7 +242,7 @@ export default function UploadsScreen() {
                   {displaySubtitle}
                 </Text>
               </View>
-              {item.rewayah && (
+              {item.type === 'surah' && item.rewayah && (
                 <Text style={styles.itemTertiaryText}>
                   {item.rewayah}
                   {item.style
@@ -413,17 +307,7 @@ export default function UploadsScreen() {
         </View>
       </View>
     );
-  }, [
-    styles.headerContainer,
-    styles.gradientContainer,
-    styles.contentContainer,
-    styles.filterContainer,
-    theme,
-    insets.top,
-    totalCount,
-    activeFilter,
-    handleFilterChange,
-  ]);
+  }, [styles, theme, insets.top, totalCount, activeFilter, handleFilterChange]);
 
   const ListEmptyComponent = useCallback(() => {
     return (
@@ -433,7 +317,7 @@ export default function UploadsScreen() {
         </Text>
       </View>
     );
-  }, [styles.emptyContainer, styles.emptyText]);
+  }, [styles]);
 
   return (
     <View style={styles.container}>
@@ -484,3 +368,110 @@ export default function UploadsScreen() {
     </View>
   );
 }
+
+const createStyles = (theme: {colors: any}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    headerContainer: {
+      width: '100%',
+      overflow: 'hidden',
+    },
+    gradientContainer: {
+      width: '100%',
+      alignItems: 'center',
+      paddingBottom: moderateScale(20),
+      overflow: 'hidden',
+      backgroundColor: '#8B5CF6',
+    },
+    contentContainer: {
+      paddingHorizontal: moderateScale(16),
+      paddingBottom: moderateScale(10),
+    },
+    listContentContainer: {
+      flexGrow: 1,
+      paddingBottom: moderateScale(65),
+    },
+    emptyContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: moderateScale(60),
+      paddingHorizontal: moderateScale(32),
+    },
+    emptyText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: moderateScale(24),
+    },
+    backButton: {
+      position: 'absolute' as const,
+      zIndex: 10,
+    },
+    addButton: {
+      position: 'absolute' as const,
+      zIndex: 10,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+    },
+    itemPlayZone: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(8),
+      paddingLeft: moderateScale(12),
+    },
+    itemIconContainer: {
+      width: moderateScale(44),
+      height: moderateScale(44),
+      borderRadius: moderateScale(10),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: moderateScale(10),
+    },
+    itemInfoContainer: {
+      flex: 1,
+    },
+    itemName: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Bold',
+      color: theme.colors.text,
+    },
+    itemSecondaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+      marginBottom: moderateScale(2),
+    },
+    itemSecondaryText: {
+      fontSize: moderateScale(11),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+    },
+    itemTertiaryText: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+    },
+    itemOptionsZone: {
+      width: '20%' as any,
+      minWidth: moderateScale(50),
+      maxWidth: moderateScale(70),
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingRight: moderateScale(12),
+      alignSelf: 'stretch',
+    },
+    filterContainer: {
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(8),
+    },
+  });
