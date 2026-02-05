@@ -2,6 +2,7 @@ import React, {useState, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   Keyboard,
@@ -17,6 +18,8 @@ import ActionSheet, {
 import Color from 'color';
 import {Icon} from '@rneui/themed';
 import {useUploadsStore} from '@/store/uploadsStore';
+import {searchSurahs, getSurahById} from '@/services/dataService';
+import type {Surah} from '@/data/surahData';
 import type {UploadedRecitation} from '@/types/uploads';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -138,6 +141,64 @@ export const OrganizeRecitationSheet = (
     setType(prev => (prev === newType ? null : newType));
   }, []);
 
+  // Surah search
+  const [surahQuery, setSurahQuery] = useState('');
+  const [showSurahResults, setShowSurahResults] = useState(false);
+
+  const surahResults = useMemo(() => {
+    if (!surahQuery.trim()) return [];
+    return searchSurahs(surahQuery).slice(0, 8);
+  }, [surahQuery]);
+
+  const selectedSurah = useMemo(() => {
+    if (!surahNumber) return null;
+    return getSurahById(surahNumber) ?? null;
+  }, [surahNumber]);
+
+  const handleSelectSurah = useCallback((surah: Surah) => {
+    setSurahNumber(surah.id);
+    setSurahQuery('');
+    setShowSurahResults(false);
+    setStartVerse(null);
+    setEndVerse(null);
+  }, []);
+
+  const handleClearSurah = useCallback(() => {
+    setSurahNumber(null);
+    setStartVerse(null);
+    setEndVerse(null);
+  }, []);
+
+  const handleStartVerseChange = useCallback(
+    (text: string) => {
+      const num = parseInt(text, 10);
+      if (text === '') {
+        setStartVerse(null);
+        return;
+      }
+      if (!isNaN(num) && num >= 1) {
+        const max = selectedSurah?.verses_count ?? 999;
+        setStartVerse(Math.min(num, max));
+      }
+    },
+    [selectedSurah],
+  );
+
+  const handleEndVerseChange = useCallback(
+    (text: string) => {
+      const num = parseInt(text, 10);
+      if (text === '') {
+        setEndVerse(null);
+        return;
+      }
+      if (!isNaN(num) && num >= 1) {
+        const max = selectedSurah?.verses_count ?? 999;
+        setEndVerse(Math.min(num, max));
+      }
+    },
+    [selectedSurah],
+  );
+
   if (!recitation) return null;
 
   return (
@@ -215,6 +276,127 @@ export const OrganizeRecitationSheet = (
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Surah Picker Section */}
+        {type === 'surah' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Surah</Text>
+            {selectedSurah ? (
+              <View style={styles.selectedItemRow}>
+                <View style={styles.selectedItemChip}>
+                  <Text style={styles.selectedItemText}>
+                    {selectedSurah.id}. {selectedSurah.name}
+                  </Text>
+                  <Text style={styles.selectedItemArabic}>
+                    {selectedSurah.name_arabic}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleClearSurah}
+                  style={styles.clearButton}>
+                  <Icon
+                    name="x"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <View style={styles.searchInputContainer}>
+                  <Icon
+                    name="search"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={theme.colors.textSecondary}
+                  />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search surahs..."
+                    placeholderTextColor={Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString()}
+                    value={surahQuery}
+                    onChangeText={text => {
+                      setSurahQuery(text);
+                      setShowSurahResults(true);
+                    }}
+                    onFocus={() => setShowSurahResults(true)}
+                    keyboardAppearance="dark"
+                    returnKeyType="search"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                {showSurahResults && surahResults.length > 0 && (
+                  <View style={styles.resultsList}>
+                    {surahResults.map(surah => (
+                      <TouchableOpacity
+                        key={surah.id}
+                        style={styles.resultItem}
+                        onPress={() => handleSelectSurah(surah)}>
+                        <Text style={styles.resultNumber}>{surah.id}</Text>
+                        <View style={styles.resultTextContainer}>
+                          <Text style={styles.resultName}>{surah.name}</Text>
+                          <Text style={styles.resultTranslation}>
+                            {surah.translated_name_english}
+                          </Text>
+                        </View>
+                        <Text style={styles.resultArabic}>
+                          {surah.name_arabic}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Verse range inputs */}
+            {selectedSurah && (
+              <View style={styles.verseRangeContainer}>
+                <Text style={styles.verseRangeLabel}>
+                  Verse range (optional)
+                </Text>
+                <View style={styles.verseRangeRow}>
+                  <View style={styles.verseInputWrapper}>
+                    <TextInput
+                      style={styles.verseInput}
+                      placeholder="From"
+                      placeholderTextColor={Color(theme.colors.textSecondary)
+                        .alpha(0.5)
+                        .toString()}
+                      value={startVerse?.toString() ?? ''}
+                      onChangeText={handleStartVerseChange}
+                      keyboardType="number-pad"
+                      keyboardAppearance="dark"
+                      maxLength={3}
+                    />
+                  </View>
+                  <Text style={styles.verseDash}>-</Text>
+                  <View style={styles.verseInputWrapper}>
+                    <TextInput
+                      style={styles.verseInput}
+                      placeholder="To"
+                      placeholderTextColor={Color(theme.colors.textSecondary)
+                        .alpha(0.5)
+                        .toString()}
+                      value={endVerse?.toString() ?? ''}
+                      onChangeText={handleEndVerseChange}
+                      keyboardType="number-pad"
+                      keyboardAppearance="dark"
+                      maxLength={3}
+                    />
+                  </View>
+                  <Text style={styles.verseCountHint}>
+                    of {selectedSurah.verses_count} verses
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Delete Button */}
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
@@ -343,6 +525,131 @@ const createStyles = (theme: Theme) =>
     chipTextSelected: {
       color: theme.colors.text,
       fontFamily: 'Manrope-SemiBold',
+    },
+    section: {
+      marginBottom: moderateScale(20),
+    },
+    searchInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      paddingHorizontal: moderateScale(12),
+      gap: moderateScale(8),
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: moderateScale(12),
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.text,
+    },
+    resultsList: {
+      marginTop: moderateScale(6),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      overflow: 'hidden',
+    },
+    resultItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(14),
+      paddingVertical: moderateScale(10),
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.border).alpha(0.06).toString(),
+    },
+    resultNumber: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
+      width: moderateScale(28),
+    },
+    resultTextContainer: {
+      flex: 1,
+    },
+    resultName: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    resultTranslation: {
+      fontSize: moderateScale(11),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+      marginTop: moderateScale(1),
+    },
+    resultArabic: {
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+      marginLeft: moderateScale(8),
+    },
+    selectedItemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    selectedItemChip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      borderRadius: moderateScale(10),
+      paddingHorizontal: moderateScale(14),
+      paddingVertical: moderateScale(10),
+      gap: moderateScale(8),
+    },
+    selectedItemText: {
+      flex: 1,
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    selectedItemArabic: {
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+    },
+    clearButton: {
+      padding: moderateScale(8),
+      marginLeft: moderateScale(4),
+    },
+    verseRangeContainer: {
+      marginTop: moderateScale(14),
+    },
+    verseRangeLabel: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+      marginBottom: moderateScale(8),
+    },
+    verseRangeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    verseInputWrapper: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(10),
+      width: moderateScale(64),
+    },
+    verseInput: {
+      paddingHorizontal: moderateScale(12),
+      paddingVertical: moderateScale(10),
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    verseDash: {
+      fontSize: moderateScale(16),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+    },
+    verseCountHint: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
+      marginLeft: moderateScale(4),
     },
     deleteButton: {
       flexDirection: 'row',
