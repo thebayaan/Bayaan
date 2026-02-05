@@ -351,7 +351,9 @@ export default function UploadsScreen() {
               {item.rewayah && (
                 <Text style={styles.itemTertiaryText}>
                   {item.rewayah}
-                  {item.style ? ` · ${item.style}` : ''}
+                  {item.style
+                    ? ` · ${item.style.charAt(0).toUpperCase() + item.style.slice(1)}`
+                    : ''}
                 </Text>
               )}
             </View>
