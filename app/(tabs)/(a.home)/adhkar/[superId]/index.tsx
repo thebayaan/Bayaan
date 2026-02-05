@@ -56,10 +56,6 @@ const SuperCategoryListScreen: React.FC = () => {
   const startPlayAll = useAdhkarPlayAllStore(state => state.startPlayAll);
   const stopPlayAll = useAdhkarPlayAllStore(state => state.stopPlayAll);
 
-  // Check if this super category supports Play All
-  const isPlayAllEligible =
-    superId === 'morning-adhkar' || superId === 'evening-adhkar';
-
   // Check if currently playing this category
   const isThisCategoryPlaying = isPlayAllMode && playAllSourceId === superId;
 
@@ -164,13 +160,15 @@ const SuperCategoryListScreen: React.FC = () => {
 
     if (allAdhkarForPlayAll.length === 0) return;
 
-    const sourceType = superId === 'morning-adhkar' ? 'morning' : 'evening';
-    startPlayAll(
-      allAdhkarForPlayAll,
-      0,
-      sourceType as 'morning' | 'evening',
-      superId,
-    );
+    // Determine source type based on superId
+    let sourceType: 'morning' | 'evening' | 'saved' | 'other' = 'other';
+    if (superId === 'morning-adhkar') {
+      sourceType = 'morning';
+    } else if (superId === 'evening-adhkar') {
+      sourceType = 'evening';
+    }
+
+    startPlayAll(allAdhkarForPlayAll, 0, sourceType, superId);
 
     // Navigate to reader with first dhikr
     const firstDhikr = allAdhkarForPlayAll[0];
@@ -253,30 +251,30 @@ const SuperCategoryListScreen: React.FC = () => {
   const InlineHeader = (
     <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}
-          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerSide}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            activeOpacity={1}
+            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {displayTitle}
         </Text>
-        {isPlayAllEligible ? (
+        <View style={styles.headerSide}>
           <PlayAllButton
             onPress={handlePlayAll}
             isPlaying={isThisCategoryPlaying}
             disabled={loading || allAdhkarForPlayAll.length === 0}
           />
-        ) : (
-          <View style={styles.headerPlaceholder} />
-        )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -341,8 +339,12 @@ const createStyles = (theme: Theme) =>
       height: moderateScale(56),
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: moderateScale(16),
+      paddingHorizontal: moderateScale(8),
+    },
+    headerSide: {
+      width: moderateScale(52),
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     backButton: {
       padding: moderateScale(8),
@@ -353,9 +355,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
       textAlign: 'center',
-    },
-    headerPlaceholder: {
-      width: moderateScale(40),
     },
     loadingContainer: {
       flex: 1,

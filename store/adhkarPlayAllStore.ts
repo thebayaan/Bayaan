@@ -10,7 +10,7 @@ import {create} from 'zustand';
 import {Dhikr} from '@/types/adhkar';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 
-type SourceType = 'morning' | 'evening' | 'saved';
+type SourceType = 'morning' | 'evening' | 'saved' | 'other';
 
 interface AdhkarPlayAllState {
   // Mode
