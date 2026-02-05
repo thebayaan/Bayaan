@@ -50,6 +50,7 @@ import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
 import {RewayatTabBar} from './components/RewayatTabBar';
+import {UploadsTabContent} from './components/UploadsTabContent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
 
@@ -961,10 +962,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         />
       ) : (
         <>
-          <MemoizedSurahList
-            ref={flatListRef}
-            {...surahListProps}
-            ListHeaderComponent={
+          {(() => {
+            const listHeader = (
               <>
                 <ReciterHeader
                   reciter={reciter}
@@ -989,7 +988,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                 )}
                 <View style={styles.controlsRow}>
                   <View style={styles.rightControlsContainer}>
-                    {/* Heart (Loved) Filter Button */}
                     <Pressable
                       style={[
                         styles.optionButton,
@@ -1011,8 +1009,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                         />
                       </Animated.View>
                     </Pressable>
-
-                    {/* View mode toggle */}
                     <Pressable
                       style={styles.viewModeButton}
                       onPress={toggleViewMode}>
@@ -1026,8 +1022,30 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                   </View>
                 </View>
               </>
+            );
+
+            if (activeTab === 'uploads') {
+              return (
+                <UploadsTabContent
+                  reciterId={currentReciterId}
+                  reciterName={reciter.name}
+                  viewMode={viewMode}
+                  showLovedOnly={showLovedOnly}
+                  onScroll={handleScroll}
+                  ListHeaderComponent={listHeader}
+                  getColorForSurah={getColorForSurah}
+                />
+              );
             }
-          />
+
+            return (
+              <MemoizedSurahList
+                ref={flatListRef}
+                {...surahListProps}
+                ListHeaderComponent={listHeader}
+              />
+            );
+          })()}
           <StickyHeader
             reciterName={reciter.name}
             headerOpacity={headerOpacity}
