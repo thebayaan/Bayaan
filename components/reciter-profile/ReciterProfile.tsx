@@ -50,6 +50,7 @@ import {StickyHeader} from './components/StickyHeader';
 import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
+import {ReciterUploadsSection} from './components/ReciterUploadsSection';
 import {moderateScale} from 'react-native-size-matters';
 
 interface ReciterProfileProps {
@@ -1111,6 +1112,12 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                   </View>
                 </View>
               </>
+            }
+            ListFooterComponent={
+              <ReciterUploadsSection
+                reciterId={currentReciterId}
+                reciterName={reciter.name}
+              />
             }
           />
           <StickyHeader
