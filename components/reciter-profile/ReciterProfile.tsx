@@ -1,7 +1,6 @@
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {
   View,
-  Text,
   Pressable,
   Animated as RNAnimated,
   NativeScrollEvent,
@@ -849,14 +848,22 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   // Initialize activeTab when reciter loads or uploads change
   useEffect(() => {
-    if (activeTab === '' && tabs.length > 0) {
-      // Default to first rewayat if no uploads, or 'uploads' if has uploads
+    if (tabs.length === 0) return;
+
+    if (activeTab === '') {
+      // First load: default to uploads tab if has uploads, else first rewayat
       const defaultTab = hasUploads
         ? 'uploads'
         : selectedRewayatId || tabs[0].id;
       setActiveTab(defaultTab);
+    } else if (!tabs.some(t => t.id === activeTab)) {
+      // Active tab no longer exists (e.g. all uploads deleted) — fall back
+      setActiveTab(tabs[0].id);
+      if (tabs[0].id !== 'uploads') {
+        handleRewayatChange(tabs[0].id);
+      }
     }
-  }, [tabs, activeTab, hasUploads, selectedRewayatId]);
+  }, [tabs, activeTab, hasUploads, selectedRewayatId, handleRewayatChange]);
 
   const handleTabChange = useCallback(
     (tabId: string) => {

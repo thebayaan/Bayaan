@@ -1,6 +1,5 @@
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
-import Color from 'color';
 
 /**
  * Common styles shared across ReciterProfile components
