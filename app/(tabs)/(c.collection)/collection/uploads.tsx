@@ -38,6 +38,10 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function stripExtension(filename: string): string {
+  return filename.replace(/\.[^/.]+$/, '');
+}
+
 function getDisplayTitle(item: UploadedRecitation): string {
   if (item.type === 'surah' && item.surahNumber) {
     const surah = getSurahById(item.surahNumber);
@@ -46,7 +50,7 @@ function getDisplayTitle(item: UploadedRecitation): string {
   if (item.type === 'other' && item.title) {
     return item.title;
   }
-  return item.originalFilename;
+  return stripExtension(item.originalFilename);
 }
 
 function getDisplaySubtitle(item: UploadedRecitation): string {
@@ -68,7 +72,9 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
     parts.push(label);
   }
 
-  return parts.length > 0 ? parts.join(' · ') : item.originalFilename;
+  return parts.length > 0
+    ? parts.join(' · ')
+    : stripExtension(item.originalFilename);
 }
 
 export default function UploadsScreen() {

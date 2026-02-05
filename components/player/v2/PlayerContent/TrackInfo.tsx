@@ -119,8 +119,6 @@ export const TrackInfo = () => {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.spacer} />
-
         <TouchableOpacity
           style={styles.loveButton}
           onPress={handleToggleLoved}
@@ -152,6 +150,7 @@ const styles = StyleSheet.create({
   trackInfoTouchable: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   imageContainer: {
     marginRight: moderateScale(12),
@@ -181,9 +180,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-Medium',
     textTransform: 'capitalize',
     opacity: 0.7,
-  },
-  spacer: {
-    flex: 1,
   },
   loveButton: {
     paddingLeft: moderateScale(8),
