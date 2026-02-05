@@ -61,8 +61,9 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
         <View style={styles.footer}>
           {dhikr.repeatCount > 1 ? (
             <Text style={styles.repeatText}>Repeat {dhikr.repeatCount}×</Text>
-          ) : null}
-          {hasAudio ? <View style={styles.audioIndicator} /> : null}
+          ) : (
+            <View style={styles.audioIndicator} />
+          )}
         </View>
       </TouchableOpacity>
     );
