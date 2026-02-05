@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   ListRenderItemInfo,
+  Alert,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ import {Icon} from '@rneui/themed';
 import {MicrophoneIcon} from '@/components/Icons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {FilterBar} from '@/components/collection/FilterBar';
+import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createUserUploadTrack} from '@/utils/track';
@@ -52,8 +54,14 @@ export default function UploadsScreen() {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {recitations, totalCount, importFile, importFiles, loadRecitations} =
-    useUploadsStore();
+  const {
+    recitations,
+    totalCount,
+    importFile,
+    importFiles,
+    loadRecitations,
+    deleteRecitation,
+  } = useUploadsStore();
   const {updateQueue, play} = useUnifiedPlayer();
 
   const [activeFilter, setActiveFilter] = useState<string>('');
@@ -103,7 +111,14 @@ export default function UploadsScreen() {
       }));
 
       if (files.length === 1) {
-        await importFile(files[0].uri, files[0].name);
+        const recitation = await importFile(files[0].uri, files[0].name);
+        Alert.alert('File Imported', recitation.originalFilename, [
+          {text: 'Done'},
+          {
+            text: 'Organize',
+            onPress: () => handleOrganize(recitation),
+          },
+        ]);
       } else if (files.length > 1) {
         await importFiles(files);
       }
@@ -128,6 +143,52 @@ export default function UploadsScreen() {
   const handleFilterChange = useCallback((filterId: string) => {
     setActiveFilter(filterId);
   }, []);
+
+  const handleOrganize = useCallback((item: UploadedRecitation) => {
+    SheetManager.show('organize-recitation', {
+      payload: {recitation: item},
+    });
+  }, []);
+
+  const handleDeleteWithConfirm = useCallback(
+    (item: UploadedRecitation) => {
+      Alert.alert(
+        'Delete Recitation',
+        `Are you sure you want to delete "${item.originalFilename}"?`,
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => deleteRecitation(item.id),
+          },
+        ],
+      );
+    },
+    [deleteRecitation],
+  );
+
+  const handleLongPress = useCallback(
+    (item: UploadedRecitation, index: number) => {
+      Alert.alert(item.originalFilename, undefined, [
+        {
+          text: 'Play Now',
+          onPress: () => handlePlayRecitation(item, index),
+        },
+        {
+          text: 'Organize',
+          onPress: () => handleOrganize(item),
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => handleDeleteWithConfirm(item),
+        },
+        {text: 'Cancel', style: 'cancel'},
+      ]);
+    },
+    [handlePlayRecitation, handleOrganize, handleDeleteWithConfirm],
+  );
 
   const styles = StyleSheet.create({
     container: {
@@ -213,6 +274,10 @@ export default function UploadsScreen() {
       color: theme.colors.textSecondary,
       marginLeft: moderateScale(8),
     },
+    editButton: {
+      padding: moderateScale(6),
+      marginLeft: moderateScale(4),
+    },
     filterContainer: {
       paddingTop: moderateScale(4),
       paddingBottom: moderateScale(8),
@@ -228,7 +293,8 @@ export default function UploadsScreen() {
         <TouchableOpacity
           style={styles.itemContainer}
           activeOpacity={0.7}
-          onPress={() => handlePlayRecitation(item, index)}>
+          onPress={() => handlePlayRecitation(item, index)}
+          onLongPress={() => handleLongPress(item, index)}>
           <View style={styles.itemIconContainer}>
             <Icon
               name="music"
@@ -249,10 +315,27 @@ export default function UploadsScreen() {
             </Text>
           </View>
           <Text style={styles.itemDuration}>{duration}</Text>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => handleOrganize(item)}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Icon
+              name="edit-2"
+              type="feather"
+              size={moderateScale(14)}
+              color={theme.colors.textSecondary}
+            />
+          </TouchableOpacity>
         </TouchableOpacity>
       );
     },
-    [styles, handlePlayRecitation],
+    [
+      styles,
+      theme.colors.textSecondary,
+      handlePlayRecitation,
+      handleLongPress,
+      handleOrganize,
+    ],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
