@@ -18,6 +18,7 @@ export interface UploadedRecitation {
   customReciterId: string | null; // FK to custom_reciters
   isPersonal: boolean; // reserved for v2
   rewayah: string | null;
+  style: string | null;
 }
 
 export interface CustomReciter {
@@ -45,6 +46,7 @@ export interface UploadedRecitationRow {
   custom_reciter_id: string | null;
   is_personal: number;
   rewayah: string | null;
+  style: string | null;
 }
 
 export interface CustomReciterRow {
@@ -75,6 +77,7 @@ export function mapRecitationRow(
     customReciterId: row.custom_reciter_id,
     isPersonal: row.is_personal === 1,
     rewayah: row.rewayah,
+    style: row.style,
   };
 }
 

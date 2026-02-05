@@ -104,6 +104,7 @@ class UploadsService {
       customReciterId: null,
       isPersonal: false,
       rewayah: null,
+      style: null,
     };
 
     // Insert into database

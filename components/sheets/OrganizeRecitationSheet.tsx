@@ -26,6 +26,12 @@ import {
 import {RECITERS} from '@/data/reciterData';
 import type {Surah} from '@/data/surahData';
 import type {UploadedRecitation} from '@/types/uploads';
+import {
+  DEFAULT_REWAYAH,
+  DEFAULT_STYLE,
+  REWAYAH_OPTIONS,
+  STYLE_OPTIONS,
+} from '@/constants/recitationOptions';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
@@ -92,7 +98,18 @@ export const OrganizeRecitationSheet = (
     }
     return '';
   });
-  const [rewayah, setRewayah] = useState<string>(recitation?.rewayah ?? '');
+  const [rewayah, setRewayah] = useState<string>(
+    recitation?.rewayah || DEFAULT_REWAYAH,
+  );
+  const [style, setStyle] = useState<string>(
+    recitation?.style || DEFAULT_STYLE,
+  );
+  const [showMoreOptions, setShowMoreOptions] = useState(
+    () =>
+      (recitation?.rewayah !== null &&
+        recitation?.rewayah !== DEFAULT_REWAYAH) ||
+      (recitation?.style !== null && recitation?.style !== DEFAULT_STYLE),
+  );
 
   const hasChanges = useMemo(() => {
     if (!recitation) return false;
@@ -105,7 +122,8 @@ export const OrganizeRecitationSheet = (
       category !== recitation.category ||
       reciterId !== recitation.reciterId ||
       customReciterId !== recitation.customReciterId ||
-      rewayah !== (recitation.rewayah ?? '')
+      rewayah !== (recitation.rewayah || DEFAULT_REWAYAH) ||
+      style !== (recitation.style || DEFAULT_STYLE)
     );
   }, [
     recitation,
@@ -118,6 +136,7 @@ export const OrganizeRecitationSheet = (
     reciterId,
     customReciterId,
     rewayah,
+    style,
   ]);
 
   const handleSave = useCallback(async () => {
@@ -133,6 +152,7 @@ export const OrganizeRecitationSheet = (
       reciterId,
       customReciterId,
       rewayah: rewayah || null,
+      style: style || null,
     });
     await SheetManager.hide('organize-recitation');
   }, [
@@ -148,6 +168,7 @@ export const OrganizeRecitationSheet = (
     reciterId,
     customReciterId,
     rewayah,
+    style,
   ]);
 
   const handleDelete = useCallback(async () => {
@@ -260,7 +281,9 @@ export const OrganizeRecitationSheet = (
     setReciterDisplayName(name);
     setReciterQuery('');
     setShowReciterResults(false);
-    setRewayah('');
+    setRewayah(DEFAULT_REWAYAH);
+    setStyle(DEFAULT_STYLE);
+    setShowMoreOptions(false);
   }, []);
 
   const handleCreateReciter = useCallback(async () => {
@@ -274,7 +297,9 @@ export const OrganizeRecitationSheet = (
     setReciterId(null);
     setCustomReciterId(null);
     setReciterDisplayName('');
-    setRewayah('');
+    setRewayah(DEFAULT_REWAYAH);
+    setStyle(DEFAULT_STYLE);
+    setShowMoreOptions(false);
   }, []);
 
   const handleCategorySelect = useCallback(
@@ -650,23 +675,75 @@ export const OrganizeRecitationSheet = (
               </>
             )}
 
-            {/* Rewayah field — only for system reciters */}
-            {isSystemReciter && (
-              <View style={styles.rewayahContainer}>
-                <Text style={styles.verseRangeLabel}>Rewayah (optional)</Text>
-                <View style={styles.searchInputContainer}>
-                  <TextInput
-                    style={[styles.searchInput, {paddingLeft: 0}]}
-                    placeholder="e.g., Hafs A'n Asim"
-                    placeholderTextColor={Color(theme.colors.textSecondary)
-                      .alpha(0.5)
-                      .toString()}
-                    value={rewayah}
-                    onChangeText={setRewayah}
-                    keyboardAppearance="dark"
-                    autoCapitalize="words"
-                    autoCorrect={false}
-                  />
+            {/* More Options toggle */}
+            {reciterDisplayName !== '' && (
+              <Pressable
+                style={styles.moreOptionsToggle}
+                onPress={() => setShowMoreOptions(prev => !prev)}>
+                <Text style={styles.moreOptionsText}>More Options</Text>
+                <Icon
+                  name={showMoreOptions ? 'chevron-up' : 'chevron-down'}
+                  type="feather"
+                  size={moderateScale(14)}
+                  color={theme.colors.textSecondary}
+                />
+              </Pressable>
+            )}
+
+            {/* Rewayah + Style picklists */}
+            {showMoreOptions && reciterDisplayName !== '' && (
+              <View style={styles.moreOptionsContainer}>
+                <Text style={styles.verseRangeLabel}>Rewayah</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.picklistScroll}
+                  contentContainerStyle={styles.picklistContent}>
+                  {REWAYAH_OPTIONS.map(opt => (
+                    <Pressable
+                      key={opt}
+                      style={[
+                        styles.chip,
+                        rewayah === opt && styles.chipSelected,
+                      ]}
+                      onPress={() => setRewayah(opt)}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          rewayah === opt && styles.chipTextSelected,
+                        ]}
+                        numberOfLines={1}>
+                        {opt}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                <Text
+                  style={[
+                    styles.verseRangeLabel,
+                    {marginTop: moderateScale(14)},
+                  ]}>
+                  Style
+                </Text>
+                <View style={styles.chipRow}>
+                  {STYLE_OPTIONS.map(opt => (
+                    <Pressable
+                      key={opt.id}
+                      style={[
+                        styles.chip,
+                        style === opt.id && styles.chipSelected,
+                      ]}
+                      onPress={() => setStyle(opt.id)}>
+                      <Text
+                        style={[
+                          styles.chipText,
+                          style === opt.id && styles.chipTextSelected,
+                        ]}>
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
             )}
@@ -695,7 +772,7 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
-      height: SCREEN_HEIGHT * 0.75,
+      height: SCREEN_HEIGHT * 0.9,
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
@@ -926,8 +1003,28 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginLeft: moderateScale(4),
     },
-    rewayahContainer: {
+    moreOptionsToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
       marginTop: moderateScale(14),
+      paddingVertical: moderateScale(8),
+      gap: moderateScale(6),
+    },
+    moreOptionsText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+    },
+    moreOptionsContainer: {
+      marginTop: moderateScale(10),
+    },
+    picklistScroll: {
+      flexGrow: 0,
+    },
+    picklistContent: {
+      gap: moderateScale(8),
+      paddingRight: moderateScale(4),
     },
     deleteButton: {
       flexDirection: 'row',
