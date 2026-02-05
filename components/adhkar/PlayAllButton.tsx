@@ -2,11 +2,11 @@
  * PlayAllButton Component
  *
  * Button to start/stop "Play All" adhkar playback.
- * Icon-only button matching the play button style from AdhkarAudioControls.
+ * Shows play/pause icon with text label.
  */
 
 import React, {useMemo} from 'react';
-import {TouchableOpacity} from 'react-native';
+import {TouchableOpacity, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -23,23 +23,27 @@ export const PlayAllButton: React.FC<PlayAllButtonProps> = React.memo(
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
+    const iconColor = disabled ? theme.colors.textSecondary : theme.colors.text;
+
     return (
       <TouchableOpacity
-        style={[styles.button, disabled && styles.disabled]}
+        style={[styles.container, disabled && styles.disabled]}
         onPress={onPress}
         disabled={disabled}
         activeOpacity={1}
         hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
         accessibilityRole="button"
         accessibilityLabel={isPlaying ? 'Pause all' : 'Play all'}>
-        {isPlaying ? (
-          <PauseIcon
-            size={moderateScale(14)}
-            color={theme.colors.background}
-          />
-        ) : (
-          <PlayIcon size={moderateScale(14)} color={theme.colors.background} />
-        )}
+        <View style={styles.iconContainer}>
+          {isPlaying ? (
+            <PauseIcon size={moderateScale(16)} color={iconColor} />
+          ) : (
+            <PlayIcon size={moderateScale(16)} color={iconColor} />
+          )}
+        </View>
+        <Text style={[styles.text, disabled && styles.textDisabled]}>
+          {isPlaying ? 'Pause' : 'Play All'}
+        </Text>
       </TouchableOpacity>
     );
   },
@@ -49,14 +53,22 @@ PlayAllButton.displayName = 'PlayAllButton';
 
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
-    button: {
-      width: moderateScale(36),
-      height: moderateScale(36),
-      borderRadius: moderateScale(10),
-      backgroundColor: theme.colors.text,
+    container: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
+    },
+    iconContainer: {
       justifyContent: 'center',
       alignItems: 'center',
-      paddingLeft: moderateScale(2), // Visual centering for play icon
+    },
+    text: {
+      fontSize: moderateScale(14),
+      fontFamily: theme.fonts.medium,
+      color: theme.colors.text,
+    },
+    textDisabled: {
+      color: theme.colors.textSecondary,
     },
     disabled: {
       opacity: 0.5,

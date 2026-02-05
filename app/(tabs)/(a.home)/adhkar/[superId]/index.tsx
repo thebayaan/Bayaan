@@ -342,7 +342,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(8),
     },
     headerSide: {
-      width: moderateScale(52),
+      width: moderateScale(80),
       alignItems: 'center',
       justifyContent: 'center',
     },
