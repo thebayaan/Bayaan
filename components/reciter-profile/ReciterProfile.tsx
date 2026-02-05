@@ -2,6 +2,7 @@ import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
+  Pressable,
   Animated as RNAnimated,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -51,6 +52,7 @@ import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
 import {ReciterUploadsSection} from './components/ReciterUploadsSection';
+import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
 
 interface ReciterProfileProps {
@@ -93,6 +95,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     useSettings(state => state.reciterProfileSortOption),
   );
   const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
+  const [showAllSurahs, setShowAllSurahs] = useState(false);
   const flatListRef = useRef<RNAnimated.FlatList>(null);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
@@ -872,10 +875,28 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     });
   }, [heartScale]);
 
+  const reciterUploads = useUploadsStore(state =>
+    state.recitations.filter(r => r.reciterId === currentReciterId),
+  );
+  const hasUploads = reciterUploads.length > 0;
+  const COLLAPSED_SURAH_COUNT = 10;
+
+  const displayedSurahs = useMemo(() => {
+    if (hasUploads && !showAllSurahs) {
+      return filteredSurahs.slice(0, COLLAPSED_SURAH_COUNT);
+    }
+    return filteredSurahs;
+  }, [filteredSurahs, hasUploads, showAllSurahs]);
+
+  const hiddenSurahCount =
+    hasUploads && !showAllSurahs
+      ? Math.max(0, filteredSurahs.length - COLLAPSED_SURAH_COUNT)
+      : 0;
+
   // Create a stable reference to data and callbacks used by SurahList to prevent re-renders
   const surahListProps = useMemo(
     () => ({
-      surahs: filteredSurahs,
+      surahs: displayedSurahs,
       onSurahPress: handleSurahPress,
       reciterId: currentReciterId,
       isLoved: isLovedWithCurrentRewayat,
@@ -900,7 +921,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       },
     }),
     [
-      filteredSurahs,
+      displayedSurahs,
       handleSurahPress,
       currentReciterId,
       isLovedWithCurrentRewayat,
@@ -1114,10 +1135,42 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
               </>
             }
             ListFooterComponent={
-              <ReciterUploadsSection
-                reciterId={currentReciterId}
-                reciterName={reciter.name}
-              />
+              hasUploads ? (
+                <View>
+                  {hiddenSurahCount > 0 && (
+                    <Pressable
+                      style={styles.showAllSurahsButton}
+                      onPress={() => setShowAllSurahs(true)}>
+                      <Text style={styles.showAllSurahsText}>
+                        Show All {filteredSurahs.length} Surahs
+                      </Text>
+                      <Icon
+                        name="chevron-down"
+                        type="feather"
+                        size={moderateScale(14)}
+                        color={theme.colors.textSecondary}
+                      />
+                    </Pressable>
+                  )}
+                  {showAllSurahs && (
+                    <Pressable
+                      style={styles.showAllSurahsButton}
+                      onPress={() => setShowAllSurahs(false)}>
+                      <Text style={styles.showAllSurahsText}>Show Less</Text>
+                      <Icon
+                        name="chevron-up"
+                        type="feather"
+                        size={moderateScale(14)}
+                        color={theme.colors.textSecondary}
+                      />
+                    </Pressable>
+                  )}
+                  <ReciterUploadsSection
+                    reciterId={currentReciterId}
+                    reciterName={reciter.name}
+                  />
+                </View>
+              ) : null
             }
           />
           <StickyHeader

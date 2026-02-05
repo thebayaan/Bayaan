@@ -87,4 +87,20 @@ export const createSharedStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       fontFamily: 'Manrope-Regular',
     },
+    showAllSurahsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(14),
+      marginHorizontal: moderateScale(16),
+      marginTop: moderateScale(8),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      gap: moderateScale(6),
+    },
+    showAllSurahsText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
+    },
   });
