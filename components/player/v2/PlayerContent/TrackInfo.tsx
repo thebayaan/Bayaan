@@ -26,6 +26,7 @@ export const TrackInfo = () => {
   const scale = useSharedValue(1);
 
   useEffect(() => {
+    setRewayat(null);
     let mounted = true;
     const loadReciter = async () => {
       if (!currentTrack?.reciterId) return;
