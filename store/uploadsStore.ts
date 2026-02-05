@@ -1,6 +1,14 @@
 import {create} from 'zustand';
 import {uploadsService} from '@/services/uploads/UploadsService';
+import {getReciterName} from '@/services/dataService';
 import type {UploadedRecitation, CustomReciter} from '@/types/uploads';
+
+export interface ReciterWithUploads {
+  id: string;
+  name: string;
+  isCustom: boolean;
+  count: number;
+}
 
 interface UploadsState {
   // State
@@ -34,6 +42,7 @@ interface UploadsState {
   getByReciter: (reciterId: string) => UploadedRecitation[];
   getByCustomReciter: (customReciterId: string) => UploadedRecitation[];
   getOther: () => UploadedRecitation[];
+  getRecitersWithUploads: () => ReciterWithUploads[];
 }
 
 export const useUploadsStore = create<UploadsState>((set, get) => ({
@@ -205,6 +214,40 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
 
   getOther: () => {
     return get().recitations.filter(r => r.type === 'other');
+  },
+
+  getRecitersWithUploads: () => {
+    const recs = get().recitations;
+    const map = new Map<
+      string,
+      {id: string; name: string; isCustom: boolean; count: number}
+    >();
+    recs.forEach(r => {
+      if (r.reciterId) {
+        if (!map.has(r.reciterId)) {
+          const name = getReciterName(r.reciterId) || 'Unknown';
+          map.set(r.reciterId, {
+            id: r.reciterId,
+            name,
+            isCustom: false,
+            count: 0,
+          });
+        }
+        map.get(r.reciterId)!.count++;
+      } else if (r.customReciterId) {
+        if (!map.has(r.customReciterId)) {
+          const name = getCustomReciterName(r.customReciterId) || 'Unknown';
+          map.set(r.customReciterId, {
+            id: r.customReciterId,
+            name,
+            isCustom: true,
+            count: 0,
+          });
+        }
+        map.get(r.customReciterId)!.count++;
+      }
+    });
+    return Array.from(map.values());
   },
 }));
 

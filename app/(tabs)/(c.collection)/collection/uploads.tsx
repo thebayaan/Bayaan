@@ -18,10 +18,17 @@ import {MicrophoneIcon} from '@/components/Icons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {FilterBar} from '@/components/collection/FilterBar';
 import {SheetManager} from 'react-native-actions-sheet';
-import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
+import {
+  useUploadsStore,
+  getCustomReciterName,
+  type ReciterWithUploads,
+} from '@/store/uploadsStore';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById, getReciterName} from '@/services/dataService';
+import {RECITERS} from '@/data/reciterData';
+import {getReciterArtwork} from '@/utils/artworkUtils';
+import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import Color from 'color';
 import type {UploadedRecitation} from '@/types/uploads';
 
@@ -88,17 +95,35 @@ export default function UploadsScreen() {
     importFiles,
     loadRecitations,
     deleteRecitation,
+    getRecitersWithUploads,
   } = useUploadsStore();
   const {updateQueue, play} = useUnifiedPlayer();
 
   const [activeFilter, setActiveFilter] = useState<string>('');
+  const [selectedCustomReciterId, setSelectedCustomReciterId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     loadRecitations();
   }, [loadRecitations]);
 
+  const recitersWithUploads = useMemo(
+    () => getRecitersWithUploads(),
+    [recitations, getRecitersWithUploads],
+  );
+
+  const showReciterGrid =
+    activeFilter === 'reciters' && selectedCustomReciterId === null;
+
   const filteredRecitations = useMemo(() => {
     const filterId = activeFilter || 'all';
+
+    if (filterId === 'reciters' && selectedCustomReciterId) {
+      return recitations.filter(
+        r => r.customReciterId === selectedCustomReciterId,
+      );
+    }
 
     switch (filterId) {
       case 'untagged':
@@ -113,7 +138,7 @@ export default function UploadsScreen() {
       default:
         return recitations;
     }
-  }, [recitations, activeFilter]);
+  }, [recitations, activeFilter, selectedCustomReciterId]);
 
   const handleImportFile = useCallback(async () => {
     try {
@@ -169,7 +194,19 @@ export default function UploadsScreen() {
 
   const handleFilterChange = useCallback((filterId: string) => {
     setActiveFilter(filterId);
+    setSelectedCustomReciterId(null);
   }, []);
+
+  const handleReciterPress = useCallback(
+    (reciterItem: ReciterWithUploads) => {
+      if (reciterItem.isCustom) {
+        setSelectedCustomReciterId(reciterItem.id);
+      } else {
+        router.push(`/reciter/${reciterItem.id}`);
+      }
+    },
+    [router],
+  );
 
   const handleOrganize = useCallback((item: UploadedRecitation) => {
     SheetManager.show('organize-recitation', {
@@ -328,18 +365,85 @@ export default function UploadsScreen() {
     );
   }, [styles]);
 
+  const renderReciterCard = useCallback(
+    ({item}: ListRenderItemInfo<ReciterWithUploads>) => {
+      const reciter = item.isCustom
+        ? null
+        : RECITERS.find(r => r.id === item.id);
+      const imageUrl = reciter ? getReciterArtwork(reciter) : undefined;
+
+      return (
+        <CircularReciterCard
+          imageUrl={imageUrl}
+          name={item.name}
+          onPress={() => handleReciterPress(item)}
+          size="medium"
+        />
+      );
+    },
+    [handleReciterPress],
+  );
+
+  const reciterKeyExtractor = useCallback(
+    (item: ReciterWithUploads) => item.id,
+    [],
+  );
+
+  const CustomReciterBackHeader = useCallback(() => {
+    if (!selectedCustomReciterId) return null;
+    const name =
+      getCustomReciterName(selectedCustomReciterId) || 'Custom Reciter';
+    return (
+      <Pressable
+        style={styles.customReciterBackRow}
+        onPress={() => setSelectedCustomReciterId(null)}>
+        <Icon
+          name="arrow-left"
+          type="feather"
+          size={moderateScale(16)}
+          color={theme.colors.textSecondary}
+        />
+        <Text style={styles.customReciterBackText}>{name}</Text>
+      </Pressable>
+    );
+  }, [selectedCustomReciterId, styles, theme.colors.textSecondary]);
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={filteredRecitations}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        ListHeaderComponent={ListHeaderComponent}
-        ListEmptyComponent={ListEmptyComponent}
-        contentContainerStyle={styles.listContentContainer}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-      />
+      {showReciterGrid ? (
+        <FlatList
+          data={recitersWithUploads}
+          renderItem={renderReciterCard}
+          keyExtractor={reciterKeyExtractor}
+          ListHeaderComponent={ListHeaderComponent}
+          ListEmptyComponent={ListEmptyComponent}
+          contentContainerStyle={styles.listContentContainer}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          numColumns={4}
+          columnWrapperStyle={styles.reciterGridRow}
+        />
+      ) : (
+        <FlatList
+          data={filteredRecitations}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          ListHeaderComponent={
+            selectedCustomReciterId ? (
+              <>
+                <ListHeaderComponent />
+                <CustomReciterBackHeader />
+              </>
+            ) : (
+              ListHeaderComponent
+            )
+          }
+          ListEmptyComponent={ListEmptyComponent}
+          contentContainerStyle={styles.listContentContainer}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
       <View
         style={[
           styles.backButton,
@@ -482,5 +586,22 @@ const createStyles = (theme: {colors: any}) =>
     filterContainer: {
       paddingTop: moderateScale(4),
       paddingBottom: moderateScale(8),
+    },
+    reciterGridRow: {
+      paddingHorizontal: moderateScale(16),
+      gap: moderateScale(12),
+      marginBottom: moderateScale(16),
+    },
+    customReciterBackRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(10),
+      gap: moderateScale(8),
+    },
+    customReciterBackText: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
     },
   });
