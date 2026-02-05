@@ -3,6 +3,7 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
+import {setAudioModeAsync} from 'expo-audio';
 
 interface ServiceInitializer {
   name: string;
@@ -154,8 +155,27 @@ export const appInitializer = new AppInitializer();
 // ============================================================================
 // SERVICE REGISTRATION
 // Register all services that need initialization here
-// Priority order: 1 = highest priority (initialized first)
+// Priority order: 0 = highest priority (initialized first)
 // ============================================================================
+
+/**
+ * Audio Configuration (Priority 0)
+ * Configures expo-audio for background playback support
+ * Non-critical - app can function without background audio
+ */
+appInitializer.registerService({
+  name: 'Audio Configuration',
+  priority: 0,
+  critical: false,
+  initialize: async () => {
+    await setAudioModeAsync({
+      shouldPlayInBackground: true,
+      playsInSilentMode: true,
+      interruptionModeAndroid: 'duckOthers',
+      interruptionMode: 'duckOthers',
+    });
+  },
+});
 
 /**
  * Database Service (Priority 1)
