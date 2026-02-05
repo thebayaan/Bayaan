@@ -98,6 +98,8 @@ export interface SurahListProps {
   ListHeaderComponent: React.ReactElement;
   /** Style for the list container */
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** List footer component */
+  ListFooterComponent?: React.ReactElement | null;
 }
 
 /**

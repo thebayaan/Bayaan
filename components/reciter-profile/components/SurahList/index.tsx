@@ -56,6 +56,7 @@ export const SurahList = React.forwardRef<
       onOptionsPress,
       onScroll,
       ListHeaderComponent,
+      ListFooterComponent,
       contentContainerStyle,
       viewMode,
       getColorForSurah,
@@ -218,6 +219,11 @@ export const SurahList = React.forwardRef<
       [ListHeaderComponent],
     );
 
+    const FooterMemo = React.useMemo(
+      () => ListFooterComponent ?? undefined,
+      [ListFooterComponent],
+    );
+
     // Important: We use the same exact contentContainerStyle for both views
     const sharedContentContainerStyle = React.useMemo(
       () => [styles.listContentContainer, contentContainerStyle],
@@ -240,6 +246,7 @@ export const SurahList = React.forwardRef<
             renderItem={renderCardItem}
             keyExtractor={item => `card-${item.id}`}
             ListHeaderComponent={HeaderMemo}
+            ListFooterComponent={FooterMemo}
             onScroll={viewMode === 'card' ? onScroll : undefined}
             scrollEventThrottle={1}
             contentContainerStyle={sharedContentContainerStyle}
@@ -270,6 +277,7 @@ export const SurahList = React.forwardRef<
             renderItem={renderListItem}
             keyExtractor={listKeyExtractor}
             ListHeaderComponent={HeaderMemo}
+            ListFooterComponent={FooterMemo}
             onScroll={viewMode === 'list' ? onScroll : undefined}
             scrollEventThrottle={1}
             contentContainerStyle={sharedContentContainerStyle}
