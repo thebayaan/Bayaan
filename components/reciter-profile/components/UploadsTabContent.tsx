@@ -3,7 +3,7 @@ import {
   View,
   Text,
   Pressable,
-  FlatList,
+  Animated,
   Alert,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -279,7 +279,7 @@ export const UploadsTabContent: React.FC<UploadsTabContentProps> = ({
 
   if (uploads.length === 0) {
     return (
-      <FlatList
+      <Animated.FlatList
         data={[]}
         renderItem={null}
         ListHeaderComponent={ListHeaderComponent}
@@ -294,7 +294,7 @@ export const UploadsTabContent: React.FC<UploadsTabContentProps> = ({
 
   if (viewMode === 'card') {
     return (
-      <FlatList
+      <Animated.FlatList
         data={uploads}
         renderItem={renderCardItem}
         keyExtractor={item => item.id}
@@ -312,7 +312,7 @@ export const UploadsTabContent: React.FC<UploadsTabContentProps> = ({
   }
 
   return (
-    <FlatList
+    <Animated.FlatList
       data={uploads}
       renderItem={renderListItem}
       keyExtractor={item => item.id}
