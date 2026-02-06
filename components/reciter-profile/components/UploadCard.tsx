@@ -62,7 +62,6 @@ export const UploadCard: React.FC<UploadCardProps> = ({
           fontFamily: 'Manrope-Bold',
           color: theme.colors.text,
           textAlign: 'center',
-          numberOfLines: 2,
         },
         subtitle: {
           fontSize: moderateScale(9),

@@ -1,5 +1,6 @@
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
+import Color from 'color';
 
 /**
  * Common styles shared across ReciterProfile components
@@ -20,11 +21,16 @@ export const createSharedStyles = (theme: Theme) =>
       height: moderateScale(40),
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-end',
+      justifyContent: 'space-between',
       marginHorizontal: moderateScale(16),
       borderRadius: moderateScale(8),
       marginBottom: moderateScale(2),
       backgroundColor: theme.colors.background,
+      marginTop: moderateScale(10),
+    },
+    sortOptionsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
     rightControlsContainer: {
       flexDirection: 'row',
@@ -37,6 +43,18 @@ export const createSharedStyles = (theme: Theme) =>
       paddingVertical: moderateScale(6),
       borderRadius: moderateScale(16),
       marginRight: moderateScale(8),
+    },
+    activeOptionButton: {
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    },
+    optionButtonText: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-SemiBold',
+      marginLeft: moderateScale(4),
+      color: theme.colors.textSecondary,
+    },
+    activeOptionText: {
+      color: theme.colors.text,
     },
     viewModeButton: {
       flexDirection: 'row',

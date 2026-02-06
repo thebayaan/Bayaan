@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {
   View,
+  Text,
   Pressable,
   Animated as RNAnimated,
   NativeScrollEvent,
@@ -60,6 +61,7 @@ interface ReciterProfileProps {
 
 // Define types matching useSettings
 type ReciterProfileViewMode = 'card' | 'list';
+type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
 
 // Create a proper memoized wrapper for SurahList
 const MemoizedSurahList = React.memo(SurahList);
@@ -88,6 +90,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
     useSettings(state => state.reciterProfileViewMode),
   );
+  const [sortOption, setSortOption] = useState<ReciterProfileSortOption>(
+    useSettings(state => state.reciterProfileSortOption),
+  );
   const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
   const [activeTab, setActiveTab] = useState<string>('');
   const flatListRef = useRef<RNAnimated.FlatList>(null);
@@ -99,6 +104,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   // Retrieve persisted reciter profile settings
   const setReciterViewModeSetting = useSettings(
     state => state.setReciterProfileViewMode,
+  );
+  const setReciterSortOptionSetting = useSettings(
+    state => state.setReciterProfileSortOption,
   );
 
   const headerOpacity = scrollY.interpolate({
@@ -150,8 +158,17 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         )
       : surahsToProcess;
 
-    // Sort ascending by default
-    return [...filtered].sort((a, b) => a.id - b.id);
+    // Sort based on sortOption
+    return [...filtered].sort((a, b) => {
+      if (sortOption === 'asc') {
+        return a.id - b.id;
+      } else if (sortOption === 'desc') {
+        return b.id - a.id;
+      } else if (sortOption === 'revelation') {
+        return a.revelation_order - b.revelation_order;
+      }
+      return 0;
+    });
   }, [
     availableSurahs,
     showLovedOnly,
@@ -159,6 +176,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     currentReciterId,
     selectedRewayat,
     searchQuery,
+    sortOption,
   ]);
 
   useEffect(() => {
@@ -772,6 +790,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   };
 
   // Callback to toggle view mode with optimized performance
+  const changeSortOption = useCallback(
+    (option: ReciterProfileSortOption) => {
+      setSortOption(option);
+      setReciterSortOptionSetting(option);
+    },
+    [setReciterSortOptionSetting],
+  );
+
   const toggleViewMode = useCallback(() => {
     const newMode = viewMode === 'card' ? 'list' : 'card';
     // First update settings store to avoid state sync issues
@@ -830,12 +856,10 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   );
   const hasUploads = reciterUploads.length > 0;
 
-  // Build tabs array: "My Uploads" (if uploads exist) + one tab per rewayat
+  // Build tabs array: "My Uploads" (always first) + one tab per rewayat
   const tabs = useMemo(() => {
     const result: Array<{id: string; label: string}> = [];
-    if (hasUploads) {
-      result.push({id: 'uploads', label: 'My Uploads'});
-    }
+    result.push({id: 'uploads', label: 'My Uploads'});
     if (reciter?.rewayat) {
       reciter.rewayat.forEach(r => {
         const style =
@@ -844,26 +868,19 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       });
     }
     return result;
-  }, [hasUploads, reciter?.rewayat]);
+  }, [reciter?.rewayat]);
 
-  // Initialize activeTab when reciter loads or uploads change
+  // Initialize activeTab when reciter loads
   useEffect(() => {
     if (tabs.length === 0) return;
 
     if (activeTab === '') {
-      // First load: default to uploads tab if has uploads, else first rewayat
-      const defaultTab = hasUploads
-        ? 'uploads'
-        : selectedRewayatId || tabs[0].id;
-      setActiveTab(defaultTab);
-    } else if (!tabs.some(t => t.id === activeTab)) {
-      // Active tab no longer exists (e.g. all uploads deleted) — fall back
-      setActiveTab(tabs[0].id);
-      if (tabs[0].id !== 'uploads') {
-        handleRewayatChange(tabs[0].id);
-      }
+      // First load: default to saved rewayat preference or first rewayat tab
+      const rewayatTab = tabs.find(t => t.id === selectedRewayatId);
+      const firstRewayatTab = tabs.find(t => t.id !== 'uploads');
+      setActiveTab(rewayatTab?.id || firstRewayatTab?.id || tabs[0].id);
     }
-  }, [tabs, activeTab, hasUploads, selectedRewayatId, handleRewayatChange]);
+  }, [tabs, activeTab, selectedRewayatId]);
 
   const handleTabChange = useCallback(
     (tabId: string) => {
@@ -894,7 +911,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         }),
       onScroll: handleScroll,
       viewMode,
-      sortOption: 'asc' as const,
+      sortOption,
       getColorForSurah,
       rewayatId: selectedRewayat?.id,
       maintainVisibleContentPosition: {
@@ -912,6 +929,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       selectedRewayat?.id,
       handleScroll,
       viewMode,
+      sortOption,
       getColorForSurah,
     ],
   );
@@ -994,6 +1012,54 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                   />
                 )}
                 <View style={styles.controlsRow}>
+                  {activeTab !== 'uploads' && (
+                    <View style={styles.sortOptionsContainer}>
+                      <Pressable
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'asc' && styles.activeOptionButton,
+                        ]}
+                        onPress={() => changeSortOption('asc')}>
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'asc' && styles.activeOptionText,
+                          ]}>
+                          Asc
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'desc' && styles.activeOptionButton,
+                        ]}
+                        onPress={() => changeSortOption('desc')}>
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'desc' && styles.activeOptionText,
+                          ]}>
+                          Desc
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'revelation' &&
+                            styles.activeOptionButton,
+                        ]}
+                        onPress={() => changeSortOption('revelation')}>
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'revelation' &&
+                              styles.activeOptionText,
+                          ]}>
+                          Rev
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
                   <View style={styles.rightControlsContainer}>
                     <Pressable
                       style={[
