@@ -870,17 +870,17 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     return result;
   }, [reciter?.rewayat]);
 
-  // Initialize activeTab when reciter loads
+  // Initialize activeTab once when rewayat tabs become available
+  const tabInitialized = useRef(false);
   useEffect(() => {
-    if (tabs.length === 0) return;
+    if (tabInitialized.current) return;
+    const firstRewayatTab = tabs.find(t => t.id !== 'uploads');
+    if (!firstRewayatTab) return;
 
-    if (activeTab === '') {
-      // First load: default to saved rewayat preference or first rewayat tab
-      const rewayatTab = tabs.find(t => t.id === selectedRewayatId);
-      const firstRewayatTab = tabs.find(t => t.id !== 'uploads');
-      setActiveTab(rewayatTab?.id || firstRewayatTab?.id || tabs[0].id);
-    }
-  }, [tabs, activeTab, selectedRewayatId]);
+    const rewayatTab = tabs.find(t => t.id === selectedRewayatId);
+    setActiveTab(rewayatTab?.id || firstRewayatTab.id);
+    tabInitialized.current = true;
+  }, [tabs, selectedRewayatId]);
 
   const handleTabChange = useCallback(
     (tabId: string) => {
