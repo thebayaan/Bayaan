@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ListRenderItemInfo,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -14,36 +15,22 @@ import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Icon} from '@rneui/themed';
-import {MicrophoneIcon} from '@/components/Icons';
-import {CollectionCard} from '@/components/CollectionCard';
-import {FilterBar} from '@/components/collection/FilterBar';
+import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
-import {
-  useUploadsStore,
-  getCustomReciterName,
-  type ReciterWithUploads,
-} from '@/store/uploadsStore';
+import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById, getReciterName} from '@/services/dataService';
-import {RECITERS} from '@/data/reciterData';
-import {getReciterArtwork} from '@/utils/artworkUtils';
-import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
+import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import type {UploadedRecitation} from '@/types/uploads';
 
-const UPLOAD_FILTERS = [
-  {id: 'untagged', label: 'Untagged'},
-  {id: 'reciters', label: 'Recitations'},
-  {id: 'other', label: 'Other'},
-];
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return 'Unknown';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^/.]+$/, '');
@@ -80,7 +67,7 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
   }
 
   return parts.length > 0
-    ? parts.join(' · ')
+    ? parts.join(' \u00B7 ')
     : stripExtension(item.originalFilename);
 }
 
@@ -95,54 +82,47 @@ export default function UploadsScreen() {
     importFiles,
     loadRecitations,
     deleteRecitation,
-    getRecitersWithUploads,
   } = useUploadsStore();
   const {updateQueue, play} = useUnifiedPlayer();
 
-  const [activeFilter, setActiveFilter] = useState<string>('');
-  const [selectedCustomReciterId, setSelectedCustomReciterId] = useState<
-    string | null
-  >(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     loadRecitations();
   }, [loadRecitations]);
 
-  const recitersWithUploads = useMemo(
-    () => getRecitersWithUploads(),
-    [recitations, getRecitersWithUploads],
+  // Animated button scales
+  const shuffleScale = useSharedValue(1);
+  const playScale = useSharedValue(1);
+
+  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: shuffleScale.value}],
+  }));
+  const playAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: playScale.value}],
+  }));
+
+  const handlePressIn = useCallback(
+    (button: 'shuffle' | 'play') => {
+      const scale = button === 'shuffle' ? shuffleScale : playScale;
+      scale.value = withSpring(0.92, {damping: 15, stiffness: 300});
+    },
+    [shuffleScale, playScale],
   );
 
-  const showReciterGrid =
-    activeFilter === 'reciters' && selectedCustomReciterId === null;
-
-  const filteredRecitations = useMemo(() => {
-    const filterId = activeFilter || 'all';
-
-    if (filterId === 'reciters' && selectedCustomReciterId) {
-      return recitations.filter(
-        r => r.customReciterId === selectedCustomReciterId,
-      );
-    }
-
-    switch (filterId) {
-      case 'untagged':
-        return recitations.filter(r => r.type === null);
-      case 'reciters':
-        return recitations.filter(
-          r => r.reciterId !== null || r.customReciterId !== null,
-        );
-      case 'other':
-        return recitations.filter(r => r.type === 'other');
-      case 'all':
-      default:
-        return recitations;
-    }
-  }, [recitations, activeFilter, selectedCustomReciterId]);
+  const handlePressOut = useCallback(
+    (button: 'shuffle' | 'play') => {
+      const scale = button === 'shuffle' ? shuffleScale : playScale;
+      scale.value = withSpring(1, {damping: 15, stiffness: 300});
+    },
+    [shuffleScale, playScale],
+  );
 
   const handleImportFile = useCallback(async () => {
+    setIsImporting(true);
     try {
       const DocumentPicker = await import('expo-document-picker');
+      setIsImporting(false);
       const result = await DocumentPicker.getDocumentAsync({
         type: [
           'audio/mpeg',
@@ -175,37 +155,45 @@ export default function UploadsScreen() {
         await importFiles(files);
       }
     } catch (error) {
+      setIsImporting(false);
       console.error('Error importing files:', error);
     }
   }, [importFile, importFiles]);
 
+  const handlePlayAll = useCallback(async () => {
+    if (recitations.length === 0) return;
+    try {
+      const tracks = recitations.map(createUserUploadTrack);
+      await updateQueue(tracks, 0);
+      await play();
+    } catch (error) {
+      console.error('Error playing all uploads:', error);
+    }
+  }, [recitations, updateQueue, play]);
+
+  const handleShuffle = useCallback(async () => {
+    if (recitations.length === 0) return;
+    try {
+      const shuffled = shuffleArray([...recitations]);
+      const tracks = shuffled.map(createUserUploadTrack);
+      await updateQueue(tracks, 0);
+      await play();
+    } catch (error) {
+      console.error('Error shuffling uploads:', error);
+    }
+  }, [recitations, updateQueue, play]);
+
   const handlePlayRecitation = useCallback(
     async (item: UploadedRecitation, index: number) => {
       try {
-        const tracks = filteredRecitations.map(createUserUploadTrack);
+        const tracks = recitations.map(createUserUploadTrack);
         await updateQueue(tracks, index);
         await play();
       } catch (error) {
         console.error('Error playing uploaded recitation:', error);
       }
     },
-    [filteredRecitations, updateQueue, play],
-  );
-
-  const handleFilterChange = useCallback((filterId: string) => {
-    setActiveFilter(filterId);
-    setSelectedCustomReciterId(null);
-  }, []);
-
-  const handleReciterPress = useCallback(
-    (reciterItem: ReciterWithUploads) => {
-      if (reciterItem.isCustom) {
-        setSelectedCustomReciterId(reciterItem.id);
-      } else {
-        router.push(`/reciter/${reciterItem.id}`);
-      }
-    },
-    [router],
+    [recitations, updateQueue, play],
   );
 
   const handleOrganize = useCallback((item: UploadedRecitation) => {
@@ -255,12 +243,12 @@ export default function UploadsScreen() {
   );
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const hasRecitations = recitations.length > 0;
 
   const renderItem = useCallback(
     ({item, index}: ListRenderItemInfo<UploadedRecitation>) => {
       const displayTitle = getDisplayTitle(item);
       const displaySubtitle = getDisplaySubtitle(item);
-      const duration = formatDuration(item.duration);
 
       return (
         <View style={styles.itemRow}>
@@ -292,7 +280,7 @@ export default function UploadsScreen() {
                 <Text style={styles.itemTertiaryText}>
                   {item.rewayah}
                   {item.style
-                    ? ` · ${item.style.charAt(0).toUpperCase() + item.style.slice(1)}`
+                    ? ` \u00B7 ${item.style.charAt(0).toUpperCase() + item.style.slice(1)}`
                     : ''}
                 </Text>
               )}
@@ -332,28 +320,126 @@ export default function UploadsScreen() {
             styles.gradientContainer,
             {paddingTop: insets.top + moderateScale(20)},
           ]}>
-          <CollectionCard
-            icon={
-              <MicrophoneIcon
-                color={theme.colors.text}
-                size={moderateScale(80)}
-              />
-            }
-            title="Uploads"
-            subtitle={`${totalCount} recitation${totalCount !== 1 ? 's' : ''}`}
-          />
+          {/* Back Button */}
+          <Pressable
+            style={[
+              styles.backButtonInner,
+              {top: insets.top + moderateScale(10)},
+            ]}
+            onPress={() => router.back()}>
+            <Icon
+              name="arrow-left"
+              type="feather"
+              size={moderateScale(24)}
+              color="white"
+            />
+          </Pressable>
+
+          {/* Hero Icon */}
+          <View style={styles.contentCenter}>
+            <View style={styles.heroIconContainer}>
+              <View style={styles.heroIconInner}>
+                <MicrophoneIcon color="white" size={moderateScale(30)} />
+              </View>
+            </View>
+            <Text style={styles.title}>Uploads</Text>
+            <Text style={styles.subtitle}>
+              {totalCount} recitation{totalCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
         </LinearGradient>
-        <View style={[styles.contentContainer, styles.filterContainer]}>
-          <FilterBar
-            filters={UPLOAD_FILTERS}
-            activeFilter={activeFilter}
-            onFilterChange={handleFilterChange}
-            theme={theme}
-          />
+
+        {/* Action Buttons */}
+        <View style={styles.contentWrapper}>
+          <View style={styles.actionButtons}>
+            <View />
+            {/* Right side buttons */}
+            <View style={styles.rightAlignedButtons}>
+              <AnimatedPressable
+                style={[
+                  styles.circleButton,
+                  shuffleAnimatedStyle,
+                  !hasRecitations && styles.disabledButton,
+                ]}
+                onPress={hasRecitations ? handleShuffle : undefined}
+                onPressIn={
+                  hasRecitations ? () => handlePressIn('shuffle') : undefined
+                }
+                onPressOut={
+                  hasRecitations ? () => handlePressOut('shuffle') : undefined
+                }
+                disabled={!hasRecitations}>
+                <ShuffleIcon
+                  color={theme.colors.text}
+                  size={moderateScale(20)}
+                />
+              </AnimatedPressable>
+              <AnimatedPressable
+                style={[
+                  styles.circleButton,
+                  styles.playButton,
+                  playAnimatedStyle,
+                  !hasRecitations && styles.disabledButton,
+                ]}
+                onPress={hasRecitations ? handlePlayAll : undefined}
+                onPressIn={
+                  hasRecitations ? () => handlePressIn('play') : undefined
+                }
+                onPressOut={
+                  hasRecitations ? () => handlePressOut('play') : undefined
+                }
+                disabled={!hasRecitations}>
+                <View style={styles.playIconContainer}>
+                  <PlayIcon
+                    color={theme.colors.background}
+                    size={moderateScale(16)}
+                  />
+                </View>
+              </AnimatedPressable>
+            </View>
+          </View>
         </View>
+
+        {/* Add Recitation Bar */}
+        <Pressable
+          style={styles.uploadBar}
+          onPress={handleImportFile}
+          disabled={isImporting}>
+          {isImporting ? (
+            <ActivityIndicator
+              size="small"
+              color={theme.colors.textSecondary}
+            />
+          ) : (
+            <Icon
+              name="plus"
+              type="feather"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+          )}
+          <Text style={styles.uploadBarText}>
+            {isImporting ? 'Opening...' : 'Add Recitation'}
+          </Text>
+        </Pressable>
       </View>
     );
-  }, [styles, theme, insets.top, totalCount, activeFilter, handleFilterChange]);
+  }, [
+    styles,
+    theme,
+    insets.top,
+    totalCount,
+    router,
+    handleImportFile,
+    isImporting,
+    hasRecitations,
+    handlePlayAll,
+    handleShuffle,
+    handlePressIn,
+    handlePressOut,
+    shuffleAnimatedStyle,
+    playAnimatedStyle,
+  ]);
 
   const ListEmptyComponent = useCallback(() => {
     return (
@@ -365,124 +451,23 @@ export default function UploadsScreen() {
     );
   }, [styles]);
 
-  const renderReciterCard = useCallback(
-    ({item}: ListRenderItemInfo<ReciterWithUploads>) => {
-      const reciter = item.isCustom
-        ? null
-        : RECITERS.find(r => r.id === item.id);
-      const imageUrl = reciter ? getReciterArtwork(reciter) : undefined;
-
-      return (
-        <CircularReciterCard
-          imageUrl={imageUrl}
-          name={item.name}
-          onPress={() => handleReciterPress(item)}
-          size="medium"
-        />
-      );
-    },
-    [handleReciterPress],
-  );
-
-  const reciterKeyExtractor = useCallback(
-    (item: ReciterWithUploads) => item.id,
-    [],
-  );
-
-  const CustomReciterBackHeader = useCallback(() => {
-    if (!selectedCustomReciterId) return null;
-    const name =
-      getCustomReciterName(selectedCustomReciterId) || 'Custom Reciter';
-    return (
-      <Pressable
-        style={styles.customReciterBackRow}
-        onPress={() => setSelectedCustomReciterId(null)}>
-        <Icon
-          name="arrow-left"
-          type="feather"
-          size={moderateScale(16)}
-          color={theme.colors.textSecondary}
-        />
-        <Text style={styles.customReciterBackText}>{name}</Text>
-      </Pressable>
-    );
-  }, [selectedCustomReciterId, styles, theme.colors.textSecondary]);
-
   return (
     <View style={styles.container}>
-      {showReciterGrid ? (
-        <FlatList
-          data={recitersWithUploads}
-          renderItem={renderReciterCard}
-          keyExtractor={reciterKeyExtractor}
-          ListHeaderComponent={ListHeaderComponent}
-          ListEmptyComponent={ListEmptyComponent}
-          contentContainerStyle={styles.listContentContainer}
-          bounces={false}
-          showsVerticalScrollIndicator={false}
-          numColumns={4}
-          columnWrapperStyle={styles.reciterGridRow}
-        />
-      ) : (
-        <FlatList
-          data={filteredRecitations}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          ListHeaderComponent={
-            selectedCustomReciterId ? (
-              <>
-                <ListHeaderComponent />
-                <CustomReciterBackHeader />
-              </>
-            ) : (
-              ListHeaderComponent
-            )
-          }
-          ListEmptyComponent={ListEmptyComponent}
-          contentContainerStyle={styles.listContentContainer}
-          bounces={false}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-      <View
-        style={[
-          styles.backButton,
-          {
-            top: insets.top + moderateScale(10),
-            left: moderateScale(15),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color="white"
-          />
-        </Pressable>
-      </View>
-      <View
-        style={[
-          styles.addButton,
-          {
-            top: insets.top + moderateScale(10),
-            right: moderateScale(15),
-          },
-        ]}>
-        <Pressable onPress={handleImportFile}>
-          <Icon
-            name="plus"
-            type="feather"
-            size={moderateScale(24)}
-            color="white"
-          />
-        </Pressable>
-      </View>
+      <FlatList
+        data={recitations}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        contentContainerStyle={styles.listContentContainer}
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
 
-const createStyles = (theme: {colors: any}) =>
+const createStyles = (theme: {colors: any; fonts: any}) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -495,13 +480,107 @@ const createStyles = (theme: {colors: any}) =>
     gradientContainer: {
       width: '100%',
       alignItems: 'center',
-      paddingBottom: moderateScale(20),
+      paddingBottom: moderateScale(30),
       overflow: 'hidden',
-      backgroundColor: '#8B5CF6',
     },
-    contentContainer: {
+    backButtonInner: {
+      position: 'absolute',
+      top: 0,
+      left: moderateScale(15),
+      zIndex: 10,
+      padding: moderateScale(8),
+    },
+    contentCenter: {
+      alignItems: 'center',
+      paddingHorizontal: moderateScale(20),
+    },
+    heroIconContainer: {
+      width: moderateScale(64),
+      height: moderateScale(64),
+      borderRadius: moderateScale(32),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: moderateScale(12),
+      backgroundColor: Color('#8B5CF6').alpha(0.2).toString(),
+      shadowColor: '#8B5CF6',
+      shadowOffset: {width: 0, height: 4},
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    heroIconInner: {
+      width: moderateScale(56),
+      height: moderateScale(56),
+      borderRadius: moderateScale(28),
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: Color('#8B5CF6').alpha(0.15).toString(),
+    },
+    title: {
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts?.bold || 'Manrope-Bold',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: moderateScale(8),
+      letterSpacing: -0.3,
+    },
+    subtitle: {
+      fontSize: moderateScale(12),
+      color: theme.colors.text,
+      fontFamily: theme.fonts?.regular || 'Manrope-Regular',
+      textAlign: 'center',
+      marginBottom: moderateScale(8),
+    },
+    contentWrapper: {
       paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(10),
+    },
+    actionButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: moderateScale(5),
+      paddingHorizontal: moderateScale(5),
+    },
+    uploadBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(12),
+      marginHorizontal: moderateScale(16),
+      marginBottom: moderateScale(8),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      gap: moderateScale(8),
+    },
+    uploadBarText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
+    },
+    rightAlignedButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    circleButton: {
+      width: moderateScale(42),
+      height: moderateScale(42),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
+      padding: moderateScale(8),
+    },
+    playButton: {
+      width: moderateScale(42),
+      height: moderateScale(42),
+      backgroundColor: theme.colors.text,
+    },
+    playIconContainer: {
+      paddingLeft: moderateScale(4),
+    },
+    disabledButton: {
+      opacity: 0.4,
     },
     listContentContainer: {
       flexGrow: 1,
@@ -519,14 +598,6 @@ const createStyles = (theme: {colors: any}) =>
       color: theme.colors.textSecondary,
       textAlign: 'center',
       lineHeight: moderateScale(24),
-    },
-    backButton: {
-      position: 'absolute' as const,
-      zIndex: 10,
-    },
-    addButton: {
-      position: 'absolute' as const,
-      zIndex: 10,
     },
     itemRow: {
       flexDirection: 'row',
@@ -582,26 +653,5 @@ const createStyles = (theme: {colors: any}) =>
       paddingVertical: moderateScale(8),
       paddingRight: moderateScale(12),
       alignSelf: 'stretch',
-    },
-    filterContainer: {
-      paddingTop: moderateScale(4),
-      paddingBottom: moderateScale(8),
-    },
-    reciterGridRow: {
-      paddingHorizontal: moderateScale(16),
-      gap: moderateScale(12),
-      marginBottom: moderateScale(16),
-    },
-    customReciterBackRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(10),
-      gap: moderateScale(8),
-    },
-    customReciterBackText: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
     },
   });

@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useMemo, useEffect} from 'react';
+import React, {useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Keyboard,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -23,6 +24,7 @@ import {
   getSurahById,
   getReciterName,
 } from '@/services/dataService';
+import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {RECITERS} from '@/data/reciterData';
 import type {Surah} from '@/data/surahData';
 import type {UploadedRecitation} from '@/types/uploads';
@@ -112,6 +114,51 @@ export const OrganizeRecitationSheet = (
       (recitation?.rewayah !== null &&
         recitation?.rewayah !== DEFAULT_REWAYAH) ||
       (recitation?.style !== null && recitation?.style !== DEFAULT_STYLE),
+  );
+
+  // Keyboard-aware scrolling
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const reciterSectionY = useRef(0);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const reciterInputFocused = useRef(false);
+
+  const scrollToReciterSection = useCallback(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: reciterSectionY.current + moderateScale(40),
+        animated: true,
+      });
+    }, 200);
+  }, []);
+
+  const handleContentSizeChange = useCallback(
+    (_w: number, _h: number) => {
+      if (reciterInputFocused.current && keyboardHeight > 0) {
+        scrollViewRef.current?.scrollTo({
+          y: reciterSectionY.current + moderateScale(40),
+          animated: true,
+        });
+      }
+    },
+    [keyboardHeight],
   );
 
   // Sync state when the sheet reopens with a different/updated recitation
@@ -378,10 +425,15 @@ export const OrganizeRecitationSheet = (
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.contentContainer}>
+        onContentSizeChange={handleContentSizeChange}
+        contentContainerStyle={[
+          styles.contentContainer,
+          keyboardHeight > 0 && {paddingBottom: keyboardHeight},
+        ]}>
         {/* File Info */}
         <View style={styles.fileInfoRow}>
           <View style={styles.fileIconContainer}>
@@ -442,8 +494,8 @@ export const OrganizeRecitationSheet = (
                   <Text style={styles.selectedItemText}>
                     {selectedSurah.id}. {selectedSurah.name}
                   </Text>
-                  <Text style={styles.selectedItemArabic}>
-                    {selectedSurah.name_arabic}
+                  <Text style={styles.selectedItemGlyph}>
+                    {surahGlyphMap[selectedSurah.id]}
                   </Text>
                 </View>
                 <Pressable
@@ -498,8 +550,8 @@ export const OrganizeRecitationSheet = (
                             {surah.translated_name_english}
                           </Text>
                         </View>
-                        <Text style={styles.resultArabic}>
-                          {surah.name_arabic}
+                        <Text style={styles.resultGlyph}>
+                          {surahGlyphMap[surah.id]}
                         </Text>
                       </Pressable>
                     ))}
@@ -599,7 +651,11 @@ export const OrganizeRecitationSheet = (
 
         {/* Reciter Search (shared by both types) */}
         {type !== null && (
-          <View style={styles.section}>
+          <View
+            style={styles.section}
+            onLayout={e => {
+              reciterSectionY.current = e.nativeEvent.layout.y;
+            }}>
             <Text style={styles.sectionLabel}>Reciter</Text>
             {reciterDisplayName ? (
               <View style={styles.selectedItemRow}>
@@ -639,7 +695,14 @@ export const OrganizeRecitationSheet = (
                       setReciterQuery(text);
                       setShowReciterResults(true);
                     }}
-                    onFocus={() => setShowReciterResults(true)}
+                    onFocus={() => {
+                      reciterInputFocused.current = true;
+                      setShowReciterResults(true);
+                      scrollToReciterSection();
+                    }}
+                    onBlur={() => {
+                      reciterInputFocused.current = false;
+                    }}
                     keyboardAppearance="dark"
                     returnKeyType="search"
                     autoCapitalize="words"
@@ -958,10 +1021,10 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       marginTop: moderateScale(1),
     },
-    resultArabic: {
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
+    resultGlyph: {
+      fontFamily: 'SurahNames',
+      fontSize: moderateScale(20),
+      color: theme.colors.text,
       marginLeft: moderateScale(8),
     },
     selectedItemRow: {
@@ -984,10 +1047,10 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
     },
-    selectedItemArabic: {
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
+    selectedItemGlyph: {
+      fontFamily: 'SurahNames',
+      fontSize: moderateScale(20),
+      color: theme.colors.text,
     },
     clearButton: {
       padding: moderateScale(8),
