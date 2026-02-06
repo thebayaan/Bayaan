@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, Animated, View} from 'react-native';
+import {Text, Animated, View, InteractionManager} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
@@ -26,7 +26,8 @@ interface UpdatedSurahListProps extends SurahListProps {
   viewMode: ReciterProfileViewMode;
   getColorForSurah: (id: number) => string;
   sortOption: ReciterProfileSortOption;
-  rewayatId?: string; // Add rewayatId prop
+  rewayatId?: string;
+  inline?: boolean;
 }
 
 // Shared ItemSeparator component
@@ -62,6 +63,7 @@ export const SurahList = React.forwardRef<
       getColorForSurah,
       sortOption,
       rewayatId,
+      inline,
     },
     ref,
   ) => {
@@ -213,6 +215,64 @@ export const SurahList = React.forwardRef<
       return `list-${item.surah.id}`;
     }, []);
 
+    // Batched inline rendering — render first batch immediately, rest after interactions
+    const INITIAL_CARD_BATCH = 12;
+    const INITIAL_LIST_BATCH = 20;
+
+    const [expandedCards, setExpandedCards] = React.useState(false);
+    const [expandedList, setExpandedList] = React.useState(false);
+
+    React.useEffect(() => {
+      if (!inline) return;
+      const handle = InteractionManager.runAfterInteractions(() => {
+        setExpandedCards(true);
+        setExpandedList(true);
+      });
+      return () => handle.cancel();
+    }, [inline]);
+
+    // Inline rendering mode: no FlatList, items rendered directly in parent ScrollView
+    if (inline) {
+      if (viewMode === 'card') {
+        const visibleSurahs = expandedCards
+          ? surahs
+          : surahs.slice(0, INITIAL_CARD_BATCH);
+        return (
+          <View style={styles.surahsContainer}>
+            {surahs.length === 0 ? (
+              <Text style={styles.emptyText}>No surahs available</Text>
+            ) : (
+              <View style={styles.cardGrid}>
+                {visibleSurahs.map(surah => (
+                  <React.Fragment key={`card-${surah.id}`}>
+                    {renderCardItem({item: surah})}
+                  </React.Fragment>
+                ))}
+              </View>
+            )}
+          </View>
+        );
+      }
+
+      const visibleListData = expandedList
+        ? listData
+        : listData.slice(0, INITIAL_LIST_BATCH);
+      return (
+        <View style={styles.surahsContainer}>
+          {listData.length === 0 ? (
+            <Text style={styles.emptyText}>No surahs available</Text>
+          ) : (
+            visibleListData.map((item, index) => (
+              <React.Fragment key={listKeyExtractor(item)}>
+                {renderListItem({item})}
+                {index < visibleListData.length - 1 && <ItemSeparator />}
+              </React.Fragment>
+            ))
+          )}
+        </View>
+      );
+    }
+
     // Shared ListHeader to avoid re-rendering issues
     const HeaderMemo = React.useMemo(
       () => ListHeaderComponent,
@@ -242,6 +302,7 @@ export const SurahList = React.forwardRef<
             ref={viewMode === 'card' ? ref : undefined}
             bounces={true}
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
             data={surahs}
             renderItem={renderCardItem}
             keyExtractor={item => `card-${item.id}`}
@@ -273,6 +334,7 @@ export const SurahList = React.forwardRef<
             ref={viewMode === 'list' ? ref : undefined}
             bounces={true}
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
             data={listData}
             renderItem={renderListItem}
             keyExtractor={listKeyExtractor}
@@ -322,6 +384,13 @@ const createStyles = (theme: Theme) =>
     },
     surahCard: {
       width: '47%',
+    },
+    cardGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      paddingHorizontal: moderateScale(16),
+      rowGap: moderateScale(16),
     },
     listSeparator: {
       height: moderateScale(4),

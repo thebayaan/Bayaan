@@ -3,21 +3,21 @@ import {
   View,
   Text,
   Pressable,
+  ScrollView,
   Animated as RNAnimated,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  useWindowDimensions,
+  InteractionManager,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
-import {Surah} from '@/data/surahData';
+import {Surah, SURAHS} from '@/data/surahData';
 import {Reciter, Rewayat} from '@/data/reciterData';
-import {getReciterById, getAllSurahs} from '@/services/dataService';
+import {getReciterByIdSync} from '@/services/dataService';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {StatusBar} from 'expo-status-bar';
-import {reciterImages} from '@/utils/reciterImages';
-import {Asset} from 'expo-asset';
-import {useImageColors} from '@/hooks/useImageColors';
 import {useLoved} from '@/hooks/useLoved';
 import {useUnifiedPlayer} from '@/services/player/store/playerStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -45,7 +45,6 @@ import Animated, {
 // Import components directly
 import {ActionButtons} from './components/ActionButtons';
 import {ReciterHeader} from './components/ReciterHeader';
-import {StickyHeader} from './components/StickyHeader';
 import {NavigationButtons} from './components/NavigationButtons';
 import {SurahList} from './components/SurahList';
 import {SearchView} from './components/SearchView';
@@ -63,6 +62,37 @@ interface ReciterProfileProps {
 type ReciterProfileViewMode = 'card' | 'list';
 type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
 
+// Sort rewayat, prioritizing Murattal Hafs A'n Assem
+function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
+  return [...rewayat].sort((a, b) => {
+    const aIsHafsMurattal =
+      a.name === "Hafs A'n Assem" && a.style === 'murattal';
+    const bIsHafsMurattal =
+      b.name === "Hafs A'n Assem" && b.style === 'murattal';
+    if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
+    if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
+
+    const aIsHafs = a.name === "Hafs A'n Assem";
+    const bIsHafs = b.name === "Hafs A'n Assem";
+    if (aIsHafs && !bIsHafs) return -1;
+    if (!aIsHafs && bIsHafs) return 1;
+
+    const aIsMurattal = a.style === 'murattal';
+    const bIsMurattal = b.style === 'murattal';
+    if (aIsMurattal && !bIsMurattal) return -1;
+    if (!aIsMurattal && bIsMurattal) return 1;
+
+    return 0;
+  });
+}
+
+// Synchronous reciter init — avoids async loading phase
+function initReciter(id: string): Reciter | null {
+  const r = getReciterByIdSync(id);
+  if (!r) return null;
+  return {...r, rewayat: sortRewayat(r.rewayat)};
+}
+
 // Create a proper memoized wrapper for SurahList
 const MemoizedSurahList = React.memo(SurahList);
 
@@ -74,18 +104,16 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   const styles = createSharedStyles(theme);
   const insets = useSafeAreaInsets();
   const [reciter, setReciter] = useState<Reciter | null>(null);
-  const [surahs, setSurahs] = useState<Surah[]>([]);
-  const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
+  const surahs = SURAHS;
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRewayatId, setSelectedRewayatId] = useState<
     string | undefined
   >(undefined);
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const scrollX = useRef(new RNAnimated.Value(0)).current;
   const iconsOpacity = useRef(new RNAnimated.Value(1)).current;
-  const iconsZIndex = useRef(new RNAnimated.Value(1)).current;
-  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
-  const [isStatusBarDark, setIsStatusBarDark] = useState(false);
+  const iconsZIndex = useRef(new RNAnimated.Value(20)).current;
   const [showSearch, setShowSearch] = useState(false);
   const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
     useSettings(state => state.reciterProfileViewMode),
@@ -95,7 +123,37 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   );
   const [showLovedOnly, setShowLovedOnly] = useState(showLoved);
   const [activeTab, setActiveTab] = useState<string>('');
-  const flatListRef = useRef<RNAnimated.FlatList>(null);
+  const outerScrollRef = useRef<ScrollView>(null);
+  const horizontalRef = useRef<ScrollView>(null);
+  const currentScrollYRef = useRef(0);
+  const initialScrollDone = useRef(false);
+  const renderedTabsRef = useRef(new Set<string>());
+  const activeTabRef = useRef('');
+  const {height: screenHeight, width: screenWidth} = useWindowDimensions();
+
+  // Deferred loading — run after navigation animation completes
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      const r = initReciter(currentReciterId);
+      if (r) {
+        const firstRewayatId = r.rewayat[0]?.id;
+        // Set scrollX BEFORE triggering re-render so the tab bar
+        // interpolations start at the correct position.
+        // Uploads is index 0, first rewayat is index 1.
+        scrollX.setValue(1 * screenWidth);
+        setReciter(r);
+        setSelectedRewayatId(firstRewayatId);
+        setActiveTab(firstRewayatId ?? '');
+        activeTabRef.current = firstRewayatId ?? '';
+      } else {
+        setReciter(null);
+      }
+    });
+    return () => handle.cancel();
+  }, [currentReciterId, scrollX, screenWidth]);
+  const [collapsibleHeight, setCollapsibleHeight] = useState(0);
+  const [stickyHeight, setStickyHeight] = useState(0);
+  const [stickyTitleHeight, setStickyTitleHeight] = useState(0);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
   const {addRecentTrack} = useRecentlyPlayedStore();
@@ -109,12 +167,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     state => state.setReciterProfileSortOption,
   );
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [100, 200],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
   const selectedRewayat = useMemo(() => {
     if (!reciter) return undefined;
     if (!selectedRewayatId) return reciter.rewayat[0];
@@ -124,102 +176,83 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     );
   }, [reciter, selectedRewayatId]);
 
-  const availableSurahs = useMemo(() => {
-    if (!selectedRewayat?.surah_list) return surahs;
-    const validSurahs = selectedRewayat.surah_list.filter(
-      (id): id is number => id !== null,
-    );
-    return surahs.filter(surah => validSurahs.includes(surah.id));
-  }, [surahs, selectedRewayat]);
+  const getFilteredSurahsForRewayat = useCallback(
+    (rewayat: Rewayat): Surah[] => {
+      // 1. Available surahs for this rewayat
+      let available = surahs;
+      if (rewayat.surah_list) {
+        const validSurahs = rewayat.surah_list.filter(
+          (id): id is number => id !== null,
+        );
+        available = surahs.filter(surah => validSurahs.includes(surah.id));
+      }
 
-  const filteredSurahsMemo = useMemo(() => {
-    // Start with available surahs for the selected rewayat
-    let surahsToProcess = availableSurahs;
+      // 2. Filter by loved status if toggled
+      if (showLovedOnly) {
+        available = available.filter(surah =>
+          isLovedWithRewayat(currentReciterId, surah.id.toString(), rewayat.id),
+        );
+      }
 
-    // Filter by loved status if toggled and a rewayat is selected
-    if (showLovedOnly && selectedRewayat?.id) {
-      surahsToProcess = surahsToProcess.filter(surah =>
-        isLovedWithRewayat(
-          currentReciterId,
-          surah.id.toString(),
-          selectedRewayat.id,
-        ),
-      );
-    }
-
-    // Filter by search query if present
-    const filtered = searchQuery
-      ? surahsToProcess.filter(
+      // 3. Filter by search query
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        available = available.filter(
           surah =>
-            surah.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            surah.translated_name_english
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()),
-        )
-      : surahsToProcess;
-
-    // Sort based on sortOption
-    return [...filtered].sort((a, b) => {
-      if (sortOption === 'asc') {
-        return a.id - b.id;
-      } else if (sortOption === 'desc') {
-        return b.id - a.id;
-      } else if (sortOption === 'revelation') {
-        return a.revelation_order - b.revelation_order;
+            surah.name.toLowerCase().includes(q) ||
+            surah.translated_name_english.toLowerCase().includes(q),
+        );
       }
-      return 0;
-    });
-  }, [
-    availableSurahs,
-    showLovedOnly,
-    isLovedWithRewayat,
-    currentReciterId,
-    selectedRewayat,
-    searchQuery,
-    sortOption,
-  ]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const reciterData = await getReciterById(currentReciterId);
-        if (reciterData) {
-          // Sort rewayat to prioritize Murattal Hafs A'n Assem
-          reciterData.rewayat = sortRewayat(reciterData.rewayat);
-          setReciter(reciterData);
+      // 4. Sort
+      return [...available].sort((a, b) => {
+        if (sortOption === 'asc') return a.id - b.id;
+        if (sortOption === 'desc') return b.id - a.id;
+        if (sortOption === 'revelation')
+          return a.revelation_order - b.revelation_order;
+        return 0;
+      });
+    },
+    [
+      surahs,
+      showLovedOnly,
+      isLovedWithRewayat,
+      currentReciterId,
+      searchQuery,
+      sortOption,
+    ],
+  );
 
-          // Use saved preference or default to first rewayat
-          const savedRewayatId = reciterPreferences[currentReciterId];
-          const validRewayat =
-            savedRewayatId &&
-            reciterData.rewayat.find(r => r.id === savedRewayatId);
+  // Lazy per-tab surah cache — only computes when a tab is first accessed.
+  // Deps key invalidates the whole cache when filter/sort/search changes.
+  const surahCacheRef = useRef<{key: string; map: Map<string, Surah[]>}>({
+    key: '',
+    map: new Map(),
+  });
+  const cacheKey = `${showLovedOnly}|${searchQuery}|${sortOption}`;
+  if (surahCacheRef.current.key !== cacheKey) {
+    surahCacheRef.current = {key: cacheKey, map: new Map()};
+  }
 
-          if (validRewayat) {
-            setSelectedRewayatId(validRewayat.id);
-          } else if (reciterData.rewayat.length > 0) {
-            setSelectedRewayatId(reciterData.rewayat[0].id);
-          }
-        }
-        const surahsData = await getAllSurahs();
-        setSurahs(surahsData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-    fetchData();
-  }, [currentReciterId, reciterPreferences]);
+  const getSurahsForTab = useCallback(
+    (tabId: string): Surah[] => {
+      const cache = surahCacheRef.current.map;
+      const cached = cache.get(tabId);
+      if (cached) return cached;
+      const rewayat = reciter?.rewayat.find(r => r.id === tabId);
+      if (!rewayat) return [];
+      const result = getFilteredSurahsForRewayat(rewayat);
+      cache.set(tabId, result);
+      return result;
+    },
+    [reciter, getFilteredSurahsForRewayat],
+  );
 
-  useEffect(() => {
-    const listener = headerOpacity.addListener(({value}) => {
-      if (value === 1 && !isHeaderVisible) {
-        setIsHeaderVisible(true);
-      } else if (value < 1 && isHeaderVisible) {
-        setIsHeaderVisible(false);
-      }
-    });
-
-    return () => headerOpacity.removeListener(listener);
-  }, [headerOpacity, isHeaderVisible]);
+  // Derived filteredSurahs for the active rewayat (used by playback handlers)
+  const filteredSurahs = useMemo(
+    () => getSurahsForTab(selectedRewayatId ?? ''),
+    [getSurahsForTab, selectedRewayatId],
+  );
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -666,70 +699,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     }));
   }, [reciter?.rewayat]);
 
-  const dominantColors = useImageColors(reciter?.name);
-  const isLoadingColors =
-    !dominantColors.primary || dominantColors.primary === theme.colors.primary;
-  const [isImagePreloaded, setIsImagePreloaded] = useState(false);
-
-  useEffect(() => {
-    if (reciter?.name) {
-      const formattedName = reciter.name
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
-      const localImageSource = reciterImages[formattedName];
-      if (localImageSource) {
-        Asset.fromModule(localImageSource as number)
-          .downloadAsync()
-          .then(() => setIsImagePreloaded(true))
-          .catch(error => {
-            console.error('Error preloading image:', error);
-            setIsImagePreloaded(true);
-          });
-      } else {
-        setIsImagePreloaded(true);
-      }
-    }
-  }, [reciter?.name]);
-
-  useEffect(() => {
-    setFilteredSurahs(filteredSurahsMemo);
-  }, [filteredSurahsMemo]);
-
-  // Maintain scroll position reference outside of react state
-  const scrollPosition = useRef(0);
-
-  // Create a scroll event listener for status bar updates
-  const handleStatusBarUpdate = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetY = event.nativeEvent.contentOffset.y;
-      if (!theme.isDarkMode) {
-        setIsStatusBarDark(offsetY > 100);
-      }
-    },
-    [theme.isDarkMode],
-  );
-
-  // Save scroll position separately
-  const handleSaveScrollPosition = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      scrollPosition.current = event.nativeEvent.contentOffset.y;
-    },
-    [],
-  );
-
-  // Create a proper animated scroll event
-  const handleScroll = RNAnimated.event(
-    [{nativeEvent: {contentOffset: {y: scrollY}}}],
-    {
-      useNativeDriver: true,
-      listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-        handleStatusBarUpdate(event);
-        handleSaveScrollPosition(event);
-      },
-    },
-  );
-
   const handleAddToQueue = useCallback(
     async (surah: Surah) => {
       if (!reciter || !selectedRewayat) return;
@@ -759,35 +728,19 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     [isLovedWithRewayat, selectedRewayat],
   );
 
-  // Function to sort rewayat, prioritizing Murattal Hafs A'n Assem
-  const sortRewayat = (rewayat: Rewayat[]): Rewayat[] => {
-    return [...rewayat].sort((a, b) => {
-      // First priority: Hafs A'n Assem with murattal style
-      const aIsHafsMurattal =
-        a.name === "Hafs A'n Assem" && a.style === 'murattal';
-      const bIsHafsMurattal =
-        b.name === "Hafs A'n Assem" && b.style === 'murattal';
-
-      if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
-      if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
-
-      // Second priority: Any Hafs A'n Assem
-      const aIsHafs = a.name === "Hafs A'n Assem";
-      const bIsHafs = b.name === "Hafs A'n Assem";
-
-      if (aIsHafs && !bIsHafs) return -1;
-      if (!aIsHafs && bIsHafs) return 1;
-
-      // Third priority: Any murattal style
-      const aIsMurattal = a.style === 'murattal';
-      const bIsMurattal = b.style === 'murattal';
-
-      if (aIsMurattal && !bIsMurattal) return -1;
-      if (!aIsMurattal && bIsMurattal) return 1;
-
-      return 0;
+  // Per-tab isLoved functions so all pager tabs show correct loved state
+  const isLovedPerTab = useMemo(() => {
+    const map = new Map<
+      string,
+      (recId: string, surahId: string | number) => boolean
+    >();
+    reciter?.rewayat.forEach(r => {
+      map.set(r.id, (recId: string, surahId: string | number) =>
+        isLovedWithRewayat(recId, surahId, r.id),
+      );
     });
-  };
+    return map;
+  }, [reciter?.rewayat, isLovedWithRewayat]);
 
   // Callback to toggle view mode with optimized performance
   const changeSortOption = useCallback(
@@ -800,21 +753,9 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
   const toggleViewMode = useCallback(() => {
     const newMode = viewMode === 'card' ? 'list' : 'card';
-    // First update settings store to avoid state sync issues
     setReciterViewModeSetting(newMode);
-    // Then update local state
     setViewMode(newMode);
-
-    // Schedule scroll restoration after view mode change is applied
-    requestAnimationFrame(() => {
-      if (flatListRef.current) {
-        flatListRef.current.scrollToOffset({
-          offset: scrollPosition.current,
-          animated: false,
-        });
-      }
-    });
-  }, [viewMode, setReciterViewModeSetting, scrollPosition]);
+  }, [viewMode, setReciterViewModeSetting]);
 
   // Function to generate a consistent color for each surah (similar to browse-all)
   const getColorForSurah = useCallback((id: number): string => {
@@ -870,71 +811,102 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
     return result;
   }, [reciter?.rewayat]);
 
-  // Initialize activeTab once when rewayat tabs become available
-  const tabInitialized = useRef(false);
-  useEffect(() => {
-    if (tabInitialized.current) return;
-    const firstRewayatTab = tabs.find(t => t.id !== 'uploads');
-    if (!firstRewayatTab) return;
-
-    const rewayatTab = tabs.find(t => t.id === selectedRewayatId);
-    setActiveTab(rewayatTab?.id || firstRewayatTab.id);
-    tabInitialized.current = true;
-  }, [tabs, selectedRewayatId]);
-
   const handleTabChange = useCallback(
     (tabId: string) => {
+      // Sync ref BEFORE scrolling so the scroll listener won't fight us
+      activeTabRef.current = tabId;
       setActiveTab(tabId);
       if (tabId !== 'uploads') {
         handleRewayatChange(tabId);
       }
+      // Scroll horizontal pager to the new tab
+      const tabIndex = tabs.findIndex(t => t.id === tabId);
+      if (tabIndex >= 0 && horizontalRef.current) {
+        horizontalRef.current.scrollTo({
+          x: tabIndex * screenWidth,
+          animated: true,
+        });
+      }
+      // When changing tabs: if sticky, stay at collapse point.
+      // If not sticky, scroll to top so header is visible.
+      const actualCollapsePoint = collapsibleHeight - stickyTitleHeight;
+      const isCollapsed = currentScrollYRef.current >= actualCollapsePoint - 1;
+      outerScrollRef.current?.scrollTo({
+        y: isCollapsed ? actualCollapsePoint : 0,
+        animated: false,
+      });
     },
-    [handleRewayatChange],
-  );
-
-  // Create a stable reference to data and callbacks used by SurahList to prevent re-renders
-  const surahListProps = useMemo(
-    () => ({
-      surahs: filteredSurahs,
-      onSurahPress: handleSurahPress,
-      reciterId: currentReciterId,
-      isLoved: isLovedWithCurrentRewayat,
-      isDownloaded: isDownloaded,
-      onOptionsPress: (surah: Surah) =>
-        SheetManager.show('surah-options', {
-          payload: {
-            surah,
-            reciterId: currentReciterId,
-            rewayatId: selectedRewayat?.id,
-            onAddToQueue: handleAddToQueue,
-          },
-        }),
-      onScroll: handleScroll,
-      viewMode,
-      sortOption,
-      getColorForSurah,
-      rewayatId: selectedRewayat?.id,
-      maintainVisibleContentPosition: {
-        minIndexForVisible: 0,
-        autoscrollToTopThreshold: 10,
-      },
-    }),
     [
-      filteredSurahs,
-      handleSurahPress,
-      currentReciterId,
-      isLovedWithCurrentRewayat,
-      isDownloaded,
-      handleAddToQueue,
-      selectedRewayat?.id,
-      handleScroll,
-      viewMode,
-      sortOption,
-      getColorForSurah,
+      collapsibleHeight,
+      stickyTitleHeight,
+      handleRewayatChange,
+      tabs,
+      screenWidth,
     ],
   );
 
-  if (!reciter || isLoadingColors || !isImagePreloaded) {
+  // Continuous scroll listener — updates activeTab at 50% swipe threshold
+  const handleHorizontalScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const pageIndex = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+      const tab = tabs[pageIndex];
+      if (tab && tab.id !== activeTabRef.current) {
+        activeTabRef.current = tab.id;
+        setActiveTab(tab.id);
+        if (tab.id !== 'uploads') {
+          handleRewayatChange(tab.id);
+        }
+      }
+    },
+    [tabs, screenWidth, handleRewayatChange],
+  );
+
+  // Sticky title bar opacity — fades in as the outer scroll collapses the header
+  // With negative margin on header, the actual collapse point is reduced
+  const collapsePoint = Math.max(1, collapsibleHeight - stickyTitleHeight);
+  const stickyTitleOpacity = useMemo(
+    () =>
+      scrollY.interpolate({
+        inputRange: [collapsePoint * 0.6, collapsePoint],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+      }),
+    [scrollY, collapsePoint],
+  );
+
+  // Minimum height for content area so header can always fully collapse
+  const contentMinHeight = Math.max(0, screenHeight - stickyHeight);
+
+  // Scroll horizontal pager to the initial active tab on first load
+  useEffect(() => {
+    if (!initialScrollDone.current && activeTab && tabs.length > 0) {
+      const index = tabs.findIndex(t => t.id === activeTab);
+      if (index >= 0) {
+        activeTabRef.current = activeTab;
+        scrollX.setValue(index * screenWidth);
+        setTimeout(() => {
+          horizontalRef.current?.scrollTo({
+            x: index * screenWidth,
+            animated: false,
+          });
+        }, 0);
+        initialScrollDone.current = true;
+      }
+    }
+  }, [activeTab, tabs, screenWidth, scrollX]);
+
+  // Lazy tab rendering: mark active ±1 tabs so only nearby tabs render.
+  // Once rendered, tabs stay in the Set so revisited tabs don't re-mount.
+  const activeIndex = tabs.findIndex(t => t.id === activeTab);
+  for (
+    let i = Math.max(0, activeIndex - 1);
+    i <= Math.min(tabs.length - 1, activeIndex + 1);
+    i++
+  ) {
+    renderedTabsRef.current.add(tabs[i].id);
+  }
+
+  if (!reciter) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar
@@ -950,7 +922,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
   return (
     <View style={styles.container}>
       <StatusBar
-        style={theme.isDarkMode ? 'light' : isStatusBarDark ? 'light' : 'dark'}
+        style={theme.isDarkMode ? 'light' : 'dark'}
         translucent
         backgroundColor="transparent"
       />
@@ -979,7 +951,6 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           availableRewayat={rewayatList}
           selectedRewayatId={selectedRewayatId}
           onRewayatSelect={handleRewayatChange}
-          dominantColors={dominantColors}
           isDarkMode={theme.isDarkMode}
           reciterName={reciter.name}
           viewMode={viewMode}
@@ -987,28 +958,58 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         />
       ) : (
         <>
-          {(() => {
-            const listHeader = (
-              <>
-                <ReciterHeader
-                  reciter={reciter}
-                  showSearch={showSearch}
-                  insets={insets}
+          {/* Single outer scroll: header collapses, tab bar sticks, content scrolls */}
+          <RNAnimated.ScrollView
+            ref={outerScrollRef}
+            stickyHeaderIndices={[1]}
+            onScroll={RNAnimated.event(
+              [{nativeEvent: {contentOffset: {y: scrollY}}}],
+              {
+                useNativeDriver: true,
+                listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  currentScrollYRef.current = e.nativeEvent.contentOffset.y;
+                },
+              },
+            )}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+            bounces={true}>
+            {/* Child 0: Collapsible header — scrolls away */}
+            {/* Negative marginBottom pulls the sticky section up, closing the gap */}
+            {/* between action buttons and tab bar when the header is not collapsed */}
+            <View
+              onLayout={e => setCollapsibleHeight(e.nativeEvent.layout.height)}
+              style={{marginBottom: -stickyTitleHeight}}>
+              <ReciterHeader
+                reciter={reciter}
+                showSearch={showSearch}
+                insets={insets}
+              />
+              <View style={styles.contentContainer}>
+                <ActionButtons
+                  onFavoritePress={handleToggleFavorite}
+                  onShufflePress={handleShuffleAll}
+                  onPlayPress={handlePlayAll}
+                  isFavoriteReciter={isFavoriteReciter(reciter.id)}
                 />
-                <View style={styles.contentContainer}>
-                  <ActionButtons
-                    onFavoritePress={handleToggleFavorite}
-                    onShufflePress={handleShuffleAll}
-                    onPlayPress={handlePlayAll}
-                    isFavoriteReciter={isFavoriteReciter(reciter.id)}
-                  />
-                </View>
+              </View>
+            </View>
+
+            {/* Child 1: Sticky section — sticks at top when header collapses */}
+            {/* Outer View has transparent paddingTop so action buttons show through the overlap */}
+            {/* Inner View has opaque background for the actual tab bar + controls */}
+            <View
+              onLayout={e => setStickyHeight(e.nativeEvent.layout.height)}
+              style={{paddingTop: stickyTitleHeight}}>
+              <View style={{backgroundColor: theme.colors.background}}>
                 {tabs.length > 0 && (
                   <RewayatTabBar
                     tabs={tabs}
                     activeTabId={activeTab}
                     onTabChange={handleTabChange}
                     theme={theme}
+                    scrollX={scrollX}
+                    screenWidth={screenWidth}
                   />
                 )}
                 <View style={styles.controlsRow}>
@@ -1094,43 +1095,99 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                     </Pressable>
                   </View>
                 </View>
-              </>
-            );
+              </View>
+            </View>
 
-            if (activeTab === 'uploads') {
-              return (
-                <UploadsTabContent
-                  reciterId={currentReciterId}
-                  reciterName={reciter.name}
-                  viewMode={viewMode}
-                  showLovedOnly={showLovedOnly}
-                  onScroll={handleScroll}
-                  ListHeaderComponent={listHeader}
-                  getColorForSurah={getColorForSurah}
-                />
-              );
-            }
+            {/* Child 2: Horizontal pager — lazy-rendered, swipeable */}
+            {/* Only active ±1 tabs render; previously visited tabs stay mounted */}
+            <RNAnimated.ScrollView
+              ref={horizontalRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              scrollEventThrottle={16}
+              contentOffset={{x: activeIndex * screenWidth, y: 0}}
+              onScroll={RNAnimated.event(
+                [{nativeEvent: {contentOffset: {x: scrollX}}}],
+                {useNativeDriver: true, listener: handleHorizontalScroll},
+              )}>
+              {tabs.map(tab => (
+                <View
+                  key={tab.id}
+                  style={{width: screenWidth, minHeight: contentMinHeight}}>
+                  {renderedTabsRef.current.has(tab.id) ? (
+                    tab.id === 'uploads' ? (
+                      <UploadsTabContent
+                        inline
+                        reciterId={currentReciterId}
+                        reciterName={reciter.name}
+                        viewMode={viewMode}
+                        showLovedOnly={showLovedOnly}
+                        getColorForSurah={getColorForSurah}
+                      />
+                    ) : (
+                      <MemoizedSurahList
+                        inline
+                        surahs={getSurahsForTab(tab.id)}
+                        onSurahPress={handleSurahPress}
+                        reciterId={currentReciterId}
+                        isLoved={
+                          isLovedPerTab.get(tab.id) ?? isLovedWithCurrentRewayat
+                        }
+                        isDownloaded={isDownloaded}
+                        onOptionsPress={(surah: Surah) =>
+                          SheetManager.show('surah-options', {
+                            payload: {
+                              surah,
+                              reciterId: currentReciterId,
+                              rewayatId: tab.id,
+                              onAddToQueue: handleAddToQueue,
+                            },
+                          })
+                        }
+                        viewMode={viewMode}
+                        sortOption={sortOption}
+                        getColorForSurah={getColorForSurah}
+                        rewayatId={tab.id}
+                      />
+                    )
+                  ) : null}
+                </View>
+              ))}
+            </RNAnimated.ScrollView>
+          </RNAnimated.ScrollView>
 
-            return (
-              <MemoizedSurahList
-                ref={flatListRef}
-                {...surahListProps}
-                ListHeaderComponent={listHeader}
-              />
-            );
-          })()}
-          <StickyHeader
-            reciterName={reciter.name}
-            headerOpacity={headerOpacity}
-            insets={insets}
-            dominantColors={dominantColors}
-            isDarkMode={theme.isDarkMode}
-          />
+          {/* Sticky title bar — fades in as outer scroll collapses header */}
+          <RNAnimated.View
+            pointerEvents="none"
+            onLayout={e => setStickyTitleHeight(e.nativeEvent.layout.height)}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 15,
+              paddingTop: insets.top,
+              paddingBottom: moderateScale(10),
+              backgroundColor: theme.colors.background,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: stickyTitleOpacity,
+            }}>
+            <Text
+              style={{
+                fontSize: moderateScale(16),
+                fontFamily: 'Manrope-Bold',
+                color: theme.colors.text,
+                textAlign: 'center',
+              }}>
+              {reciter.name}
+            </Text>
+          </RNAnimated.View>
           <NavigationButtons
             insets={insets}
             iconsOpacity={iconsOpacity}
             iconsZIndex={iconsZIndex}
-            scrollY={scrollY}
             onSearchPress={() => {
               setShowSearch(true);
             }}
