@@ -35,6 +35,7 @@ export const createSharedStyles = (theme: Theme) =>
     rightControlsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginLeft: 'auto',
     },
     optionButton: {
       flexDirection: 'row',

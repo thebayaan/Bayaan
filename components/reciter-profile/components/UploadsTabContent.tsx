@@ -254,7 +254,7 @@ export const UploadsTabContent: React.FC<UploadsTabContentProps> = ({
     () => (
       <View style={styles.emptyContainer}>
         <Icon
-          name="upload-cloud"
+          name="mic"
           type="feather"
           size={moderateScale(40)}
           color={theme.colors.textSecondary}
@@ -263,7 +263,7 @@ export const UploadsTabContent: React.FC<UploadsTabContentProps> = ({
         <Text style={styles.emptySubtitle}>
           Upload recitations to see them here
         </Text>
-        <Pressable style={styles.addButton} onPress={handleAddRecitation}>
+        <Pressable style={styles.emptyAddButton} onPress={handleAddRecitation}>
           <Icon
             name="plus"
             type="feather"
@@ -405,6 +405,17 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(12),
       marginTop: moderateScale(8),
       marginHorizontal: moderateScale(16),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      gap: moderateScale(8),
+    },
+    emptyAddButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'stretch',
+      paddingVertical: moderateScale(12),
+      marginTop: moderateScale(8),
       borderRadius: moderateScale(12),
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       gap: moderateScale(8),

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Text, Pressable, ScrollView, StyleSheet} from 'react-native';
+import {View, Text, Pressable, ScrollView, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
@@ -34,11 +34,12 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
         return (
           <Pressable
             key={tab.id}
-            style={[styles.pill, isActive && styles.pillActive]}
+            style={[styles.tab, isActive && styles.tabActive]}
             onPress={() => onTabChange(tab.id)}>
-            <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+            <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
               {tab.label}
             </Text>
+            {isActive && <View style={styles.indicator} />}
           </Pressable>
         );
       })}
@@ -50,28 +51,29 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       paddingHorizontal: moderateScale(16),
-      gap: moderateScale(8),
-      paddingVertical: moderateScale(6),
+      gap: moderateScale(4),
     },
-    pill: {
+    tab: {
       paddingHorizontal: moderateScale(12),
-      paddingVertical: moderateScale(6),
-      borderRadius: moderateScale(16),
-      borderWidth: 1,
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      paddingTop: moderateScale(10),
+      paddingBottom: moderateScale(8),
+      alignItems: 'center',
     },
-    pillActive: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
-      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
-    },
-    pillText: {
-      fontSize: moderateScale(12),
+    tabActive: {},
+    tabText: {
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
     },
-    pillTextActive: {
+    tabTextActive: {
       color: theme.colors.text,
-      fontFamily: 'Manrope-SemiBold',
+      fontFamily: 'Manrope-Bold',
+    },
+    indicator: {
+      height: moderateScale(2.5),
+      borderRadius: moderateScale(2),
+      backgroundColor: theme.colors.text,
+      width: '80%',
+      marginTop: moderateScale(6),
     },
   });
