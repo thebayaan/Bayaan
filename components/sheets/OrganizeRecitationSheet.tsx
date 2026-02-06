@@ -415,7 +415,7 @@ export const OrganizeRecitationSheet = (
         <Pressable onPress={handleClose} style={styles.headerButton}>
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Organize</Text>
+        <Text style={styles.headerTitle}>Edit Details</Text>
         <Pressable
           onPress={handleSave}
           style={[styles.headerButton, {opacity: hasChanges ? 1 : 0.4}]}

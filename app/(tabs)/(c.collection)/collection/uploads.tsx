@@ -75,15 +75,9 @@ export default function UploadsScreen() {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {
-    recitations,
-    totalCount,
-    importFile,
-    importFiles,
-    loadRecitations,
-    deleteRecitation,
-  } = useUploadsStore();
-  const {updateQueue, play} = useUnifiedPlayer();
+  const {recitations, totalCount, importFile, importFiles, loadRecitations} =
+    useUploadsStore();
+  const {updateQueue, addToQueue, play} = useUnifiedPlayer();
 
   const [isImporting, setIsImporting] = useState(false);
 
@@ -147,7 +141,7 @@ export default function UploadsScreen() {
         Alert.alert('File Imported', recitation.originalFilename, [
           {text: 'Done'},
           {
-            text: 'Organize',
+            text: 'Edit Details',
             onPress: () => handleOrganize(recitation),
           },
         ]);
@@ -202,44 +196,21 @@ export default function UploadsScreen() {
     });
   }, []);
 
-  const handleDeleteWithConfirm = useCallback(
-    (item: UploadedRecitation) => {
-      Alert.alert(
-        'Delete Recitation',
-        `Are you sure you want to delete "${item.originalFilename}"?`,
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => deleteRecitation(item.id),
-          },
-        ],
-      );
-    },
-    [deleteRecitation],
-  );
-
-  const handleLongPress = useCallback(
+  const handleShowOptions = useCallback(
     (item: UploadedRecitation, index: number) => {
-      Alert.alert(item.originalFilename, undefined, [
-        {
-          text: 'Play Now',
-          onPress: () => handlePlayRecitation(item, index),
+      const track = createUserUploadTrack(item);
+      SheetManager.show('upload-options', {
+        payload: {
+          recitation: item,
+          reciterId: item.reciterId || '',
+          onPlay: () => handlePlayRecitation(item, index),
+          onAddToQueue: () => {
+            addToQueue([track]);
+          },
         },
-        {
-          text: 'Organize',
-          onPress: () => handleOrganize(item),
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => handleDeleteWithConfirm(item),
-        },
-        {text: 'Cancel', style: 'cancel'},
-      ]);
+      });
     },
-    [handlePlayRecitation, handleOrganize, handleDeleteWithConfirm],
+    [handlePlayRecitation, addToQueue],
   );
 
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -255,7 +226,7 @@ export default function UploadsScreen() {
           <Pressable
             style={styles.itemPlayZone}
             onPress={() => handlePlayRecitation(item, index)}
-            onLongPress={() => handleLongPress(item, index)}>
+            onLongPress={() => handleShowOptions(item, index)}>
             <View style={styles.itemIconContainer}>
               <Icon
                 name="music"
@@ -288,7 +259,7 @@ export default function UploadsScreen() {
           </Pressable>
           <Pressable
             style={styles.itemOptionsZone}
-            onPress={() => handleOrganize(item)}>
+            onPress={() => handleShowOptions(item, index)}>
             <Icon
               name="more-horizontal"
               type="feather"
@@ -304,8 +275,7 @@ export default function UploadsScreen() {
       theme.colors.textSecondary,
       theme.colors.text,
       handlePlayRecitation,
-      handleLongPress,
-      handleOrganize,
+      handleShowOptions,
     ],
   );
 
