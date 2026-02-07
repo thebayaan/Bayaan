@@ -10,8 +10,8 @@ import ActionSheet, {
 } from 'react-native-actions-sheet';
 import {Icon} from '@rneui/themed';
 import Color from 'color';
-import {useUploadsStore} from '@/store/uploadsStore';
-import {getSurahById} from '@/services/dataService';
+import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
+import {getSurahById, getReciterName} from '@/services/dataService';
 import type {UploadedRecitation} from '@/types/uploads';
 
 function stripExtension(filename: string): string {
@@ -32,11 +32,16 @@ function getDisplayTitle(item: UploadedRecitation): string {
 function getDisplaySubtitle(item: UploadedRecitation): string {
   const parts: string[] = [];
 
+  if (item.reciterId) {
+    const name = getReciterName(item.reciterId);
+    if (name) parts.push(name);
+  } else if (item.customReciterId) {
+    const name = getCustomReciterName(item.customReciterId);
+    if (name) parts.push(name);
+  }
+
   if (item.type === null) {
     parts.push('Untagged');
-  } else if (item.type === 'surah' && item.surahNumber) {
-    const surah = getSurahById(item.surahNumber);
-    if (surah) parts.push(surah.translated_name_english);
   } else if (item.type === 'other' && item.category) {
     const label =
       item.category.charAt(0).toUpperCase() + item.category.slice(1);

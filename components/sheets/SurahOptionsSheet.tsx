@@ -25,6 +25,7 @@ import {
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
@@ -280,7 +281,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
           <View style={styles.header}>
             <Text style={styles.surahName}>{surah.name}</Text>
             <Text style={styles.surahTranslation}>
-              {surah.translated_name_english}
+              {(reciterId && getReciterName(reciterId)) ||
+                surah.translated_name_english}
             </Text>
           </View>
 

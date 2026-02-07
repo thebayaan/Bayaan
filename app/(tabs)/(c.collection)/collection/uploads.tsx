@@ -5,7 +5,6 @@ import {
   Pressable,
   StyleSheet,
   ListRenderItemInfo,
-  Alert,
   ActivityIndicator,
   Animated as RNAnimated,
 } from 'react-native';
@@ -29,6 +28,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type {UploadedRecitation} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+import {pickAndImportAudioFiles} from '@/utils/importAudio';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -115,47 +115,26 @@ export default function UploadsScreen() {
     [shuffleScale, playScale],
   );
 
+  const handleOrganize = useCallback((item: UploadedRecitation) => {
+    SheetManager.show('organize-recitation', {
+      payload: {recitation: item},
+    });
+  }, []);
+
   const handleImportFile = useCallback(async () => {
     setIsImporting(true);
     try {
-      const DocumentPicker = await import('expo-document-picker');
-      setIsImporting(false);
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          'audio/mpeg',
-          'audio/mp4',
-          'audio/x-m4a',
-          'audio/wav',
-          'audio/aac',
-        ],
-        multiple: true,
-        copyToCacheDirectory: true,
+      await pickAndImportAudioFiles({
+        importFile,
+        importFiles,
+        onOrganize: handleOrganize,
       });
-
-      if (result.canceled) return;
-
-      const files = result.assets.map(asset => ({
-        uri: asset.uri,
-        name: asset.name || 'Unknown',
-      }));
-
-      if (files.length === 1) {
-        const recitation = await importFile(files[0].uri, files[0].name);
-        Alert.alert('File Imported', recitation.originalFilename, [
-          {text: 'Done'},
-          {
-            text: 'Edit Details',
-            onPress: () => handleOrganize(recitation),
-          },
-        ]);
-      } else if (files.length > 1) {
-        await importFiles(files);
-      }
     } catch (error) {
-      setIsImporting(false);
       console.error('Error importing files:', error);
+    } finally {
+      setIsImporting(false);
     }
-  }, [importFile, importFiles]);
+  }, [importFile, importFiles, handleOrganize]);
 
   const handlePlayAll = useCallback(async () => {
     if (recitations.length === 0) return;
@@ -192,12 +171,6 @@ export default function UploadsScreen() {
     },
     [recitations, updateQueue, play],
   );
-
-  const handleOrganize = useCallback((item: UploadedRecitation) => {
-    SheetManager.show('organize-recitation', {
-      payload: {recitation: item},
-    });
-  }, []);
 
   const handleShowOptions = useCallback(
     (item: UploadedRecitation, index: number) => {
@@ -520,6 +493,7 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       justifyContent: 'center',
       paddingVertical: moderateScale(12),
       marginHorizontal: moderateScale(16),
+      marginTop: moderateScale(8),
       marginBottom: moderateScale(8),
       borderRadius: moderateScale(12),
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
