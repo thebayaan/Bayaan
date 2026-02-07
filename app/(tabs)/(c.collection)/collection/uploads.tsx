@@ -1,19 +1,18 @@
-import React, {useState, useCallback, useMemo, useEffect} from 'react';
+import React, {useState, useCallback, useMemo, useEffect, useRef} from 'react';
 import {
   View,
   Text,
   Pressable,
-  FlatList,
   StyleSheet,
   ListRenderItemInfo,
   Alert,
   ActivityIndicator,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
 import {Icon} from '@rneui/themed';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -29,6 +28,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import type {UploadedRecitation} from '@/types/uploads';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -80,6 +80,9 @@ export default function UploadsScreen() {
   const {updateQueue, addToQueue, play} = useUnifiedPlayer();
 
   const [isImporting, setIsImporting] = useState(false);
+
+  // Scroll tracking for sticky header
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   useEffect(() => {
     loadRecitations();
@@ -284,24 +287,21 @@ export default function UploadsScreen() {
   const ListHeaderComponent = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
-        <LinearGradient
-          colors={['#8B5CF6', theme.colors.background] as [string, string]}
+        <View
           style={[
-            styles.gradientContainer,
-            {paddingTop: insets.top + moderateScale(20)},
+            styles.contentArea,
+            {paddingTop: insets.top + moderateScale(40)},
           ]}>
           {/* Back Button */}
           <Pressable
-            style={[
-              styles.backButtonInner,
-              {top: insets.top + moderateScale(10)},
-            ]}
-            onPress={() => router.back()}>
+            style={[styles.backButton, {top: insets.top + moderateScale(10)}]}
+            onPress={() => router.back()}
+            hitSlop={8}>
             <Icon
               name="arrow-left"
               type="feather"
               size={moderateScale(24)}
-              color="white"
+              color={theme.colors.text}
             />
           </Pressable>
 
@@ -309,7 +309,10 @@ export default function UploadsScreen() {
           <View style={styles.contentCenter}>
             <View style={styles.heroIconContainer}>
               <View style={styles.heroIconInner}>
-                <MicrophoneIcon color="white" size={moderateScale(30)} />
+                <MicrophoneIcon
+                  color={theme.colors.text}
+                  size={moderateScale(30)}
+                />
               </View>
             </View>
             <Text style={styles.title}>Uploads</Text>
@@ -317,7 +320,7 @@ export default function UploadsScreen() {
               {totalCount} recitation{totalCount !== 1 ? 's' : ''}
             </Text>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Action Buttons */}
         <View style={styles.contentWrapper}>
@@ -423,16 +426,21 @@ export default function UploadsScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <RNAnimated.FlatList
         data={recitations}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
         ListEmptyComponent={ListEmptyComponent}
         contentContainerStyle={styles.listContentContainer}
-        bounces={false}
         showsVerticalScrollIndicator={false}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
       />
+      <CollectionStickyHeader title="Uploads" scrollY={scrollY} />
     </View>
   );
 }
@@ -447,15 +455,15 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
       paddingBottom: moderateScale(30),
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
-    backButtonInner: {
+    backButton: {
       position: 'absolute',
-      top: 0,
       left: moderateScale(15),
       zIndex: 10,
       padding: moderateScale(8),
@@ -471,12 +479,7 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: moderateScale(12),
-      backgroundColor: Color('#8B5CF6').alpha(0.2).toString(),
-      shadowColor: '#8B5CF6',
-      shadowOffset: {width: 0, height: 4},
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 4,
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
     },
     heroIconInner: {
       width: moderateScale(56),
@@ -484,7 +487,7 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       borderRadius: moderateScale(28),
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: Color('#8B5CF6').alpha(0.15).toString(),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
     title: {
       fontSize: moderateScale(17),

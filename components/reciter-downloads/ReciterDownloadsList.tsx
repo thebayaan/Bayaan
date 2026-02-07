@@ -1,12 +1,10 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet, Animated as RNAnimated} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {SurahItem} from '@/components/SurahItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
-import {FlatList, ListRenderItem} from 'react-native';
-import {Swipeable} from 'react-native-gesture-handler';
+import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {DownloadedSurah} from '@/services/player/store/downloadStore';
@@ -22,6 +20,9 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {ReciterDownloadsHeader} from '@/components/playlist-detail/ReciterDownloadsHeader';
 import {createDownloadedTrack} from '@/utils/track';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+import {SheetManager} from 'react-native-actions-sheet';
+import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 
 interface DownloadTrackData {
   download: DownloadedSurah;
@@ -43,6 +44,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const playerStore = usePlayerStore();
+  const {addToQueue} = useUnifiedPlayer();
 
   const [reciter, setReciter] = useState<Reciter | null>(null);
   const [downloadData, setDownloadData] = useState<DownloadTrackData[]>([]);
@@ -50,6 +52,9 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 
   // Track current operation to prevent race conditions
   const currentOperationRef = useRef<string | null>(null);
+
+  // Scroll tracking for sticky header
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   // Filter downloads for this reciter
   const reciterDownloads = useMemo(() => {
@@ -73,25 +78,6 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     },
     listItem: {
       marginVertical: moderateScale(2),
-    },
-    rightAction: {
-      flex: 1,
-      backgroundColor: '#ff4444',
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-      paddingRight: moderateScale(20),
-    },
-    deleteButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(15),
-      paddingVertical: moderateScale(10),
-    },
-    deleteText: {
-      color: 'white',
-      fontSize: moderateScale(14),
-      fontWeight: '600',
-      marginLeft: moderateScale(8),
     },
   });
 
@@ -141,7 +127,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
               // Capitalize style
               const capitalizedStyle =
                 rewayat.style.charAt(0).toUpperCase() + rewayat.style.slice(1);
-              rewayatName = `${rewayat.name} • ${capitalizedStyle}`;
+              rewayatName = `${rewayat.name} \u2022 ${capitalizedStyle}`;
             }
           }
 
@@ -481,6 +467,33 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     [removeDownload],
   );
 
+  // Handle show options for a download
+  const handleShowOptions = useCallback(
+    (download: DownloadedSurah, itemReciter: Reciter, surah: Surah) => {
+      const track = createDownloadedTrack(
+        itemReciter,
+        surah,
+        download.filePath,
+        download.rewayatId,
+      );
+
+      SheetManager.show('download-options', {
+        payload: {
+          download,
+          surah,
+          reciterId: download.reciterId,
+          rewayatId: download.rewayatId,
+          onPlay: () => handleTrackPress(download, itemReciter, surah),
+          onAddToQueue: () => {
+            addToQueue([track]);
+          },
+          onRemoveDownload: () => handleRemoveDownload(download),
+        },
+      });
+    },
+    [handleTrackPress, addToQueue, handleRemoveDownload],
+  );
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <ReciterDownloadsHeader
@@ -511,34 +524,17 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
       return null;
     }
 
-    const renderRightActions = () => (
-      <View style={styles.rightAction}>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleRemoveDownload(download)}>
-          <Icon
-            name="trash-2"
-            type="feather"
-            size={moderateScale(20)}
-            color="white"
-          />
-          <Text style={styles.deleteText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
     return (
-      <Swipeable renderRightActions={renderRightActions}>
-        <View style={styles.listItem}>
-          <SurahItem
-            item={surah}
-            onPress={() => handleTrackPress(download, itemReciter, surah)}
-            reciterId={download.reciterId}
-            rewayatId={download.rewayatId}
-            rewayatName={rewayatName}
-          />
-        </View>
-      </Swipeable>
+      <View style={styles.listItem}>
+        <SurahItem
+          item={surah}
+          onPress={() => handleTrackPress(download, itemReciter, surah)}
+          reciterId={download.reciterId}
+          rewayatId={download.rewayatId}
+          rewayatName={rewayatName}
+          onOptionsPress={() => handleShowOptions(download, itemReciter, surah)}
+        />
+      </View>
     );
   };
 
@@ -557,7 +553,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <RNAnimated.FlatList
         data={downloadData}
         renderItem={renderItem}
         keyExtractor={getItemKey}
@@ -566,7 +562,15 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         ListEmptyComponent={
           <Text style={styles.emptyText}>No downloads for this reciter</Text>
         }
-        bounces={false}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
+      />
+      <CollectionStickyHeader
+        title={reciter?.name || 'Downloads'}
+        scrollY={scrollY}
       />
     </View>
   );

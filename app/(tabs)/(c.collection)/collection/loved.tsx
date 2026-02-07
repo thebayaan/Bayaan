@@ -2,18 +2,16 @@ import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   Alert,
   StatusBar,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
-import {FlatList, ListRenderItem} from 'react-native';
-import {Swipeable} from 'react-native-gesture-handler';
+import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useLoved} from '@/hooks/useLoved';
@@ -34,6 +32,8 @@ import {
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+import {SheetManager} from 'react-native-actions-sheet';
 
 interface LovedTrack {
   reciterId: string;
@@ -50,7 +50,7 @@ interface LovedTrackData {
 const LovedScreen = () => {
   const {theme} = useTheme();
   const {lovedTracks, toggleLoved} = useLoved();
-  const {pause, playback} = useUnifiedPlayer();
+  const {pause, playback, addToQueue} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const playerStore = usePlayerStore();
@@ -72,6 +72,9 @@ const LovedScreen = () => {
   // Track current operation to prevent race conditions
   const currentOperationRef = useRef<string | null>(null);
 
+  // Scroll tracking for sticky header
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
@@ -89,25 +92,6 @@ const LovedScreen = () => {
     },
     listItem: {
       marginVertical: moderateScale(2),
-    },
-    rightAction: {
-      flex: 1,
-      backgroundColor: '#ff4444',
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-      paddingRight: moderateScale(20),
-    },
-    deleteButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(15),
-      paddingVertical: moderateScale(10),
-    },
-    deleteText: {
-      color: 'white',
-      fontSize: moderateScale(14),
-      fontWeight: '600',
-      marginLeft: moderateScale(8),
     },
   });
 
@@ -721,12 +705,34 @@ const LovedScreen = () => {
     setDownloadProgress,
   ]);
 
-  // Handle remove from loved
-  const handleRemoveFromLoved = useCallback(
-    (track: LovedTrack) => {
-      toggleLoved(track.reciterId, track.surahId, track.rewayatId || '');
+  // Handle show options for a track
+  const handleShowOptions = useCallback(
+    (track: LovedTrack, reciter: Reciter, surah: Surah) => {
+      SheetManager.show('surah-options', {
+        payload: {
+          surah,
+          reciterId: track.reciterId,
+          rewayatId: track.rewayatId,
+          onAddToQueue: async (s: Surah) => {
+            const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
+            const artwork = getReciterArtwork(reciter);
+            const queueTrack = {
+              id: `${reciter.id}:${s.id}`,
+              url: generateSmartAudioUrl(reciter, s.id.toString(), rewayatId),
+              title: s.name,
+              artist: reciter.name,
+              reciterId: reciter.id,
+              artwork,
+              surahId: s.id.toString(),
+              reciterName: reciter.name,
+              rewayatId,
+            };
+            await addToQueue([queueTrack]);
+          },
+        },
+      });
     },
-    [toggleLoved],
+    [addToQueue],
   );
 
   // Calculate download state for all loved tracks using custom hook
@@ -739,7 +745,6 @@ const LovedScreen = () => {
         subtitle={`${lovedData.length} ${
           lovedData.length === 1 ? 'surah' : 'surahs'
         }`}
-        backgroundColor="#FF6B6B"
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onDownloadPress={handleBulkDownload}
@@ -765,34 +770,17 @@ const LovedScreen = () => {
       return null;
     }
 
-    const renderRightActions = () => (
-      <View style={styles.rightAction}>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleRemoveFromLoved(track)}>
-          <Icon
-            name="trash-2"
-            type="feather"
-            size={moderateScale(20)}
-            color="white"
-          />
-          <Text style={styles.deleteText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
     return (
-      <Swipeable renderRightActions={renderRightActions}>
-        <View style={styles.listItem}>
-          <TrackItem
-            reciterId={track.reciterId}
-            surahId={track.surahId}
-            rewayatId={track.rewayatId}
-            onPress={() => handleSurahPress(track, reciter, surah)}
-            onPlayPress={() => handleSurahPress(track, reciter, surah)}
-          />
-        </View>
-      </Swipeable>
+      <View style={styles.listItem}>
+        <TrackItem
+          reciterId={track.reciterId}
+          surahId={track.surahId}
+          rewayatId={track.rewayatId}
+          onPress={() => handleSurahPress(track, reciter, surah)}
+          onPlayPress={() => handleSurahPress(track, reciter, surah)}
+          onOptionsPress={() => handleShowOptions(track, reciter, surah)}
+        />
+      </View>
     );
   };
 
@@ -811,8 +799,8 @@ const LovedScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <FlatList
+      <StatusBar barStyle="default" />
+      <RNAnimated.FlatList
         data={lovedData}
         renderItem={renderItem}
         keyExtractor={getItemKey}
@@ -821,8 +809,13 @@ const LovedScreen = () => {
         ListEmptyComponent={
           <Text style={styles.emptyText}>No loved surahs yet</Text>
         }
-        bounces={false}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
       />
+      <CollectionStickyHeader title="Loved Surahs" scrollY={scrollY} />
     </View>
   );
 };

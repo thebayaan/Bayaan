@@ -1,10 +1,5 @@
 import React, {useEffect, useState, useMemo} from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  GestureResponderEvent,
-} from 'react-native';
+import {View, Text, Pressable, GestureResponderEvent} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -25,6 +20,7 @@ import {
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
+import {Icon} from '@rneui/themed';
 
 interface TrackItemProps {
   reciterId: string;
@@ -33,10 +29,19 @@ interface TrackItemProps {
   onPress: () => void;
   onPlayPress?: () => void;
   hidePlayButton?: boolean;
+  onOptionsPress?: () => void;
 }
 
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
-  ({reciterId, surahId, rewayatId, onPress, onPlayPress, hidePlayButton}) => {
+  ({
+    reciterId,
+    surahId,
+    rewayatId,
+    onPress,
+    onPlayPress,
+    hidePlayButton,
+    onOptionsPress,
+  }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const [reciter, setReciter] = useState<Reciter | null>(null);
@@ -129,87 +134,85 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       return (
         <Text style={styles.rewayatText}>
           {rewayat.name}
-          {rewayat.style ? ` • ${rewayat.style}` : ''}
+          {rewayat.style ? ` \u2022 ${rewayat.style}` : ''}
         </Text>
       );
     };
 
-    const handlePlayButtonPress = (e: GestureResponderEvent) => {
-      e.stopPropagation(); // Prevent triggering onPress of the main item
-      onPlayPress?.();
-    };
-
     return (
-      <TouchableOpacity
-        activeOpacity={0.99}
-        style={styles.trackItem}
-        onPress={onPress}>
-        <View style={styles.imageContainer}>
-          <ReciterImage
-            reciterName={reciter?.name || ''}
-            imageUrl={reciter?.image_url || undefined}
-            style={styles.reciterImage}
-          />
-        </View>
-
-        <View style={styles.trackInfo}>
-          <View style={styles.surahNameContainer}>
-            <View style={styles.surahTextContainer}>
-              <View style={styles.surahNameRow}>
-                {isCurrentTrack ? (
-                  <GradientText style={styles.surahName} surahId={surah.id}>
-                    {surah.id + '. ' + surah.name}
-                  </GradientText>
-                ) : (
-                  <Text style={styles.surahName}>
-                    {surah.id + '. ' + surah.name}
-                  </Text>
-                )}
-                {(isCurrentTrack || (onPlayPress && !hidePlayButton)) && (
-                  <TouchableOpacity
-                    style={styles.playIndicatorContainer}
-                    onPress={handlePlayButtonPress}
-                    activeOpacity={0.7}>
-                    {isCurrentTrack && (
-                      <NowPlayingIndicator
-                        isPlaying={
-                          playbackStatus === TrackPlayerState.Playing ||
-                          playbackStatus === TrackPlayerState.Buffering
-                        }
-                        surahId={surah.id}
-                        barCount={3}
-                        barWidth={moderateScale(2)}
-                        gap={moderateScale(1.2)}
-                      />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-              <View style={styles.reciterInfoRow}>
-                {isCurrentlyDownloading ? (
-                  <CircularProgress
-                    progress={downloadProgress}
-                    size={moderateScale(13)}
-                    strokeWidth={moderateScale(1.5)}
-                    color={theme.colors.textSecondary}
-                  />
-                ) : isDownloadedState ? (
-                  <Ionicons
-                    name="arrow-down-circle"
-                    size={moderateScale(13)}
-                    color={theme.colors.textSecondary}
-                    style={styles.downloadIcon}
-                  />
-                ) : null}
-                <Text style={styles.reciterName}>{reciter.name}</Text>
-              </View>
-              {renderRewayatBadge()}
-            </View>
-
-            <Text style={styles.surahGlyph}>{surahGlyph}</Text>
+      <View style={styles.trackItem}>
+        {/* Play zone */}
+        <Pressable style={styles.playZone} onPress={onPress}>
+          <View style={styles.imageContainer}>
+            <ReciterImage
+              reciterName={reciter?.name || ''}
+              imageUrl={reciter?.image_url || undefined}
+              style={styles.reciterImage}
+            />
           </View>
-        </View>
-      </TouchableOpacity>
+
+          <View style={styles.trackInfo}>
+            <View style={styles.surahNameRow}>
+              {isCurrentTrack ? (
+                <GradientText style={styles.surahName} surahId={surah.id}>
+                  {surah.id + '. ' + surah.name}
+                </GradientText>
+              ) : (
+                <Text style={styles.surahName}>
+                  {surah.id + '. ' + surah.name}
+                </Text>
+              )}
+              {surahGlyph && (
+                <Text style={styles.surahGlyphInline}>{surahGlyph}</Text>
+              )}
+            </View>
+            <View style={styles.reciterInfoRow}>
+              {isCurrentlyDownloading ? (
+                <CircularProgress
+                  progress={downloadProgress}
+                  size={moderateScale(13)}
+                  strokeWidth={moderateScale(1.5)}
+                  color={theme.colors.textSecondary}
+                />
+              ) : isDownloadedState ? (
+                <Ionicons
+                  name="arrow-down-circle"
+                  size={moderateScale(13)}
+                  color={theme.colors.textSecondary}
+                  style={styles.downloadIcon}
+                />
+              ) : null}
+              <Text style={styles.reciterName}>{reciter.name}</Text>
+            </View>
+            {renderRewayatBadge()}
+          </View>
+        </Pressable>
+
+        {/* Options zone */}
+        {onOptionsPress && (
+          <Pressable style={styles.optionsZone} onPress={onOptionsPress}>
+            {isCurrentTrack ? (
+              <NowPlayingIndicator
+                isPlaying={
+                  playbackStatus === TrackPlayerState.Playing ||
+                  playbackStatus === TrackPlayerState.Buffering
+                }
+                surahId={surah.id}
+                barCount={3}
+                barWidth={moderateScale(2)}
+                gap={moderateScale(1.2)}
+              />
+            ) : (
+              <Icon
+                name="more-horizontal"
+                type="feather"
+                size={moderateScale(18)}
+                color={theme.colors.text}
+              />
+            )}
+          </Pressable>
+        )}
+      </View>
     );
   },
 );
@@ -219,6 +222,12 @@ TrackItem.displayName = 'TrackItem';
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     trackItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background,
+    },
+    playZone: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(8),
@@ -235,15 +244,6 @@ const createStyles = (theme: Theme) =>
     trackInfo: {
       flex: 1,
     },
-    surahNameContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    surahTextContainer: {
-      flexShrink: 1,
-      marginRight: moderateScale(6),
-    },
     surahNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -254,11 +254,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
     },
-    surahGlyph: {
-      fontSize: moderateScale(22),
+    surahGlyphInline: {
+      fontSize: moderateScale(16),
       fontFamily: 'SurahNames',
       color: theme.colors.text,
-      textAlign: 'right',
+      marginLeft: moderateScale(6),
     },
     reciterInfoRow: {
       flexDirection: 'row',
@@ -274,26 +274,20 @@ const createStyles = (theme: Theme) =>
     downloadIcon: {
       marginTop: moderateScale(1),
     },
-    rewayatBadge: {
-      marginTop: moderateScale(3),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(5),
-      paddingVertical: moderateScale(1.5),
-      borderRadius: moderateScale(3),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-      alignSelf: 'flex-start',
-    },
     rewayatText: {
       fontSize: moderateScale(10),
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
       textTransform: 'capitalize',
     },
-    playIndicatorContainer: {
-      marginLeft: moderateScale(6),
-      justifyContent: 'center',
+    optionsZone: {
+      width: '20%' as any,
+      minWidth: moderateScale(50),
+      maxWidth: moderateScale(70),
       alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(8),
+      paddingRight: moderateScale(12),
+      alignSelf: 'stretch' as const,
     },
   });
