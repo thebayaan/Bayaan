@@ -20,6 +20,8 @@ import {ExtendedSummarySheet} from './ExtendedSummarySheet';
 import {AdhkarLayoutSheet} from './AdhkarLayoutSheet';
 import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
 import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
+import {DownloadOptionsSheet} from './DownloadOptionsSheet';
+import {UploadOptionsSheet} from './UploadOptionsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -37,6 +39,8 @@ registerSheet('extended-summary', ExtendedSummarySheet);
 registerSheet('adhkar-layout', AdhkarLayoutSheet);
 registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
 registerSheet('organize-recitation', OrganizeRecitationSheet);
+registerSheet('download-options', DownloadOptionsSheet);
+registerSheet('upload-options', UploadOptionsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -135,6 +139,25 @@ declare module 'react-native-actions-sheet' {
       payload: {
         recitation: UploadedRecitation;
         prefillReciterId?: string;
+      };
+    }>;
+    'download-options': SheetDefinition<{
+      payload: {
+        download: import('@/services/player/store/downloadStore').DownloadedSurah;
+        surah: Surah;
+        reciterId: string;
+        rewayatId: string;
+        onPlay: () => void;
+        onAddToQueue: () => void;
+        onRemoveDownload: () => void;
+      };
+    }>;
+    'upload-options': SheetDefinition<{
+      payload: {
+        recitation: UploadedRecitation;
+        reciterId: string;
+        onPlay: () => void;
+        onAddToQueue: () => void;
       };
     }>;
   }

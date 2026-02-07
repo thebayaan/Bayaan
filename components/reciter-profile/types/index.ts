@@ -47,11 +47,6 @@ export interface StickyHeaderProps {
   insets: {
     top: number;
   };
-  /** Dominant colors for gradient effect */
-  dominantColors: {
-    primary: string;
-    secondary: string;
-  };
   /** Current theme mode */
   isDarkMode: boolean;
 }
@@ -89,9 +84,9 @@ export interface SurahListProps {
   /** Handler for surah options button press */
   onOptionsPress: (surah: Surah) => void;
   /** Scroll event handler */
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   /** List header component */
-  ListHeaderComponent: React.ReactElement;
+  ListHeaderComponent?: React.ReactElement;
   /** Style for the list container */
   contentContainerStyle?: StyleProp<ViewStyle>;
   /** List footer component */

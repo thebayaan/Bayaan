@@ -26,7 +26,7 @@ export const createSharedStyles = (theme: Theme) =>
       borderRadius: moderateScale(8),
       marginBottom: moderateScale(2),
       backgroundColor: theme.colors.background,
-      marginTop: moderateScale(10),
+      marginTop: moderateScale(2),
     },
     sortOptionsContainer: {
       flexDirection: 'row',
