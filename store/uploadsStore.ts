@@ -42,6 +42,7 @@ interface UploadsState {
   getByReciter: (reciterId: string) => UploadedRecitation[];
   getByCustomReciter: (customReciterId: string) => UploadedRecitation[];
   getOther: () => UploadedRecitation[];
+  getRecitationById: (id: string) => UploadedRecitation | undefined;
   getRecitersWithUploads: () => ReciterWithUploads[];
 }
 
@@ -214,6 +215,10 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
 
   getOther: () => {
     return get().recitations.filter(r => r.type === 'other');
+  },
+
+  getRecitationById: (id: string) => {
+    return get().recitations.find(r => r.id === id);
   },
 
   getRecitersWithUploads: () => {

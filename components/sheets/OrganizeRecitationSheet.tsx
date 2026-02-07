@@ -6,8 +6,8 @@ import {
   Pressable,
   ScrollView,
   Keyboard,
-  Dimensions,
   Platform,
+  Dimensions,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -35,9 +35,9 @@ import {
   STYLE_OPTIONS,
 } from '@/constants/recitationOptions';
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
-
 type RecitationType = 'surah' | 'other';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 const CATEGORY_OPTIONS: {
   id: UploadedRecitation['category'];
@@ -120,6 +120,8 @@ export const OrganizeRecitationSheet = (
   const scrollViewRef = useRef<ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const reciterSectionY = useRef(0);
+  const surahSectionY = useRef(0);
+  const activeSectionRef = useRef<React.MutableRefObject<number> | null>(null);
 
   useEffect(() => {
     const showEvent =
@@ -140,20 +142,24 @@ export const OrganizeRecitationSheet = (
 
   const reciterInputFocused = useRef(false);
 
-  const scrollToReciterSection = useCallback(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({
-        y: reciterSectionY.current + moderateScale(40),
-        animated: true,
-      });
-    }, 200);
-  }, []);
+  const scrollToSection = useCallback(
+    (yRef: React.MutableRefObject<number>) => {
+      activeSectionRef.current = yRef;
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: yRef.current,
+          animated: true,
+        });
+      }, 100);
+    },
+    [],
+  );
 
   const handleContentSizeChange = useCallback(
     (_w: number, _h: number) => {
-      if (reciterInputFocused.current && keyboardHeight > 0) {
+      if (activeSectionRef.current && keyboardHeight > 0) {
         scrollViewRef.current?.scrollTo({
-          y: reciterSectionY.current + moderateScale(40),
+          y: activeSectionRef.current.current,
           animated: true,
         });
       }
@@ -409,7 +415,19 @@ export const OrganizeRecitationSheet = (
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}
-      keyboardHandlerEnabled={true}>
+      keyboardHandlerEnabled={true}
+      useBottomSafeAreaPadding={false}>
+      {/* Background filler to cover bottom safe area gap */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: -200,
+          left: 0,
+          right: 0,
+          height: 200,
+          backgroundColor: theme.colors.background,
+        }}
+      />
       {/* Header */}
       <View style={styles.headerContainer}>
         <Pressable onPress={handleClose} style={styles.headerButton}>
@@ -486,7 +504,11 @@ export const OrganizeRecitationSheet = (
 
         {/* Surah Picker Section */}
         {type === 'surah' && (
-          <View style={styles.section}>
+          <View
+            style={styles.section}
+            onLayout={e => {
+              surahSectionY.current = e.nativeEvent.layout.y;
+            }}>
             <Text style={styles.sectionLabel}>Surah</Text>
             {selectedSurah ? (
               <View style={styles.selectedItemRow}>
@@ -529,7 +551,13 @@ export const OrganizeRecitationSheet = (
                       setSurahQuery(text);
                       setShowSurahResults(true);
                     }}
-                    onFocus={() => setShowSurahResults(true)}
+                    onFocus={() => {
+                      setShowSurahResults(true);
+                      scrollToSection(surahSectionY);
+                    }}
+                    onBlur={() => {
+                      activeSectionRef.current = null;
+                    }}
                     keyboardAppearance="dark"
                     returnKeyType="search"
                     autoCapitalize="none"
@@ -698,10 +726,11 @@ export const OrganizeRecitationSheet = (
                     onFocus={() => {
                       reciterInputFocused.current = true;
                       setShowReciterResults(true);
-                      scrollToReciterSection();
+                      scrollToSection(reciterSectionY);
                     }}
                     onBlur={() => {
                       reciterInputFocused.current = false;
+                      activeSectionRef.current = null;
                     }}
                     keyboardAppearance="dark"
                     returnKeyType="search"
@@ -863,7 +892,7 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
       paddingBottom: 0,
-      height: SCREEN_HEIGHT * 0.9,
+      height: SCREEN_HEIGHT,
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),

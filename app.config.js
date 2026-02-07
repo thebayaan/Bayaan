@@ -132,6 +132,16 @@ module.exports = {
           sounds: [],
         },
       ],
+      [
+        'expo-share-intent',
+        {
+          iosActivationRules: {
+            NSExtensionActivationSupportsFileWithMaxCount: 10,
+          },
+          androidIntentFilters: ['audio/*'],
+          androidMultiIntentFilters: ['audio/*'],
+        },
+      ],
       './withAndroidSigning.js',
       './withIOSTeam.js',
     ],

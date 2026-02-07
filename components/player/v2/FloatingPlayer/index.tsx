@@ -13,8 +13,7 @@ import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {PlayButton} from './PlayButton';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {useLoved} from '@/hooks/useLoved';
-import {HeartIcon} from '@/components/Icons';
-import {TouchableOpacity} from 'react-native';
+import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {BlurView} from '@react-native-community/blur';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -269,10 +268,12 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
               </Text>
             </View>
             <View style={styles.rightControls}>
-              <TouchableOpacity
+              <Pressable
                 onPress={handleLovePress}
-                style={styles.loveButton}
-                activeOpacity={0.7}>
+                style={({pressed}) => [
+                  styles.loveButton,
+                  {opacity: pressed ? 0.7 : 1},
+                ]}>
                 <Animated.View style={heartAnimatedStyle}>
                   <HeartIcon
                     color={isTrackLoved(currentTrack) ? 'red' : textColor}
@@ -280,11 +281,15 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
                     filled={isTrackLoved(currentTrack)}
                   />
                 </Animated.View>
-              </TouchableOpacity>
+              </Pressable>
               <View style={styles.surahGlyphContainer}>
-                <Text style={[styles.surahGlyph, {color: textColor}]}>
-                  {surahGlyph}
-                </Text>
+                {currentTrack?.isUserUpload && !surahGlyph ? (
+                  <MicrophoneIcon size={moderateScale(20)} color={textColor} />
+                ) : (
+                  <Text style={[styles.surahGlyph, {color: textColor}]}>
+                    {surahGlyph}
+                  </Text>
+                )}
               </View>
             </View>
           </Pressable>
@@ -325,10 +330,12 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
               </Text>
             </View>
             <View style={styles.rightControls}>
-              <TouchableOpacity
+              <Pressable
                 onPress={handleLovePress}
-                style={styles.loveButton}
-                activeOpacity={0.7}>
+                style={({pressed}) => [
+                  styles.loveButton,
+                  {opacity: pressed ? 0.7 : 1},
+                ]}>
                 <Animated.View style={heartAnimatedStyle}>
                   <HeartIcon
                     color={isTrackLoved(currentTrack) ? 'red' : textColor}
@@ -336,11 +343,15 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
                     filled={isTrackLoved(currentTrack)}
                   />
                 </Animated.View>
-              </TouchableOpacity>
+              </Pressable>
               <View style={styles.surahGlyphContainer}>
-                <Text style={[styles.surahGlyph, {color: textColor}]}>
-                  {surahGlyph}
-                </Text>
+                {currentTrack?.isUserUpload && !surahGlyph ? (
+                  <MicrophoneIcon size={moderateScale(20)} color={textColor} />
+                ) : (
+                  <Text style={[styles.surahGlyph, {color: textColor}]}>
+                    {surahGlyph}
+                  </Text>
+                )}
               </View>
             </View>
           </Pressable>

@@ -22,6 +22,7 @@ import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
 import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
 import {DownloadOptionsSheet} from './DownloadOptionsSheet';
 import {UploadOptionsSheet} from './UploadOptionsSheet';
+import {AddToCollectionSheet} from './AddToCollectionSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -41,6 +42,7 @@ registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
 registerSheet('organize-recitation', OrganizeRecitationSheet);
 registerSheet('download-options', DownloadOptionsSheet);
 registerSheet('upload-options', UploadOptionsSheet);
+registerSheet('add-to-collection', AddToCollectionSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -99,10 +101,12 @@ declare module 'react-native-actions-sheet' {
     }>;
     'player-options': SheetDefinition<{
       payload: {
-        surah: Surah;
-        reciterId: string;
+        surah?: Surah;
+        reciterId?: string;
         rewayatId?: string;
         onGoToReciter?: () => void;
+        isUserUpload?: boolean;
+        userRecitationId?: string;
       };
     }>;
     'playback-speed': SheetDefinition<{
@@ -160,6 +164,7 @@ declare module 'react-native-actions-sheet' {
         onAddToQueue: () => void;
       };
     }>;
+    'add-to-collection': SheetDefinition;
   }
 }
 

@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
@@ -8,7 +8,7 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
-import {HeartIcon} from '@/components/Icons';
+import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -54,14 +54,24 @@ export const TrackInfo = () => {
     };
   }, [currentTrack]);
 
+  const isUploadWithoutReciter =
+    currentTrack?.isUserUpload && !currentTrack?.reciterId;
+  const isUploadWithoutArtwork =
+    currentTrack?.isUserUpload && !currentTrack?.artwork;
+
   const handleReciterPress = useCallback(() => {
-    if (currentTrack) {
+    if (currentTrack && !isUploadWithoutReciter) {
       setSheetMode('hidden');
       setTimeout(() => {
         navigateToReciterProfile(currentTrack.reciterId);
       }, 100);
     }
-  }, [currentTrack, setSheetMode, navigateToReciterProfile]);
+  }, [
+    currentTrack,
+    isUploadWithoutReciter,
+    setSheetMode,
+    navigateToReciterProfile,
+  ]);
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {
@@ -83,17 +93,33 @@ export const TrackInfo = () => {
   return (
     <View style={styles.container}>
       <View style={styles.trackContainer}>
-        <TouchableOpacity
-          style={styles.trackInfoTouchable}
-          activeOpacity={0.7}
+        <Pressable
+          style={({pressed}) => [
+            styles.trackInfoTouchable,
+            {opacity: pressed && !isUploadWithoutReciter ? 0.7 : 1},
+          ]}
           onPress={handleReciterPress}>
           <View style={styles.imageContainer}>
-            <ReciterImage
-              imageUrl={currentTrack?.artwork}
-              reciterName={currentTrack?.artist || ''}
-              style={styles.reciterImage}
-              profileIconSize={moderateScale(20)}
-            />
+            {isUploadWithoutArtwork ? (
+              <View
+                style={[
+                  styles.reciterImage,
+                  styles.uploadArtwork,
+                  {backgroundColor: theme.colors.card},
+                ]}>
+                <MicrophoneIcon
+                  size={moderateScale(20)}
+                  color={theme.colors.textSecondary}
+                />
+              </View>
+            ) : (
+              <ReciterImage
+                imageUrl={currentTrack?.artwork}
+                reciterName={currentTrack?.artist || ''}
+                style={styles.reciterImage}
+                profileIconSize={moderateScale(20)}
+              />
+            )}
           </View>
           <View style={styles.trackInfoTextContainer}>
             <Text
@@ -117,12 +143,14 @@ export const TrackInfo = () => {
               </Text>
             )}
           </View>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          style={styles.loveButton}
-          onPress={handleToggleLoved}
-          activeOpacity={0.7}>
+        <Pressable
+          style={({pressed}) => [
+            styles.loveButton,
+            {opacity: pressed ? 0.7 : 1},
+          ]}
+          onPress={handleToggleLoved}>
           <Animated.View style={animatedStyle}>
             <HeartIcon
               size={moderateScale(32)}
@@ -130,7 +158,7 @@ export const TrackInfo = () => {
               filled={isLoved}
             />
           </Animated.View>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );
@@ -159,6 +187,10 @@ const styles = StyleSheet.create({
     width: moderateScale(50),
     height: moderateScale(50),
     borderRadius: moderateScale(6),
+  },
+  uploadArtwork: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   trackInfoTextContainer: {
     flexShrink: 1,

@@ -108,7 +108,7 @@ export const AddToCollectionSheet = (
               color={theme.colors.text}
               size={moderateScale(20)}
             />
-            <Text style={styles.optionText}>New Playlist</Text>
+            <Text style={styles.optionText}>Create New Playlist</Text>
           </Pressable>
 
           <Pressable
@@ -123,7 +123,7 @@ export const AddToCollectionSheet = (
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>New Upload</Text>
+            <Text style={styles.optionText}>Upload Recitation</Text>
           </Pressable>
         </View>
       </View>

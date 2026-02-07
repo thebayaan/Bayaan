@@ -1,5 +1,9 @@
 PODS:
   - boost (1.84.0)
+  - Burnt (0.13.0):
+    - ExpoModulesCore
+    - SPAlert (~> 4.2)
+    - SPIndicator (~> 1.6)
   - DoubleConversion (1.1.6)
   - EASClient (0.13.3):
     - ExpoModulesCore
@@ -268,6 +272,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - ExpoShareIntentModule (5.1.1):
+    - ExpoModulesCore
   - ExpoSplashScreen (0.29.22):
     - ExpoModulesCore
   - ExpoSQLite (15.1.4):
@@ -2118,11 +2124,14 @@ PODS:
     - libwebp (~> 1.0)
     - SDWebImage/Core (~> 5.10)
   - SocketRocket (0.7.1)
+  - SPAlert (4.2.0)
+  - SPIndicator (1.6.4)
   - SwiftAudioEx (1.1.0)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
+  - Burnt (from `../node_modules/burnt/ios`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
   - EASClient (from `../node_modules/expo-eas-client/ios`)
   - EXApplication (from `../node_modules/expo-application/ios`)
@@ -2148,6 +2157,7 @@ DEPENDENCIES:
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
+  - ExpoShareIntentModule (from `../node_modules/expo-share-intent/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
   - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
@@ -2243,11 +2253,15 @@ SPEC REPOS:
     - SDWebImage
     - SDWebImageWebPCoder
     - SocketRocket
+    - SPAlert
+    - SPIndicator
     - SwiftAudioEx
 
 EXTERNAL SOURCES:
   boost:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
+  Burnt:
+    :path: "../node_modules/burnt/ios"
   DoubleConversion:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
   EASClient:
@@ -2298,6 +2312,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-linking/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
+  ExpoShareIntentModule:
+    :path: "../node_modules/expo-share-intent/ios"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
   ExpoSQLite:
@@ -2472,6 +2488,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
+  Burnt: 0616363a206ed96ba9af3e2eb0e184dc97be1458
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
   EASClient: 88b5fd19d0787186a0c7e6ba76deb2d4f96395ce
   EXApplication: 4c72f6017a14a65e338c5e74fca418f35141e819
@@ -2497,6 +2514,7 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: 35ebd83b16f80b3add053a2fd68cc328ed927f60
   ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
   ExpoModulesCore: 725faec070d590810d2ea5983d9f78f7cf6a38ec
+  ExpoShareIntentModule: 928ff229dd5e577561944786f0de08be339f640b
   ExpoSplashScreen: cb4e3d3ee646ed59810f7776cca0ae5c03ab4285
   ExpoSQLite: 10fceac6748e9e8f010c70733e0e704fa67399ab
   ExpoStoreReview: 92ad323dd14485e7aa67d5b47248fb22876ffaee
@@ -2586,6 +2604,8 @@ SPEC CHECKSUMS:
   SDWebImage: a7f831e1a65eb5e285e3fb046a23fcfbf08e696d
   SDWebImageWebPCoder: 908b83b6adda48effe7667cd2b7f78c897e5111d
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
+  SPAlert: 735da1f16a887e294719217572ce1f936d8c8782
+  SPIndicator: 93e0a4fb23de51294ac48e874c0f081a5e293e4f
   SwiftAudioEx: f6aa653770f3a0d3851edaf8d834a30aee4a7646
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
 

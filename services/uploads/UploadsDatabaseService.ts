@@ -72,9 +72,7 @@ class UploadsDatabaseService {
 
     // Migration: add style column for existing databases
     await this.db
-      .execAsync(
-        `ALTER TABLE uploaded_recitations ADD COLUMN style TEXT`,
-      )
+      .execAsync(`ALTER TABLE uploaded_recitations ADD COLUMN style TEXT`)
       .catch(() => {
         // Column already exists — ignore
       });
@@ -116,34 +114,31 @@ class UploadsDatabaseService {
   async insertRecitation(recitation: UploadedRecitation): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const db = this.db;
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
-        `INSERT INTO uploaded_recitations (
-          id, file_path, original_filename, duration, date_added,
-          type, surah_number, start_verse, end_verse, title,
-          category, reciter_id, custom_reciter_id, is_personal, rewayah, style
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          recitation.id,
-          recitation.filePath,
-          recitation.originalFilename,
-          recitation.duration,
-          recitation.dateAdded,
-          recitation.type,
-          recitation.surahNumber,
-          recitation.startVerse,
-          recitation.endVerse,
-          recitation.title,
-          recitation.category,
-          recitation.reciterId,
-          recitation.customReciterId,
-          recitation.isPersonal ? 1 : 0,
-          recitation.rewayah,
-          recitation.style,
-        ],
-      );
-    });
+    await this.db.runAsync(
+      `INSERT INTO uploaded_recitations (
+        id, file_path, original_filename, duration, date_added,
+        type, surah_number, start_verse, end_verse, title,
+        category, reciter_id, custom_reciter_id, is_personal, rewayah, style
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        recitation.id,
+        recitation.filePath,
+        recitation.originalFilename,
+        recitation.duration,
+        recitation.dateAdded,
+        recitation.type,
+        recitation.surahNumber,
+        recitation.startVerse,
+        recitation.endVerse,
+        recitation.title,
+        recitation.category,
+        recitation.reciterId,
+        recitation.customReciterId,
+        recitation.isPersonal ? 1 : 0,
+        recitation.rewayah,
+        recitation.style,
+      ],
+    );
   }
 
   async getAll(): Promise<UploadedRecitation[]> {
@@ -284,22 +279,18 @@ class UploadsDatabaseService {
 
     if (setClauses.length === 0) return;
 
-    const db = this.db;
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
-        `UPDATE uploaded_recitations SET ${setClauses.join(', ')} WHERE id = ?`,
-        [...values, id],
-      );
-    });
+    await this.db.runAsync(
+      `UPDATE uploaded_recitations SET ${setClauses.join(', ')} WHERE id = ?`,
+      [...values, id],
+    );
   }
 
   async deleteRecitation(id: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const db = this.db;
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(`DELETE FROM uploaded_recitations WHERE id = ?`, [id]);
-    });
+    await this.db.runAsync(`DELETE FROM uploaded_recitations WHERE id = ?`, [
+      id,
+    ]);
   }
 
   // ─── Custom Reciters ───────────────────────────────────────────────
@@ -307,14 +298,11 @@ class UploadsDatabaseService {
   async insertCustomReciter(reciter: CustomReciter): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const db = this.db;
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(
-        `INSERT INTO custom_reciters (id, name, image_uri, created_at)
-         VALUES (?, ?, ?, ?)`,
-        [reciter.id, reciter.name, reciter.imageUri, reciter.createdAt],
-      );
-    });
+    await this.db.runAsync(
+      `INSERT INTO custom_reciters (id, name, image_uri, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [reciter.id, reciter.name, reciter.imageUri, reciter.createdAt],
+    );
   }
 
   async getAllCustomReciters(): Promise<CustomReciter[]> {
@@ -343,10 +331,7 @@ class UploadsDatabaseService {
   async deleteCustomReciter(id: string): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
-    const db = this.db;
-    await db.withTransactionAsync(async () => {
-      await db.runAsync(`DELETE FROM custom_reciters WHERE id = ?`, [id]);
-    });
+    await this.db.runAsync(`DELETE FROM custom_reciters WHERE id = ?`, [id]);
   }
 
   // Close database

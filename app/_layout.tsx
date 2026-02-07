@@ -36,6 +36,10 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {useShareIntent} from 'expo-share-intent';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {SheetManager} from 'react-native-actions-sheet';
+import {showToast} from '@/utils/toastUtils';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -114,6 +118,12 @@ export default function RootLayout() {
     Indopak: require('@/assets/fonts/Indopak.ttf'),
   });
 
+  // Handle share intents from other apps
+  const {hasShareIntent, shareIntent, resetShareIntent} = useShareIntent({
+    debug: __DEV__,
+    resetOnBackground: true,
+  });
+
   // Preload Tajweed data once when the app starts
   useEffect(() => {
     if (!isTajweedLoading) {
@@ -145,14 +155,15 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     try {
-      if (appIsReady && fontsLoaded && isPlayerReady) {
+      if (appIsReady && fontsLoaded && isPlayerReady && !hasShareIntent) {
         // Only hide the splash screen after everything is ready
+        // If there's a pending share intent, keep splash visible until it's processed
         await SplashScreen.hideAsync();
       }
     } catch (e) {
       console.warn('Error hiding splash screen:', e);
     }
-  }, [appIsReady, fontsLoaded, isPlayerReady]);
+  }, [appIsReady, fontsLoaded, isPlayerReady, hasShareIntent]);
 
   // Initialize app
   useEffect(() => {
@@ -332,6 +343,68 @@ export default function RootLayout() {
 
     setupNavigationBar();
   }, [theme.colors.background, isDarkMode]);
+
+  useEffect(() => {
+    if (!hasShareIntent || !appIsReady || !isPlayerReady) return;
+
+    const handleShareIntent = async () => {
+      try {
+        const files = shareIntent.files;
+        if (!files || files.length === 0) {
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          return;
+        }
+
+        // Filter to audio MIME types
+        const audioFiles = files.filter(f => f.mimeType?.startsWith('audio/'));
+
+        if (audioFiles.length === 0) {
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          return;
+        }
+
+        const {importFile, importFiles} = useUploadsStore.getState();
+
+        if (audioFiles.length === 1) {
+          const file = audioFiles[0];
+          const recitation = await importFile(
+            file.path,
+            file.fileName || 'Shared Audio',
+          );
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          showToast('File imported');
+          SheetManager.show('organize-recitation', {
+            payload: {recitation},
+          });
+        } else {
+          const mapped = audioFiles.map(f => ({
+            uri: f.path,
+            name: f.fileName || 'Shared Audio',
+          }));
+          await importFiles(mapped);
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          showToast(`${audioFiles.length} files imported`);
+          router.push('/collection/uploads');
+        }
+      } catch (error) {
+        console.error('[ShareIntent] Import failed:', error);
+        resetShareIntent();
+        await SplashScreen.hideAsync();
+      }
+    };
+
+    handleShareIntent();
+  }, [
+    hasShareIntent,
+    appIsReady,
+    isPlayerReady,
+    shareIntent,
+    resetShareIntent,
+  ]);
 
   if (fontError) {
     SplashScreen.hideAsync();

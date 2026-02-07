@@ -4,6 +4,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
+import {Icon} from '@rneui/themed';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
 import {useSettings} from '@/hooks/useSettings';
@@ -36,7 +37,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {SheetManager} from 'react-native-actions-sheet';
 import {HeartIcon, DownloadIcon, MicrophoneIcon} from '@/components/Icons';
 import Color from 'color';
-import {TouchableOpacity} from 'react-native';
+import {Pressable} from 'react-native';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {createDownloadedTrack} from '@/utils/track';
@@ -85,22 +86,9 @@ export default function CollectionScreen() {
     [playlists],
   );
 
-  // Handle creating a new playlist
-  const handleNewPlaylist = useCallback(async () => {
-    const result = await SheetManager.show('create-playlist', {
-      payload: {
-        existingColors: existingPlaylistColors,
-      },
-    });
-
-    if (result?.name && result?.color) {
-      try {
-        await createPlaylist(result.name, result.color);
-      } catch (error: unknown) {
-        console.error('Failed to create playlist:', error);
-      }
-    }
-  }, [existingPlaylistColors, createPlaylist]);
+  const handleAddPress = useCallback(() => {
+    SheetManager.show('add-to-collection');
+  }, []);
 
   const handlePlaylistLongPress = useCallback(
     (playlistId: string, playlistName: string, color?: string) => {
@@ -370,10 +358,7 @@ export default function CollectionScreen() {
         const lovedColor = '#FF6B6B';
         return (
           <View key={item.id} style={styles.listItemWrapper}>
-            <TouchableOpacity
-              activeOpacity={0.99}
-              onPress={lovedData.onPress}
-              style={styles.listItem}>
+            <Pressable onPress={lovedData.onPress} style={styles.listItem}>
               <View
                 style={[
                   styles.listItemIcon,
@@ -402,7 +387,7 @@ export default function CollectionScreen() {
                   {lovedData.itemCount === 1 ? 'surah' : 'surahs'}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         );
       }
@@ -428,10 +413,7 @@ export default function CollectionScreen() {
         const downloadColor = '#10AC84';
         return (
           <View key={item.id} style={styles.listItemWrapper}>
-            <TouchableOpacity
-              activeOpacity={0.99}
-              onPress={downloadData.onPress}
-              style={styles.listItem}>
+            <Pressable onPress={downloadData.onPress} style={styles.listItem}>
               <View
                 style={[
                   styles.listItemIcon,
@@ -458,7 +440,7 @@ export default function CollectionScreen() {
                   {downloadData.itemCount === 1 ? 'surah' : 'surahs'}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         );
       }
@@ -491,10 +473,7 @@ export default function CollectionScreen() {
         const uploadColor = '#8B5CF6';
         return (
           <View key={item.id} style={styles.listItemWrapper}>
-            <TouchableOpacity
-              activeOpacity={0.99}
-              onPress={uploadData.onPress}
-              style={styles.listItem}>
+            <Pressable onPress={uploadData.onPress} style={styles.listItem}>
               <View
                 style={[
                   styles.listItemIcon,
@@ -519,7 +498,7 @@ export default function CollectionScreen() {
                   {uploadData.itemCount === 1 ? 'recitation' : 'recitations'}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         );
       }
@@ -574,12 +553,7 @@ export default function CollectionScreen() {
         <View style={{paddingTop: insets.top}} />
 
         {/* Header */}
-        <CollectionHeader
-          title="Your Collection"
-          onNewPlaylistPress={handleNewPlaylist}
-          onSearchPress={handleSearch}
-          theme={theme}
-        />
+        <CollectionHeader title="Your Collection" theme={theme} />
 
         {/* Filter Bar */}
         <FilterBar
@@ -596,6 +570,20 @@ export default function CollectionScreen() {
           isGridView={isGridView}
           theme={theme}
         />
+
+        {/* Add to Collection Bar */}
+        <Pressable style={styles.addBar} onPress={handleAddPress}>
+          <Icon
+            name="plus"
+            type="feather"
+            size={moderateScale(16)}
+            color={theme.colors.textSecondary}
+          />
+          <Text
+            style={[styles.addBarText, {color: theme.colors.textSecondary}]}>
+            Add to Collection
+          </Text>
+        </Pressable>
 
         {/* Collection Items */}
         {isGridView ? (
@@ -687,5 +675,20 @@ const createStyles = (theme: Theme) =>
     listItemSubtitle: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Regular',
+    },
+    addBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(12),
+      marginHorizontal: moderateScale(16),
+      marginBottom: moderateScale(8),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      gap: moderateScale(8),
+    },
+    addBarText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
     },
   });
