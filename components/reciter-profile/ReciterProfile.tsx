@@ -8,6 +8,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   useWindowDimensions,
+  InteractionManager,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -51,6 +52,7 @@ import {RewayatTabBar} from './components/RewayatTabBar';
 import {UploadsTabContent} from './components/UploadsTabContent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
+import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 
 interface ReciterProfileProps {
   id: string;
@@ -166,7 +168,7 @@ const SurahListSkeleton: React.FC<{theme: any}> = React.memo(({theme}) => {
   );
 });
 
-const ReciterProfile: React.FC<ReciterProfileProps> = ({
+const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
 }) => {
@@ -937,9 +939,22 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
         if (tab.id !== 'uploads') {
           handleRewayatChange(tab.id);
         }
+        // Reset outer scroll position (same logic as handleTabChange)
+        const maxScroll = Math.max(0, collapsibleHeight - stickyTitleHeight);
+        const isCollapsed = currentScrollYRef.current >= maxScroll - 1;
+        outerScrollRef.current?.scrollTo({
+          y: isCollapsed ? maxScroll : 0,
+          animated: false,
+        });
       }
     },
-    [tabs, screenWidth, handleRewayatChange],
+    [
+      tabs,
+      screenWidth,
+      handleRewayatChange,
+      collapsibleHeight,
+      stickyTitleHeight,
+    ],
   );
 
   // Opacity-gated reveal: scroll pager to first rewayat (index 1) before showing
@@ -1185,7 +1200,14 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
 
             {/* Child 2: Horizontal pager — lazy-rendered, swipeable */}
             {/* Only active ±1 tabs render; previously visited tabs stay mounted */}
-            <View>
+            {/* When uploads is active, cap height to viewport so the tall rewayat pages */}
+            {/* don't inflate the scrollable area with empty space */}
+            <View
+              style={
+                activeTab === 'uploads'
+                  ? {height: contentMinHeight, overflow: 'hidden'}
+                  : undefined
+              }>
               <RNAnimated.ScrollView
                 ref={horizontalRef}
                 horizontal
@@ -1204,7 +1226,11 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
                 {tabs.map(tab => (
                   <View
                     key={tab.id}
-                    style={{width: screenWidth, minHeight: contentMinHeight}}>
+                    style={{
+                      width: screenWidth,
+                      minHeight: contentMinHeight,
+                      paddingBottom: TOTAL_BOTTOM_PADDING,
+                    }}>
                     {renderedTabsRef.current.has(tab.id) ? (
                       tab.id === 'uploads' ? (
                         <UploadsTabContent
@@ -1304,6 +1330,26 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       )}
     </View>
   );
+};
+
+// Lightweight wrapper — defers mounting the heavy content until the navigation
+// transition finishes so the screen push feels instant.
+const ReciterProfile: React.FC<ReciterProfileProps> = props => {
+  const [ready, setReady] = useState(false);
+  const {theme} = useTheme();
+
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setReady(true);
+    });
+    return () => handle.cancel();
+  }, []);
+
+  if (!ready) {
+    return <View style={{flex: 1, backgroundColor: theme.colors.background}} />;
+  }
+
+  return <ReciterProfileContent {...props} />;
 };
 
 export default ReciterProfile;
