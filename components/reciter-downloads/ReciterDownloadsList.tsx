@@ -567,6 +567,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
           {useNativeDriver: true},
         )}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
       <CollectionStickyHeader
         title={reciter?.name || 'Downloads'}

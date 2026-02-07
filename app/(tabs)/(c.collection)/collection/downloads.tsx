@@ -286,6 +286,7 @@ export default function DownloadsScreen() {
           {useNativeDriver: true},
         )}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
       <CollectionStickyHeader title="Downloads" scrollY={scrollY} />
     </View>

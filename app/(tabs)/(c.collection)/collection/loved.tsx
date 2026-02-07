@@ -814,6 +814,7 @@ const LovedScreen = () => {
           {useNativeDriver: true},
         )}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
       <CollectionStickyHeader title="Loved Surahs" scrollY={scrollY} />
     </View>

@@ -2,9 +2,9 @@ import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  StatusBar,
+  ListRenderItem,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
@@ -15,16 +15,12 @@ import {Surah} from '@/data/surahData';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {createTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
-import DraggableFlatList, {
-  RenderItemParams,
-} from 'react-native-draggable-flatlist';
-import {Swipeable} from 'react-native-gesture-handler';
-import {Icon} from '@rneui/themed';
 import {PlaylistHeader} from './PlaylistHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useRouter} from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {UserPlaylist} from '@/services/database/DatabaseService';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 
 interface PlaylistTrack {
   id: string;
@@ -33,6 +29,12 @@ interface PlaylistTrack {
   rewayatId?: string;
   surah?: Surah;
   reciter?: Reciter;
+}
+
+interface PlaylistDataItem {
+  track: PlaylistTrack;
+  reciter: Reciter | null;
+  surah: Surah | null;
 }
 
 interface PlaylistDetailProps {
@@ -46,21 +48,16 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     getPlaylist,
     getPlaylistItems,
     removeFromPlaylist,
-    reorderPlaylistItems,
     updatePlaylist,
     deletePlaylist,
     playlists,
   } = usePlaylists();
-  const {updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, addToQueue, play} = useUnifiedPlayer();
+
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   const [playlist, setPlaylist] = useState<UserPlaylist | null>(null);
-  const [playlistData, setPlaylistData] = useState<
-    Array<{
-      track: PlaylistTrack;
-      reciter: Reciter | null;
-      surah: Surah | null;
-    }>
-  >([]);
+  const [playlistData, setPlaylistData] = useState<PlaylistDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const shouldClearPlaylistRef = useRef(true);
 
@@ -79,39 +76,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       textAlign: 'center',
       marginTop: moderateScale(32),
     },
-    dragHandle: {
-      position: 'absolute',
-      left: moderateScale(10),
-      top: '50%',
-      transform: [{translateY: moderateScale(-10)}],
-      zIndex: 1,
-    },
-    draggableItem: {
-      marginVertical: moderateScale(2),
-    },
-    draggingItem: {
-      opacity: 0.8,
-      transform: [{scale: 1.02}],
-    },
-    rightAction: {
-      flex: 1,
-      backgroundColor: '#ff4444',
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-      paddingRight: moderateScale(20),
-    },
-    deleteButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(15),
-      paddingVertical: moderateScale(10),
-    },
-    deleteText: {
-      color: 'white',
-      fontSize: moderateScale(14),
-      fontWeight: '600',
-      marginLeft: moderateScale(8),
-    },
   });
 
   useEffect(() => {
@@ -123,14 +87,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     try {
       setLoading(true);
 
-      // Get playlist info
       const playlistInfo = await getPlaylist(id);
       setPlaylist(playlistInfo);
 
-      // Get playlist items
       const playlistItems = await getPlaylistItems(id);
 
-      // Enrich with surah and reciter data
       const enrichedData = await Promise.all(
         playlistItems.map(async item => {
           const [reciter, surah] = await Promise.all([
@@ -161,11 +122,9 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }
   }, [id, getPlaylist, getPlaylistItems]);
 
-  // Handle surah press to play track
   const handleSurahPress = useCallback(
     async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
       try {
-        // Create tracks for all items in the playlist
         const trackPromises = playlistData.map(async item => {
           if (!item.reciter || !item.surah) return null;
           return await createTrack(
@@ -181,7 +140,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
         if (validTracks.length === 0) return;
 
-        // Find the index of the selected track
         const selectedIndex = validTracks.findIndex(
           t =>
             t.reciterId === reciter.id &&
@@ -191,13 +149,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
         if (selectedIndex === -1) return;
 
-        // Reorder tracks to start from the selected track
         const reorderedTracks = [
           ...validTracks.slice(selectedIndex),
           ...validTracks.slice(0, selectedIndex),
         ];
 
-        // Update queue with all tracks starting from the selected one
         await updateQueue(reorderedTracks, 0);
         await play();
       } catch (error) {
@@ -207,29 +163,10 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     [updateQueue, play, playlistData],
   );
 
-  const handleReorder = useCallback(
-    (
-      data: Array<{
-        track: PlaylistTrack;
-        reciter: Reciter | null;
-        surah: Surah | null;
-      }>,
-    ) => {
-      // Update local state
-      setPlaylistData(data);
-
-      // Update store with new order
-      const newOrder = data.map(item => item.track.id);
-      reorderPlaylistItems(id, newOrder);
-    },
-    [reorderPlaylistItems, id],
-  );
-
   const handleRemoveFromPlaylist = useCallback(
     async (track: PlaylistTrack) => {
       try {
         await removeFromPlaylist(track.id);
-        // Reload playlist data to reflect changes
         await loadPlaylistData();
       } catch (error) {
         console.error('Failed to remove item from playlist:', error);
@@ -238,12 +175,10 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     [removeFromPlaylist, loadPlaylistData],
   );
 
-  // Play all tracks
   const handlePlayAll = useCallback(async () => {
     if (playlistData.length === 0) return;
 
     try {
-      // Create tracks for all items in the playlist
       const trackPromises = playlistData.map(async item => {
         if (!item.reciter || !item.surah) return null;
         return await createTrack(
@@ -270,7 +205,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     if (playlistData.length === 0) return;
 
     try {
-      // Create tracks for all items in the playlist
       const trackPromises = playlistData.map(async item => {
         if (!item.reciter || !item.surah) return null;
         return await createTrack(
@@ -285,10 +219,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       );
 
       if (validTracks.length > 0) {
-        // Shuffle the tracks array
         const shuffledTracks = [...validTracks].sort(() => Math.random() - 0.5);
-
-        // Update queue with shuffled tracks and start playing from the first one
         await updateQueue(shuffledTracks, 0);
         await play();
       }
@@ -297,25 +228,20 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     }
   }, [playlistData, updateQueue, play]);
 
-  // Get existing playlist colors to avoid duplicates
   const existingPlaylistColors = React.useMemo(
     () => playlists.map(p => p.color).filter(Boolean) as string[],
     [playlists],
   );
 
-  // Handle options button press
   const handleOptionsPress = useCallback(() => {
     if (!playlist) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     shouldClearPlaylistRef.current = true;
 
-    // Create a closure that captures the playlist data for editing
     const handleEditForThisPlaylist = async () => {
-      // Prevent clearing playlist data BEFORE closing context menu
       shouldClearPlaylistRef.current = false;
 
-      // Show the create-playlist sheet in edit mode
       const result = await SheetManager.show('create-playlist', {
         payload: {
           existingColors: existingPlaylistColors,
@@ -331,24 +257,20 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
             name: result.name,
             color: result.color,
           });
-          // Reload playlist data to reflect changes
           await loadPlaylistData();
         } catch (error: unknown) {
           console.error('Failed to update playlist:', error);
         }
       }
 
-      // Clear the flag after modal is fully closed
       setTimeout(() => {
         shouldClearPlaylistRef.current = true;
       }, 600);
     };
 
-    // Create a closure that captures the playlist ID for deletion
     const handleDeleteForThisPlaylist = async () => {
       try {
         await deletePlaylist(playlist.id);
-        // Navigate back after successful deletion
         router.back();
       } catch (error: unknown) {
         console.error('Failed to delete playlist:', error);
@@ -373,6 +295,26 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     loadPlaylistData,
   ]);
 
+  const handleShowTrackOptions = useCallback(
+    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
+      const audioTrack = await createTrack(reciter, surah, track.rewayatId);
+
+      SheetManager.show('surah-options', {
+        payload: {
+          surah,
+          reciterId: track.reciterId,
+          rewayatId: track.rewayatId,
+          onAddToQueue: async (s: Surah) => {
+            if (audioTrack) {
+              await addToQueue([audioTrack]);
+            }
+          },
+        },
+      });
+    },
+    [addToQueue],
+  );
+
   const ListHeaderComponent = useCallback(() => {
     if (!playlist) return null;
 
@@ -382,7 +324,6 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         subtitle={`${playlistData.length} ${
           playlistData.length === 1 ? 'surah' : 'surahs'
         }`}
-        backgroundColor={playlist.color}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
         onOptionsPress={handleOptionsPress}
@@ -398,60 +339,22 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     theme,
   ]);
 
-  const renderItem = ({
-    item,
-    drag,
-    isActive,
-  }: RenderItemParams<{
-    track: PlaylistTrack;
-    reciter: Reciter | null;
-    surah: Surah | null;
-  }>) => {
+  const renderItem: ListRenderItem<PlaylistDataItem> = ({item}) => {
     const {track, reciter, surah} = item;
 
     if (!reciter || !surah) {
       return null;
     }
 
-    const renderRightActions = () => (
-      <View style={styles.rightAction}>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleRemoveFromPlaylist(track)}>
-          <Icon
-            name="trash-2"
-            type="feather"
-            size={moderateScale(20)}
-            color="white"
-          />
-          <Text style={styles.deleteText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
     return (
-      <Swipeable renderRightActions={renderRightActions}>
-        <TouchableOpacity
-          onLongPress={drag}
-          disabled={isActive}
-          style={[styles.draggableItem, isActive && styles.draggingItem]}>
-          <View style={styles.dragHandle}>
-            <Icon
-              name="menu"
-              type="feather"
-              size={moderateScale(20)}
-              color={'transparent'}
-            />
-          </View>
-          <TrackItem
-            reciterId={track.reciterId}
-            surahId={track.surahId}
-            rewayatId={track.rewayatId}
-            onPress={() => handleSurahPress(track, reciter, surah)}
-            onPlayPress={() => handleSurahPress(track, reciter, surah)}
-          />
-        </TouchableOpacity>
-      </Swipeable>
+      <TrackItem
+        reciterId={track.reciterId}
+        surahId={track.surahId}
+        rewayatId={track.rewayatId}
+        onPress={() => handleSurahPress(track, reciter, surah)}
+        onPlayPress={() => handleSurahPress(track, reciter, surah)}
+        onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
+      />
     );
   };
 
@@ -465,19 +368,23 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <DraggableFlatList
+      <RNAnimated.FlatList
         data={playlistData}
         renderItem={renderItem}
         keyExtractor={item => item.track.id}
-        onDragEnd={({data}) => handleReorder(data)}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No surahs in this playlist</Text>
         }
-        bounces={false}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
+      <CollectionStickyHeader title={playlist.name} scrollY={scrollY} />
     </View>
   );
 };

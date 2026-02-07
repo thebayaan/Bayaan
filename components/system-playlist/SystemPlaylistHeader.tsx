@@ -1,8 +1,7 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
 import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -15,15 +14,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface SystemPlaylistHeaderProps {
   title: string;
   description: string;
   itemCount: number;
   estimatedDuration?: string | null;
-  backgroundColor: string;
   onPlayPress: () => void;
   onShufflePress?: () => void;
   canPlayImmediately: boolean;
@@ -35,7 +32,6 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
   description,
   itemCount,
   estimatedDuration,
-  backgroundColor,
   onPlayPress,
   onShufflePress,
   canPlayImmediately,
@@ -45,7 +41,6 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
   const router = useRouter();
   const styles = createStyles(theme, insets);
 
-  // Animation values for button press feedback
   const shuffleScale = useSharedValue(1);
   const playScale = useSharedValue(1);
 
@@ -78,36 +73,28 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
     estimatedDuration,
   ]
     .filter(Boolean)
-    .join(' • ');
+    .join(' \u2022 ');
 
   return (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={[backgroundColor, theme.colors.background]}
-        style={styles.gradientContainer}>
+      <View style={styles.contentArea}>
         {/* Back Button */}
-        <TouchableOpacity
+        <Pressable
           style={styles.backButton}
           onPress={() => router.back()}
-          activeOpacity={0.7}>
+          hitSlop={8}>
           <Icon
             name="arrow-left"
             type="feather"
             size={moderateScale(24)}
-            color="white"
+            color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
           {/* System Playlist Badge */}
-          <View
-            style={[
-              styles.badge,
-              {
-                backgroundColor: Color('white').alpha(0.2).toString(),
-              },
-            ]}>
+          <View style={styles.badge}>
             <Text style={styles.badgeText}>Bayaan Curated</Text>
           </View>
 
@@ -116,7 +103,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
           <Text style={styles.description}>{description}</Text>
           <Text style={styles.subtitle}>{subtitleText}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Action Buttons */}
       <View style={styles.contentWrapper}>
@@ -127,8 +114,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
           {/* Right side buttons */}
           <View style={styles.rightAlignedButtons}>
             {onShufflePress && canPlayImmediately && (
-              <AnimatedTouchableOpacity
-                activeOpacity={0.7}
+              <AnimatedPressable
                 style={[styles.circleButton, shuffleAnimatedStyle]}
                 onPress={onShufflePress}
                 onPressIn={() => handlePressIn('shuffle')}
@@ -137,10 +123,9 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
                   color={theme.colors.text}
                   size={moderateScale(20)}
                 />
-              </AnimatedTouchableOpacity>
+              </AnimatedPressable>
             )}
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
+            <AnimatedPressable
               style={[
                 styles.circleButton,
                 styles.playButton,
@@ -155,7 +140,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
                   size={moderateScale(16)}
                 />
               </View>
-            </AnimatedTouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -169,12 +154,13 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(20),
+      paddingTop: insets.top + moderateScale(40),
       paddingBottom: moderateScale(30),
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',
@@ -196,25 +182,26 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       paddingVertical: moderateScale(6),
       borderRadius: moderateScale(16),
       marginBottom: moderateScale(16),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
     },
     badgeText: {
       fontSize: moderateScale(11),
       fontFamily: theme.fonts.semiBold,
-      color: 'white',
+      color: theme.colors.textSecondary,
       letterSpacing: 0.3,
       textTransform: 'uppercase',
     },
     title: {
       fontSize: moderateScale(24),
       fontFamily: theme.fonts.bold,
-      color: 'white',
+      color: theme.colors.text,
       textAlign: 'center',
       marginBottom: moderateScale(8),
       letterSpacing: -0.5,
     },
     description: {
       fontSize: moderateScale(14),
-      color: Color('white').alpha(0.9).toString(),
+      color: theme.colors.textSecondary,
       fontFamily: theme.fonts.regular,
       textAlign: 'center',
       marginBottom: moderateScale(12),
@@ -223,7 +210,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     },
     subtitle: {
       fontSize: moderateScale(12),
-      color: Color('white').alpha(0.8).toString(),
+      color: theme.colors.textSecondary,
       fontFamily: theme.fonts.medium,
       textAlign: 'center',
     },
