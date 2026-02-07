@@ -1,10 +1,6 @@
 import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import TrackPlayer, {
-  State as TrackPlayerState,
-  RepeatMode,
-} from 'react-native-track-player';
 import {Track} from '@/types/audio';
 import {
   UnifiedPlayerState,
@@ -16,8 +12,21 @@ import {
   UIState,
 } from '../types/state';
 import {createDefaultUnifiedPlayerState} from './validation';
+import {expoAudioService} from '@/services/audio/ExpoAudioService';
 
 const STORAGE_KEY = 'player-store';
+
+// Map our playback state to store state
+type StorePlaybackState =
+  | 'none'
+  | 'loading'
+  | 'buffering'
+  | 'ready'
+  | 'playing'
+  | 'paused'
+  | 'stopped'
+  | 'ended'
+  | 'error';
 
 /**
  * Interface for the player store
@@ -64,6 +73,41 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   cleanup: () => Promise<void>;
 }
 
+/**
+ * Helper to load and optionally play a track from the queue
+ */
+async function loadTrackAtIndex(
+  tracks: Track[],
+  index: number,
+  startPosition = 0,
+  autoPlay = false,
+): Promise<void> {
+  const track = tracks[index];
+  if (!track?.url) {
+    if (__DEV__) console.warn('[PlayerStore] No track at index:', index);
+    return;
+  }
+
+  if (__DEV__)
+    console.log('[PlayerStore] Loading track:', {
+      index,
+      title: track.title,
+      url: track.url.substring(0, 50) + '...',
+      startPosition,
+      autoPlay,
+    });
+
+  await expoAudioService.loadTrack(track.url);
+
+  if (startPosition > 0) {
+    await expoAudioService.seekTo(startPosition);
+  }
+
+  if (autoPlay) {
+    await expoAudioService.play();
+  }
+}
+
 export const usePlayerStore = create<PlayerStoreState>()(
   persist(
     (set, get) => ({
@@ -76,10 +120,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const currentMode = get().sheetMode;
         if (currentMode === mode) return; // Don't update if mode hasn't changed
 
-        console.log('[PlayerStore] Sheet mode:', {
-          from: currentMode,
-          to: mode,
-        });
+        if (__DEV__)
+          console.log('[PlayerStore] Sheet mode:', {
+            from: currentMode,
+            to: mode,
+          });
 
         set({sheetMode: mode});
       },
@@ -90,11 +135,18 @@ export const usePlayerStore = create<PlayerStoreState>()(
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
-          // Don't set state optimistically - let TrackPlayer events update the state
-          // This prevents flickering when TrackPlayer goes through intermediate states
-          await TrackPlayer.play();
-          // State will be updated by the PlaybackState event listener in playbackService
+
+          await expoAudioService.play();
+
+          set(state => ({
+            playback: {
+              ...state.playback,
+              state: 'playing' as StorePlaybackState,
+            },
+            loading: {...state.loading, trackLoading: false},
+          }));
         } catch (error) {
+          console.error('[PlayerStore] Play failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
@@ -109,11 +161,18 @@ export const usePlayerStore = create<PlayerStoreState>()(
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
-          // Don't set state optimistically - let TrackPlayer events update the state
-          // This prevents flickering when TrackPlayer goes through intermediate states
-          await TrackPlayer.pause();
-          // State will be updated by the PlaybackState event listener in playbackService
+
+          await expoAudioService.pause();
+
+          set(state => ({
+            playback: {
+              ...state.playback,
+              state: 'paused' as StorePlaybackState,
+            },
+            loading: {...state.loading, trackLoading: false},
+          }));
         } catch (error) {
+          console.error('[PlayerStore] Pause failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
@@ -124,19 +183,49 @@ export const usePlayerStore = create<PlayerStoreState>()(
       },
 
       skipToNext: async () => {
+        const state = get();
+        const {tracks, currentIndex} = state.queue;
+        const {repeatMode} = state.settings;
+
         try {
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
-          await TrackPlayer.skipToNext();
+
+          let nextIndex = currentIndex + 1;
+
+          // Handle end of queue
+          if (nextIndex >= tracks.length) {
+            if (repeatMode === 'queue') {
+              nextIndex = 0; // Loop back to start
+            } else {
+              // End of queue, stay on last track
+              if (__DEV__) console.log('[PlayerStore] End of queue reached');
+              set(state => ({
+                loading: {...state.loading, trackLoading: false},
+                playback: {
+                  ...state.playback,
+                  state: 'ended' as StorePlaybackState,
+                },
+              }));
+              return;
+            }
+          }
+
+          // Load and play the next track
+          await loadTrackAtIndex(tracks, nextIndex, 0, true);
+
           set(state => ({
-            queue: {
-              ...state.queue,
-              currentIndex: state.queue.currentIndex + 1,
+            queue: {...state.queue, currentIndex: nextIndex},
+            playback: {
+              ...state.playback,
+              state: 'playing' as StorePlaybackState,
+              position: 0,
             },
             loading: {...state.loading, trackLoading: false},
           }));
         } catch (error) {
+          console.error('[PlayerStore] Skip to next failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
@@ -147,19 +236,57 @@ export const usePlayerStore = create<PlayerStoreState>()(
       },
 
       skipToPrevious: async () => {
+        const state = get();
+        const {tracks, currentIndex} = state.queue;
+        const {repeatMode} = state.settings;
+        const position = expoAudioService.getPosition();
+
         try {
           set(state => ({
             loading: {...state.loading, trackLoading: true},
           }));
-          await TrackPlayer.skipToPrevious();
+
+          // If more than 3 seconds into the track, restart it
+          if (position > 3) {
+            await expoAudioService.seekTo(0);
+            set(state => ({
+              playback: {...state.playback, position: 0},
+              loading: {...state.loading, trackLoading: false},
+            }));
+            return;
+          }
+
+          let prevIndex = currentIndex - 1;
+
+          // Handle start of queue
+          if (prevIndex < 0) {
+            if (repeatMode === 'queue') {
+              prevIndex = tracks.length - 1; // Loop to end
+            } else {
+              // Start of queue, just restart current track
+              await expoAudioService.seekTo(0);
+              set(state => ({
+                playback: {...state.playback, position: 0},
+                loading: {...state.loading, trackLoading: false},
+              }));
+              return;
+            }
+          }
+
+          // Load and play the previous track
+          await loadTrackAtIndex(tracks, prevIndex, 0, true);
+
           set(state => ({
-            queue: {
-              ...state.queue,
-              currentIndex: Math.max(0, state.queue.currentIndex - 1),
+            queue: {...state.queue, currentIndex: prevIndex},
+            playback: {
+              ...state.playback,
+              state: 'playing' as StorePlaybackState,
+              position: 0,
             },
             loading: {...state.loading, trackLoading: false},
           }));
         } catch (error) {
+          console.error('[PlayerStore] Skip to previous failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
@@ -171,14 +298,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       seekTo: async (position: number) => {
         try {
-          await TrackPlayer.seekTo(position);
+          await expoAudioService.seekTo(position);
           set(state => ({
-            playback: {
-              ...state.playback,
-              position,
-            },
+            playback: {...state.playback, position},
           }));
         } catch (error) {
+          console.error('[PlayerStore] Seek failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
@@ -189,14 +314,12 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       setRate: async (rate: number) => {
         try {
-          await TrackPlayer.setRate(rate);
+          expoAudioService.setRate(rate);
           set(state => ({
-            playback: {
-              ...state.playback,
-              rate,
-            },
+            playback: {...state.playback, rate},
           }));
         } catch (error) {
+          console.error('[PlayerStore] Set rate failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, playback: error},
@@ -211,13 +334,14 @@ export const usePlayerStore = create<PlayerStoreState>()(
         startPosition = 0,
       ) => {
         try {
-          console.log('[PlayerStore] Updating queue:', {
-            tracksCount: tracks.length,
-            currentIndex,
-            startPosition,
-            firstTrack: tracks[0]?.title,
-            targetTrack: tracks[currentIndex]?.title,
-          });
+          if (__DEV__)
+            console.log('[PlayerStore] Updating queue:', {
+              tracksCount: tracks.length,
+              currentIndex,
+              startPosition,
+              firstTrack: tracks[0]?.title,
+              targetTrack: tracks[currentIndex]?.title,
+            });
 
           set(state => ({
             loading: {
@@ -225,39 +349,16 @@ export const usePlayerStore = create<PlayerStoreState>()(
               queueLoading: true,
               stateRestoring: false,
             },
-            // Optimistically set position if provided
-            playback: {
-              ...state.playback,
-              position: startPosition,
-            },
           }));
 
-          await TrackPlayer.reset();
-          await TrackPlayer.add(tracks);
-
-          // Only skip if we're not at the start
-          // For index 0, the player automatically sets it as the first item
-          if (currentIndex > 0) {
-            await TrackPlayer.skip(currentIndex);
+          // Load the track at the specified index and auto-play
+          if (
+            tracks.length > 0 &&
+            currentIndex >= 0 &&
+            currentIndex < tracks.length
+          ) {
+            await loadTrackAtIndex(tracks, currentIndex, startPosition, true);
           }
-
-          // Seek if a start position is provided
-          if (startPosition > 0) {
-            console.log(
-              '[PlayerStore] Seeking to start position:',
-              startPosition,
-            );
-            await TrackPlayer.seekTo(startPosition);
-          }
-
-          // Don't call getQueue() - it's slow and we already know the state!
-          // We just added these tracks, so we know the queue is exactly what we added
-          // This is the same optimization we did in QueueManager
-          console.log('[PlayerStore] TrackPlayer state after update:', {
-            queueLength: tracks.length,
-            currentTrackIndex: currentIndex,
-            targetIndex: currentIndex,
-          });
 
           set(state => ({
             queue: {
@@ -276,18 +377,14 @@ export const usePlayerStore = create<PlayerStoreState>()(
             },
             playback: {
               ...state.playback,
-              state: TrackPlayerState.Ready,
-              position: startPosition, // Ensure position is kept
-              duration: 0,
+              state: 'ready' as StorePlaybackState,
+              position: startPosition,
+              duration: expoAudioService.getDuration() || 0,
               buffering: false,
             },
           }));
 
-          console.log('[PlayerStore] Store state after update:', {
-            queueLength: tracks.length,
-            currentIndex,
-            hasCurrentTrack: !!tracks[currentIndex],
-          });
+          if (__DEV__) console.log('[PlayerStore] Queue updated successfully');
         } catch (error) {
           console.error('[PlayerStore] Error updating queue:', error);
           if (error instanceof Error) {
@@ -309,7 +406,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
           set(state => ({
             loading: {...state.loading, queueLoading: true},
           }));
-          await TrackPlayer.add(tracks);
+
+          // Just add to our state - expo-audio handles single track playback
           set(state => ({
             queue: {
               ...state.queue,
@@ -318,7 +416,15 @@ export const usePlayerStore = create<PlayerStoreState>()(
             },
             loading: {...state.loading, queueLoading: false},
           }));
+
+          if (__DEV__)
+            console.log(
+              '[PlayerStore] Added',
+              tracks.length,
+              'tracks to queue',
+            );
         } catch (error) {
+          console.error('[PlayerStore] Add to queue failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, queue: error},
@@ -335,29 +441,45 @@ export const usePlayerStore = create<PlayerStoreState>()(
           }));
 
           const sortedIndices = [...indices].sort((a, b) => b - a);
+          const state = get();
+          const tracks = [...state.queue.tracks];
+          let newCurrentIndex = state.queue.currentIndex;
+
           for (const index of sortedIndices) {
-            await TrackPlayer.remove(index);
+            if (index >= 0 && index < tracks.length) {
+              tracks.splice(index, 1);
+
+              // Adjust currentIndex
+              if (index < newCurrentIndex) {
+                newCurrentIndex--;
+              } else if (index === newCurrentIndex) {
+                // Current track was removed - load next or previous
+                if (newCurrentIndex >= tracks.length) {
+                  newCurrentIndex = tracks.length - 1;
+                }
+                if (tracks.length > 0) {
+                  await loadTrackAtIndex(
+                    tracks,
+                    newCurrentIndex,
+                    0,
+                    state.playback.state === 'playing',
+                  );
+                }
+              }
+            }
           }
 
-          set(state => {
-            const tracks = [...state.queue.tracks];
-            for (const index of sortedIndices) {
-              tracks.splice(index, 1);
-            }
-            return {
-              queue: {
-                ...state.queue,
-                tracks,
-                total: tracks.length,
-                currentIndex: Math.min(
-                  state.queue.currentIndex,
-                  tracks.length - 1,
-                ),
-              },
-              loading: {...state.loading, queueLoading: false},
-            };
-          });
+          set(state => ({
+            queue: {
+              ...state.queue,
+              tracks,
+              total: tracks.length,
+              currentIndex: Math.max(0, newCurrentIndex),
+            },
+            loading: {...state.loading, queueLoading: false},
+          }));
         } catch (error) {
+          console.error('[PlayerStore] Remove from queue failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, queue: error},
@@ -372,7 +494,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
           set(state => ({
             loading: {...state.loading, queueLoading: true},
           }));
-          await TrackPlayer.move(fromIndex, toIndex);
 
           set(state => {
             const tracks = [...state.queue.tracks];
@@ -404,6 +525,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
             };
           });
         } catch (error) {
+          console.error('[PlayerStore] Move in queue failed:', error);
           if (error instanceof Error) {
             set(state => ({
               error: {...state.error, queue: error},
@@ -413,62 +535,37 @@ export const usePlayerStore = create<PlayerStoreState>()(
         }
       },
 
-      setRepeatMode: async (mode: PlaybackSettings['repeatMode']) => {
-        try {
-          // Map our repeat mode to TrackPlayer's repeat mode
-          const trackPlayerMode = {
-            none: RepeatMode.Off,
-            queue: RepeatMode.Queue,
-            track: RepeatMode.Track,
-          }[mode];
-
-          // Update TrackPlayer's repeat mode
-          await TrackPlayer.setRepeatMode(trackPlayerMode);
-
-          // Update store state
-          set(state => ({
-            settings: {
-              ...state.settings,
-              repeatMode: mode,
-            },
-          }));
-        } catch (error) {
-          console.error('Error setting repeat mode:', error);
-        }
+      setRepeatMode: (mode: PlaybackSettings['repeatMode']) => {
+        // Just update store state - expo-audio doesn't have native repeat mode
+        // Repeat logic is handled in skipToNext/handleTrackEnd
+        set(state => ({
+          settings: {...state.settings, repeatMode: mode},
+        }));
+        if (__DEV__) console.log('[PlayerStore] Repeat mode set to:', mode);
       },
 
-      toggleShuffle: async () => {
+      toggleShuffle: () => {
         const state = get();
         const newShuffleState = !state.settings.shuffle;
 
-        // Update the store state
         set(prevState => ({
-          settings: {
-            ...prevState.settings,
-            shuffle: newShuffleState,
-          },
+          settings: {...prevState.settings, shuffle: newShuffleState},
         }));
 
-        try {
-          // Apply shuffle mode to TrackPlayer
-          if (newShuffleState) {
-            await TrackPlayer.setRepeatMode(RepeatMode.Queue);
-          } else {
-            // Restore previous repeat mode
-            const repeatMode = {
-              none: RepeatMode.Off,
-              queue: RepeatMode.Queue,
-              track: RepeatMode.Track,
-            }[state.settings.repeatMode];
+        if (__DEV__)
+          console.log('[PlayerStore] Shuffle toggled to:', newShuffleState);
 
-            await TrackPlayer.setRepeatMode(repeatMode);
-          }
-        } catch (error) {
-          console.error('Error setting shuffle mode:', error);
-        }
+        // TODO: Implement shuffle logic - shuffle the queue tracks
+        // For now, shuffle state is stored but not applied
       },
 
       setSleepTimer: (minutes: number) => {
+        // SLEEP TIMER NOT WORKING - marked for Phase 2 implementation
+        if (__DEV__)
+          console.warn(
+            '[PlayerStore] Sleep timer is not yet implemented with expo-audio. Setting timer state only.',
+          );
+
         const state = get();
 
         // Clear any existing timer
@@ -480,7 +577,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
         }
 
         if (minutes === 0) {
-          console.log('[PlayerStore] Turning off sleep timer');
           set(currentState => ({
             settings: {
               ...currentState.settings,
@@ -496,116 +592,35 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const milliseconds = Math.round(minutes * 60 * 1000);
         const sleepTimerEnd = Date.now() + milliseconds;
 
-        // Format time display based on duration
-        const timeDisplay =
-          minutes < 1
-            ? `${Math.round(minutes * 60)} seconds`
-            : `${minutes} minute${minutes === 1 ? '' : 's'}`;
-
-        console.log(
-          `[PlayerStore] Setting sleep timer for ${timeDisplay}, ending at ${new Date(
-            sleepTimerEnd,
-          ).toLocaleTimeString()}`,
-        );
-
         // Create an interval that checks if the timer has expired
         const interval = setInterval(async () => {
-          try {
-            const currentState = get();
-            const endTime = currentState.settings.sleepTimerEnd;
+          const currentState = get();
+          const endTime = currentState.settings.sleepTimerEnd;
 
-            if (!endTime) {
-              console.log(
-                '[PlayerStore] Sleep timer end time is null, clearing interval',
-              );
-              clearInterval(interval);
-              return;
-            }
+          if (!endTime) {
+            clearInterval(interval);
+            return;
+          }
 
-            // Check if playback is playing
-            const isPlaying =
-              currentState.playback.state === TrackPlayerState.Playing;
-
-            // Check if timer has expired
-            const now = Date.now();
-            const timeRemaining = endTime - now;
-
-            if (timeRemaining <= 0) {
+          const now = Date.now();
+          if (now >= endTime) {
+            if (__DEV__)
               console.log(
                 '[PlayerStore] Sleep timer expired, pausing playback',
               );
-
-              // First, clear the interval to prevent multiple calls
-              clearInterval(
-                currentState.settings.sleepTimerInterval as NodeJS.Timeout,
-              );
-
-              // Only pause if currently playing
-              if (isPlaying) {
-                try {
-                  // Use the store's pause method instead of directly calling TrackPlayer
-                  const pauseMethod = get().pause;
-                  if (typeof pauseMethod === 'function') {
-                    await pauseMethod();
-                    console.log(
-                      '[PlayerStore] Successfully paused playback using store method',
-                    );
-                  } else {
-                    // Fallback to direct TrackPlayer call
-                    await TrackPlayer.pause();
-                    console.log(
-                      '[PlayerStore] Successfully paused playback using TrackPlayer directly',
-                    );
-                  }
-                } catch (pauseError) {
-                  console.error(
-                    '[PlayerStore] Error pausing playback:',
-                    pauseError,
-                  );
-
-                  // Last resort: try to update the state directly
-                  try {
-                    set(prevState => ({
-                      playback: {
-                        ...prevState.playback,
-                        state: TrackPlayerState.Paused,
-                      },
-                    }));
-                    console.log('[PlayerStore] Updated state to paused');
-                  } catch (stateError) {
-                    console.error(
-                      '[PlayerStore] Error updating state:',
-                      stateError,
-                    );
-                  }
-                }
-              } else {
-                console.log(
-                  '[PlayerStore] Playback already paused, no need to pause',
-                );
-              }
-
-              // Update the store state to reflect the timer is off
-              set(prevState => ({
-                settings: {
-                  ...prevState.settings,
-                  sleepTimer: 0,
-                  sleepTimerEnd: null,
-                  sleepTimerInterval: null,
-                },
-              }));
-              console.log('[PlayerStore] Sleep timer state cleared');
-            }
-          } catch (error) {
-            console.error(
-              '[PlayerStore] Error in sleep timer interval:',
-              error,
-            );
-
-            // Clear the interval on error to prevent further issues
             clearInterval(interval);
 
-            // Update the store state to reflect the timer is off
+            // Pause playback
+            try {
+              await get().pause();
+            } catch (error) {
+              console.error(
+                '[PlayerStore] Error pausing on sleep timer:',
+                error,
+              );
+            }
+
+            // Clear timer state
             set(prevState => ({
               settings: {
                 ...prevState.settings,
@@ -615,9 +630,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
               },
             }));
           }
-        }, 500); // Check more frequently (twice per second) for short timers
+        }, 1000);
 
-        // Store the timer end time and interval
         set(currentState => ({
           settings: {
             ...currentState.settings,
@@ -629,6 +643,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
       },
 
       toggleSkipSilence: () => {
+        // Skip silence not supported in expo-audio
+        if (__DEV__)
+          console.warn(
+            '[PlayerStore] Skip silence is not supported with expo-audio',
+          );
         set(prevState => ({
           settings: {
             ...prevState.settings,
@@ -639,37 +658,25 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       updatePlaybackState: (playbackState: Partial<PlaybackState>) => {
         set(state => ({
-          playback: {
-            ...state.playback,
-            ...playbackState,
-          },
+          playback: {...state.playback, ...playbackState},
         }));
       },
 
       updateQueueState: (queueState: Partial<QueueState>) => {
         set(state => ({
-          queue: {
-            ...state.queue,
-            ...queueState,
-          },
+          queue: {...state.queue, ...queueState},
         }));
       },
 
       updateLoadingState: (loadingState: Partial<LoadingState>) => {
         set(state => ({
-          loading: {
-            ...state.loading,
-            ...loadingState,
-          },
+          loading: {...state.loading, ...loadingState},
         }));
       },
 
       setError: (type: keyof ErrorState, error: Error | null) => {
         set(state => ({
-          error: {
-            ...state.error,
-            [type]: error,
-          },
+          error: {...state.error, [type]: error},
         }));
       },
 
@@ -687,7 +694,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
         ) {
           clearInterval(state.settings.sleepTimerInterval as NodeJS.Timeout);
         }
-        await TrackPlayer.reset();
+        expoAudioService.cleanup();
         set(createDefaultUnifiedPlayerState());
       },
     }),
@@ -705,42 +712,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
   ),
 );
 
-export const useUnifiedPlayer = () => {
-  const store = usePlayerStore();
-  return {
-    // State
-    playback: store.playback,
-    queue: store.queue,
-    loading: store.loading,
-    error: store.error,
-    settings: store.settings,
-    sheetMode: store.sheetMode,
-
-    // UI Actions
-    setSheetMode: store.setSheetMode,
-
-    // Playback Controls
-    play: store.play,
-    pause: store.pause,
-    skipToNext: store.skipToNext,
-    skipToPrevious: store.skipToPrevious,
-    seekTo: store.seekTo,
-    setRate: store.setRate,
-
-    // Queue Management
-    updateQueue: store.updateQueue,
-    addToQueue: store.addToQueue,
-    removeFromQueue: store.removeFromQueue,
-    moveInQueue: store.moveInQueue,
-
-    // Settings Management
-    setRepeatMode: store.setRepeatMode,
-    toggleShuffle: store.toggleShuffle,
-    setSleepTimer: store.setSleepTimer,
-    toggleSkipSilence: store.toggleSkipSilence,
-  };
-};
-
 // Export singleton instance for use in service worker
 export const playerStore = usePlayerStore;
 
@@ -753,27 +724,22 @@ export const updateQueue = async (tracks: Track[], targetIndex: number) => {
       trackLoading: false,
     });
 
-    // Reset the TrackPlayer
-    await TrackPlayer.reset();
-
-    // Add tracks to TrackPlayer
-    await TrackPlayer.add(tracks);
-
     // Update store state
     store.updateQueueState({
       tracks,
       currentIndex: targetIndex,
     });
+
+    // Load the target track
+    if (tracks.length > 0 && targetIndex >= 0 && targetIndex < tracks.length) {
+      await loadTrackAtIndex(tracks, targetIndex, 0, false);
+    }
+
     store.updateLoadingState({
       queueLoading: false,
       stateRestoring: false,
       trackLoading: false,
     });
-
-    // Skip to target track
-    if (targetIndex > 0) {
-      await TrackPlayer.skip(targetIndex);
-    }
   } catch (error) {
     console.error('[PlayerStore] Error updating queue:', error);
     store.updateLoadingState({

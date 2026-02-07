@@ -32,7 +32,7 @@ export type RepeatMode = 'none' | 'queue' | 'track';
  * Represents the current state of audio playback
  */
 export interface PlaybackState {
-  /** Current playback state from TrackPlayer */
+  /** Current playback state */
   state: PlayerState;
   /** Current track position in seconds */
   position: number;

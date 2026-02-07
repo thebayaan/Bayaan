@@ -1,7 +1,11 @@
-import type {Track as RNTrackPlayerTrack} from 'react-native-track-player';
-
-// Our base track type that extends the library's track type
-export interface Track extends RNTrackPlayerTrack {
+// Base track type compatible with expo-audio
+export interface Track {
+  id: string;
+  url: string;
+  title: string;
+  artist: string;
+  artwork?: string;
+  duration?: number;
   reciterId: string;
   reciterName: string;
   surahId?: string;
@@ -16,13 +20,13 @@ export type TrackWithOptionalFields = Partial<Track>;
 // Helper function to safely convert library track to our track type
 export function ensureTrackFields(track: TrackWithOptionalFields): Track {
   return {
-    // Required fields from RNTrackPlayerTrack with defaults
+    // Required fields
+    id: track.id || '',
     url: track.url || '',
     title: track.title || '',
     artist: track.artist || '',
-    id: track.id || '',
 
-    // Optional fields from RNTrackPlayerTrack
+    // Optional fields
     artwork: track.artwork || '',
     duration: track.duration,
 
