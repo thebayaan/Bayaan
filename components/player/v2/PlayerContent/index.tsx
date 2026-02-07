@@ -8,6 +8,7 @@ import {TrackInfo} from './TrackInfo';
 import {PlaybackControls} from './PlaybackControls';
 import {ControlButtons} from './ControlButtons';
 import {SurahSummary} from '../SurahSummary';
+import {UploadPlaceholder} from './UploadPlaceholder';
 import {moderateScale} from 'react-native-size-matters';
 import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
 import {useTheme} from '@/hooks/useTheme';
@@ -94,7 +95,8 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const currentSurah = currentTrack?.surahId
     ? parseInt(currentTrack.surahId, 10)
-    : 1;
+    : undefined;
+  const isUntaggedUpload = currentTrack?.isUserUpload && !currentTrack?.surahId;
 
   return (
     <View style={styles.container}>
@@ -112,21 +114,25 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 styles.viewsContainer,
                 {height: layoutConfig.quranQueueHeight},
               ]}>
-              {/* QuranView */}
+              {/* QuranView or UploadPlaceholder */}
               <View
                 style={[
                   styles.viewWrapper,
                   showQueue ? styles.hidden : styles.visible,
                 ]}>
-                <QuranView
-                  currentSurah={currentSurah}
-                  onVersePress={handleVersePress}
-                  showTranslation={showTranslation}
-                  showTransliteration={showTransliteration}
-                  transliterationFontSize={transliterationFontSize}
-                  translationFontSize={translationFontSize}
-                  arabicFontSize={arabicFontSize}
-                />
+                {isUntaggedUpload ? (
+                  <UploadPlaceholder currentTrack={currentTrack} />
+                ) : (
+                  <QuranView
+                    currentSurah={currentSurah ?? 1}
+                    onVersePress={handleVersePress}
+                    showTranslation={showTranslation}
+                    showTransliteration={showTransliteration}
+                    transliterationFontSize={transliterationFontSize}
+                    translationFontSize={translationFontSize}
+                    arabicFontSize={arabicFontSize}
+                  />
+                )}
               </View>
               {/* QueueList */}
               <View
@@ -151,7 +157,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 onMushafLayoutPress={onMushafLayoutPress}
               />
             </View>
-            <SurahSummary surahInfo={surahInfo} onReadMore={onSummaryPress} />
+            {currentTrack?.surahId && (
+              <SurahSummary surahInfo={surahInfo} onReadMore={onSummaryPress} />
+            )}
           </View>
         </View>
       </BottomSheetScrollView>

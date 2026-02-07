@@ -1,8 +1,10 @@
 import {databaseService} from '@/services/database/DatabaseService';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
+import {uploadsService} from '@/services/uploads/UploadsService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
+import {useUploadsStore} from '@/store/uploadsStore';
 import {setAudioModeAsync} from 'expo-audio';
 
 interface ServiceInitializer {
@@ -247,49 +249,19 @@ appInitializer.registerService({
   },
 });
 
-// ============================================================================
-// FUTURE SERVICES
-// Add new services below as your app grows
-// ============================================================================
-
-/*
- * Example: Bookmarks Service
- *
- * appInitializer.registerService({
- *   name: 'Bookmarks',
- *   priority: 4,
- *   critical: false,
- *   initialize: async () => {
- *     await bookmarksService.initialize();
- *     await useBookmarksStore.getState().loadBookmarks();
- *   },
- * });
+/**
+ * Uploads Service (Priority 6)
+ * Initializes the uploads database and loads recitations into store
+ * Non-critical - app can function without uploads
  */
-
-/*
- * Example: Notes Service
- *
- * appInitializer.registerService({
- *   name: 'Notes',
- *   priority: 5,
- *   critical: false,
- *   initialize: async () => {
- *     await notesService.initialize();
- *     await useNotesStore.getState().loadNotes();
- *   },
- * });
- */
-
-/*
- * Example: Reading History Service
- *
- * appInitializer.registerService({
- *   name: 'Reading History',
- *   priority: 6,
- *   critical: false,
- *   initialize: async () => {
- *     await historyService.initialize();
- *     await useHistoryStore.getState().loadHistory();
- *   },
- * });
- */
+appInitializer.registerService({
+  name: 'Uploads Service',
+  priority: 6,
+  critical: false,
+  initialize: async () => {
+    await uploadsService.initialize();
+    await useUploadsStore.getState().loadRecitations();
+    await useUploadsStore.getState().loadCustomReciters();
+    await uploadsService.maybeRunOrphanCleanup();
+  },
+});

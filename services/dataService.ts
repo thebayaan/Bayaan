@@ -67,6 +67,10 @@ export async function getReciterById(id: string): Promise<Reciter | undefined> {
   return reciters.find(reciter => reciter.id === id);
 }
 
+export function getReciterByIdSync(id: string): Reciter | undefined {
+  return RECITERS.find(reciter => reciter.id === id);
+}
+
 export function getReciterName(reciterId: string): string | null {
   const reciter = RECITERS.find(r => r.id === reciterId);
   return reciter ? reciter.name : null;

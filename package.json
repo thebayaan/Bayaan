@@ -22,7 +22,8 @@
     "version:major": "node scripts/version-bump.js major",
     "version:current": "node scripts/generate-version.js",
     "ios:archive": "./scripts/ios-archive.sh",
-    "ios:archive:upload": "./scripts/ios-archive.sh --upload"
+    "ios:archive:upload": "./scripts/ios-archive.sh --upload",
+    "postinstall": "patch-package"
   },
   "jest": {
     "preset": "jest-expo"
@@ -45,6 +46,7 @@
     "@rneui/base": "^4.0.0-rc.7",
     "@rneui/themed": "^4.0.0-rc.8",
     "@supabase/supabase-js": "^2.91.0",
+    "burnt": "^0.13.0",
     "colorthief": "^2.4.0",
     "deno": "^0.1.1",
     "dotenv": "^16.4.7",
@@ -54,6 +56,7 @@
     "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.7",
     "expo-dev-client": "~5.0.19",
+    "expo-document-picker": "~13.0.3",
     "expo-font": "~13.0.3",
     "expo-haptics": "~14.0.1",
     "expo-linear-gradient": "~14.0.2",
@@ -61,6 +64,7 @@
     "expo-navigation-bar": "~4.0.8",
     "expo-notifications": "~0.29.13",
     "expo-router": "~4.0.20",
+    "expo-share-intent": "^5.1.1",
     "expo-splash-screen": "~0.29.22",
     "expo-sqlite": "~15.1.4",
     "expo-status-bar": "~2.0.1",
@@ -125,6 +129,7 @@
     "jest": "^29.2.1",
     "jest-expo": "~52.0.3",
     "metro": "^0.81.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.3.3",
     "react-native-asset": "^2.1.1",
     "react-test-renderer": "18.2.0",

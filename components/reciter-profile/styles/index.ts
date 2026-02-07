@@ -17,7 +17,7 @@ export const createSharedStyles = (theme: Theme) =>
       paddingTop: moderateScale(10),
       paddingBottom: moderateScale(10),
     },
-    optionsAndToggleRow: {
+    controlsRow: {
       height: moderateScale(40),
       flexDirection: 'row',
       alignItems: 'center',
@@ -26,7 +26,7 @@ export const createSharedStyles = (theme: Theme) =>
       borderRadius: moderateScale(8),
       marginBottom: moderateScale(2),
       backgroundColor: theme.colors.background,
-      marginTop: moderateScale(10),
+      marginTop: moderateScale(2),
     },
     sortOptionsContainer: {
       flexDirection: 'row',
@@ -35,6 +35,7 @@ export const createSharedStyles = (theme: Theme) =>
     rightControlsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginLeft: 'auto',
     },
     optionButton: {
       flexDirection: 'row',
@@ -45,7 +46,7 @@ export const createSharedStyles = (theme: Theme) =>
       marginRight: moderateScale(8),
     },
     activeOptionButton: {
-      backgroundColor: Color(theme.colors.primary).alpha(0.1).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     optionButtonText: {
       fontSize: moderateScale(12),
@@ -54,22 +55,12 @@ export const createSharedStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
     },
     activeOptionText: {
-      color: theme.colors.primary,
+      color: theme.colors.text,
     },
     viewModeButton: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(6),
-    },
-    toggleContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    toggleLabel: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginRight: moderateScale(8),
     },
     text: {
       color: theme.colors.text,

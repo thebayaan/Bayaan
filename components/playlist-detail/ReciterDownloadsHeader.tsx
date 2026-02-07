@@ -1,12 +1,11 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, Pressable} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
+import {Icon} from '@rneui/themed';
 import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ReciterImage} from '@/components/ReciterImage';
 import Animated, {
@@ -16,8 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Color from 'color';
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface ReciterDownloadsHeaderProps {
   reciterId: string;
@@ -76,21 +74,19 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
 
   return (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={['#10B981', theme.colors.background]}
-        style={styles.gradientContainer}>
+      <View style={styles.contentArea}>
         {/* Back Button */}
-        <TouchableOpacity
+        <Pressable
           style={styles.backButton}
           onPress={() => router.back()}
-          activeOpacity={0.7}>
+          hitSlop={8}>
           <Icon
             name="arrow-left"
             type="feather"
             size={moderateScale(24)}
-            color="white"
+            color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
@@ -111,7 +107,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
           </Pressable>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Action Buttons */}
       <View style={styles.contentWrapper}>
@@ -121,16 +117,14 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
 
           {/* Right side buttons */}
           <View style={styles.rightAlignedButtons}>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
+            <AnimatedPressable
               style={[styles.circleButton, shuffleAnimatedStyle]}
               onPress={onShufflePress}
               onPressIn={() => handlePressIn('shuffle')}
               onPressOut={() => handlePressOut('shuffle')}>
               <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-            </AnimatedTouchableOpacity>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
+            </AnimatedPressable>
+            <AnimatedPressable
               style={[
                 styles.circleButton,
                 styles.playButton,
@@ -145,7 +139,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
                   size={moderateScale(16)}
                 />
               </View>
-            </AnimatedTouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -159,12 +153,13 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(20),
+      paddingTop: insets.top + moderateScale(40),
       paddingBottom: moderateScale(30),
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',

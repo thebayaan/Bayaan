@@ -12,7 +12,7 @@ const CollectionReciterProfile: React.FC = () => {
     return null; // Handle the absence of id appropriately
   }
 
-  return <ReciterProfile id={id} showFavorites={showFavorites === 'true'} />;
+  return <ReciterProfile id={id} showLoved={showFavorites === 'true'} />;
 };
 
 export default CollectionReciterProfile;
