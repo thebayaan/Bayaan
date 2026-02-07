@@ -2,7 +2,7 @@ import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   FlatList,
   TextInput,
@@ -411,7 +411,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
             iconColor={theme.colors.text}
             textColor={theme.colors.text}
             backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
-            borderColor={Color(theme.colors.border).alpha(0.2).toString()}
+            borderColor={Color(theme.colors.border).alpha(0.5).toString()}
             keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
             autoCorrect={false}
             autoComplete="off"
@@ -433,14 +433,12 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                 <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
                   Recent searches
                 </Text>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={clearRecentSearches}>
+                <Pressable onPress={clearRecentSearches}>
                   <Text
                     style={[styles.clearButton, {color: theme.colors.text}]}>
                     Clear
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
               <FlatList
                 data={recentSearches}

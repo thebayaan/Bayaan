@@ -1,8 +1,9 @@
-import React, {useEffect, useState, useRef, useCallback} from 'react';
+import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import * as SystemUI from 'expo-system-ui';
 import TrackPlayer from 'react-native-track-player';
 import playbackService from '@/services/player/events/playbackService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -11,8 +12,15 @@ import {setupEventBridge} from '@/services/player/events/bridge';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {View, Text, Platform, StatusBar as RNStatusBar} from 'react-native';
+import {
+  View,
+  Text,
+  Platform,
+  StatusBar as RNStatusBar,
+  Appearance,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {ThemeProvider} from '@react-navigation/native';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {
@@ -28,6 +36,10 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {useShareIntent} from 'expo-share-intent';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {SheetManager} from 'react-native-actions-sheet';
+import {showToast} from '@/utils/toastUtils';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -39,6 +51,12 @@ configureReanimatedLogger({
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* reloading the app might trigger some race conditions, ignore them */
 });
+
+// Set native root view background immediately (before any component renders)
+// This prevents the white flash between splash screen and first frame
+SystemUI.setBackgroundColorAsync(
+  Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
+);
 
 // Register playback service
 TrackPlayer.registerPlaybackService(() => playbackService);
@@ -59,6 +77,28 @@ export default function RootLayout() {
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
 
+  // Build React Navigation theme so card/background colors match during transitions
+  const navigationTheme = useMemo(
+    () => ({
+      dark: isDarkMode,
+      colors: {
+        primary: theme.colors.text,
+        background: theme.colors.background,
+        card: theme.colors.background,
+        text: theme.colors.text,
+        border: theme.colors.border,
+        notification: theme.colors.error,
+      },
+      fonts: {
+        regular: {fontFamily: 'Manrope-Regular', fontWeight: '400' as const},
+        medium: {fontFamily: 'Manrope-Medium', fontWeight: '500' as const},
+        bold: {fontFamily: 'Manrope-Bold', fontWeight: '700' as const},
+        heavy: {fontFamily: 'Manrope-ExtraBold', fontWeight: '800' as const},
+      },
+    }),
+    [isDarkMode, theme.colors],
+  );
+
   const [fontsLoaded, fontError] = useFonts({
     'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
     'Manrope-Bold': require('@/assets/fonts/Manrope-Bold.ttf'),
@@ -76,6 +116,12 @@ export default function RootLayout() {
     Uthmani: require('@/assets/fonts/Uthmani.otf'),
     QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
     Indopak: require('@/assets/fonts/Indopak.ttf'),
+  });
+
+  // Handle share intents from other apps
+  const {hasShareIntent, shareIntent, resetShareIntent} = useShareIntent({
+    debug: __DEV__,
+    resetOnBackground: true,
   });
 
   // Preload Tajweed data once when the app starts
@@ -109,14 +155,15 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     try {
-      if (appIsReady && fontsLoaded && isPlayerReady) {
+      if (appIsReady && fontsLoaded && isPlayerReady && !hasShareIntent) {
         // Only hide the splash screen after everything is ready
+        // If there's a pending share intent, keep splash visible until it's processed
         await SplashScreen.hideAsync();
       }
     } catch (e) {
       console.warn('Error hiding splash screen:', e);
     }
-  }, [appIsReady, fontsLoaded, isPlayerReady]);
+  }, [appIsReady, fontsLoaded, isPlayerReady, hasShareIntent]);
 
   // Initialize app
   useEffect(() => {
@@ -247,6 +294,11 @@ export default function RootLayout() {
     }
   }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
 
+  // Set native root view background to match theme (prevents white flash during transitions)
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(theme.colors.background);
+  }, [theme.colors.background]);
+
   // Configure Android navigation bar to match theme
   useEffect(() => {
     async function setupNavigationBar() {
@@ -292,6 +344,68 @@ export default function RootLayout() {
     setupNavigationBar();
   }, [theme.colors.background, isDarkMode]);
 
+  useEffect(() => {
+    if (!hasShareIntent || !appIsReady || !isPlayerReady) return;
+
+    const handleShareIntent = async () => {
+      try {
+        const files = shareIntent.files;
+        if (!files || files.length === 0) {
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          return;
+        }
+
+        // Filter to audio MIME types
+        const audioFiles = files.filter(f => f.mimeType?.startsWith('audio/'));
+
+        if (audioFiles.length === 0) {
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          return;
+        }
+
+        const {importFile, importFiles} = useUploadsStore.getState();
+
+        if (audioFiles.length === 1) {
+          const file = audioFiles[0];
+          const recitation = await importFile(
+            file.path,
+            file.fileName || 'Shared Audio',
+          );
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          showToast('File imported');
+          SheetManager.show('organize-recitation', {
+            payload: {recitation},
+          });
+        } else {
+          const mapped = audioFiles.map(f => ({
+            uri: f.path,
+            name: f.fileName || 'Shared Audio',
+          }));
+          await importFiles(mapped);
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          showToast(`${audioFiles.length} files imported`);
+          router.push('/collection/uploads');
+        }
+      } catch (error) {
+        console.error('[ShareIntent] Import failed:', error);
+        resetShareIntent();
+        await SplashScreen.hideAsync();
+      }
+    };
+
+    handleShareIntent();
+  }, [
+    hasShareIntent,
+    appIsReady,
+    isPlayerReady,
+    shareIntent,
+    resetShareIntent,
+  ]);
+
   if (fontError) {
     SplashScreen.hideAsync();
     return (
@@ -316,26 +430,31 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <GestureHandlerRootView style={{flex: 1}} onLayout={onLayoutRootView}>
-          <SheetProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: {
-                  paddingTop: 0,
-                },
-                animation: 'fade',
-              }}>
-              <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-            </Stack>
-            <FloatingPlayer />
-            <PlayerSheet />
-            <WhatsNewModal ref={whatsNewModalRef} />
-            <DevMenu whatsNewModalRef={whatsNewModalRef} />
-          </SheetProvider>
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
+      <ThemeProvider value={navigationTheme}>
+        <SafeAreaProvider>
+          <GestureHandlerRootView
+            style={{flex: 1, backgroundColor: theme.colors.background}}
+            onLayout={onLayoutRootView}>
+            <SheetProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: {
+                    paddingTop: 0,
+                    backgroundColor: theme.colors.background,
+                  },
+                  animation: 'fade',
+                }}>
+                <Stack.Screen name="(tabs)" options={{headerShown: false}} />
+              </Stack>
+              <FloatingPlayer />
+              <PlayerSheet />
+              <WhatsNewModal ref={whatsNewModalRef} />
+              <DevMenu whatsNewModalRef={whatsNewModalRef} />
+            </SheetProvider>
+          </GestureHandlerRootView>
+        </SafeAreaProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

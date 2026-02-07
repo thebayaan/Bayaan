@@ -5,7 +5,6 @@ import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
 import {BlurView} from '@react-native-community/blur';
-import {LinearGradient} from 'expo-linear-gradient';
 import {StickyHeaderProps} from '@/components/reciter-profile/types';
 
 /**
@@ -20,7 +19,6 @@ export const StickyHeader: React.FC<StickyHeaderProps> = ({
   reciterName,
   headerOpacity,
   insets,
-  dominantColors,
   isDarkMode,
 }) => {
   const {theme} = useTheme();
@@ -53,13 +51,7 @@ export const StickyHeader: React.FC<StickyHeaderProps> = ({
           ]}
         />
       )}
-      <LinearGradient
-        colors={[dominantColors.primary, dominantColors.secondary]}
-        style={[StyleSheet.absoluteFill, styles.headerGradient]}
-        start={{x: 0, y: 0}}
-        end={{x: 0, y: 1}}
-      />
-      <Text style={[styles.stickyHeaderTitle, {color: 'white'}]}>
+      <Text style={[styles.stickyHeaderTitle, {color: theme.colors.text}]}>
         {reciterName}
       </Text>
     </Animated.View>
@@ -80,9 +72,6 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(15),
       paddingHorizontal: moderateScale(20),
       overflow: 'hidden',
-    },
-    headerGradient: {
-      opacity: 0.9,
     },
     stickyHeaderTitle: {
       fontSize: moderateScale(18),

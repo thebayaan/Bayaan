@@ -1,11 +1,5 @@
 import React, {useMemo, useCallback} from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  ScrollView,
-} from 'react-native';
+import {View, StyleSheet, Pressable, Text, ScrollView} from 'react-native';
 import {useRouter} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {SearchInput} from '@/components/SearchInput';
@@ -142,10 +136,7 @@ const BentoTileComponent = React.memo(
             borderColor: Color(theme.colors.border).alpha(0.15).toString(),
           },
         ]}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onPress}
-          style={tileStyles.tileButton}>
+        <Pressable onPress={onPress} style={tileStyles.tileButton}>
           <LinearGradient
             colors={gradientColors}
             start={{x: 0, y: 0}}
@@ -174,7 +165,7 @@ const BentoTileComponent = React.memo(
               </View>
             </View>
           </LinearGradient>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   },
@@ -259,10 +250,7 @@ export const ExploreView = React.memo(function ExploreView({
             paddingBottom: moderateScale(35),
           },
         ]}>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={onSearchPress}
-          style={styles.searchButton}>
+        <Pressable onPress={onSearchPress} style={styles.searchButton}>
           <SearchInput
             placeholder="Search surahs, reciters, or keywords"
             value=""
@@ -272,13 +260,13 @@ export const ExploreView = React.memo(function ExploreView({
             backgroundColor={Color(theme.colors.background)
               .alpha(0.5)
               .toString()}
-            borderColor={Color(theme.colors.border).alpha(0.2).toString()}
+            borderColor={Color(theme.colors.border).alpha(0.5).toString()}
             pointerEvents="none"
             containerStyle={styles.searchInputContainer}
             style={styles.searchInput}
             editable={false}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <ScrollView

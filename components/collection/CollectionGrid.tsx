@@ -9,6 +9,7 @@ import {LovedCard} from '@/components/cards/LovedCard';
 import {DownloadCard} from '@/components/cards/DownloadCard';
 import {TrackCard} from '@/components/cards/TrackCard';
 import {ReciterDownloadsStackCard} from '@/components/cards/ReciterDownloadsStackCard';
+import {UploadCard} from '@/components/cards/UploadCard';
 
 export interface PlaylistItemData {
   name: string;
@@ -47,6 +48,11 @@ export interface ReciterDownloadsItemData {
   onPress: () => void;
 }
 
+export interface UploadItemData {
+  itemCount: number;
+  onPress: () => void;
+}
+
 export interface CollectionItem {
   id: string;
   type:
@@ -55,14 +61,16 @@ export interface CollectionItem {
     | 'reciter'
     | 'download'
     | 'track'
-    | 'reciter-downloads';
+    | 'reciter-downloads'
+    | 'upload';
   data:
     | PlaylistItemData
     | LovedItemData
     | ReciterItemData
     | DownloadItemData
     | TrackItemData
-    | ReciterDownloadsItemData;
+    | ReciterDownloadsItemData
+    | UploadItemData;
 }
 
 interface CollectionGridProps {
@@ -211,6 +219,18 @@ export const CollectionGrid = React.memo(
                 reciterId={reciterDownloadsData.reciterId}
                 downloadCount={reciterDownloadsData.downloadCount}
                 onPress={reciterDownloadsData.onPress}
+                width={itemDimensions.width}
+                height={itemDimensions.width}
+              />
+            );
+          }
+          case 'upload': {
+            const uploadData = item.data as UploadItemData;
+            return (
+              <UploadCard
+                key={item.id}
+                itemCount={uploadData.itemCount}
+                onPress={uploadData.onPress}
                 width={itemDimensions.width}
                 height={itemDimensions.width}
               />

@@ -2,7 +2,7 @@ import React, {useMemo} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
   Keyboard,
@@ -101,13 +101,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             entering={FadeIn.duration(300)}
             exiting={FadeOut.duration(200)}
             layout={LinearTransition.duration(300)}>
-            <TouchableOpacity
+            <Pressable
               style={[
                 styles.filterChip,
                 chip.isSelected && styles.filterChipActive,
                 chip.type === 'clear' && styles.filterChipClear,
               ]}
-              activeOpacity={0.7}
               onPress={() => {
                 Keyboard.dismiss();
                 handleFilterPress(chip.id);
@@ -120,7 +119,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 ]}>
                 {chip.label}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </Animated.View>
         ))}
       </ScrollView>

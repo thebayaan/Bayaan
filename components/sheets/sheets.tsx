@@ -2,6 +2,7 @@ import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
 import type {Dhikr} from '@/types/adhkar';
+import type {UploadedRecitation} from '@/types/uploads';
 
 // Import sheet components
 import {SurahOptionsSheet} from './SurahOptionsSheet';
@@ -18,6 +19,10 @@ import {MushafLayoutSheet} from './MushafLayoutSheet';
 import {ExtendedSummarySheet} from './ExtendedSummarySheet';
 import {AdhkarLayoutSheet} from './AdhkarLayoutSheet';
 import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
+import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
+import {DownloadOptionsSheet} from './DownloadOptionsSheet';
+import {UploadOptionsSheet} from './UploadOptionsSheet';
+import {AddToCollectionSheet} from './AddToCollectionSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -34,6 +39,10 @@ registerSheet('mushaf-layout', MushafLayoutSheet);
 registerSheet('extended-summary', ExtendedSummarySheet);
 registerSheet('adhkar-layout', AdhkarLayoutSheet);
 registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
+registerSheet('organize-recitation', OrganizeRecitationSheet);
+registerSheet('download-options', DownloadOptionsSheet);
+registerSheet('upload-options', UploadOptionsSheet);
+registerSheet('add-to-collection', AddToCollectionSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -92,10 +101,12 @@ declare module 'react-native-actions-sheet' {
     }>;
     'player-options': SheetDefinition<{
       payload: {
-        surah: Surah;
-        reciterId: string;
+        surah?: Surah;
+        reciterId?: string;
         rewayatId?: string;
         onGoToReciter?: () => void;
+        isUserUpload?: boolean;
+        userRecitationId?: string;
       };
     }>;
     'playback-speed': SheetDefinition<{
@@ -128,6 +139,32 @@ declare module 'react-native-actions-sheet' {
         dhikr: Dhikr;
       };
     }>;
+    'organize-recitation': SheetDefinition<{
+      payload: {
+        recitation: UploadedRecitation;
+        prefillReciterId?: string;
+      };
+    }>;
+    'download-options': SheetDefinition<{
+      payload: {
+        download: import('@/services/player/store/downloadStore').DownloadedSurah;
+        surah: Surah;
+        reciterId: string;
+        rewayatId: string;
+        onPlay: () => void;
+        onAddToQueue: () => void;
+        onRemoveDownload: () => void;
+      };
+    }>;
+    'upload-options': SheetDefinition<{
+      payload: {
+        recitation: UploadedRecitation;
+        reciterId: string;
+        onPlay: () => void;
+        onAddToQueue: () => void;
+      };
+    }>;
+    'add-to-collection': SheetDefinition;
   }
 }
 

@@ -1,11 +1,10 @@
-import React, {useState, useEffect, useCallback, useMemo} from 'react';
+import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
-  StatusBar,
-  FlatList,
+  Animated as RNAnimated,
   Alert,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -30,6 +29,8 @@ import Color from 'color';
 import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {getFeaturedReciters} from '@/data/featuredReciters';
+import {SheetManager} from 'react-native-actions-sheet';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 
 interface PlaylistTrack {
   surahId: number;
@@ -37,6 +38,12 @@ interface PlaylistTrack {
   rewayatId?: string;
   surah?: Surah;
   reciter?: Reciter;
+}
+
+interface PlaylistDataItem {
+  track: PlaylistTrack;
+  reciter: Reciter | null;
+  surah: Surah | null;
 }
 
 interface SystemPlaylistDetailProps {
@@ -53,12 +60,8 @@ async function findSuitableReciter(
   const featuredReciters = getFeaturedReciters(10);
 
   for (const reciter of featuredReciters) {
-    // Check if this reciter has all the surahs available in any rewayat
     const hasAllSurahs = reciter.rewayat.some(rewayat => {
-      // If no surah_list, the reciter has all surahs
       if (!rewayat.surah_list) return true;
-
-      // Check if all playlist surahs are in this rewayat
       const availableSurahs = rewayat.surah_list.filter(
         (id): id is number => id !== null,
       );
@@ -96,10 +99,8 @@ function findBestRewayat(
   reciter: Reciter,
   surahIds: number[],
 ): string | undefined {
-  // Prefer rewayat that has all surahs
   for (const rewayat of reciter.rewayat) {
     if (!rewayat.surah_list) {
-      // This rewayat has all surahs
       return rewayat.id;
     }
 
@@ -111,7 +112,6 @@ function findBestRewayat(
     }
   }
 
-  // Fallback to first rewayat
   return reciter.rewayat[0]?.id;
 }
 
@@ -119,17 +119,13 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   playlist,
 }) => {
   const {theme} = useTheme();
-  const {updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, addToQueue, play} = useUnifiedPlayer();
   const queueContext = QueueContext.getInstance();
   const {addRecentTrack} = useRecentlyPlayedStore();
 
-  const [playlistData, setPlaylistData] = useState<
-    Array<{
-      track: PlaylistTrack;
-      reciter: Reciter | null;
-      surah: Surah | null;
-    }>
-  >([]);
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
+
+  const [playlistData, setPlaylistData] = useState<PlaylistDataItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedReciter, setSelectedReciter] = useState<Reciter | null>(null);
   const [selectedRewayatId, setSelectedRewayatId] = useState<
@@ -274,7 +270,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       }
 
       try {
-        // Create tracks for all surahs using the selected reciter
         const trackPromises = playlistData.map(async item => {
           if (!item.surah) return null;
           return await createTrack(
@@ -290,7 +285,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 
         if (allTracks.length === 0) return null;
 
-        // Reorder to start from the specified index
         const reorderedTracks = [
           ...allTracks.slice(startIndex),
           ...allTracks.slice(0, startIndex),
@@ -336,13 +330,11 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 
         if (allTracks.length === 0) return null;
 
-        // Reorder to start from the specified index
         const reorderedTracks = [
           ...allTracks.slice(startIndex),
           ...allTracks.slice(0, startIndex),
         ];
 
-        // Use the first track's reciter for recent history
         const firstItem = playlistData[startIndex] || playlistData[0];
         if (!firstItem?.reciter) return null;
 
@@ -517,8 +509,28 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     ],
   );
 
+  const handleShowTrackOptions = useCallback(
+    async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
+      const audioTrack = await createTrack(reciter, surah, track.rewayatId);
+
+      SheetManager.show('surah-options', {
+        payload: {
+          surah,
+          reciterId: track.reciterId,
+          rewayatId: track.rewayatId,
+          onAddToQueue: async (s: Surah) => {
+            if (audioTrack) {
+              await addToQueue([audioTrack]);
+            }
+          },
+        },
+      });
+    },
+    [addToQueue],
+  );
+
   const renderItem = useCallback(
-    ({item, index}: {item: (typeof playlistData)[0]; index: number}) => {
+    ({item, index}: {item: PlaylistDataItem; index: number}) => {
       const {track, reciter, surah} = item;
 
       if (!surah) {
@@ -528,10 +540,9 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       // For surah-only playlists, show a custom item
       if (playlist.type === 'surah-only') {
         return (
-          <TouchableOpacity
+          <Pressable
             style={styles.surahOnlyItem}
-            onPress={() => handleSurahPress(track, index)}
-            activeOpacity={0.7}>
+            onPress={() => handleSurahPress(track, index)}>
             <View style={styles.surahOnlyContent}>
               <Text style={styles.surahOnlyTitle}>
                 {surah.id}. {surah.name}
@@ -548,7 +559,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
             <View style={styles.playButton}>
               <Text style={styles.playButtonText}>Play</Text>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         );
       }
 
@@ -565,11 +576,18 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
             rewayatId={track.rewayatId}
             onPress={() => handleSurahPress(track, index, reciter, surah)}
             onPlayPress={() => handleSurahPress(track, index, reciter, surah)}
+            onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
           />
         </View>
       );
     },
-    [playlist.type, styles, selectedReciter, handleSurahPress],
+    [
+      playlist.type,
+      styles,
+      selectedReciter,
+      handleSurahPress,
+      handleShowTrackOptions,
+    ],
   );
 
   const estimatedDuration = useMemo(
@@ -591,7 +609,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         estimatedDuration={
           estimatedDuration ? formatDuration(estimatedDuration) : null
         }
-        backgroundColor={playlist.backgroundColor}
         onPlayPress={handlePlayAll}
         onShufflePress={canPlay ? handleShufflePlay : undefined}
         canPlayImmediately={canPlay}
@@ -609,8 +626,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   );
 
   const keyExtractor = useCallback(
-    (item: (typeof playlistData)[0], index: number) =>
-      `${item.track.surahId}-${index}`,
+    (item: PlaylistDataItem, index: number) => `${item.track.surahId}-${index}`,
     [],
   );
 
@@ -622,7 +638,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   if (loading) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" />
         <Text style={styles.emptyText}>Loading...</Text>
       </View>
     );
@@ -630,16 +645,21 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <FlatList
+      <RNAnimated.FlatList
         data={playlistData}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={listHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
         ListEmptyComponent={listEmptyComponent}
-        bounces={false}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
+      <CollectionStickyHeader title={playlist.title} scrollY={scrollY} />
     </View>
   );
 };

@@ -2,7 +2,7 @@ import React, {forwardRef} from 'react';
 import {
   View,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   ViewStyle,
   TextStyle,
@@ -117,11 +117,22 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             {...props}
             autoFocus={false}
           />
+          {value.length > 0 && (
+            <Pressable
+              onPress={() => onChangeText('')}
+              style={styles.clearButton}>
+              <Icon
+                name="x"
+                type="feather"
+                size={moderateScale(16)}
+                color={iconColor}
+              />
+            </Pressable>
+          )}
         </View>
         {showCancelButton && onCancel && (
-          <TouchableOpacity
+          <Pressable
             onPress={onCancel}
-            activeOpacity={0.7}
             style={[styles.cancelButton, cancelButtonStyle]}>
             <Text
               style={[
@@ -131,20 +142,17 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
               ]}>
               {cancelButtonText}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
         {onClose && (
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            activeOpacity={0.7}>
+          <Pressable onPress={onClose} style={styles.closeButton}>
             <Icon
               name="x"
               type="feather"
               size={moderateScale(24)}
               color={iconColor}
             />
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
     );
@@ -189,6 +197,11 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(14),
       fontFamily: theme.fonts.medium,
       opacity: 0.8,
+    },
+    clearButton: {
+      paddingLeft: moderateScale(8),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     closeButton: {
       marginLeft: moderateScale(12),

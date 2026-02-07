@@ -212,14 +212,32 @@ export const PlayerSheet = () => {
   }, [currentTrack?.surahId]);
 
   const handleShowOptionsSheet = useCallback(() => {
-    const surahNumber = currentTrack?.surahId
+    if (!currentTrack) return;
+
+    const surahNumber = currentTrack.surahId
       ? parseInt(currentTrack.surahId, 10)
       : undefined;
     const currentSurahData = surahNumber
       ? SURAHS.find(s => s.id === surahNumber)
       : undefined;
 
-    if (currentSurahData && currentTrack?.reciterId) {
+    // Upload tracks — always show options
+    if (currentTrack.isUserUpload) {
+      SheetManager.show('player-options', {
+        payload: {
+          surah: currentSurahData,
+          reciterId: currentTrack.reciterId || undefined,
+          rewayatId: currentTrack.rewayatId,
+          onGoToReciter: currentTrack.reciterId ? handleGoToReciter : undefined,
+          isUserUpload: true,
+          userRecitationId: currentTrack.userRecitationId,
+        },
+      });
+      return;
+    }
+
+    // System tracks — existing behavior
+    if (currentSurahData && currentTrack.reciterId) {
       SheetManager.show('player-options', {
         payload: {
           surah: currentSurahData,

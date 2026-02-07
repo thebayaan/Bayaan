@@ -1,14 +1,13 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, ShuffleIcon, HeartIcon, CheckIcon} from '@/components/Icons';
 import {Ionicons} from '@expo/vector-icons';
+import {Icon} from '@rneui/themed';
 import Color from 'color';
 import Animated, {
   useSharedValue,
@@ -16,13 +15,11 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface LovedHeaderProps {
   title: string;
   subtitle: string;
-  backgroundColor: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
   onDownloadPress: () => void;
@@ -34,7 +31,6 @@ interface LovedHeaderProps {
 export const LovedHeader: React.FC<LovedHeaderProps> = ({
   title,
   subtitle,
-  backgroundColor,
   onPlayPress,
   onShufflePress,
   onDownloadPress,
@@ -91,45 +87,28 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
 
   return (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={[backgroundColor, theme.colors.background]}
-        style={styles.gradientContainer}>
+      <View style={styles.contentArea}>
         {/* Back Button */}
-        <TouchableOpacity
+        <Pressable
           style={styles.backButton}
           onPress={() => router.back()}
-          activeOpacity={0.7}>
+          hitSlop={8}>
           <Icon
             name="arrow-left"
             type="feather"
             size={moderateScale(24)}
-            color="white"
+            color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
           {/* Hero Icon Container */}
-          <View
-            style={[
-              styles.heroIconContainer,
-              {
-                backgroundColor: Color(backgroundColor).alpha(0.2).toString(),
-                shadowColor: backgroundColor,
-              },
-            ]}>
-            <View
-              style={[
-                styles.heroIconInner,
-                {
-                  backgroundColor: Color(backgroundColor)
-                    .alpha(0.15)
-                    .toString(),
-                },
-              ]}>
+          <View style={styles.heroIconContainer}>
+            <View style={styles.heroIconInner}>
               <View style={{marginTop: moderateScale(6)}}>
                 <HeartIcon
-                  color="white"
+                  color={theme.colors.text}
                   size={moderateScale(30)}
                   filled={true}
                 />
@@ -141,14 +120,13 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Action Buttons */}
       <View style={styles.contentWrapper}>
         <View style={styles.actionButtons}>
           {/* Download button on the left */}
-          <AnimatedTouchableOpacity
-            activeOpacity={0.7}
+          <AnimatedPressable
             style={[
               styles.downloadButton,
               downloadAnimatedStyle,
@@ -178,20 +156,18 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
                 }
               />
             )}
-          </AnimatedTouchableOpacity>
+          </AnimatedPressable>
 
           {/* Right side buttons */}
           <View style={styles.rightAlignedButtons}>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
+            <AnimatedPressable
               style={[styles.circleButton, shuffleAnimatedStyle]}
               onPress={onShufflePress}
               onPressIn={() => handlePressIn('shuffle')}
               onPressOut={() => handlePressOut('shuffle')}>
               <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-            </AnimatedTouchableOpacity>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
+            </AnimatedPressable>
+            <AnimatedPressable
               style={[
                 styles.circleButton,
                 styles.playButton,
@@ -206,7 +182,7 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
                   size={moderateScale(16)}
                 />
               </View>
-            </AnimatedTouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -220,12 +196,13 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(20),
+      paddingTop: insets.top + moderateScale(40),
       paddingBottom: moderateScale(30),
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',
@@ -245,13 +222,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: moderateScale(12),
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 4,
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
     },
     heroIconInner: {
       width: moderateScale(56),
@@ -259,6 +230,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       borderRadius: moderateScale(28),
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
     title: {
       fontSize: moderateScale(17),

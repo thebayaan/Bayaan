@@ -37,10 +37,6 @@ interface SearchViewProps {
   availableRewayat: RewayatStyle[];
   selectedRewayatId?: string;
   onRewayatSelect: (id: string) => void;
-  dominantColors: {
-    primary: string;
-    secondary: string;
-  };
   isDarkMode: boolean;
   reciterName: string;
   viewMode: ReciterProfileViewMode;

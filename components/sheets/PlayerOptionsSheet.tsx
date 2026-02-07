@@ -2,7 +2,7 @@ import React, {useCallback, useState, useMemo} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   useWindowDimensions,
   Dimensions,
@@ -25,6 +25,7 @@ import {
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
@@ -33,6 +34,7 @@ import RenderHtml, {
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+import {useUploadsStore} from '@/store/uploadsStore';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -71,9 +73,30 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const reciterId = payload?.reciterId ?? '';
   const rewayatId = payload?.rewayatId;
   const onGoToReciter = payload?.onGoToReciter;
+  const isUserUpload = payload?.isUserUpload ?? false;
+  const userRecitationId = payload?.userRecitationId;
 
   const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
+
+  // Get recitation data for upload header
+  const recitation = userRecitationId
+    ? useUploadsStore.getState().getRecitationById(userRecitationId)
+    : undefined;
+
+  const uploadHeaderTitle = useMemo(() => {
+    if (!isUserUpload) return '';
+    if (surah) return surah.name;
+    if (recitation?.title) return recitation.title;
+    if (recitation?.originalFilename) return recitation.originalFilename;
+    return 'Uploaded Audio';
+  }, [isUserUpload, surah, recitation]);
+
+  const uploadHeaderSubtitle = useMemo(() => {
+    if (!isUserUpload) return '';
+    if (surah) return surah.translated_name_english;
+    return 'Upload';
+  }, [isUserUpload, surah]);
 
   const downloadId = React.useMemo(
     () =>
@@ -99,10 +122,13 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
     useDownloadActions();
 
-  // Calculate loved state
-  const isLovedState = rewayatId
-    ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-    : isLoved(reciterId, surahId);
+  // Calculate loved state — only meaningful when reciterId + surahId exist
+  const canLove = !!reciterId && !!surahId;
+  const isLovedState = canLove
+    ? rewayatId
+      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
+      : isLoved(reciterId, surahId)
+    : false;
 
   const tagsStyles = useMemo(
     () => ({
@@ -219,15 +245,36 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     }
   }, [handleClose, onGoToReciter]);
 
+  const handleEditDetails = useCallback(() => {
+    if (!userRecitationId) return;
+    const rec = useUploadsStore.getState().getRecitationById(userRecitationId);
+    if (!rec) return;
+    handleClose();
+    setTimeout(() => {
+      SheetManager.show('organize-recitation', {
+        payload: {recitation: rec},
+      });
+    }, 300);
+  }, [userRecitationId, handleClose]);
+
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       setShowSurahInfo(false);
     }
   }, []);
 
-  if (!surah) {
+  // Guard: need either a surah (system track) or upload flag
+  if (!surah && !isUserUpload) {
     return null;
   }
+
+  // Determine which options to show
+  const showEditDetails = isUserUpload;
+  const showDownload = !isUserUpload;
+  const showAddToCollection = !!surah && !!reciterId;
+  const showLove = canLove;
+  const showGoToReciter = !!onGoToReciter;
+  const showLearnAboutSurah = !!surah;
 
   return (
     <ActionSheet
@@ -242,7 +289,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah.name}</Text>
+            <Text style={styles.headerTitle}>About {surah!.name}</Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -250,9 +297,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah.name}</Text>
+                <Text style={styles.surahInfoName}>{surah!.name}</Text>
                 <Text style={styles.surahInfoTranslation}>
-                  {surah.translated_name_english}
+                  {surah!.translated_name_english}
                 </Text>
               </View>
               {currentSurahInfo && (
@@ -269,118 +316,138 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       ) : (
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.surahName}>{surah.name}</Text>
-            <Text style={styles.surahTranslation}>
-              {surah.translated_name_english}
+            <Text style={styles.surahName} numberOfLines={1}>
+              {isUserUpload ? uploadHeaderTitle : surah!.name}
+            </Text>
+            <Text style={styles.surahTranslation} numberOfLines={1}>
+              {isUserUpload
+                ? uploadHeaderSubtitle
+                : (reciterId && getReciterName(reciterId)) ||
+                  surah!.translated_name_english}
             </Text>
           </View>
 
           <View style={styles.optionsGrid}>
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'download' && styles.optionPressed,
-              ]}
-              onPress={handleDownload}
-              onPressIn={() => setPressedOption('download')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              {isCurrentlyDownloading ? (
-                <CircularProgress
-                  progress={downloadProgress}
-                  size={moderateScale(20)}
-                  strokeWidth={moderateScale(2.5)}
+            {showEditDetails && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleEditDetails}>
+                <Icon
+                  name="sliders-h"
+                  type="font-awesome-5"
+                  size={moderateScale(18)}
                   color={theme.colors.text}
                 />
-              ) : isTrackDownloaded ? (
-                <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
-              ) : (
-                <Ionicons
-                  name="arrow-down"
+                <Text style={styles.optionText}>Edit Details</Text>
+              </Pressable>
+            )}
+
+            {showDownload && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleDownload}>
+                {isCurrentlyDownloading ? (
+                  <CircularProgress
+                    progress={downloadProgress}
+                    size={moderateScale(20)}
+                    strokeWidth={moderateScale(2.5)}
+                    color={theme.colors.text}
+                  />
+                ) : isTrackDownloaded ? (
+                  <CheckIcon
+                    color={theme.colors.text}
+                    size={moderateScale(20)}
+                  />
+                ) : (
+                  <Ionicons
+                    name="arrow-down"
+                    size={moderateScale(20)}
+                    color={theme.colors.text}
+                  />
+                )}
+                <Text style={styles.optionText}>
+                  {isCurrentlyDownloading
+                    ? `Downloading ${Math.round(downloadProgress * 100)}%`
+                    : isTrackDownloaded
+                      ? 'Downloaded'
+                      : 'Download'}
+                </Text>
+              </Pressable>
+            )}
+
+            {showAddToCollection && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleAddToPlaylist}>
+                <Icon
+                  name="plus-circle"
+                  type="feather"
                   size={moderateScale(20)}
                   color={theme.colors.text}
                 />
-              )}
-              <Text style={[styles.optionText]}>
-                {isCurrentlyDownloading
-                  ? `Downloading ${Math.round(downloadProgress * 100)}%`
-                  : isTrackDownloaded
-                    ? 'Downloaded'
-                    : 'Download'}
-              </Text>
-            </TouchableOpacity>
+                <Text style={styles.optionText}>Add to Collection</Text>
+              </Pressable>
+            )}
 
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'collection' && styles.optionPressed,
-              ]}
-              onPress={handleAddToPlaylist}
-              onPressIn={() => setPressedOption('collection')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <Icon
-                name="plus-circle"
-                type="feather"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={[styles.optionText]}>Add to Collection</Text>
-            </TouchableOpacity>
+            {showLove && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleToggleLove}>
+                <HeartIcon
+                  color={theme.colors.text}
+                  size={moderateScale(20)}
+                  filled={isLovedState}
+                />
+                <Text style={styles.optionText}>
+                  {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+                </Text>
+              </Pressable>
+            )}
 
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'loved' && styles.optionPressed,
-              ]}
-              onPress={handleToggleLove}
-              onPressIn={() => setPressedOption('loved')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <HeartIcon
-                color={theme.colors.text}
-                size={moderateScale(20)}
-                filled={isLovedState}
-              />
-              <Text style={[styles.optionText]}>
-                {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
-              </Text>
-            </TouchableOpacity>
+            {showGoToReciter && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleGoToReciter}>
+                <ProfileIcon
+                  color={theme.colors.text}
+                  size={moderateScale(20)}
+                  filled={false}
+                />
+                <Text style={styles.optionText}>Go to Reciter</Text>
+              </Pressable>
+            )}
 
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'reciter' && styles.optionPressed,
-              ]}
-              onPress={handleGoToReciter}
-              onPressIn={() => setPressedOption('reciter')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <ProfileIcon
-                color={theme.colors.text}
-                size={moderateScale(20)}
-                filled={false}
-              />
-              <Text style={[styles.optionText]}>Go to Reciter</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'info' && styles.optionPressed,
-              ]}
-              onPress={handleViewInfo}
-              onPressIn={() => setPressedOption('info')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <Icon
-                name="info"
-                type="feather"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.optionText}>Learn About Surah</Text>
-            </TouchableOpacity>
+            {showLearnAboutSurah && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleViewInfo}>
+                <Icon
+                  name="info"
+                  type="feather"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Learn About Surah</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       )}
