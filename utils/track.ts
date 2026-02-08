@@ -49,7 +49,6 @@ export async function createTrack(
     reciterId: reciter.id,
     reciterName: reciter.name,
     duration: 0, // Will be set by expo-audio
-    description: `${surah.translated_name_english} - ${surah.name}`,
     rewayatId: rewayatId || reciter.rewayat[0].id,
   };
 }
@@ -137,7 +136,6 @@ export function createDownloadedTrack(
     reciterName: reciter.name,
     rewayatId: rewayatId || reciter.rewayat[0].id,
     duration: 0, // Will be set by expo-audio
-    description: `${surah.translated_name_english} - ${surah.name}`,
   };
 }
 
