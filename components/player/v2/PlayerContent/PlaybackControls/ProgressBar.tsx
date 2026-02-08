@@ -69,6 +69,7 @@ export const ProgressBar = React.memo(() => {
         style={styles.slider}
         minimumValue={0}
         maximumValue={progress.duration || 1}
+        tapToSeek
         value={displayTime}
         onSlidingStart={handleSliderStart}
         onValueChange={handleSliderChange}
