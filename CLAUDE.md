@@ -182,7 +182,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 - **Use `Pressable` instead of `TouchableOpacity`** — the opacity flash on press is unwanted. Use `Pressable` for all interactive elements.
 - Use consistent styling through `StyleSheet.create()`
 - Ensure responsive design by considering different screen sizes and orientations
-- Optimize image handling using `react-native-fast-image`
+- Optimize image handling using `expo-image`
 - Implement responsive design with Flexbox and Expo's `useWindowDimensions`
 - Implement dark mode support using Expo's `useColorScheme`
 - Ensure high accessibility (a11y) standards using ARIA roles and native accessibility props
@@ -203,13 +203,13 @@ Bayaan is a React Native/Expo application for Quran audio playback.
 
 ### Tech Stack
 
-- **Framework:** React Native (0.76.9) with Expo SDK 52
+- **Framework:** React Native (0.81.5) with Expo SDK 54
 - **Navigation:** Expo Router v4 (file-based routing)
 - **State Management:** Zustand (4.5.5)
-- **Audio:** React Native Track Player (4.1.1)
+- **Audio:** expo-audio (~1.1.1)
 - **Storage:** AsyncStorage, Expo SQLite
 - **UI:** @gorhom/bottom-sheet, react-native-reanimated, moti
-- **Images:** react-native-fast-image
+- **Images:** expo-image (~3.0.11)
 - **i18n:** react-i18next
 
 ### Core Architecture Components
@@ -225,9 +225,10 @@ Bayaan is a React Native/Expo application for Quran audio playback.
    - Persistent state with AsyncStorage integration
 
 3. **Audio Playback System**:
-   - Uses `react-native-track-player` for background audio
+   - Uses `expo-audio` via `ExpoAudioService` singleton (`services/audio/ExpoAudioService.ts`)
+   - React bridge via `ExpoAudioProvider` (`services/audio/ExpoAudioProvider.tsx`)
+   - Player state in Zustand (`services/player/store/playerStore.ts`)
    - Custom playback services in `/services/player`
-   - Queue management in `/services/queue`
 
 4. **App Initialization** (`services/AppInitializer.ts`):
    - Central orchestrator for all service initialization
@@ -252,7 +253,7 @@ Bayaan/
 ├── hooks/             # Custom React hooks
 ├── services/          # Global API services/utilities
 │   ├── player/        # Audio player service
-│   ├── queue/         # Queue management service
+│   ├── audio/         # expo-audio engine (ExpoAudioService, ExpoAudioProvider)
 │   ├── downloadService.ts  # Offline downloads
 │   └── AppInitializer.ts   # App startup orchestrator
 ├── store/             # Zustand state management stores
@@ -264,8 +265,8 @@ Bayaan/
 
 ### Key Custom Hooks
 
-- `useUnifiedPlayer`: Interface to the audio playback system
-- `useQueue`: Queue management operations
+- `usePlayerActions`: Zero-re-render action hook for audio controls (preferred)
+- `useUnifiedPlayer`: Deprecated shim for audio playback (still works, causes excess renders)
 - `useTheme`: Theme context and utilities
 - `useReciterNavigation`: Navigation helpers for reciter screens
 - `usePlaylists`: Playlist management (preloaded via AppInitializer)
