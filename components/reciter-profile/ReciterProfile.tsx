@@ -31,7 +31,7 @@ import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {HeartIcon} from '@/components/Icons';
 import Animated, {
   useSharedValue,
@@ -890,9 +890,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                     <Pressable
                       style={styles.viewModeButton}
                       onPress={toggleViewMode}>
-                      <Icon
+                      <Feather
                         name={viewMode === 'card' ? 'list' : 'grid'}
-                        type="feather"
                         size={moderateScale(16)}
                         color={theme.colors.text}
                       />

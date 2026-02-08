@@ -18,9 +18,8 @@ import {
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {CircularProgress} from '@/components/CircularProgress';
-import {Ionicons} from '@expo/vector-icons';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
-import {Icon} from '@rneui/themed';
 
 interface TrackItemProps {
   reciterId: string;
@@ -202,9 +201,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                 gap={moderateScale(1.2)}
               />
             ) : (
-              <Icon
+              <Feather
                 name="more-horizontal"
-                type="feather"
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />

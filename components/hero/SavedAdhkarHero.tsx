@@ -13,7 +13,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
+import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {getRandomColors} from '@/utils/gradientColors';
@@ -103,9 +103,8 @@ const SavedAdhkarCard = ({
               {savedCount === 1 ? 'SAVED DHIKR' : 'SAVED ADHKAR'}
             </Text>
             <View style={styles.iconContainer}>
-              <Icon
+              <Ionicons
                 name="bookmark"
-                type="ionicon"
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />

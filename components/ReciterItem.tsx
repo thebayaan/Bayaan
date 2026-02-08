@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
+import {MaterialIcons} from '@expo/vector-icons';
 import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 
@@ -21,8 +21,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.99}
+      <Pressable
         style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
         onPress={handlePress}>
         <View
@@ -48,15 +47,14 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
         </View>
         {isSelected && (
           <View style={styles.checkmarkContainer}>
-            <Icon
+            <MaterialIcons
               name="check"
-              type="material"
               size={moderateScale(24)}
               color={theme.colors.primary}
             />
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   },
 );

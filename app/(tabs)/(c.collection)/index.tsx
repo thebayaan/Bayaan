@@ -4,7 +4,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
 import {useSettings} from '@/hooks/useSettings';
@@ -570,9 +570,8 @@ export default function CollectionScreen() {
 
         {/* Add to Collection Bar */}
         <Pressable style={styles.addBar} onPress={handleAddPress}>
-          <Icon
+          <Feather
             name="plus"
-            type="feather"
             size={moderateScale(16)}
             color={theme.colors.textSecondary}
           />

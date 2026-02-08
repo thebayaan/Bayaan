@@ -14,8 +14,7 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
-import {Icon} from '@rneui/themed';
-import {Ionicons} from '@expo/vector-icons';
+import {Ionicons, Feather} from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -406,9 +405,8 @@ export const SurahCard: React.FC<SurahCardProps> = ({
             style={styles.optionsButton}
             onPress={handleOptionsPressWrapper}
             activeOpacity={0.7}>
-            <Icon
+            <Feather
               name="more-horizontal"
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />

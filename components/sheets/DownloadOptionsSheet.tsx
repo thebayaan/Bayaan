@@ -16,7 +16,7 @@ import ActionSheet, {
   SheetProps,
   SheetManager,
 } from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import Color from 'color';
 import RenderHtml, {
@@ -268,9 +268,8 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 pressed && styles.optionPressed,
               ]}
               onPress={handleAddToPlaylist}>
-              <Icon
+              <Feather
                 name="plus-circle"
-                type="feather"
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
@@ -289,9 +288,8 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 pressed && styles.optionPressed,
               ]}
               onPress={handleViewInfo}>
-              <Icon
+              <Feather
                 name="info"
-                type="feather"
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
@@ -304,9 +302,8 @@ export const DownloadOptionsSheet = (props: SheetProps<'download-options'>) => {
                 pressed && styles.optionDestructivePressed,
               ]}
               onPress={handleRemoveDownload}>
-              <Icon
+              <Feather
                 name="trash-2"
-                type="feather"
                 size={moderateScale(20)}
                 color="#ff4444"
               />

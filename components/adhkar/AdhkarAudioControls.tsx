@@ -8,7 +8,7 @@
 
 import React, {useMemo} from 'react';
 import {View, TouchableOpacity} from 'react-native';
-import {Icon} from '@rneui/themed';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import Animated, {useAnimatedStyle, withSpring} from 'react-native-reanimated';
@@ -115,9 +115,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
           <View style={styles.container}>
             <View style={styles.buttonsRow}>
               <View style={styles.noAudioPlaceholder}>
-                <Icon
+                <Feather
                   name="volume-x"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />
@@ -141,9 +140,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel="Copy Arabic text">
-                  <Icon
+                  <Feather
                     name="copy"
-                    type="feather"
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -158,9 +156,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                     isBookmarked ? 'Remove bookmark' : 'Add bookmark'
                   }
                   accessibilityState={{selected: isBookmarked}}>
-                  <Icon
+                  <Ionicons
                     name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                    type="ionicon"
                     size={moderateScale(18)}
                     color={
                       isBookmarked
@@ -176,9 +173,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel="Share dhikr">
-                  <Icon
+                  <Feather
                     name="share"
-                    type="feather"
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -190,9 +186,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel="Layout settings">
-                  <Icon
+                  <Feather
                     name="sliders"
-                    type="feather"
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -273,9 +268,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel="Copy Arabic text">
-                <Icon
+                <Feather
                   name="copy"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />
@@ -291,9 +285,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   isBookmarked ? 'Remove bookmark' : 'Add bookmark'
                 }
                 accessibilityState={{selected: isBookmarked}}>
-                <Icon
+                <Ionicons
                   name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                  type="ionicon"
                   size={moderateScale(18)}
                   color={
                     isBookmarked
@@ -310,9 +303,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel="Share dhikr">
-                <Icon
+                <Feather
                   name="share"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />
@@ -325,9 +317,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel="Layout settings">
-                <Icon
+                <Feather
                   name="sliders"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />

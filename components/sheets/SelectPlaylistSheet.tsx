@@ -18,7 +18,7 @@ import ActionSheet, {
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useLoved} from '@/hooks/useLoved';
 import {PlaylistItem} from '@/components/PlaylistItem';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -186,9 +186,8 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
               activeOpacity={0.7}
               disabled={isCreating}>
               <View style={styles.createButtonContent}>
-                <Icon
+                <Feather
                   name="plus"
-                  type="feather"
                   size={moderateScale(20)}
                   color={theme.colors.text}
                 />

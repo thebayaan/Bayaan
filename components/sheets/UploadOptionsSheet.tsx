@@ -8,7 +8,7 @@ import ActionSheet, {
   SheetProps,
   SheetManager,
 } from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {getSurahById, getReciterName} from '@/services/dataService';
@@ -156,9 +156,8 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
               pressed && styles.optionPressed,
             ]}
             onPress={handleOrganize}>
-            <Icon
+            <Feather
               name="sliders"
-              type="feather"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
@@ -187,12 +186,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
               pressed && styles.optionDestructivePressed,
             ]}
             onPress={handleDelete}>
-            <Icon
-              name="trash-2"
-              type="feather"
-              size={moderateScale(20)}
-              color="#ff4444"
-            />
+            <Feather name="trash-2" size={moderateScale(20)} color="#ff4444" />
             <Text style={styles.optionTextDestructive}>Delete</Text>
           </Pressable>
         </View>

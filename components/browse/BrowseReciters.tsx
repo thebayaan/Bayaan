@@ -15,7 +15,7 @@ import Animated, {
   LinearTransition,
 } from 'react-native-reanimated';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {RECITERS, Reciter, Rewayat} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
@@ -655,9 +655,8 @@ export default function BrowseReciters({
               styles.searchButton,
               isSearchFocused && styles.searchButtonFocused,
             ]}>
-            <Icon
+            <Feather
               name="search"
-              type="feather"
               size={moderateScale(18)}
               color={theme.colors.textSecondary}
             />
@@ -681,9 +680,8 @@ export default function BrowseReciters({
                 onPress={handleClearSearch}
                 style={styles.clearSearchButton}
                 activeOpacity={0.7}>
-                <Icon
+                <Feather
                   name="x"
-                  type="feather"
                   size={moderateScale(16)}
                   color={theme.colors.textSecondary}
                 />
@@ -705,9 +703,8 @@ export default function BrowseReciters({
               style={styles.filterButton}
               activeOpacity={0.7}
               onPress={handleFilterModalPress}>
-              <Icon
+              <Feather
                 name="sliders"
-                type="feather"
                 size={moderateScale(18)}
                 color={theme.colors.textSecondary}
               />

@@ -15,7 +15,7 @@ import ActionSheet, {
   SheetProps,
   SheetManager,
 } from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import {
   useDownloadActions,
@@ -28,7 +28,6 @@ import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
-import {Ionicons} from '@expo/vector-icons';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -341,8 +340,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 {isCurrentlyDownloading
                   ? `Downloading ${Math.round(downloadProgress * 100)}%`
                   : isTrackDownloaded
-                    ? 'Downloaded'
-                    : 'Download'}
+                  ? 'Downloaded'
+                  : 'Download'}
               </Text>
             </TouchableOpacity>
 
@@ -382,9 +381,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
               onPressIn={() => setPressedOption('collection')}
               onPressOut={() => setPressedOption(null)}
               activeOpacity={1}>
-              <Icon
+              <Feather
                 name="plus-circle"
-                type="feather"
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
@@ -406,9 +404,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
               onPressIn={() => setPressedOption('info')}
               onPressOut={() => setPressedOption(null)}
               activeOpacity={1}>
-              <Icon
+              <Feather
                 name="info"
-                type="feather"
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />

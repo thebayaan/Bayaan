@@ -6,7 +6,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {MicrophoneIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {FontAwesome5} from '@expo/vector-icons';
 import type {Track} from '@/types/audio';
 
 interface UploadPlaceholderProps {
@@ -53,9 +53,8 @@ export const UploadPlaceholder: React.FC<UploadPlaceholderProps> = ({
             opacity: pressed ? 0.7 : 1,
           },
         ]}>
-        <Icon
+        <FontAwesome5
           name="sliders-h"
-          type="font-awesome-5"
           size={moderateScale(14)}
           color={theme.colors.text}
         />

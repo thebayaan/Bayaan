@@ -1,7 +1,7 @@
 import React from 'react';
-import {View, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {Theme} from '@/utils/themeUtils';
 
 interface SectionHeaderProps {
@@ -22,17 +22,13 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
       {/* <Text style={[styles.title, {color: theme.colors.textSecondary}]}>{title}</Text> */}
 
       {onViewToggle && (
-        <TouchableOpacity
-          style={styles.toggleButton}
-          onPress={onViewToggle}
-          activeOpacity={0.7}>
-          <Icon
+        <Pressable style={styles.toggleButton} onPress={onViewToggle}>
+          <Feather
             name={isGridView ? 'list' : 'grid'}
-            type="feather"
             size={moderateScale(20)}
             color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

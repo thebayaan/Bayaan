@@ -10,7 +10,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 
 interface RewayatCardProps {
   rewayat: RewayatInfo;
@@ -73,9 +73,8 @@ function RewayatCard({
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.iconWrapper}>
-            <Icon
+            <Feather
               name="chevron-right"
-              type="feather"
               size={moderateScale(14)}
               color={theme.colors.textSecondary}
             />

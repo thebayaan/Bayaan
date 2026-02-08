@@ -12,7 +12,7 @@ import ActionSheet, {
   SheetManager,
 } from 'react-native-actions-sheet';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import {Dhikr} from '@/types/adhkar';
 
@@ -46,9 +46,8 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
           disabled && styles.checkboxDisabled,
         ]}>
         {checked ? (
-          <Icon
+          <Feather
             name="check"
-            type="feather"
             size={moderateScale(14)}
             color={theme.colors.background}
           />
@@ -146,9 +145,8 @@ export const AdhkarCopyOptionsSheet = (
           onPress={handleCopy}
           activeOpacity={1}
           disabled={!canCopy}>
-          <Icon
+          <Feather
             name="copy"
-            type="feather"
             size={moderateScale(18)}
             color={
               canCopy ? theme.colors.background : theme.colors.textSecondary

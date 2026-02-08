@@ -15,7 +15,7 @@ import Color from 'color';
 import {SurahsHero} from '@/components/hero/SurahsHero';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useSettings} from '@/hooks/useSettings';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
@@ -266,9 +266,8 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
               ]}
               activeOpacity={1}
               onPress={() => changeSortOption('asc')}>
-              <Icon
+              <Feather
                 name="arrow-up"
-                type="feather"
                 size={moderateScale(14)}
                 color={
                   sortOption === 'asc'
@@ -301,9 +300,8 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
               ]}
               activeOpacity={1}
               onPress={() => changeSortOption('desc')}>
-              <Icon
+              <Feather
                 name="arrow-down"
-                type="feather"
                 size={moderateScale(14)}
                 color={
                   sortOption === 'desc'
@@ -336,9 +334,8 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
               ]}
               activeOpacity={1}
               onPress={() => changeSortOption('revelation')}>
-              <Icon
+              <Feather
                 name="calendar"
-                type="feather"
                 size={moderateScale(14)}
                 color={
                   sortOption === 'revelation'
@@ -366,9 +363,8 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
             style={styles.viewModeButton}
             onPress={toggleViewMode}
             activeOpacity={1}>
-            <Icon
+            <Feather
               name={viewMode === 'card' ? 'list' : 'grid'}
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.text}
             />
