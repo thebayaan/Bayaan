@@ -19,6 +19,7 @@ interface PlayerContentProps {
   onSleepTimerPress: () => void;
   onMushafLayoutPress: () => void;
   onOptionsPress: () => void;
+  onAmbientPress: () => void;
 }
 
 const PlayerContent: React.FC<PlayerContentProps> = ({
@@ -26,6 +27,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onSleepTimerPress,
   onMushafLayoutPress,
   onOptionsPress,
+  onAmbientPress,
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
@@ -132,6 +134,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           onQueuePress={handleQueuePress}
           showQueue={showQueue}
           onMushafLayoutPress={onMushafLayoutPress}
+          onAmbientPress={onAmbientPress}
         />
       </View>
     </View>

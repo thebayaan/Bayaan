@@ -15,8 +15,10 @@ import React, {useEffect, useRef, useCallback} from 'react';
 import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {expoAudioService} from './ExpoAudioService';
 import {lockScreenService} from './LockScreenService';
+import {ambientAudioService} from './AmbientAudioService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useAmbientStore} from '@/store/ambientStore';
 
 // Throttle interval for progress updates (ms)
 const PROGRESS_UPDATE_INTERVAL = 1000;
@@ -215,6 +217,56 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       handleTrackEnd();
     }
   }, [status.didJustFinish, handleTrackEnd]);
+
+  // ========== AMBIENT SOUND SYNC ==========
+  // Sync ambient playback with Quran player state changes.
+  // Ambient should pause when Quran pauses, resume when Quran plays,
+  // and fade out when the queue ends.
+  const prevQuranPlaying = useRef(false);
+
+  useEffect(() => {
+    const isQuranPlaying = status.playing;
+    const wasQuranPlaying = prevQuranPlaying.current;
+    prevQuranPlaying.current = isQuranPlaying;
+
+    // Only act on actual transitions
+    if (isQuranPlaying === wasQuranPlaying) return;
+
+    const {isEnabled, currentSound} = useAmbientStore.getState();
+    if (!isEnabled || !currentSound) return;
+
+    if (isQuranPlaying) {
+      // Quran started playing -> resume ambient
+      if (
+        ambientAudioService.hasPlayer() &&
+        !ambientAudioService.getIsPlaying()
+      ) {
+        ambientAudioService.play();
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Ambient resumed with Quran');
+      }
+    } else {
+      // Quran paused -> pause ambient
+      if (ambientAudioService.getIsPlaying()) {
+        ambientAudioService.pause();
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Ambient paused with Quran');
+      }
+    }
+  }, [status.playing]);
+
+  // Handle queue end — fade out ambient when queue is done
+  useEffect(() => {
+    const currentState = usePlayerStore.getState().playback.state;
+    if (currentState === 'ended') {
+      const {isEnabled} = useAmbientStore.getState();
+      if (isEnabled && ambientAudioService.getIsPlaying()) {
+        ambientAudioService.fadeOut();
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Ambient fading out (queue ended)');
+      }
+    }
+  }, [status.didJustFinish]);
 
   // Render children - this provider doesn't render any UI
   return <>{children}</>;

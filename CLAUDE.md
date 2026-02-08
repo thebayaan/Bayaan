@@ -537,6 +537,28 @@ npm run fetch-reciters
 
 ---
 
+## Ambient Sounds Feature
+
+Ambient nature sounds play simultaneously with Quran recitation using a second `AudioPlayer` from expo-audio.
+
+### Key Files
+- `types/ambient.ts` — `AmbientSoundType`, `AMBIENT_SOUNDS` map with bundled asset `require()` refs
+- `services/audio/AmbientAudioService.ts` — Singleton using `createAudioPlayer()`, manages loop/volume/fade
+- `store/ambientStore.ts` — Zustand store (persisted) for preferences (currentSound, volume)
+- `services/audio/ExpoAudioProvider.tsx` — Syncs ambient pause/resume with Quran player state
+- `components/sheets/AmbientSoundsSheet.tsx` — Picker sheet with 2-column grid + volume slider
+- `components/player/v2/PlayerContent/ControlButtons/index.tsx` — Ambient toggle button (tap = toggle, long-press = open picker)
+- `assets/audio/ambient/` — Bundled MP3 files (rain, forest, ocean, stream, night, thunder, fireplace, wind)
+
+### Architecture
+- Ambient uses `createAudioPlayer(source)` (not the hook) so it persists outside React lifecycle
+- `player.loop = true`, volume controlled independently
+- Ambient does NOT seek or change rate with Quran playback
+- Fade in/out via `setInterval` stepping volume over ~500ms
+- `isEnabled` is not persisted (ambient doesn't auto-start on app launch), but `currentSound` and `volume` are
+
+---
+
 ## Documentation Reference
 
 Additional documentation is available in the `docs/` directory:
@@ -545,6 +567,7 @@ Additional documentation is available in the `docs/` directory:
 - **[Downloads Feature](docs/features/downloads.md)** - Offline download functionality
 - **[Player System](docs/features/player.md)** - Audio player architecture
 - **[Queue Management](docs/features/queue.md)** - Queue system
+- **[Ambient Sounds](docs/features/ambient-sounds.md)** - Ambient nature sounds feature
 - **[Deployment Guide](docs/deployment/deployment.md)** - Build and release procedures
 - **[Version Management](docs/deployment/version-management.md)** - Git-based versioning
 - **[Git Workflow](docs/development/git-workflow.md)** - Branching and collaboration

@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, ScrollView, Dimensions} from 'react-native';
+import {View, Dimensions} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
+import ActionSheet, {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import Color from 'color';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
 
@@ -36,7 +36,7 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
-      height: SCREEN_HEIGHT * 0.6,
+      height: SCREEN_HEIGHT * 0.75,
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),

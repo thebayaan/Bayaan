@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Platform,
   Dimensions,
   Keyboard,
@@ -17,6 +16,7 @@ import {Input} from '@/components/Input';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Pressable,
-  ScrollView,
   useWindowDimensions,
   Dimensions,
 } from 'react-native';
@@ -14,6 +13,7 @@ import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
