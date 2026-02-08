@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {TouchableOpacity, StyleSheet} from 'react-native';
+import {Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {useTheme} from '@/hooks/useTheme';
@@ -39,17 +39,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({
   };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
+    <Pressable
       onPress={handlePress}
       disabled={disabled}
-      style={styles.button}>
+      style={({pressed}) => [styles.button, {opacity: pressed ? 0.7 : 1}]}>
       {optimisticIsPlaying ? (
         <PauseIcon color={theme.colors.text} size={moderateScale(24)} />
       ) : (
         <PlayIcon color={theme.colors.text} size={moderateScale(24)} />
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
