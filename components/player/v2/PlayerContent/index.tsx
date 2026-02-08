@@ -10,7 +10,8 @@ import {ControlButtons} from './ControlButtons';
 import {SurahSummary} from '../SurahSummary';
 import {UploadPlaceholder} from './UploadPlaceholder';
 import {moderateScale} from 'react-native-size-matters';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
@@ -34,7 +35,8 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
-  const {queue, updateQueue, removeFromQueue, play} = useUnifiedPlayer();
+  const {updateQueue, removeFromQueue, play} = usePlayerActions();
+  const queue = usePlayerStore(s => s.queue);
   const dimensions = useWindowDimensions();
 
   // Get mushaf settings from the store

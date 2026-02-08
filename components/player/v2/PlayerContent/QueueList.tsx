@@ -2,14 +2,14 @@ import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
   Platform,
 } from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {Icon} from '@rneui/themed';
 import {TrackItem} from '@/components/TrackItem';
 
@@ -23,7 +23,7 @@ export const QueueList: React.FC<QueueListProps> = ({
   onRemoveQueueItem,
 }) => {
   const {theme} = useTheme();
-  const {queue} = useUnifiedPlayer();
+  const queue = usePlayerStore(s => s.queue);
 
   if (!queue?.tracks?.length) {
     return (
@@ -78,8 +78,7 @@ export const QueueList: React.FC<QueueListProps> = ({
               rewayatId={track.rewayatId}
               onPress={() => onQueueItemPress(index)}
             />
-            <TouchableOpacity
-              activeOpacity={0.7}
+            <Pressable
               style={styles.removeButton}
               onPress={() => onRemoveQueueItem(index)}>
               <Icon
@@ -88,7 +87,7 @@ export const QueueList: React.FC<QueueListProps> = ({
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />
-            </TouchableOpacity>
+            </Pressable>
           </View>
         ))}
       </ScrollView>

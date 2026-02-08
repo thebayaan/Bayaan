@@ -12,7 +12,7 @@ import {usePlaylists} from '@/hooks/usePlaylists';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
 import {PlaylistHeader} from './PlaylistHeader';
@@ -52,7 +52,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     deletePlaylist,
     playlists,
   } = usePlaylists();
-  const {updateQueue, addToQueue, play} = useUnifiedPlayer();
+  const {updateQueue, addToQueue, play} = usePlayerActions();
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 

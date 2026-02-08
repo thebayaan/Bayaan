@@ -13,7 +13,7 @@ import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById} from '@/services/dataService';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -88,7 +88,7 @@ export const UploadsTabContent = React.forwardRef<
   ) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-    const {updateQueue, addToQueue, play} = useUnifiedPlayer();
+    const {updateQueue, addToQueue, play} = usePlayerActions();
     const {importFile, getByReciter} = useUploadsStore();
 
     const uploads = getByReciter(reciterId);

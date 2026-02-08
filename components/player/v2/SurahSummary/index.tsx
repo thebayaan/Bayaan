@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import * as Linking from 'expo-linking';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import ReadMore from '@fawazahmed/react-native-read-more';
 
 type SurahInfo = {
@@ -25,7 +25,7 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
   onReadMore,
 }) => {
   const {theme} = useTheme();
-  const {queue} = useUnifiedPlayer();
+  const queue = usePlayerStore(s => s.queue);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const surahNumber = currentTrack?.surahId
@@ -59,7 +59,7 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
           shadowColor: theme.colors.shadow,
         },
       ]}>
-      <TouchableOpacity activeOpacity={0.99} onPress={onReadMore}>
+      <Pressable onPress={onReadMore}>
         <Text style={[styles.title, {color: theme.colors.text}]}>
           About {currentSurahInfo.surah_name}
         </Text>
@@ -73,7 +73,7 @@ export const SurahSummary: React.FC<SurahSummaryProps> = ({
           onSeeLess={onReadMore}>
           {currentSurahInfo.short_text}
         </ReadMore>
-      </TouchableOpacity>
+      </Pressable>
 
       {surahNumber && (
         <Text style={[styles.sourceText, {color: theme.colors.textSecondary}]}>

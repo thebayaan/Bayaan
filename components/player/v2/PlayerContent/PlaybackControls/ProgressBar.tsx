@@ -3,12 +3,12 @@ import {View, Text, StyleSheet} from 'react-native';
 import {Slider} from '@miblanchard/react-native-slider';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useProgress} from '@/services/player/store/progressStore';
 
 export const ProgressBar = React.memo(() => {
   const {theme} = useTheme();
-  const {seekTo} = useUnifiedPlayer();
+  const {seekTo} = usePlayerActions();
   const progress = useProgress();
 
   // Memoize the current position for performance

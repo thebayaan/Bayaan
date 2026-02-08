@@ -1,8 +1,9 @@
 import React, {useCallback, useState} from 'react';
-import {View, TouchableOpacity, Text, StyleSheet} from 'react-native';
+import {View, Pressable, Text, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   PlayIcon,
   PauseIcon,
@@ -16,16 +17,10 @@ const SEEK_INTERVAL = 15; // seconds
 
 export const Controls = () => {
   const {theme} = useTheme();
-  const {
-    playback,
-    queue,
-    loading,
-    play,
-    pause,
-    skipToNext,
-    skipToPrevious,
-    seekTo,
-  } = useUnifiedPlayer();
+  const {play, pause, skipToNext, skipToPrevious, seekTo} = usePlayerActions();
+  const playback = usePlayerStore(s => s.playback);
+  const queue = usePlayerStore(s => s.queue);
+  const loading = usePlayerStore(s => s.loading);
 
   // Optimistic state for play/pause
   const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(
@@ -89,9 +84,8 @@ export const Controls = () => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <Pressable
         onPress={handleSeekBackward}
-        activeOpacity={0.7}
         disabled={loading.trackLoading}
         style={loading.trackLoading && styles.disabledButton}>
         <View style={styles.seekBackwardContainer}>
@@ -115,23 +109,21 @@ export const Controls = () => {
             {SEEK_INTERVAL}
           </Text>
         </View>
-      </TouchableOpacity>
+      </Pressable>
       <View style={styles.centerControls}>
-        <TouchableOpacity
+        <Pressable
           onPress={handlePrevious}
           style={[styles.sideButton, isFirstTrack && styles.disabledButton]}
-          disabled={isFirstTrack || loading.trackLoading}
-          activeOpacity={0.7}>
+          disabled={isFirstTrack || loading.trackLoading}>
           <PreviousIcon
             color={
               isFirstTrack ? theme.colors.textSecondary : theme.colors.text
             }
             size={moderateScale(16)}
           />
-        </TouchableOpacity>
+        </Pressable>
         <View style={styles.playPauseContainer}>
-          <TouchableOpacity
-            activeOpacity={0.7}
+          <Pressable
             onPress={handlePlayPause}
             disabled={loading.trackLoading}
             style={styles.playPauseButton}>
@@ -140,22 +132,20 @@ export const Controls = () => {
             ) : (
               <PlayIcon color={theme.colors.text} size={moderateScale(32)} />
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={handleNext}
           style={[styles.sideButton, isLastTrack && styles.disabledButton]}
-          disabled={isLastTrack || loading.trackLoading}
-          activeOpacity={0.7}>
+          disabled={isLastTrack || loading.trackLoading}>
           <NextIcon
             color={isLastTrack ? theme.colors.textSecondary : theme.colors.text}
             size={moderateScale(16)}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
-      <TouchableOpacity
+      <Pressable
         onPress={handleSeekForward}
-        activeOpacity={0.7}
         disabled={loading.trackLoading}
         style={loading.trackLoading && styles.disabledButton}>
         <View style={styles.seekForwardContainer}>
@@ -179,7 +169,7 @@ export const Controls = () => {
             {SEEK_INTERVAL}
           </Text>
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };

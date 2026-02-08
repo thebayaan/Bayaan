@@ -2,7 +2,8 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
@@ -17,7 +18,8 @@ import Animated, {
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
-  const {queue, setSheetMode} = useUnifiedPlayer();
+  const {setSheetMode} = usePlayerActions();
+  const queue = usePlayerStore(s => s.queue);
   const {navigateToReciterProfile} = useReciterNavigation();
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const [, setReciter] = useState<Reciter | null>(null);

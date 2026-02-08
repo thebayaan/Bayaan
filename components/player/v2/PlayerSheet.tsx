@@ -5,7 +5,8 @@ import BottomSheet, {
   BottomSheetBackdropProps,
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
@@ -39,16 +40,12 @@ export const PlayerSheet = () => {
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
 
-  const {
-    queue,
-    loading,
-    sheetMode,
-    setSheetMode,
-    playback,
-    setRate,
-    settings,
-    updateSettings,
-  } = useUnifiedPlayer();
+  const {setSheetMode, setRate, updateSettings} = usePlayerActions();
+  const queue = usePlayerStore(s => s.queue);
+  const loading = usePlayerStore(s => s.loading);
+  const sheetMode = usePlayerStore(s => s.sheetMode);
+  const playbackRate = usePlayerStore(s => s.playback.rate);
+  const settings = usePlayerStore(s => s.settings);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -175,11 +172,11 @@ export const PlayerSheet = () => {
   const handleShowSpeedSheet = useCallback(() => {
     SheetManager.show('playback-speed', {
       payload: {
-        currentSpeed: playback.rate,
+        currentSpeed: playbackRate,
         onSpeedChange: handleSpeedChange,
       },
     });
-  }, [playback.rate, handleSpeedChange]);
+  }, [playbackRate, handleSpeedChange]);
 
   const handleShowSleepTimerSheet = useCallback(() => {
     SheetManager.show('sleep-timer', {
