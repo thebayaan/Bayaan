@@ -15,9 +15,6 @@ import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
 
-// Import surah info data
-const surahInfo = require('@/data/surahInfo.json');
-
 // Custom handle component for the bottom sheet
 const CustomHandle = (_props: BottomSheetHandleProps) => {
   const {theme} = useTheme();
@@ -193,21 +190,6 @@ export const PlayerSheet = () => {
     SheetManager.show('mushaf-layout');
   }, []);
 
-  const handleShowSummarySheet = useCallback(() => {
-    const surahNumber = currentTrack?.surahId
-      ? parseInt(currentTrack.surahId, 10)
-      : undefined;
-    const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
-
-    if (currentSurahInfo) {
-      SheetManager.show('extended-summary', {
-        payload: {
-          surahInfo: currentSurahInfo,
-        },
-      });
-    }
-  }, [currentTrack?.surahId]);
-
   const handleShowOptionsSheet = useCallback(() => {
     if (!currentTrack) return;
 
@@ -280,7 +262,6 @@ export const PlayerSheet = () => {
           onSpeedPress={handleShowSpeedSheet}
           onSleepTimerPress={handleShowSleepTimerSheet}
           onMushafLayoutPress={handleShowMushafLayoutSheet}
-          onSummaryPress={handleShowSummarySheet}
           onOptionsPress={handleShowOptionsSheet}
         />
       </BottomSheet>

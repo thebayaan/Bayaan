@@ -1,28 +1,23 @@
-import React, {useState, useCallback, useMemo} from 'react';
-import {View, StyleSheet, Platform, useWindowDimensions} from 'react-native';
-import {BottomSheetScrollView} from '@gorhom/bottom-sheet';
+import React, {useState, useCallback} from 'react';
+import {View, StyleSheet} from 'react-native';
 import {Header} from './Header';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
 import {PlaybackControls} from './PlaybackControls';
 import {ControlButtons} from './ControlButtons';
-import {SurahSummary} from '../SurahSummary';
 import {UploadPlaceholder} from './UploadPlaceholder';
 import {moderateScale} from 'react-native-size-matters';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-
-// Import surah info data
-const surahInfo = require('@/data/surahInfo.json');
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface PlayerContentProps {
   onSpeedPress: () => void;
   onSleepTimerPress: () => void;
   onMushafLayoutPress: () => void;
-  onSummaryPress: () => void;
   onOptionsPress: () => void;
 }
 
@@ -30,14 +25,13 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onSpeedPress,
   onSleepTimerPress,
   onMushafLayoutPress,
-  onSummaryPress,
   onOptionsPress,
 }) => {
   useTheme();
   const [showQueue, setShowQueue] = useState(false);
   const {updateQueue, removeFromQueue, play} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
-  const dimensions = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   // Get mushaf settings from the store
   const {
@@ -47,17 +41,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     translationFontSize,
     transliterationFontSize,
   } = useMushafSettingsStore();
-
-  // Calculate dynamic heights based on screen size
-  const layoutConfig = useMemo(() => {
-    const isTablet = dimensions.width >= 768; // Common tablet breakpoint
-    // Return different configurations based on device type
-    return {
-      quranQueueHeight: isTablet
-        ? dimensions.height * 0.5 // 40% of screen height for tablets
-        : dimensions.height * 0.5, // 40% of screen height for phones
-    };
-  }, [dimensions.height, dimensions.width]);
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
@@ -102,69 +85,55 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
 
   return (
     <View style={styles.container}>
-      <BottomSheetScrollView
-        contentContainerStyle={styles.scrollContent}
-        bounces={true}
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={Platform.OS === 'android'}>
-        <View style={styles.contentContainer}>
-          <Header onOptionsPress={onOptionsPress} />
-          <View style={styles.mainContent}>
-            {/* Container for QuranView and QueueList */}
-            <View
-              style={[
-                styles.viewsContainer,
-                {height: layoutConfig.quranQueueHeight},
-              ]}>
-              {/* QuranView or UploadPlaceholder */}
-              <View
-                style={[
-                  styles.viewWrapper,
-                  showQueue ? styles.hidden : styles.visible,
-                ]}>
-                {isUntaggedUpload ? (
-                  <UploadPlaceholder currentTrack={currentTrack} />
-                ) : (
-                  <QuranView
-                    currentSurah={currentSurah ?? 1}
-                    onVersePress={handleVersePress}
-                    showTranslation={showTranslation}
-                    showTransliteration={showTransliteration}
-                    transliterationFontSize={transliterationFontSize}
-                    translationFontSize={translationFontSize}
-                    arabicFontSize={arabicFontSize}
-                  />
-                )}
-              </View>
-              {/* QueueList */}
-              <View
-                style={[
-                  styles.viewWrapper,
-                  showQueue ? styles.visible : styles.hidden,
-                ]}>
-                <QueueList
-                  onQueueItemPress={handleQueueItemPress}
-                  onRemoveQueueItem={handleRemoveQueueItem}
-                />
-              </View>
-            </View>
-            <View style={styles.controlsContainer}>
-              <TrackInfo />
-              <PlaybackControls />
-              <ControlButtons
-                onSpeedPress={onSpeedPress}
-                onSleepTimerPress={onSleepTimerPress}
-                onQueuePress={handleQueuePress}
-                showQueue={showQueue}
-                onMushafLayoutPress={onMushafLayoutPress}
-              />
-            </View>
-            {currentTrack?.surahId && (
-              <SurahSummary surahInfo={surahInfo} onReadMore={onSummaryPress} />
-            )}
-          </View>
+      <Header onOptionsPress={onOptionsPress} />
+      <View style={styles.viewsContainer}>
+        {/* QuranView or UploadPlaceholder */}
+        <View
+          style={[
+            styles.viewWrapper,
+            showQueue ? styles.hidden : styles.visible,
+          ]}>
+          {isUntaggedUpload ? (
+            <UploadPlaceholder currentTrack={currentTrack} />
+          ) : (
+            <QuranView
+              currentSurah={currentSurah ?? 1}
+              onVersePress={handleVersePress}
+              showTranslation={showTranslation}
+              showTransliteration={showTransliteration}
+              transliterationFontSize={transliterationFontSize}
+              translationFontSize={translationFontSize}
+              arabicFontSize={arabicFontSize}
+            />
+          )}
         </View>
-      </BottomSheetScrollView>
+        {/* QueueList */}
+        <View
+          style={[
+            styles.viewWrapper,
+            showQueue ? styles.visible : styles.hidden,
+          ]}>
+          <QueueList
+            onQueueItemPress={handleQueueItemPress}
+            onRemoveQueueItem={handleRemoveQueueItem}
+          />
+        </View>
+      </View>
+      <View
+        style={[
+          styles.controlsContainer,
+          {paddingBottom: insets.bottom || moderateScale(20)},
+        ]}>
+        <TrackInfo />
+        <PlaybackControls />
+        <ControlButtons
+          onSpeedPress={onSpeedPress}
+          onSleepTimerPress={onSleepTimerPress}
+          onQueuePress={handleQueuePress}
+          showQueue={showQueue}
+          onMushafLayoutPress={onMushafLayoutPress}
+        />
+      </View>
     </View>
   );
 };
@@ -174,23 +143,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: moderateScale(10),
-  },
-  contentContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  mainContent: {
+  viewsContainer: {
+    flex: 1,
     width: '100%',
     paddingHorizontal: moderateScale(20),
-    paddingTop: moderateScale(5),
-    paddingBottom: moderateScale(20),
-    alignItems: 'center',
-  },
-  viewsContainer: {
-    width: '100%',
     marginTop: moderateScale(5),
     position: 'relative',
   },
@@ -200,10 +156,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
+    paddingHorizontal: moderateScale(20),
   },
   controlsContainer: {
     width: '100%',
-    marginTop: moderateScale(20),
+    paddingHorizontal: moderateScale(20),
+    paddingTop: moderateScale(10),
   },
   visible: {
     display: 'flex',

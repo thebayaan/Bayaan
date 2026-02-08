@@ -560,11 +560,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
       },
 
       setSleepTimer: (minutes: number) => {
-        // SLEEP TIMER NOT WORKING - marked for Phase 2 implementation
         if (__DEV__)
-          console.warn(
-            '[PlayerStore] Sleep timer is not yet implemented with expo-audio. Setting timer state only.',
-          );
+          console.log('[PlayerStore] Setting sleep timer:', minutes, 'minutes');
 
         const state = get();
 
