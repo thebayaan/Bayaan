@@ -13,3 +13,5 @@ export {
 } from './ExpoAudioService';
 
 export {ExpoAudioProvider} from './ExpoAudioProvider';
+
+export {ambientAudioService, AmbientAudioService} from './AmbientAudioService';

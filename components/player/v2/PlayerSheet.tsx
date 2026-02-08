@@ -190,6 +190,10 @@ export const PlayerSheet = () => {
     SheetManager.show('mushaf-layout');
   }, []);
 
+  const handleShowAmbientSheet = useCallback(() => {
+    SheetManager.show('ambient-sounds');
+  }, []);
+
   const handleShowOptionsSheet = useCallback(() => {
     if (!currentTrack) return;
 
@@ -263,6 +267,7 @@ export const PlayerSheet = () => {
           onSleepTimerPress={handleShowSleepTimerSheet}
           onMushafLayoutPress={handleShowMushafLayoutSheet}
           onOptionsPress={handleShowOptionsSheet}
+          onAmbientPress={handleShowAmbientSheet}
         />
       </BottomSheet>
     </>

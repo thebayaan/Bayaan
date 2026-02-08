@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  ScrollView,
   Keyboard,
   Platform,
   Dimensions,
@@ -15,6 +14,7 @@ import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
@@ -117,7 +117,7 @@ export const OrganizeRecitationSheet = (
   );
 
   // Keyboard-aware scrolling
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<import('react-native').ScrollView>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const reciterSectionY = useRef(0);
   const surahSectionY = useRef(0);

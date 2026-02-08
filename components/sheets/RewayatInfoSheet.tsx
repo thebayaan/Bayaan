@@ -1,17 +1,11 @@
 import React, {useState} from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  Dimensions,
-} from 'react-native';
+import {View, Text, TouchableOpacity, Platform, Dimensions} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
