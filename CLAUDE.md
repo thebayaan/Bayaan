@@ -25,6 +25,12 @@ When Claude learns something essential about this project that should be remembe
 
 ---
 
+## Tooling Rules
+
+- **GitHub operations:** Always use the `gh` CLI (e.g., `gh issue create`, `gh pr create`, `gh api`) via Bash. Never use the GitHub MCP server tools — authentication is broken and will fail.
+
+---
+
 ## Common Commands
 
 ### Development
@@ -43,6 +49,11 @@ npm run reset-project
 ```
 
 ### Code Quality
+
+**All code written must be both Prettier-formatted and type-checked before committing.**
+
+- Run `npx prettier --write <files>` on all modified files
+- Run `npx tsc --noEmit` and ensure no new type errors are introduced
 
 ```bash
 # Linting

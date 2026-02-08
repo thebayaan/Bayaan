@@ -1,17 +1,15 @@
 import {useCallback} from 'react';
 import {useRouter} from 'expo-router';
-import {usePlayerStore} from '@/store/playerStore';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 
 export const useReciterNavigation = () => {
   const router = useRouter();
-  const setPlayerSheetVisible = usePlayerStore(
-    state => state.setPlayerSheetVisible,
-  );
+  const setSheetMode = usePlayerStore(state => state.setSheetMode);
 
   const navigateToReciterProfile = useCallback(
     (reciterId: string) => {
       // Hide the player sheet first
-      setPlayerSheetVisible(false);
+      setSheetMode('hidden');
 
       // Navigate after a short delay to allow the sheet to close
       setTimeout(() => {
@@ -21,7 +19,7 @@ export const useReciterNavigation = () => {
         });
       }, 300); // Delay for bottom sheet animation
     },
-    [router, setPlayerSheetVisible],
+    [router, setSheetMode],
   );
 
   return {navigateToReciterProfile};
