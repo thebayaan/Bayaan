@@ -1,5 +1,5 @@
 import React, {memo, useCallback, useState, useEffect, useRef} from 'react';
-import {StyleSheet, TouchableOpacity, Text, View} from 'react-native';
+import {StyleSheet, Pressable, Text, View} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Verse} from '@/types/quran';
 import Color from 'color';
@@ -293,9 +293,11 @@ export const VerseItem = memo<VerseItemProps>(
     // <--- End Get Indopak text
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={[styles.container, {borderBottomColor: borderColor}]}
+      <Pressable
+        style={({pressed}) => [
+          styles.container,
+          {borderBottomColor: borderColor, opacity: pressed ? 0.7 : 1},
+        ]}
         onPress={onPress}>
         <View style={styles.verseInfoContainer}>
           <View style={[styles.verseInfoPill, {backgroundColor: bgColor}]}>
@@ -396,18 +398,21 @@ export const VerseItem = memo<VerseItemProps>(
               <Text style={[styles.footnoteTitle, {color: textColor}]}>
                 Footnote
               </Text>
-              <TouchableOpacity
+              <Pressable
                 onPress={closeFootnote}
-                style={styles.closeButton}>
+                style={({pressed}) => [
+                  styles.closeButton,
+                  {opacity: pressed ? 0.7 : 1},
+                ]}>
                 <Ionicons name="close" size={20} color={textColor} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
             <Text style={[styles.footnoteContent, {color: textColor}]}>
               {activeFootnote.content}
             </Text>
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   },
 );

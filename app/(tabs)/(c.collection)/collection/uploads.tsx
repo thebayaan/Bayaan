@@ -29,6 +29,11 @@ import Animated, {
 import type {UploadedRecitation} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {GradientText} from '@/components/GradientText';
+import {ReciterImage} from '@/components/ReciterImage';
+import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -70,6 +75,135 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
     ? parts.join(' \u00B7 ')
     : stripExtension(item.originalFilename);
 }
+
+interface UploadListItemProps {
+  item: UploadedRecitation;
+  index: number;
+  onPlay: (item: UploadedRecitation, index: number) => void;
+  onShowOptions: (item: UploadedRecitation, index: number) => void;
+}
+
+const UploadListItem: React.FC<UploadListItemProps> = React.memo(
+  ({item, index, onPlay, onShowOptions}) => {
+    const {theme} = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
+    const playbackState = usePlayerStore(state => state.playback.state);
+    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+    const tracks = usePlayerStore(state => state.queue.tracks);
+
+    const trackId = `upload-${item.id}`;
+
+    const isCurrentTrack = useMemo(() => {
+      const current =
+        tracks && currentIndex >= 0 && currentIndex < tracks.length
+          ? tracks[currentIndex]
+          : null;
+      return current?.id === trackId;
+    }, [tracks, currentIndex, trackId]);
+
+    const isPlaying =
+      isCurrentTrack &&
+      (playbackState === 'playing' || playbackState === 'buffering');
+
+    const displaySubtitle = getDisplaySubtitle(item);
+
+    const reciterName = useMemo(() => {
+      if (!item.reciterId) return null;
+      return getReciterName(item.reciterId);
+    }, [item.reciterId]);
+
+    // Build title with surah number prefix when applicable
+    const displayTitle = useMemo(() => {
+      if (item.type === 'surah' && item.surahNumber) {
+        const surah = getSurahById(item.surahNumber);
+        if (surah) return `${item.surahNumber}. ${surah.name}`;
+      }
+      return getDisplayTitle(item);
+    }, [item]);
+
+    return (
+      <View style={styles.itemRow}>
+        <Pressable
+          style={styles.itemPlayZone}
+          onPress={() => onPlay(item, index)}
+          onLongPress={() => onShowOptions(item, index)}>
+          {reciterName ? (
+            <ReciterImage
+              reciterName={reciterName}
+              style={styles.itemReciterImage}
+            />
+          ) : (
+            <View style={styles.itemIconContainer}>
+              <Feather
+                name="music"
+                size={moderateScale(18)}
+                color={theme.colors.textSecondary}
+              />
+            </View>
+          )}
+          <View style={styles.itemInfoContainer}>
+            <View style={styles.itemNameRow}>
+              {isCurrentTrack && item.surahNumber ? (
+                <GradientText
+                  style={styles.itemName}
+                  surahId={item.surahNumber}>
+                  {displayTitle}
+                </GradientText>
+              ) : (
+                <Text
+                  style={styles.itemName}
+                  numberOfLines={1}
+                  ellipsizeMode="middle">
+                  {displayTitle}
+                </Text>
+              )}
+              {item.surahNumber && surahGlyphMap[item.surahNumber] && (
+                <Text style={styles.itemSurahGlyph}>
+                  {surahGlyphMap[item.surahNumber]}
+                </Text>
+              )}
+            </View>
+            <View style={styles.itemSecondaryRow}>
+              <Text style={styles.itemSecondaryText} numberOfLines={1}>
+                {displaySubtitle}
+              </Text>
+            </View>
+            {item.type === 'surah' && item.rewayah && (
+              <Text style={styles.itemTertiaryText}>
+                {item.rewayah}
+                {item.style
+                  ? ` \u00B7 ${
+                      item.style.charAt(0).toUpperCase() + item.style.slice(1)
+                    }`
+                  : ''}
+              </Text>
+            )}
+          </View>
+        </Pressable>
+        <Pressable
+          style={styles.itemOptionsZone}
+          onPress={() => onShowOptions(item, index)}>
+          {isCurrentTrack ? (
+            <NowPlayingIndicator
+              isPlaying={isPlaying}
+              barCount={3}
+              surahId={item.surahNumber ?? undefined}
+            />
+          ) : (
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          )}
+        </Pressable>
+      </View>
+    );
+  },
+);
+
+UploadListItem.displayName = 'UploadListItem';
 
 export default function UploadsScreen() {
   const {theme} = useTheme();
@@ -193,66 +327,15 @@ export default function UploadsScreen() {
   const hasRecitations = recitations.length > 0;
 
   const renderItem = useCallback(
-    ({item, index}: ListRenderItemInfo<UploadedRecitation>) => {
-      const displayTitle = getDisplayTitle(item);
-      const displaySubtitle = getDisplaySubtitle(item);
-
-      return (
-        <View style={styles.itemRow}>
-          <Pressable
-            style={styles.itemPlayZone}
-            onPress={() => handlePlayRecitation(item, index)}
-            onLongPress={() => handleShowOptions(item, index)}>
-            <View style={styles.itemIconContainer}>
-              <Feather
-                name="music"
-                size={moderateScale(18)}
-                color={theme.colors.textSecondary}
-              />
-            </View>
-            <View style={styles.itemInfoContainer}>
-              <Text
-                style={styles.itemName}
-                numberOfLines={1}
-                ellipsizeMode="middle">
-                {displayTitle}
-              </Text>
-              <View style={styles.itemSecondaryRow}>
-                <Text style={styles.itemSecondaryText} numberOfLines={1}>
-                  {displaySubtitle}
-                </Text>
-              </View>
-              {item.type === 'surah' && item.rewayah && (
-                <Text style={styles.itemTertiaryText}>
-                  {item.rewayah}
-                  {item.style
-                    ? ` \u00B7 ${
-                        item.style.charAt(0).toUpperCase() + item.style.slice(1)
-                      }`
-                    : ''}
-                </Text>
-              )}
-            </View>
-          </Pressable>
-          <Pressable
-            style={styles.itemOptionsZone}
-            onPress={() => handleShowOptions(item, index)}>
-            <Feather
-              name="more-horizontal"
-              size={moderateScale(18)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-        </View>
-      );
-    },
-    [
-      styles,
-      theme.colors.textSecondary,
-      theme.colors.text,
-      handlePlayRecitation,
-      handleShowOptions,
-    ],
+    ({item, index}: ListRenderItemInfo<UploadedRecitation>) => (
+      <UploadListItem
+        item={item}
+        index={index}
+        onPlay={handlePlayRecitation}
+        onShowOptions={handleShowOptions}
+      />
+    ),
+    [handlePlayRecitation, handleShowOptions],
   );
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
@@ -565,8 +648,24 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       alignItems: 'center',
       marginRight: moderateScale(10),
     },
+    itemReciterImage: {
+      width: moderateScale(44),
+      height: moderateScale(44),
+      borderRadius: moderateScale(10),
+      marginRight: moderateScale(10),
+    },
     itemInfoContainer: {
       flex: 1,
+    },
+    itemNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    itemSurahGlyph: {
+      fontSize: moderateScale(16),
+      fontFamily: 'SurahNames',
+      color: theme.colors.text,
+      marginLeft: moderateScale(6),
     },
     itemName: {
       fontSize: moderateScale(13),
