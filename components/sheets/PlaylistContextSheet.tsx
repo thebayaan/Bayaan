@@ -1,7 +1,7 @@
 import React, {useState, useCallback, useRef, useEffect} from 'react';
 import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
@@ -480,16 +480,15 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
                   />
                 )
               ) : (
-                <Icon
-                  name={option.icon}
-                  type="feather"
+                <Feather
+                  name={option.icon as any}
                   size={moderateScale(20)}
                   color={
                     option.disabled
                       ? theme.colors.textSecondary
                       : option.destructive
-                        ? '#ff4444'
-                        : theme.colors.text
+                      ? '#ff4444'
+                      : theme.colors.text
                   }
                 />
               )}

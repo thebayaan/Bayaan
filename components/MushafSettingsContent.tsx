@@ -4,7 +4,7 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useTajweedStore} from '@/store/tajweedStore';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -224,9 +224,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
             onPress={handleDecrement}
             hitSlop={10}
             disabled={currentDisplayValue <= DISPLAY_MIN}>
-            <Icon
+            <Feather
               name="minus"
-              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue <= DISPLAY_MIN
@@ -240,9 +239,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
             onPress={handleIncrement}
             hitSlop={10}
             disabled={currentDisplayValue >= DISPLAY_MAX}>
-            <Icon
+            <Feather
               name="plus"
-              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue >= DISPLAY_MAX

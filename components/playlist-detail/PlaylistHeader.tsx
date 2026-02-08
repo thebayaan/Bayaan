@@ -2,7 +2,7 @@ import React from 'react';
 import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
@@ -58,8 +58,8 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
       button === 'options'
         ? optionsScale
         : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
+        ? shuffleScale
+        : playScale;
     scale.value = withSpring(0.92, {
       damping: 15,
       stiffness: 300,
@@ -71,8 +71,8 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
       button === 'options'
         ? optionsScale
         : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
+        ? shuffleScale
+        : playScale;
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
@@ -87,9 +87,8 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
           style={styles.backButton}
           onPress={() => router.back()}
           hitSlop={8}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
@@ -122,9 +121,8 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
             onPress={onOptionsPress}
             onPressIn={() => handlePressIn('options')}
             onPressOut={() => handlePressOut('options')}>
-            <Icon
+            <Feather
               name="more-horizontal"
-              type="feather"
               size={moderateScale(20)}
               color={theme.colors.text}
             />

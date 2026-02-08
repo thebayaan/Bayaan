@@ -24,7 +24,7 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {reciterImages} from '@/utils/reciterImages';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useRouter} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -168,9 +168,8 @@ const BrowseButton = React.memo(
         onPress={onPress}
         activeOpacity={0.8}>
         <Text style={styles.buttonText}>Browse All</Text>
-        <Icon
+        <Feather
           name="arrow-right"
-          type="feather"
           size={moderateScale(18)}
           color={theme.colors.text}
           style={styles.buttonIcon}
@@ -494,9 +493,8 @@ export const ScrollingHero = React.memo(
                 },
               ]}>
               <Text style={styles.buttonText}>Browse All</Text>
-              <Icon
+              <Feather
                 name="arrow-right"
-                type="feather"
                 size={moderateScale(16)}
                 color={theme.colors.text}
                 style={styles.buttonIcon}

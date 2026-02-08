@@ -10,7 +10,7 @@ import {
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -244,9 +244,8 @@ const DhikrReaderScreen: React.FC = () => {
           onPress={handleBack}
           activeOpacity={1}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />

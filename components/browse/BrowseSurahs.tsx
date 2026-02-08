@@ -10,7 +10,7 @@ import {SURAHS, Surah} from '@/data/surahData';
 import {SurahCard} from '@/components/cards/SurahCard';
 import {SurahItem} from '@/components/SurahItem';
 import Header from '@/components/Header';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
 import Animated, {FadeIn} from 'react-native-reanimated';
@@ -388,9 +388,8 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
           ]}
           activeOpacity={1}
           onPress={() => changeSortOption('asc')}>
-          <Icon
+          <Feather
             name="arrow-up"
-            type="feather"
             size={moderateScale(14)}
             color={
               sortOption === 'asc'
@@ -423,9 +422,8 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
           ]}
           activeOpacity={1}
           onPress={() => changeSortOption('desc')}>
-          <Icon
+          <Feather
             name="arrow-down"
-            type="feather"
             size={moderateScale(14)}
             color={
               sortOption === 'desc'
@@ -458,9 +456,8 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
           ]}
           activeOpacity={1}
           onPress={() => changeSortOption('revelation')}>
-          <Icon
+          <Feather
             name="calendar"
-            type="feather"
             size={moderateScale(14)}
             color={
               sortOption === 'revelation'
@@ -488,9 +485,8 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
         style={styles.viewModeButton}
         onPress={toggleViewMode}
         activeOpacity={1}>
-        <Icon
+        <Feather
           name={viewMode === 'card' ? 'list' : 'grid'}
-          type="feather"
           size={moderateScale(16)}
           color={theme.colors.text}
         />

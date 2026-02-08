@@ -10,7 +10,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 
 interface CollectionStickyHeaderProps {
   title: string;
@@ -53,9 +53,8 @@ export const CollectionStickyHeader: React.FC<CollectionStickyHeaderProps> = ({
           style={styles.backButton}
           onPress={() => router.back()}
           hitSlop={8}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(22)}
             color={theme.colors.text}
           />

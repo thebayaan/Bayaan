@@ -12,7 +12,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
@@ -204,9 +204,8 @@ export default function UploadsScreen() {
             onPress={() => handlePlayRecitation(item, index)}
             onLongPress={() => handleShowOptions(item, index)}>
             <View style={styles.itemIconContainer}>
-              <Icon
+              <Feather
                 name="music"
-                type="feather"
                 size={moderateScale(18)}
                 color={theme.colors.textSecondary}
               />
@@ -238,9 +237,8 @@ export default function UploadsScreen() {
           <Pressable
             style={styles.itemOptionsZone}
             onPress={() => handleShowOptions(item, index)}>
-            <Icon
+            <Feather
               name="more-horizontal"
-              type="feather"
               size={moderateScale(18)}
               color={theme.colors.text}
             />
@@ -272,9 +270,8 @@ export default function UploadsScreen() {
             style={[styles.backButton, {top: insets.top + moderateScale(10)}]}
             onPress={() => router.back()}
             hitSlop={8}>
-            <Icon
+            <Feather
               name="arrow-left"
-              type="feather"
               size={moderateScale(24)}
               color={theme.colors.text}
             />
@@ -359,9 +356,8 @@ export default function UploadsScreen() {
               color={theme.colors.textSecondary}
             />
           ) : (
-            <Icon
+            <Feather
               name="plus"
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />

@@ -3,7 +3,7 @@ import {View, Text, ScrollView, TouchableOpacity, Linking} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -182,9 +182,8 @@ export default function CreditsScreen() {
                       </Text>
                     </View>
                     {item.link && (
-                      <Icon
+                      <Feather
                         name="external-link"
-                        type="feather"
                         size={moderateScale(16)}
                         color={theme.colors.textSecondary}
                       />

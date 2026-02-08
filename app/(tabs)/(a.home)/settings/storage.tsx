@@ -10,7 +10,7 @@ import Header from '@/components/Header';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 
 interface StorageCategoryProps {
   color: string;
@@ -214,9 +214,8 @@ export default function StorageScreen() {
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <Icon
+            <Feather
               name="alert-circle"
-              type="feather"
               size={moderateScale(48)}
               color={theme.colors.error}
             />

@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
+import {MaterialIcons} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 
@@ -32,8 +32,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     const borderColor = Color(playlistColor).alpha(0.3).toString();
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.99}
+      <Pressable
         style={[styles.playlistItem, isSelected && styles.selectedPlaylistItem]}
         onPress={handlePress}
         onLongPress={handleLongPress}>
@@ -53,15 +52,14 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
         </View>
         {isSelected && (
           <View style={styles.checkmarkContainer}>
-            <Icon
+            <MaterialIcons
               name="check"
-              type="material"
               size={moderateScale(24)}
               color={theme.colors.primary}
             />
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   },
 );

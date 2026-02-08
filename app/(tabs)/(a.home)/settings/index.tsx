@@ -4,7 +4,7 @@ import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme, ThemeMode, PrimaryColor} from '@/utils/themeUtils';
-import {Icon} from '@rneui/base';
+import {Feather, Ionicons, MaterialIcons} from '@expo/vector-icons';
 import {primaryColors} from '@/styles/colorSchemes';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -255,12 +255,19 @@ export default function SettingsScreen() {
                 onPressOut={() => setPressedOption(null)}>
                 <View style={styles.themeContent}>
                   <View style={[styles.iconContainer]}>
-                    <Icon
-                      name={option.icon}
-                      type={option.iconType}
-                      size={moderateScale(20)}
-                      color={theme.colors.text}
-                    />
+                    {option.iconType === 'ionicon' ? (
+                      <Ionicons
+                        name={option.icon as any}
+                        size={moderateScale(20)}
+                        color={theme.colors.text}
+                      />
+                    ) : (
+                      <Feather
+                        name={option.icon as any}
+                        size={moderateScale(20)}
+                        color={theme.colors.text}
+                      />
+                    )}
                   </View>
                   <Text
                     style={[
@@ -368,10 +375,15 @@ export default function SettingsScreen() {
                           size={moderateScale(24)}
                           color={theme.colors.textSecondary}
                         />
+                      ) : item.iconType === 'material' ? (
+                        <MaterialIcons
+                          name={item.icon as any}
+                          size={moderateScale(20)}
+                          color={theme.colors.textSecondary}
+                        />
                       ) : (
-                        <Icon
-                          name={item.icon}
-                          type={item.iconType}
+                        <Feather
+                          name={item.icon as any}
                           size={moderateScale(20)}
                           color={theme.colors.textSecondary}
                         />
@@ -393,17 +405,17 @@ export default function SettingsScreen() {
                         {item.description}
                       </Text>
                     </View>
-                    <Icon
-                      name={
-                        isExternalLink(item.type)
-                          ? 'external-link'
-                          : 'arrow-right'
-                      }
-                      type="feather"
-                      size={moderateScale(20)}
-                      color={theme.colors.textSecondary}
-                      containerStyle={{opacity: 0.6}}
-                    />
+                    <View style={{opacity: 0.6}}>
+                      <Feather
+                        name={
+                          isExternalLink(item.type)
+                            ? 'external-link'
+                            : 'arrow-right'
+                        }
+                        size={moderateScale(20)}
+                        color={theme.colors.textSecondary}
+                      />
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}

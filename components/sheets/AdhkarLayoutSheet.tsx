@@ -16,7 +16,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {
   useAdhkarSettingsStore,
   getActualFontSize,
@@ -79,9 +79,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
             activeOpacity={1}
             hitSlop={10}
             disabled={currentDisplayValue <= DISPLAY_MIN}>
-            <Icon
+            <Feather
               name="minus"
-              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue <= DISPLAY_MIN
@@ -96,9 +95,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
             activeOpacity={1}
             hitSlop={10}
             disabled={currentDisplayValue >= DISPLAY_MAX}>
-            <Icon
+            <Feather
               name="plus"
-              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue >= DISPLAY_MAX

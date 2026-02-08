@@ -1,6 +1,6 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, ViewStyle, Platform} from 'react-native';
-import {Icon} from '@rneui/base';
+import {View, Text, Pressable, ViewStyle, Platform} from 'react-native';
+import {Feather} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -65,17 +65,15 @@ export const Header: React.FC<HeaderProps> = ({
           </View>
         ))}
       <View style={styles.headerContent}>
-        <TouchableOpacity
+        <Pressable
           style={[styles.backButton, backButtonStyle]}
-          activeOpacity={0.7}
           onPress={onBack}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
         <Text style={[styles.headerTitle, titleStyle]}>{title}</Text>
       </View>
     </View>

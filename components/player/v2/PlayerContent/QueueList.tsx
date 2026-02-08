@@ -10,7 +10,7 @@ import {
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {Icon} from '@rneui/themed';
+import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {TrackItem} from '@/components/TrackItem';
 
 interface QueueListProps {
@@ -29,9 +29,8 @@ export const QueueList: React.FC<QueueListProps> = ({
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>
-          <Icon
+          <MaterialCommunityIcons
             name="playlist-music"
-            type="material-community"
             size={moderateScale(48)}
             color={theme.colors.text}
             style={styles.emptyIcon}
@@ -81,9 +80,8 @@ export const QueueList: React.FC<QueueListProps> = ({
             <Pressable
               style={styles.removeButton}
               onPress={() => onRemoveQueueItem(index)}>
-              <Icon
+              <MaterialCommunityIcons
                 name="close"
-                type="material-community"
                 size={moderateScale(20)}
                 color={theme.colors.text}
               />

@@ -6,7 +6,7 @@ import {
   StyleSheet,
   Platform,
 } from 'react-native';
-import {Icon} from '@rneui/themed';
+import {AntDesign} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './_styles';
@@ -143,8 +143,7 @@ const Header = React.memo(
             activeOpacity={0.7}
             style={headerStyles.settingsButton}
             onPress={handleSettingsPress}>
-            <Icon
-              type="antdesign"
+            <AntDesign
               name="setting"
               size={moderateScale(20)}
               color={theme.colors.textSecondary}

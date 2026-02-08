@@ -1,7 +1,7 @@
 import React from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {Icon} from '@rneui/themed';
 import {moderateScale} from 'react-native-size-matters';
+import {Entypo, Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -32,9 +32,8 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
   return (
     <View style={styles.header}>
       <Pressable style={styles.closeButton} onPress={handleClose}>
-        <Icon
+        <Entypo
           name="chevron-thin-down"
-          type="entypo"
           size={moderateScale(22)}
           color={theme.colors.text}
         />
@@ -45,9 +44,8 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       </Text>
 
       <Pressable style={styles.optionsButton} onPress={onOptionsPress}>
-        <Icon
+        <Feather
           name="more-horizontal"
-          type="feather"
           size={moderateScale(22)}
           color={theme.colors.text}
         />

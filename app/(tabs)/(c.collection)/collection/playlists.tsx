@@ -5,7 +5,7 @@ import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlaylistCard} from '@/components/cards/PlaylistCard';
 import {useRouter} from 'expo-router';
-import {Icon} from '@rneui/themed';
+import {Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {usePlaylists} from '@/hooks/usePlaylists';
 
@@ -52,9 +52,8 @@ export default function PlaylistsScreen() {
             onPress={() => {
               /* Handle create playlist */
             }}>
-            <Icon
+            <Ionicons
               name="add"
-              type="ionicon"
               size={moderateScale(24)}
               color={theme.colors.primary}
             />

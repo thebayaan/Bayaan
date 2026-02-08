@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 
@@ -88,9 +88,8 @@ export const UploadCard: React.FC<UploadCardProps> = ({
       />
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Icon
+          <Feather
             name="music"
-            type="feather"
             size={moderateScale(22)}
             color={theme.colors.textSecondary}
           />

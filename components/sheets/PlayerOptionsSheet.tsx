@@ -15,7 +15,7 @@ import ActionSheet, {
   SheetProps,
   SheetManager,
 } from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import {
   useDownloadActions,
@@ -28,7 +28,6 @@ import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
-import {Ionicons} from '@expo/vector-icons';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -335,9 +334,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleEditDetails}>
-                <Icon
+                <FontAwesome5
                   name="sliders-h"
-                  type="font-awesome-5"
                   size={moderateScale(18)}
                   color={theme.colors.text}
                 />
@@ -375,8 +373,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                   {isCurrentlyDownloading
                     ? `Downloading ${Math.round(downloadProgress * 100)}%`
                     : isTrackDownloaded
-                      ? 'Downloaded'
-                      : 'Download'}
+                    ? 'Downloaded'
+                    : 'Download'}
                 </Text>
               </Pressable>
             )}
@@ -388,9 +386,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleAddToPlaylist}>
-                <Icon
+                <Feather
                   name="plus-circle"
-                  type="feather"
                   size={moderateScale(20)}
                   color={theme.colors.text}
                 />
@@ -439,9 +436,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleViewInfo}>
-                <Icon
+                <Feather
                   name="info"
-                  type="feather"
                   size={moderateScale(20)}
                   color={theme.colors.text}
                 />

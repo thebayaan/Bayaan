@@ -6,8 +6,7 @@ import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, ShuffleIcon, HeartIcon, CheckIcon} from '@/components/Icons';
-import {Ionicons} from '@expo/vector-icons';
-import {Icon} from '@rneui/themed';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import Animated, {
   useSharedValue,
@@ -64,8 +63,8 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
       button === 'download'
         ? downloadScale
         : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
+        ? shuffleScale
+        : playScale;
     scale.value = withSpring(0.92, {
       damping: 15,
       stiffness: 300,
@@ -77,8 +76,8 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
       button === 'download'
         ? downloadScale
         : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
+        ? shuffleScale
+        : playScale;
     scale.value = withSpring(1, {
       damping: 15,
       stiffness: 300,
@@ -93,9 +92,8 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
           style={styles.backButton}
           onPress={() => router.back()}
           hitSlop={8}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
