@@ -14,6 +14,7 @@
 import React, {useEffect, useRef, useCallback} from 'react';
 import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {expoAudioService} from './ExpoAudioService';
+import {lockScreenService} from './LockScreenService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
@@ -52,6 +53,9 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
         // Connect the player instance to the service
         expoAudioService.setPlayer(player);
 
+        // Start lock screen sync after player is connected
+        await lockScreenService.startSync();
+
         if (__DEV__)
           console.log('[ExpoAudioProvider] Player connected to service');
       } catch (error) {
@@ -63,6 +67,7 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
 
     // Cleanup on unmount
     return () => {
+      lockScreenService.stopSync();
       if (__DEV__) console.log('[ExpoAudioProvider] Unmounting, cleaning up');
     };
   }, [player]);
