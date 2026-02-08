@@ -148,6 +148,14 @@ module.exports = {
           androidMultiIntentFilters: ['audio/*'],
         },
       ],
+      [
+        'expo-media-control',
+        {
+          enableBackgroundAudio: true,
+          audioSessionCategory: 'playback',
+          notificationIcon: './assets/images/notification-icon.png',
+        },
+      ],
       './withAndroidSigning.js',
       './withIOSTeam.js',
     ],

@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
+    <key>AVAudioSessionCategory</key>
+    <string>playback</string>
+    <key>AVAudioSessionCategoryOptions</key>
+    <array>
+      <string>AVAudioSessionCategoryOptionAllowBluetooth</string>
+      <string>AVAudioSessionCategoryOptionAllowBluetoothA2DP</string>
+    </array>
     <key>AppGroupIdentifier</key>
     <string>group.com.bayaan.app</string>
     <key>BGTaskSchedulerPermittedIdentifiers</key>
@@ -44,7 +51,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>316</string>
+    <string>323</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
