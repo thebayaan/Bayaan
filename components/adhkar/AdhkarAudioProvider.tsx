@@ -12,7 +12,7 @@ import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+
 import {getAudioSource} from '@/utils/adhkarAudio';
 
 /**
@@ -171,7 +171,15 @@ const AudioPlayerManager: React.FC<{
         pause();
       }
     }
-  }, [status, isLooping, isPlayAllMode, pause, player, advanceToNext, audioSource]);
+  }, [
+    status,
+    isLooping,
+    isPlayAllMode,
+    pause,
+    player,
+    advanceToNext,
+    audioSource,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -257,8 +265,8 @@ export const AdhkarAudioProvider: React.FC<{children: React.ReactNode}> = ({
 
   // Bidirectional pause: When main Quran player starts, pause adhkar (both modes)
   useEffect(() => {
-    const wasPlaying = prevMainPlayerState.current === TrackPlayerState.Playing;
-    const isNowPlaying = mainPlayerState === TrackPlayerState.Playing;
+    const wasPlaying = prevMainPlayerState.current === 'playing';
+    const isNowPlaying = mainPlayerState === 'playing';
 
     if (!wasPlaying && isNowPlaying) {
       // Pause whichever mode is active

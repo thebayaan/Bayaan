@@ -1,29 +1,22 @@
-import React from 'react';
-import {View, TouchableOpacity, Text, StyleSheet, Platform} from 'react-native';
+import React, {useCallback, useMemo} from 'react';
+import {View, Pressable, Text, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {HomeIcon, SearchIcon, CollectionIcon} from '@/components/Icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CommonActions} from '@react-navigation/native';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {Theme} from '@/utils/themeUtils';
 
-const BottomTabBar: React.FC<BottomTabBarProps> = ({
-  state,
-  descriptors,
-  navigation,
-}) => {
-  const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
-  const iconSize = moderateScale(26, 0.2);
-  const tabTextSize = moderateScale(10, 0.2);
-
-  // Only apply bottom padding on iOS
-  const bottomPadding = Platform.OS === 'ios' ? insets.bottom : 0;
-
-  const styles = StyleSheet.create({
+function createStyles(
+  backgroundColor: string,
+  textColor: string,
+  bottomPadding: number,
+) {
+  return StyleSheet.create({
     container: {
       flexDirection: 'row',
-      backgroundColor: theme.colors.background,
+      backgroundColor,
       paddingBottom: bottomPadding,
     },
     content: {
@@ -39,42 +32,117 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
         Platform.OS === 'android' ? moderateScale(10) : moderateScale(5),
     },
     tabText: {
-      fontSize: tabTextSize,
+      fontSize: moderateScale(10, 0.2),
       marginTop: moderateScale(4),
-      color: theme.colors.text,
+      color: textColor,
     },
   });
+}
 
-  const getIcon = (routeName: string, isFocused: boolean) => {
-    switch (routeName) {
-      case '(a.home)':
-        return (
-          <HomeIcon
-            filled={isFocused}
-            color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-            size={iconSize}
-          />
+function getIcon(
+  routeName: string,
+  isFocused: boolean,
+  theme: Theme,
+  iconSize: number,
+) {
+  switch (routeName) {
+    case '(a.home)':
+      return (
+        <HomeIcon
+          filled={isFocused}
+          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+          size={iconSize}
+        />
+      );
+    case '(b.search)':
+      return (
+        <SearchIcon
+          filled={isFocused}
+          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+          size={iconSize}
+        />
+      );
+    case '(c.collection)':
+      return (
+        <CollectionIcon
+          filled={isFocused}
+          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+          size={iconSize}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+interface TabItemProps {
+  routeName: string;
+  routeKey: string;
+  label: string;
+  isFocused: boolean;
+  onPress: () => void;
+  theme: Theme;
+  iconSize: number;
+  tabButtonStyle: object;
+  tabTextStyle: object;
+}
+
+const TabItem = React.memo(function TabItem({
+  routeName,
+  label,
+  isFocused,
+  onPress,
+  theme,
+  iconSize,
+  tabButtonStyle,
+  tabTextStyle,
+}: TabItemProps) {
+  return (
+    <Pressable onPress={onPress} style={tabButtonStyle}>
+      {getIcon(routeName, isFocused, theme, iconSize)}
+      <Text style={tabTextStyle}>{label}</Text>
+    </Pressable>
+  );
+});
+
+const BottomTabBar: React.FC<BottomTabBarProps> = ({
+  state,
+  descriptors,
+  navigation,
+}) => {
+  const {theme} = useTheme();
+  const insets = useSafeAreaInsets();
+  const iconSize = moderateScale(26, 0.2);
+
+  const bottomPadding = Platform.OS === 'ios' ? insets.bottom : 0;
+
+  const styles = useMemo(
+    () =>
+      createStyles(theme.colors.background, theme.colors.text, bottomPadding),
+    [theme.colors.background, theme.colors.text, bottomPadding],
+  );
+
+  const handleTabPress = useCallback(
+    (route: (typeof state.routes)[number], index: number) => {
+      const isFocused = state.index === index;
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      });
+
+      if (!isFocused && !event.defaultPrevented) {
+        navigation.dispatch(
+          CommonActions.navigate({name: route.name, merge: true}),
         );
-      case '(b.search)':
-        return (
-          <SearchIcon
-            filled={isFocused}
-            color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-            size={iconSize}
-          />
-        );
-      case '(c.collection)':
-        return (
-          <CollectionIcon
-            filled={isFocused}
-            color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-            size={iconSize}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+      }
+
+      if (route.name === 'search') {
+        navigation.setParams({focusSearchBar: true});
+      }
+    },
+    [state.index, navigation],
+  );
 
   return (
     <View style={styles.container}>
@@ -85,40 +153,24 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
             options.tabBarLabel !== undefined
               ? options.tabBarLabel
               : options.title !== undefined
-                ? options.title
-                : route.name;
+              ? options.title
+              : route.name;
 
           const isFocused = state.index === index;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.dispatch(
-                CommonActions.navigate({name: route.name, merge: true}),
-              );
-            }
-
-            if (route.name === 'search') {
-              navigation.setParams({focusSearchBar: true});
-            }
-          };
-
           return (
-            <TouchableOpacity
-              activeOpacity={0.99}
-              key={index}
-              onPress={onPress}
-              style={styles.tabButton}>
-              {getIcon(route.name, isFocused)}
-              <Text style={styles.tabText}>
-                {typeof label === 'string' ? label : ''}
-              </Text>
-            </TouchableOpacity>
+            <TabItem
+              key={route.key}
+              routeName={route.name}
+              routeKey={route.key}
+              label={typeof label === 'string' ? label : ''}
+              isFocused={isFocused}
+              onPress={() => handleTabPress(route, index)}
+              theme={theme}
+              iconSize={iconSize}
+              tabButtonStyle={styles.tabButton}
+              tabTextStyle={styles.tabText}
+            />
           );
         })}
       </View>

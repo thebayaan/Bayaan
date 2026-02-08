@@ -1,18 +1,16 @@
 import {create} from 'zustand';
-import TrackPlayer, {Event} from 'react-native-track-player';
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
+import {usePlayerStore} from './playerStore';
 
 interface ProgressState {
   position: number;
   duration: number;
   buffered: number;
-  updateInterval: number;
   isSeeking: boolean;
   seekPosition: number | null;
   setPosition: (position: number) => void;
   setDuration: (duration: number) => void;
   setBuffered: (buffered: number) => void;
-  setUpdateInterval: (interval: number) => void;
   setIsSeeking: (isSeeking: boolean) => void;
   setSeekPosition: (position: number | null) => void;
 }
@@ -21,24 +19,27 @@ export const useProgressStore = create<ProgressState>(set => ({
   position: 0,
   duration: 0,
   buffered: 0,
-  updateInterval: 100,
   isSeeking: false,
   seekPosition: null,
   setPosition: (position: number) => set({position}),
   setDuration: (duration: number) => set({duration}),
   setBuffered: (buffered: number) => set({buffered}),
-  setUpdateInterval: (updateInterval: number) => set({updateInterval}),
   setIsSeeking: (isSeeking: boolean) => set({isSeeking}),
   setSeekPosition: (seekPosition: number | null) => set({seekPosition}),
 }));
 
-// Hook to subscribe to progress updates
+/**
+ * Hook to subscribe to progress updates
+ *
+ * Uses playerStore as the source of truth.
+ * The ExpoAudioProvider updates playerStore.playback.position/duration,
+ * and this hook syncs that to progressStore for backward compatibility.
+ */
 export function useProgress() {
   const {
     position,
     duration,
     buffered,
-    updateInterval,
     isSeeking,
     seekPosition,
     setPosition,
@@ -48,77 +49,53 @@ export function useProgress() {
     setSeekPosition,
   } = useProgressStore();
 
+  // Subscribe to playerStore for progress updates
+  const playback = usePlayerStore(state => state.playback);
+
+  // Use refs to access latest values without causing effect re-runs
+  const isSeekingRef = useRef(isSeeking);
+  const seekPositionRef = useRef(seekPosition);
+  const positionRef = useRef(position);
+  const durationRef = useRef(duration);
+
+  // Keep refs in sync
   useEffect(() => {
-    let progressSubscription: ReturnType<typeof setInterval>;
-    let eventSubscription: ReturnType<typeof TrackPlayer.addEventListener>;
-    let mounted = true;
+    isSeekingRef.current = isSeeking;
+  }, [isSeeking]);
 
-    const startProgressUpdates = () => {
-      progressSubscription = setInterval(async () => {
-        try {
-          if (!mounted || isSeeking) return;
+  useEffect(() => {
+    seekPositionRef.current = seekPosition;
+  }, [seekPosition]);
 
-          const progress = await TrackPlayer.getProgress();
+  useEffect(() => {
+    positionRef.current = position;
+  }, [position]);
 
-          // Only update position if not seeking
-          if (mounted && !isSeeking) {
-            setPosition(progress.position);
-          }
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
-          // Update buffered only if changed significantly
-          if (Math.abs(progress.buffered - buffered) > 1) {
-            setBuffered(progress.buffered);
-          }
-        } catch (error) {
-          console.error('Error updating progress:', error);
-        }
-      }, updateInterval);
-    };
+  // Sync position and duration from playerStore
+  useEffect(() => {
+    // Don't update if seeking
+    if (isSeekingRef.current) return;
 
-    const setupListeners = async () => {
-      try {
-        // Listen for duration updates
-        eventSubscription = TrackPlayer.addEventListener(
-          Event.PlaybackProgressUpdated,
-          data => {
-            if (!mounted || isSeeking) return;
+    // Update duration if changed significantly
+    if (
+      playback.duration > 0 &&
+      Math.abs(playback.duration - durationRef.current) > 0.5
+    ) {
+      setDuration(playback.duration);
+    }
 
-            // Update duration if changed
-            if (data.duration > 0 && Math.abs(data.duration - duration) > 0.1) {
-              setDuration(data.duration);
-            }
-
-            // Update position if not seeking and changed significantly
-            if (!seekPosition && Math.abs(data.position - position) > 0.1) {
-              setPosition(data.position);
-            }
-          },
-        );
-
-        startProgressUpdates();
-      } catch (error) {
-        console.error('Error setting up progress listeners:', error);
-      }
-    };
-
-    setupListeners();
-
-    return () => {
-      mounted = false;
-      if (progressSubscription) clearInterval(progressSubscription);
-      if (eventSubscription) eventSubscription.remove();
-    };
-  }, [
-    updateInterval,
-    isSeeking,
-    position,
-    duration,
-    buffered,
-    seekPosition,
-    setPosition,
-    setDuration,
-    setBuffered,
-  ]);
+    // Update position if not seeking and changed significantly
+    if (
+      !seekPositionRef.current &&
+      Math.abs(playback.position - positionRef.current) > 0.5
+    ) {
+      setPosition(playback.position);
+    }
+  }, [playback.position, playback.duration, setPosition, setDuration]);
 
   return {
     position,

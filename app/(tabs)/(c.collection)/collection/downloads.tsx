@@ -19,11 +19,11 @@ import {
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
 import {Icon} from '@rneui/themed';
-import {State as TrackPlayerState} from 'react-native-track-player';
 import {DownloadCollectionActionButtons} from '@/components/DownloadCollectionActionButtons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {DownloadIcon} from '@/components/Icons';
@@ -83,7 +83,8 @@ export default function DownloadsScreen() {
   const router = useRouter();
   const downloads = useDownloads();
   const {removeDownload} = useDownloadActions();
-  const {updateQueue, addToQueue, play, pause, playback} = useUnifiedPlayer();
+  const {updateQueue, addToQueue, play, pause} = usePlayerActions();
+  const playbackState = usePlayerStore(state => state.playback.state);
 
   // Scroll tracking for sticky header
   const scrollY = useRef(new RNAnimated.Value(0)).current;
@@ -182,7 +183,7 @@ export default function DownloadsScreen() {
 
     try {
       // If currently playing, pause
-      if (playback.state === TrackPlayerState.Playing) {
+      if (playbackState === 'playing') {
         await pause();
         return;
       }
@@ -209,7 +210,7 @@ export default function DownloadsScreen() {
     } catch (error) {
       console.error('Error playing all downloads:', error);
     }
-  }, [downloadData, updateQueue, play, pause, playback.state]);
+  }, [downloadData, updateQueue, play, pause, playbackState]);
 
   const ListHeaderComponent = useCallback(() => {
     return (

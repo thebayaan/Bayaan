@@ -13,11 +13,10 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
 import {DiscoverIcon} from '@/components/Icons';
 import {getMultipleRandomTracks} from '@/utils/randomRecitation';
-import {usePlayerStore} from '@/store/playerStore';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import * as Haptics from 'expo-haptics';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import Animated, {
   useSharedValue,
@@ -56,12 +55,11 @@ export function RandomRecitationHero({
   isCompact = false,
 }: RandomRecitationHeroProps) {
   const {theme} = useTheme();
-  const isLoading = usePlayerStore(state => state.isLoading);
+  const isLoading = usePlayerStore(state => state.loading.trackLoading);
 
   // Get the player hooks
-  const {updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, play} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
-  const queueContext = QueueContext.getInstance();
 
   // Get gradient colors using the shared utility
   const baseColors = useMemo(() => getRandomColors(), []);
@@ -166,14 +164,11 @@ export function RandomRecitationHero({
         )[0] || randomTracks[0].reciter.rewayat[0];
 
       await addRecentTrack(reciter, surah, 0, 0, firstRewayah.id);
-
-      // Set current reciter in queue context
-      queueContext.setCurrentReciter(reciter);
     } catch (error) {
       console.error('Error playing random recitation:', error);
       showToast('Failed to play random recitation. Please try again.');
     }
-  }, [updateQueue, play, addRecentTrack, queueContext]);
+  }, [updateQueue, play, addRecentTrack]);
 
   // Dynamic height based on isCompact prop
   const containerHeight = useMemo(

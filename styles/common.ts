@@ -1,10 +1,12 @@
 import {ScaledSheet} from 'react-native-size-matters';
-import {theme} from './theme';
+import {createTheme} from './theme';
+
+const defaultTheme = createTheme('light', 'Green');
 
 export const commonStyles = ScaledSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: defaultTheme.colors.background,
   },
   centeredContent: {
     flex: 1,
@@ -16,6 +18,6 @@ export const commonStyles = ScaledSheet.create({
     fontSize: '24@s',
     fontWeight: 'bold',
     marginBottom: '20@vs',
-    color: theme.colors.text,
+    color: defaultTheme.colors.text,
   },
 });

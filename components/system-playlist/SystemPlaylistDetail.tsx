@@ -16,7 +16,7 @@ import {
 } from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
 import {SystemPlaylistHeader} from './SystemPlaylistHeader';
@@ -26,7 +26,6 @@ import {
   getSystemPlaylistEstimatedDuration,
 } from '@/utils/systemPlaylistHelpers';
 import Color from 'color';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {getFeaturedReciters} from '@/data/featuredReciters';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -119,8 +118,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   playlist,
 }) => {
   const {theme} = useTheme();
-  const {updateQueue, addToQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
+  const {updateQueue, addToQueue, play} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
@@ -382,7 +380,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
           0,
           result.rewayatId ?? '',
         );
-        queueContext.setCurrentReciter(result.reciter);
       }
     } catch (error) {
       console.error('Error playing system playlist:', error);
@@ -396,7 +393,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     updateQueue,
     play,
     addRecentTrack,
-    queueContext,
   ]);
 
   const handleShufflePlay = useCallback(async () => {
@@ -437,7 +433,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
           0,
           result.rewayatId ?? '',
         );
-        queueContext.setCurrentReciter(result.reciter);
       }
     } catch (error) {
       console.error('Error shuffling system playlist:', error);
@@ -451,7 +446,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     updateQueue,
     play,
     addRecentTrack,
-    queueContext,
   ]);
 
   const handleSurahPress = useCallback(
@@ -490,7 +484,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
             0,
             result.rewayatId ?? '',
           );
-          queueContext.setCurrentReciter(result.reciter);
         }
       } catch (error) {
         console.error('Error playing track:', error);
@@ -505,7 +498,6 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       updateQueue,
       play,
       addRecentTrack,
-      queueContext,
     ],
   );
 

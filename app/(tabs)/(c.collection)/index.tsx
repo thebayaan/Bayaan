@@ -38,7 +38,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {HeartIcon, DownloadIcon, MicrophoneIcon} from '@/components/Icons';
 import Color from 'color';
 import {Pressable} from 'react-native';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {createDownloadedTrack} from '@/utils/track';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -76,7 +76,7 @@ export default function CollectionScreen() {
   const downloads = useDownloads();
   const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
     usePlaylists();
-  const {updateQueue, play} = useUnifiedPlayer();
+  const {updateQueue, play} = usePlayerActions();
   const {recitations: uploadedRecitations, totalCount: uploadsTotalCount} =
     useUploadsStore();
 
@@ -230,16 +230,13 @@ export default function CollectionScreen() {
     // Add Downloads - grouped by reciter
     if (activeFilter === '' || activeFilter === 'downloads') {
       // Group downloads by reciterId
-      const downloadsByReciter = downloads.reduce(
-        (acc, download) => {
-          if (!acc[download.reciterId]) {
-            acc[download.reciterId] = [];
-          }
-          acc[download.reciterId].push(download);
-          return acc;
-        },
-        {} as Record<string, typeof downloads>,
-      );
+      const downloadsByReciter = downloads.reduce((acc, download) => {
+        if (!acc[download.reciterId]) {
+          acc[download.reciterId] = [];
+        }
+        acc[download.reciterId].push(download);
+        return acc;
+      }, {} as Record<string, typeof downloads>);
 
       Object.entries(downloadsByReciter).forEach(
         ([reciterId, reciterDownloads]) => {

@@ -2,7 +2,7 @@ import React, {useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {MicrophoneIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -17,7 +17,7 @@ export const UploadPlaceholder: React.FC<UploadPlaceholderProps> = ({
   currentTrack,
 }) => {
   const {theme} = useTheme();
-  const {setSheetMode} = useUnifiedPlayer();
+  const {setSheetMode} = usePlayerActions();
 
   const handleEditDetails = useCallback(() => {
     if (!currentTrack.userRecitationId) return;

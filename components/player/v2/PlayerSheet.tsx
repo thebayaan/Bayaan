@@ -5,7 +5,8 @@ import BottomSheet, {
   BottomSheetBackdropProps,
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
@@ -13,9 +14,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
-
-// Import surah info data
-const surahInfo = require('@/data/surahInfo.json');
 
 // Custom handle component for the bottom sheet
 const CustomHandle = (_props: BottomSheetHandleProps) => {
@@ -39,16 +37,12 @@ export const PlayerSheet = () => {
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
 
-  const {
-    queue,
-    loading,
-    sheetMode,
-    setSheetMode,
-    playback,
-    setRate,
-    settings,
-    updateSettings,
-  } = useUnifiedPlayer();
+  const {setSheetMode, setRate, updateSettings} = usePlayerActions();
+  const queue = usePlayerStore(s => s.queue);
+  const loading = usePlayerStore(s => s.loading);
+  const sheetMode = usePlayerStore(s => s.sheetMode);
+  const playbackRate = usePlayerStore(s => s.playback.rate);
+  const settings = usePlayerStore(s => s.settings);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -175,11 +169,11 @@ export const PlayerSheet = () => {
   const handleShowSpeedSheet = useCallback(() => {
     SheetManager.show('playback-speed', {
       payload: {
-        currentSpeed: playback.rate,
+        currentSpeed: playbackRate,
         onSpeedChange: handleSpeedChange,
       },
     });
-  }, [playback.rate, handleSpeedChange]);
+  }, [playbackRate, handleSpeedChange]);
 
   const handleShowSleepTimerSheet = useCallback(() => {
     SheetManager.show('sleep-timer', {
@@ -195,21 +189,6 @@ export const PlayerSheet = () => {
   const handleShowMushafLayoutSheet = useCallback(() => {
     SheetManager.show('mushaf-layout');
   }, []);
-
-  const handleShowSummarySheet = useCallback(() => {
-    const surahNumber = currentTrack?.surahId
-      ? parseInt(currentTrack.surahId, 10)
-      : undefined;
-    const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
-
-    if (currentSurahInfo) {
-      SheetManager.show('extended-summary', {
-        payload: {
-          surahInfo: currentSurahInfo,
-        },
-      });
-    }
-  }, [currentTrack?.surahId]);
 
   const handleShowOptionsSheet = useCallback(() => {
     if (!currentTrack) return;
@@ -283,7 +262,6 @@ export const PlayerSheet = () => {
           onSpeedPress={handleShowSpeedSheet}
           onSleepTimerPress={handleShowSleepTimerSheet}
           onMushafLayoutPress={handleShowMushafLayoutSheet}
-          onSummaryPress={handleShowSummarySheet}
           onOptionsPress={handleShowOptionsSheet}
         />
       </BottomSheet>

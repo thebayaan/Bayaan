@@ -94,6 +94,10 @@ module.exports = {
       },
       screenOrientation: 'portrait',
     },
+    // React Compiler disabled - causes performance issues with Zustand subscriptions
+    // experiments: {
+    //   reactCompiler: true,
+    // },
     updates: {
       enabled: true,
       checkAutomatically: 'ON_LOAD',
@@ -102,6 +106,8 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      'expo-asset',
+      'expo-audio',
       'expo-sqlite',
       [
         'expo-splash-screen',
