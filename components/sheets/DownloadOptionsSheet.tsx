@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Pressable,
-  ScrollView,
   useWindowDimensions,
   Dimensions,
   Alert,
@@ -15,6 +14,7 @@ import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import {Feather} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';

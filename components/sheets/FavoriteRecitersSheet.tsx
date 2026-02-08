@@ -2,7 +2,6 @@ import React, {useState, useCallback, useMemo, useRef} from 'react';
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
   Platform,
   Pressable,
@@ -13,7 +12,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
+import ActionSheet, {SheetProps, FlatList} from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {SearchInput} from '@/components/SearchInput';
