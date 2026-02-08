@@ -18,7 +18,7 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {SearchInput} from '@/components/SearchInput';
 import {ReciterImage} from '@/components/ReciterImage';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 
 export const FavoriteRecitersSheet = (
   props: SheetProps<'favorite-reciters'>,
@@ -88,9 +88,8 @@ export const FavoriteRecitersSheet = (
               isFavorite && styles.checkCircleActive,
             ]}>
             {isFavorite && (
-              <Icon
+              <Feather
                 name="check"
-                type="feather"
                 size={moderateScale(14)}
                 color={theme.colors.text}
               />

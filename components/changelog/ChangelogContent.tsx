@@ -2,7 +2,7 @@ import React from 'react';
 import {View, Text, StyleSheet, ScrollView, Image} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {Icon} from '@rneui/base';
+import {Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import {ChangelogEntry} from '@/types/changelog';
 
@@ -45,9 +45,8 @@ export function ChangelogContent({
       <View style={styles.highlightsContainer}>
         {changelog.highlights.map((highlight, index) => (
           <View key={index} style={styles.highlightCard}>
-            <Icon
-              name={highlight.icon}
-              type="ionicon"
+            <Ionicons
+              name={highlight.icon as any}
               size={moderateScale(26)}
               color={theme.colors.text}
             />

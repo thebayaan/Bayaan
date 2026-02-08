@@ -8,7 +8,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -191,9 +191,8 @@ export const UploadsTabContent = React.forwardRef<
             onPress={() => handlePlay(item, index)}
             onLongPress={() => handleShowOptions(item, index)}>
             <View style={styles.itemIconContainer}>
-              <Icon
+              <Feather
                 name="music"
-                type="feather"
                 size={moderateScale(16)}
                 color={theme.colors.textSecondary}
               />
@@ -213,9 +212,8 @@ export const UploadsTabContent = React.forwardRef<
           <Pressable
             style={styles.itemOptionsZone}
             onPress={() => handleShowOptions(item, index)}>
-            <Icon
+            <Feather
               name="more-horizontal"
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.text}
             />
@@ -228,9 +226,8 @@ export const UploadsTabContent = React.forwardRef<
     const addButton = useMemo(
       () => (
         <Pressable style={styles.addButton} onPress={handleAddRecitation}>
-          <Icon
+          <Feather
             name="plus"
-            type="feather"
             size={moderateScale(16)}
             color={theme.colors.textSecondary}
           />
@@ -243,9 +240,8 @@ export const UploadsTabContent = React.forwardRef<
     const emptyState = useMemo(
       () => (
         <View style={styles.emptyContainer}>
-          <Icon
+          <Feather
             name="mic"
-            type="feather"
             size={moderateScale(40)}
             color={theme.colors.textSecondary}
           />
@@ -256,9 +252,8 @@ export const UploadsTabContent = React.forwardRef<
           <Pressable
             style={styles.emptyAddButton}
             onPress={handleAddRecitation}>
-            <Icon
+            <Feather
               name="plus"
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />

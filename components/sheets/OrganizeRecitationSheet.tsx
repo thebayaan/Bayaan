@@ -17,7 +17,7 @@ import ActionSheet, {
   SheetManager,
 } from 'react-native-actions-sheet';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {
   searchSurahs,
@@ -455,9 +455,8 @@ export const OrganizeRecitationSheet = (
         {/* File Info */}
         <View style={styles.fileInfoRow}>
           <View style={styles.fileIconContainer}>
-            <Icon
+            <Feather
               name="music"
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />
@@ -523,9 +522,8 @@ export const OrganizeRecitationSheet = (
                 <Pressable
                   onPress={handleClearSurah}
                   style={styles.clearButton}>
-                  <Icon
+                  <Feather
                     name="x"
-                    type="feather"
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -534,9 +532,8 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Icon
+                  <Feather
                     name="search"
-                    type="feather"
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -695,9 +692,8 @@ export const OrganizeRecitationSheet = (
                 <Pressable
                   onPress={handleClearReciter}
                   style={styles.clearButton}>
-                  <Icon
+                  <Feather
                     name="x"
-                    type="feather"
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -706,9 +702,8 @@ export const OrganizeRecitationSheet = (
             ) : (
               <>
                 <View style={styles.searchInputContainer}>
-                  <Icon
+                  <Feather
                     name="search"
-                    type="feather"
                     size={moderateScale(14)}
                     color={theme.colors.textSecondary}
                   />
@@ -745,9 +740,8 @@ export const OrganizeRecitationSheet = (
                         <Pressable
                           style={styles.resultItem}
                           onPress={handleCreateReciter}>
-                          <Icon
+                          <Feather
                             name="plus-circle"
-                            type="feather"
                             size={moderateScale(16)}
                             color={theme.colors.text}
                           />
@@ -800,9 +794,8 @@ export const OrganizeRecitationSheet = (
                 style={styles.moreOptionsToggle}
                 onPress={() => setShowMoreOptions(prev => !prev)}>
                 <Text style={styles.moreOptionsText}>More Options</Text>
-                <Icon
+                <Feather
                   name={showMoreOptions ? 'chevron-up' : 'chevron-down'}
-                  type="feather"
                   size={moderateScale(14)}
                   color={theme.colors.textSecondary}
                 />
@@ -871,12 +864,7 @@ export const OrganizeRecitationSheet = (
 
         {/* Delete Button */}
         <Pressable style={styles.deleteButton} onPress={handleDelete}>
-          <Icon
-            name="trash-2"
-            type="feather"
-            size={moderateScale(16)}
-            color="#EF4444"
-          />
+          <Feather name="trash-2" size={moderateScale(16)} color="#EF4444" />
           <Text style={styles.deleteText}>Delete Recitation</Text>
         </Pressable>
       </ScrollView>

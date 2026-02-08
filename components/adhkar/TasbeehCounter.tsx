@@ -1,7 +1,7 @@
 import React, {useCallback} from 'react';
 import {View, Text, TouchableOpacity, Animated} from 'react-native';
 import * as Haptics from 'expo-haptics';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
@@ -108,9 +108,8 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
               {/* Target reached indicator */}
               {targetReached ? (
                 <View style={styles.successBadge}>
-                  <Icon
+                  <Feather
                     name="check-circle"
-                    type="feather"
                     size={moderateScale(20)}
                     color={SUCCESS_COLOR}
                   />
@@ -137,9 +136,8 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
         accessibilityRole="button"
         accessibilityLabel="Reset counter"
         accessibilityHint="Resets the count to zero">
-        <Icon
+        <Feather
           name="refresh-cw"
-          type="feather"
           size={moderateScale(18)}
           color={theme.colors.textSecondary}
         />

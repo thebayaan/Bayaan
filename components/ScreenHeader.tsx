@@ -1,11 +1,11 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
   verticalScale,
 } from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {useRouter} from 'expo-router';
@@ -21,17 +21,13 @@ export const ScreenHeader: React.FC<ScreenHeaderProps> = ({title}) => {
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity
-        activeOpacity={0.99}
-        onPress={() => router.back()}
-        style={styles.backButton}>
-        <Icon
+      <Pressable onPress={() => router.back()} style={styles.backButton}>
+        <Feather
           name="arrow-left"
-          type="feather"
           size={moderateScale(24)}
           color={theme.colors.text}
         />
-      </TouchableOpacity>
+      </Pressable>
       <Text style={styles.headerTitle}>{title}</Text>
     </View>
   );

@@ -15,7 +15,7 @@ import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 import Fuse from 'fuse.js';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
@@ -457,9 +457,8 @@ export function SearchView({onClose, visible}: SearchViewProps) {
             </View>
           ) : (
             <View style={styles.emptyRecentContainer}>
-              <Icon
+              <Feather
                 name="search"
-                type="feather"
                 size={moderateScale(48)}
                 color={theme.colors.textSecondary}
               />

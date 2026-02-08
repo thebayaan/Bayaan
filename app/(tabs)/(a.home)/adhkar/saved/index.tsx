@@ -3,7 +3,7 @@ import {View, Text, FlatList, TouchableOpacity} from 'react-native';
 import {useRouter} from 'expo-router';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -121,9 +121,8 @@ const SavedAdhkarScreen: React.FC = () => {
           onPress={handleBack}
           activeOpacity={1}
           hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
@@ -157,9 +156,8 @@ const SavedAdhkarScreen: React.FC = () => {
       <View style={styles.container}>
         {Header}
         <View style={styles.emptyContainer}>
-          <Icon
+          <Ionicons
             name="bookmark-outline"
-            type="ionicon"
             size={moderateScale(48)}
             color={theme.colors.textSecondary}
           />

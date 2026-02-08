@@ -9,7 +9,7 @@ import {
   TextStyle,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
 
@@ -17,7 +17,6 @@ interface InputProps extends TextInputProps {
   label?: string;
   showIcon?: boolean;
   iconName?: string;
-  iconType?: string;
   error?: string;
   helperText?: string;
   showCharacterCount?: boolean;
@@ -30,7 +29,6 @@ export const Input: React.FC<InputProps> = ({
   label,
   showIcon = false,
   iconName = 'edit-3',
-  iconType = 'feather',
   error,
   helperText,
   showCharacterCount = false,
@@ -49,9 +47,8 @@ export const Input: React.FC<InputProps> = ({
       {label && (
         <View style={styles.labelRow}>
           {showIcon && (
-            <Icon
-              name={iconName}
-              type={iconType}
+            <Feather
+              name={iconName as any}
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />

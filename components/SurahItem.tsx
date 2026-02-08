@@ -6,8 +6,7 @@ import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
 import {HeartIcon} from '@/components/Icons';
-import {Icon} from '@rneui/themed';
-import {Ionicons} from '@expo/vector-icons';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
@@ -270,9 +269,8 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                 surahId={Number(item.id)}
               />
             ) : (
-              <Icon
+              <Feather
                 name="more-horizontal"
-                type="feather"
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />

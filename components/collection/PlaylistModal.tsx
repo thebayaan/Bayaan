@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon} from '@/components/Icons';
 import {Input} from '@/components/Input';
@@ -118,9 +118,8 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Icon
+            <Feather
               name="x"
-              type="feather"
               size={moderateScale(24)}
               color={theme.colors.text}
             />
@@ -196,7 +195,6 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
             label="Playlist Name"
             showIcon
             iconName="edit-3"
-            iconType="feather"
             placeholder="Name"
             value={playlistName}
             onChangeText={setPlaylistName}

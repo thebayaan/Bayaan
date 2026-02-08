@@ -151,7 +151,6 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
           label="Playlist Name"
           showIcon
           iconName="edit-3"
-          iconType="feather"
           placeholder="e.g., Morning Recitations"
           value={playlistName}
           onChangeText={setPlaylistName}

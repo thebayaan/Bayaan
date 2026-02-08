@@ -3,7 +3,7 @@ import {Animated, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';
 
 interface NavigationButtonsProps {
@@ -37,9 +37,8 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
           },
         ]}>
         <Pressable onPress={() => router.back()}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
@@ -56,9 +55,8 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
           },
         ]}>
         <Pressable onPress={onSearchPress}>
-          <Icon
+          <Feather
             name="search"
-            type="feather"
             size={moderateScale(20)}
             color={theme.colors.text}
           />

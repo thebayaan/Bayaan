@@ -17,7 +17,7 @@ import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {LinearGradient} from 'expo-linear-gradient';
 import {StatusBar} from 'expo-status-bar';
 import {CollectionCard} from '@/components/CollectionCard';
@@ -245,21 +245,15 @@ export default function FavoriteRecitersScreen() {
                 outputRange: [1, 0],
               }),
             }}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color="white"
-            />
+            <Feather name="arrow-left" size={moderateScale(24)} color="white" />
           </Animated.View>
           <Animated.View
             style={{
               position: 'absolute',
               opacity: headerOpacity,
             }}>
-            <Icon
+            <Feather
               name="arrow-left"
-              type="feather"
               size={moderateScale(24)}
               color={theme.colors.text}
             />
@@ -289,21 +283,15 @@ export default function FavoriteRecitersScreen() {
                 outputRange: [1, 0],
               }),
             }}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(20)}
-              color="white"
-            />
+            <Feather name="search" size={moderateScale(20)} color="white" />
           </Animated.View>
           <Animated.View
             style={{
               position: 'absolute',
               opacity: headerOpacity,
             }}>
-            <Icon
+            <Feather
               name="search"
-              type="feather"
               size={moderateScale(20)}
               color={theme.colors.text}
             />

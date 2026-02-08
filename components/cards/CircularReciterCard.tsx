@@ -10,7 +10,7 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterImage} from '@/components/ReciterImage';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -146,9 +146,8 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
             {isSelected && <View style={styles.selectedOverlay} />}
           </>
         ) : (
-          <Icon
+          <Feather
             name="plus"
-            type="feather"
             size={moderateScale(imageSize * 0.3)}
             color={theme.colors.textSecondary}
           />

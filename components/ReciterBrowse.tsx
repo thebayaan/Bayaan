@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useEffect, useMemo} from 'react';
-import {View, Text, TouchableOpacity, FlatList} from 'react-native';
+import {View, Text, Pressable, FlatList} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {
@@ -7,7 +7,7 @@ import {
   moderateScale,
   verticalScale,
 } from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import SearchBar from '@/components/SearchBar';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -152,17 +152,15 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         },
       ]}>
       <View style={createStyles(theme).header}>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        <Pressable
           onPress={() => router.back()}
           style={createStyles(theme).backButton}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
         <Text
           style={[createStyles(theme).headerTitle, {color: theme.colors.text}]}>
           Browse Reciters
@@ -180,8 +178,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         />
       </View>
       <View style={createStyles(theme).toggleContainer}>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        <Pressable
           style={[
             createStyles(theme).toggleButton,
             activeView === 'all' && createStyles(theme).activeToggleButton,
@@ -195,9 +192,8 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
             ]}>
             All Reciters
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        </Pressable>
+        <Pressable
           style={[
             createStyles(theme).toggleButton,
             activeView === 'favorites' &&
@@ -212,7 +208,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
             ]}>
             Favorites
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
       <FlatList
         data={filteredReciters}

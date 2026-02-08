@@ -23,7 +23,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import {useRouter} from 'expo-router';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -590,9 +590,8 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           styles.iconContainer,
           {backgroundColor: activeTheme.colors.card},
         ]}>
-        <Icon
-          name={getIconForType(item.type)}
-          type="feather"
+        <Feather
+          name={getIconForType(item.type) as any}
           size={moderateScale(20)}
           color={activeTheme.colors.text}
         />
@@ -704,9 +703,8 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
         {query.trim().length === 0 ? (
           /* Empty State - No search yet */
           <View style={styles.emptyState}>
-            <Icon
+            <Feather
               name="search"
-              type="feather"
               size={moderateScale(48)}
               color={activeTheme.colors.textSecondary}
             />
@@ -735,9 +733,8 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
             ListHeaderComponent={
               isSearching ? (
                 <View style={styles.loadingContainer}>
-                  <Icon
+                  <Feather
                     name="loader"
-                    type="feather"
                     size={moderateScale(24)}
                     color={activeTheme.colors.textSecondary}
                   />
@@ -751,9 +748,8 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
                 </View>
               ) : searchResults.length === 0 ? (
                 <View style={styles.noResultsContainer}>
-                  <Icon
+                  <Feather
                     name="inbox"
-                    type="feather"
                     size={moderateScale(48)}
                     color={activeTheme.colors.textSecondary}
                   />

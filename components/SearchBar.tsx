@@ -1,6 +1,6 @@
 import React, {useState, useImperativeHandle, forwardRef, useRef} from 'react';
-import {TouchableOpacity, Text, TextInput, Animated} from 'react-native';
-import {Icon} from '@rneui/themed';
+import {Pressable, Text, TextInput, Animated, View} from 'react-native';
+import {Feather, AntDesign} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -101,13 +101,15 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
                 transform: [{rotate: spin}],
               },
             ]}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(20)}
-              color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-              onPress={() => inputRef.current?.focus()}
-            />
+            <Pressable onPress={() => inputRef.current?.focus()}>
+              <Feather
+                name="search"
+                size={moderateScale(20)}
+                color={
+                  isFocused ? theme.colors.text : theme.colors.textSecondary
+                }
+              />
+            </Pressable>
           </Animated.View>
           <TextInput
             ref={inputRef}
@@ -137,17 +139,15 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
               from={{opacity: 0, scale: 0}}
               animate={{opacity: 1, scale: 1}}
               exit={{opacity: 0, scale: 0}}>
-              <TouchableOpacity
-                activeOpacity={0.99}
-                onPress={() => onChangeText('')}>
-                <Icon
-                  name="close"
-                  type="antdesign"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                  containerStyle={styles.clearIcon}
-                />
-              </TouchableOpacity>
+              <Pressable onPress={() => onChangeText('')}>
+                <View style={styles.clearIcon}>
+                  <AntDesign
+                    name="close"
+                    size={moderateScale(20)}
+                    color={theme.colors.text}
+                  />
+                </View>
+              </Pressable>
             </MotiView>
           )}
         </MotiView>
@@ -155,12 +155,9 @@ const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
           <MotiView
             from={{opacity: 0, translateX: 20}}
             animate={{opacity: 1, translateX: 0}}>
-            <TouchableOpacity
-              activeOpacity={0.99}
-              style={styles.cancelButton}
-              onPress={handleCancel}>
+            <Pressable style={styles.cancelButton} onPress={handleCancel}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+            </Pressable>
           </MotiView>
         )}
       </MotiView>

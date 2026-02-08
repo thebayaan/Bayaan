@@ -4,7 +4,7 @@ import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/base';
+import {AntDesign, Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Header from '@/components/Header';
 import Color from 'color';
@@ -128,12 +128,19 @@ export default function ReciterChoiceScreen() {
                                     .toString(),
                           },
                         ]}>
-                        <Icon
-                          name={option.icon}
-                          type={option.iconType}
-                          size={moderateScale(20)}
-                          color={theme.colors.text}
-                        />
+                        {option.iconType === 'antdesign' ? (
+                          <AntDesign
+                            name={option.icon as any}
+                            size={moderateScale(20)}
+                            color={theme.colors.text}
+                          />
+                        ) : (
+                          <Feather
+                            name={option.icon as any}
+                            size={moderateScale(20)}
+                            color={theme.colors.text}
+                          />
+                        )}
                       </View>
                       <View style={styles.optionTextContainer}>
                         <Text
@@ -158,9 +165,8 @@ export default function ReciterChoiceScreen() {
                         </Text>
                       </View>
                       {defaultReciterSelection === option.action && (
-                        <Icon
+                        <Feather
                           name="check-circle"
-                          type="feather"
                           size={24}
                           color={Color(theme.colors.text).alpha(0.8).toString()}
                         />

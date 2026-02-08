@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
 import {RECITERS} from '@/data/reciterData';
@@ -283,9 +283,8 @@ export default function FilterModal({
                   style={styles.closeButton}
                   onPress={onClose}
                   activeOpacity={0.7}>
-                  <Icon
+                  <Feather
                     name="x"
-                    type="feather"
                     size={moderateScale(24)}
                     color={theme.colors.text}
                   />

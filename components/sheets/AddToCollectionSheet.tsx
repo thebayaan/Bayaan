@@ -7,7 +7,7 @@ import ActionSheet, {
   SheetProps,
   SheetManager,
 } from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -89,9 +89,8 @@ export const AddToCollectionSheet = (
               pressed && styles.optionPressed,
             ]}
             onPress={handleAddFavoriteReciter}>
-            <Icon
+            <Feather
               name="star"
-              type="feather"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
@@ -104,10 +103,7 @@ export const AddToCollectionSheet = (
               pressed && styles.optionPressed,
             ]}
             onPress={handleNewPlaylist}>
-            <PlaylistIcon
-              color={theme.colors.text}
-              size={moderateScale(20)}
-            />
+            <PlaylistIcon color={theme.colors.text} size={moderateScale(20)} />
             <Text style={styles.optionText}>Create New Playlist</Text>
           </Pressable>
 
@@ -117,9 +113,8 @@ export const AddToCollectionSheet = (
               pressed && styles.optionPressed,
             ]}
             onPress={handleNewUpload}>
-            <Icon
+            <Feather
               name="mic"
-              type="feather"
               size={moderateScale(20)}
               color={theme.colors.text}
             />

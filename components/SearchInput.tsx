@@ -11,7 +11,7 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 
 export interface SearchInputProps extends TextInputProps {
@@ -85,9 +85,8 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             style,
           ]}>
           <View style={styles.searchIconContainer}>
-            <Icon
+            <Feather
               name="search"
-              type="feather"
               size={iconSize}
               color={iconColor}
               style={{opacity: iconOpacity}}
@@ -121,12 +120,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             <Pressable
               onPress={() => onChangeText('')}
               style={styles.clearButton}>
-              <Icon
-                name="x"
-                type="feather"
-                size={moderateScale(16)}
-                color={iconColor}
-              />
+              <Feather name="x" size={moderateScale(16)} color={iconColor} />
             </Pressable>
           )}
         </View>
@@ -146,12 +140,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
         )}
         {onClose && (
           <Pressable onPress={onClose} style={styles.closeButton}>
-            <Icon
-              name="x"
-              type="feather"
-              size={moderateScale(24)}
-              color={iconColor}
-            />
+            <Feather name="x" size={moderateScale(24)} color={iconColor} />
           </Pressable>
         )}
       </View>

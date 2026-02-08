@@ -23,7 +23,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {DownloadCollectionActionButtons} from '@/components/DownloadCollectionActionButtons';
 import {CollectionCard} from '@/components/CollectionCard';
 import {DownloadIcon} from '@/components/Icons';
@@ -221,9 +221,8 @@ export default function DownloadsScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
             hitSlop={8}>
-            <Icon
+            <Feather
               name="arrow-left"
-              type="feather"
               size={moderateScale(24)}
               color={theme.colors.text}
             />

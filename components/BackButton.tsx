@@ -1,6 +1,6 @@
 import React from 'react';
-import {TouchableOpacity, ViewStyle, StyleProp} from 'react-native';
-import {Icon} from '@rneui/themed';
+import {Pressable, ViewStyle, StyleProp} from 'react-native';
+import {Feather} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useNavigation} from '@react-navigation/native';
@@ -30,17 +30,15 @@ export const BackButton: React.FC<BackButtonProps> = ({
   };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.99}
+    <Pressable
       style={[styles.backButton, style, {marginLeft: insets.left}]}
       onPress={handlePress}>
-      <Icon
+      <Feather
         name="arrow-left"
-        type="feather"
         color={theme.colors.text}
         size={moderateScale(iconSize)}
       />
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
