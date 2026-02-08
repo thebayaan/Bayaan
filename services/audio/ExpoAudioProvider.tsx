@@ -41,7 +41,6 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     state => state.updatePlaybackState,
   );
   const skipToNext = usePlayerStore(state => state.skipToNext);
-  const settings = usePlayerStore(state => state.settings);
 
   // Connect player to service on mount
   useEffect(() => {
@@ -177,8 +176,8 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     if (__DEV__) console.log('[ExpoAudioProvider] Track ended');
 
     try {
-      const {repeatMode} = settings;
       const store = usePlayerStore.getState();
+      const {repeatMode} = store.settings;
       const {currentIndex, tracks} = store.queue;
 
       if (repeatMode === 'track') {
@@ -202,12 +201,12 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     } finally {
       isHandlingTrackEnd.current = false;
     }
-  }, [settings, skipToNext, updatePlaybackState]);
+  }, [skipToNext, updatePlaybackState]);
 
   // Monitor for track end via didJustFinish
   useEffect(() => {
     // expo-audio sets didJustFinish to true when track completes
-    if (status.didJustFinish && wasPlaying.current) {
+    if (status.didJustFinish) {
       handleTrackEnd();
     }
   }, [status.didJustFinish, handleTrackEnd]);
