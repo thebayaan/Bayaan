@@ -18,17 +18,19 @@ const SEEK_INTERVAL = 15; // seconds
 export const Controls = () => {
   const {theme} = useTheme();
   const {play, pause, skipToNext, skipToPrevious, seekTo} = usePlayerActions();
-  const playback = usePlayerStore(s => s.playback);
-  const queue = usePlayerStore(s => s.queue);
-  const loading = usePlayerStore(s => s.loading);
+  const playbackState = usePlayerStore(s => s.playback.state);
+  const playbackPosition = usePlayerStore(s => s.playback.position);
+  const currentIndex = usePlayerStore(s => s.queue.currentIndex);
+  const tracksLength = usePlayerStore(s => s.queue.tracks.length);
+  const trackLoading = usePlayerStore(s => s.loading.trackLoading);
 
   // Optimistic state for play/pause
   const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(
-    () => playback.state === 'playing',
+    () => playbackState === 'playing',
   );
 
   const handlePlayPause = useCallback(async () => {
-    if (loading.trackLoading) return;
+    if (trackLoading) return;
 
     // Update optimistic state immediately
     const newIsPlaying = !optimisticIsPlaying;
@@ -46,54 +48,46 @@ export const Controls = () => {
       setOptimisticIsPlaying(!newIsPlaying);
       console.error('Error toggling play/pause:', error);
     }
-  }, [loading.trackLoading, optimisticIsPlaying, pause, play]);
+  }, [trackLoading, optimisticIsPlaying, pause, play]);
 
   // Update optimistic state when actual state changes
   React.useEffect(() => {
-    setOptimisticIsPlaying(playback.state === 'playing');
-  }, [playback.state]);
+    setOptimisticIsPlaying(playbackState === 'playing');
+  }, [playbackState]);
 
   const handlePrevious = useCallback(async () => {
-    if (loading.trackLoading || queue.currentIndex === 0) return;
+    if (trackLoading || currentIndex === 0) return;
     await skipToPrevious();
-  }, [loading.trackLoading, queue.currentIndex, skipToPrevious]);
+  }, [trackLoading, currentIndex, skipToPrevious]);
 
   const handleNext = useCallback(async () => {
-    if (loading.trackLoading || queue.currentIndex === queue.tracks.length - 1)
-      return;
+    if (trackLoading || currentIndex === tracksLength - 1) return;
     await skipToNext();
-  }, [
-    loading.trackLoading,
-    queue.currentIndex,
-    queue.tracks.length,
-    skipToNext,
-  ]);
+  }, [trackLoading, currentIndex, tracksLength, skipToNext]);
 
   const handleSeekBackward = useCallback(async () => {
-    if (loading.trackLoading) return;
-    await seekTo(Math.max(0, playback.position - SEEK_INTERVAL));
-  }, [loading.trackLoading, playback.position, seekTo]);
+    if (trackLoading) return;
+    await seekTo(Math.max(0, playbackPosition - SEEK_INTERVAL));
+  }, [trackLoading, playbackPosition, seekTo]);
 
   const handleSeekForward = useCallback(async () => {
-    if (loading.trackLoading) return;
-    await seekTo(playback.position + SEEK_INTERVAL);
-  }, [loading.trackLoading, playback.position, seekTo]);
+    if (trackLoading) return;
+    await seekTo(playbackPosition + SEEK_INTERVAL);
+  }, [trackLoading, playbackPosition, seekTo]);
 
-  const isFirstTrack = queue.currentIndex === 0;
-  const isLastTrack = queue.currentIndex === queue.tracks.length - 1;
+  const isFirstTrack = currentIndex === 0;
+  const isLastTrack = currentIndex === tracksLength - 1;
 
   return (
     <View style={styles.container}>
       <Pressable
         onPress={handleSeekBackward}
-        disabled={loading.trackLoading}
-        style={loading.trackLoading && styles.disabledButton}>
+        disabled={trackLoading}
+        style={trackLoading && styles.disabledButton}>
         <View style={styles.seekBackwardContainer}>
           <SeekBackwardIcon
             color={
-              loading.trackLoading
-                ? theme.colors.textSecondary
-                : theme.colors.text
+              trackLoading ? theme.colors.textSecondary : theme.colors.text
             }
             size={moderateScale(24)}
           />
@@ -101,7 +95,7 @@ export const Controls = () => {
             style={[
               styles.seekBackwardText,
               {
-                color: loading.trackLoading
+                color: trackLoading
                   ? theme.colors.textSecondary
                   : theme.colors.text,
               },
@@ -114,7 +108,7 @@ export const Controls = () => {
         <Pressable
           onPress={handlePrevious}
           style={[styles.sideButton, isFirstTrack && styles.disabledButton]}
-          disabled={isFirstTrack || loading.trackLoading}>
+          disabled={isFirstTrack || trackLoading}>
           <PreviousIcon
             color={
               isFirstTrack ? theme.colors.textSecondary : theme.colors.text
@@ -125,7 +119,7 @@ export const Controls = () => {
         <View style={styles.playPauseContainer}>
           <Pressable
             onPress={handlePlayPause}
-            disabled={loading.trackLoading}
+            disabled={trackLoading}
             style={styles.playPauseButton}>
             {optimisticIsPlaying ? (
               <PauseIcon color={theme.colors.text} size={moderateScale(32)} />
@@ -137,7 +131,7 @@ export const Controls = () => {
         <Pressable
           onPress={handleNext}
           style={[styles.sideButton, isLastTrack && styles.disabledButton]}
-          disabled={isLastTrack || loading.trackLoading}>
+          disabled={isLastTrack || trackLoading}>
           <NextIcon
             color={isLastTrack ? theme.colors.textSecondary : theme.colors.text}
             size={moderateScale(16)}
@@ -146,14 +140,12 @@ export const Controls = () => {
       </View>
       <Pressable
         onPress={handleSeekForward}
-        disabled={loading.trackLoading}
-        style={loading.trackLoading && styles.disabledButton}>
+        disabled={trackLoading}
+        style={trackLoading && styles.disabledButton}>
         <View style={styles.seekForwardContainer}>
           <SeekForwardIcon
             color={
-              loading.trackLoading
-                ? theme.colors.textSecondary
-                : theme.colors.text
+              trackLoading ? theme.colors.textSecondary : theme.colors.text
             }
             size={moderateScale(24)}
           />
@@ -161,7 +153,7 @@ export const Controls = () => {
             style={[
               styles.seekForwardText,
               {
-                color: loading.trackLoading
+                color: trackLoading
                   ? theme.colors.textSecondary
                   : theme.colors.text,
               },
