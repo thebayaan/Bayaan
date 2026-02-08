@@ -622,20 +622,29 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     ],
   );
 
-  // Continuous scroll listener — updates activeTab at 50% swipe threshold.
+  // Scroll listener — only clears programmatic scroll gate; no side effects during swipe.
   const handleHorizontalScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (scrollTargetRef.current !== null) {
+        const offsetX = e.nativeEvent.contentOffset.x;
+        const pageIndex = Math.round(offsetX / screenWidth);
+        const tab = tabs[pageIndex];
+        if (tab && tab.id === scrollTargetRef.current) {
+          scrollTargetRef.current = null;
+        }
+      }
+    },
+    [tabs, screenWidth],
+  );
+
+  // Fires after paging snap completes — updates tab state without interrupting gesture.
+  const handleHorizontalMomentumEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = e.nativeEvent.contentOffset.x;
       const pageIndex = Math.round(offsetX / screenWidth);
       const tab = tabs[pageIndex];
 
-      // Ignore intermediate scroll events during programmatic tab changes
-      if (scrollTargetRef.current !== null) {
-        if (tab && tab.id === scrollTargetRef.current) {
-          scrollTargetRef.current = null;
-        }
-        return;
-      }
+      if (scrollTargetRef.current !== null) return; // programmatic scroll handled elsewhere
 
       if (tab && tab.id !== activeTabRef.current) {
         activeTabRef.current = tab.id;
@@ -643,7 +652,6 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
         if (tab.id !== 'uploads') {
           handleRewayatChange(tab.id);
         }
-        // Reset outer scroll position (same logic as handleTabChange)
         const maxScroll = Math.max(0, collapsibleHeight - stickyTitleHeight);
         const isCollapsed = currentScrollYRef.current >= maxScroll - 1;
         outerScrollRef.current?.scrollTo({
@@ -915,6 +923,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                 ref={horizontalRef}
                 horizontal
                 pagingEnabled
+                decelerationRate="fast"
+                directionalLockEnabled
                 showsHorizontalScrollIndicator={false}
                 scrollEventThrottle={16}
                 style={{opacity: pagerOpacity}}
@@ -922,6 +932,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                 onScrollBeginDrag={() => {
                   scrollTargetRef.current = null;
                 }}
+                onMomentumScrollEnd={handleHorizontalMomentumEnd}
                 onScroll={RNAnimated.event(
                   [{nativeEvent: {contentOffset: {x: scrollX}}}],
                   {useNativeDriver: true, listener: handleHorizontalScroll},
