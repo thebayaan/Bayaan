@@ -141,21 +141,7 @@ interface ColumnProps {
   theme: Theme;
 }
 
-interface StylesType {
-  wrapper: ViewStyle;
-  container: ViewStyle;
-  columnsContainer: ViewStyle;
-  column: ViewStyle;
-  imageContainer: ViewStyle;
-  image: ImageStyle;
-  overlay: ViewStyle;
-  contentOverlay: ViewStyle;
-  browseButton: ViewStyle;
-  buttonText: TextStyle;
-  buttonIcon: ViewStyle;
-  buttonWrapper: ViewStyle;
-  buttonInnerWrapper: ViewStyle;
-}
+type StylesType = ReturnType<typeof createStyles>;
 
 interface BrowseButtonProps {
   onPress?: () => void;
