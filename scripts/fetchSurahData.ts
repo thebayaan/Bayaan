@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {createClient} from '@supabase/supabase-js';
 import fs from 'fs';
 import {SUPABASE_URL, SUPABASE_ANON_KEY} from '../config';

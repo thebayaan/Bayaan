@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
-import {QueueManager} from '../services/QueueManager';
-import {usePlayerStore} from '../store/playerStore';
+import {usePlayerStore} from './player/store/playerStore';
 
 // Constants
 const RECITERS_KEY = 'bayaan_reciters';
@@ -210,10 +209,6 @@ export async function searchReciters(query: string): Promise<Reciter[]> {
 // Utility functions
 export async function clearStoredData(): Promise<void> {
   try {
-    // Clear the player queue and reset player state
-    const queueManager = QueueManager.getInstance();
-    await queueManager.clearQueue();
-
     // Clear AsyncStorage data
     await AsyncStorage.multiRemove([
       RECITERS_KEY,
@@ -222,8 +217,8 @@ export async function clearStoredData(): Promise<void> {
       '@bayaan/last_position', // From trackPersistence.ts
     ]);
 
-    // Reset player store state
-    usePlayerStore.getState().cleanup();
+    // Reset player store state (also clears the queue)
+    await usePlayerStore.getState().cleanup();
   } catch (error) {
     console.error('Error clearing stored data:', error);
     throw error;

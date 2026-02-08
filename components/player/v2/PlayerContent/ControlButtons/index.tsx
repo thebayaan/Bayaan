@@ -2,14 +2,15 @@ import React, {useCallback} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ViewStyle,
   TextStyle,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   TimerIcon,
   RepeatIcon,
@@ -53,7 +54,9 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   onMushafLayoutPress,
 }) => {
   const {theme} = useTheme();
-  const {playback, settings, updateSettings} = useUnifiedPlayer();
+  const {updateSettings} = usePlayerActions();
+  const playbackRate = usePlayerStore(s => s.playback.rate);
+  const settings = usePlayerStore(s => s.settings);
 
   const handleMushafLayoutPress = useCallback(() => {
     if (onMushafLayoutPress) {
@@ -81,12 +84,11 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   return (
     <View style={styles.wrapper}>
       {onMushafLayoutPress && (
-        <TouchableOpacity
-          activeOpacity={0.9}
+        <Pressable
           onPress={handleMushafLayoutPress}
           style={[styles.sideButton, styles.mushafLayoutButton]}>
           <QuranIcon size={moderateScale(28)} color={theme.colors.text} />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       <View
@@ -97,36 +99,34 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             shadowColor: theme.colors.shadow,
           },
         ]}>
-        <TouchableOpacity
-          activeOpacity={0.9}
+        <Pressable
           onPress={onSpeedPress}
           style={[
             styles.button,
             styles.speedButton,
-            playback.rate !== 1 && [
+            playbackRate !== 1 && [
               styles.activeButton,
               {backgroundColor: activeBackgroundColor},
             ],
-            (playback.rate === 0.5 || playback.rate === 1.5) &&
+            (playbackRate === 0.5 || playbackRate === 1.5) &&
               styles.mediumButton,
-            (playback.rate === 0.75 ||
-              playback.rate === 1.25 ||
-              playback.rate === 1.75) &&
+            (playbackRate === 0.75 ||
+              playbackRate === 1.25 ||
+              playbackRate === 1.75) &&
               styles.expandedButton,
           ]}>
           <Text
             style={[
               styles.speedButtonText,
               {color: theme.colors.text},
-              playback.rate !== 1 && {fontWeight: '700'},
+              playbackRate !== 1 && {fontWeight: '700'},
             ]}>
-            {`${playback.rate}`}
+            {`${playbackRate}`}
             <Text style={styles.speedX}>x</Text>
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          activeOpacity={0.9}
+        <Pressable
           onPress={handleRepeatPress}
           style={[
             styles.button,
@@ -145,10 +145,9 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
           {settings.repeatMode === 'track' && (
             <RepeatOneIcon size={moderateScale(24)} color={theme.colors.text} />
           )}
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
-          activeOpacity={0.9}
+        <Pressable
           onPress={onSleepTimerPress}
           style={[
             styles.button,
@@ -163,11 +162,10 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             size={moderateScale(22)}
             filled={!!isTimerActive}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <TouchableOpacity
-        activeOpacity={0.9}
+      <Pressable
         onPress={onQueuePress}
         style={[
           styles.sideButton,
@@ -178,7 +176,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
           ],
         ]}>
         <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };

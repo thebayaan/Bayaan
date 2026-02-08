@@ -1,5 +1,5 @@
 import DeviceInfo from 'react-native-device-info';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import {useDownloadStore} from './player/store/downloadStore';
 
 export function getDownloadsStorage(): number {

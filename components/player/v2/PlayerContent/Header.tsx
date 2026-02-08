@@ -1,9 +1,10 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {Icon} from '@rneui/themed';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
 interface HeaderProps {
@@ -12,7 +13,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
   const {theme} = useTheme();
-  const {queue, setSheetMode} = useUnifiedPlayer();
+  const {setSheetMode} = usePlayerActions();
+  const queue = usePlayerStore(s => s.queue);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const surahNumber = currentTrack?.surahId
@@ -29,33 +31,27 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={styles.closeButton}
-        onPress={handleClose}>
+      <Pressable style={styles.closeButton} onPress={handleClose}>
         <Icon
           name="chevron-thin-down"
           type="entypo"
           size={moderateScale(22)}
           color={theme.colors.text}
         />
-      </TouchableOpacity>
+      </Pressable>
 
       <Text style={[styles.arabicSurahName, {color: theme.colors.text}]}>
         {surahGlyph}
       </Text>
 
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={styles.optionsButton}
-        onPress={onOptionsPress}>
+      <Pressable style={styles.optionsButton} onPress={onOptionsPress}>
         <Icon
           name="more-horizontal"
           type="feather"
           size={moderateScale(22)}
           color={theme.colors.text}
         />
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };

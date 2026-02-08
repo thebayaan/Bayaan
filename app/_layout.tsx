@@ -4,11 +4,7 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import TrackPlayer from 'react-native-track-player';
-import playbackService from '@/services/player/events/playbackService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {setupTrackPlayer} from '@/services/player/utils/setup';
-import {setupEventBridge} from '@/services/player/events/bridge';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
@@ -36,6 +32,8 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {ExpoAudioProvider} from '@/services/audio';
+import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -58,21 +56,12 @@ SystemUI.setBackgroundColorAsync(
   Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
 );
 
-// Register playback service
-TrackPlayer.registerPlaybackService(() => playbackService);
-
-// Track initialization attempts to prevent loops
-let initializationAttempts = 0;
-const MAX_INITIALIZATION_ATTEMPTS = 3;
-const RETRY_DELAY = 1000;
-
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [isTajweedLoading, setIsTajweedLoading] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
-  const store = usePlayerStore();
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
@@ -128,11 +117,8 @@ export default function RootLayout() {
   useEffect(() => {
     if (!isTajweedLoading) {
       setIsTajweedLoading(true);
-      console.log('[App] Preloading tajweed data...');
-      // Start preloading tajweed data in the background
+      if (__DEV__) console.log('[App] Preloading tajweed data...');
       preloadTajweedDataWithTimeout();
-      // We don't need to wait for tajweed data to load to continue app initialization
-      // This will load asynchronously while other resources are being prepared
     }
   }, [isTajweedLoading]);
 
@@ -140,13 +126,12 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeServices = async () => {
       try {
-        console.log('[App] Initializing SQLite services...');
+        if (__DEV__) console.log('[App] Initializing SQLite services...');
         await appInitializer.initialize();
-        console.log('[App] SQLite services initialized successfully');
+        if (__DEV__)
+          console.log('[App] SQLite services initialized successfully');
       } catch (error) {
         console.error('[App] Failed to initialize SQLite services:', error);
-        // Critical services will prevent app startup via setupError
-        // Non-critical services will just log errors and continue
       }
     };
 
@@ -156,16 +141,14 @@ export default function RootLayout() {
   const onLayoutRootView = useCallback(async () => {
     try {
       if (appIsReady && fontsLoaded && isPlayerReady && !hasShareIntent) {
-        // Only hide the splash screen after everything is ready
-        // If there's a pending share intent, keep splash visible until it's processed
         await SplashScreen.hideAsync();
       }
     } catch (e) {
-      console.warn('Error hiding splash screen:', e);
+      if (__DEV__) console.warn('Error hiding splash screen:', e);
     }
   }, [appIsReady, fontsLoaded, isPlayerReady, hasShareIntent]);
 
-  // Initialize app
+  // Initialize app with expo-audio
   useEffect(() => {
     if (initializationRef.current) {
       return;
@@ -173,91 +156,45 @@ export default function RootLayout() {
 
     async function prepare() {
       try {
-        // Prevent multiple initialization attempts
-        if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS) {
-          console.error('[App] Max initialization attempts reached');
-          setSetupError(new Error('Max initialization attempts reached'));
-          return;
-        }
-        initializationAttempts++;
+        if (__DEV__)
+          console.log('[App] Starting initialization with expo-audio...');
 
-        console.log(
-          '[App] Starting initialization attempt:',
-          initializationAttempts,
-        );
-
-        // Setup player with error handling and retry
-        console.log('[App] Setting up player...');
-        let setupStatus = await setupTrackPlayer();
-
-        // If setup fails, retry after delay
-        if (
-          !setupStatus.isInitialized &&
-          initializationAttempts < MAX_INITIALIZATION_ATTEMPTS
-        ) {
-          console.log('[App] Setup failed, retrying after delay...');
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-          setupStatus = await setupTrackPlayer();
-        }
-
-        console.log('[App] Player setup status:', setupStatus);
-
-        if (!setupStatus.isInitialized) {
-          if (setupStatus.error) {
-            console.error('[App] Player setup error:', setupStatus.error);
-            store.setError('system', setupStatus.error);
-            setSetupError(setupStatus.error);
-          }
-          return;
-        }
-
-        console.log('[App] Player setup complete');
+        // Initialize expo-audio service
+        await expoAudioService.initialize();
+        if (__DEV__) console.log('[App] expo-audio service initialized');
 
         // PRE-WARM: Initialize stores BEFORE first play to prevent cold start lag
-        // Zustand persist stores hydrate from AsyncStorage on first access
-        // Pre-warming ensures hydration happens here (during app init) not during first play
         try {
-          // Pre-warm download store (used by generateSmartAudioUrl)
-          // Calling getState() triggers hydration if not already done
           useDownloadStore.getState();
-          console.log('[App] Download store pre-warmed');
+          if (__DEV__) console.log('[App] Download store pre-warmed');
 
-          // Pre-warm player store (used by playback)
           usePlayerStore.getState();
-          console.log('[App] Player store pre-warmed');
+          if (__DEV__) console.log('[App] Player store pre-warmed');
 
-          // Small delay to allow hydration to complete (Zustand persist is async)
-          // This ensures stores are fully hydrated before first play
           await new Promise(resolve => setTimeout(resolve, 50));
-          console.log('[App] Store hydration complete');
+          if (__DEV__) console.log('[App] Store hydration complete');
         } catch (error) {
           console.debug('[App] Failed to pre-warm stores:', error);
         }
 
-        // Mark app as ready without state restoration
+        // Mark app as ready
         setIsPlayerReady(true);
         setAppIsReady(true);
         initializationRef.current = true;
-        console.log('[App] Initialization complete');
+        if (__DEV__) console.log('[App] Initialization complete');
       } catch (error) {
         console.error('[App] Preparation error:', error);
-
-        // Clear any partial initialization
-        try {
-          await TrackPlayer.reset();
-        } catch (resetError) {
-          console.error('[App] Reset after error failed:', resetError);
-        }
 
         setSetupError(
           error instanceof Error ? error : new Error('Setup failed'),
         );
-        store.setError(
-          'system',
-          error instanceof Error ? error : new Error('Setup failed'),
-        );
+        usePlayerStore
+          .getState()
+          .setError(
+            'system',
+            error instanceof Error ? error : new Error('Setup failed'),
+          );
 
-        // Reset initialization state
         setIsPlayerReady(false);
         setAppIsReady(false);
         initializationRef.current = false;
@@ -266,26 +203,7 @@ export default function RootLayout() {
 
     prepare();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
-
-  // Setup event listeners
-  useEffect(() => {
-    if (!isPlayerReady) {
-      return;
-    }
-
-    const handleSetupError = (error: Error) => {
-      console.error('[App] Player setup error:', error);
-      setSetupError(error);
-      store.setError('system', error);
-    };
-
-    setupEventBridge.on('setupError', handleSetupError);
-
-    return () => {
-      setupEventBridge.off('setupError', handleSetupError);
-    };
-  }, [isPlayerReady, store]);
+  }, []);
 
   // Handle navigation after initialization
   useEffect(() => {
@@ -308,12 +226,6 @@ export default function RootLayout() {
             module => module.default,
           );
 
-          console.log(
-            '[NavBar Debug] theme.colors.background:',
-            theme.colors.background,
-          );
-          console.log('[NavBar Debug] isDarkMode:', isDarkMode);
-
           if (NavigationBar) {
             await NavigationBar.setBackgroundColorAsync(
               theme.colors.background,
@@ -321,29 +233,22 @@ export default function RootLayout() {
             await NavigationBar.setButtonStyleAsync(
               isDarkMode ? 'light' : 'dark',
             );
-            console.log(
-              '[NavBar Debug] NavigationBar color and style set successfully',
-            );
-          } else {
-            console.warn('[NavBar Debug] NavigationBar module not found');
           }
           RNStatusBar.setTranslucent(true);
         } catch (error) {
-          console.warn(
-            '[NavBar Debug] Failed to configure navigation bar:',
-            error,
-          );
+          if (__DEV__)
+            console.warn(
+              '[NavBar Debug] Failed to configure navigation bar:',
+              error,
+            );
         }
-      } else {
-        console.log(
-          '[NavBar Debug] Not Android, skipping navigation bar setup',
-        );
       }
     }
 
     setupNavigationBar();
   }, [theme.colors.background, isDarkMode]);
 
+  // Handle share intent (uploads from other apps)
   useEffect(() => {
     if (!hasShareIntent || !appIsReady || !isPlayerReady) return;
 
@@ -356,7 +261,6 @@ export default function RootLayout() {
           return;
         }
 
-        // Filter to audio MIME types
         const audioFiles = files.filter(f => f.mimeType?.startsWith('audio/'));
 
         if (audioFiles.length === 0) {
@@ -432,27 +336,32 @@ export default function RootLayout() {
     <ErrorBoundary>
       <ThemeProvider value={navigationTheme}>
         <SafeAreaProvider>
-          <GestureHandlerRootView
-            style={{flex: 1, backgroundColor: theme.colors.background}}
-            onLayout={onLayoutRootView}>
-            <SheetProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: {
-                    paddingTop: 0,
-                    backgroundColor: theme.colors.background,
-                  },
-                  animation: 'fade',
-                }}>
-                <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-              </Stack>
-              <FloatingPlayer />
-              <PlayerSheet />
-              <WhatsNewModal ref={whatsNewModalRef} />
-              <DevMenu whatsNewModalRef={whatsNewModalRef} />
-            </SheetProvider>
-          </GestureHandlerRootView>
+          <ExpoAudioProvider>
+            <GestureHandlerRootView
+              style={{flex: 1, backgroundColor: theme.colors.background}}
+              onLayout={onLayoutRootView}>
+              <SheetProvider>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: {
+                      paddingTop: 0,
+                      backgroundColor: theme.colors.background,
+                    },
+                    animation: 'fade',
+                  }}>
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{headerShown: false}}
+                  />
+                </Stack>
+                <FloatingPlayer />
+                <PlayerSheet />
+                <WhatsNewModal ref={whatsNewModalRef} />
+                <DevMenu whatsNewModalRef={whatsNewModalRef} />
+              </SheetProvider>
+            </GestureHandlerRootView>
+          </ExpoAudioProvider>
         </SafeAreaProvider>
       </ThemeProvider>
     </ErrorBoundary>

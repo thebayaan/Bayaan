@@ -9,7 +9,6 @@
 import {create} from 'zustand';
 import {getAudioSource} from '@/utils/adhkarAudio';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
 
 interface AdhkarAudioState {
   // Current audio
@@ -64,7 +63,7 @@ export const useAdhkarAudioStore = create<AdhkarAudioState>((set, get) => ({
 
     // Pause main Quran player if it's playing
     const mainPlayerState = usePlayerStore.getState();
-    if (mainPlayerState.playback.state === TrackPlayerState.Playing) {
+    if (mainPlayerState.playback.state === 'playing') {
       mainPlayerState.pause();
     }
 

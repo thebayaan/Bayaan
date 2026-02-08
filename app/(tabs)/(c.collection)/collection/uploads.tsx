@@ -16,7 +16,7 @@ import {Icon} from '@rneui/themed';
 import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById, getReciterName} from '@/services/dataService';
 import {shuffleArray} from '@/utils/arrayUtils';
@@ -77,7 +77,7 @@ export default function UploadsScreen() {
   const router = useRouter();
   const {recitations, totalCount, importFile, importFiles, loadRecitations} =
     useUploadsStore();
-  const {updateQueue, addToQueue, play} = useUnifiedPlayer();
+  const {updateQueue, addToQueue, play} = usePlayerActions();
 
   const [isImporting, setIsImporting] = useState(false);
 
@@ -227,7 +227,9 @@ export default function UploadsScreen() {
                 <Text style={styles.itemTertiaryText}>
                   {item.rewayah}
                   {item.style
-                    ? ` \u00B7 ${item.style.charAt(0).toUpperCase() + item.style.slice(1)}`
+                    ? ` \u00B7 ${
+                        item.style.charAt(0).toUpperCase() + item.style.slice(1)
+                      }`
                     : ''}
                 </Text>
               )}

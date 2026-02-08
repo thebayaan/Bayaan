@@ -16,7 +16,6 @@ import {PlayerOptionsSheet} from './PlayerOptionsSheet';
 import {PlaybackSpeedSheet} from './PlaybackSpeedSheet';
 import {SleepTimerSheet} from './SleepTimerSheet';
 import {MushafLayoutSheet} from './MushafLayoutSheet';
-import {ExtendedSummarySheet} from './ExtendedSummarySheet';
 import {AdhkarLayoutSheet} from './AdhkarLayoutSheet';
 import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
 import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
@@ -36,7 +35,6 @@ registerSheet('player-options', PlayerOptionsSheet);
 registerSheet('playback-speed', PlaybackSpeedSheet);
 registerSheet('sleep-timer', SleepTimerSheet);
 registerSheet('mushaf-layout', MushafLayoutSheet);
-registerSheet('extended-summary', ExtendedSummarySheet);
 registerSheet('adhkar-layout', AdhkarLayoutSheet);
 registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
 registerSheet('organize-recitation', OrganizeRecitationSheet);
@@ -124,15 +122,6 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'mushaf-layout': SheetDefinition;
-    'extended-summary': SheetDefinition<{
-      payload: {
-        surahInfo: {
-          surah_number: number;
-          surah_name: string;
-          text: string;
-        };
-      };
-    }>;
     'adhkar-layout': SheetDefinition;
     'adhkar-copy-options': SheetDefinition<{
       payload: {

@@ -1,0 +1,219 @@
+/**
+ * ExpoAudioProvider - React provider that bridges expo-audio to the store
+ *
+ * This provider:
+ * 1. Creates and manages the expo-audio player instance
+ * 2. Connects the player to ExpoAudioService
+ * 3. Uses useAudioPlayerStatus to get reactive updates
+ * 4. Updates the playerStore with progress/state changes
+ * 5. Handles track end (didJustFinish) to auto-advance to next track
+ *
+ * Must be mounted at the app root level for audio to work.
+ */
+
+import React, {useEffect, useRef, useCallback} from 'react';
+import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
+import {expoAudioService} from './ExpoAudioService';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+
+// Throttle interval for progress updates (ms)
+const PROGRESS_UPDATE_INTERVAL = 1000;
+
+interface ExpoAudioProviderProps {
+  children: React.ReactNode;
+}
+
+export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
+  // Create the audio player instance
+  const player = useAudioPlayer(null);
+
+  // Get reactive status updates
+  const status = useAudioPlayerStatus(player);
+
+  // Refs for tracking state
+  const lastProgressUpdate = useRef(0);
+  const isHandlingTrackEnd = useRef(false);
+  const wasPlaying = useRef(false);
+
+  // Get store actions
+  const updatePlaybackState = usePlayerStore(
+    state => state.updatePlaybackState,
+  );
+  const skipToNext = usePlayerStore(state => state.skipToNext);
+  const settings = usePlayerStore(state => state.settings);
+
+  // Connect player to service on mount
+  useEffect(() => {
+    const initializePlayer = async () => {
+      try {
+        // Initialize the audio service
+        await expoAudioService.initialize();
+
+        // Connect the player instance to the service
+        expoAudioService.setPlayer(player);
+
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Player connected to service');
+      } catch (error) {
+        console.error('[ExpoAudioProvider] Failed to initialize:', error);
+      }
+    };
+
+    initializePlayer();
+
+    // Cleanup on unmount
+    return () => {
+      if (__DEV__) console.log('[ExpoAudioProvider] Unmounting, cleaning up');
+    };
+  }, [player]);
+
+  // Handle progress updates (throttled)
+  useEffect(() => {
+    const now = Date.now();
+    if (now - lastProgressUpdate.current < PROGRESS_UPDATE_INTERVAL) {
+      return;
+    }
+    lastProgressUpdate.current = now;
+
+    // Update position and duration in store
+    if (status.isLoaded) {
+      updatePlaybackState({
+        position: status.currentTime,
+        duration: status.duration,
+        buffering: status.isBuffering,
+      });
+
+      // Also update recently played store with current progress
+      // This saves the position so "continue playing" works
+      if (status.playing && status.duration > 0) {
+        const store = usePlayerStore.getState();
+        const currentTrack = store.queue.tracks[store.queue.currentIndex];
+        if (currentTrack?.reciterId && currentTrack?.surahId) {
+          const progress = status.currentTime / status.duration;
+          useRecentlyPlayedStore
+            .getState()
+            .updateProgress(
+              currentTrack.reciterId,
+              parseInt(currentTrack.surahId, 10),
+              progress,
+              status.duration,
+            );
+        }
+      }
+    }
+  }, [
+    status.currentTime,
+    status.duration,
+    status.isLoaded,
+    status.isBuffering,
+    status.playing,
+    updatePlaybackState,
+  ]);
+
+  // Handle playback state changes
+  useEffect(() => {
+    if (!status.isLoaded) {
+      return;
+    }
+
+    // Map expo-audio status to our playback state
+    let state: 'playing' | 'paused' | 'buffering' | 'ready' = 'ready';
+
+    if (status.isBuffering) {
+      state = 'buffering';
+    } else if (status.playing) {
+      state = 'playing';
+    } else {
+      state = 'paused';
+    }
+
+    // Only update if state changed
+    const currentState = usePlayerStore.getState().playback.state;
+    if (currentState !== state && currentState !== 'loading') {
+      updatePlaybackState({state});
+
+      // Save progress when pausing (to capture final position)
+      if (state === 'paused' && wasPlaying.current && status.duration > 0) {
+        const store = usePlayerStore.getState();
+        const currentTrack = store.queue.tracks[store.queue.currentIndex];
+        if (currentTrack?.reciterId && currentTrack?.surahId) {
+          const progress = status.currentTime / status.duration;
+          useRecentlyPlayedStore
+            .getState()
+            .updateProgress(
+              currentTrack.reciterId,
+              parseInt(currentTrack.surahId, 10),
+              progress,
+              status.duration,
+            );
+          if (__DEV__)
+            console.log(
+              '[ExpoAudioProvider] Saved progress on pause:',
+              progress,
+            );
+        }
+      }
+    }
+
+    // Track if we were playing (for track end handling)
+    wasPlaying.current = status.playing;
+  }, [
+    status.playing,
+    status.isBuffering,
+    status.isLoaded,
+    status.currentTime,
+    status.duration,
+    updatePlaybackState,
+  ]);
+
+  // Handle track end (didJustFinish)
+  const handleTrackEnd = useCallback(async () => {
+    if (isHandlingTrackEnd.current) {
+      return;
+    }
+
+    isHandlingTrackEnd.current = true;
+    if (__DEV__) console.log('[ExpoAudioProvider] Track ended');
+
+    try {
+      const {repeatMode} = settings;
+      const store = usePlayerStore.getState();
+      const {currentIndex, tracks} = store.queue;
+
+      if (repeatMode === 'track') {
+        // Repeat current track
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Repeat mode: track - restarting');
+        await expoAudioService.seekTo(0);
+        await expoAudioService.play();
+      } else if (currentIndex < tracks.length - 1 || repeatMode === 'queue') {
+        // Auto-advance to next track
+        if (__DEV__)
+          console.log('[ExpoAudioProvider] Auto-advancing to next track');
+        await skipToNext();
+      } else {
+        // End of queue, no repeat
+        if (__DEV__) console.log('[ExpoAudioProvider] End of queue reached');
+        updatePlaybackState({state: 'ended'});
+      }
+    } catch (error) {
+      console.error('[ExpoAudioProvider] Error handling track end:', error);
+    } finally {
+      isHandlingTrackEnd.current = false;
+    }
+  }, [settings, skipToNext, updatePlaybackState]);
+
+  // Monitor for track end via didJustFinish
+  useEffect(() => {
+    // expo-audio sets didJustFinish to true when track completes
+    if (status.didJustFinish && wasPlaying.current) {
+      handleTrackEnd();
+    }
+  }, [status.didJustFinish, handleTrackEnd]);
+
+  // Render children - this provider doesn't render any UI
+  return <>{children}</>;
+}
+
+export default ExpoAudioProvider;

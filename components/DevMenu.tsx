@@ -7,7 +7,7 @@ import {WhatsNewModalRef} from '@/components/modals/WhatsNewModal';
 import Color from 'color';
 
 interface DevMenuProps {
-  whatsNewModalRef?: React.RefObject<WhatsNewModalRef>;
+  whatsNewModalRef?: React.RefObject<WhatsNewModalRef | null>;
 }
 
 export function DevMenu({whatsNewModalRef}: DevMenuProps) {

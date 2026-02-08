@@ -1,74 +1,57 @@
-import React, {useCallback, useMemo} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {Slider} from '@miblanchard/react-native-slider';
+import Slider from '@react-native-community/slider';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useProgress} from '@/services/player/store/progressStore';
 
 export const ProgressBar = React.memo(() => {
   const {theme} = useTheme();
-  const {seekTo} = useUnifiedPlayer();
+  const {seekTo} = usePlayerActions();
   const progress = useProgress();
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [seekValue, setSeekValue] = useState(0);
 
-  // Memoize the current position for performance
-  const currentPosition = useMemo(() => {
+  const displayTime = useMemo(() => {
+    if (isSeeking) return seekValue;
     return progress.seekPosition ?? progress.position;
+  }, [isSeeking, seekValue, progress.seekPosition, progress.position]);
+
+  const handleSliderStart = useCallback(() => {
+    setIsSeeking(true);
+    setSeekValue(progress.seekPosition ?? progress.position);
   }, [progress.seekPosition, progress.position]);
 
-  // Memoize the slider value to prevent unnecessary calculations
-  const sliderValue = useMemo(() => {
-    return progress.duration > 0 ? currentPosition / progress.duration : 0;
-  }, [currentPosition, progress.duration]);
-
-  const handleValueChange = useCallback(
-    (values: number[]) => {
-      if (progress.duration > 0) {
-        const newPosition = values[0] * progress.duration;
-        // Set seeking state and update position immediately
-        progress.setIsSeeking(true);
-        progress.setSeekPosition(newPosition);
-      }
-    },
-    [progress],
-  );
+  const handleSliderChange = useCallback((value: number) => {
+    setSeekValue(value);
+  }, []);
 
   const handleSlidingComplete = useCallback(
-    async (values: number[]) => {
-      if (progress.duration > 0) {
-        const newPosition = values[0] * progress.duration;
-        try {
-          // Immediately update the position for optimistic UI
-          progress.setPosition(newPosition);
-          // Perform the actual seek
-          await seekTo(newPosition);
-        } catch (error) {
-          console.error('Error seeking:', error);
-          // Revert to actual position on error
-          progress.setPosition(progress.position);
-        } finally {
-          // Reset seeking state
-          progress.setIsSeeking(false);
-          progress.setSeekPosition(null);
-        }
+    async (value: number) => {
+      try {
+        progress.setPosition(value);
+        await seekTo(value);
+      } catch (error) {
+        console.error('Error seeking:', error);
+      } finally {
+        setIsSeeking(false);
       }
     },
     [progress, seekTo],
   );
 
   const formatTime = useCallback((seconds: number) => {
+    if (!isFinite(seconds) || seconds < 0) return '0:00';
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = Math.floor(seconds % 60);
-
     if (hours > 0) {
-      return `${hours}:${minutes < 10 ? '0' : ''}${minutes}:${
-        remainingSeconds < 10 ? '0' : ''
-      }${remainingSeconds}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds
+        .toString()
+        .padStart(2, '0')}`;
     } else {
-      return `${minutes}:${
-        remainingSeconds < 10 ? '0' : ''
-      }${remainingSeconds}`;
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
   }, []);
 
@@ -76,28 +59,23 @@ export const ProgressBar = React.memo(() => {
     <View style={styles.container}>
       <View style={styles.timeContainer}>
         <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {formatTime(currentPosition)}
+          {formatTime(displayTime)}
         </Text>
-        <Text style={[styles.timeText, {color: theme.colors.text}]}>
-          {'-'} {formatTime(progress.duration - currentPosition)}
+        <Text style={[styles.timeText, {color: theme.colors.textSecondary}]}>
+          {'-'} {formatTime(progress.duration - displayTime)}
         </Text>
       </View>
       <Slider
-        value={sliderValue}
-        onValueChange={handleValueChange}
+        style={styles.slider}
+        minimumValue={0}
+        maximumValue={progress.duration || 1}
+        value={displayTime}
+        onSlidingStart={handleSliderStart}
+        onValueChange={handleSliderChange}
         onSlidingComplete={handleSlidingComplete}
         minimumTrackTintColor={theme.colors.text}
         maximumTrackTintColor={`${theme.colors.text}4D`}
-        trackStyle={{
-          height: moderateScale(8),
-          borderRadius: moderateScale(4),
-        }}
-        thumbStyle={{height: 0, width: 0}}
-        containerStyle={styles.sliderContainer}
-        animationType="timing"
-        animateTransitions
-        maximumTrackStyle={{borderRadius: moderateScale(4)}}
-        minimumTrackStyle={{borderRadius: moderateScale(4)}}
+        thumbTintColor={isSeeking ? theme.colors.text : 'transparent'}
       />
     </View>
   );
@@ -113,12 +91,13 @@ const styles = StyleSheet.create({
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: moderateScale(8),
+    marginBottom: moderateScale(4),
   },
   timeText: {
     fontSize: moderateScale(12),
   },
-  sliderContainer: {
-    height: moderateScale(8),
+  slider: {
+    width: '100%',
+    height: 40,
   },
 });

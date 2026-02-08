@@ -9,7 +9,7 @@ import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import Color from 'color';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {
   useDownloadProgress,
@@ -194,8 +194,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={
-                  playbackStatus === TrackPlayerState.Playing ||
-                  playbackStatus === TrackPlayerState.Buffering
+                  playbackStatus === 'playing' || playbackStatus === 'buffering'
                 }
                 surahId={surah.id}
                 barCount={3}

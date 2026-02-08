@@ -34,7 +34,7 @@ export function CategoryCard({
   const gradientColors = [
     baseColor.alpha(0.95).toString(),
     baseColor.darken(0.15).toString(),
-  ];
+  ] as [string, string];
 
   return (
     <TouchableOpacity

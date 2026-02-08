@@ -9,7 +9,6 @@ import {
   StateValidationError,
   PlayerState,
 } from '../types/state';
-import {State as TrackPlayerState} from 'react-native-track-player';
 
 /**
  * Valid PlayerState values for validation
@@ -351,7 +350,7 @@ export function validateUnifiedPlayerState(
 export function createDefaultUnifiedPlayerState(): UnifiedPlayerState {
   return {
     playback: {
-      state: TrackPlayerState.None,
+      state: 'none',
       position: 0,
       duration: 0,
       rate: 1,

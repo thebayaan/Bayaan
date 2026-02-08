@@ -1,14 +1,12 @@
 import {useCallback} from 'react';
 import {getAllReciters, getSurahById} from '@/services/dataService';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {Reciter} from '@/data/reciterData';
 
 export function useReciterSelection() {
-  const {updateQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
+  const {updateQueue, play} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
 
   const playWithReciter = useCallback(
@@ -34,16 +32,13 @@ export function useReciterSelection() {
         // Add to recently played list with the rewayatId
         await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
-        // Set current reciter for batch loading
-        queueContext.setCurrentReciter(reciter);
-
         return true;
       } catch (error) {
         console.error('Error playing surah:', error);
         return false;
       }
     },
-    [updateQueue, play, queueContext, addRecentTrack],
+    [updateQueue, play, addRecentTrack],
   );
 
   const playWithRandomReciter = useCallback(
@@ -114,16 +109,13 @@ export function useReciterSelection() {
         // Add to recently played list with the rewayatId
         await addRecentTrack(selectedReciter, surah, 0, 0, rewayatId);
 
-        // Set current reciter for batch loading
-        queueContext.setCurrentReciter(selectedReciter);
-
         return true;
       } catch (error) {
         console.error('Error playing with random reciter:', error);
         return false;
       }
     },
-    [updateQueue, play, queueContext, addRecentTrack],
+    [updateQueue, play, addRecentTrack],
   );
 
   return {

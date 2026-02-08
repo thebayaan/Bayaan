@@ -67,9 +67,12 @@ export interface SuperCategory {
 export interface AdhkarSeedData {
   meta?: {
     total_categories: number;
-    total_adhkar: number;
+    total_adhkar?: number;
+    total_duas?: number;
     audio_source: string;
     source_book: string;
+    audio_local_dir?: string;
+    total_audio_size_mb?: number;
   };
   categories: Array<{
     id: string;

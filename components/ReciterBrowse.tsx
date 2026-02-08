@@ -15,9 +15,8 @@ import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 interface ReciterBrowseProps {
@@ -33,8 +32,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
   const {isFavoriteReciter} = useFavoriteReciters();
   const insets = useSafeAreaInsets();
   const [_surahName, setSurahName] = useState<string>('');
-  const {updateQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
+  const {updateQueue, play} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
 
   const filteredReciters = useMemo(() => {
@@ -136,15 +134,12 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         // Add to recently played list with the rewayatId
         await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
-        // Set current reciter for batch loading
-        queueContext.setCurrentReciter(reciter);
-
         router.back();
       } catch (error) {
         console.error('Error playing surah:', error);
       }
     },
-    [surahId, updateQueue, play, queueContext, router, addRecentTrack],
+    [surahId, updateQueue, play, router, addRecentTrack],
   );
 
   return (

@@ -24,9 +24,8 @@ import FilterModal, {FilterOptions} from './FilterModal';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {getFeaturedReciters} from '@/data/featuredReciters';
 import {useRouter} from 'expo-router';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {getSurahById} from '@/services/dataService';
 import {reciterImages} from '@/utils/reciterImages';
@@ -171,8 +170,7 @@ export default function BrowseReciters({
   initialStudent,
 }: BrowseRecitersProps) {
   const router = useRouter();
-  const {updateQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
+  const {updateQueue, play} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {setReciterPreference} = useSettings();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -605,9 +603,6 @@ export default function BrowseReciters({
           // Add to recently played list with the rewayatId
           await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
-          // Set current reciter for batch loading
-          queueContext.setCurrentReciter(reciter);
-
           // Navigate back
           router.back();
         } catch (error) {
@@ -632,15 +627,7 @@ export default function BrowseReciters({
       }
       console.log('------------ END REWAYA SELECTION PROCESS ------------');
     },
-    [
-      setReciterPreference,
-      surahId,
-      updateQueue,
-      play,
-      queueContext,
-      router,
-      addRecentTrack,
-    ],
+    [setReciterPreference, surahId, updateQueue, play, router, addRecentTrack],
   );
 
   // Handler for tapping outside search area

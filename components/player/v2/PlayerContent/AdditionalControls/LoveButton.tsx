@@ -1,7 +1,7 @@
 import React from 'react';
-import {TouchableOpacity, StyleSheet} from 'react-native';
+import {Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon} from '@/components/Icons';
 import Animated, {
@@ -11,7 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
 export const LoveButton = () => {
-  const {queue} = useUnifiedPlayer();
+  const queue = usePlayerStore(s => s.queue);
   const {theme} = useTheme();
 
   const {isTrackLoved, toggleTrackLoved} = useLoved();
@@ -36,10 +36,7 @@ export const LoveButton = () => {
   }));
 
   return (
-    <TouchableOpacity
-      style={styles.button}
-      onPress={handleToggleLoved}
-      activeOpacity={0.7}>
+    <Pressable style={styles.button} onPress={handleToggleLoved}>
       <Animated.View style={animatedStyle}>
         <HeartIcon
           size={moderateScale(32)}
@@ -47,7 +44,7 @@ export const LoveButton = () => {
           filled={isLoved}
         />
       </Animated.View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 

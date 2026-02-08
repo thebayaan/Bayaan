@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {uploadsDatabaseService} from './UploadsDatabaseService';
@@ -72,15 +72,17 @@ class UploadsService {
 
     // Check file size (warn but don't block)
     try {
-      const fileInfo = await FileSystem.getInfoAsync(destination, {size: true});
+      const fileInfo = await FileSystem.getInfoAsync(destination);
       if (
         fileInfo.exists &&
         fileInfo.size &&
         fileInfo.size > LARGE_FILE_WARNING_BYTES
       ) {
         console.warn(
-          `Large file imported: ${originalFilename} (${(fileInfo.size / (1024 * 1024)).toFixed(1)}MB). ` +
-            'Consider compressing audio files over 100MB.',
+          `Large file imported: ${originalFilename} (${(
+            fileInfo.size /
+            (1024 * 1024)
+          ).toFixed(1)}MB). ` + 'Consider compressing audio files over 100MB.',
         );
       }
     } catch (error) {
@@ -277,7 +279,7 @@ class UploadsService {
     for (const recitation of recitations) {
       try {
         const filePath = resolveRecitationPath(recitation.filePath);
-        const fileInfo = await FileSystem.getInfoAsync(filePath, {size: true});
+        const fileInfo = await FileSystem.getInfoAsync(filePath);
 
         if (fileInfo.exists && fileInfo.size) {
           totalBytes += fileInfo.size;
