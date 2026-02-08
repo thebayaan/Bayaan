@@ -146,16 +146,15 @@ const styles = StyleSheet.create({
   viewsContainer: {
     flex: 1,
     width: '100%',
-    paddingHorizontal: moderateScale(20),
     marginTop: moderateScale(5),
     position: 'relative',
   },
   viewWrapper: {
-    width: '100%',
     height: '100%',
     position: 'absolute',
     top: 0,
     left: 0,
+    right: 0,
     paddingHorizontal: moderateScale(20),
   },
   controlsContainer: {

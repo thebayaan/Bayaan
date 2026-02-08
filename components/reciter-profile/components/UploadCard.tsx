@@ -12,6 +12,10 @@ import {LinearGradient} from 'expo-linear-gradient';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {GradientText} from '@/components/GradientText';
+import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
 interface UploadCardProps {
   title: string;
@@ -20,6 +24,8 @@ interface UploadCardProps {
   onLongPress?: () => void;
   color: string;
   style?: StyleProp<ViewStyle>;
+  uploadId?: string;
+  surahNumber?: number;
 }
 
 export const UploadCard: React.FC<UploadCardProps> = ({
@@ -29,8 +35,29 @@ export const UploadCard: React.FC<UploadCardProps> = ({
   onLongPress,
   color,
   style,
+  uploadId,
+  surahNumber,
 }) => {
   const {theme} = useTheme();
+
+  const playbackState = usePlayerStore(state => state.playback.state);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const tracks = usePlayerStore(state => state.queue.tracks);
+
+  const trackId = uploadId ? `upload-${uploadId}` : null;
+
+  const isCurrentTrack = useMemo(() => {
+    if (!trackId) return false;
+    const current =
+      tracks && currentIndex >= 0 && currentIndex < tracks.length
+        ? tracks[currentIndex]
+        : null;
+    return current?.id === trackId;
+  }, [tracks, currentIndex, trackId]);
+
+  const isPlaying =
+    isCurrentTrack &&
+    (playbackState === 'playing' || playbackState === 'buffering');
 
   const gradientColors = useMemo((): [string, string] => {
     const base = Color(theme.colors.textSecondary);
@@ -70,6 +97,17 @@ export const UploadCard: React.FC<UploadCardProps> = ({
           textAlign: 'center',
           marginTop: moderateScale(2),
         },
+        nowPlayingCorner: {
+          position: 'absolute',
+          bottom: moderateScale(6),
+          right: moderateScale(6),
+        },
+        surahGlyph: {
+          fontSize: moderateScale(10),
+          fontFamily: 'SurahNames',
+          color: theme.colors.textSecondary,
+          marginTop: moderateScale(2),
+        },
       }),
     [theme],
   );
@@ -94,13 +132,32 @@ export const UploadCard: React.FC<UploadCardProps> = ({
             color={theme.colors.textSecondary}
           />
         </View>
-        <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
-          {title}
-        </Text>
-        <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
-          {subtitle}
-        </Text>
+        {isCurrentTrack && surahNumber ? (
+          <GradientText style={styles.title} surahId={surahNumber}>
+            {title}
+          </GradientText>
+        ) : (
+          <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">
+            {title}
+          </Text>
+        )}
+        {surahNumber && surahGlyphMap[surahNumber] ? (
+          <Text style={styles.surahGlyph}>{surahGlyphMap[surahNumber]}</Text>
+        ) : (
+          <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
+            {subtitle}
+          </Text>
+        )}
       </View>
+      {isCurrentTrack && (
+        <View style={styles.nowPlayingCorner}>
+          <NowPlayingIndicator
+            isPlaying={isPlaying}
+            barCount={3}
+            surahId={surahNumber}
+          />
+        </View>
+      )}
     </Pressable>
   );
 };
