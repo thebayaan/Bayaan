@@ -19,6 +19,9 @@ import {getSurahById} from '@/services/dataService';
 import {SheetManager} from 'react-native-actions-sheet';
 import {UploadCard} from './UploadCard';
 import type {UploadedRecitation} from '@/types/uploads';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {GradientText} from '@/components/GradientText';
 
 interface UploadsTabContentProps {
   reciterId: string;
@@ -68,6 +71,100 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
 
   return parts.join(' · ');
 }
+
+interface ReciterUploadListItemProps {
+  item: UploadedRecitation;
+  index: number;
+  onPlay: (item: UploadedRecitation, index: number) => void;
+  onShowOptions: (item: UploadedRecitation, index: number) => void;
+}
+
+const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
+  ({item, index, onPlay, onShowOptions}) => {
+    const {theme} = useTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
+    const playbackState = usePlayerStore(state => state.playback.state);
+    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+    const tracks = usePlayerStore(state => state.queue.tracks);
+
+    const trackId = `upload-${item.id}`;
+
+    const isCurrentTrack = useMemo(() => {
+      const current =
+        tracks && currentIndex >= 0 && currentIndex < tracks.length
+          ? tracks[currentIndex]
+          : null;
+      return current?.id === trackId;
+    }, [tracks, currentIndex, trackId]);
+
+    const isPlaying =
+      isCurrentTrack &&
+      (playbackState === 'playing' || playbackState === 'buffering');
+
+    // Build title with surah number prefix when applicable
+    const displayTitle = useMemo(() => {
+      if (item.type === 'surah' && item.surahNumber) {
+        const surah = getSurahById(item.surahNumber);
+        if (surah) return `${item.surahNumber}. ${surah.name}`;
+      }
+      return getDisplayTitle(item);
+    }, [item]);
+
+    return (
+      <View style={styles.itemRow}>
+        <Pressable
+          style={styles.itemPlayZone}
+          onPress={() => onPlay(item, index)}
+          onLongPress={() => onShowOptions(item, index)}>
+          <View style={styles.itemIconContainer}>
+            <Feather
+              name="music"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+          </View>
+          <View style={styles.itemInfoContainer}>
+            {isCurrentTrack && item.surahNumber ? (
+              <GradientText style={styles.itemName} surahId={item.surahNumber}>
+                {displayTitle}
+              </GradientText>
+            ) : (
+              <Text
+                style={styles.itemName}
+                numberOfLines={1}
+                ellipsizeMode="middle">
+                {displayTitle}
+              </Text>
+            )}
+            <Text style={styles.itemSubtitle} numberOfLines={1}>
+              {getDisplaySubtitle(item)}
+            </Text>
+          </View>
+        </Pressable>
+        <Pressable
+          style={styles.itemOptionsZone}
+          onPress={() => onShowOptions(item, index)}>
+          {isCurrentTrack ? (
+            <NowPlayingIndicator
+              isPlaying={isPlaying}
+              barCount={3}
+              surahId={item.surahNumber ?? undefined}
+            />
+          ) : (
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(16)}
+              color={theme.colors.text}
+            />
+          )}
+        </Pressable>
+      </View>
+    );
+  },
+);
+
+ReciterUploadListItem.displayName = 'ReciterUploadListItem';
 
 export const UploadsTabContent = React.forwardRef<
   Animated.FlatList,
@@ -172,6 +269,8 @@ export const UploadsTabContent = React.forwardRef<
               : theme.colors.textSecondary
           }
           style={styles.cardItem}
+          uploadId={item.id}
+          surahNumber={item.surahNumber ?? undefined}
         />
       ),
       [
@@ -185,42 +284,14 @@ export const UploadsTabContent = React.forwardRef<
 
     const renderListItem = useCallback(
       ({item, index}: {item: UploadedRecitation; index: number}) => (
-        <View style={styles.itemRow}>
-          <Pressable
-            style={styles.itemPlayZone}
-            onPress={() => handlePlay(item, index)}
-            onLongPress={() => handleShowOptions(item, index)}>
-            <View style={styles.itemIconContainer}>
-              <Feather
-                name="music"
-                size={moderateScale(16)}
-                color={theme.colors.textSecondary}
-              />
-            </View>
-            <View style={styles.itemInfoContainer}>
-              <Text
-                style={styles.itemName}
-                numberOfLines={1}
-                ellipsizeMode="middle">
-                {getDisplayTitle(item)}
-              </Text>
-              <Text style={styles.itemSubtitle} numberOfLines={1}>
-                {getDisplaySubtitle(item)}
-              </Text>
-            </View>
-          </Pressable>
-          <Pressable
-            style={styles.itemOptionsZone}
-            onPress={() => handleShowOptions(item, index)}>
-            <Feather
-              name="more-horizontal"
-              size={moderateScale(16)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-        </View>
+        <ReciterUploadListItem
+          item={item}
+          index={index}
+          onPlay={handlePlay}
+          onShowOptions={handleShowOptions}
+        />
       ),
-      [handlePlay, handleShowOptions, theme, styles],
+      [handlePlay, handleShowOptions],
     );
 
     const addButton = useMemo(

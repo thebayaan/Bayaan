@@ -157,22 +157,22 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
   // Build artist from reciter tags, fallback to 'My Recitations'
   let artist = 'My Recitations';
   let resolvedRewayatId: string | undefined;
+  let artwork = '';
   if (recitation.reciterId) {
+    const reciter = RECITERS.find(r => r.id === recitation.reciterId);
     const name = getReciterName(recitation.reciterId);
     if (name) artist = name;
+    if (reciter) artwork = getReciterArtwork(reciter);
 
     // Resolve rewayah name to rewayat UUID so the player can look it up
     // Only for surah recitations — other categories don't need rewayah display
-    if (recitation.type === 'surah' && recitation.rewayah) {
-      const reciter = RECITERS.find(r => r.id === recitation.reciterId);
-      if (reciter) {
-        const match = reciter.rewayat.find(
-          rw =>
-            rw.name === recitation.rewayah &&
-            (!recitation.style || rw.style === recitation.style),
-        );
-        if (match) resolvedRewayatId = match.id;
-      }
+    if (recitation.type === 'surah' && recitation.rewayah && reciter) {
+      const match = reciter.rewayat.find(
+        rw =>
+          rw.name === recitation.rewayah &&
+          (!recitation.style || rw.style === recitation.style),
+      );
+      if (match) resolvedRewayatId = match.id;
     }
   }
 
@@ -181,7 +181,7 @@ export function createUserUploadTrack(recitation: UploadedRecitation): Track {
     url,
     title,
     artist,
-    artwork: '',
+    artwork,
     surahId: recitation.surahNumber
       ? String(recitation.surahNumber)
       : undefined,
