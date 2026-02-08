@@ -9,6 +9,7 @@
 import {create} from 'zustand';
 import {Dhikr} from '@/types/adhkar';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 
 type SourceType = 'morning' | 'evening' | 'saved' | 'other';
 
@@ -71,6 +72,12 @@ export const useAdhkarPlayAllStore = create<
     // Stop single-dhikr playback
     useAdhkarAudioStore.getState().pause();
 
+    // Pause main Quran player if it's playing
+    const mainPlayerState = usePlayerStore.getState();
+    if (mainPlayerState.playback.state === 'playing') {
+      mainPlayerState.pause();
+    }
+
     set({
       isPlayAllMode: true,
       queue: adhkarList,
@@ -128,6 +135,13 @@ export const useAdhkarPlayAllStore = create<
   play: () => {
     const {isPlayAllMode} = get();
     if (!isPlayAllMode) return;
+
+    // Pause main Quran player if it's playing
+    const mainPlayerState = usePlayerStore.getState();
+    if (mainPlayerState.playback.state === 'playing') {
+      mainPlayerState.pause();
+    }
+
     set({isPlaying: true});
   },
 
