@@ -102,8 +102,10 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
   const {play, pause, setSheetMode} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
-  const queue = usePlayerStore(state => state.queue);
-  const loading = usePlayerStore(state => state.loading);
+  const queueTracks = usePlayerStore(state => state.queue.tracks);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const trackLoading = usePlayerStore(state => state.loading.trackLoading);
+  const stateRestoring = usePlayerStore(state => state.loading.stateRestoring);
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const scale = useSharedValue(1);
   const heartScale = useSharedValue(1);
@@ -112,8 +114,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const styles = useMemo(() => createStyles(insets.bottom), [insets.bottom]);
 
   const currentTrack = useMemo(
-    () => queue?.tracks?.[queue.currentIndex],
-    [queue?.tracks, queue.currentIndex],
+    () => queueTracks?.[currentIndex],
+    [queueTracks, currentIndex],
   );
 
   const prevTrackIdRef = React.useRef<string | null>(null);
@@ -128,14 +130,12 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     // Only show loading when:
     // 1. A track is being loaded (trackLoading) AND it's a new track
     // 2. OR when in the initial buffering state (but not during play/pause)
-    return (
-      (loading.trackLoading && isTrackChanging) || playbackState === 'buffering'
-    );
-  }, [loading.trackLoading, playbackState, currentTrack?.id]);
+    return (trackLoading && isTrackChanging) || playbackState === 'buffering';
+  }, [trackLoading, playbackState, currentTrack?.id]);
 
   const shouldShow = useMemo(
-    () => !loading?.stateRestoring && !!currentTrack,
-    [loading?.stateRestoring, currentTrack],
+    () => !stateRestoring && !!currentTrack,
+    [stateRestoring, currentTrack],
   );
 
   const surahNumber = useMemo(() => {
