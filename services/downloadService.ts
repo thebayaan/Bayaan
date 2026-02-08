@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import {fetchAudioUrl} from './dataService';
 import {DownloadedSurah} from './player/store/downloadStore';
 
