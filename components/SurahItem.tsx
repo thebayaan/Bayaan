@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  GestureResponderEvent,
-} from 'react-native';
+import {View, Text, Pressable, GestureResponderEvent} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -17,7 +12,7 @@ import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+
 import {NowPlayingIndicator} from './NowPlayingIndicator';
 import {
   useDownloadProgress,
@@ -92,8 +87,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     const isCurrentlyPlaying = React.useMemo(() => {
       // Check if playback is active
       const isActive =
-        playbackStatus === TrackPlayerState.Playing ||
-        playbackStatus === TrackPlayerState.Buffering;
+        playbackStatus === 'playing' || playbackStatus === 'buffering';
 
       // Ensure valid index and track exists
       const currentTrack =
@@ -161,8 +155,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     return (
       <View style={styles.surahItem}>
         {/* Left zone - Play action */}
-        <TouchableOpacity
-          activeOpacity={1}
+        <Pressable
           style={styles.playZone}
           onPress={handlePress}
           onLongPress={handlePress}
@@ -258,12 +251,11 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
               </View>
             )}
           </View>
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Right zone - Options action */}
         {onOptionsPress && (
-          <TouchableOpacity
-            activeOpacity={1}
+          <Pressable
             style={styles.optionsZone}
             onPress={handleOptionsPress}
             accessibilityRole="button"
@@ -272,8 +264,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={
-                  playbackStatus === TrackPlayerState.Playing ||
-                  playbackStatus === TrackPlayerState.Buffering
+                  playbackStatus === 'playing' || playbackStatus === 'buffering'
                 }
                 barCount={3}
                 surahId={Number(item.id)}
@@ -286,7 +277,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
                 color={theme.colors.text}
               />
             )}
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
     );

@@ -2,14 +2,14 @@ import React, {useCallback, useEffect, useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {State as TrackPlayerState} from 'react-native-track-player';
 import Animated, {
   useSharedValue,
   withTiming,
   withSpring,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {PlayButton} from './PlayButton';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {useLoved} from '@/hooks/useLoved';
@@ -100,8 +100,10 @@ const createStyles = (bottomInset: number) =>
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
-  const {playback, queue, loading, play, pause, setSheetMode} =
-    useUnifiedPlayer();
+  const {play, pause, setSheetMode} = usePlayerActions();
+  const playbackState = usePlayerStore(state => state.playback.state);
+  const queue = usePlayerStore(state => state.queue);
+  const loading = usePlayerStore(state => state.loading);
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const scale = useSharedValue(1);
   const heartScale = useSharedValue(1);
@@ -127,10 +129,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     // 1. A track is being loaded (trackLoading) AND it's a new track
     // 2. OR when in the initial buffering state (but not during play/pause)
     return (
-      (loading.trackLoading && isTrackChanging) ||
-      playback.state === TrackPlayerState.Buffering
+      (loading.trackLoading && isTrackChanging) || playbackState === 'buffering'
     );
-  }, [loading.trackLoading, playback.state, currentTrack?.id]);
+  }, [loading.trackLoading, playbackState, currentTrack?.id]);
 
   const shouldShow = useMemo(
     () => !loading?.stateRestoring && !!currentTrack,
@@ -201,12 +202,12 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   }, [setSheetMode]);
 
   const handlePlayPause = useCallback(async () => {
-    if (playback.state === TrackPlayerState.Playing) {
+    if (playbackState === 'playing') {
       await pause();
     } else {
       await play();
     }
-  }, [playback.state, pause, play]);
+  }, [playbackState, pause, play]);
 
   const handleLovePress = useCallback(() => {
     if (currentTrack) {
@@ -249,7 +250,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
                 <LoadingIndicator color={textColor} />
               ) : (
                 <PlayButton
-                  isPlaying={playback.state === TrackPlayerState.Playing}
+                  isPlaying={playbackState === 'playing'}
                   onPlayPause={handlePlayPause}
                   disabled={isLoadingNewTrack}
                 />
@@ -311,7 +312,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
                 <LoadingIndicator color={textColor} />
               ) : (
                 <PlayButton
-                  isPlaying={playback.state === TrackPlayerState.Playing}
+                  isPlaying={playbackState === 'playing'}
                   onPlayPause={handlePlayPause}
                   disabled={isLoadingNewTrack}
                 />

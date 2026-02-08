@@ -23,7 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {
@@ -394,8 +394,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           activeOpacity={0.7}>
           <NowPlayingIndicator
             isPlaying={
-              playbackStatus === TrackPlayerState.Playing ||
-              playbackStatus === TrackPlayerState.Buffering
+              playbackStatus === 'playing' || playbackStatus === 'buffering'
             }
             barCount={3}
             surahId={id}
