@@ -83,19 +83,20 @@ export const AddToCollectionSheet = (
         </View>
 
         <View style={styles.optionsGrid}>
-          <Pressable
+
+        <Pressable
             style={({pressed}) => [
               styles.option,
               pressed && styles.optionPressed,
             ]}
-            onPress={handleAddFavoriteReciter}>
+            onPress={handleNewUpload}>
             <Feather
-              name="star"
+              name="mic"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>Add Favorite Reciter</Text>
-          </Pressable>
+            <Text style={styles.optionText}>Upload Recitation</Text>
+          </Pressable>          
 
           <Pressable
             style={({pressed}) => [
@@ -112,13 +113,13 @@ export const AddToCollectionSheet = (
               styles.option,
               pressed && styles.optionPressed,
             ]}
-            onPress={handleNewUpload}>
+            onPress={handleAddFavoriteReciter}>
             <Feather
-              name="mic"
+              name="star"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>Upload Recitation</Text>
+            <Text style={styles.optionText}>Add Favorite Reciter</Text>
           </Pressable>
         </View>
       </View>
