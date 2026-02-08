@@ -22,6 +22,7 @@ import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
 import {DownloadOptionsSheet} from './DownloadOptionsSheet';
 import {UploadOptionsSheet} from './UploadOptionsSheet';
 import {AddToCollectionSheet} from './AddToCollectionSheet';
+import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -41,6 +42,7 @@ registerSheet('organize-recitation', OrganizeRecitationSheet);
 registerSheet('download-options', DownloadOptionsSheet);
 registerSheet('upload-options', UploadOptionsSheet);
 registerSheet('add-to-collection', AddToCollectionSheet);
+registerSheet('ambient-sounds', AmbientSoundsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -154,6 +156,7 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'add-to-collection': SheetDefinition;
+    'ambient-sounds': SheetDefinition;
   }
 }
 

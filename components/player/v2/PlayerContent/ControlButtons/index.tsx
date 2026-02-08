@@ -17,7 +17,9 @@ import {
   RepeatOneIcon,
   QueueIcon,
   QuranIcon,
+  AmbientIcon,
 } from '@/components/Icons';
+import {useAmbientStore} from '@/store/ambientStore';
 
 interface ControlButtonsProps {
   onSpeedPress: () => void;
@@ -25,6 +27,7 @@ interface ControlButtonsProps {
   onQueuePress: () => void;
   showQueue: boolean;
   onMushafLayoutPress?: () => void;
+  onAmbientPress: () => void;
 }
 
 interface Styles {
@@ -32,6 +35,7 @@ interface Styles {
   button: ViewStyle;
   speedButton: ViewStyle;
   sleepButton: ViewStyle;
+  ambientButton: ViewStyle;
   middleButton: ViewStyle;
   activeButton: ViewStyle;
   speedButtonText: TextStyle;
@@ -52,11 +56,13 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   onQueuePress,
   showQueue,
   onMushafLayoutPress,
+  onAmbientPress,
 }) => {
   const {theme} = useTheme();
   const {updateSettings} = usePlayerActions();
   const playbackRate = usePlayerStore(s => s.playback.rate);
   const settings = usePlayerStore(s => s.settings);
+  const ambientEnabled = useAmbientStore(s => s.isEnabled);
 
   const handleMushafLayoutPress = useCallback(() => {
     if (onMushafLayoutPress) {
@@ -163,6 +169,23 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             filled={!!isTimerActive}
           />
         </Pressable>
+
+        <Pressable
+          onPress={onAmbientPress}
+          style={[
+            styles.button,
+            styles.ambientButton,
+            ambientEnabled && [
+              styles.activeButton,
+              {backgroundColor: activeBackgroundColor},
+            ],
+          ]}>
+          <AmbientIcon
+            color={theme.colors.text}
+            size={moderateScale(22)}
+            filled={ambientEnabled}
+          />
+        </Pressable>
       </View>
 
       <Pressable
@@ -258,6 +281,10 @@ const styles = StyleSheet.create<Styles>({
   },
   sleepButton: {
     marginLeft: 0,
+    borderRadius: moderateScale(12),
+  },
+  ambientButton: {
+    marginLeft: moderateScale(6),
     borderRadius: moderateScale(12),
   },
   sideButtonsContainer: {

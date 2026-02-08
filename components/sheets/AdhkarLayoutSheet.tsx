@@ -1,12 +1,5 @@
 import React, {useMemo} from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Dimensions,
-  Switch,
-  TouchableOpacity,
-} from 'react-native';
+import {View, Text, Dimensions, Switch, TouchableOpacity} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
@@ -14,7 +7,7 @@ import {
 } from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
+import ActionSheet, {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {

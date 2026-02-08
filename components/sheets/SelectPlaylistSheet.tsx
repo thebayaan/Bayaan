@@ -1,12 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  Dimensions,
-} from 'react-native';
+import {View, Text, TouchableOpacity, Alert, Dimensions} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -14,6 +7,7 @@ import {PlaylistIcon, HeartIcon} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {useLoved} from '@/hooks/useLoved';

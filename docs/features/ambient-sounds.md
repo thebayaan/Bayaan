@@ -1,9 +1,11 @@
 # Feature: Ambient Sounds
 
-**Status:** Planned (Post v1.0)
+**Status:** Implemented
 **Priority:** Medium
 **Complexity:** Medium
 **Created:** 2026-01-29
+**Implemented:** 2026-02-08
+**Engine:** expo-audio (migrated from react-native-audio-api plan)
 
 ## Overview
 
@@ -268,10 +270,26 @@ interface AmbientControlsProps {
    - Just Quran info (recommended)
    - "Surah Name + 🌧️" indicator
 
+## Implementation Notes (expo-audio)
+
+The original plan targeted `react-native-audio-api` (Web Audio API). The actual implementation uses `expo-audio`:
+
+- **AmbientAudioService** (`services/audio/AmbientAudioService.ts`): Singleton using `createAudioPlayer()` from expo-audio
+- **ambientStore** (`store/ambientStore.ts`): Zustand store persisted via AsyncStorage
+- **ExpoAudioProvider** (`services/audio/ExpoAudioProvider.tsx`): Syncs ambient pause/resume with Quran playback state
+- **AmbientSoundsSheet** (`components/sheets/AmbientSoundsSheet.tsx`): 2-column grid picker + volume slider
+- **ControlButtons**: Ambient toggle added (tap toggles, long-press opens picker)
+
+Key differences from the original AudioContext/GainNode plan:
+- Uses a second `AudioPlayer` instance (not AudioBufferSourceNode)
+- Volume controlled via `player.volume` (not GainNode)
+- Looping via `player.loop = true` (not manual restart)
+- Fade in/out implemented via `setInterval` stepping volume
+
 ## Dependencies
 
-- **Requires:** v1.0 Audio Player Migration complete (react-native-audio-api fully integrated)
-- **Blocked by:** Phase 5 of current migration
+- **Requires:** expo-audio migration complete
+- **Resolved:** Audio migration completed
 
 ## Success Criteria
 
