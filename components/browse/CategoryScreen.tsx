@@ -97,26 +97,21 @@ export function CategoryScreen({
           style={styles.backButton}
           activeOpacity={0.7}
           onPress={() => router.back()}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={24}
-            color={theme.colors.white}
-          />
+          <Icon name="arrow-left" type="feather" size={24} color={'#FFFFFF'} />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
           <Icon
             {...icon}
             size={24}
-            color={theme.colors.white}
+            color={'#FFFFFF'}
             style={styles.titleIcon}
           />
-          <Text style={[styles.title, {color: theme.colors.white}]}>
+          <Text style={[styles.title, {color: '#FFFFFF'}]}>
             {category.title}
           </Text>
         </View>
         {category.description && (
-          <Text style={[styles.description, {color: theme.colors.white}]}>
+          <Text style={[styles.description, {color: '#FFFFFF'}]}>
             {category.description}
           </Text>
         )}

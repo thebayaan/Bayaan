@@ -152,7 +152,7 @@ interface StylesType {
   contentOverlay: ViewStyle;
   browseButton: ViewStyle;
   buttonText: TextStyle;
-  buttonIcon: ImageStyle;
+  buttonIcon: ViewStyle;
   buttonWrapper: ViewStyle;
   buttonInnerWrapper: ViewStyle;
 }
