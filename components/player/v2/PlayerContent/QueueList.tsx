@@ -8,10 +8,163 @@ import {
   Platform,
 } from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {TrackItem} from '@/components/TrackItem';
+import {Track} from '@/types/audio';
+import {ReciterImage} from '@/components/ReciterImage';
+import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {GradientText} from '@/components/GradientText';
+import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import Color from 'color';
+
+interface UploadQueueItemProps {
+  track: Track;
+  index: number;
+  onPress: () => void;
+}
+
+const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
+  ({track, index, onPress}) => {
+    const {theme} = useTheme();
+
+    const playbackState = usePlayerStore(state => state.playback.state);
+    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+
+    const isCurrentTrack = currentIndex === index;
+    const isPlaying =
+      isCurrentTrack &&
+      (playbackState === 'playing' || playbackState === 'buffering');
+
+    const surahNum = track.surahId ? parseInt(track.surahId, 10) : undefined;
+    const surahGlyph =
+      surahNum && surahGlyphMap[surahNum] ? surahGlyphMap[surahNum] : undefined;
+
+    const displayTitle = surahNum ? `${surahNum}. ${track.title}` : track.title;
+
+    return (
+      <Pressable style={uploadQueueStyles.container} onPress={onPress}>
+        {track.reciterName && track.reciterName !== 'My Recitations' ? (
+          <ReciterImage
+            reciterName={track.reciterName}
+            style={uploadQueueStyles.reciterImage}
+          />
+        ) : (
+          <View
+            style={[
+              uploadQueueStyles.iconContainer,
+              {
+                backgroundColor: Color(theme.colors.text)
+                  .alpha(0.06)
+                  .toString(),
+              },
+            ]}>
+            <Feather
+              name="music"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+          </View>
+        )}
+        <View style={uploadQueueStyles.info}>
+          <View style={uploadQueueStyles.nameRow}>
+            {isCurrentTrack && surahNum ? (
+              <GradientText
+                style={[uploadQueueStyles.title, {color: theme.colors.text}]}
+                surahId={surahNum}>
+                {displayTitle}
+              </GradientText>
+            ) : (
+              <Text
+                style={[uploadQueueStyles.title, {color: theme.colors.text}]}
+                numberOfLines={1}>
+                {displayTitle}
+              </Text>
+            )}
+            {surahGlyph && (
+              <Text
+                style={[
+                  uploadQueueStyles.surahGlyph,
+                  {color: theme.colors.text},
+                ]}>
+                {surahGlyph}
+              </Text>
+            )}
+          </View>
+          <Text
+            style={[
+              uploadQueueStyles.artist,
+              {color: theme.colors.textSecondary},
+            ]}
+            numberOfLines={1}>
+            {track.artist}
+          </Text>
+        </View>
+        {isCurrentTrack && (
+          <View style={uploadQueueStyles.indicator}>
+            <NowPlayingIndicator
+              isPlaying={isPlaying}
+              barCount={3}
+              surahId={surahNum}
+            />
+          </View>
+        )}
+      </Pressable>
+    );
+  },
+);
+
+UploadQueueItem.displayName = 'UploadQueueItem';
+
+const uploadQueueStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: moderateScale(8),
+    paddingHorizontal: moderateScale(18),
+    flex: 1,
+  },
+  reciterImage: {
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(10),
+    marginRight: moderateScale(12),
+  },
+  iconContainer: {
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(10),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: moderateScale(12),
+  },
+  info: {
+    flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: moderateScale(1),
+  },
+  title: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-SemiBold',
+  },
+  surahGlyph: {
+    fontSize: moderateScale(16),
+    fontFamily: 'SurahNames',
+    marginLeft: moderateScale(6),
+  },
+  artist: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-Regular',
+  },
+  indicator: {
+    marginLeft: moderateScale(8),
+  },
+});
 
 interface QueueListProps {
   onQueueItemPress: (index: number) => void;
@@ -63,7 +216,7 @@ export const QueueList: React.FC<QueueListProps> = ({
           </View>
           <View style={styles.headerRight}>
             <Text style={[styles.queueCount, {color: theme.colors.text}]}>
-              {queue.tracks.length} surahs
+              {queue.tracks.length} track{queue.tracks.length !== 1 ? 's' : ''}
             </Text>
           </View>
         </View>
@@ -71,12 +224,20 @@ export const QueueList: React.FC<QueueListProps> = ({
         {/* Queue Items */}
         {queue.tracks.map((track, index) => (
           <View key={`${track.id}-${index}`} style={styles.trackItemContainer}>
-            <TrackItem
-              reciterId={track.reciterId}
-              surahId={track.surahId || ''}
-              rewayatId={track.rewayatId}
-              onPress={() => onQueueItemPress(index)}
-            />
+            {track.isUserUpload ? (
+              <UploadQueueItem
+                track={track}
+                index={index}
+                onPress={() => onQueueItemPress(index)}
+              />
+            ) : (
+              <TrackItem
+                reciterId={track.reciterId}
+                surahId={track.surahId || ''}
+                rewayatId={track.rewayatId}
+                onPress={() => onQueueItemPress(index)}
+              />
+            )}
             <Pressable
               style={styles.removeButton}
               onPress={() => onRemoveQueueItem(index)}>
