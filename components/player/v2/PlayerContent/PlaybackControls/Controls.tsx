@@ -56,9 +56,9 @@ export const Controls = () => {
   }, [playbackState]);
 
   const handlePrevious = useCallback(async () => {
-    if (trackLoading || currentIndex === 0) return;
+    if (trackLoading) return;
     await skipToPrevious();
-  }, [trackLoading, currentIndex, skipToPrevious]);
+  }, [trackLoading, skipToPrevious]);
 
   const handleNext = useCallback(async () => {
     if (trackLoading || currentIndex === tracksLength - 1) return;
@@ -75,7 +75,6 @@ export const Controls = () => {
     await seekTo(playbackPosition + SEEK_INTERVAL);
   }, [trackLoading, playbackPosition, seekTo]);
 
-  const isFirstTrack = currentIndex === 0;
   const isLastTrack = currentIndex === tracksLength - 1;
 
   return (
@@ -107,11 +106,11 @@ export const Controls = () => {
       <View style={styles.centerControls}>
         <Pressable
           onPress={handlePrevious}
-          style={[styles.sideButton, isFirstTrack && styles.disabledButton]}
-          disabled={isFirstTrack || trackLoading}>
+          style={[styles.sideButton, trackLoading && styles.disabledButton]}
+          disabled={trackLoading}>
           <PreviousIcon
             color={
-              isFirstTrack ? theme.colors.textSecondary : theme.colors.text
+              trackLoading ? theme.colors.textSecondary : theme.colors.text
             }
             size={moderateScale(16)}
           />
