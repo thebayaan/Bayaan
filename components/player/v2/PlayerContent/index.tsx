@@ -156,7 +156,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    paddingHorizontal: moderateScale(20),
   },
   controlsContainer: {
     width: '100%',

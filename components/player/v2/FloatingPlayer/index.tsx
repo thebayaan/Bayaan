@@ -4,7 +4,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import Animated, {
   useSharedValue,
-  withTiming,
   withSpring,
   useAnimatedStyle,
 } from 'react-native-reanimated';
@@ -157,45 +156,18 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     opacity: opacity.value,
   }));
 
-  // Animation handlers
-  const showPlayer = useCallback(() => {
-    'worklet';
-    translateY.value = withSpring(0, {
-      damping: 15,
-      stiffness: 150,
-    });
-    opacity.value = withTiming(1, {
-      duration: 200,
-    });
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 150,
-    });
-  }, [translateY, opacity, scale]);
-
-  const hidePlayer = useCallback(() => {
-    'worklet';
-    translateY.value = withSpring(100, {
-      damping: 15,
-      stiffness: 150,
-    });
-    opacity.value = withTiming(0, {
-      duration: 200,
-    });
-    scale.value = withSpring(0.95, {
-      damping: 15,
-      stiffness: 150,
-    });
-  }, [translateY, opacity, scale]);
-
-  // Handle visibility
+  // Handle visibility (instant, no animation)
   useEffect(() => {
     if (shouldShow) {
-      showPlayer();
+      translateY.value = 0;
+      opacity.value = 1;
+      scale.value = 1;
     } else {
-      hidePlayer();
+      translateY.value = 100;
+      opacity.value = 0;
+      scale.value = 0.95;
     }
-  }, [shouldShow, showPlayer, hidePlayer]);
+  }, [shouldShow, translateY, opacity, scale]);
 
   const handlePress = useCallback(() => {
     setSheetMode('full');
