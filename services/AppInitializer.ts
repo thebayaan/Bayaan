@@ -81,34 +81,46 @@ class AppInitializer {
         console.log('[AppInitializer] Starting initialization...');
         const startTime = Date.now();
 
-        for (const service of this.services) {
-          try {
-            const serviceStartTime = Date.now();
-            console.log(`[AppInitializer] Initializing ${service.name}...`);
+        // Split into critical (sequential) and non-critical (parallel)
+        const critical = this.services.filter(s => s.critical);
+        const nonCritical = this.services.filter(s => !s.critical);
 
-            await service.initialize();
+        // Run critical services sequentially (order matters)
+        for (const service of critical) {
+          const serviceStartTime = Date.now();
+          console.log(`[AppInitializer] Initializing ${service.name}...`);
+          await service.initialize();
+          const serviceTime = Date.now() - serviceStartTime;
+          console.log(
+            `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
+          );
+        }
 
-            const serviceTime = Date.now() - serviceStartTime;
-            console.log(
-              `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
-            );
-          } catch (error) {
-            console.error(`[AppInitializer] ✗ ${service.name} failed:`, error);
+        // Run non-critical services in parallel
+        if (nonCritical.length > 0) {
+          console.log(
+            `[AppInitializer] Running ${nonCritical.length} non-critical services in parallel...`,
+          );
+          const results = await Promise.allSettled(
+            nonCritical.map(async service => {
+              const serviceStartTime = Date.now();
+              console.log(`[AppInitializer] Initializing ${service.name}...`);
+              await service.initialize();
+              const serviceTime = Date.now() - serviceStartTime;
+              console.log(
+                `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
+              );
+            }),
+          );
 
-            // If this is a critical service, throw the error
-            if (service.critical) {
-              throw new Error(
-                `Critical service ${service.name} failed: ${
-                  error instanceof Error ? error.message : 'Unknown error'
-                }`,
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.warn(
+                `[AppInitializer] Non-critical service ${nonCritical[index].name} failed, continuing...`,
+                result.reason,
               );
             }
-
-            // Non-critical services log but don't break initialization
-            console.warn(
-              `[AppInitializer] Non-critical service ${service.name} failed, continuing...`,
-            );
-          }
+          });
         }
 
         this.initialized = true;

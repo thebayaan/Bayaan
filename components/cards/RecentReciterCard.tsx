@@ -25,6 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {Surah} from '@/data/surahData';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 
 interface RecentReciterCardProps {
@@ -58,10 +59,18 @@ export const RecentReciterCard = ({
   const {updateQueue} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
 
-  // Get necessary state slices from player store
-  const playbackStatus = usePlayerStore(state => state.playback.state);
-  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-  const tracks = usePlayerStore(state => state.queue.tracks);
+  // Single consolidated subscription with shallow equality
+  const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
+    usePlayerStore(
+      state => ({
+        playbackStatus: state.playback.state,
+        currentIndex: state.queue.currentIndex,
+        tracks: state.queue.tracks,
+        storePosition: state.playback.position,
+        storeDuration: state.playback.duration,
+      }),
+      shallow,
+    );
 
   // Check if this specific card represents the currently active track in the player
   const isCurrentlyPlaying = useMemo(() => {
@@ -106,10 +115,6 @@ export const RecentReciterCard = ({
       stiffness: 300,
     });
   };
-
-  // Get playback position/duration from store when this is the active track
-  const storePosition = usePlayerStore(state => state.playback.position);
-  const storeDuration = usePlayerStore(state => state.playback.duration);
 
   // Calculate time remaining
   const timeRemaining = useMemo(() => {
@@ -241,105 +246,7 @@ export const RecentReciterCard = ({
     rewayatId,
   ]);
 
-  const styles = StyleSheet.create({
-    container: {
-      width: moderateScale(130),
-      height: moderateScale(180),
-      borderRadius: moderateScale(16),
-      shadowColor: '#0D2750',
-      shadowOffset: {
-        width: 28,
-        height: 28,
-      },
-      shadowOpacity: 0.16,
-      shadowRadius: 50,
-      overflow: 'hidden',
-      borderWidth: 0.5,
-      borderColor: Color(theme.colors.border).alpha(0.15).toString(),
-    },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-      opacity: 0.75,
-    },
-    gradient: {
-      ...StyleSheet.absoluteFillObject,
-      opacity: 0.8,
-    },
-    content: {
-      flex: 1,
-      padding: moderateScale(8),
-      gap: moderateScale(4),
-    },
-    imageContainer: {
-      width: '100%',
-      height: moderateScale(90),
-      borderRadius: moderateScale(12),
-      marginBottom: verticalScale(4),
-      overflow: 'hidden',
-      shadowColor: theme.colors.shadow,
-      shadowOffset: {width: 0, height: moderateScale(4)},
-      shadowOpacity: 0.2,
-      shadowRadius: moderateScale(8),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-    },
-    image: {
-      width: '100%',
-      height: '100%',
-      borderRadius: moderateScale(12),
-    },
-    textContainer: {
-      flex: 1,
-      gap: moderateScale(2),
-    },
-    reciterName: {
-      fontSize: moderateScale(13),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      letterSpacing: -0.3,
-    },
-    surahName: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.8).toString(),
-      letterSpacing: -0.2,
-    },
-    progressSection: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 'auto',
-      paddingTop: moderateScale(4),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.06).toString(),
-      borderRadius: moderateScale(8),
-      paddingVertical: moderateScale(3),
-      paddingHorizontal: moderateScale(6),
-      gap: moderateScale(6),
-      width: moderateScale(75),
-      alignSelf: 'flex-start',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.12).toString(),
-    },
-    sliderContainer: {
-      height: moderateScale(5),
-      flex: 1,
-      marginHorizontal: moderateScale(2),
-    },
-    timeRemaining: {
-      fontSize: moderateScale(8),
-      fontFamily: 'Manrope-Bold',
-      color: Color(theme.colors.text).alpha(0.9).toString(),
-      minWidth: moderateScale(4),
-      textAlign: 'right',
-    },
-    playButtonContainer: {
-      width: moderateScale(14),
-      height: moderateScale(14),
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 2,
-    },
-  });
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <AnimatedTouchableOpacity
@@ -442,3 +349,113 @@ export const RecentReciterCard = ({
     </AnimatedTouchableOpacity>
   );
 };
+
+function createStyles(theme: {
+  colors: {
+    border: string;
+    card: string;
+    shadow: string;
+    text: string;
+    textSecondary: string;
+  };
+}) {
+  return StyleSheet.create({
+    container: {
+      width: moderateScale(130),
+      height: moderateScale(180),
+      borderRadius: moderateScale(16),
+      shadowColor: '#0D2750',
+      shadowOffset: {
+        width: 28,
+        height: 28,
+      },
+      shadowOpacity: 0.16,
+      shadowRadius: 50,
+      overflow: 'hidden',
+      borderWidth: 0.5,
+      borderColor: Color(theme.colors.border).alpha(0.15).toString(),
+    },
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      opacity: 0.75,
+    },
+    gradient: {
+      ...StyleSheet.absoluteFillObject,
+      opacity: 0.8,
+    },
+    content: {
+      flex: 1,
+      padding: moderateScale(8),
+      gap: moderateScale(4),
+    },
+    imageContainer: {
+      width: '100%',
+      height: moderateScale(90),
+      borderRadius: moderateScale(12),
+      marginBottom: verticalScale(4),
+      overflow: 'hidden',
+      shadowColor: theme.colors.shadow,
+      shadowOffset: {width: 0, height: moderateScale(4)},
+      shadowOpacity: 0.2,
+      shadowRadius: moderateScale(8),
+      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      borderRadius: moderateScale(12),
+    },
+    textContainer: {
+      flex: 1,
+      gap: moderateScale(2),
+    },
+    reciterName: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+      letterSpacing: -0.3,
+    },
+    surahName: {
+      fontSize: moderateScale(10),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.textSecondary).alpha(0.8).toString(),
+      letterSpacing: -0.2,
+    },
+    progressSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 'auto',
+      paddingTop: moderateScale(4),
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.06).toString(),
+      borderRadius: moderateScale(8),
+      paddingVertical: moderateScale(3),
+      paddingHorizontal: moderateScale(6),
+      gap: moderateScale(6),
+      width: moderateScale(75),
+      alignSelf: 'flex-start',
+      borderWidth: 1,
+      borderColor: Color(theme.colors.border).alpha(0.12).toString(),
+    },
+    sliderContainer: {
+      height: moderateScale(5),
+      flex: 1,
+      marginHorizontal: moderateScale(2),
+    },
+    timeRemaining: {
+      fontSize: moderateScale(8),
+      fontFamily: 'Manrope-Bold',
+      color: Color(theme.colors.text).alpha(0.9).toString(),
+      minWidth: moderateScale(4),
+      textAlign: 'right',
+    },
+    playButtonContainer: {
+      width: moderateScale(14),
+      height: moderateScale(14),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+  });
+}
