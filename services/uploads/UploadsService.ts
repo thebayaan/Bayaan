@@ -107,6 +107,7 @@ class UploadsService {
       isPersonal: false,
       rewayah: null,
       style: null,
+      recordingType: null,
     };
 
     // Insert into database

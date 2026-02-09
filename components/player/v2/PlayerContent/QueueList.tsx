@@ -17,7 +17,7 @@ import {Track} from '@/types/audio';
 import {ReciterImage} from '@/components/ReciterImage';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
-import {surahGlyphMap} from '@/utils/surahGlyphMap';
+import {useUploadsStore} from '@/store/uploadsStore';
 import Color from 'color';
 
 interface UploadQueueItemProps {
@@ -39,10 +39,37 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
       (playbackState === 'playing' || playbackState === 'buffering');
 
     const surahNum = track.surahId ? parseInt(track.surahId, 10) : undefined;
-    const surahGlyph =
-      surahNum && surahGlyphMap[surahNum] ? surahGlyphMap[surahNum] : undefined;
-
     const displayTitle = surahNum ? `${surahNum}. ${track.title}` : track.title;
+
+    // Look up the full recitation for tags
+    const recitation = useUploadsStore(state =>
+      track.userRecitationId
+        ? state.recitations.find(r => r.id === track.userRecitationId)
+        : undefined,
+    );
+
+    const verseLabel = React.useMemo(() => {
+      if (!recitation?.startVerse) return null;
+      if (recitation.endVerse)
+        return `${recitation.startVerse}-${recitation.endVerse}`;
+      return `v${recitation.startVerse}`;
+    }, [recitation?.startVerse, recitation?.endVerse]);
+
+    const recordingLabel = React.useMemo(() => {
+      if (recitation?.recordingType === 'salah') return 'Salah';
+      if (recitation?.recordingType === 'studio') return 'Studio';
+      return null;
+    }, [recitation?.recordingType]);
+
+    const categoryLabel = React.useMemo(() => {
+      if (recitation?.type !== 'other' || !recitation?.category) return null;
+      return (
+        recitation.category.charAt(0).toUpperCase() +
+        recitation.category.slice(1)
+      );
+    }, [recitation?.type, recitation?.category]);
+
+    const tagBg = Color(theme.colors.text).alpha(0.06).toString();
 
     return (
       <Pressable style={uploadQueueStyles.container} onPress={onPress}>
@@ -53,14 +80,7 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
           />
         ) : (
           <View
-            style={[
-              uploadQueueStyles.iconContainer,
-              {
-                backgroundColor: Color(theme.colors.text)
-                  .alpha(0.06)
-                  .toString(),
-              },
-            ]}>
+            style={[uploadQueueStyles.iconContainer, {backgroundColor: tagBg}]}>
             <Feather
               name="music"
               size={moderateScale(16)}
@@ -70,10 +90,10 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
         )}
         <View style={uploadQueueStyles.info}>
           <View style={uploadQueueStyles.nameRow}>
-            {isCurrentTrack && surahNum ? (
+            {isCurrentTrack ? (
               <GradientText
                 style={[uploadQueueStyles.title, {color: theme.colors.text}]}
-                surahId={surahNum}>
+                surahId={surahNum ?? 0}>
                 {displayTitle}
               </GradientText>
             ) : (
@@ -83,14 +103,38 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
                 {displayTitle}
               </Text>
             )}
-            {surahGlyph && (
-              <Text
-                style={[
-                  uploadQueueStyles.surahGlyph,
-                  {color: theme.colors.text},
-                ]}>
-                {surahGlyph}
-              </Text>
+            {verseLabel && (
+              <View style={[uploadQueueStyles.tag, {backgroundColor: tagBg}]}>
+                <Text
+                  style={[
+                    uploadQueueStyles.tagText,
+                    {color: theme.colors.textSecondary},
+                  ]}>
+                  {verseLabel}
+                </Text>
+              </View>
+            )}
+            {recordingLabel && (
+              <View style={[uploadQueueStyles.tag, {backgroundColor: tagBg}]}>
+                <Text
+                  style={[
+                    uploadQueueStyles.tagText,
+                    {color: theme.colors.textSecondary},
+                  ]}>
+                  {recordingLabel}
+                </Text>
+              </View>
+            )}
+            {categoryLabel && (
+              <View style={[uploadQueueStyles.tag, {backgroundColor: tagBg}]}>
+                <Text
+                  style={[
+                    uploadQueueStyles.tagText,
+                    {color: theme.colors.textSecondary},
+                  ]}>
+                  {categoryLabel}
+                </Text>
+              </View>
             )}
           </View>
           <Text
@@ -107,7 +151,7 @@ const UploadQueueItem: React.FC<UploadQueueItemProps> = React.memo(
             <NowPlayingIndicator
               isPlaying={isPlaying}
               barCount={3}
-              surahId={surahNum}
+              surahId={surahNum ?? 0}
             />
           </View>
         )}
@@ -146,16 +190,22 @@ const uploadQueueStyles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: moderateScale(6),
     marginBottom: moderateScale(1),
   },
   title: {
+    flexShrink: 1,
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-SemiBold',
   },
-  surahGlyph: {
-    fontSize: moderateScale(16),
-    fontFamily: 'SurahNames',
-    marginLeft: moderateScale(6),
+  tag: {
+    paddingHorizontal: moderateScale(6),
+    paddingVertical: moderateScale(1),
+    borderRadius: moderateScale(4),
+  },
+  tagText: {
+    fontSize: moderateScale(9),
+    fontFamily: 'Manrope-SemiBold',
   },
   artist: {
     fontSize: moderateScale(12),

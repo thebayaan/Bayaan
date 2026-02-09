@@ -48,6 +48,20 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
     parts.push(label);
   }
 
+  if (item.startVerse != null) {
+    if (item.endVerse != null) {
+      parts.push(`Verses ${item.startVerse}-${item.endVerse}`);
+    } else {
+      parts.push(`Verse ${item.startVerse}`);
+    }
+  }
+
+  if (item.recordingType === 'salah') {
+    parts.push('Salah');
+  } else if (item.recordingType === 'studio') {
+    parts.push('Studio');
+  }
+
   if (item.duration !== null) {
     const mins = Math.floor(item.duration / 60);
     const secs = Math.floor(item.duration % 60);
