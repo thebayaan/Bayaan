@@ -18,7 +18,7 @@ import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById} from '@/services/dataService';
 import {SheetManager} from 'react-native-actions-sheet';
 import {UploadCard} from './UploadCard';
-import type {UploadedRecitation} from '@/types/uploads';
+import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -54,13 +54,13 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
 
   if (item.type === null) {
     parts.push('Untagged');
-  } else if (item.type === 'surah' && item.surahNumber) {
-    const surah = getSurahById(item.surahNumber);
-    if (surah) parts.push(surah.translated_name_english);
-  } else if (item.type === 'other' && item.category) {
-    const label =
-      item.category.charAt(0).toUpperCase() + item.category.slice(1);
-    parts.push(label);
+  } else if (item.type === 'surah') {
+    if (item.rewayah) {
+      parts.push(item.rewayah);
+    }
+    if (item.style) {
+      parts.push(item.style.charAt(0).toUpperCase() + item.style.slice(1));
+    }
   }
 
   if (item.duration !== null) {
@@ -70,6 +70,18 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
   }
 
   return parts.join(' · ');
+}
+
+function getVerseRangeLabel(item: UploadedRecitation): string | null {
+  if (item.startVerse == null) return null;
+  if (item.endVerse != null) return `${item.startVerse}-${item.endVerse}`;
+  return `v${item.startVerse}`;
+}
+
+function getRecordingTypeLabel(recordingType: RecordingType): string | null {
+  if (recordingType === 'salah') return 'Salah';
+  if (recordingType === 'studio') return 'Studio';
+  return null;
 }
 
 interface ReciterUploadListItemProps {
@@ -125,18 +137,42 @@ const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
             />
           </View>
           <View style={styles.itemInfoContainer}>
-            {isCurrentTrack && item.surahNumber ? (
-              <GradientText style={styles.itemName} surahId={item.surahNumber}>
-                {displayTitle}
-              </GradientText>
-            ) : (
-              <Text
-                style={styles.itemName}
-                numberOfLines={1}
-                ellipsizeMode="middle">
-                {displayTitle}
-              </Text>
-            )}
+            <View style={styles.itemNameRow}>
+              {isCurrentTrack ? (
+                <GradientText
+                  style={styles.itemName}
+                  surahId={item.surahNumber ?? 0}>
+                  {displayTitle}
+                </GradientText>
+              ) : (
+                <Text
+                  style={styles.itemName}
+                  numberOfLines={1}
+                  ellipsizeMode="middle">
+                  {displayTitle}
+                </Text>
+              )}
+              {item.startVerse != null && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>{getVerseRangeLabel(item)}</Text>
+                </View>
+              )}
+              {item.recordingType != null && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>
+                    {getRecordingTypeLabel(item.recordingType)}
+                  </Text>
+                </View>
+              )}
+              {item.type === 'other' && item.category && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>
+                    {item.category.charAt(0).toUpperCase() +
+                      item.category.slice(1)}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.itemSubtitle} numberOfLines={1}>
               {getDisplaySubtitle(item)}
             </Text>
@@ -149,7 +185,7 @@ const ReciterUploadListItem: React.FC<ReciterUploadListItemProps> = React.memo(
             <NowPlayingIndicator
               isPlaying={isPlaying}
               barCount={3}
-              surahId={item.surahNumber ?? undefined}
+              surahId={item.surahNumber ?? 0}
             />
           ) : (
             <Feather
@@ -271,6 +307,9 @@ export const UploadsTabContent = React.forwardRef<
           style={styles.cardItem}
           uploadId={item.id}
           surahNumber={item.surahNumber ?? undefined}
+          startVerse={item.startVerse}
+          endVerse={item.endVerse}
+          recordingType={item.recordingType}
         />
       ),
       [
@@ -480,7 +519,13 @@ const createStyles = (theme: Theme) =>
     itemInfoContainer: {
       flex: 1,
     },
+    itemNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(6),
+    },
     itemName: {
+      flexShrink: 1,
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
@@ -542,6 +587,17 @@ const createStyles = (theme: Theme) =>
     },
     addButtonText: {
       fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
+    },
+    tag: {
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(1),
+      borderRadius: moderateScale(4),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    tagText: {
+      fontSize: moderateScale(9),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textSecondary,
     },

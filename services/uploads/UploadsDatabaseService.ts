@@ -66,13 +66,23 @@ class UploadsDatabaseService {
         custom_reciter_id TEXT,
         is_personal INTEGER DEFAULT 0,
         rewayah TEXT,
-        style TEXT
+        style TEXT,
+        recording_type TEXT
       );
     `);
 
     // Migration: add style column for existing databases
     await this.db
       .execAsync(`ALTER TABLE uploaded_recitations ADD COLUMN style TEXT`)
+      .catch(() => {
+        // Column already exists — ignore
+      });
+
+    // Migration: add recording_type column for existing databases
+    await this.db
+      .execAsync(
+        `ALTER TABLE uploaded_recitations ADD COLUMN recording_type TEXT`,
+      )
       .catch(() => {
         // Column already exists — ignore
       });
@@ -118,8 +128,9 @@ class UploadsDatabaseService {
       `INSERT INTO uploaded_recitations (
         id, file_path, original_filename, duration, date_added,
         type, surah_number, start_verse, end_verse, title,
-        category, reciter_id, custom_reciter_id, is_personal, rewayah, style
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        category, reciter_id, custom_reciter_id, is_personal, rewayah, style,
+        recording_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         recitation.id,
         recitation.filePath,
@@ -137,6 +148,7 @@ class UploadsDatabaseService {
         recitation.isPersonal ? 1 : 0,
         recitation.rewayah,
         recitation.style,
+        recitation.recordingType,
       ],
     );
   }
@@ -258,6 +270,7 @@ class UploadsDatabaseService {
       isPersonal: 'is_personal',
       rewayah: 'rewayah',
       style: 'style',
+      recordingType: 'recording_type',
     };
 
     const setClauses: string[] = [];
