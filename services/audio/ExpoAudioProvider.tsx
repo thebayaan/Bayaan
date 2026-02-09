@@ -12,6 +12,7 @@
  */
 
 import React, {useEffect, useRef, useCallback} from 'react';
+import {Platform} from 'react-native';
 import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {expoAudioService} from './ExpoAudioService';
 import {lockScreenService} from './LockScreenService';
@@ -20,8 +21,8 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useAmbientStore} from '@/store/ambientStore';
 
-// Throttle interval for progress updates (ms)
-const PROGRESS_UPDATE_INTERVAL = 1000;
+// Throttle interval for progress updates — wider on Android to reduce re-renders
+const PROGRESS_UPDATE_INTERVAL = Platform.OS === 'android' ? 2000 : 1000;
 
 interface ExpoAudioProviderProps {
   children: React.ReactNode;
@@ -74,58 +75,26 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     };
   }, [player]);
 
-  // Handle progress updates (throttled)
+  // Merged progress + playback state effect (throttled)
   useEffect(() => {
-    const now = Date.now();
-    if (now - lastProgressUpdate.current < PROGRESS_UPDATE_INTERVAL) {
-      return;
-    }
-    lastProgressUpdate.current = now;
+    if (!status.isLoaded) return;
 
-    // Update position and duration in store
-    if (status.isLoaded) {
+    const now = Date.now();
+    const shouldUpdateProgress =
+      now - lastProgressUpdate.current >= PROGRESS_UPDATE_INTERVAL;
+
+    // Throttled position/duration update
+    if (shouldUpdateProgress) {
+      lastProgressUpdate.current = now;
       updatePlaybackState({
         position: status.currentTime,
         duration: status.duration,
         buffering: status.isBuffering,
       });
-
-      // Also update recently played store with current progress
-      // This saves the position so "continue playing" works
-      if (status.playing && status.duration > 0) {
-        const store = usePlayerStore.getState();
-        const currentTrack = store.queue.tracks[store.queue.currentIndex];
-        if (currentTrack?.reciterId && currentTrack?.surahId) {
-          const progress = status.currentTime / status.duration;
-          useRecentlyPlayedStore
-            .getState()
-            .updateProgress(
-              currentTrack.reciterId,
-              parseInt(currentTrack.surahId, 10),
-              progress,
-              status.duration,
-            );
-        }
-      }
-    }
-  }, [
-    status.currentTime,
-    status.duration,
-    status.isLoaded,
-    status.isBuffering,
-    status.playing,
-    updatePlaybackState,
-  ]);
-
-  // Handle playback state changes
-  useEffect(() => {
-    if (!status.isLoaded) {
-      return;
     }
 
-    // Map expo-audio status to our playback state
+    // Playback state mapping (always check, not throttled)
     let state: 'playing' | 'paused' | 'buffering' | 'ready' = 'ready';
-
     if (status.isBuffering) {
       state = 'buffering';
     } else if (status.playing) {
@@ -134,7 +103,6 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       state = 'paused';
     }
 
-    // Only update if state changed
     const currentState = usePlayerStore.getState().playback.state;
     if (currentState !== state && currentState !== 'loading') {
       updatePlaybackState({state});
@@ -162,14 +130,13 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       }
     }
 
-    // Track if we were playing (for track end handling)
     wasPlaying.current = status.playing;
   }, [
-    status.playing,
-    status.isBuffering,
-    status.isLoaded,
     status.currentTime,
     status.duration,
+    status.isLoaded,
+    status.isBuffering,
+    status.playing,
     updatePlaybackState,
   ]);
 

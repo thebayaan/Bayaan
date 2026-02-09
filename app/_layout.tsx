@@ -2,6 +2,7 @@ import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
+import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -88,6 +89,7 @@ export default function RootLayout() {
     [isDarkMode, theme.colors],
   );
 
+  // Critical fonts — block splash screen on these only
   const [fontsLoaded, fontError] = useFonts({
     'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
     'Manrope-Bold': require('@/assets/fonts/Manrope-Bold.ttf'),
@@ -98,14 +100,24 @@ export default function RootLayout() {
     'Manrope-ExtraBold': require('@/assets/fonts/Manrope-ExtraBold.ttf'),
     SurahNames: require('@/assets/fonts/surah_names.ttf'),
     SurahNames2: require('@/assets/fonts/surah_names_2.ttf'),
-    'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
-    'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
-    'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
-    'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
-    Uthmani: require('@/assets/fonts/Uthmani.otf'),
-    QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
-    Indopak: require('@/assets/fonts/Indopak.ttf'),
   });
+
+  // Deferred Arabic/Quran fonts — load after splash screen hides
+  useEffect(() => {
+    if (fontsLoaded && appIsReady) {
+      Font.loadAsync({
+        'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
+        'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
+        'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
+        'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
+        Uthmani: require('@/assets/fonts/Uthmani.otf'),
+        QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
+        Indopak: require('@/assets/fonts/Indopak.ttf'),
+      }).catch(err => {
+        if (__DEV__) console.warn('[App] Deferred font loading failed:', err);
+      });
+    }
+  }, [fontsLoaded, appIsReady]);
 
   // Handle share intents from other apps
   const {hasShareIntent, shareIntent, resetShareIntent} = useShareIntent({
@@ -170,9 +182,6 @@ export default function RootLayout() {
 
           usePlayerStore.getState();
           if (__DEV__) console.log('[App] Player store pre-warmed');
-
-          await new Promise(resolve => setTimeout(resolve, 50));
-          if (__DEV__) console.log('[App] Store hydration complete');
         } catch (error) {
           console.debug('[App] Failed to pre-warm stores:', error);
         }
@@ -350,10 +359,7 @@ export default function RootLayout() {
                     },
                     animation: 'fade',
                   }}>
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{headerShown: false}}
-                  />
+                  <Stack.Screen name="(tabs)" options={{headerShown: false}} />
                 </Stack>
                 <FloatingPlayer />
                 <PlayerSheet />

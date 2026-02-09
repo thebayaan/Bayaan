@@ -27,6 +27,7 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           lazy: true,
+          freezeOnBlur: true,
         }}
         tabBar={tabBarComponent}>
         <Tabs.Screen name="(a.home)" options={{title: 'Home'}} />
