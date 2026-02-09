@@ -105,8 +105,12 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     onClose();
   }, [onClose]);
 
-  // Initialize search engines and load initial data
+  // Lazy-init Fuse.js — only when user activates search mode
+  const fuseInitialized = useRef(false);
   useEffect(() => {
+    if (!visible || !isSearchMode || fuseInitialized.current) return;
+    fuseInitialized.current = true;
+
     const fetchData = async () => {
       try {
         const [reciterData, surahData] = await Promise.all([
@@ -155,17 +159,14 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
         if (storedSearches) {
           const parsed = JSON.parse(storedSearches);
-          // Check if it's the old format (string[]) and clear it
           if (
             Array.isArray(parsed) &&
             parsed.length > 0 &&
             typeof parsed[0] === 'string'
           ) {
-            // Old format, clear it
             await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
             setRecentSearches([]);
           } else {
-            // New format
             setRecentSearches(parsed);
           }
         }
@@ -177,7 +178,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       }
     };
     fetchData();
-  }, []);
+  }, [visible, isSearchMode]);
 
   const performSearch = useCallback(() => {
     if (!reciterFuse || !surahFuse || !debouncedQuery.trim()) {
