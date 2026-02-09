@@ -26,14 +26,13 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import type {UploadedRecitation} from '@/types/uploads';
+import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {ReciterImage} from '@/components/ReciterImage';
-import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -65,15 +64,23 @@ function getDisplaySubtitle(item: UploadedRecitation): string {
 
   if (item.type === null) {
     parts.push('Untagged');
-  } else if (item.type === 'other' && item.category) {
-    const label =
-      item.category.charAt(0).toUpperCase() + item.category.slice(1);
-    parts.push(label);
   }
 
   return parts.length > 0
     ? parts.join(' \u00B7 ')
     : stripExtension(item.originalFilename);
+}
+
+function getVerseRangeLabel(item: UploadedRecitation): string | null {
+  if (item.startVerse == null) return null;
+  if (item.endVerse != null) return `${item.startVerse}-${item.endVerse}`;
+  return `v${item.startVerse}`;
+}
+
+function getRecordingTypeLabel(recordingType: RecordingType): string | null {
+  if (recordingType === 'salah') return 'Salah';
+  if (recordingType === 'studio') return 'Studio';
+  return null;
 }
 
 interface UploadListItemProps {
@@ -144,10 +151,10 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
           )}
           <View style={styles.itemInfoContainer}>
             <View style={styles.itemNameRow}>
-              {isCurrentTrack && item.surahNumber ? (
+              {isCurrentTrack ? (
                 <GradientText
                   style={styles.itemName}
-                  surahId={item.surahNumber}>
+                  surahId={item.surahNumber ?? 0}>
                   {displayTitle}
                 </GradientText>
               ) : (
@@ -158,10 +165,25 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
                   {displayTitle}
                 </Text>
               )}
-              {item.surahNumber && surahGlyphMap[item.surahNumber] && (
-                <Text style={styles.itemSurahGlyph}>
-                  {surahGlyphMap[item.surahNumber]}
-                </Text>
+              {item.startVerse != null && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>{getVerseRangeLabel(item)}</Text>
+                </View>
+              )}
+              {item.recordingType != null && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>
+                    {getRecordingTypeLabel(item.recordingType)}
+                  </Text>
+                </View>
+              )}
+              {item.type === 'other' && item.category && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>
+                    {item.category.charAt(0).toUpperCase() +
+                      item.category.slice(1)}
+                  </Text>
+                </View>
               )}
             </View>
             <View style={styles.itemSecondaryRow}>
@@ -188,7 +210,7 @@ const UploadListItem: React.FC<UploadListItemProps> = React.memo(
             <NowPlayingIndicator
               isPlaying={isPlaying}
               barCount={3}
-              surahId={item.surahNumber ?? undefined}
+              surahId={item.surahNumber ?? 0}
             />
           ) : (
             <Feather
@@ -660,14 +682,10 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     itemNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-    },
-    itemSurahGlyph: {
-      fontSize: moderateScale(16),
-      fontFamily: 'SurahNames',
-      color: theme.colors.text,
-      marginLeft: moderateScale(6),
+      gap: moderateScale(6),
     },
     itemName: {
+      flexShrink: 1,
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
@@ -697,5 +715,16 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       paddingVertical: moderateScale(8),
       paddingRight: moderateScale(12),
       alignSelf: 'stretch',
+    },
+    tag: {
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(1),
+      borderRadius: moderateScale(4),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    tagText: {
+      fontSize: moderateScale(9),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
     },
   });

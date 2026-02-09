@@ -17,6 +17,8 @@ import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 
+import type {RecordingType} from '@/types/uploads';
+
 interface UploadCardProps {
   title: string;
   subtitle: string;
@@ -26,6 +28,9 @@ interface UploadCardProps {
   style?: StyleProp<ViewStyle>;
   uploadId?: string;
   surahNumber?: number;
+  startVerse?: number | null;
+  endVerse?: number | null;
+  recordingType?: RecordingType;
 }
 
 export const UploadCard: React.FC<UploadCardProps> = ({
@@ -37,6 +42,9 @@ export const UploadCard: React.FC<UploadCardProps> = ({
   style,
   uploadId,
   surahNumber,
+  startVerse,
+  endVerse,
+  recordingType,
 }) => {
   const {theme} = useTheme();
 
@@ -69,7 +77,7 @@ export const UploadCard: React.FC<UploadCardProps> = ({
       StyleSheet.create({
         container: {
           width: moderateScale(120),
-          height: moderateScale(120),
+          minHeight: moderateScale(130),
           borderRadius: moderateScale(12),
           overflow: 'hidden',
           borderWidth: 1,
@@ -77,12 +85,13 @@ export const UploadCard: React.FC<UploadCardProps> = ({
         },
         content: {
           flex: 1,
-          padding: moderateScale(8),
+          padding: moderateScale(10),
           justifyContent: 'center',
           alignItems: 'center',
+          gap: moderateScale(4),
         },
         iconContainer: {
-          marginBottom: moderateScale(8),
+          marginBottom: moderateScale(4),
         },
         title: {
           fontSize: moderateScale(12),
@@ -108,6 +117,26 @@ export const UploadCard: React.FC<UploadCardProps> = ({
           color: theme.colors.textSecondary,
           marginTop: moderateScale(2),
         },
+        tagsRow: {
+          flexDirection: 'row',
+          gap: moderateScale(4),
+          marginTop: moderateScale(4),
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        },
+        tag: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: moderateScale(5),
+          paddingVertical: moderateScale(2),
+          borderRadius: moderateScale(4),
+          backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+        },
+        tagText: {
+          fontSize: moderateScale(8),
+          fontFamily: 'Manrope-SemiBold',
+          color: theme.colors.textSecondary,
+        },
       }),
     [theme],
   );
@@ -132,8 +161,8 @@ export const UploadCard: React.FC<UploadCardProps> = ({
             color={theme.colors.textSecondary}
           />
         </View>
-        {isCurrentTrack && surahNumber ? (
-          <GradientText style={styles.title} surahId={surahNumber}>
+        {isCurrentTrack ? (
+          <GradientText style={styles.title} surahId={surahNumber ?? 0}>
             {title}
           </GradientText>
         ) : (
@@ -148,13 +177,33 @@ export const UploadCard: React.FC<UploadCardProps> = ({
             {subtitle}
           </Text>
         )}
+        {(startVerse != null || recordingType != null) && (
+          <View style={styles.tagsRow}>
+            {startVerse != null && (
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>
+                  {endVerse != null
+                    ? `${startVerse}-${endVerse}`
+                    : `v${startVerse}`}
+                </Text>
+              </View>
+            )}
+            {recordingType != null && (
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>
+                  {recordingType === 'salah' ? 'Salah' : 'Studio'}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
       {isCurrentTrack && (
         <View style={styles.nowPlayingCorner}>
           <NowPlayingIndicator
             isPlaying={isPlaying}
             barCount={3}
-            surahId={surahNumber}
+            surahId={surahNumber ?? 0}
           />
         </View>
       )}
