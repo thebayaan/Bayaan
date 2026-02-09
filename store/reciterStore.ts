@@ -9,28 +9,38 @@ function getHafsRewayat(reciter: Reciter) {
   return reciter.rewayat.find(r => r.name === "Hafs A'n Assem");
 }
 
-// Default reciter - Mishary Alafasi with Hafs A'n Assem recitation
-const misharyAlafasi = RECITERS.find(
-  reciter =>
-    reciter.name === 'Mishary Alafasi' &&
+// Lazy-computed default reciter — avoids .find() scans at module load time
+let _defaultReciter: Reciter | null = null;
+function getDefaultReciter(): Reciter {
+  if (_defaultReciter) return _defaultReciter;
+
+  const misharyAlafasi = RECITERS.find(
+    reciter =>
+      reciter.name === 'Mishary Alafasi' &&
+      reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
+  );
+
+  const anyHafsReciter = RECITERS.find(reciter =>
     reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
-);
+  );
 
-const anyHafsReciter = RECITERS.find(reciter =>
-  reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
-);
+  const reciter = misharyAlafasi || anyHafsReciter || RECITERS[0];
 
-const DEFAULT_RECITER = misharyAlafasi || anyHafsReciter || RECITERS[0];
-
-// Ensure the default rewayat is Hafs A'n Assem if available
-if (DEFAULT_RECITER) {
-  const hafsRewayat = getHafsRewayat(DEFAULT_RECITER);
+  // Ensure the default rewayat is Hafs A'n Assem if available
+  const hafsRewayat = getHafsRewayat(reciter);
   if (hafsRewayat) {
-    DEFAULT_RECITER.rewayat = [
-      hafsRewayat,
-      ...DEFAULT_RECITER.rewayat.filter(r => r.id !== hafsRewayat.id),
-    ];
+    _defaultReciter = {
+      ...reciter,
+      rewayat: [
+        hafsRewayat,
+        ...reciter.rewayat.filter(r => r.id !== hafsRewayat.id),
+      ],
+    };
+  } else {
+    _defaultReciter = reciter;
   }
+
+  return _defaultReciter;
 }
 
 interface ReciterState {
@@ -41,7 +51,7 @@ interface ReciterState {
 export const useReciterStore = create<ReciterState>()(
   persist(
     set => ({
-      defaultReciter: DEFAULT_RECITER,
+      defaultReciter: getDefaultReciter(),
       setDefaultReciter: reciter => {
         // When setting a new default reciter, ensure Hafs A'n Assem is the first rewayat if available
         const hafsRewayat = getHafsRewayat(reciter);
