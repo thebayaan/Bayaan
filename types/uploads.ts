@@ -1,5 +1,7 @@
 // Domain types (camelCase)
 
+export type RecordingType = 'studio' | 'salah' | null;
+
 export interface UploadedRecitation {
   id: string;
   filePath: string; // relative filename only (e.g., '{uuid}.mp3')
@@ -19,6 +21,7 @@ export interface UploadedRecitation {
   isPersonal: boolean; // reserved for v2
   rewayah: string | null;
   style: string | null;
+  recordingType: RecordingType; // studio vs salah recordings
 }
 
 export interface CustomReciter {
@@ -47,6 +50,7 @@ export interface UploadedRecitationRow {
   is_personal: number;
   rewayah: string | null;
   style: string | null;
+  recording_type: string | null;
 }
 
 export interface CustomReciterRow {
@@ -78,6 +82,7 @@ export function mapRecitationRow(
     isPersonal: row.is_personal === 1,
     rewayah: row.rewayah,
     style: row.style,
+    recordingType: row.recording_type as RecordingType,
   };
 }
 

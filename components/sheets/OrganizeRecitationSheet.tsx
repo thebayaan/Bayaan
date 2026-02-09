@@ -33,7 +33,9 @@ import {
   DEFAULT_STYLE,
   REWAYAH_OPTIONS,
   STYLE_OPTIONS,
+  RECORDING_TYPE_OPTIONS,
 } from '@/constants/recitationOptions';
+import type {RecordingType} from '@/types/uploads';
 
 type RecitationType = 'surah' | 'other';
 
@@ -109,6 +111,9 @@ export const OrganizeRecitationSheet = (
   const [style, setStyle] = useState<string>(
     recitation?.style || DEFAULT_STYLE,
   );
+  const [recordingType, setRecordingType] = useState<RecordingType>(
+    recitation?.recordingType ?? null,
+  );
   const [showMoreOptions, setShowMoreOptions] = useState(
     () =>
       (recitation?.rewayah !== null &&
@@ -178,6 +183,7 @@ export const OrganizeRecitationSheet = (
     setCategory(recitation.category ?? null);
     setReciterId(recitation.reciterId ?? null);
     setCustomReciterId(recitation.customReciterId ?? null);
+    setRecordingType(recitation.recordingType ?? null);
     setRewayah(recitation.rewayah || DEFAULT_REWAYAH);
     setStyle(recitation.style || DEFAULT_STYLE);
     setShowMoreOptions(
@@ -221,7 +227,8 @@ export const OrganizeRecitationSheet = (
       reciterId !== recitation.reciterId ||
       customReciterId !== recitation.customReciterId ||
       rewayah !== (recitation.rewayah || DEFAULT_REWAYAH) ||
-      style !== (recitation.style || DEFAULT_STYLE)
+      style !== (recitation.style || DEFAULT_STYLE) ||
+      recordingType !== recitation.recordingType
     );
   }, [
     recitation,
@@ -235,6 +242,7 @@ export const OrganizeRecitationSheet = (
     customReciterId,
     rewayah,
     style,
+    recordingType,
   ]);
 
   const handleSave = useCallback(async () => {
@@ -251,6 +259,7 @@ export const OrganizeRecitationSheet = (
       customReciterId,
       rewayah: rewayah || null,
       style: style || null,
+      recordingType,
     });
     await SheetManager.hide('organize-recitation');
   }, [
@@ -267,6 +276,7 @@ export const OrganizeRecitationSheet = (
     customReciterId,
     rewayah,
     style,
+    recordingType,
   ]);
 
   const handleDelete = useCallback(async () => {
@@ -862,6 +872,46 @@ export const OrganizeRecitationSheet = (
           </View>
         )}
 
+        {/* Recording Type */}
+        {type === 'surah' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>Recording</Text>
+            <View style={styles.chipRow}>
+              {RECORDING_TYPE_OPTIONS.map(opt => (
+                <Pressable
+                  key={opt.id}
+                  style={[
+                    styles.chip,
+                    recordingType === opt.id && styles.chipSelected,
+                  ]}
+                  onPress={() =>
+                    setRecordingType(prev =>
+                      prev === opt.id ? null : (opt.id as RecordingType),
+                    )
+                  }>
+                  <Feather
+                    name={opt.icon}
+                    size={moderateScale(12)}
+                    color={
+                      recordingType === opt.id
+                        ? theme.colors.text
+                        : theme.colors.textSecondary
+                    }
+                    style={{marginRight: moderateScale(6)}}
+                  />
+                  <Text
+                    style={[
+                      styles.chipText,
+                      recordingType === opt.id && styles.chipTextSelected,
+                    ]}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Delete Button */}
         <Pressable style={styles.deleteButton} onPress={handleDelete}>
           <Feather name="trash-2" size={moderateScale(16)} color="#EF4444" />
@@ -966,6 +1016,8 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateScale(24),
     },
     chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingHorizontal: moderateScale(16),
       paddingVertical: moderateScale(8),
       borderRadius: moderateScale(20),

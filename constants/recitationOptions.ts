@@ -30,3 +30,8 @@ export const STYLE_OPTIONS = [
   {id: 'molim', label: 'Molim'},
   {id: 'hadr', label: 'Hadr'},
 ] as const;
+
+export const RECORDING_TYPE_OPTIONS = [
+  {id: 'studio', label: 'Studio', icon: 'mic' as const},
+  {id: 'salah', label: 'Salah', icon: 'moon' as const},
+] as const;
