@@ -182,7 +182,7 @@ const Content = React.memo(
   }: ContentProps) => {
     // Track if each view has been rendered at least once
     const [hasViewedReciters, setHasViewedReciters] = React.useState(true); // Start with true as it's the default
-    const [hasViewedSurahs, setHasViewedSurahs] = React.useState(true); // Changed to true to load both components immediately
+    const [hasViewedSurahs, setHasViewedSurahs] = React.useState(false); // Lazy mount on first tab switch
     const [hasViewedAdhkar, setHasViewedAdhkar] = React.useState(false); // Lazy load adhkar
 
     // Update the viewed state when active view changes
