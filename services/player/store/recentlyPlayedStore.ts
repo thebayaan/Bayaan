@@ -216,6 +216,10 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
           await AsyncStorage.removeItem(name);
         },
       },
+      partialize: state =>
+        ({
+          recentTracks: state.recentTracks,
+        } as unknown as RecentlyPlayedState),
     },
   ),
 );
