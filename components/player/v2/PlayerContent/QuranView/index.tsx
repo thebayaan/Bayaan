@@ -1,15 +1,15 @@
-import React, {useCallback, useRef, useEffect, useState} from 'react';
-import {View, Text, Platform, StyleSheet} from 'react-native';
+import React, {useCallback, useRef, useEffect} from 'react';
+import {View, Text, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
-import {useTajweedStore} from '@/store/tajweedStore';
 import {
   LegendList,
   LegendListRef,
   LegendListRenderItemProps,
 } from '@legendapp/list';
+import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -26,8 +26,6 @@ const saheehDataCache =
     string,
     SaheehEntry
   >;
-const transliterationDataCache =
-  require('@/data/transliteration.json') as TransliterationData;
 
 // Define transliteration data type
 interface TransliterationVerse {
@@ -38,26 +36,23 @@ interface TransliterationData {
   [verseKey: string]: TransliterationVerse;
 }
 
+const transliterationDataCache =
+  require('@/data/transliteration.json') as TransliterationData;
+
 // Enhanced verse type including translations and transliterations
 interface EnhancedVerse extends Verse {
   translation?: string;
   transliteration?: string;
 }
 
-// Type for processed tajweed data
-interface ProcessedTajweedWord {
-  word_index: number;
-  location: string;
-  segments: {
-    text: string;
-    rule: string | null;
-  }[];
-}
-
-// Verse type including tajweed data
-type VerseWithTajweed = EnhancedVerse & {
-  processedTajweedAyahData?: ProcessedTajweedWord[];
-};
+// Pre-index verses by surah at module scope (one-time O(6236) cost, then O(1) per lookup)
+const versesBySurah: Record<number, Verse[]> = {};
+Object.values(quranData).forEach(verse => {
+  (versesBySurah[verse.surah_number] ??= []).push(verse);
+});
+Object.values(versesBySurah).forEach(arr =>
+  arr.sort((a, b) => a.ayah_number - b.ayah_number),
+);
 
 interface QuranViewProps {
   currentSurah: number;
@@ -81,62 +76,39 @@ export const QuranView: React.FC<QuranViewProps> = ({
 }) => {
   const {theme} = useTheme();
   const listRef = useRef<LegendListRef>(null);
+  const renderScrollComponent = useBottomSheetScrollableCreator();
   const surah = surahData.find(s => s.id === currentSurah);
-  const [transliterationMap] = useState(transliterationDataCache || {});
-  const [isTransliterationLoaded] = useState(!!transliterationDataCache);
 
-  // Use the tajweed store with indexed data for O(1) lookups
-  const {indexedTajweedData} = useTajweedStore();
-
-  // Memoize the getVersesForSurah function to avoid useMemo dependency issues
+  // Memoize the getVersesForSurah function — no tajweed dependency
   const getVersesForSurahMemo = useCallback(() => {
-    if (!quranData) {
-      console.error('Quran data is not properly loaded');
+    const surahVerses = versesBySurah[currentSurah];
+    if (!surahVerses) {
       return [];
     }
 
     try {
-      const verses = Object.values(quranData)
-        .filter(verse => verse.surah_number === currentSurah)
-        .sort((a, b) => a.ayah_number - b.ayah_number);
-
-      // Map verses and attach translation/transliteration if loaded
-      return verses.map(verse => {
+      return surahVerses.map(verse => {
         const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
-        // Always use Saheeh translation (with footnote tags)
         let translationText = '';
-        if (saheehDataCache && saheehDataCache[verseKey]?.t) {
+        if (saheehDataCache?.[verseKey]?.t) {
           translationText = saheehDataCache[verseKey].t;
         }
         let transliterationText = '';
-
-        // Add transliteration if data is loaded
-        if (isTransliterationLoaded && transliterationMap[verseKey]) {
-          transliterationText = transliterationMap[verseKey].t;
+        if (transliterationDataCache?.[verseKey]) {
+          transliterationText = transliterationDataCache[verseKey].t;
         }
-
-        // --- Attach pre-processed tajweed data directly ---
-        const processedTajweedAyahData = indexedTajweedData
-          ? indexedTajweedData[verseKey]
-          : undefined;
 
         return {
           ...verse,
           translation: translationText,
           transliteration: transliterationText,
-          processedTajweedAyahData,
         };
       });
     } catch (error) {
       console.error('Error processing verses:', error);
       return [];
     }
-  }, [
-    currentSurah,
-    transliterationMap,
-    isTransliterationLoaded,
-    indexedTajweedData,
-  ]);
+  }, [currentSurah]);
 
   // Get verses data
   const verses = getVersesForSurahMemo();
@@ -160,7 +132,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Render the verse items (optimized with LegendList)
   const renderItem = useCallback(
-    ({item}: LegendListRenderItemProps<VerseWithTajweed>) => {
+    ({item}: LegendListRenderItemProps<EnhancedVerse>) => {
       return (
         <VerseItem
           verse={item}
@@ -172,7 +144,6 @@ export const QuranView: React.FC<QuranViewProps> = ({
           transliterationFontSize={transliterationFontSize}
           translationFontSize={translationFontSize}
           arabicFontSize={arabicFontSize}
-          processedTajweedAyahData={item.processedTajweedAyahData}
         />
       );
     },
@@ -189,10 +160,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   );
 
   // Key extractor for items
-  const keyExtractor = useCallback(
-    (item: VerseWithTajweed) => item.verse_key,
-    [],
-  );
+  const keyExtractor = useCallback((item: EnhancedVerse) => item.verse_key, []);
 
   if (!surah || !verses.length) {
     return null;
@@ -208,13 +176,12 @@ export const QuranView: React.FC<QuranViewProps> = ({
         ListHeaderComponent={renderHeader}
         style={styles.list}
         contentContainerStyle={styles.scrollContent}
+        renderScrollComponent={renderScrollComponent}
         showsVerticalScrollIndicator={false}
         bounces={true}
         overScrollMode="never"
-        nestedScrollEnabled={Platform.OS === 'android'}
-        disableScrollViewPanResponder={Platform.OS === 'android'}
-        recycleItems={true} // Enable item recycling for better performance
-        estimatedItemSize={150} // Estimate average item height for better initial rendering
+        recycleItems={true}
+        estimatedItemSize={150}
       />
     </View>
   );

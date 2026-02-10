@@ -1,15 +1,9 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Platform,
-} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
+import {BottomSheetScrollView} from '@gorhom/bottom-sheet';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {TrackItem} from '@/components/TrackItem';
@@ -248,15 +242,12 @@ export const QueueList: React.FC<QueueListProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <BottomSheetScrollView
         style={styles.list}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         bounces={true}
-        overScrollMode="never"
-        nestedScrollEnabled={Platform.OS === 'android'}
-        disableScrollViewPanResponder={Platform.OS === 'android'}
-        scrollEventThrottle={16}>
+        overScrollMode="never">
         {/* Header */}
         <View style={[styles.header, {borderBottomColor: theme.colors.border}]}>
           <View style={styles.headerLeft}>
@@ -299,7 +290,7 @@ export const QueueList: React.FC<QueueListProps> = ({
             </Pressable>
           </View>
         ))}
-      </ScrollView>
+      </BottomSheetScrollView>
     </View>
   );
 };
