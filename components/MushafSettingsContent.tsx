@@ -4,7 +4,7 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {Feather} from '@expo/vector-icons';
+import {Icon} from '@rneui/themed';
 import {useTajweedStore} from '@/store/tajweedStore';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
@@ -224,8 +224,9 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
             onPress={handleDecrement}
             hitSlop={10}
             disabled={currentDisplayValue <= DISPLAY_MIN}>
-            <Feather
+            <Icon
               name="minus"
+              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue <= DISPLAY_MIN
@@ -239,8 +240,9 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
             onPress={handleIncrement}
             hitSlop={10}
             disabled={currentDisplayValue >= DISPLAY_MAX}>
-            <Feather
+            <Icon
               name="plus"
+              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue >= DISPLAY_MAX
@@ -469,10 +471,13 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {showTitle && <Text style={styles.title}>Mushaf Layout</Text>}
+      {showTitle && <Text style={styles.title}>Mushaf Settings</Text>}
 
-      {/* Arabic Text Section */}
+      {/* Arabic Text Section - Shared between Mushaf Tab and Player View */}
       <Text style={styles.sectionHeader}>Arabic Text</Text>
+      <Text style={styles.sectionSubHeader}>
+        Applies to both Mushaf tab and Player view
+      </Text>
       <View style={styles.card}>
         <View style={styles.tajweedOptionRow}>
           <View style={styles.tajweedLabelContainer}>
@@ -526,9 +531,18 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.divider} />
+      </View>
+
+      {/* Player View Section */}
+      <Text style={styles.sectionHeader}>Player View</Text>
+      <Text style={styles.sectionSubHeader}>
+        Font sizes and display options during playback
+      </Text>
+
+      {/* Arabic Font Size for Player View */}
+      <View style={styles.card}>
         <FontSizeControl
-          label="Font Size"
+          label="Arabic Font Size"
           currentActualSize={arabicFontSize}
           onChange={setArabicFontSize}
           theme={theme}
@@ -543,7 +557,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       </View>
 
       {/* Transliteration Section */}
-      <Text style={styles.sectionHeader}>Transliteration</Text>
       <View style={styles.card}>
         <View style={styles.optionRow}>
           <Text style={styles.optionLabel}>Transliteration</Text>
@@ -573,7 +586,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       </View>
 
       {/* Translation Section */}
-      <Text style={styles.sectionHeader}>Translation</Text>
       <View style={styles.card}>
         <View style={styles.optionRow}>
           <Text style={styles.optionLabel}>Translation</Text>
@@ -624,8 +636,16 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textSecondary,
+      marginBottom: verticalScale(4),
+      marginLeft: moderateScale(4),
+    },
+    sectionSubHeader: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: theme.colors.textSecondary,
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
+      opacity: 0.8,
     },
     optionRow: {
       flexDirection: 'row',
