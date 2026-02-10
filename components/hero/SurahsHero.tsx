@@ -63,15 +63,17 @@ export const SurahHeroSection = ({
 
   const handlePressIn = () => {
     scale.value = withSpring(0.97, {
-      damping: 15,
-      stiffness: 300,
+      damping: 20,
+      stiffness: 400,
+      mass: 0.5,
     });
   };
 
   const handlePressOut = () => {
     scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
+      damping: 20,
+      stiffness: 400,
+      mass: 0.5,
     });
   };
 

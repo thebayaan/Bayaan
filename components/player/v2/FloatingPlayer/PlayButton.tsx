@@ -42,7 +42,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({
     <Pressable
       onPress={handlePress}
       disabled={disabled}
-      style={({pressed}) => [styles.button, {opacity: pressed ? 0.7 : 1}]}>
+      style={styles.button}>
       {optimisticIsPlaying ? (
         <PauseIcon color={theme.colors.text} size={moderateScale(24)} />
       ) : (
