@@ -201,7 +201,7 @@ class LockScreenService {
       // Re-sync metadata when duration becomes known (was 0, now real)
       if (currentTrack && playback.duration > 0 && this.lastDuration === 0) {
         this.lastDuration = playback.duration;
-        this.syncMetadata(currentTrack);
+        this.syncMetadata(currentTrack, playback.duration);
       }
 
       // Update playback state when it changes
@@ -212,17 +212,21 @@ class LockScreenService {
     });
   }
 
-  private syncMetadata(track: {
-    title: string;
-    artist: string;
-    artwork?: string;
-    duration?: number;
-  }): void {
+  private syncMetadata(
+    track: {
+      title: string;
+      artist: string;
+      artwork?: string;
+      duration?: number;
+    },
+    durationOverride?: number,
+  ): void {
     updateMetadata({
       title: track.title,
       artist: track.artist,
       artwork: track.artwork ? {uri: track.artwork} : undefined,
-      duration: track.duration ?? expoAudioService.getDuration(),
+      duration:
+        durationOverride || track.duration || expoAudioService.getDuration(),
     }).catch(error => {
       if (__DEV__)
         console.warn('[LockScreenService] Failed to update metadata:', error);
