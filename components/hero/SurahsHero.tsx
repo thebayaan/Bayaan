@@ -158,21 +158,21 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     topSection: {
-      marginBottom: moderateScale(6),
+      marginBottom: moderateScale(3),
       alignItems: 'center',
     },
     bottomSection: {
       alignItems: 'center',
     },
     heroGlyph: {
-      fontSize: moderateScale(36),
+      fontSize: moderateScale(30),
       fontFamily: 'SurahNames',
       color: theme.colors.text,
       textShadowColor: 'rgba(0, 0, 0, 0.2)',
       textShadowOffset: {width: 0, height: 1},
       textShadowRadius: 4,
       textAlign: 'center',
-      marginTop: moderateScale(2),
+      marginTop: 0,
     },
     topRow: {
       flexDirection: 'row',
@@ -202,7 +202,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
-      marginBottom: moderateScale(6),
+      marginBottom: moderateScale(3),
       textAlign: 'center',
     },
     statsRow: {
