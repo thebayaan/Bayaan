@@ -2,7 +2,7 @@ import React, {useCallback, useMemo} from 'react';
 import {View, Pressable, Text, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
-import {HomeIcon, SearchIcon, CollectionIcon} from '@/components/Icons';
+import {HomeIcon, SearchIcon, CollectionIcon, MushafiIcon} from '@/components/Icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CommonActions} from '@react-navigation/native';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
@@ -66,6 +66,13 @@ function getIcon(
       return (
         <CollectionIcon
           filled={isFocused}
+          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+          size={iconSize}
+        />
+      );
+    case '(d.mushaf)':
+      return (
+        <MushafiIcon
           color={isFocused ? theme.colors.text : theme.colors.textSecondary}
           size={iconSize}
         />
