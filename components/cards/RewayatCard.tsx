@@ -35,11 +35,11 @@ function RewayatCard({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.95, {damping: 15, stiffness: 400});
+    scale.value = withSpring(0.95, {damping: 20, stiffness: 400, mass: 0.5});
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, {damping: 15, stiffness: 400});
+    scale.value = withSpring(1, {damping: 20, stiffness: 400, mass: 0.5});
   };
 
   const styles = useMemo(() => createStyles(theme), [theme]);

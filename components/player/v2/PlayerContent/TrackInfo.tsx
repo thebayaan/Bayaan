@@ -96,10 +96,7 @@ export const TrackInfo = () => {
     <View style={styles.container}>
       <View style={styles.trackContainer}>
         <Pressable
-          style={({pressed}) => [
-            styles.trackInfoTouchable,
-            {opacity: pressed && !isUploadWithoutReciter ? 0.7 : 1},
-          ]}
+          style={styles.trackInfoTouchable}
           onPress={handleReciterPress}>
           <View style={styles.imageContainer}>
             {isUploadWithoutArtwork ? (

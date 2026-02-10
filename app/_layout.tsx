@@ -15,6 +15,7 @@ import {
   Platform,
   StatusBar as RNStatusBar,
   Appearance,
+  InteractionManager,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ThemeProvider} from '@react-navigation/native';
@@ -31,7 +32,7 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
-import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
+import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
@@ -45,6 +46,9 @@ configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
   strict: false,
 });
+
+// Cache for expo-navigation-bar module (Android only)
+let NavigationBarModule: any = null;
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -60,7 +64,6 @@ SystemUI.setBackgroundColorAsync(
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [isTajweedLoading, setIsTajweedLoading] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
   const initializationRef = useRef(false);
@@ -125,29 +128,20 @@ export default function RootLayout() {
     resetOnBackground: true,
   });
 
-  // Preload Tajweed data once when the app starts
+  // Background initialization: SQLite services + deferred tajweed preload
   useEffect(() => {
-    if (!isTajweedLoading) {
-      setIsTajweedLoading(true);
+    // SQLite services (non-blocking)
+    appInitializer
+      .initialize()
+      .catch(err =>
+        console.error('[App] Failed to initialize SQLite services:', err),
+      );
+
+    // Tajweed data — defer until after first frame + interactions complete
+    InteractionManager.runAfterInteractions(() => {
       if (__DEV__) console.log('[App] Preloading tajweed data...');
-      preloadTajweedDataWithTimeout();
-    }
-  }, [isTajweedLoading]);
-
-  // Initialize all SQLite-based services in the background
-  useEffect(() => {
-    const initializeServices = async () => {
-      try {
-        if (__DEV__) console.log('[App] Initializing SQLite services...');
-        await appInitializer.initialize();
-        if (__DEV__)
-          console.log('[App] SQLite services initialized successfully');
-      } catch (error) {
-        console.error('[App] Failed to initialize SQLite services:', error);
-      }
-    };
-
-    initializeServices();
+      preloadTajweedData();
+    });
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
@@ -214,36 +208,28 @@ export default function RootLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle navigation after initialization
-  useEffect(() => {
-    if (!appIsReady || !fontsLoaded || !isPlayerReady || fontError) {
-      return;
-    }
-  }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
-
-  // Set native root view background to match theme (prevents white flash during transitions)
+  // Set native root view background + configure Android navigation bar to match theme
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(theme.colors.background);
-  }, [theme.colors.background]);
 
-  // Configure Android navigation bar to match theme
-  useEffect(() => {
     async function setupNavigationBar() {
       if (Platform.OS === 'android') {
         try {
-          const NavigationBar = await import('expo-navigation-bar').then(
-            module => module.default,
-          );
+          if (!NavigationBarModule) {
+            NavigationBarModule = await import('expo-navigation-bar').then(
+              module => module.default,
+            );
+            RNStatusBar.setTranslucent(true);
+          }
 
-          if (NavigationBar) {
-            await NavigationBar.setBackgroundColorAsync(
+          if (NavigationBarModule) {
+            await NavigationBarModule.setBackgroundColorAsync(
               theme.colors.background,
             );
-            await NavigationBar.setButtonStyleAsync(
+            await NavigationBarModule.setButtonStyleAsync(
               isDarkMode ? 'light' : 'dark',
             );
           }
-          RNStatusBar.setTranslucent(true);
         } catch (error) {
           if (__DEV__)
             console.warn(

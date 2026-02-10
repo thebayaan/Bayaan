@@ -256,7 +256,7 @@ export const PlayerSheet = () => {
         index={currentIndex}
         animateOnMount={false}
         handleComponent={CustomHandle}
-        enableContentPanningGesture={Platform.OS === 'ios'}
+        enableContentPanningGesture
         style={styles.sheet}
         backgroundStyle={[
           styles.background,

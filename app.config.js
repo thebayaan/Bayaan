@@ -157,6 +157,7 @@ module.exports = {
         },
       ],
       './withAndroidSigning.js',
+      './withLargeHeap.js',
       './withIOSTeam.js',
     ],
   },

@@ -1,7 +1,7 @@
 import React, {useState, useCallback} from 'react';
 import {
   View,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
   Platform,
@@ -139,8 +139,7 @@ const Header = React.memo(
               onSelect={handleToggle}
             />
           </View>
-          <TouchableOpacity
-            activeOpacity={0.7}
+          <Pressable
             style={headerStyles.settingsButton}
             onPress={handleSettingsPress}>
             <AntDesign
@@ -148,7 +147,7 @@ const Header = React.memo(
               size={moderateScale(20)}
               color={theme.colors.textSecondary}
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </Animated.View>
     );
