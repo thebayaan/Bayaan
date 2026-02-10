@@ -10,7 +10,7 @@
 | Phase | Name | Status | Branch | Commit | Impact Summary |
 |-------|------|--------|--------|--------|----------------|
 | 3 | Android Config Quick Wins | **DONE** | `perf/android-config-phase3` | — | `largeHeap` enabled, nav bar import cached, audit corrected (New Arch + Hermes already on) |
-| 2 | Startup Declutter | PENDING | — | — | Lazy sheet registration, deferred init, consolidated useEffects |
+| 2 | Startup Declutter | **DONE** | `perf/android-config-phase3` | — | Lazy sheet registration (18 sheets), deferred tajweed via InteractionManager, consolidated root effects (9→6), removed dead code |
 | 1 | Data Loading Revolution | PENDING | — | — | Move large JSON to SQLite, lazy tajweed, pre-built Fuse index |
 | 4 | Sheet & Navigation Smoothness | PENDING | — | — | Fix Android sheet gestures, screen transitions, PlayerSheet optimization |
 | 5 | List & Rendering Polish | PENDING | — | — | getItemLayout, replace LinearGradient, Pressable migration, memo audit |
@@ -30,6 +30,16 @@
 | `docs/android-performance-audit.md` | MODIFIED | Corrected: New Architecture and Hermes already enabled; downgraded config severity 7→5 |
 | `docs/android-perf/00-tracker.md` | CREATED | This file — master tracker |
 | `docs/android-perf/phase-3-handoff.md` | CREATED | Phase 3 handoff with context for Phase 2 |
+
+### Phase 2
+
+| File | Action | Description |
+|------|--------|-------------|
+| `components/sheets/sheets.tsx` | MODIFIED | Replaced 19 eager imports with React.lazy + Suspense wrappers; removed dead RewayatInfoSheet registration |
+| `app/_layout.tsx` | MODIFIED | Removed dead navigation effect, merged theme sync effects, merged background init effects, added InteractionManager, removed isTajweedLoading state (9→6 useEffects) |
+| `utils/tajweedLoader.ts` | MODIFIED | Removed setTimeout wrapper and async variant, made preloadTajweedData synchronous (caller handles deferral) |
+| `docs/android-perf/00-tracker.md` | MODIFIED | Updated Phase 2 status to DONE |
+| `docs/android-perf/phase-2-handoff.md` | CREATED | Phase 2 handoff with context for Phase 1 |
 
 ---
 

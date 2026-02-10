@@ -1,51 +1,106 @@
-import React from 'react';
+import React, {Suspense} from 'react';
+import {View} from 'react-native';
 import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
 import type {Dhikr} from '@/types/adhkar';
 import type {UploadedRecitation} from '@/types/uploads';
 
-// Import sheet components
-import {SurahOptionsSheet} from './SurahOptionsSheet';
-import {RewayatInfoSheet} from './RewayatInfoSheet';
-import {FavoriteRecitersSheet} from './FavoriteRecitersSheet';
-import {SelectReciterSheet} from './SelectReciterSheet';
-import {SelectPlaylistSheet} from './SelectPlaylistSheet';
-import {CreatePlaylistSheet} from './CreatePlaylistSheet';
-import {PlaylistContextSheet} from './PlaylistContextSheet';
-import {PlayerOptionsSheet} from './PlayerOptionsSheet';
-import {PlaybackSpeedSheet} from './PlaybackSpeedSheet';
-import {SleepTimerSheet} from './SleepTimerSheet';
-import {MushafLayoutSheet} from './MushafLayoutSheet';
-import {AdhkarLayoutSheet} from './AdhkarLayoutSheet';
-import {AdhkarCopyOptionsSheet} from './AdhkarCopyOptionsSheet';
-import {OrganizeRecitationSheet} from './OrganizeRecitationSheet';
-import {DownloadOptionsSheet} from './DownloadOptionsSheet';
-import {UploadOptionsSheet} from './UploadOptionsSheet';
-import {AddToCollectionSheet} from './AddToCollectionSheet';
-import {AmbientSoundsSheet} from './AmbientSoundsSheet';
-import {CollectionOptionsSheet} from './CollectionOptionsSheet';
+/**
+ * Wraps a lazy-imported sheet component in React.lazy + Suspense.
+ * Metro defers module *evaluation* until the dynamic import() resolves,
+ * so none of these sheets (or their dependency trees) execute at startup.
+ */
+function lazySheet(
+  importFn: () => Promise<any>,
+  exportName: string,
+): React.FC<any> {
+  const LazyComponent = React.lazy(() =>
+    importFn().then(mod => ({default: mod[exportName]})),
+  );
+  return (props: any) => (
+    <Suspense fallback={<View />}>
+      <LazyComponent {...props} />
+    </Suspense>
+  );
+}
 
-// Register all sheets
-registerSheet('surah-options', SurahOptionsSheet);
-registerSheet('rewayat-info', RewayatInfoSheet);
-registerSheet('favorite-reciters', FavoriteRecitersSheet);
-registerSheet('select-reciter', SelectReciterSheet);
-registerSheet('select-playlist', SelectPlaylistSheet);
-registerSheet('create-playlist', CreatePlaylistSheet);
-registerSheet('playlist-context', PlaylistContextSheet);
-registerSheet('player-options', PlayerOptionsSheet);
-registerSheet('playback-speed', PlaybackSpeedSheet);
-registerSheet('sleep-timer', SleepTimerSheet);
-registerSheet('mushaf-layout', MushafLayoutSheet);
-registerSheet('adhkar-layout', AdhkarLayoutSheet);
-registerSheet('adhkar-copy-options', AdhkarCopyOptionsSheet);
-registerSheet('organize-recitation', OrganizeRecitationSheet);
-registerSheet('download-options', DownloadOptionsSheet);
-registerSheet('upload-options', UploadOptionsSheet);
-registerSheet('add-to-collection', AddToCollectionSheet);
-registerSheet('ambient-sounds', AmbientSoundsSheet);
-registerSheet('collection-options', CollectionOptionsSheet);
+// Register all sheets with lazy imports
+registerSheet(
+  'surah-options',
+  lazySheet(() => import('./SurahOptionsSheet'), 'SurahOptionsSheet'),
+);
+registerSheet(
+  'favorite-reciters',
+  lazySheet(() => import('./FavoriteRecitersSheet'), 'FavoriteRecitersSheet'),
+);
+registerSheet(
+  'select-reciter',
+  lazySheet(() => import('./SelectReciterSheet'), 'SelectReciterSheet'),
+);
+registerSheet(
+  'select-playlist',
+  lazySheet(() => import('./SelectPlaylistSheet'), 'SelectPlaylistSheet'),
+);
+registerSheet(
+  'create-playlist',
+  lazySheet(() => import('./CreatePlaylistSheet'), 'CreatePlaylistSheet'),
+);
+registerSheet(
+  'playlist-context',
+  lazySheet(() => import('./PlaylistContextSheet'), 'PlaylistContextSheet'),
+);
+registerSheet(
+  'player-options',
+  lazySheet(() => import('./PlayerOptionsSheet'), 'PlayerOptionsSheet'),
+);
+registerSheet(
+  'playback-speed',
+  lazySheet(() => import('./PlaybackSpeedSheet'), 'PlaybackSpeedSheet'),
+);
+registerSheet(
+  'sleep-timer',
+  lazySheet(() => import('./SleepTimerSheet'), 'SleepTimerSheet'),
+);
+registerSheet(
+  'mushaf-layout',
+  lazySheet(() => import('./MushafLayoutSheet'), 'MushafLayoutSheet'),
+);
+registerSheet(
+  'adhkar-layout',
+  lazySheet(() => import('./AdhkarLayoutSheet'), 'AdhkarLayoutSheet'),
+);
+registerSheet(
+  'adhkar-copy-options',
+  lazySheet(() => import('./AdhkarCopyOptionsSheet'), 'AdhkarCopyOptionsSheet'),
+);
+registerSheet(
+  'organize-recitation',
+  lazySheet(
+    () => import('./OrganizeRecitationSheet'),
+    'OrganizeRecitationSheet',
+  ),
+);
+registerSheet(
+  'download-options',
+  lazySheet(() => import('./DownloadOptionsSheet'), 'DownloadOptionsSheet'),
+);
+registerSheet(
+  'upload-options',
+  lazySheet(() => import('./UploadOptionsSheet'), 'UploadOptionsSheet'),
+);
+registerSheet(
+  'add-to-collection',
+  lazySheet(() => import('./AddToCollectionSheet'), 'AddToCollectionSheet'),
+);
+registerSheet(
+  'ambient-sounds',
+  lazySheet(() => import('./AmbientSoundsSheet'), 'AmbientSoundsSheet'),
+);
+registerSheet(
+  'collection-options',
+  lazySheet(() => import('./CollectionOptionsSheet'), 'CollectionOptionsSheet'),
+);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
