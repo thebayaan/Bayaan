@@ -22,7 +22,13 @@
     "version:major": "node scripts/version-bump.js major",
     "version:current": "node scripts/generate-version.js",
     "ios:archive": "./scripts/ios-archive.sh",
-    "ios:archive:upload": "./scripts/ios-archive.sh --upload"
+    "ios:archive:upload": "./scripts/ios-archive.sh --upload",
+    "build:dev:android": "eas build --profile development --platform android",
+    "build:dev:ios": "eas build --profile development --platform ios",
+    "build:preview:android": "eas build --profile preview --platform android",
+    "build:preview:ios": "eas build --profile preview --platform ios",
+    "build:prod:android": "eas build --profile production --platform android",
+    "build:prod:ios": "eas build --profile production --platform ios"
   },
   "jest": {
     "preset": "jest-expo"
