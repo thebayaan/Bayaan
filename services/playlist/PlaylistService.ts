@@ -64,6 +64,7 @@ class PlaylistService {
     surahId: string,
     reciterId: string,
     rewayatId?: string,
+    userRecitationId?: string,
   ): Promise<void> {
     await this.initialize();
 
@@ -87,6 +88,7 @@ class PlaylistService {
       rewayatId,
       orderIndex,
       addedAt: Date.now(),
+      userRecitationId,
     };
 
     // Wrap both operations in a single transaction

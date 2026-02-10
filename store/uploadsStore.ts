@@ -30,6 +30,7 @@ interface UploadsState {
   ) => Promise<UploadedRecitation[]>;
   updateTags: (id: string, tags: Partial<UploadedRecitation>) => Promise<void>;
   deleteRecitation: (id: string) => Promise<void>;
+  deleteAllRecitations: () => Promise<void>;
   refreshRecitations: () => Promise<void>;
 
   // Custom reciters
@@ -150,6 +151,22 @@ export const useUploadsStore = create<UploadsState>((set, get) => ({
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to delete recitation';
+      set({error: errorMessage});
+      throw err;
+    }
+  },
+
+  deleteAllRecitations: async () => {
+    try {
+      set({error: null});
+      const {recitations} = get();
+      for (const r of recitations) {
+        await uploadsService.deleteRecitation(r.id);
+      }
+      set({recitations: [], totalCount: 0});
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to delete all recitations';
       set({error: errorMessage});
       throw err;
     }

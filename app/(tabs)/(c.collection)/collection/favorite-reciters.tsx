@@ -1,303 +1,396 @@
-import React, {useRef, useState, useEffect, useCallback} from 'react';
+import React, {useRef, useState, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  Animated,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
+  Pressable,
   StyleSheet,
-  ScrollView,
-  useWindowDimensions,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {createStyles} from './_styles';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
+import {ReciterItem} from '@/components/ReciterItem';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
-import {LinearGradient} from 'expo-linear-gradient';
-import {StatusBar} from 'expo-status-bar';
-import {CollectionCard} from '@/components/CollectionCard';
+import {ProfileIcon} from '@/components/Icons';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import SearchBar from '@/components/SearchBar';
 import {Reciter} from '@/data/reciterData';
 import {SheetManager} from 'react-native-actions-sheet';
-import {Ionicons} from '@expo/vector-icons';
-
-type ReciterListItem =
-  | Reciter
-  | {
-      id: string;
-      name: string;
-      type: 'add';
-    };
-
-function calculateColumns(width: number) {
-  const screenMargin = moderateScale(20) * 2; // Left and right screen margins
-  const itemMinWidth = moderateScale(75); // Minimum width we want for each item
-  const gapWidth = moderateScale(8); // Gap between items
-
-  const availableWidth = width - screenMargin;
-  const maxColumns = Math.floor(
-    (availableWidth + gapWidth) / (itemMinWidth + gapWidth),
-  );
-
-  return Math.max(3, Math.min(maxColumns, 5)); // Minimum 3, maximum 5 columns
-}
-
-function calculateItemWidth(width: number, columns: number) {
-  const screenMargin = moderateScale(20) * 2; // Left and right screen margins
-  const gapWidth = moderateScale(8); // Gap between items
-  const totalGapWidth = gapWidth * (columns - 1);
-
-  const availableWidth = width - screenMargin - totalGapWidth;
-  return availableWidth / columns;
-}
+import Color from 'color';
 
 export default function FavoriteRecitersScreen() {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
-  const {favoriteReciters} = useFavoriteReciters();
+  const {favoriteReciters, removeFavorite} = useFavoriteReciters();
   const router = useRouter();
-  const {width} = useWindowDimensions();
-  const columns = calculateColumns(width);
-  const itemWidth = calculateItemWidth(width, columns);
-  const scrollY = useRef(new Animated.Value(0)).current as Animated.Value;
-  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
-  const [isStatusBarDark, setIsStatusBarDark] = useState(false);
+
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [150, 200],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  const filteredReciters = useMemo(
+    () =>
+      favoriteReciters.filter(reciter =>
+        reciter.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [favoriteReciters, searchQuery],
+  );
 
-  useEffect(() => {
-    const listener = headerOpacity.addListener(({value}) => {
-      if (value === 1 && !isHeaderVisible) {
-        setIsHeaderVisible(true);
-      } else if (value < 1 && isHeaderVisible) {
-        setIsHeaderVisible(false);
-      }
-    });
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: theme.colors.background,
+        },
+        headerContainer: {
+          width: '100%',
+          overflow: 'hidden',
+        },
+        contentArea: {
+          width: '100%',
+          alignItems: 'center',
+          paddingTop: insets.top + moderateScale(40),
+          paddingBottom: moderateScale(30),
+          overflow: 'hidden',
+          backgroundColor: theme.colors.background,
+        },
+        contentCenter: {
+          alignItems: 'center',
+          paddingHorizontal: moderateScale(20),
+        },
+        heroIconContainer: {
+          width: moderateScale(64),
+          height: moderateScale(64),
+          borderRadius: moderateScale(32),
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginBottom: moderateScale(12),
+          backgroundColor: Color(theme.colors.textSecondary)
+            .alpha(0.1)
+            .toString(),
+        },
+        heroIconInner: {
+          width: moderateScale(56),
+          height: moderateScale(56),
+          borderRadius: moderateScale(28),
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: Color(theme.colors.textSecondary)
+            .alpha(0.08)
+            .toString(),
+        },
+        title: {
+          fontSize: moderateScale(17),
+          fontFamily: theme.fonts.bold,
+          color: theme.colors.text,
+          textAlign: 'center',
+          marginBottom: moderateScale(8),
+          letterSpacing: -0.3,
+        },
+        subtitle: {
+          fontSize: moderateScale(12),
+          color: theme.colors.text,
+          fontFamily: theme.fonts.regular,
+          textAlign: 'center',
+          marginBottom: moderateScale(8),
+        },
+        addBar: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: moderateScale(12),
+          marginHorizontal: moderateScale(16),
+          marginTop: moderateScale(8),
+          marginBottom: moderateScale(8),
+          borderRadius: moderateScale(12),
+          backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+          gap: moderateScale(8),
+        },
+        addBarText: {
+          fontSize: moderateScale(13),
+          fontFamily: 'Manrope-SemiBold',
+          color: theme.colors.textSecondary,
+        },
+        searchBarContainer: {
+          paddingHorizontal: moderateScale(16),
+          marginBottom: moderateScale(12),
+        },
+        listContentContainer: {
+          flexGrow: 1,
+          paddingBottom: moderateScale(65),
+        },
+        fixedBackButton: {
+          position: 'absolute',
+          top: insets.top + moderateScale(10),
+          left: moderateScale(15),
+          zIndex: 5,
+          padding: moderateScale(8),
+        },
+        fixedSearchToggle: {
+          position: 'absolute',
+          top: insets.top + moderateScale(10),
+          right: moderateScale(15),
+          zIndex: 5,
+          padding: moderateScale(8),
+        },
+        emptyHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: moderateScale(12),
+          paddingHorizontal: moderateScale(16),
+        },
+        emptyHeaderBack: {
+          width: moderateScale(36),
+          height: moderateScale(36),
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        emptyHeaderTitle: {
+          flex: 1,
+          fontSize: moderateScale(17),
+          fontFamily: theme.fonts.bold,
+          color: theme.colors.text,
+          textAlign: 'center',
+        },
+        emptyContent: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: moderateScale(32),
+          paddingBottom: moderateScale(60),
+        },
+        emptyIcon: {
+          marginBottom: moderateScale(16),
+        },
+        emptyTitle: {
+          fontSize: moderateScale(17),
+          fontFamily: theme.fonts.bold,
+          color: theme.colors.text,
+          textAlign: 'center',
+          marginBottom: moderateScale(8),
+        },
+        emptySubtitle: {
+          fontSize: moderateScale(13),
+          fontFamily: theme.fonts.regular,
+          color: theme.colors.textSecondary,
+          textAlign: 'center',
+          marginBottom: moderateScale(20),
+        },
+        emptyActionBar: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: moderateScale(12),
+          paddingHorizontal: moderateScale(32),
+          borderRadius: moderateScale(12),
+          backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+          gap: moderateScale(8),
+        },
+        emptyActionText: {
+          fontSize: moderateScale(13),
+          fontFamily: 'Manrope-SemiBold',
+          color: theme.colors.textSecondary,
+        },
+      }),
+    [theme, insets.top],
+  );
 
-    return () => headerOpacity.removeListener(listener);
-  }, [headerOpacity, isHeaderVisible]);
-
-  const handleReciterPress = (reciterId: string) => {
-    router.push(`/reciter/${reciterId}`);
-  };
-
-  const filteredReciters = favoriteReciters.filter(reciter =>
-    reciter.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const handleReciterPress = useCallback(
+    (reciterId: string) => {
+      router.push(`/reciter/${reciterId}`);
+    },
+    [router],
   );
 
   const handleOpenSelectReciters = useCallback(() => {
     SheetManager.show('favorite-reciters');
   }, []);
 
-  return (
-    <View style={styles.container}>
-      <StatusBar style={isStatusBarDark ? 'dark' : 'light'} />
-      <ScrollView
-        ref={scrollViewRef}
-        bounces={false}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{nativeEvent: {contentOffset: {y: scrollY}}}],
-          {
-            useNativeDriver: false,
-            listener: (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-              const offsetY = event.nativeEvent.contentOffset.y;
-              setIsStatusBarDark(offsetY > 100);
-            },
-          },
-        )}
-        scrollEventThrottle={16}>
-        <LinearGradient
-          colors={
-            [theme.colors.primary, theme.colors.background] as [string, string]
-          }
-          style={[
-            styles.gradientContainer,
+  const handleReciterOptions = useCallback(
+    (reciter: Reciter) => {
+      SheetManager.show('collection-options', {
+        payload: {
+          title: reciter.name,
+          subtitle: reciter.rewayat[0]?.name || '',
+          options: [
             {
-              paddingTop: insets.top + moderateScale(20),
-              backgroundColor: theme.colors.primary,
+              label: 'Remove from Favorites',
+              icon: 'user-minus',
+              destructive: true,
+              onPress: () => removeFavorite(reciter.id),
             },
-          ]}>
-          <CollectionCard
-            icon={
-              <Ionicons
-                name="star"
-                size={moderateScale(80)}
-                color={theme.colors.text}
-              />
-            }
-            title="Favorite Reciters"
-            subtitle={`${favoriteReciters.length} reciters`}
-          />
-        </LinearGradient>
-        <View style={styles.contentContainer}>
-          {showSearch && (
-            <View style={styles.searchBarContainer}>
-              <SearchBar
-                placeholder="Search favorite reciters"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-              />
-            </View>
-          )}
-          <Animated.FlatList
-            data={
-              [
-                ...(!isSearchFocused
-                  ? [
-                      {
-                        id: 'add-button',
-                        name: 'Add reciters',
-                        type: 'add' as const,
-                      },
-                    ]
-                  : []),
-                ...filteredReciters,
-              ] as ReciterListItem[]
-            }
-            showsVerticalScrollIndicator={false}
-            renderItem={({item}: {item: ReciterListItem}) => (
-              <View
-                style={{
-                  width: itemWidth,
-                  marginBottom: moderateScale(8),
-                  alignItems: 'center',
-                }}>
-                <CircularReciterCard
-                  imageUrl={
-                    'image_url' in item
-                      ? item.image_url || undefined
-                      : undefined
-                  }
-                  name={item.name}
-                  onPress={() =>
-                    'type' in item && item.type === 'add'
-                      ? handleOpenSelectReciters()
-                      : handleReciterPress(item.id)
-                  }
-                  width={itemWidth * 0.85}
-                  variant={
-                    'type' in item && item.type === 'add' ? 'add' : 'default'
-                  }
-                />
-              </View>
-            )}
-            keyExtractor={item => item.id}
-            numColumns={columns}
-            contentContainerStyle={[styles.gridContainer, {paddingBottom: 65}]}
-            columnWrapperStyle={{
-              gap: moderateScale(8),
-              flex: 1,
-              justifyContent: 'flex-start',
-            }}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>No favorite reciters yet</Text>
-            }
-            scrollEnabled={false}
-          />
-        </View>
-      </ScrollView>
-      <Animated.View
-        style={[
-          styles.stickyHeader,
-          {
-            opacity: headerOpacity,
-            paddingTop: insets.top,
-          },
-        ]}>
-        <LinearGradient
-          colors={
-            [theme.colors.primary, theme.colors.background] as [string, string]
-          }
-          style={StyleSheet.absoluteFill}
-        />
-        <Text style={styles.stickyHeaderTitle}>Favorite Reciters</Text>
-      </Animated.View>
-      <Animated.View
-        style={[
-          styles.backButton,
-          {
-            top: insets.top,
-            left: moderateScale(20),
-          },
-        ]}>
-        <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Feather name="arrow-left" size={moderateScale(24)} color="white" />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
+          ],
+        },
+      });
+    },
+    [removeFavorite],
+  );
+
+  const renderItem = useCallback(
+    ({item}: {item: Reciter}) => (
+      <ReciterItem
+        item={item}
+        onPress={reciter => handleReciterPress(reciter.id)}
+        onOptionsPress={handleReciterOptions}
+        onLongPress={handleReciterOptions}
+      />
+    ),
+    [handleReciterPress, handleReciterOptions],
+  );
+
+  if (favoriteReciters.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+          <Pressable
+            style={styles.emptyHeaderBack}
+            onPress={() => router.back()}
+            hitSlop={8}>
             <Feather
               name="arrow-left"
-              size={moderateScale(24)}
+              size={moderateScale(22)}
               color={theme.colors.text}
             />
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
-      <Animated.View
+          </Pressable>
+          <Text style={styles.emptyHeaderTitle}>Favorite Reciters</Text>
+          <View style={styles.emptyHeaderBack} />
+        </View>
+        <View style={styles.emptyContent}>
+          <View style={styles.emptyIcon}>
+            <ProfileIcon
+              color={theme.colors.textSecondary}
+              size={moderateScale(48)}
+              filled={true}
+            />
+          </View>
+          <Text style={styles.emptyTitle}>No favorite reciters yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Add reciters to see them here
+          </Text>
+          <Pressable
+            style={styles.emptyActionBar}
+            onPress={handleOpenSelectReciters}>
+            <Feather
+              name="plus"
+              size={moderateScale(16)}
+              color={theme.colors.textSecondary}
+            />
+            <Text style={styles.emptyActionText}>Add Reciters</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  const ListHeaderComponent = () => {
+    return (
+      <View style={styles.headerContainer}>
+        <View style={styles.contentArea}>
+          <View style={styles.contentCenter}>
+            <View style={styles.heroIconContainer}>
+              <View style={styles.heroIconInner}>
+                <ProfileIcon
+                  color={theme.colors.text}
+                  size={moderateScale(30)}
+                  filled={true}
+                />
+              </View>
+            </View>
+            <Text style={styles.title}>Favorite Reciters</Text>
+            <Text style={styles.subtitle}>
+              {favoriteReciters.length}{' '}
+              {favoriteReciters.length === 1 ? 'reciter' : 'reciters'}
+            </Text>
+          </View>
+        </View>
+
+        <Pressable style={styles.addBar} onPress={handleOpenSelectReciters}>
+          <Feather
+            name="plus"
+            size={moderateScale(16)}
+            color={theme.colors.textSecondary}
+          />
+          <Text style={styles.addBarText}>Add Reciters</Text>
+        </Pressable>
+
+        {showSearch && (
+          <View style={styles.searchBarContainer}>
+            <SearchBar
+              placeholder="Search favorite reciters"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <RNAnimated.View
         style={[
-          styles.searchButton,
+          styles.fixedBackButton,
           {
-            top: insets.top,
-            right: moderateScale(20),
+            opacity: scrollY.interpolate({
+              inputRange: [80, 120],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            }),
           },
         ]}>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Feather
+            name="arrow-left"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </RNAnimated.View>
+
+      <RNAnimated.View
+        style={[
+          styles.fixedSearchToggle,
+          {
+            opacity: scrollY.interpolate({
+              inputRange: [80, 120],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            }),
+          },
+        ]}>
+        <Pressable
           onPress={() => {
-            setShowSearch(!showSearch);
-            if (!showSearch) {
-              scrollViewRef.current?.scrollTo({y: 0, animated: true});
-            }
-          }}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Feather name="search" size={moderateScale(20)} color="white" />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Feather
-              name="search"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Animated.View>
-        </TouchableOpacity>
-      </Animated.View>
+            setShowSearch(prev => !prev);
+            if (showSearch) setSearchQuery('');
+          }}
+          hitSlop={8}>
+          <Feather
+            name="search"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </RNAnimated.View>
+
+      <RNAnimated.FlatList
+        data={filteredReciters}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+        ListHeaderComponent={ListHeaderComponent}
+        contentContainerStyle={styles.listContentContainer}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+      />
+      <CollectionStickyHeader title="Favorite Reciters" scrollY={scrollY} />
     </View>
   );
 }

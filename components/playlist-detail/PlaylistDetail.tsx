@@ -13,7 +13,8 @@ import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {createTrack} from '@/utils/track';
+import {createTrack, createUserUploadTrack} from '@/utils/track';
+import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
 import {PlaylistHeader} from './PlaylistHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -27,6 +28,7 @@ interface PlaylistTrack {
   surahId: string;
   reciterId: string;
   rewayatId?: string;
+  userRecitationId?: string;
   surah?: Surah;
   reciter?: Reciter;
 }
@@ -105,6 +107,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
               surahId: item.surahId,
               reciterId: item.reciterId,
               rewayatId: item.rewayatId,
+              userRecitationId: item.userRecitationId,
               surah,
               reciter,
             },
@@ -127,6 +130,13 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
       try {
         const trackPromises = playlistData.map(async item => {
           if (!item.reciter || !item.surah) return null;
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            if (upload) return createUserUploadTrack(upload);
+            return null;
+          }
           return await createTrack(
             item.reciter,
             item.surah,
@@ -181,6 +191,13 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     try {
       const trackPromises = playlistData.map(async item => {
         if (!item.reciter || !item.surah) return null;
+        if (item.track.userRecitationId) {
+          const upload = useUploadsStore
+            .getState()
+            .recitations.find(r => r.id === item.track.userRecitationId);
+          if (upload) return createUserUploadTrack(upload);
+          return null;
+        }
         return await createTrack(
           item.reciter,
           item.surah,
@@ -207,6 +224,13 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     try {
       const trackPromises = playlistData.map(async item => {
         if (!item.reciter || !item.surah) return null;
+        if (item.track.userRecitationId) {
+          const upload = useUploadsStore
+            .getState()
+            .recitations.find(r => r.id === item.track.userRecitationId);
+          if (upload) return createUserUploadTrack(upload);
+          return null;
+        }
         return await createTrack(
           item.reciter,
           item.surah,
@@ -297,7 +321,16 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
 
   const handleShowTrackOptions = useCallback(
     async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
-      const audioTrack = await createTrack(reciter, surah, track.rewayatId);
+      let audioTrack;
+      if (track.userRecitationId) {
+        const upload = useUploadsStore
+          .getState()
+          .recitations.find(r => r.id === track.userRecitationId);
+        if (upload) audioTrack = createUserUploadTrack(upload);
+      }
+      if (!audioTrack) {
+        audioTrack = await createTrack(reciter, surah, track.rewayatId);
+      }
 
       SheetManager.show('surah-options', {
         payload: {
@@ -309,6 +342,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
               await addToQueue([audioTrack]);
             }
           },
+          onRemoveFromPlaylist: () => handleRemoveFromPlaylist(track),
         },
       });
     },
@@ -351,9 +385,11 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         reciterId={track.reciterId}
         surahId={track.surahId}
         rewayatId={track.rewayatId}
+        userRecitationId={track.userRecitationId}
         onPress={() => handleSurahPress(track, reciter, surah)}
         onPlayPress={() => handleSurahPress(track, reciter, surah)}
         onOptionsPress={() => handleShowTrackOptions(track, reciter, surah)}
+        onLongPress={() => handleShowTrackOptions(track, reciter, surah)}
       />
     );
   };

@@ -1,5 +1,5 @@
-import React, {useState, useRef, useMemo, useCallback} from 'react';
-import {View, ScrollView, Platform, Text} from 'react-native';
+import React, {useCallback} from 'react';
+import {View, ScrollView, Platform, Text, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -7,50 +7,32 @@ import {moderateScale, ScaledSheet} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
-import {useSettings} from '@/hooks/useSettings';
 import {Theme} from '@/utils/themeUtils';
 import {BlurView} from '@react-native-community/blur';
-import * as Haptics from 'expo-haptics';
+import Color from 'color';
 
-// Components
 import {CollectionHeader} from '@/components/collection/CollectionHeader';
-import {FilterBar} from '@/components/collection/FilterBar';
-import {SectionHeader} from '@/components/collection/SectionHeader';
-import {CollectionSearchModal} from '@/components/collection/CollectionSearchModal';
-import {
-  CollectionGrid,
-  CollectionItem as CollectionItemType,
-  PlaylistItemData,
-  LovedItemData,
-  ReciterItemData,
-  DownloadItemData,
-  TrackItemData,
-  ReciterDownloadsItemData,
-  UploadItemData,
-} from '@/components/collection/CollectionGrid';
-import {PlaylistItem} from '@/components/PlaylistItem';
-import {ReciterItem} from '@/components/ReciterItem';
-import {TrackItem} from '@/components/TrackItem';
-import {ReciterDownloadsListItem} from '@/components/ReciterDownloadsListItem';
 import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {SheetManager} from 'react-native-actions-sheet';
-import {HeartIcon, DownloadIcon, MicrophoneIcon} from '@/components/Icons';
-import Color from 'color';
-import {Pressable} from 'react-native';
-import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {getReciterById, getSurahById} from '@/services/dataService';
-import {createDownloadedTrack} from '@/utils/track';
+import {
+  HeartIcon,
+  DownloadIcon,
+  MicrophoneIcon,
+  PlaylistIcon,
+  ProfileIcon,
+} from '@/components/Icons';
 import {useUploadsStore} from '@/store/uploadsStore';
 
-// Filter options
-const FILTERS = [
-  {id: 'playlists', label: 'Playlists'},
-  {id: 'reciters', label: 'Reciters'},
-  {id: 'downloads', label: 'Downloads'},
-  {id: 'uploads', label: 'Uploads'},
-  {id: 'loved', label: 'Loved'},
-];
+interface CategoryItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+  count: number;
+  emptyText: string;
+  route: string;
+}
 
 export default function CollectionScreen() {
   const {theme} = useTheme();
@@ -59,450 +41,65 @@ export default function CollectionScreen() {
   const router = useRouter();
   const {lovedTracks} = useLoved();
   const {favoriteReciters} = useFavoriteReciters();
-
-  const [activeFilter, setActiveFilter] = useState('');
-  const collectionViewMode = useSettings(state => state.collectionViewMode);
-  const setCollectionViewMode = useSettings(
-    state => state.setCollectionViewMode,
-  );
-  const isGridView = collectionViewMode === 'grid';
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [, setSelectedPlaylist] = useState<{
-    id: string;
-    name: string;
-    color?: string;
-  } | null>(null);
-  const shouldClearPlaylistRef = useRef(true);
   const downloads = useDownloads();
-  const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
-    usePlaylists();
-  const {updateQueue, play} = usePlayerActions();
-  const {recitations: uploadedRecitations, totalCount: uploadsTotalCount} =
-    useUploadsStore();
-
-  // Get existing playlist colors to avoid duplicates
-  const existingPlaylistColors = useMemo(
-    () => playlists.map(p => p.color).filter(Boolean) as string[],
-    [playlists],
-  );
+  const {playlists} = usePlaylists();
+  const {totalCount: uploadsTotalCount} = useUploadsStore();
 
   const handleAddPress = useCallback(() => {
     SheetManager.show('add-to-collection');
   }, []);
 
-  const handlePlaylistLongPress = useCallback(
-    (playlistId: string, playlistName: string, color?: string) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setSelectedPlaylist({id: playlistId, name: playlistName, color});
-      shouldClearPlaylistRef.current = true; // Reset flag when opening context menu
-
-      // Create a closure that captures the playlist data for editing
-      const handleEditForThisPlaylist = async () => {
-        // Prevent clearing selectedPlaylist BEFORE closing context menu
-        shouldClearPlaylistRef.current = false;
-
-        // Show the create-playlist sheet in edit mode
-        const result = await SheetManager.show('create-playlist', {
-          payload: {
-            existingColors: existingPlaylistColors,
-            isEditMode: true,
-            initialName: playlistName,
-            initialColor: color || '#6366F1',
-          },
-        });
-
-        if (result?.name && result?.color) {
-          try {
-            await updatePlaylist(playlistId, {
-              name: result.name,
-              color: result.color,
-            });
-          } catch (error: unknown) {
-            console.error('Failed to update playlist:', error);
-          }
-        }
-
-        // Clear the flag after modal is fully closed
-        setTimeout(() => {
-          shouldClearPlaylistRef.current = true;
-        }, 600);
-      };
-
-      // Create a closure that captures the playlist ID for deletion
-      const handleDeleteForThisPlaylist = async () => {
-        try {
-          await deletePlaylist(playlistId);
-          setSelectedPlaylist(null);
-        } catch (error: unknown) {
-          console.error('Failed to delete playlist:', error);
-          // Error handling is done in the confirmation dialog
-        }
-      };
-
-      SheetManager.show('playlist-context', {
-        payload: {
-          playlistId,
-          playlistName,
-          playlistColor: color,
-          onDelete: handleDeleteForThisPlaylist,
-          onEdit: handleEditForThisPlaylist,
-        },
-      });
+  const categories: CategoryItem[] = [
+    {
+      id: 'playlists',
+      label: 'Playlists',
+      icon: <PlaylistIcon color="#6366F1" size={moderateScale(22)} />,
+      color: '#6366F1',
+      count: playlists.length,
+      emptyText: 'Create your first playlist',
+      route: '/collection/playlists',
     },
-    [deletePlaylist, existingPlaylistColors, updatePlaylist],
-  );
-
-  const handleSearch = () => {
-    // Open the search modal
-    setShowSearchModal(true);
-  };
-
-  const handleViewToggle = () => {
-    const newMode = isGridView ? 'list' : 'grid';
-    setCollectionViewMode(newMode);
-  };
-
-  // Memoize collection items to ensure re-render when dependencies change
-  const collectionItems = useMemo(() => {
-    const items: Array<CollectionItemType & {timestamp: number}> = [];
-
-    // Add User Playlists
-    if (activeFilter === '' || activeFilter === 'playlists') {
-      if (playlists && Array.isArray(playlists)) {
-        playlists.forEach(playlist => {
-          items.push({
-            id: playlist.id,
-            type: 'playlist',
-            timestamp: playlist.updatedAt || playlist.createdAt || 0,
-            data: {
-              name: playlist.name,
-              itemCount: playlist.itemCount,
-              color: playlist.color,
-              onPress: () => router.push(`/playlist/${playlist.id}`),
-              onLongPress: () =>
-                handlePlaylistLongPress(
-                  playlist.id,
-                  playlist.name,
-                  playlist.color,
-                ),
-            },
-          });
-        });
-      }
-    }
-
-    // Add Loved Surahs Collection Card
-    if (activeFilter === '' || activeFilter === 'loved') {
-      // Get the most recent loved track timestamp
-      const mostRecentLovedTimestamp =
-        lovedTracks.length > 0
-          ? Math.max(...lovedTracks.map(t => t.timestamp || 0))
-          : 0;
-
-      items.push({
-        id: 'loved-collection',
-        type: 'loved',
-        timestamp: mostRecentLovedTimestamp,
-        data: {
-          name: 'Loved Surahs',
-          itemCount: lovedTracks.length,
-          onPress: () => router.push('/collection/loved'),
-        },
-      });
-    }
-
-    // Add Individual Favorite Reciters
-    if (activeFilter === '' || activeFilter === 'reciters') {
-      favoriteReciters.forEach(reciter => {
-        items.push({
-          id: `reciter-${reciter.id}`,
-          type: 'reciter',
-          timestamp: reciter.favoritedAt || 0,
-          data: {
-            name: reciter.name,
-            image_url: reciter.image_url,
-            onPress: () => router.push(`/reciter/${reciter.id}`),
-          },
-        });
-      });
-    }
-
-    // Add Downloads - grouped by reciter
-    if (activeFilter === '' || activeFilter === 'downloads') {
-      // Group downloads by reciterId
-      const downloadsByReciter = downloads.reduce((acc, download) => {
-        if (!acc[download.reciterId]) {
-          acc[download.reciterId] = [];
-        }
-        acc[download.reciterId].push(download);
-        return acc;
-      }, {} as Record<string, typeof downloads>);
-
-      Object.entries(downloadsByReciter).forEach(
-        ([reciterId, reciterDownloads]) => {
-          const mostRecentTimestamp = Math.max(
-            ...reciterDownloads.map(d => d.downloadDate || 0),
-          );
-
-          if (reciterDownloads.length === 1) {
-            // Single download - show as individual track
-            const download = reciterDownloads[0];
-            items.push({
-              id: `download-${download.reciterId}-${download.surahId}-${
-                download.rewayatId || 'default'
-              }`,
-              type: 'track',
-              timestamp: download.downloadDate || 0,
-              data: {
-                reciterId: download.reciterId,
-                surahId: download.surahId,
-                rewayatId: download.rewayatId,
-                onPress: async () => {
-                  try {
-                    const [reciter, surah] = await Promise.all([
-                      getReciterById(download.reciterId),
-                      getSurahById(parseInt(download.surahId, 10)),
-                    ]);
-
-                    if (reciter && surah) {
-                      const track = createDownloadedTrack(
-                        reciter,
-                        surah,
-                        download.filePath,
-                        download.rewayatId,
-                      );
-                      await updateQueue([track], 0);
-                      await play();
-                    }
-                  } catch (error) {
-                    console.error('Error playing downloaded track:', error);
-                  }
-                },
-              },
-            });
-          } else {
-            // Multiple downloads from same reciter - show as stacked card
-            items.push({
-              id: `reciter-downloads-${reciterId}`,
-              type: 'reciter-downloads',
-              timestamp: mostRecentTimestamp,
-              data: {
-                reciterId,
-                downloadCount: reciterDownloads.length,
-                onPress: () =>
-                  router.push(`/collection/reciter-downloads/${reciterId}`),
-              },
-            });
-          }
-        },
-      );
-    }
-
-    // Add Uploads Collection Card
-    if (activeFilter === '' || activeFilter === 'uploads') {
-      const mostRecentUploadTimestamp =
-        uploadedRecitations.length > 0
-          ? Math.max(...uploadedRecitations.map(r => r.dateAdded || 0))
-          : 0;
-
-      items.push({
-        id: 'uploads-collection',
-        type: 'upload',
-        timestamp: mostRecentUploadTimestamp,
-        data: {
-          itemCount: uploadsTotalCount,
-          onPress: () => router.push('/collection/uploads'),
-        },
-      });
-    }
-
-    // Sort by most recent first (descending order: highest timestamp at top)
-    // b.timestamp - a.timestamp means newer items (higher timestamp) come first
-    return items.sort((a, b) => b.timestamp - a.timestamp);
-  }, [
-    playlists,
-    lovedTracks,
-    favoriteReciters,
-    downloads,
-    uploadedRecitations,
-    uploadsTotalCount,
-    activeFilter,
-    router,
-    handlePlaylistLongPress,
-    updateQueue,
-    play,
-  ]);
-
-  // Render function for list items
-  const renderListItem = (item: CollectionItemType) => {
-    switch (item.type) {
-      case 'playlist': {
-        const playlistData = item.data as PlaylistItemData;
-        return (
-          <PlaylistItem
-            key={item.id}
-            id={item.id}
-            name={playlistData.name}
-            itemCount={playlistData.itemCount}
-            color={playlistData.color}
-            onPress={playlistData.onPress}
-            onLongPress={playlistData.onLongPress}
-          />
-        );
-      }
-      case 'loved': {
-        const lovedData = item.data as LovedItemData;
-        const lovedColor = '#FF6B6B';
-        return (
-          <View key={item.id} style={styles.listItemWrapper}>
-            <Pressable onPress={lovedData.onPress} style={styles.listItem}>
-              <View
-                style={[
-                  styles.listItemIcon,
-                  {
-                    backgroundColor: Color(lovedColor).alpha(0.15).toString(),
-                    borderColor: Color(lovedColor).alpha(0.3).toString(),
-                  },
-                ]}>
-                <HeartIcon
-                  color={lovedColor}
-                  size={moderateScale(24)}
-                  filled={true}
-                />
-              </View>
-              <View style={styles.listItemInfo}>
-                <Text style={[styles.listItemName, {color: theme.colors.text}]}>
-                  Loved Surahs
-                </Text>
-                <Text
-                  style={[
-                    styles.listItemSubtitle,
-                    {color: theme.colors.textSecondary},
-                  ]}
-                  numberOfLines={1}>
-                  Loved • {lovedData.itemCount}{' '}
-                  {lovedData.itemCount === 1 ? 'surah' : 'surahs'}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-        );
-      }
-      case 'reciter': {
-        const reciterData = item.data as ReciterItemData;
-        return (
-          <ReciterItem
-            key={item.id}
-            item={{
-              id: item.id.replace('reciter-', ''),
-              name: reciterData.name,
-              rewayat: [],
-              image_url: reciterData.image_url,
-              date: '',
-            }}
-            onPress={() => reciterData.onPress()}
-            secondaryText="Favorite"
-          />
-        );
-      }
-      case 'download': {
-        const downloadData = item.data as DownloadItemData;
-        const downloadColor = '#10AC84';
-        return (
-          <View key={item.id} style={styles.listItemWrapper}>
-            <Pressable onPress={downloadData.onPress} style={styles.listItem}>
-              <View
-                style={[
-                  styles.listItemIcon,
-                  {
-                    backgroundColor: Color(downloadColor)
-                      .alpha(0.15)
-                      .toString(),
-                    borderColor: Color(downloadColor).alpha(0.3).toString(),
-                  },
-                ]}>
-                <DownloadIcon color={downloadColor} size={moderateScale(24)} />
-              </View>
-              <View style={styles.listItemInfo}>
-                <Text style={[styles.listItemName, {color: theme.colors.text}]}>
-                  Downloads
-                </Text>
-                <Text
-                  style={[
-                    styles.listItemSubtitle,
-                    {color: theme.colors.textSecondary},
-                  ]}
-                  numberOfLines={1}>
-                  Downloaded • {downloadData.itemCount}{' '}
-                  {downloadData.itemCount === 1 ? 'surah' : 'surahs'}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-        );
-      }
-      case 'track': {
-        const trackData = item.data as TrackItemData;
-        return (
-          <TrackItem
-            key={item.id}
-            reciterId={trackData.reciterId}
-            surahId={trackData.surahId}
-            rewayatId={trackData.rewayatId}
-            onPress={trackData.onPress}
-            onPlayPress={trackData.onPress}
-          />
-        );
-      }
-      case 'reciter-downloads': {
-        const reciterDownloadsData = item.data as ReciterDownloadsItemData;
-        return (
-          <ReciterDownloadsListItem
-            key={item.id}
-            reciterId={reciterDownloadsData.reciterId}
-            downloadCount={reciterDownloadsData.downloadCount}
-            onPress={reciterDownloadsData.onPress}
-          />
-        );
-      }
-      case 'upload': {
-        const uploadData = item.data as UploadItemData;
-        const uploadColor = '#8B5CF6';
-        return (
-          <View key={item.id} style={styles.listItemWrapper}>
-            <Pressable onPress={uploadData.onPress} style={styles.listItem}>
-              <View
-                style={[
-                  styles.listItemIcon,
-                  {
-                    backgroundColor: Color(uploadColor).alpha(0.15).toString(),
-                    borderColor: Color(uploadColor).alpha(0.3).toString(),
-                  },
-                ]}>
-                <MicrophoneIcon color={uploadColor} size={moderateScale(24)} />
-              </View>
-              <View style={styles.listItemInfo}>
-                <Text style={[styles.listItemName, {color: theme.colors.text}]}>
-                  Uploads
-                </Text>
-                <Text
-                  style={[
-                    styles.listItemSubtitle,
-                    {color: theme.colors.textSecondary},
-                  ]}
-                  numberOfLines={1}>
-                  Uploaded • {uploadData.itemCount}{' '}
-                  {uploadData.itemCount === 1 ? 'recitation' : 'recitations'}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-        );
-      }
-      default:
-        return null;
-    }
-  };
+    {
+      id: 'reciters',
+      label: 'Reciters',
+      icon: (
+        <ProfileIcon color="#3B82F6" size={moderateScale(22)} filled={true} />
+      ),
+      color: '#3B82F6',
+      count: favoriteReciters.length,
+      emptyText: 'No favorites yet',
+      route: '/collection/favorite-reciters',
+    },
+    {
+      id: 'downloads',
+      label: 'Downloads',
+      icon: <DownloadIcon color="#10AC84" size={moderateScale(22)} />,
+      color: '#10AC84',
+      count: downloads.length,
+      emptyText: 'No downloads yet',
+      route: '/collection/downloads',
+    },
+    {
+      id: 'loved',
+      label: 'Loved',
+      icon: (
+        <HeartIcon color="#FF6B6B" size={moderateScale(22)} filled={true} />
+      ),
+      color: '#FF6B6B',
+      count: lovedTracks.length,
+      emptyText: 'No loved surahs yet',
+      route: '/collection/loved',
+    },
+    {
+      id: 'uploads',
+      label: 'Uploads',
+      icon: <MicrophoneIcon color="#8B5CF6" size={moderateScale(22)} />,
+      color: '#8B5CF6',
+      count: uploadsTotalCount,
+      emptyText: 'No uploads yet',
+      route: '/collection/uploads',
+    },
+  ];
 
   return (
     <View style={styles.container}>
@@ -552,22 +149,6 @@ export default function CollectionScreen() {
         {/* Header */}
         <CollectionHeader title="Your Collection" theme={theme} />
 
-        {/* Filter Bar */}
-        <FilterBar
-          filters={FILTERS}
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          theme={theme}
-        />
-
-        {/* Section Header */}
-        <SectionHeader
-          title="Your Library"
-          onViewToggle={handleViewToggle}
-          isGridView={isGridView}
-          theme={theme}
-        />
-
         {/* Add to Collection Bar */}
         <Pressable style={styles.addBar} onPress={handleAddPress}>
           <Feather
@@ -581,24 +162,53 @@ export default function CollectionScreen() {
           </Text>
         </Pressable>
 
-        {/* Collection Items */}
-        {isGridView ? (
-          <CollectionGrid items={collectionItems} theme={theme} />
-        ) : (
-          <View style={styles.listContainer}>
-            {collectionItems.map(item => renderListItem(item))}
-          </View>
-        )}
+        {/* Category List */}
+        <View style={styles.categoryList}>
+          {categories.map(category => (
+            <Pressable
+              key={category.id}
+              style={styles.categoryRow}
+              onPress={() => router.push(category.route as never)}>
+              <View
+                style={[
+                  styles.categoryIcon,
+                  {
+                    backgroundColor: Color(category.color)
+                      .alpha(0.15)
+                      .toString(),
+                  },
+                ]}>
+                {category.icon}
+              </View>
+              <View style={styles.categoryInfo}>
+                <Text
+                  style={[styles.categoryLabel, {color: theme.colors.text}]}>
+                  {category.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.categorySubtitle,
+                    {color: theme.colors.textSecondary},
+                  ]}
+                  numberOfLines={1}>
+                  {category.count > 0
+                    ? `${category.count} ${
+                        category.count === 1 ? 'item' : 'items'
+                      }`
+                    : category.emptyText}
+                </Text>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={moderateScale(18)}
+                color={theme.colors.textSecondary}
+              />
+            </Pressable>
+          ))}
+        </View>
 
         <View style={{height: moderateScale(100)}} />
       </ScrollView>
-
-      {/* Collection Search Modal - DEEP SEARCH */}
-      <CollectionSearchModal
-        visible={showSearchModal}
-        onClose={() => setShowSearchModal(false)}
-        theme={theme}
-      />
     </View>
   );
 }
@@ -638,47 +248,13 @@ const createStyles = (theme: Theme) =>
     content: {
       flex: 1,
     },
-    listContainer: {
-      paddingVertical: moderateScale(8),
-    },
-    listItemWrapper: {
-      paddingHorizontal: moderateScale(18),
-    },
-    listItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(8),
-    },
-    listItemIcon: {
-      width: moderateScale(50),
-      height: moderateScale(50),
-      marginRight: moderateScale(12),
-      justifyContent: 'center',
-      alignItems: 'center',
-      overflow: 'hidden',
-      borderRadius: moderateScale(10),
-      borderWidth: moderateScale(1),
-    },
-    listItemInfo: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    listItemName: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-SemiBold',
-      marginBottom: moderateScale(1),
-    },
-    listItemSubtitle: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Regular',
-    },
     addBar: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: moderateScale(12),
       marginHorizontal: moderateScale(16),
-      marginBottom: moderateScale(8),
+      marginBottom: moderateScale(16),
       borderRadius: moderateScale(12),
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       gap: moderateScale(8),
@@ -686,5 +262,34 @@ const createStyles = (theme: Theme) =>
     addBarText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-SemiBold',
+    },
+    categoryList: {
+      paddingHorizontal: moderateScale(16),
+    },
+    categoryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(12),
+    },
+    categoryIcon: {
+      width: moderateScale(46),
+      height: moderateScale(46),
+      borderRadius: moderateScale(12),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: moderateScale(14),
+    },
+    categoryInfo: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    categoryLabel: {
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-SemiBold',
+      marginBottom: moderateScale(2),
+    },
+    categorySubtitle: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
     },
   });

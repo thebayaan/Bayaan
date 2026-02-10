@@ -1,3 +1,4 @@
+import React from 'react';
 import {SheetDefinition, registerSheet} from 'react-native-actions-sheet';
 import {Surah} from '@/data/surahData';
 import type {RewayatStyle} from '@/types/reciter';
@@ -23,6 +24,7 @@ import {DownloadOptionsSheet} from './DownloadOptionsSheet';
 import {UploadOptionsSheet} from './UploadOptionsSheet';
 import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
+import {CollectionOptionsSheet} from './CollectionOptionsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -43,6 +45,7 @@ registerSheet('download-options', DownloadOptionsSheet);
 registerSheet('upload-options', UploadOptionsSheet);
 registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
+registerSheet('collection-options', CollectionOptionsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -53,6 +56,7 @@ declare module 'react-native-actions-sheet' {
         reciterId?: string;
         rewayatId?: string;
         onAddToQueue?: (surah: Surah) => Promise<void>;
+        onRemoveFromPlaylist?: () => void;
       };
     }>;
     'rewayat-info': SheetDefinition<{
@@ -74,6 +78,7 @@ declare module 'react-native-actions-sheet' {
         surah: Surah;
         reciterId: string;
         rewayatId?: string;
+        userRecitationId?: string;
       };
     }>;
     'playlist-context': SheetDefinition<{
@@ -157,6 +162,20 @@ declare module 'react-native-actions-sheet' {
     }>;
     'add-to-collection': SheetDefinition;
     'ambient-sounds': SheetDefinition;
+    'collection-options': SheetDefinition<{
+      payload: {
+        title: string;
+        subtitle?: string;
+        options: Array<{
+          label: string;
+          icon: string;
+          onPress: () => void;
+          destructive?: boolean;
+          disabled?: boolean;
+          customIcon?: React.ReactNode;
+        }>;
+      };
+    }>;
   }
 }
 
