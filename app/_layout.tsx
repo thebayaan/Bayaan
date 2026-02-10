@@ -46,6 +46,9 @@ configureReanimatedLogger({
   strict: false,
 });
 
+// Cache for expo-navigation-bar module (Android only)
+let NavigationBarModule: any = null;
+
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* reloading the app might trigger some race conditions, ignore them */
@@ -231,19 +234,21 @@ export default function RootLayout() {
     async function setupNavigationBar() {
       if (Platform.OS === 'android') {
         try {
-          const NavigationBar = await import('expo-navigation-bar').then(
-            module => module.default,
-          );
+          if (!NavigationBarModule) {
+            NavigationBarModule = await import('expo-navigation-bar').then(
+              module => module.default,
+            );
+            RNStatusBar.setTranslucent(true);
+          }
 
-          if (NavigationBar) {
-            await NavigationBar.setBackgroundColorAsync(
+          if (NavigationBarModule) {
+            await NavigationBarModule.setBackgroundColorAsync(
               theme.colors.background,
             );
-            await NavigationBar.setButtonStyleAsync(
+            await NavigationBarModule.setButtonStyleAsync(
               isDarkMode ? 'light' : 'dark',
             );
           }
-          RNStatusBar.setTranslucent(true);
         } catch (error) {
           if (__DEV__)
             console.warn(
