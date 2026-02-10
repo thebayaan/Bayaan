@@ -1,5 +1,12 @@
 import React, {useMemo, useCallback} from 'react';
-import {View, StyleSheet, Pressable, Text, ScrollView} from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Text,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import {useRouter} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {SearchInput} from '@/components/SearchInput';
@@ -75,7 +82,8 @@ function getAllTiles(): BentoTile[] {
 }
 
 interface ExploreViewProps {
-  onSearchPress: () => void;
+  onSearchPress?: () => void;
+  showSearchBar?: boolean;
 }
 
 interface ColumnLayout {
@@ -175,6 +183,7 @@ BentoTileComponent.displayName = 'BentoTileComponent';
 
 export const ExploreView = React.memo(function ExploreView({
   onSearchPress,
+  showSearchBar = true,
 }: ExploreViewProps) {
   const router = useRouter();
   const {theme} = useTheme();
@@ -241,33 +250,35 @@ export const ExploreView = React.memo(function ExploreView({
 
   return (
     <View style={styles.content}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + moderateScale(48),
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: moderateScale(35),
-          },
-        ]}>
-        <Pressable onPress={onSearchPress} style={styles.searchButton}>
-          <SearchInput
-            placeholder="Search surahs, reciters, or keywords"
-            value=""
-            onChangeText={noop}
-            iconColor={theme.colors.text}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.background)
-              .alpha(0.5)
-              .toString()}
-            borderColor={Color(theme.colors.border).alpha(0.5).toString()}
-            pointerEvents="none"
-            containerStyle={styles.searchInputContainer}
-            style={styles.searchInput}
-            editable={false}
-          />
-        </Pressable>
-      </View>
+      {showSearchBar && (
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: insets.top + moderateScale(48),
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: moderateScale(35),
+            },
+          ]}>
+          <Pressable onPress={onSearchPress} style={styles.searchButton}>
+            <SearchInput
+              placeholder="Search surahs, reciters, or keywords"
+              value=""
+              onChangeText={noop}
+              iconColor={theme.colors.text}
+              textColor={theme.colors.text}
+              backgroundColor={Color(theme.colors.background)
+                .alpha(0.5)
+                .toString()}
+              borderColor={Color(theme.colors.border).alpha(0.5).toString()}
+              pointerEvents="none"
+              containerStyle={styles.searchInputContainer}
+              style={styles.searchInput}
+              editable={false}
+            />
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -276,10 +287,13 @@ export const ExploreView = React.memo(function ExploreView({
           {
             paddingHorizontal: horizontalPadding,
             paddingBottom: insets.bottom + moderateScale(20),
-            paddingTop: moderateScale(8),
+            paddingTop: showSearchBar ? moderateScale(8) : moderateScale(12),
           },
         ]}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior={
+          Platform.OS === 'ios' ? 'automatic' : undefined
+        }>
         <View style={styles.masonryContainer}>
           {renderColumn(layout.leftColumn, 'left')}
           {renderColumn(layout.rightColumn, 'right')}
