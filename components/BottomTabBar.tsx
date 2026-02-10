@@ -114,7 +114,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   const insets = useSafeAreaInsets();
   const iconSize = moderateScale(26, 0.2);
 
-  const bottomPadding = Platform.OS === 'ios' ? insets.bottom : 0;
+  const bottomPadding = insets.bottom;
 
   const styles = useMemo(
     () =>

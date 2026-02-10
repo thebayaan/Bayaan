@@ -14,7 +14,5 @@ export const TOTAL_BOTTOM_PADDING = FLOATING_PLAYER_HEIGHT;
 
 // Calculate the position from the bottom for the floating player based on tab bar height and insets
 export const getFloatingPlayerBottomPosition = (bottomInset = 0): number => {
-  // Only apply insets on iOS as Android handles this differently
-  const insetToApply = Platform.OS === 'ios' ? bottomInset : 0;
-  return TAB_BAR_HEIGHT + insetToApply + FLOATING_PLAYER_BOTTOM_MARGIN;
+  return TAB_BAR_HEIGHT + bottomInset + FLOATING_PLAYER_BOTTOM_MARGIN;
 };
