@@ -31,6 +31,7 @@ interface PlaylistsState {
     surahId: string,
     reciterId: string,
     rewayatId?: string,
+    userRecitationId?: string,
   ) => Promise<void>;
   removeFromPlaylist: (itemId: string) => Promise<void>;
   reorderPlaylistItems: (
@@ -168,6 +169,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
     surahId: string,
     reciterId: string,
     rewayatId?: string,
+    userRecitationId?: string,
   ) => {
     try {
       set({error: null});
@@ -176,6 +178,7 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
         surahId,
         reciterId,
         rewayatId,
+        userRecitationId,
       );
       // Refresh to update item counts
       await get().loadPlaylists();

@@ -2,15 +2,19 @@ import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
   Alert,
   StatusBar,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {moderateScale} from 'react-native-size-matters';
+import {Feather} from '@expo/vector-icons';
 import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
@@ -20,8 +24,11 @@ import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStor
 import {shuffleArray} from '@/utils/arrayUtils';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {createUserUploadTrack} from '@/utils/track';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
+import {HeartIcon, CheckIcon} from '@/components/Icons';
 import {
   useDownloadActions,
   useDownloadQueries,
@@ -35,6 +42,7 @@ interface LovedTrack {
   reciterId: string;
   surahId: string;
   rewayatId?: string;
+  userRecitationId?: string;
 }
 
 interface LovedTrackData {
@@ -45,7 +53,9 @@ interface LovedTrackData {
 
 const LovedScreen = () => {
   const {theme} = useTheme();
-  const {lovedTracks, toggleLoved} = useLoved();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const {lovedTracks, toggleLoved, unloveAll} = useLoved();
   const {pause, addToQueue, updateQueue, play, toggleShuffle} =
     usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
@@ -78,14 +88,64 @@ const LovedScreen = () => {
       flexGrow: 1,
       paddingBottom: moderateScale(65),
     },
-    emptyText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginTop: moderateScale(32),
-    },
     listItem: {
       marginVertical: moderateScale(2),
+    },
+    fixedBackButton: {
+      position: 'absolute',
+      top: insets.top + moderateScale(10),
+      left: moderateScale(15),
+      zIndex: 5,
+      padding: moderateScale(8),
+    },
+    emptyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
+    },
+    emptyHeaderBack: {
+      width: moderateScale(36),
+      height: moderateScale(36),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyHeaderTitle: {
+      flex: 1,
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    emptyContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: moderateScale(32),
+      paddingBottom: moderateScale(60),
+    },
+    emptyIcon: {
+      marginBottom: moderateScale(16),
+    },
+    emptyTitle: {
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: moderateScale(8),
+    },
+    emptySubtitle: {
+      fontSize: moderateScale(13),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: moderateScale(20),
+    },
+    loadingText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
     },
   });
 
@@ -109,6 +169,7 @@ const LovedScreen = () => {
               reciterId: track.reciterId,
               surahId: track.surahId,
               rewayatId: track.rewayatId,
+              userRecitationId: track.userRecitationId,
             },
             reciter: reciter || null,
             surah: surah || null,
@@ -171,6 +232,13 @@ const LovedScreen = () => {
         const allTracks = reorderedItems
           .filter(item => item.reciter && item.surah)
           .map(item => {
+            if (item.track.userRecitationId) {
+              const upload = useUploadsStore
+                .getState()
+                .recitations.find(r => r.id === item.track.userRecitationId);
+              if (upload) return createUserUploadTrack(upload);
+              return null;
+            }
             const itemRewayatId =
               item.track.rewayatId || item.reciter!.rewayat[0]?.id;
             return {
@@ -188,7 +256,8 @@ const LovedScreen = () => {
               reciterName: item.reciter!.name,
               rewayatId: itemRewayatId,
             };
-          });
+          })
+          .filter((t): t is NonNullable<typeof t> => t !== null);
 
         if (allTracks.length === 0) return;
 
@@ -216,6 +285,13 @@ const LovedScreen = () => {
       const allTracks = lovedData
         .filter(item => item.reciter && item.surah)
         .map(item => {
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            if (upload) return createUserUploadTrack(upload);
+            return null;
+          }
           const itemRewayatId =
             item.track.rewayatId || item.reciter!.rewayat[0]?.id;
           return {
@@ -233,7 +309,8 @@ const LovedScreen = () => {
             reciterName: item.reciter!.name,
             rewayatId: itemRewayatId,
           };
-        });
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
 
       if (allTracks.length === 0) return;
 
@@ -266,25 +343,34 @@ const LovedScreen = () => {
         toggleShuffle();
       }
 
-      const allTracks = shuffledItems.map(item => {
-        const itemRewayatId =
-          item.track.rewayatId || item.reciter!.rewayat[0]?.id;
-        return {
-          id: `${item.reciter!.id}:${item.surah!.id}`,
-          url: generateSmartAudioUrl(
-            item.reciter!,
-            item.surah!.id.toString(),
-            itemRewayatId,
-          ),
-          title: item.surah!.name,
-          artist: item.reciter!.name,
-          reciterId: item.reciter!.id,
-          artwork: getReciterArtwork(item.reciter!),
-          surahId: item.surah!.id.toString(),
-          reciterName: item.reciter!.name,
-          rewayatId: itemRewayatId,
-        };
-      });
+      const allTracks = shuffledItems
+        .map(item => {
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            if (upload) return createUserUploadTrack(upload);
+            return null;
+          }
+          const itemRewayatId =
+            item.track.rewayatId || item.reciter!.rewayat[0]?.id;
+          return {
+            id: `${item.reciter!.id}:${item.surah!.id}`,
+            url: generateSmartAudioUrl(
+              item.reciter!,
+              item.surah!.id.toString(),
+              itemRewayatId,
+            ),
+            title: item.surah!.name,
+            artist: item.reciter!.name,
+            reciterId: item.reciter!.id,
+            artwork: getReciterArtwork(item.reciter!),
+            surahId: item.surah!.id.toString(),
+            reciterName: item.reciter!.name,
+            rewayatId: itemRewayatId,
+          };
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
 
       await updateQueue(allTracks, 0);
 
@@ -426,6 +512,54 @@ const LovedScreen = () => {
     setDownloadProgress,
   ]);
 
+  // Calculate download state for all loved tracks using custom hook
+  const downloadState = useCollectionDownloadState(lovedData);
+
+  // Handle options menu
+  const handleOptionsMenu = useCallback(() => {
+    SheetManager.show('collection-options', {
+      payload: {
+        title: 'Loved',
+        subtitle: `${lovedData.length} ${
+          lovedData.length === 1 ? 'surah' : 'surahs'
+        }`,
+        options: [
+          {
+            label: downloadState.allDownloaded
+              ? 'All Downloaded'
+              : 'Download All',
+            icon: 'download',
+            onPress: handleBulkDownload,
+            disabled: downloadState.allDownloaded || downloadState.hasNoTracks,
+            customIcon:
+              downloadState.allDownloaded && !downloadState.hasNoTracks ? (
+                <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
+              ) : undefined,
+          },
+          {
+            label: 'Unlove All Surahs',
+            icon: 'heart',
+            destructive: true,
+            customIcon: (
+              <HeartIcon
+                color="#ff4444"
+                size={moderateScale(20)}
+                filled={true}
+              />
+            ),
+            onPress: () => unloveAll(),
+          },
+        ],
+      },
+    });
+  }, [
+    lovedData.length,
+    downloadState,
+    handleBulkDownload,
+    unloveAll,
+    theme.colors.text,
+  ]);
+
   // Handle show options for a track
   const handleShowOptions = useCallback(
     (track: LovedTrack, reciter: Reciter, surah: Surah) => {
@@ -435,6 +569,15 @@ const LovedScreen = () => {
           reciterId: track.reciterId,
           rewayatId: track.rewayatId,
           onAddToQueue: async (s: Surah) => {
+            if (track.userRecitationId) {
+              const upload = useUploadsStore
+                .getState()
+                .recitations.find(r => r.id === track.userRecitationId);
+              if (upload) {
+                await addToQueue([createUserUploadTrack(upload)]);
+                return;
+              }
+            }
             const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
             const artwork = getReciterArtwork(reciter);
             const queueTrack = {
@@ -456,32 +599,25 @@ const LovedScreen = () => {
     [addToQueue],
   );
 
-  // Calculate download state for all loved tracks using custom hook
-  const downloadState = useCollectionDownloadState(lovedData);
-
   const ListHeaderComponent = useCallback(() => {
     return (
       <LovedHeader
-        title="Loved Surahs"
+        title="Loved"
         subtitle={`${lovedData.length} ${
           lovedData.length === 1 ? 'surah' : 'surahs'
         }`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onDownloadPress={handleBulkDownload}
+        onOptionsPress={handleOptionsMenu}
         theme={theme}
-        allDownloaded={downloadState.allDownloaded}
-        hasNoTracks={downloadState.hasNoTracks}
       />
     );
   }, [
     lovedData.length,
     handlePlayAll,
     handleShuffle,
-    handleBulkDownload,
+    handleOptionsMenu,
     theme,
-    downloadState.allDownloaded,
-    downloadState.hasNoTracks,
   ]);
 
   const renderItem: ListRenderItem<LovedTrackData> = ({item}) => {
@@ -497,9 +633,11 @@ const LovedScreen = () => {
           reciterId={track.reciterId}
           surahId={track.surahId}
           rewayatId={track.rewayatId}
+          userRecitationId={track.userRecitationId}
           onPress={() => handleSurahPress(track, reciter, surah)}
           onPlayPress={() => handleSurahPress(track, reciter, surah)}
           onOptionsPress={() => handleShowOptions(track, reciter, surah)}
+          onLongPress={() => handleShowOptions(track, reciter, surah)}
         />
       </View>
     );
@@ -513,7 +651,55 @@ const LovedScreen = () => {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Loading...</Text>
+        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+          <Pressable
+            style={styles.emptyHeaderBack}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(22)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <Text style={styles.emptyHeaderTitle}>Loved</Text>
+          <View style={styles.emptyHeaderBack} />
+        </View>
+        <View style={styles.emptyContent}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (lovedData.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+          <Pressable
+            style={styles.emptyHeaderBack}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(22)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <Text style={styles.emptyHeaderTitle}>Loved</Text>
+          <View style={styles.emptyHeaderBack} />
+        </View>
+        <View style={styles.emptyContent}>
+          <View style={styles.emptyIcon}>
+            <HeartIcon
+              color={theme.colors.textSecondary}
+              size={moderateScale(48)}
+              filled={true}
+            />
+          </View>
+          <Text style={styles.emptyTitle}>No loved surahs yet</Text>
+          <Text style={styles.emptySubtitle}>Love surahs to see them here</Text>
+        </View>
       </View>
     );
   }
@@ -521,15 +707,33 @@ const LovedScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="default" />
+
+      <RNAnimated.View
+        style={[
+          styles.fixedBackButton,
+          {
+            opacity: scrollY.interpolate({
+              inputRange: [80, 120],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            }),
+          },
+        ]}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Feather
+            name="arrow-left"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </RNAnimated.View>
+
       <RNAnimated.FlatList
         data={lovedData}
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No loved surahs yet</Text>
-        }
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -537,7 +741,7 @@ const LovedScreen = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      <CollectionStickyHeader title="Loved Surahs" scrollY={scrollY} />
+      <CollectionStickyHeader title="Loved" scrollY={scrollY} />
     </View>
   );
 };

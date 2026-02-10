@@ -8,13 +8,6 @@ import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import Color from 'color';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PlaylistHeaderProps {
   title: string;
@@ -36,48 +29,6 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const styles = createStyles(theme, insets);
-
-  const optionsScale = useSharedValue(1);
-  const shuffleScale = useSharedValue(1);
-  const playScale = useSharedValue(1);
-
-  const optionsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: optionsScale.value}],
-  }));
-
-  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: shuffleScale.value}],
-  }));
-
-  const playAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: playScale.value}],
-  }));
-
-  const handlePressIn = (button: 'options' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'options'
-        ? optionsScale
-        : button === 'shuffle'
-        ? shuffleScale
-        : playScale;
-    scale.value = withSpring(0.92, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = (button: 'options' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'options'
-        ? optionsScale
-        : button === 'shuffle'
-        ? shuffleScale
-        : playScale;
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
 
   return (
     <View style={styles.headerContainer}>
@@ -113,48 +64,27 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
       </View>
 
       {/* Action Buttons */}
-      <View style={styles.contentWrapper}>
-        <View style={styles.actionButtons}>
-          {/* Options button on the left */}
-          <AnimatedPressable
-            style={[styles.optionsButton, optionsAnimatedStyle]}
-            onPress={onOptionsPress}
-            onPressIn={() => handlePressIn('options')}
-            onPressOut={() => handlePressOut('options')}>
-            <Feather
-              name="more-horizontal"
-              size={moderateScale(20)}
-              color={theme.colors.text}
+      <View style={styles.actionButtons}>
+        <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+          <Feather
+            name="more-horizontal"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+        <Pressable
+          style={[styles.circleButton, styles.playButton]}
+          onPress={onPlayPress}>
+          <View style={styles.playIconContainer}>
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(16)}
             />
-          </AnimatedPressable>
-
-          {/* Right side buttons */}
-          <View style={styles.rightAlignedButtons}>
-            <AnimatedPressable
-              style={[styles.circleButton, shuffleAnimatedStyle]}
-              onPress={onShufflePress}
-              onPressIn={() => handlePressIn('shuffle')}
-              onPressOut={() => handlePressOut('shuffle')}>
-              <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-            </AnimatedPressable>
-            <AnimatedPressable
-              style={[
-                styles.circleButton,
-                styles.playButton,
-                playAnimatedStyle,
-              ]}
-              onPress={onPlayPress}
-              onPressIn={() => handlePressIn('play')}
-              onPressOut={() => handlePressOut('play')}>
-              <View style={styles.playIconContainer}>
-                <PlayIcon
-                  color={theme.colors.background}
-                  size={moderateScale(16)}
-                />
-              </View>
-            </AnimatedPressable>
           </View>
-        </View>
+        </Pressable>
+        <Pressable style={styles.circleButton} onPress={onShufflePress}>
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+        </Pressable>
       </View>
     </View>
   );
@@ -170,7 +100,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       alignItems: 'center',
       paddingTop: insets.top + moderateScale(40),
-      paddingBottom: moderateScale(30),
+      paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,
     },
@@ -217,29 +147,14 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       textAlign: 'center',
       marginBottom: moderateScale(8),
     },
-    contentWrapper: {
-      paddingHorizontal: moderateScale(16),
-    },
     actionButtons: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(5),
-    },
-    optionsButton: {
-      width: moderateScale(40),
-      height: moderateScale(40),
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
-      padding: moderateScale(8),
-    },
-    rightAlignedButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(8),
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      gap: moderateScale(16),
     },
     circleButton: {
       width: moderateScale(42),

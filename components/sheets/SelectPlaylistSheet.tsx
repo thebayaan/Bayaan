@@ -28,6 +28,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
   const surah = payload?.surah;
   const reciterId = payload?.reciterId ?? '';
   const rewayatId = payload?.rewayatId;
+  const userRecitationId = payload?.userRecitationId;
 
   // Calculate loved state
   const isLovedState = reciterId
@@ -50,6 +51,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
           surah.id.toString(),
           reciterId,
           rewayatId,
+          userRecitationId,
         );
 
         console.log(`Added ${surah.name} to playlist`);
@@ -59,7 +61,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
         Alert.alert('Error', 'Failed to add surah to playlist');
       }
     },
-    [surah, reciterId, rewayatId, addToPlaylist, handleClose],
+    [surah, reciterId, rewayatId, userRecitationId, addToPlaylist, handleClose],
   );
 
   // Get existing playlist colors for unique color selection
@@ -89,6 +91,7 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
           surah.id.toString(),
           reciterId,
           rewayatId,
+          userRecitationId,
         );
 
         console.log(
@@ -114,8 +117,13 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
 
   const handleToggleLoved = useCallback(() => {
     if (!reciterId || !surah) return;
-    toggleLoved(reciterId, surah.id.toString(), rewayatId || '');
-  }, [reciterId, surah, rewayatId, toggleLoved]);
+    toggleLoved(
+      reciterId,
+      surah.id.toString(),
+      rewayatId || '',
+      userRecitationId,
+    );
+  }, [reciterId, surah, rewayatId, userRecitationId, toggleLoved]);
 
   if (!surah) {
     return null;
