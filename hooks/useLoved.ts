@@ -8,6 +8,7 @@ interface UseLoved {
     surahId: string;
     rewayatId: string;
     timestamp: number;
+    userRecitationId?: string;
   }>;
   isLoved: (reciterId: string, surahId: string | number) => boolean;
   isLovedWithRewayat: (
@@ -19,9 +20,11 @@ interface UseLoved {
     reciterId: string,
     surahId: string | number,
     rewayatId: string,
+    userRecitationId?: string,
   ) => void;
   isTrackLoved: (track: Track) => boolean;
   toggleTrackLoved: (track: Track) => void;
+  unloveAll: () => void;
 }
 
 export const useLoved = (): UseLoved => {
@@ -30,6 +33,7 @@ export const useLoved = (): UseLoved => {
     toggleLoved: toggleLovedBase,
     isLoved: isLovedBase,
     isLovedWithRewayat: isLovedWithRewayatBase,
+    clearLoved: clearLovedBase,
   } = useLovedStore();
 
   const isLoved = useCallback(
@@ -47,8 +51,18 @@ export const useLoved = (): UseLoved => {
   );
 
   const toggleLoved = useCallback(
-    (reciterId: string, surahId: string | number, rewayatId: string) => {
-      toggleLovedBase(reciterId, surahId.toString(), rewayatId);
+    (
+      reciterId: string,
+      surahId: string | number,
+      rewayatId: string,
+      userRecitationId?: string,
+    ) => {
+      toggleLovedBase(
+        reciterId,
+        surahId.toString(),
+        rewayatId,
+        userRecitationId,
+      );
     },
     [toggleLovedBase],
   );
@@ -71,6 +85,10 @@ export const useLoved = (): UseLoved => {
     [toggleLoved],
   );
 
+  const unloveAll = useCallback(() => {
+    clearLovedBase();
+  }, [clearLovedBase]);
+
   return {
     lovedTracks,
     isLoved,
@@ -78,5 +96,6 @@ export const useLoved = (): UseLoved => {
     toggleLoved,
     isTrackLoved,
     toggleTrackLoved,
+    unloveAll,
   };
 };

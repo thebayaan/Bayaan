@@ -21,11 +21,6 @@ import {createUserUploadTrack} from '@/utils/track';
 import {getSurahById, getReciterName} from '@/services/dataService';
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import type {UploadedRecitation, RecordingType} from '@/types/uploads';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {pickAndImportAudioFiles} from '@/utils/importAudio';
@@ -33,8 +28,6 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {ReciterImage} from '@/components/ReciterImage';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^/.]+$/, '');
@@ -231,8 +224,14 @@ export default function UploadsScreen() {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {recitations, totalCount, importFile, importFiles, loadRecitations} =
-    useUploadsStore();
+  const {
+    recitations,
+    totalCount,
+    importFile,
+    importFiles,
+    loadRecitations,
+    deleteAllRecitations,
+  } = useUploadsStore();
   const {updateQueue, addToQueue, play} = usePlayerActions();
 
   const [isImporting, setIsImporting] = useState(false);
@@ -244,32 +243,22 @@ export default function UploadsScreen() {
     loadRecitations();
   }, [loadRecitations]);
 
-  // Animated button scales
-  const shuffleScale = useSharedValue(1);
-  const playScale = useSharedValue(1);
-
-  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: shuffleScale.value}],
-  }));
-  const playAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: playScale.value}],
-  }));
-
-  const handlePressIn = useCallback(
-    (button: 'shuffle' | 'play') => {
-      const scale = button === 'shuffle' ? shuffleScale : playScale;
-      scale.value = withSpring(0.92, {damping: 15, stiffness: 300});
-    },
-    [shuffleScale, playScale],
-  );
-
-  const handlePressOut = useCallback(
-    (button: 'shuffle' | 'play') => {
-      const scale = button === 'shuffle' ? shuffleScale : playScale;
-      scale.value = withSpring(1, {damping: 15, stiffness: 300});
-    },
-    [shuffleScale, playScale],
-  );
+  const handleOptionsMenu = useCallback(() => {
+    SheetManager.show('collection-options', {
+      payload: {
+        title: 'Uploads',
+        subtitle: `${totalCount} recitation${totalCount !== 1 ? 's' : ''}`,
+        options: [
+          {
+            label: 'Remove All Uploads',
+            icon: 'trash-2',
+            destructive: true,
+            onPress: () => deleteAllRecitations(),
+          },
+        ],
+      },
+    });
+  }, [totalCount, deleteAllRecitations]);
 
   const handleOrganize = useCallback((item: UploadedRecitation) => {
     SheetManager.show('organize-recitation', {
@@ -362,7 +351,60 @@ export default function UploadsScreen() {
 
   const keyExtractor = useCallback((item: UploadedRecitation) => item.id, []);
 
-  const ListHeaderComponent = useCallback(() => {
+  if (!hasRecitations) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+          <Pressable
+            style={styles.emptyHeaderBack}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(22)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <Text style={styles.emptyHeaderTitle}>Uploads</Text>
+          <View style={styles.emptyHeaderBack} />
+        </View>
+        <View style={styles.emptyContent}>
+          <View style={styles.emptyIcon}>
+            <MicrophoneIcon
+              color={theme.colors.textSecondary}
+              size={moderateScale(48)}
+            />
+          </View>
+          <Text style={styles.emptyTitle}>No uploads yet</Text>
+          <Text style={styles.emptySubtitle}>
+            Upload recitations to see them here
+          </Text>
+          <Pressable
+            style={styles.emptyActionBar}
+            onPress={handleImportFile}
+            disabled={isImporting}>
+            {isImporting ? (
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.textSecondary}
+              />
+            ) : (
+              <Feather
+                name="plus"
+                size={moderateScale(16)}
+                color={theme.colors.textSecondary}
+              />
+            )}
+            <Text style={styles.emptyActionText}>
+              {isImporting ? 'Opening...' : 'Add Recitation'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  const ListHeaderComponent = () => {
     return (
       <View style={styles.headerContainer}>
         <View
@@ -370,18 +412,6 @@ export default function UploadsScreen() {
             styles.contentArea,
             {paddingTop: insets.top + moderateScale(40)},
           ]}>
-          {/* Back Button */}
-          <Pressable
-            style={[styles.backButton, {top: insets.top + moderateScale(10)}]}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-
           {/* Hero Icon */}
           <View style={styles.contentCenter}>
             <View style={styles.heroIconContainer}>
@@ -400,54 +430,44 @@ export default function UploadsScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.contentWrapper}>
-          <View style={styles.actionButtons}>
-            <View />
-            {/* Right side buttons */}
-            <View style={styles.rightAlignedButtons}>
-              <AnimatedPressable
-                style={[
-                  styles.circleButton,
-                  shuffleAnimatedStyle,
-                  !hasRecitations && styles.disabledButton,
-                ]}
-                onPress={hasRecitations ? handleShuffle : undefined}
-                onPressIn={
-                  hasRecitations ? () => handlePressIn('shuffle') : undefined
-                }
-                onPressOut={
-                  hasRecitations ? () => handlePressOut('shuffle') : undefined
-                }
-                disabled={!hasRecitations}>
-                <ShuffleIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                />
-              </AnimatedPressable>
-              <AnimatedPressable
-                style={[
-                  styles.circleButton,
-                  styles.playButton,
-                  playAnimatedStyle,
-                  !hasRecitations && styles.disabledButton,
-                ]}
-                onPress={hasRecitations ? handlePlayAll : undefined}
-                onPressIn={
-                  hasRecitations ? () => handlePressIn('play') : undefined
-                }
-                onPressOut={
-                  hasRecitations ? () => handlePressOut('play') : undefined
-                }
-                disabled={!hasRecitations}>
-                <View style={styles.playIconContainer}>
-                  <PlayIcon
-                    color={theme.colors.background}
-                    size={moderateScale(16)}
-                  />
-                </View>
-              </AnimatedPressable>
+        <View style={styles.actionButtons}>
+          <Pressable
+            style={[
+              styles.circleButton,
+              !hasRecitations && styles.disabledButton,
+            ]}
+            onPress={hasRecitations ? handleOptionsMenu : undefined}
+            disabled={!hasRecitations}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <Pressable
+            style={[
+              styles.circleButton,
+              styles.playButton,
+              !hasRecitations && styles.disabledButton,
+            ]}
+            onPress={hasRecitations ? handlePlayAll : undefined}
+            disabled={!hasRecitations}>
+            <View style={styles.playIconContainer}>
+              <PlayIcon
+                color={theme.colors.background}
+                size={moderateScale(16)}
+              />
             </View>
-          </View>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.circleButton,
+              !hasRecitations && styles.disabledButton,
+            ]}
+            onPress={hasRecitations ? handleShuffle : undefined}
+            disabled={!hasRecitations}>
+            <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+          </Pressable>
         </View>
 
         {/* Add Recitation Bar */}
@@ -473,41 +493,38 @@ export default function UploadsScreen() {
         </Pressable>
       </View>
     );
-  }, [
-    styles,
-    theme,
-    insets.top,
-    totalCount,
-    router,
-    handleImportFile,
-    isImporting,
-    hasRecitations,
-    handlePlayAll,
-    handleShuffle,
-    handlePressIn,
-    handlePressOut,
-    shuffleAnimatedStyle,
-    playAnimatedStyle,
-  ]);
-
-  const ListEmptyComponent = useCallback(() => {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>
-          No uploads yet. Tap + to add recitations.
-        </Text>
-      </View>
-    );
-  }, [styles]);
+  };
 
   return (
     <View style={styles.container}>
+      <RNAnimated.View
+        style={[
+          styles.fixedBackButton,
+          {
+            top: insets.top + moderateScale(10),
+          },
+          {
+            opacity: scrollY.interpolate({
+              inputRange: [80, 120],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            }),
+          },
+        ]}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Feather
+            name="arrow-left"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      </RNAnimated.View>
+
       <RNAnimated.FlatList
         data={recitations}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={ListHeaderComponent}
-        ListEmptyComponent={ListEmptyComponent}
         contentContainerStyle={styles.listContentContainer}
         showsVerticalScrollIndicator={false}
         onScroll={RNAnimated.event(
@@ -534,15 +551,9 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
     contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingBottom: moderateScale(30),
+      paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,
-    },
-    backButton: {
-      position: 'absolute',
-      left: moderateScale(15),
-      zIndex: 10,
-      padding: moderateScale(8),
     },
     contentCenter: {
       alignItems: 'center',
@@ -580,15 +591,14 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       textAlign: 'center',
       marginBottom: moderateScale(8),
     },
-    contentWrapper: {
-      paddingHorizontal: moderateScale(16),
-    },
     actionButtons: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(5),
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      gap: moderateScale(16),
     },
     uploadBar: {
       flexDirection: 'row',
@@ -606,11 +616,6 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.textSecondary,
-    },
-    rightAlignedButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(8),
     },
     circleButton: {
       width: moderateScale(42),
@@ -636,18 +641,70 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       flexGrow: 1,
       paddingBottom: moderateScale(65),
     },
-    emptyContainer: {
+    fixedBackButton: {
+      position: 'absolute',
+      left: moderateScale(15),
+      zIndex: 5,
+      padding: moderateScale(8),
+    },
+    emptyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
+    },
+    emptyHeaderBack: {
+      width: moderateScale(36),
+      height: moderateScale(36),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyHeaderTitle: {
+      flex: 1,
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts?.bold || 'Manrope-Bold',
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    emptyContent: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingTop: moderateScale(60),
       paddingHorizontal: moderateScale(32),
+      paddingBottom: moderateScale(60),
     },
-    emptyText: {
-      fontSize: moderateScale(16),
+    emptyIcon: {
+      marginBottom: moderateScale(16),
+    },
+    emptyTitle: {
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts?.bold || 'Manrope-Bold',
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: moderateScale(8),
+    },
+    emptySubtitle: {
+      fontSize: moderateScale(13),
+      fontFamily: theme.fonts?.regular || 'Manrope-Regular',
       color: theme.colors.textSecondary,
       textAlign: 'center',
-      lineHeight: moderateScale(24),
+      marginBottom: moderateScale(20),
+    },
+    emptyActionBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(32),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      gap: moderateScale(8),
+    },
+    emptyActionText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.textSecondary,
     },
     itemRow: {
       flexDirection: 'row',
@@ -659,7 +716,7 @@ const createStyles = (theme: {colors: any; fonts: any}) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(8),
-      paddingLeft: moderateScale(12),
+      paddingLeft: moderateScale(18),
     },
     itemIconContainer: {
       width: moderateScale(44),

@@ -3,7 +3,7 @@ import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {MaterialIcons} from '@expo/vector-icons';
+import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 
@@ -12,18 +12,25 @@ interface ReciterItemProps {
   onPress: (item: Reciter) => void;
   isSelected?: boolean;
   secondaryText?: string;
+  onOptionsPress?: (item: Reciter) => void;
+  onLongPress?: (item: Reciter) => void;
 }
 
 export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
-  ({item, onPress, isSelected, secondaryText}) => {
+  ({item, onPress, isSelected, secondaryText, onOptionsPress, onLongPress}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
+    const handleLongPress = React.useCallback(
+      () => onLongPress?.(item),
+      [item, onLongPress],
+    );
 
     return (
       <Pressable
         style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
-        onPress={handlePress}>
+        onPress={handlePress}
+        onLongPress={onLongPress ? handleLongPress : undefined}>
         <View
           style={[
             styles.imageContainer,
@@ -45,7 +52,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
                 : item.rewayat[0]?.name || '')}
           </Text>
         </View>
-        {isSelected && (
+        {!onOptionsPress && isSelected && (
           <View style={styles.checkmarkContainer}>
             <MaterialIcons
               name="check"
@@ -53,6 +60,18 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
               color={theme.colors.primary}
             />
           </View>
+        )}
+        {onOptionsPress && (
+          <Pressable
+            style={styles.optionsZone}
+            onPress={() => onOptionsPress(item)}
+            hitSlop={8}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          </Pressable>
         )}
       </Pressable>
     );
@@ -107,5 +126,11 @@ const createStyles = (theme: Theme) =>
     },
     checkmarkContainer: {
       marginLeft: moderateScale(8),
+    },
+    optionsZone: {
+      width: moderateScale(44),
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'stretch',
     },
   });

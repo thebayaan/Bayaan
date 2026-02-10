@@ -336,6 +336,33 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     [handleTrackPress, addToQueue, handleRemoveDownload],
   );
 
+  const handleRemoveAllDownloads = useCallback(() => {
+    SheetManager.show('collection-options', {
+      payload: {
+        title: reciter?.name || 'Downloads',
+        subtitle: `${reciterDownloads.length} ${
+          reciterDownloads.length === 1 ? 'surah' : 'surahs'
+        } downloaded`,
+        options: [
+          {
+            label: 'Remove All Downloads',
+            icon: 'trash-2',
+            destructive: true,
+            onPress: async () => {
+              for (const d of reciterDownloads) {
+                await removeDownload(
+                  d.reciterId,
+                  d.surahId,
+                  d.rewayatId || undefined,
+                );
+              }
+            },
+          },
+        ],
+      },
+    });
+  }, [reciterDownloads, reciter?.name, removeDownload]);
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <ReciterDownloadsHeader
@@ -347,6 +374,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         } downloaded`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
+        onOptionsPress={handleRemoveAllDownloads}
         theme={theme}
       />
     );
@@ -356,6 +384,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     downloadData.length,
     handlePlayAll,
     handleShuffle,
+    handleRemoveAllDownloads,
     theme,
   ]);
 

@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1,
+    zIndex: 10,
     overflow: 'hidden',
   },
   headerContent: {
