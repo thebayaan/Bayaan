@@ -326,14 +326,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     bentoTile: {
       borderRadius: moderateScale(10),
       overflow: 'hidden',
-      elevation: 3,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
     },
     tileButton: {
       flex: 1,

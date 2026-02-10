@@ -25,10 +25,12 @@ interface TrackItemProps {
   reciterId: string;
   surahId: string;
   rewayatId?: string;
+  userRecitationId?: string;
   onPress: () => void;
   onPlayPress?: () => void;
   hidePlayButton?: boolean;
   onOptionsPress?: () => void;
+  onLongPress?: () => void;
 }
 
 export const TrackItem: React.FC<TrackItemProps> = React.memo(
@@ -36,10 +38,12 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     reciterId,
     surahId,
     rewayatId,
+    userRecitationId,
     onPress,
     onPlayPress,
     hidePlayButton,
     onOptionsPress,
+    onLongPress,
   }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
@@ -83,19 +87,26 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           ? tracks[currentIndex]
           : null;
 
-      if (!reciterId || !currentTrack || !surahId) return false;
+      if (!currentTrack) return false;
+
+      // For upload tracks, match by userRecitationId
+      if (userRecitationId && currentTrack.userRecitationId) {
+        return userRecitationId === currentTrack.userRecitationId;
+      }
+
+      if (!reciterId || !surahId) return false;
 
       const rewayatMatches =
         rewayatId && currentTrack.rewayatId
           ? rewayatId === currentTrack.rewayatId
-          : !rewayatId && !currentTrack.rewayatId; // Match if both are undefined/null
+          : !rewayatId && !currentTrack.rewayatId;
 
       return (
         currentTrack.reciterId === reciterId &&
-        currentTrack.surahId === surahId && // surahId is already string here
+        currentTrack.surahId === surahId &&
         rewayatMatches
       );
-    }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
+    }, [reciterId, surahId, rewayatId, userRecitationId, currentIndex, tracks]);
 
     useEffect(() => {
       let mounted = true;
@@ -141,7 +152,10 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     return (
       <View style={styles.trackItem}>
         {/* Play zone */}
-        <Pressable style={styles.playZone} onPress={onPress}>
+        <Pressable
+          style={styles.playZone}
+          onPress={onPress}
+          onLongPress={onLongPress}>
           <View style={styles.imageContainer}>
             <ReciterImage
               reciterName={reciter?.name || ''}

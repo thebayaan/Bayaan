@@ -71,6 +71,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const reciterId = payload?.reciterId;
   const rewayatId = payload?.rewayatId;
   const onAddToQueue = payload?.onAddToQueue;
+  const onRemoveFromPlaylist = payload?.onRemoveFromPlaylist;
 
   const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
@@ -216,6 +217,11 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     setDownloadProgress,
     downloadId,
   ]);
+
+  const handleRemoveFromPlaylist = useCallback(() => {
+    handleClose();
+    onRemoveFromPlaylist?.();
+  }, [onRemoveFromPlaylist, handleClose]);
 
   const handleAddToPlaylist = useCallback(() => {
     if (!reciterId || !surah) return;
@@ -411,6 +417,27 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
               />
               <Text style={styles.optionText}>Learn About Surah</Text>
             </TouchableOpacity>
+
+            {onRemoveFromPlaylist && (
+              <TouchableOpacity
+                style={[
+                  styles.optionDestructive,
+                  pressedOption === 'remove' && styles.optionDestructivePressed,
+                ]}
+                onPress={handleRemoveFromPlaylist}
+                onPressIn={() => setPressedOption('remove')}
+                onPressOut={() => setPressedOption(null)}
+                activeOpacity={1}>
+                <Feather
+                  name="minus-circle"
+                  size={moderateScale(20)}
+                  color="#ff4444"
+                />
+                <Text style={styles.optionTextDestructive}>
+                  Remove from Playlist
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -484,6 +511,24 @@ const createStyles = (theme: Theme) =>
     },
     rotatedIcon: {
       transform: [{rotate: '180deg'}],
+    },
+    optionDestructive: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: moderateScale(16),
+      paddingHorizontal: moderateScale(16),
+      backgroundColor: 'rgba(255, 68, 68, 0.1)',
+      borderRadius: moderateScale(12),
+    },
+    optionDestructivePressed: {
+      backgroundColor: 'rgba(255, 68, 68, 0.18)',
+    },
+    optionTextDestructive: {
+      flex: 1,
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-SemiBold',
+      color: '#ff4444',
+      marginLeft: moderateScale(12),
     },
     // Surah Info styles
     headerContainer: {

@@ -9,6 +9,7 @@ export interface LovedTrack {
   surahId: string;
   rewayatId: string;
   timestamp: number;
+  userRecitationId?: string;
 }
 
 interface LovedTracksState {
@@ -20,7 +21,12 @@ interface LovedTracksState {
   lastSynced: number | null;
 
   // Actions
-  toggleLoved: (reciterId: string, surahId: string, rewayatId: string) => void;
+  toggleLoved: (
+    reciterId: string,
+    surahId: string,
+    rewayatId: string,
+    userRecitationId?: string,
+  ) => void;
   isLoved: (reciterId: string, surahId: string) => boolean;
   isLovedWithRewayat: (
     reciterId: string,
@@ -47,7 +53,12 @@ export const useLovedStore = create<LovedTracksState>()(
       lastSynced: null,
 
       // Core actions
-      toggleLoved: (reciterId: string, surahId: string, rewayatId: string) => {
+      toggleLoved: (
+        reciterId: string,
+        surahId: string,
+        rewayatId: string,
+        userRecitationId?: string,
+      ) => {
         set(state => {
           // Check if a track exists with either the new format (with rewayatId)
           // or the old format (without rewayatId)
@@ -68,7 +79,13 @@ export const useLovedStore = create<LovedTracksState>()(
           } else {
             // Add to the beginning so most recent is first
             newTracks = [
-              {reciterId, surahId, rewayatId, timestamp: Date.now()},
+              {
+                reciterId,
+                surahId,
+                rewayatId,
+                timestamp: Date.now(),
+                userRecitationId,
+              },
               ...state.tracks,
             ];
           }
