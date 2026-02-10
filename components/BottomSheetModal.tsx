@@ -110,7 +110,7 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       enablePanDownToClose={true}
       enableDynamicSizing={false}
       handleComponent={CustomHandle}
-      enableContentPanningGesture={Platform.OS === 'ios'}
+      enableContentPanningGesture
       onClose={onClose}
       style={{
         zIndex: 3000,
