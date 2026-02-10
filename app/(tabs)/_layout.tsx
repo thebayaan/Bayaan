@@ -1,25 +1,19 @@
+// app/(tabs)/_layout.tsx
+
 import React from 'react';
-import {
-  NativeTabs,
-  Icon,
-  Label,
-  VectorIcon,
-} from 'expo-router/unstable-native-tabs';
+import {Tabs} from 'expo-router';
+import BottomTabBar from '@/components/BottomTabBar';
+import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+// import {FloatingPlayer} from '@/components/FloatingPlayer';
 import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
-import {DynamicColorIOS, Platform} from 'react-native';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+
+const tabBarComponent = (props: BottomTabBarProps) => (
+  <BottomTabBar {...props} />
+);
 
 export default function TabsLayout() {
-  const {isDarkMode, theme} = useTheme();
-  const liquidLabelColor =
-    Platform.OS === 'ios'
-      ? DynamicColorIOS({light: '#111111', dark: '#FFFFFF'})
-      : theme.colors.textSecondary;
-  const liquidTintColor =
-    Platform.OS === 'ios'
-      ? DynamicColorIOS({light: '#111111', dark: '#FFFFFF'})
-      : theme.colors.text;
+  const {isDarkMode} = useTheme();
 
   return (
     <>
@@ -28,77 +22,23 @@ export default function TabsLayout() {
         translucent
         backgroundColor="transparent"
       />
-      <NativeTabs
-        blurEffect="systemChromeMaterial"
-        disableTransparentOnScrollEdge={false}
-        backgroundColor={Platform.OS === 'ios' ? null : theme.colors.background}
-        labelStyle={{color: liquidLabelColor}}
-        tintColor={liquidTintColor}
-        iconColor={{
-          default: theme.colors.textSecondary,
-          selected: theme.colors.text,
-        }}>
-        <NativeTabs.Trigger name="(a.home)">
-          <Label>Home</Label>
-          <Icon
-            src={{
-              default: (
-                <VectorIcon
-                  family={MaterialCommunityIcons}
-                  name="home-outline"
-                />
-              ),
-              selected: (
-                <VectorIcon family={MaterialCommunityIcons} name="home" />
-              ),
-            }}
-          />
-        </NativeTabs.Trigger>
-
-        <NativeTabs.Trigger name="(b.search)" role="search">
-          <Label>Search</Label>
-          <Icon
-            src={<VectorIcon family={MaterialCommunityIcons} name="magnify" />}
-          />
-        </NativeTabs.Trigger>
-
-        <NativeTabs.Trigger name="(c.collection)">
-          <Label>Collection</Label>
-          <Icon
-            src={{
-              default: (
-                <VectorIcon
-                  family={MaterialCommunityIcons}
-                  name="view-grid-outline"
-                />
-              ),
-              selected: (
-                <VectorIcon family={MaterialCommunityIcons} name="view-grid" />
-              ),
-            }}
-          />
-        </NativeTabs.Trigger>
-
-        <NativeTabs.Trigger name="(d.mushaf)">
-          <Label>Mushaf</Label>
-          <Icon
-            src={{
-              default: (
-                <VectorIcon
-                  family={MaterialCommunityIcons}
-                  name="book-open-page-variant"
-                />
-              ),
-              selected: (
-                <VectorIcon
-                  family={MaterialCommunityIcons}
-                  name="book-open-page-variant"
-                />
-              ),
-            }}
-          />
-        </NativeTabs.Trigger>
-      </NativeTabs>
+      <Tabs
+        initialRouteName="(a.home)"
+        screenOptions={{
+          headerShown: false,
+          lazy: true,
+          freezeOnBlur: true,
+        }}
+        tabBar={tabBarComponent}>
+        <Tabs.Screen name="(a.home)" options={{title: 'Home'}} />
+        <Tabs.Screen name="(b.search)" options={{title: 'Search'}} />
+        <Tabs.Screen
+          name="(c.collection)"
+          options={{title: 'Your Collection'}}
+        />
+        <Tabs.Screen name="(d.mushaf)" options={{title: 'Mushaf'}} />
+      </Tabs>
+      {/* <FloatingPlayer /> */}
     </>
   );
 }
