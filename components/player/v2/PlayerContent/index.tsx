@@ -91,6 +91,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
       <View style={styles.viewsContainer}>
         {/* QuranView or UploadPlaceholder */}
         <View
+          pointerEvents={showQueue ? 'none' : 'auto'}
           style={[
             styles.viewWrapper,
             showQueue ? styles.hidden : styles.visible,
@@ -111,6 +112,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         </View>
         {/* QueueList */}
         <View
+          pointerEvents={showQueue ? 'auto' : 'none'}
           style={[
             styles.viewWrapper,
             showQueue ? styles.visible : styles.hidden,
@@ -166,12 +168,10 @@ const styles = StyleSheet.create({
     paddingTop: moderateScale(10),
   },
   visible: {
-    display: 'flex',
     opacity: 1,
     zIndex: 1,
   },
   hidden: {
-    display: 'none',
     opacity: 0,
     zIndex: 0,
   },

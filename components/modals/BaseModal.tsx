@@ -94,7 +94,7 @@ export const BaseModal: React.FC<BaseModalProps> = ({
       onChange={onChange}
       style={styles.modal}
       handleComponent={CustomHandle}
-      enableContentPanningGesture={Platform.OS === 'ios'}
+      enableContentPanningGesture
       backgroundStyle={[
         styles.background,
         {backgroundColor: theme.colors.backgroundSecondary},

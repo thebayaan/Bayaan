@@ -243,10 +243,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             <View style={styles.rightControls}>
               <Pressable
                 onPress={handleLovePress}
-                style={({pressed}) => [
-                  styles.loveButton,
-                  {opacity: pressed ? 0.7 : 1},
-                ]}>
+                style={styles.loveButton}>
                 <Animated.View style={heartAnimatedStyle}>
                   <HeartIcon
                     color={isTrackLoved(currentTrack) ? 'red' : textColor}
@@ -305,10 +302,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
             <View style={styles.rightControls}>
               <Pressable
                 onPress={handleLovePress}
-                style={({pressed}) => [
-                  styles.loveButton,
-                  {opacity: pressed ? 0.7 : 1},
-                ]}>
+                style={styles.loveButton}>
                 <Animated.View style={heartAnimatedStyle}>
                   <HeartIcon
                     color={isTrackLoved(currentTrack) ? 'red' : textColor}

@@ -1,4 +1,4 @@
-import React, {memo, useCallback, useState, useEffect, useRef} from 'react';
+import React, {memo, useCallback, useState} from 'react';
 import {StyleSheet, Pressable, Text, View} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Verse} from '@/types/quran';
@@ -6,19 +6,24 @@ import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {Ionicons} from '@expo/vector-icons';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useTajweedStore} from '@/store/tajweedStore';
 
-// ---> Load Indopak JSON data
+// ---> Lazy-load Indopak JSON data (1.7MB — only loaded when Indopak font is selected)
 interface IndopakNastaleeqData {
   [verseKey: string]: {text: string};
 }
 let indopakNastaleeqDataCache: IndopakNastaleeqData | null = null;
-try {
-  indopakNastaleeqDataCache = require('@/data/IndopakNastaleeq.json');
-  console.log('[VerseItem] IndopakNastaleeq data pre-cached');
-} catch (error) {
-  console.error('[VerseItem] Error pre-caching Indopak data:', error);
+function getIndopakData(): IndopakNastaleeqData | null {
+  if (!indopakNastaleeqDataCache) {
+    try {
+      indopakNastaleeqDataCache = require('@/data/IndopakNastaleeq.json');
+    } catch (error) {
+      console.error('[VerseItem] Error loading Indopak data:', error);
+    }
+  }
+  return indopakNastaleeqDataCache;
 }
-// <--- End Load Indopak JSON data
+// <--- End Indopak lazy loader
 
 // Define colors for Tajweed rules (adjust these as needed)
 const tajweedColors: {[key: string]: string} = {
@@ -78,8 +83,12 @@ interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
 
+// Load Saheeh data at module scope (require() is cached — zero cost since QuranView already loaded it)
+const saheehDataForFootnotes =
+  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as SaheehData;
+
 interface VerseItemProps {
-  verse: Verse & {processedTajweedAyahData?: ProcessedTajweedWord[]}; // Combine Verse and optional processed data
+  verse: Verse & {translation?: string; transliteration?: string};
   onPress: () => void;
   textColor: string;
   borderColor: string;
@@ -88,8 +97,6 @@ interface VerseItemProps {
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
-  // Remove legacy tajweedAyahData prop if it exists
-  processedTajweedAyahData?: ProcessedTajweedWord[]; // Keep this prop as it's now passed from QuranView
 }
 
 /**
@@ -103,7 +110,7 @@ TajweedSegment.displayName = 'TajweedSegment';
 
 export const VerseItem = memo<VerseItemProps>(
   ({
-    verse, // Contains processedTajweedAyahData if available
+    verse,
     onPress,
     textColor,
     borderColor,
@@ -112,7 +119,6 @@ export const VerseItem = memo<VerseItemProps>(
     transliterationFontSize: propTransliterationFontSize,
     translationFontSize: propTranslationFontSize,
     arabicFontSize: propArabicFontSize,
-    // processedTajweedAyahData prop is now part of the verse object
   }) => {
     // Get settings from the store
     const {
@@ -124,6 +130,12 @@ export const VerseItem = memo<VerseItemProps>(
       transliterationFontSize: storeTransliterationFontSize,
       arabicFontFamily,
     } = useMushafSettingsStore();
+
+    // Fetch tajweed data directly from store — granular selector means only
+    // the ~10 visible VerseItems re-render when tajweed finishes loading
+    const processedTajweedAyahData = useTajweedStore(
+      s => s.indexedTajweedData?.[verse.verse_key],
+    );
 
     // Use prop values if provided, otherwise use store values
     const showTranslation =
@@ -149,30 +161,11 @@ export const VerseItem = memo<VerseItemProps>(
     const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
       null,
     );
-    // Cache for the Saheeh International data
-    const saheehDataCache = useRef<SaheehData | null>(null);
-    const [isSaheehDataLoaded, setIsSaheehDataLoaded] = useState(false);
-
-    // Load Saheeh International data once
-    useEffect(() => {
-      if (!saheehDataCache.current) {
-        try {
-          saheehDataCache.current = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
-          setIsSaheehDataLoaded(true);
-          console.log('[VerseItem] Saheeh International data loaded.');
-        } catch (error) {
-          console.error(
-            '[VerseItem] Failed to load Saheeh International data:',
-            error,
-          );
-        }
-      }
-    }, []);
 
     const bgColor = Color(textColor).alpha(0.08).toString();
     const footnoteBgColor = Color(textColor).alpha(0.1).toString();
 
-    // Handle footnote press - now uses cached data
+    // Handle footnote press - uses module-scope cached data
     const handleFootnotePress = useCallback(
       (footnoteId: string, footnoteNumber: string) => {
         // If tapping the same footnote again, close it
@@ -180,45 +173,11 @@ export const VerseItem = memo<VerseItemProps>(
           setActiveFootnote(null);
           return;
         }
-        console.log(
-          `[Footnote Press] Verse Key: ${verse.verse_key}, Footnote ID: ${footnoteId}, Number: ${footnoteNumber}`,
-        );
 
-        if (!isSaheehDataLoaded || !saheehDataCache.current) {
-          console.error(
-            '[VerseItem] Saheeh data not loaded yet when trying to access footnote.',
-          );
-          setActiveFootnote({
-            id: footnoteId,
-            number: footnoteNumber,
-            content: 'Error: Footnote data not ready',
-          });
-          return;
-        }
+        const verseData = saheehDataForFootnotes[verse.verse_key];
 
-        const verseData = saheehDataCache.current[verse.verse_key];
-        console.log(
-          '[Footnote Press] Found verseData:',
-          verseData ? 'Yes' : 'No',
-        );
-
-        // --- Start: Additional Logging ---
-        if (verseData) {
-          console.log('[Footnote Press] Inspecting verseData:', verseData);
-          console.log('[Footnote Press] Inspecting verseData.f:', verseData.f);
-          console.log(
-            `[Footnote Press] Keys in verseData.f: ${
-              verseData.f ? Object.keys(verseData.f).join(', ') : 'N/A'
-            }`,
-          );
-        }
-        // --- End: Additional Logging ---
-        if (verseData && verseData.f) {
+        if (verseData?.f) {
           const footnoteContent = verseData.f[footnoteId];
-          console.log(
-            `[Footnote Press] Found footnoteContent for ID ${footnoteId}:`,
-            footnoteContent ? 'Yes' : 'No',
-          );
 
           if (footnoteContent) {
             setActiveFootnote({
@@ -227,9 +186,6 @@ export const VerseItem = memo<VerseItemProps>(
               content: footnoteContent,
             });
           } else {
-            console.warn(
-              `Footnote content for ID ${footnoteId} in verse ${verse.verse_key} not found in footnotes object.`,
-            );
             setActiveFootnote({
               id: footnoteId,
               number: footnoteNumber,
@@ -237,9 +193,6 @@ export const VerseItem = memo<VerseItemProps>(
             });
           }
         } else {
-          console.warn(
-            `Footnotes object (f) not found for verse ${verse.verse_key}.`,
-          );
           setActiveFootnote({
             id: footnoteId,
             number: footnoteNumber,
@@ -247,7 +200,7 @@ export const VerseItem = memo<VerseItemProps>(
           });
         }
       },
-      [verse.verse_key, isSaheehDataLoaded, activeFootnote],
+      [verse.verse_key, activeFootnote],
     );
 
     // Close the footnote display
@@ -255,41 +208,44 @@ export const VerseItem = memo<VerseItemProps>(
       setActiveFootnote(null);
     }, []);
 
-    // Access processed data from the verse object
-    const processedTajweedAyahData = verse.processedTajweedAyahData;
-
     // --- Build Tajweed Nodes (Only if QPC and data available) ---
     const tajweedNodes =
       isQPCSelected && processedTajweedAyahData
-        ? processedTajweedAyahData.flatMap((wordData, wordIndex) => {
-            const segments = wordData.segments.map((segment, segIndex) => {
-              // Apply color based on showTajweed state from store
-              const color =
-                showTajweed && segment.rule
-                  ? tajweedColors[segment.rule] || textColor // Tajweed color or default
-                  : textColor; // Default color if tajweed off or no rule
-              return (
-                <TajweedSegment
-                  key={`${wordData.location}-${wordIndex}-${segIndex}`}
-                  text={segment.text}
-                  color={color}
-                />
-              );
-            });
-            // Add space between words
-            if (wordIndex < processedTajweedAyahData.length - 1) {
-              segments.push(<Text key={`${wordData.location}-space`}> </Text>);
-            }
-            return segments;
-          })
+        ? (processedTajweedAyahData as ProcessedTajweedWord[]).flatMap(
+            (wordData, wordIndex) => {
+              const segments = wordData.segments.map((segment, segIndex) => {
+                // Apply color based on showTajweed state from store
+                const color =
+                  showTajweed && segment.rule
+                    ? tajweedColors[segment.rule] || textColor // Tajweed color or default
+                    : textColor; // Default color if tajweed off or no rule
+                return (
+                  <TajweedSegment
+                    key={`${wordData.location}-${wordIndex}-${segIndex}`}
+                    text={segment.text}
+                    color={color}
+                  />
+                );
+              });
+              // Add space between words
+              if (
+                wordIndex <
+                (processedTajweedAyahData as ProcessedTajweedWord[]).length - 1
+              ) {
+                segments.push(
+                  <Text key={`${wordData.location}-space`}> </Text>,
+                );
+              }
+              return segments;
+            },
+          )
         : null;
     // --- End Building Nodes ---
 
-    // ---> Get Indopak text if applicable
-    const indopakText =
-      isIndopakSelected && indopakNastaleeqDataCache
-        ? indopakNastaleeqDataCache[verse.verse_key]?.text
-        : null;
+    // ---> Get Indopak text if applicable (lazy-loaded)
+    const indopakText = isIndopakSelected
+      ? getIndopakData()?.[verse.verse_key]?.text
+      : null;
     // <--- End Get Indopak text
 
     return (
