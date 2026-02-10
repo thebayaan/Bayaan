@@ -50,9 +50,16 @@ interface SearchResult {
 interface SearchViewProps {
   onClose: () => void;
   visible: boolean;
+  initialQuery?: string;
+  forceNativeSearch?: boolean;
 }
 
-export function SearchView({onClose, visible}: SearchViewProps) {
+export function SearchView({
+  onClose,
+  visible,
+  initialQuery,
+  forceNativeSearch = false,
+}: SearchViewProps) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -69,6 +76,15 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
+  const isSearchModeActive = forceNativeSearch
+    ? query.trim().length > 0
+    : isSearchMode;
+
+  useEffect(() => {
+    if (typeof initialQuery === 'string') {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   // Clear query and exit search mode when closing
   useEffect(() => {
@@ -89,12 +105,15 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   // Handle search input focus - enter search mode
   const handleSearchFocus = useCallback(() => {
+    if (forceNativeSearch) {
+      return;
+    }
     setIsSearchMode(true);
     // Focus the input after a slight delay to ensure the component is rendered
     setTimeout(() => {
       searchInputRef.current?.focus();
     }, 100);
-  }, []);
+  }, [forceNativeSearch]);
 
   // Handle search cancel - return to explore mode
   const handleSearchCancel = useCallback(() => {
@@ -102,13 +121,15 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     setQuery('');
     setIsSearchMode(false);
     searchInputRef.current?.blur();
-    onClose();
-  }, [onClose]);
+    if (!forceNativeSearch) {
+      onClose();
+    }
+  }, [onClose, forceNativeSearch]);
 
   // Lazy-init Fuse.js — only when user activates search mode
   const fuseInitialized = useRef(false);
   useEffect(() => {
-    if (!visible || !isSearchMode || fuseInitialized.current) return;
+    if (!visible || !isSearchModeActive || fuseInitialized.current) return;
     fuseInitialized.current = true;
 
     const fetchData = async () => {
@@ -178,7 +199,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       }
     };
     fetchData();
-  }, [visible, isSearchMode]);
+  }, [visible, isSearchModeActive]);
 
   const performSearch = useCallback(() => {
     if (!reciterFuse || !surahFuse || !debouncedQuery.trim()) {
@@ -367,67 +388,77 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   if (!visible) return null;
 
   // Show ExploreView when not in search mode
-  if (!isSearchMode) {
-    return <ExploreView onSearchPress={handleSearchFocus} />;
+  if (!isSearchModeActive) {
+    return (
+      <ExploreView
+        onSearchPress={handleSearchFocus}
+        showSearchBar={!forceNativeSearch}
+      />
+    );
   }
 
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={80}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}>
+      {!forceNativeSearch && (
+        <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
+          {Platform.OS === 'ios' ? (
+            <BlurView
+              blurAmount={80}
+              blurType={theme.isDarkMode ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}>
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor: Color(theme.colors.card)
+                      .alpha(0.7)
+                      .toString(),
+                  },
+                ]}
+              />
+            </BlurView>
+          ) : (
             <View
               style={[
                 StyleSheet.absoluteFill,
                 {
-                  backgroundColor: Color(theme.colors.card)
-                    .alpha(0.7)
-                    .toString(),
+                  backgroundColor: theme.colors.card,
+                  opacity: 0.95,
                 },
               ]}
             />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: theme.colors.card,
-                opacity: 0.95,
-              },
-            ]}
-          />
-        )}
-        <View style={styles.searchBoxContainer}>
-          <SearchInput
-            ref={searchInputRef}
-            placeholder="Search surahs or reciters"
-            value={query}
-            onChangeText={setQuery}
-            onCancel={handleSearchCancel}
-            iconColor={theme.colors.text}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
-            borderColor={Color(theme.colors.border).alpha(0.5).toString()}
-            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-            autoCorrect={false}
-            autoComplete="off"
-            autoCapitalize="none"
-            autoFocus={true}
-          />
+          )}
+          <View style={styles.searchBoxContainer}>
+            <SearchInput
+              ref={searchInputRef}
+              placeholder="Search surahs or reciters"
+              value={query}
+              onChangeText={setQuery}
+              onCancel={handleSearchCancel}
+              iconColor={theme.colors.text}
+              textColor={theme.colors.text}
+              backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
+              borderColor={Color(theme.colors.border).alpha(0.5).toString()}
+              keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+              autoCorrect={false}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoFocus={true}
+            />
+          </View>
         </View>
-      </View>
+      )}
 
       {query.length === 0 ? (
         <ScrollView
           style={styles.content}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior={
+            Platform.OS === 'ios' ? 'automatic' : undefined
+          }>
           {recentSearches.length > 0 ? (
             <View>
               <View style={styles.sectionHeader}>
@@ -488,6 +519,9 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           contentContainerStyle={styles.resultsContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior={
+            Platform.OS === 'ios' ? 'automatic' : undefined
+          }
           onScrollBeginDrag={() => Keyboard.dismiss()}
           ListHeaderComponent={
             searching ? (
