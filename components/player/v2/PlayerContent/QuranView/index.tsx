@@ -1,6 +1,7 @@
-import React, {useCallback, useRef, useEffect} from 'react';
-import {View, StyleSheet, useWindowDimensions} from 'react-native';
+import React, {useCallback, useRef, useEffect, useState} from 'react';
+import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
@@ -15,6 +16,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {useTimestampStore} from '@/store/timestampStore';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -150,6 +152,11 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const surah = surahData.find(s => s.id === currentSurah);
 
+  // Ayah timestamp tracking
+  const currentVerseKey = useTimestampStore(s => s.currentAyah?.verseKey);
+  const isFollowingRef = useRef(true);
+  const [showRecenter, setShowRecenter] = useState(false);
+
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
@@ -184,7 +191,24 @@ export const QuranView: React.FC<QuranViewProps> = ({
     if (listRef.current) {
       listRef.current.scrollToOffset({offset: 0, animated: false});
     }
+    isFollowingRef.current = true;
+    setShowRecenter(false);
   }, [currentSurah]);
+
+  // Auto-scroll to active ayah
+  useEffect(() => {
+    if (!currentVerseKey || !isFollowingRef.current || !listRef.current) return;
+
+    const index = verses.findIndex(v => v.verse_key === currentVerseKey);
+    if (index === -1) return;
+
+    try {
+      listRef.current.scrollToIndex({index, animated: true, viewPosition: 0.3});
+    } catch {
+      // Index may be out of range during recycling — ignore
+    }
+  }, [currentVerseKey, verses]);
+
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
@@ -204,6 +228,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
         indexedTajweedData={indexedTajweedData}
+        isActive={item.verse_key === currentVerseKey}
       />
     ),
     [
@@ -219,6 +244,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       fontMgr,
       dkFontFamily,
       indexedTajweedData,
+      currentVerseKey,
     ],
   );
 
@@ -267,7 +293,33 @@ export const QuranView: React.FC<QuranViewProps> = ({
         bounces={true}
         overScrollMode="never"
         drawDistance={1500}
+        onScrollBeginDrag={() => {
+          if (currentVerseKey) {
+            isFollowingRef.current = false;
+            setShowRecenter(true);
+          }
+        }}
       />
+      {showRecenter && currentVerseKey && (
+        <Pressable
+          style={[styles.recenterButton, {backgroundColor: theme.colors.card}]}
+          onPress={() => {
+            isFollowingRef.current = true;
+            setShowRecenter(false);
+            const index = verses.findIndex(
+              v => v.verse_key === currentVerseKey,
+            );
+            if (index !== -1 && listRef.current) {
+              listRef.current.scrollToIndex({
+                index,
+                animated: true,
+                viewPosition: 0.3,
+              });
+            }
+          }}>
+          <Ionicons name="locate-outline" size={20} color={theme.colors.text} />
+        </Pressable>
+      )}
     </View>
   );
 };
@@ -278,5 +330,20 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'transparent',
     overflow: 'hidden',
+  },
+  recenterButton: {
+    position: 'absolute',
+    bottom: verticalScale(16),
+    right: moderateScale(16),
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: moderateScale(20),
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });
