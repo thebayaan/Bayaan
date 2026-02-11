@@ -57,6 +57,7 @@ declare module 'react-native-actions-sheet' {
         rewayatId?: string;
         onAddToQueue?: (surah: Surah) => Promise<void>;
         onRemoveFromPlaylist?: () => void;
+        hideGoToReciter?: boolean;
       };
     }>;
     'rewayat-info': SheetDefinition<{
