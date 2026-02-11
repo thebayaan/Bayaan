@@ -9,7 +9,7 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {QueueIcon, HeartIcon, CheckIcon} from '@/components/Icons';
+import {QueueIcon, HeartIcon, CheckIcon, ProfileIcon} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
@@ -17,6 +17,7 @@ import ActionSheet, {
 } from 'react-native-actions-sheet';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
+import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {
   useDownloadActions,
   useDownloadProgress,
@@ -85,6 +86,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
         : '__none__',
     [reciterId, surahId, rewayatId],
   );
+
+  const {navigateToReciterProfile} = useReciterNavigation();
 
   // These expensive hooks now only run when sheet is actually open
   const {isLoved, isLovedWithRewayat, toggleLoved} = useLoved();
@@ -217,6 +220,13 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     setDownloadProgress,
     downloadId,
   ]);
+
+  const handleGoToReciter = useCallback(() => {
+    handleClose();
+    if (reciterId) {
+      navigateToReciterProfile(reciterId);
+    }
+  }, [handleClose, reciterId, navigateToReciterProfile]);
 
   const handleRemoveFromPlaylist = useCallback(() => {
     handleClose();
@@ -400,6 +410,25 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 Add to Collection
               </Text>
             </TouchableOpacity>
+
+            {reciterId && !payload?.hideGoToReciter && (
+              <TouchableOpacity
+                style={[
+                  styles.option,
+                  pressedOption === 'reciter' && styles.optionPressed,
+                ]}
+                onPress={handleGoToReciter}
+                onPressIn={() => setPressedOption('reciter')}
+                onPressOut={() => setPressedOption(null)}
+                activeOpacity={1}>
+                <ProfileIcon
+                  color={theme.colors.text}
+                  size={moderateScale(20)}
+                  filled={false}
+                />
+                <Text style={styles.optionText}>Go to Reciter</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[

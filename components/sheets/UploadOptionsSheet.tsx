@@ -10,7 +10,7 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {QueueIcon, HeartIcon, PlayIcon} from '@/components/Icons';
+import {QueueIcon, HeartIcon, PlayIcon, ProfileIcon} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
@@ -21,6 +21,7 @@ import Color from 'color';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {getSurahById, getReciterName} from '@/services/dataService';
 import {useLoved} from '@/hooks/useLoved';
+import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import type {UploadedRecitation} from '@/types/uploads';
 import RenderHtml, {
   MixedStyleDeclaration,
@@ -116,6 +117,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
 
   const {deleteRecitation} = useUploadsStore();
   const {isLovedWithRewayat, toggleLoved} = useLoved();
+  const {navigateToReciterProfile} = useReciterNavigation();
 
   const payload = props.payload;
   const recitation = payload?.recitation;
@@ -206,6 +208,13 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
       },
     });
   }, [reciterId, surah, recitation?.id]);
+
+  const handleGoToReciter = useCallback(() => {
+    handleClose();
+    if (reciterId) {
+      navigateToReciterProfile(reciterId);
+    }
+  }, [handleClose, reciterId, navigateToReciterProfile]);
 
   const handleViewInfo = useCallback(() => {
     setShowSurahInfo(true);
@@ -366,6 +375,22 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
                   color={theme.colors.text}
                 />
                 <Text style={styles.optionText}>Add to Collection</Text>
+              </Pressable>
+            )}
+
+            {hasReciter && (
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleGoToReciter}>
+                <ProfileIcon
+                  color={theme.colors.text}
+                  size={moderateScale(20)}
+                  filled={false}
+                />
+                <Text style={styles.optionText}>Go to Reciter</Text>
               </Pressable>
             )}
 
