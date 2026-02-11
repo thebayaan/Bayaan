@@ -751,6 +751,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                 reciterId: currentReciterId,
                 rewayatId: selectedRewayat?.id,
                 onAddToQueue: handleAddToQueue,
+                hideGoToReciter: true,
               },
             })
           }
@@ -791,7 +792,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             {/* between action buttons and tab bar when the header is not collapsed */}
             <View
               onLayout={e => setCollapsibleHeight(e.nativeEvent.layout.height)}
-              style={{marginBottom: -stickyTitleHeight}}>
+              style={{marginBottom: -stickyTitleHeight, zIndex: 11}}
+              pointerEvents="box-none">
               <ReciterHeader
                 reciter={reciter}
                 showSearch={showSearch}
@@ -812,7 +814,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             {/* Inner View has opaque background for the actual tab bar + controls */}
             <View
               onLayout={e => setStickyHeight(e.nativeEvent.layout.height)}
-              style={{paddingTop: stickyTitleHeight}}>
+              style={{paddingTop: stickyTitleHeight}}
+              pointerEvents="box-none">
               <View style={{backgroundColor: theme.colors.background}}>
                 {tabs.length > 0 && (
                   <RewayatTabBar
@@ -973,6 +976,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                                 reciterId: currentReciterId,
                                 rewayatId: tab.id,
                                 onAddToQueue: handleAddToQueue,
+                                hideGoToReciter: true,
                               },
                             })
                           }
