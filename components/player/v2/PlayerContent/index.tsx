@@ -1,6 +1,5 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {View, StyleSheet} from 'react-native';
-import {Header} from './Header';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
@@ -10,6 +9,7 @@ import {UploadPlaceholder} from './UploadPlaceholder';
 import {moderateScale} from 'react-native-size-matters';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -18,7 +18,6 @@ interface PlayerContentProps {
   onSpeedPress: () => void;
   onSleepTimerPress: () => void;
   onMushafLayoutPress: () => void;
-  onOptionsPress: () => void;
   onAmbientPress: () => void;
 }
 
@@ -26,7 +25,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onSpeedPress,
   onSleepTimerPress,
   onMushafLayoutPress,
-  onOptionsPress,
   onAmbientPress,
 }) => {
   useTheme();
@@ -85,43 +83,38 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     : undefined;
   const isUntaggedUpload = currentTrack?.isUserUpload && !currentTrack?.surahId;
 
+  // Clear verse selection when surah changes
+  useEffect(() => {
+    useVerseSelectionStore.getState().clearSelection();
+  }, [currentSurah]);
+
   return (
     <View style={styles.container}>
-      <Header onOptionsPress={onOptionsPress} />
       <View style={styles.viewsContainer}>
-        {/* QuranView or UploadPlaceholder */}
-        <View
-          pointerEvents={showQueue ? 'none' : 'auto'}
-          style={[
-            styles.viewWrapper,
-            showQueue ? styles.hidden : styles.visible,
-          ]}>
-          {isUntaggedUpload ? (
-            <UploadPlaceholder currentTrack={currentTrack} />
-          ) : (
-            <QuranView
-              currentSurah={currentSurah ?? 1}
-              onVersePress={handleVersePress}
-              showTranslation={showTranslation}
-              showTransliteration={showTransliteration}
-              transliterationFontSize={transliterationFontSize}
-              translationFontSize={translationFontSize}
-              arabicFontSize={arabicFontSize}
+        {showQueue ? (
+          <View style={styles.viewWrapper}>
+            <QueueList
+              onQueueItemPress={handleQueueItemPress}
+              onRemoveQueueItem={handleRemoveQueueItem}
             />
-          )}
-        </View>
-        {/* QueueList */}
-        <View
-          pointerEvents={showQueue ? 'auto' : 'none'}
-          style={[
-            styles.viewWrapper,
-            showQueue ? styles.visible : styles.hidden,
-          ]}>
-          <QueueList
-            onQueueItemPress={handleQueueItemPress}
-            onRemoveQueueItem={handleRemoveQueueItem}
-          />
-        </View>
+          </View>
+        ) : (
+          <View style={styles.viewWrapper}>
+            {isUntaggedUpload ? (
+              <UploadPlaceholder currentTrack={currentTrack} />
+            ) : (
+              <QuranView
+                currentSurah={currentSurah ?? 1}
+                onVersePress={handleVersePress}
+                showTranslation={showTranslation}
+                showTransliteration={showTransliteration}
+                transliterationFontSize={transliterationFontSize}
+                translationFontSize={translationFontSize}
+                arabicFontSize={arabicFontSize}
+              />
+            )}
+          </View>
+        )}
       </View>
       <View
         style={[
@@ -166,14 +159,6 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: moderateScale(20),
     paddingTop: moderateScale(10),
-  },
-  visible: {
-    opacity: 1,
-    zIndex: 1,
-  },
-  hidden: {
-    opacity: 0,
-    zIndex: 0,
   },
 });
 
