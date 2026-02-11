@@ -34,9 +34,12 @@ type StorePlaybackState =
 export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   // UI State
   sheetMode: UIState['sheetMode'];
+  isImmersive: boolean;
 
   // UI Actions
   setSheetMode: (mode: UIState['sheetMode']) => void;
+  toggleImmersive: () => void;
+  setImmersive: (value: boolean) => void;
 
   // Playback Actions
   play: () => Promise<void>;
@@ -114,6 +117,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
       ...createDefaultUnifiedPlayerState(),
       // Add UI state
       sheetMode: 'hidden' as const,
+      isImmersive: false,
 
       // UI Actions
       setSheetMode: (mode: UIState['sheetMode']) => {
@@ -127,6 +131,16 @@ export const usePlayerStore = create<PlayerStoreState>()(
           });
 
         set({sheetMode: mode});
+      },
+
+      toggleImmersive: () => {
+        set(state => ({isImmersive: !state.isImmersive}));
+      },
+
+      setImmersive: (value: boolean) => {
+        if (get().isImmersive !== value) {
+          set({isImmersive: value});
+        }
       },
 
       // Playback Actions
