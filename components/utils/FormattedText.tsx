@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {Text, StyleSheet, TextStyle, StyleProp, Platform} from 'react-native';
 
 interface FormattedTextProps {
@@ -7,7 +7,7 @@ interface FormattedTextProps {
   onFootnotePress?: (footnoteId: string, footnoteNumber: string) => void;
 }
 
-function FormattedTextRenderer({
+const FormattedTextRenderer = memo(function FormattedTextRenderer({
   text,
   baseStyle,
   onFootnotePress,
@@ -165,7 +165,9 @@ function FormattedTextRenderer({
       {elements}
     </Text>
   );
-}
+});
+
+FormattedTextRenderer.displayName = 'FormattedTextRenderer';
 
 const styles = StyleSheet.create({
   bold: {

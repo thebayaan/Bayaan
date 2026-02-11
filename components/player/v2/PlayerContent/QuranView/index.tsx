@@ -1,20 +1,13 @@
-import React, {useCallback, useRef, useEffect} from 'react';
+import React, {useCallback, useMemo, useRef, useEffect} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
-import {
-  LegendList,
-  LegendListRef,
-  LegendListRenderItemProps,
-} from '@legendapp/list';
+import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
-import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
-import {SheetManager} from 'react-native-actions-sheet';
-import {mediumHaptics} from '@/utils/haptics';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -45,7 +38,7 @@ const transliterationDataCache =
   require('@/data/transliteration.json') as TransliterationData;
 
 // Enhanced verse type including translations and transliterations
-interface EnhancedVerse extends Verse {
+export interface EnhancedVerse extends Verse {
   translation?: string;
   transliteration?: string;
 }
@@ -64,7 +57,6 @@ interface QuranViewProps {
   onVersePress: (verseKey: string) => void;
   showTranslation?: boolean;
   showTransliteration?: boolean;
-  showTajweed?: boolean;
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
@@ -80,20 +72,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
   arabicFontSize,
 }) => {
   const {theme} = useTheme();
-  const listRef = useRef<LegendListRef>(null);
+  const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const surah = surahData.find(s => s.id === currentSurah);
 
-  // Verse selection
-  const selectedVerseKey = useVerseSelectionStore(s => s.selectedVerseKey);
-  const selectVerse = useVerseSelectionStore(s => s.selectVerse);
+  // Granular mushaf settings selectors (avoid full-store subscription)
+  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const arabicFontFamily = useMushafSettingsStore(s => s.arabicFontFamily);
 
-  // Verse annotations
-  const bookmarkedVerseKeys = useVerseAnnotationsStore(
-    s => s.bookmarkedVerseKeys,
-  );
-  const notedVerseKeys = useVerseAnnotationsStore(s => s.notedVerseKeys);
-  const highlights = useVerseAnnotationsStore(s => s.highlights);
+  // Only need the loader — VerseItem subscribes to its own annotation data
   const loadAnnotationsForSurah = useVerseAnnotationsStore(
     s => s.loadAnnotationsForSurah,
   );
@@ -103,39 +90,20 @@ export const QuranView: React.FC<QuranViewProps> = ({
     loadAnnotationsForSurah(currentSurah);
   }, [currentSurah, loadAnnotationsForSurah]);
 
-  // Memoize the getVersesForSurah function — no tajweed dependency
-  const getVersesForSurahMemo = useCallback(() => {
+  // Memoize verses array — only recomputed when surah changes
+  const verses = useMemo(() => {
     const surahVerses = versesBySurah[currentSurah];
-    if (!surahVerses) {
-      return [];
-    }
+    if (!surahVerses) return [];
 
-    try {
-      return surahVerses.map(verse => {
-        const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
-        let translationText = '';
-        if (saheehDataCache?.[verseKey]?.t) {
-          translationText = saheehDataCache[verseKey].t;
-        }
-        let transliterationText = '';
-        if (transliterationDataCache?.[verseKey]) {
-          transliterationText = transliterationDataCache[verseKey].t;
-        }
-
-        return {
-          ...verse,
-          translation: translationText,
-          transliteration: transliterationText,
-        };
-      });
-    } catch (error) {
-      console.error('Error processing verses:', error);
-      return [];
-    }
+    return surahVerses.map(verse => {
+      const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
+      return {
+        ...verse,
+        translation: saheehDataCache?.[verseKey]?.t || '',
+        transliteration: transliterationDataCache?.[verseKey]?.t || '',
+      };
+    });
   }, [currentSurah]);
-
-  // Get verses data
-  const verses = getVersesForSurahMemo();
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {
@@ -154,67 +122,34 @@ export const QuranView: React.FC<QuranViewProps> = ({
     );
   }, [surah?.bismillah_pre, theme.colors.text]);
 
-  // Open verse actions sheet for a given verse
-  const openVerseActions = useCallback(
-    (item: EnhancedVerse) => {
-      const vk = item.verse_key;
-      selectVerse(vk, item.surah_number, item.ayah_number);
-      SheetManager.show('verse-actions', {
-        payload: {
-          verseKey: vk,
-          surahNumber: item.surah_number,
-          ayahNumber: item.ayah_number,
-          arabicText: item.text,
-          translation: item.translation || '',
-          transliteration: item.transliteration || '',
-        },
-      });
-    },
-    [selectVerse],
-  );
-
-  // Render the verse items (optimized with LegendList)
+  // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
-    ({item}: LegendListRenderItemProps<EnhancedVerse>) => {
-      const vk = item.verse_key;
-      const hlColor = highlights[vk];
-      return (
-        <VerseItem
-          verse={item}
-          onPress={() => onVersePress(vk)}
-          textColor={theme.colors.text}
-          borderColor={theme.colors.border}
-          showTranslation={showTranslation}
-          showTransliteration={showTransliteration}
-          transliterationFontSize={transliterationFontSize}
-          translationFontSize={translationFontSize}
-          arabicFontSize={arabicFontSize}
-          isSelected={selectedVerseKey === vk}
-          highlightColor={hlColor ? HIGHLIGHT_COLORS[hlColor] : null}
-          hasBookmark={bookmarkedVerseKeys.has(vk)}
-          hasNote={notedVerseKeys.has(vk)}
-          onLongPress={() => {
-            mediumHaptics();
-            openVerseActions(item);
-          }}
-          onOptionsPress={() => openVerseActions(item)}
-        />
-      );
-    },
+    ({item}: {item: EnhancedVerse}) => (
+      <VerseItem
+        verse={item}
+        onVersePress={onVersePress}
+        textColor={theme.colors.text}
+        borderColor={theme.colors.border}
+        showTranslation={showTranslation}
+        showTransliteration={showTransliteration}
+        showTajweed={showTajweed}
+        arabicFontFamily={arabicFontFamily}
+        transliterationFontSize={transliterationFontSize}
+        translationFontSize={translationFontSize}
+        arabicFontSize={arabicFontSize}
+      />
+    ),
     [
       onVersePress,
       theme.colors.text,
       theme.colors.border,
       showTranslation,
       showTransliteration,
+      showTajweed,
+      arabicFontFamily,
       transliterationFontSize,
       translationFontSize,
       arabicFontSize,
-      selectedVerseKey,
-      highlights,
-      bookmarkedVerseKeys,
-      notedVerseKeys,
-      openVerseActions,
     ],
   );
 
@@ -227,20 +162,18 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <LegendList
+      <FlashList
         ref={listRef}
         data={verses}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={renderHeader}
-        style={styles.list}
         contentContainerStyle={styles.scrollContent}
         renderScrollComponent={renderScrollComponent}
         showsVerticalScrollIndicator={false}
         bounces={true}
         overScrollMode="never"
-        recycleItems={true}
-        estimatedItemSize={150}
+        drawDistance={1500}
       />
     </View>
   );
@@ -251,10 +184,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: 'transparent',
-  },
-  list: {
-    flex: 1,
     borderRadius: moderateScale(15),
+    overflow: 'hidden',
   },
   scrollContent: {
     paddingBottom: verticalScale(20),
