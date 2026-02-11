@@ -8,14 +8,12 @@ import {
   Dimensions,
   ActivityIndicator,
   Text,
-  TouchableOpacity,
+  Pressable,
   ViewToken,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
-import BottomSheetModal from '@/components/BottomSheetModal';
-import {BottomSheetFlatList} from '@gorhom/bottom-sheet';
-import {SURAHS} from '@/data/surahData';
+import {SheetManager} from 'react-native-actions-sheet';
 import surahHeaderGlyphs from '@/data/mushaf/legacy/SURAH_HEADERS.json' with {type: 'json'};
 const surahHeaderGlyphsMap = surahHeaderGlyphs as Record<string, string>;
 import {SvgUri} from 'react-native-svg';
@@ -66,21 +64,22 @@ async function loadSurahHeaderFont(): Promise<boolean> {
   }
 }
 
-const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
+import {
+  SCREEN_WIDTH,
+  SCREEN_HEIGHT,
+  IS_COMPACT_DEVICE,
+  PAGE_PADDING_HORIZONTAL,
+  PAGE_PADDING_TOP,
+  AYAH_LINE_SPACING,
+  LINES_PER_PAGE,
+  CONTENT_WIDTH,
+  CONTENT_HEIGHT,
+  BASE_LINE_HEIGHT,
+  calculateLineYPositions,
+} from './constants';
+
 const TOTAL_PAGES_UTHMANI = 604;
 const TOTAL_PAGES_INDOPAK = 610;
-const LINES_PER_PAGE = 15;
-
-const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
-
-const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 8 : 16;
-const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 30 : 110;
-const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 130;
-const AYAH_LINE_SPACING = IS_COMPACT_DEVICE ? 0.75 : 0.7;
-
-const CONTENT_WIDTH = SCREEN_WIDTH - PAGE_PADDING_HORIZONTAL * 2;
-const CONTENT_HEIGHT = SCREEN_HEIGHT - PAGE_PADDING_TOP - PAGE_PADDING_BOTTOM;
-const BASE_LINE_HEIGHT = CONTENT_HEIGHT / LINES_PER_PAGE;
 
 const REFERENCE_WIDTH = 400;
 const REFERENCE_FONT_SIZE = 24;
@@ -102,7 +101,6 @@ const INDOPAK_FONT_SIZE = Math.max(
 );
 
 const SURAH_HEADER_FONT_SIZE = CONTENT_WIDTH * 0.25;
-const SURAH_HEADER_COLOR = '#5D4037';
 
 // Pre-loaded indopak word lookup (loaded once from DB)
 let indopakWordsById: Record<number, string> = {};
@@ -209,7 +207,8 @@ interface MushafLine {
 const UthmaniPageView: React.FC<{
   pageNumber: number;
   textColor: string;
-}> = ({pageNumber, textColor}) => {
+  highlightColor: string;
+}> = ({pageNumber, textColor, highlightColor}) => {
   const [surahHeaderFontLoaded, setSurahHeaderFontLoaded] = useState(
     isSurahHeaderFontLoaded,
   );
@@ -232,22 +231,23 @@ const UthmaniPageView: React.FC<{
     [pageNumber],
   );
 
-  const shouldCenterVertically = pageNumber === 1 || pageNumber === 2;
-
-  // Calculate Y positions for surah header overlays
-  const interLine = CONTENT_HEIGHT / pageLines.length;
+  // Calculate Y positions for surah header overlays using shared logic
+  const lineYPositions = useMemo(
+    () => calculateLineYPositions(pageLines, pageNumber),
+    [pageLines, pageNumber],
+  );
 
   return (
     <View style={styles.page}>
       {/* Skia Canvas renders ayah + basmallah lines */}
-      <SkiaPage pageNumber={pageNumber} textColor={textColor} />
+      <SkiaPage pageNumber={pageNumber} textColor={textColor} highlightColor={highlightColor} />
 
       {/* Surah header overlays (rendered as RN Text for the glyph font) */}
       {surahHeaderFontLoaded &&
         pageLines.map((line, index) => {
           if (line.line_type !== 'surah_name') return null;
 
-          const yPos = PAGE_PADDING_TOP + index * interLine;
+          const yPos = PAGE_PADDING_TOP + lineYPositions[index];
           const headerTopOffset = BASE_LINE_HEIGHT * 0.15;
 
           const surahText =
@@ -261,7 +261,7 @@ const UthmaniPageView: React.FC<{
                 styles.surahText,
                 {
                   top: yPos + headerTopOffset,
-                  color: SURAH_HEADER_COLOR,
+                  color: textColor,
                 },
               ]}>
               {surahText}
@@ -392,7 +392,7 @@ const IndopakPageView: React.FC<{
                 styles.surahText,
                 {
                   top: y + headerTopOffset,
-                  color: SURAH_HEADER_COLOR,
+                  color: textColor,
                 },
               ]}>
               {surahText}
@@ -456,6 +456,66 @@ const IndopakPageView: React.FC<{
 };
 
 // ============================================================================
+// Inline settings toolbar (tajweed toggle + font version)
+// ============================================================================
+const MushafInlineSettings: React.FC<{textColor: string}> = ({textColor}) => {
+  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const toggleTajweed = useMushafSettingsStore(s => s.toggleTajweed);
+  const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
+  const setUthmaniFont = useMushafSettingsStore(s => s.setUthmaniFont);
+
+  return (
+    <View style={styles.inlineSettings}>
+      <Pressable
+        style={[
+          styles.settingsPill,
+          showTajweed && styles.settingsPillActive,
+        ]}
+        onPress={toggleTajweed}>
+        <Text
+          style={[
+            styles.settingsPillText,
+            {color: showTajweed ? '#fff' : textColor},
+          ]}>
+          Tajweed
+        </Text>
+      </Pressable>
+
+      <View style={styles.fontToggleGroup}>
+        <Pressable
+          style={[
+            styles.settingsPill,
+            uthmaniFont === 'v1' && styles.settingsPillActive,
+          ]}
+          onPress={() => setUthmaniFont('v1')}>
+          <Text
+            style={[
+              styles.settingsPillText,
+              {color: uthmaniFont === 'v1' ? '#fff' : textColor},
+            ]}>
+            V1
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            styles.settingsPill,
+            uthmaniFont === 'v2' && styles.settingsPillActive,
+          ]}
+          onPress={() => setUthmaniFont('v2')}>
+          <Text
+            style={[
+              styles.settingsPillText,
+              {color: uthmaniFont === 'v2' ? '#fff' : textColor},
+            ]}>
+            V2
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+// ============================================================================
 // MushafViewer (main exported component)
 // ============================================================================
 export default function MushafViewer({
@@ -467,7 +527,6 @@ export default function MushafViewer({
   const [dbLoading, setDbLoading] = useState(true);
   const [basmalahLoaded, setBasmalahLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const [surahSheetVisible, setSurahSheetVisible] = useState(false);
   const [indopakMappings, setIndopakMappings] = useState<{
     pageToSurah: Record<number, number>;
     surahStartPages: Record<number, number>;
@@ -553,47 +612,16 @@ export default function MushafViewer({
           index: targetPage - 1,
           animated: true,
         });
-        setSurahSheetVisible(false);
       }
     },
     [surahStartPages],
   );
 
-  const renderSurahItem = useCallback(
-    ({item}: {item: (typeof SURAHS)[0]}) => {
-      const isCurrentSurah = item.id === currentSurahId;
-      return (
-        <TouchableOpacity
-          style={[
-            styles.surahItem,
-            isCurrentSurah && {backgroundColor: theme.colors.primary + '20'},
-          ]}
-          onPress={() => navigateToSurah(item.id)}>
-          <View style={styles.surahNumberContainer}>
-            <Text style={[styles.surahNumber, {color: theme.colors.text}]}>
-              {item.id}
-            </Text>
-          </View>
-          <View style={styles.surahInfo}>
-            <Text style={[styles.surahNameArabic, {color: theme.colors.text}]}>
-              {item.name_arabic}
-            </Text>
-            <Text
-              style={[
-                styles.surahNameEnglish,
-                {color: theme.colors.text + '99'},
-              ]}>
-              {item.name}
-            </Text>
-          </View>
-          <Text style={[styles.surahVerses, {color: theme.colors.text + '80'}]}>
-            {item.verses_count} Ayat
-          </Text>
-        </TouchableOpacity>
-      );
-    },
-    [currentSurahId, navigateToSurah, theme.colors],
-  );
+  const openSurahSheet = useCallback(() => {
+    SheetManager.show('mushaf-surah-selector', {
+      payload: {currentSurahId, onSelect: navigateToSurah},
+    });
+  }, [currentSurahId, navigateToSurah]);
 
   // Initialize Indopak layout DB (only when Indopak selected)
   useEffect(() => {
@@ -639,7 +667,7 @@ export default function MushafViewer({
     };
   }, [isIndopak]);
 
-  // Preload basmalah SVG asset (used by Indopak)
+  // Preload basmalah SVG asset (only needed for Indopak RN overlay)
   useEffect(() => {
     if (!isIndopak) {
       setBasmalahLoaded(true);
@@ -662,7 +690,9 @@ export default function MushafViewer({
   }, [isIndopak]);
 
   // Show loading if dependencies not ready
-  const isLoading = isIndopak ? dbLoading || !basmalahLoaded : !dkDataReady;
+  const isLoading = isIndopak
+    ? dbLoading || !basmalahLoaded
+    : !dkDataReady;
 
   if (isLoading) {
     return (
@@ -676,21 +706,24 @@ export default function MushafViewer({
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {/* Header with surah name */}
+      {/* Header with surah name + inline settings */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.surahSelector}
-          onPress={() => setSurahSheetVisible(true)}>
-          <Text style={[styles.headerSurahName, {color: theme.colors.text}]}>
-            {currentSurahName}
-          </Text>
-          <Ionicons
-            name="chevron-down"
-            size={18}
-            color={theme.colors.text}
-            style={styles.chevronIcon}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <Pressable style={styles.surahSelector} onPress={openSurahSheet}>
+            <Text
+              style={[styles.headerSurahName, {color: theme.colors.text}]}>
+              {currentSurahName}
+            </Text>
+            <Ionicons
+              name="chevron-down"
+              size={18}
+              color={theme.colors.text}
+              style={styles.chevronIcon}
+            />
+          </Pressable>
+
+          {isUthmani && <MushafInlineSettings textColor={theme.colors.text} />}
+        </View>
       </View>
 
       <FlatList
@@ -704,7 +737,7 @@ export default function MushafViewer({
               textColor={theme.colors.text}
             />
           ) : (
-            <UthmaniPageView pageNumber={item} textColor={theme.colors.text} />
+            <UthmaniPageView pageNumber={item} textColor={theme.colors.text} highlightColor={theme.colors.primary} />
           )
         }
         keyExtractor={item => item.toString()}
@@ -721,28 +754,6 @@ export default function MushafViewer({
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
       />
-
-      {/* Surah selection bottom sheet */}
-      <BottomSheetModal
-        isVisible={surahSheetVisible}
-        onClose={() => setSurahSheetVisible(false)}
-        snapPoints={['70%']}>
-        <Text style={[styles.sheetTitle, {color: theme.colors.text}]}>
-          Select Surah
-        </Text>
-        <BottomSheetFlatList
-          data={SURAHS}
-          renderItem={renderSurahItem}
-          keyExtractor={(item: {id: number}) => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-          initialScrollIndex={Math.max(0, currentSurahId - 3)}
-          getItemLayout={(_: unknown, index: number) => ({
-            length: 64,
-            offset: 64 * index,
-            index,
-          })}
-        />
-      </BottomSheetModal>
     </View>
   );
 }
@@ -761,6 +772,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   surahSelector: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -771,6 +787,28 @@ const styles = StyleSheet.create({
   },
   chevronIcon: {
     marginLeft: 4,
+  },
+  inlineSettings: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fontToggleGroup: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  settingsPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(128,128,128,0.15)',
+  },
+  settingsPillActive: {
+    backgroundColor: 'rgba(80,80,80,0.7)',
+  },
+  settingsPillText: {
+    fontSize: 12,
+    fontFamily: 'Manrope-SemiBold',
   },
   page: {
     width: SCREEN_WIDTH,
@@ -813,51 +851,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Manrope-Regular',
   },
-  sheetTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  surahItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    height: 64,
-  },
-  surahNumberContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  surahNumber: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  surahInfo: {
-    flex: 1,
-  },
-  surahNameArabic: {
-    fontSize: 18,
-    fontFamily: 'Traditional-Arabic',
-    textAlign: 'left',
-  },
-  surahNameEnglish: {
-    fontSize: 12,
-    marginTop: 2,
-  },
   basmallahSvg: {
     position: 'absolute',
     left: PAGE_PADDING_HORIZONTAL,
     width: CONTENT_WIDTH,
     height: BASE_LINE_HEIGHT,
-  },
-  surahVerses: {
-    fontSize: 12,
   },
 });

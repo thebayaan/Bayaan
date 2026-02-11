@@ -155,6 +155,7 @@ export class JustService {
     private fontSizeLineWidthRatio: number,
     private lineWidthRatio: number,
     pParBuilder?: SkParagraphBuilder,
+    fontFamily: string = 'DigitalKhatt',
   ) {
     this.desiredWidth = lineWidthRatio * this.lineWidth;
     this.lineText = quranTextService.getLineText(pageNumber, lineIndex);
@@ -162,7 +163,7 @@ export class JustService {
     this.fontSize = this.fontSizeLineWidthRatio * this.lineWidth;
 
     this.textStyle = {
-      fontFamilies: ['DigitalKhatt'],
+      fontFamilies: [fontFamily],
       fontSize: this.fontSize,
     };
 
@@ -754,6 +755,7 @@ export class JustService {
     pageNumber: number,
     fontSizeLineWidthRatio: number,
     fontMgr: SkTypefaceFontProvider,
+    fontFamily: string = 'DigitalKhatt',
   ): JustResultByLine[] {
     const paraBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
     const result: JustResultByLine[] = [];
@@ -788,6 +790,7 @@ export class JustService {
           fontSizeLineWidthRatio,
           lineWidthRatio,
           paraBuilder,
+          fontFamily,
         );
         result.push(justService.justifyLine());
       }

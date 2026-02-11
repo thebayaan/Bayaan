@@ -33,6 +33,7 @@ interface MushafSettingsState {
 
   // Font family
   arabicFontFamily: 'Uthmani' | 'Indopak';
+  uthmaniFont: 'v1' | 'v2';
 
   // Actions
   toggleTranslation: () => void;
@@ -42,6 +43,7 @@ interface MushafSettingsState {
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
   setArabicFontFamily: (font: 'Uthmani' | 'Indopak') => void;
+  setUthmaniFont: (font: 'v1' | 'v2') => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -55,6 +57,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       translationFontSize: getActualFontSize(4),
       transliterationFontSize: getActualFontSize(3),
       arabicFontFamily: 'Uthmani', // Default font
+      uthmaniFont: 'v2', // Default to V2
 
       // Actions
       toggleTranslation: () =>
@@ -69,11 +72,12 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set({transliterationFontSize: size}),
       setArabicFontFamily: (font: 'Uthmani' | 'Indopak') =>
         set({arabicFontFamily: font}),
+      setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -81,6 +85,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           if (state.arabicFontFamily === 'QPC') {
             state.arabicFontFamily = 'Uthmani';
           }
+        }
+        if (version < 2) {
+          state.uthmaniFont = 'v2';
         }
         return state as unknown as MushafSettingsState;
       },

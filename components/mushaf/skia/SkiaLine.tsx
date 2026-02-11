@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useMemo, useEffect} from 'react';
 import {
   Paragraph,
   Skia,
@@ -6,6 +6,7 @@ import {
   TextDirection,
   type SkTextStyle,
   type SkTypefaceFontProvider,
+  type SkParagraph,
 } from '@shopify/react-native-skia';
 import {
   quranTextService,
@@ -14,6 +15,7 @@ import {
   SpaceType,
 } from '@/services/mushaf/QuranTextService';
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
+import {tajweedColors} from '@/constants/tajweedColors';
 
 const lineParStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -30,6 +32,15 @@ interface SkiaLineProps {
   margin: number;
   yPos: number;
   textColor: string;
+  charToRule?: Map<number, string>;
+  fontFamily?: string;
+  onParagraphReady?: (
+    lineIndex: number,
+    paragraph: SkParagraph,
+    xPos: number,
+  ) => void;
+  highlightRange?: {start: number; end: number};
+  highlightColor?: string;
 }
 
 const SkiaLine: React.FC<SkiaLineProps> = ({
@@ -42,6 +53,11 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   margin,
   yPos,
   textColor,
+  charToRule,
+  fontFamily = 'DigitalKhatt',
+  onParagraphReady,
+  highlightRange,
+  highlightColor,
 }) => {
   const paragraph = useMemo(() => {
     const scale = (fontSize * justResult.fontSizeRatio) / FONTSIZE;
@@ -55,7 +71,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
 
     const textStyle: SkTextStyle = {
       color,
-      fontFamilies: ['DigitalKhatt'],
+      fontFamilies: [fontFamily],
       fontSize: justResult.fontSizeRatio * fontSize,
     };
 
@@ -74,17 +90,31 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     ) {
       const wordInfo = lineTextInfo.wordInfos[wordIndex];
 
-      // Render each character with optional font features for justification
+      // Render each character with optional font features and tajweed colors
       for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
         const char = lineText.charAt(i);
         const justInfo = justResult.fontFeatures.get(i);
+        const isHighlighted =
+          highlightRange &&
+          i >= highlightRange.start &&
+          i <= highlightRange.end;
+        const tajweedRule = charToRule?.get(i);
 
-        if (justInfo) {
-          const newtextStyle: SkTextStyle = {
+        const needsCustomStyle = justInfo || tajweedRule || isHighlighted;
+
+        if (needsCustomStyle) {
+          const charStyle: SkTextStyle = {
             ...textStyle,
-            fontFeatures: justInfo,
           };
-          paragraphBuilder.pushStyle(newtextStyle);
+          if (justInfo) {
+            charStyle.fontFeatures = justInfo;
+          }
+          if (isHighlighted) {
+            charStyle.color = Skia.Color(highlightColor!);
+          } else if (tajweedRule && tajweedColors[tajweedRule]) {
+            charStyle.color = Skia.Color(tajweedColors[tajweedRule]);
+          }
+          paragraphBuilder.pushStyle(charStyle);
           paragraphBuilder.addText(char);
           paragraphBuilder.pop();
         } else {
@@ -128,6 +158,10 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     fontSize,
     margin,
     textColor,
+    charToRule,
+    fontFamily,
+    highlightRange,
+    highlightColor,
   ]);
 
   if (!paragraph) return null;
@@ -148,6 +182,12 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     // Justified lines
     xPos = -(maxWidth - pageWidth + margin);
   }
+
+  useEffect(() => {
+    if (paragraph && onParagraphReady) {
+      onParagraphReady(lineIndex, paragraph, xPos);
+    }
+  }, [paragraph, lineIndex, xPos, onParagraphReady]);
 
   return <Paragraph paragraph={paragraph} x={xPos} y={yPos} width={maxWidth} />;
 };

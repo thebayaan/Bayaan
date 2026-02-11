@@ -12,8 +12,15 @@ export interface DKLine {
   surah_number: number;
 }
 
+export interface DKWordInfo {
+  text: string;
+  verseKey: string; // "surah:ayah"
+  wordPositionInVerse: number;
+}
+
 class DigitalKhattDataService {
   private wordsById: Map<number, string> = new Map();
+  private wordInfoById: Map<number, DKWordInfo> = new Map();
   private pageLines: Map<number, DKLine[]> = new Map();
   private surahStartPages: Record<number, number> = {};
   private pageToSurah: Record<number, number> = {};
@@ -62,11 +69,23 @@ class DigitalKhattDataService {
       db = await SQLite.openDatabaseAsync(dbName);
     }
 
-    const rows = await db.getAllAsync<{id: number; text: string}>(
-      'SELECT id, text FROM words;',
-    );
+    const rows = await db.getAllAsync<{
+      id: number;
+      text: string;
+      location: string;
+    }>('SELECT id, text, location FROM words;');
     for (const row of rows) {
       this.wordsById.set(row.id, row.text);
+      // Parse location "surah:ayah:word" into verse mapping
+      const parts = row.location.split(':');
+      if (parts.length >= 3) {
+        const verseKey = `${parts[0]}:${parts[1]}`;
+        this.wordInfoById.set(row.id, {
+          text: row.text,
+          verseKey,
+          wordPositionInVerse: parseInt(parts[2], 10),
+        });
+      }
     }
     await db.closeAsync();
     console.log(
@@ -155,6 +174,10 @@ class DigitalKhattDataService {
       if (text) words.push(text);
     }
     return words.join(' ');
+  }
+
+  getWordInfo(wordId: number): DKWordInfo | undefined {
+    return this.wordInfoById.get(wordId);
   }
 
   getSurahStartPages(): Record<number, number> {

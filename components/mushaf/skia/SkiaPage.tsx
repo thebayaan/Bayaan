@@ -1,12 +1,15 @@
-import React, {useMemo, useState, useEffect} from 'react';
-import {View, ActivityIndicator, StyleSheet, Dimensions} from 'react-native';
-import {Canvas, useFonts} from '@shopify/react-native-skia';
+import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
+import {View, ActivityIndicator, StyleSheet} from 'react-native';
+import {Canvas, useFonts, type SkParagraph} from '@shopify/react-native-skia';
+import {Gesture, GestureDetector} from 'react-native-gesture-handler';
+import {runOnJS} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import {SheetManager} from 'react-native-actions-sheet';
 import {
   quranTextService,
   PAGE_WIDTH,
   MARGIN,
   FONTSIZE,
-  SPACEWIDTH,
 } from '@/services/mushaf/QuranTextService';
 import {
   JustService,
@@ -16,38 +19,69 @@ import {
   digitalKhattDataService,
   type DKLine,
 } from '@/services/mushaf/DigitalKhattDataService';
+import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
+import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {useTajweedStore} from '@/store/tajweedStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import SkiaLine from './SkiaLine';
+import {
+  SCREEN_WIDTH,
+  SCREEN_HEIGHT,
+  PAGE_PADDING_HORIZONTAL,
+  PAGE_PADDING_TOP,
+  CONTENT_WIDTH,
+  CONTENT_HEIGHT,
+  calculateLineYPositions,
+} from '../constants';
 
-const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
-const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
-
-const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 8 : 16;
-const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 30 : 110;
-const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 130;
-
-const CONTENT_WIDTH = SCREEN_WIDTH - PAGE_PADDING_HORIZONTAL * 2;
-const CONTENT_HEIGHT = SCREEN_HEIGHT - PAGE_PADDING_TOP - PAGE_PADDING_BOTTOM;
+interface ParagraphInfo {
+  paragraph: SkParagraph;
+  xPos: number;
+}
 
 interface SkiaPageProps {
   pageNumber: number;
   textColor: string;
+  highlightColor: string;
 }
 
-const SkiaPage: React.FC<SkiaPageProps> = ({pageNumber, textColor}) => {
+const SkiaPage: React.FC<SkiaPageProps> = ({
+  pageNumber,
+  textColor,
+  highlightColor,
+}) => {
   const fontMgr = useFonts({
-    DigitalKhatt: [require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf')],
+    DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
+    DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf')],
   });
+
+  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
+  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
+  const fontFamily = uthmaniFont === 'v1' ? 'DigitalKhattV1' : 'DigitalKhattV2';
+
+  const selectedVerseKey = useMushafVerseSelectionStore(
+    s => s.selectedVerseKey,
+  );
+  const selectedPageNumber = useMushafVerseSelectionStore(
+    s => s.selectedPageNumber,
+  );
+  const selectVerse = useMushafVerseSelectionStore(s => s.selectVerse);
 
   const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
     null,
   );
   const [computing, setComputing] = useState(false);
 
+  // Paragraph references for hit testing
+  const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
+
   // Calculate rendering dimensions
   const scale = CONTENT_WIDTH / PAGE_WIDTH;
   const margin = MARGIN * scale;
   const lineWidth = CONTENT_WIDTH - 2 * margin;
-  const fontSize = FONTSIZE * scale * 0.9; // Slight reduction like reference
+  const fontSize = FONTSIZE * scale * 0.9;
   const fontSizeLineWidthRatio = fontSize / lineWidth;
 
   // Get page lines for layout calculation
@@ -65,7 +99,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({pageNumber, textColor}) => {
     const computeLayout = async () => {
       setComputing(true);
 
-      // Check cache first
       const cached = await JustService.getLayoutFromStorage(
         fontSizeLineWidthRatio,
       );
@@ -77,11 +110,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({pageNumber, textColor}) => {
         return;
       }
 
-      // Compute on the fly
       const result = JustService.getPageLayout(
         pageNumber,
         fontSizeLineWidthRatio,
         fontMgr,
+        fontFamily,
       );
       if (!cancelled) {
         setJustResults(result);
@@ -93,7 +126,140 @@ const SkiaPage: React.FC<SkiaPageProps> = ({pageNumber, textColor}) => {
     return () => {
       cancelled = true;
     };
-  }, [fontMgr, pageNumber, fontSizeLineWidthRatio]);
+  }, [fontMgr, pageNumber, fontSizeLineWidthRatio, fontFamily]);
+
+  // Calculate Y positions for each line
+  const lineYPositions = useMemo(
+    () => calculateLineYPositions(pageLines, pageNumber),
+    [pageLines, pageNumber],
+  );
+
+  // Compute tajweed char-to-rule maps for each line
+  const lineTajweedMaps = useMemo(() => {
+    if (!showTajweed || !indexedTajweedData) return null;
+    const maps: (Map<number, string> | null)[] = [];
+    for (let i = 0; i < pageLines.length; i++) {
+      maps.push(getLineTajweedMap(pageNumber, i, indexedTajweedData));
+    }
+    return maps;
+  }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
+
+  // Clear paragraph map when page changes
+  useEffect(() => {
+    paragraphMapRef.current.clear();
+  }, [pageNumber]);
+
+  // Callback for SkiaLine to register its paragraph
+  const handleParagraphReady = useCallback(
+    (lineIndex: number, paragraph: SkParagraph, xPos: number) => {
+      paragraphMapRef.current.set(lineIndex, {paragraph, xPos});
+    },
+    [],
+  );
+
+  // Find which line a Y coordinate falls within
+  const findLineAtY = useCallback(
+    (canvasY: number): number => {
+      for (let i = 0; i < lineYPositions.length; i++) {
+        const lineTop = lineYPositions[i];
+        const lineBottom =
+          i < lineYPositions.length - 1
+            ? lineYPositions[i + 1]
+            : CONTENT_HEIGHT;
+        if (canvasY >= lineTop && canvasY < lineBottom) {
+          return i;
+        }
+      }
+      return -1;
+    },
+    [lineYPositions],
+  );
+
+  // Long press handler — runs on JS thread via runOnJS
+  const handleLongPress = useCallback(
+    (eventX: number, eventY: number) => {
+      const canvasX = eventX - PAGE_PADDING_HORIZONTAL;
+      const canvasY = eventY - PAGE_PADDING_TOP;
+
+      if (
+        canvasX < 0 ||
+        canvasX > CONTENT_WIDTH ||
+        canvasY < 0 ||
+        canvasY > CONTENT_HEIGHT
+      ) {
+        return;
+      }
+
+      const lineIndex = findLineAtY(canvasY);
+      if (lineIndex < 0) return;
+
+      const line = pageLines[lineIndex];
+      if (!line || line.line_type === 'surah_name') return;
+
+      const paragraphInfo = paragraphMapRef.current.get(lineIndex);
+      if (!paragraphInfo) return;
+
+      const paragraphX = canvasX - paragraphInfo.xPos;
+      const paragraphY = canvasY - lineYPositions[lineIndex];
+
+      const charIndex = paragraphInfo.paragraph.getGlyphPositionAtCoordinate(
+        paragraphX,
+        paragraphY,
+      );
+
+      const verseSegment = mushafVerseMapService.findVerseAtCharIndex(
+        pageNumber,
+        lineIndex,
+        charIndex,
+      );
+
+      if (verseSegment) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        selectVerse(verseSegment.verseKey, pageNumber);
+        SheetManager.show('mushaf-verse-actions', {
+          payload: {
+            verseKey: verseSegment.verseKey,
+            surahNumber: verseSegment.surahNumber,
+            ayahNumber: verseSegment.ayahNumber,
+            pageNumber,
+          },
+        });
+      }
+    },
+    [pageNumber, pageLines, lineYPositions, findLineAtY, selectVerse],
+  );
+
+  // Long press gesture for verse selection
+  const longPressGesture = useMemo(
+    () =>
+      Gesture.LongPress()
+        .minDuration(400)
+        .onStart(event => {
+          'worklet';
+          runOnJS(handleLongPress)(event.x, event.y);
+        }),
+    [handleLongPress],
+  );
+
+  // Compute per-line character ranges for the selected verse (used for text coloring)
+  const highlightRanges = useMemo<
+    Map<number, {start: number; end: number}>
+  >(() => {
+    if (!selectedVerseKey || selectedPageNumber !== pageNumber)
+      return new Map();
+    const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
+      pageNumber,
+      selectedVerseKey,
+    );
+    const map = new Map<number, {start: number; end: number}>();
+    for (const {lineIndex, segment} of verseLines) {
+      map.set(lineIndex, {
+        start: segment.startCharIndex,
+        end: segment.endCharIndex,
+      });
+    }
+    return map;
+  }, [selectedVerseKey, selectedPageNumber, pageNumber]);
 
   if (!fontMgr || !justResults || computing) {
     return (
@@ -103,52 +269,55 @@ const SkiaPage: React.FC<SkiaPageProps> = ({pageNumber, textColor}) => {
     );
   }
 
-  // Calculate Y positions for each line
-  const interLine = CONTENT_HEIGHT / pageLines.length;
-  const shouldCenterVertically = pageNumber === 1 || pageNumber === 2;
-
   return (
-    <View style={styles.page}>
-      <Canvas
-        style={{
-          width: CONTENT_WIDTH,
-          height: CONTENT_HEIGHT,
-          marginLeft: PAGE_PADDING_HORIZONTAL,
-          marginTop: PAGE_PADDING_TOP,
-        }}>
-        {pageLines.map((line, lineIndex) => {
-          if (!justResults[lineIndex]) return null;
+    <GestureDetector gesture={longPressGesture}>
+      <View style={styles.page}>
+        <Canvas
+          style={{
+            width: CONTENT_WIDTH,
+            height: CONTENT_HEIGHT,
+            marginLeft: PAGE_PADDING_HORIZONTAL,
+            marginTop: PAGE_PADDING_TOP,
+          }}>
+          {pageLines.map((line, lineIndex) => {
+            if (!justResults[lineIndex]) return null;
+            if (line.line_type === 'surah_name') return null;
 
-          // Skip surah_name lines — they are rendered as RN Text overlays
-          if (line.line_type === 'surah_name') return null;
+            const yPos = lineYPositions[lineIndex];
 
-          const yPos = lineIndex * interLine;
+            const lineInfo = quranTextService.getLineInfo(
+              pageNumber,
+              lineIndex,
+            );
+            let lineMargin = margin;
+            if (lineInfo.lineWidthRatio !== 1) {
+              const newLineWidth = lineWidth * lineInfo.lineWidthRatio;
+              lineMargin += (lineWidth - newLineWidth) / 2;
+            }
 
-          // Adjust margin for lines with lineWidthRatio != 1
-          const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
-          let lineMargin = margin;
-          if (lineInfo.lineWidthRatio !== 1) {
-            const newLineWidth = lineWidth * lineInfo.lineWidthRatio;
-            lineMargin += (lineWidth - newLineWidth) / 2;
-          }
-
-          return (
-            <SkiaLine
-              key={`${pageNumber}-${lineIndex}`}
-              pageNumber={pageNumber}
-              lineIndex={lineIndex}
-              fontMgr={fontMgr}
-              justResult={justResults[lineIndex]}
-              pageWidth={CONTENT_WIDTH}
-              fontSize={fontSize}
-              margin={lineMargin}
-              yPos={yPos}
-              textColor={textColor}
-            />
-          );
-        })}
-      </Canvas>
-    </View>
+            return (
+              <SkiaLine
+                key={`${pageNumber}-${lineIndex}`}
+                pageNumber={pageNumber}
+                lineIndex={lineIndex}
+                fontMgr={fontMgr}
+                justResult={justResults[lineIndex]}
+                pageWidth={CONTENT_WIDTH}
+                fontSize={fontSize}
+                margin={lineMargin}
+                yPos={yPos}
+                textColor={textColor}
+                charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
+                fontFamily={fontFamily}
+                onParagraphReady={handleParagraphReady}
+                highlightRange={highlightRanges.get(lineIndex)}
+                highlightColor={highlightColor}
+              />
+            );
+          })}
+        </Canvas>
+      </View>
+    </GestureDetector>
   );
 };
 
