@@ -33,14 +33,18 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const queue = usePlayerStore(s => s.queue);
   const insets = useSafeAreaInsets();
 
-  // Get mushaf settings from the store
-  const {
-    showTranslation,
-    showTransliteration,
-    arabicFontSize,
-    translationFontSize,
-    transliterationFontSize,
-  } = useMushafSettingsStore();
+  // Granular mushaf settings selectors (avoid full-store subscription)
+  const showTranslation = useMushafSettingsStore(s => s.showTranslation);
+  const showTransliteration = useMushafSettingsStore(
+    s => s.showTransliteration,
+  );
+  const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const translationFontSize = useMushafSettingsStore(
+    s => s.translationFontSize,
+  );
+  const transliterationFontSize = useMushafSettingsStore(
+    s => s.transliterationFontSize,
+  );
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
