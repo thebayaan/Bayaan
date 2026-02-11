@@ -10,6 +10,11 @@ import {
   LegendListRenderItemProps,
 } from '@legendapp/list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
+import {SheetManager} from 'react-native-actions-sheet';
+import {mediumHaptics} from '@/utils/haptics';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -79,6 +84,25 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const surah = surahData.find(s => s.id === currentSurah);
 
+  // Verse selection
+  const selectedVerseKey = useVerseSelectionStore(s => s.selectedVerseKey);
+  const selectVerse = useVerseSelectionStore(s => s.selectVerse);
+
+  // Verse annotations
+  const bookmarkedVerseKeys = useVerseAnnotationsStore(
+    s => s.bookmarkedVerseKeys,
+  );
+  const notedVerseKeys = useVerseAnnotationsStore(s => s.notedVerseKeys);
+  const highlights = useVerseAnnotationsStore(s => s.highlights);
+  const loadAnnotationsForSurah = useVerseAnnotationsStore(
+    s => s.loadAnnotationsForSurah,
+  );
+
+  // Load annotations when surah changes
+  useEffect(() => {
+    loadAnnotationsForSurah(currentSurah);
+  }, [currentSurah, loadAnnotationsForSurah]);
+
   // Memoize the getVersesForSurah function — no tajweed dependency
   const getVersesForSurahMemo = useCallback(() => {
     const surahVerses = versesBySurah[currentSurah];
@@ -130,13 +154,34 @@ export const QuranView: React.FC<QuranViewProps> = ({
     );
   }, [surah?.bismillah_pre, theme.colors.text]);
 
+  // Open verse actions sheet for a given verse
+  const openVerseActions = useCallback(
+    (item: EnhancedVerse) => {
+      const vk = item.verse_key;
+      selectVerse(vk, item.surah_number, item.ayah_number);
+      SheetManager.show('verse-actions', {
+        payload: {
+          verseKey: vk,
+          surahNumber: item.surah_number,
+          ayahNumber: item.ayah_number,
+          arabicText: item.text,
+          translation: item.translation || '',
+          transliteration: item.transliteration || '',
+        },
+      });
+    },
+    [selectVerse],
+  );
+
   // Render the verse items (optimized with LegendList)
   const renderItem = useCallback(
     ({item}: LegendListRenderItemProps<EnhancedVerse>) => {
+      const vk = item.verse_key;
+      const hlColor = highlights[vk];
       return (
         <VerseItem
           verse={item}
-          onPress={() => onVersePress(item.verse_key)}
+          onPress={() => onVersePress(vk)}
           textColor={theme.colors.text}
           borderColor={theme.colors.border}
           showTranslation={showTranslation}
@@ -144,6 +189,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
           transliterationFontSize={transliterationFontSize}
           translationFontSize={translationFontSize}
           arabicFontSize={arabicFontSize}
+          isSelected={selectedVerseKey === vk}
+          highlightColor={hlColor ? HIGHLIGHT_COLORS[hlColor] : null}
+          hasBookmark={bookmarkedVerseKeys.has(vk)}
+          hasNote={notedVerseKeys.has(vk)}
+          onLongPress={() => {
+            mediumHaptics();
+            openVerseActions(item);
+          }}
+          onOptionsPress={() => openVerseActions(item)}
         />
       );
     },
@@ -156,6 +210,11 @@ export const QuranView: React.FC<QuranViewProps> = ({
       transliterationFontSize,
       translationFontSize,
       arabicFontSize,
+      selectedVerseKey,
+      highlights,
+      bookmarkedVerseKeys,
+      notedVerseKeys,
+      openVerseActions,
     ],
   );
 

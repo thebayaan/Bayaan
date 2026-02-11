@@ -15,6 +15,8 @@ export default function CollectionLayout() {
       <Stack.Screen name="collection/playlists" />
       <Stack.Screen name="collection/downloads" />
       <Stack.Screen name="collection/uploads" />
+      <Stack.Screen name="collection/bookmarks" />
+      <Stack.Screen name="collection/notes" />
       <Stack.Screen name="playlist/[id]" />
     </Stack>
   );

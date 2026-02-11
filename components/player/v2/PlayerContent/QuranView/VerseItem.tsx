@@ -4,7 +4,7 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Verse} from '@/types/quran';
 import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
-import {Ionicons} from '@expo/vector-icons';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 
@@ -97,6 +97,12 @@ interface VerseItemProps {
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
+  isSelected?: boolean;
+  highlightColor?: string | null;
+  hasBookmark?: boolean;
+  hasNote?: boolean;
+  onLongPress?: () => void;
+  onOptionsPress?: () => void;
 }
 
 /**
@@ -119,6 +125,12 @@ export const VerseItem = memo<VerseItemProps>(
     transliterationFontSize: propTransliterationFontSize,
     translationFontSize: propTranslationFontSize,
     arabicFontSize: propArabicFontSize,
+    isSelected,
+    highlightColor,
+    hasBookmark,
+    hasNote,
+    onLongPress,
+    onOptionsPress,
   }) => {
     // Get settings from the store
     const {
@@ -248,61 +260,104 @@ export const VerseItem = memo<VerseItemProps>(
       : null;
     // <--- End Get Indopak text
 
+    const highlightBgColor = highlightColor
+      ? Color(highlightColor).alpha(0.3).toString()
+      : undefined;
+
     return (
       <Pressable
-        style={({pressed}) => [
+        style={() => [
           styles.container,
-          {borderBottomColor: borderColor, opacity: pressed ? 0.7 : 1},
+          {borderBottomColor: borderColor},
+          isSelected && {
+            backgroundColor: Color(textColor).alpha(0.06).toString(),
+            borderRadius: moderateScale(8),
+          },
+          highlightBgColor && {
+            backgroundColor: highlightBgColor,
+            borderRadius: moderateScale(8),
+          },
         ]}
-        onPress={onPress}>
+        onPress={onPress}
+        onLongPress={onLongPress}>
         <View style={styles.verseInfoContainer}>
-          <View style={[styles.verseInfoPill, {backgroundColor: bgColor}]}>
-            <Text style={[styles.verseInfo, {color: textColor}]}>
-              {verse.surah_number}:{verse.ayah_number}
-            </Text>
+          <View style={styles.verseInfoRow}>
+            <View style={[styles.verseInfoPill, {backgroundColor: bgColor}]}>
+              <Text style={[styles.verseInfo, {color: textColor}]}>
+                {verse.surah_number}:{verse.ayah_number}
+              </Text>
+            </View>
+            {hasBookmark && (
+              <Feather
+                name="bookmark"
+                size={moderateScale(12)}
+                color={textColor}
+                style={styles.annotationIcon}
+              />
+            )}
+            {hasNote && (
+              <Feather
+                name="file-text"
+                size={moderateScale(12)}
+                color={textColor}
+                style={styles.annotationIcon}
+              />
+            )}
+            <Pressable
+              onPress={onOptionsPress}
+              hitSlop={8}
+              style={styles.optionsButton}>
+              <Feather
+                name="more-horizontal"
+                size={moderateScale(18)}
+                color={Color(textColor).alpha(0.5).toString()}
+              />
+            </Pressable>
           </View>
         </View>
         {/* ---> Simplified Arabic Text Rendering <-- */}
-        {isIndopakSelected ? (
-          // Indopak Rendering
-          <Text
-            style={[
-              styles.arabicText,
-              {
-                color: textColor,
-                fontSize: moderateScale(arabicFontSize),
-                fontFamily: arabicFontFamily, // 'Indopak'
-              },
-            ]}>
-            {indopakText || 'Loading Indopak...'}
-          </Text>
-        ) : isQPCSelected && tajweedNodes ? (
-          // QPC Rendering: Always use generated tajweedNodes
-          <Text
-            style={[
-              styles.arabicText,
-              {
-                fontSize: moderateScale(arabicFontSize),
-                fontFamily: arabicFontFamily, // 'QPC'
-              },
-            ]}>
-            {tajweedNodes}
-          </Text>
-        ) : (
-          // Fallback (e.g., QPC selected but data is loading/missing)
-          <Text
-            style={[
-              styles.arabicText,
-              {
-                color: textColor,
-                fontSize: moderateScale(arabicFontSize),
-                fontFamily: arabicFontFamily, // Should be QPC here ideally
-              },
-            ]}>
-            {/* Display plain text or loading indicator */}
-            {verse.text || 'Loading...'}
-          </Text>
-        )}
+        <View>
+          {isIndopakSelected ? (
+            // Indopak Rendering
+            <Text
+              style={[
+                styles.arabicText,
+                {
+                  color: textColor,
+                  fontSize: moderateScale(arabicFontSize),
+                  fontFamily: arabicFontFamily, // 'Indopak'
+                },
+              ]}>
+              {indopakText || 'Loading Indopak...'}
+            </Text>
+          ) : isQPCSelected && tajweedNodes ? (
+            // QPC Rendering: Always use generated tajweedNodes
+            <Text
+              style={[
+                styles.arabicText,
+                {
+                  fontSize: moderateScale(arabicFontSize),
+                  fontFamily: arabicFontFamily, // 'QPC'
+                },
+              ]}>
+              {tajweedNodes}
+            </Text>
+          ) : (
+            // Fallback (e.g., QPC selected but data is loading/missing)
+            <Text
+              style={[
+                styles.arabicText,
+                {
+                  color: textColor,
+                  fontSize: moderateScale(arabicFontSize),
+                  fontFamily: arabicFontFamily, // Should be QPC here ideally
+                },
+              ]}>
+              {/* Display plain text or loading indicator */}
+              {verse.text || 'Loading...'}
+            </Text>
+          )}
+        </View>
         {/* ---> End Conditional Rendering <--- */}
         {showTransliteration && verse.transliteration && (
           <FormattedTextRenderer
@@ -380,14 +435,25 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  optionsButton: {
+    marginLeft: 'auto',
+    padding: moderateScale(4),
+  },
   verseInfoContainer: {
-    alignSelf: 'flex-start',
     marginBottom: verticalScale(6),
+  },
+  verseInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(4),
   },
   verseInfoPill: {
     paddingHorizontal: moderateScale(4),
     paddingVertical: moderateScale(3),
     borderRadius: moderateScale(6),
+  },
+  annotationIcon: {
+    opacity: 0.7,
   },
   verseInfo: {
     fontSize: moderateScale(12),
