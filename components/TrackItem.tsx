@@ -1,13 +1,10 @@
-import React, {useEffect, useState, useMemo} from 'react';
-import {View, Text, Pressable, GestureResponderEvent} from 'react-native';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import React, {useMemo} from 'react';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {Theme} from '@/utils/themeUtils';
 import {ReciterImage} from '@/components/ReciterImage';
-import {getSurahById, getReciterById} from '@/services/dataService';
+import {getSurahById, getReciterByIdSync} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {Reciter, Rewayat} from '@/data/reciterData';
-import Color from 'color';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
@@ -46,14 +43,26 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     onLongPress,
   }) => {
     const {theme} = useTheme();
-    const styles = createStyles(theme);
-    const [reciter, setReciter] = useState<Reciter | null>(null);
-    const [rewayat, setRewayat] = useState<Rewayat | null>(null);
 
-    // Get player state
+    // Sync data loading — no async, no useState, no useEffect
+    const reciter = useMemo(
+      () => getReciterByIdSync(reciterId) ?? null,
+      [reciterId],
+    );
+
+    const rewayat = useMemo(
+      () =>
+        rewayatId
+          ? reciter?.rewayat?.find(r => r.id === rewayatId) ?? null
+          : null,
+      [reciter, rewayatId],
+    );
+
+    // Get player state — subscribe to currentTrack instead of full tracks array
     const playbackStatus = usePlayerStore(state => state.playback.state);
-    const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-    const tracks = usePlayerStore(state => state.queue.tracks);
+    const currentTrack = usePlayerStore(
+      state => state.queue.tracks[state.queue.currentIndex] ?? null,
+    );
 
     const downloadId = useMemo(
       () =>
@@ -82,11 +91,6 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     // Check if this is the current track (regardless of play state)
     const isCurrentTrack = useMemo(() => {
-      const currentTrack =
-        tracks && currentIndex >= 0 && currentIndex < tracks.length
-          ? tracks[currentIndex]
-          : null;
-
       if (!currentTrack) return false;
 
       // For upload tracks, match by userRecitationId
@@ -106,32 +110,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
         currentTrack.surahId === surahId &&
         rewayatMatches
       );
-    }, [reciterId, surahId, rewayatId, userRecitationId, currentIndex, tracks]);
-
-    useEffect(() => {
-      let mounted = true;
-      const loadReciter = async () => {
-        try {
-          const data = await getReciterById(reciterId);
-          if (mounted && data) {
-            setReciter(data);
-            // Find the rewayat if rewayatId is provided
-            if (rewayatId && data.rewayat) {
-              const foundRewayat = data.rewayat.find(r => r.id === rewayatId);
-              if (foundRewayat) {
-                setRewayat(foundRewayat);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error loading reciter:', error);
-        }
-      };
-      loadReciter();
-      return () => {
-        mounted = false;
-      };
-    }, [reciterId, rewayatId]);
+    }, [reciterId, surahId, rewayatId, userRecitationId, currentTrack]);
 
     const surah = getSurahById(parseInt(surahId, 10));
     if (!surah || !reciter) return null;
@@ -142,7 +121,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const renderRewayatBadge = () => {
       if (!rewayat) return null;
       return (
-        <Text style={styles.rewayatText}>
+        <Text style={[styles.rewayatText, {color: theme.colors.textSecondary}]}>
           {rewayat.name}
           {rewayat.style ? ` \u2022 ${rewayat.style}` : ''}
         </Text>
@@ -150,7 +129,8 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     };
 
     return (
-      <View style={styles.trackItem}>
+      <View
+        style={[styles.trackItem, {backgroundColor: theme.colors.background}]}>
         {/* Play zone */}
         <Pressable
           style={styles.playZone}
@@ -167,16 +147,21 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
           <View style={styles.trackInfo}>
             <View style={styles.surahNameRow}>
               {isCurrentTrack ? (
-                <GradientText style={styles.surahName} surahId={surah.id}>
+                <GradientText
+                  style={[styles.surahName, {color: theme.colors.text}]}
+                  surahId={surah.id}>
                   {surah.id + '. ' + surah.name}
                 </GradientText>
               ) : (
-                <Text style={styles.surahName}>
+                <Text style={[styles.surahName, {color: theme.colors.text}]}>
                   {surah.id + '. ' + surah.name}
                 </Text>
               )}
               {surahGlyph && (
-                <Text style={styles.surahGlyphInline}>{surahGlyph}</Text>
+                <Text
+                  style={[styles.surahGlyphInline, {color: theme.colors.text}]}>
+                  {surahGlyph}
+                </Text>
               )}
             </View>
             <View style={styles.reciterInfoRow}>
@@ -195,7 +180,13 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
                   style={styles.downloadIcon}
                 />
               ) : null}
-              <Text style={styles.reciterName}>{reciter.name}</Text>
+              <Text
+                style={[
+                  styles.reciterName,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                {reciter.name}
+              </Text>
             </View>
             {renderRewayatBadge()}
           </View>
@@ -230,75 +221,69 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
 TrackItem.displayName = 'TrackItem';
 
-const createStyles = (theme: Theme) =>
-  ScaledSheet.create({
-    trackItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.colors.background,
-    },
-    playZone: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(8),
-      paddingHorizontal: moderateScale(18),
-    },
-    imageContainer: {
-      marginRight: moderateScale(12),
-    },
-    reciterImage: {
-      width: moderateScale(50),
-      height: moderateScale(50),
-      borderRadius: moderateScale(10),
-    },
-    trackInfo: {
-      flex: 1,
-    },
-    surahNameRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: moderateScale(1),
-    },
-    surahName: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.semiBold,
-      color: theme.colors.text,
-    },
-    surahGlyphInline: {
-      fontSize: moderateScale(16),
-      fontFamily: 'SurahNames',
-      color: theme.colors.text,
-      marginLeft: moderateScale(6),
-    },
-    reciterInfoRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(4),
-      marginBottom: moderateScale(3),
-    },
-    reciterName: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-    },
-    downloadIcon: {
-      marginTop: moderateScale(1),
-    },
-    rewayatText: {
-      fontSize: moderateScale(10),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      textTransform: 'capitalize',
-    },
-    optionsZone: {
-      width: '20%' as any,
-      minWidth: moderateScale(50),
-      maxWidth: moderateScale(70),
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: moderateScale(8),
-      paddingRight: moderateScale(12),
-      alignSelf: 'stretch' as const,
-    },
-  });
+const styles = StyleSheet.create({
+  trackItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  playZone: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: moderateScale(8),
+    paddingHorizontal: moderateScale(18),
+  },
+  imageContainer: {
+    marginRight: moderateScale(12),
+  },
+  reciterImage: {
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(10),
+  },
+  trackInfo: {
+    flex: 1,
+  },
+  surahNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: moderateScale(1),
+  },
+  surahName: {
+    fontSize: moderateScale(14),
+    fontFamily: 'Manrope-SemiBold',
+  },
+  surahGlyphInline: {
+    fontSize: moderateScale(16),
+    fontFamily: 'SurahNames',
+    marginLeft: moderateScale(6),
+  },
+  reciterInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(4),
+    marginBottom: moderateScale(3),
+  },
+  reciterName: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-Regular',
+  },
+  downloadIcon: {
+    marginTop: moderateScale(1),
+  },
+  rewayatText: {
+    fontSize: moderateScale(10),
+    fontFamily: 'Manrope-Regular',
+    textTransform: 'capitalize',
+  },
+  optionsZone: {
+    width: '20%' as any,
+    minWidth: moderateScale(50),
+    maxWidth: moderateScale(70),
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: moderateScale(8),
+    paddingRight: moderateScale(12),
+    alignSelf: 'stretch' as const,
+  },
+});
