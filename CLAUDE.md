@@ -568,6 +568,7 @@ Additional documentation is available in the `docs/` directory:
 - **[Player System](docs/features/player.md)** - Audio player architecture
 - **[Queue Management](docs/features/queue.md)** - Queue system
 - **[Ambient Sounds](docs/features/ambient-sounds.md)** - Ambient nature sounds feature
+- **[Digital Khatt](docs/features/digital-khatt/README.md)** - Uthmani Mushaf rendering architecture, internals, and debugging
 - **[Deployment Guide](docs/deployment/deployment.md)** - Build and release procedures
 - **[Version Management](docs/deployment/version-management.md)** - Git-based versioning
 - **[Git Workflow](docs/development/git-workflow.md)** - Branching and collaboration
