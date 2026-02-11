@@ -158,7 +158,7 @@ export const VerseItem = memo<VerseItemProps>(
 
     // Determine font selection
     const isIndopakSelected = arabicFontFamily === 'Indopak';
-    const isQPCSelected = arabicFontFamily === 'QPC';
+    const isQPCSelected = arabicFontFamily === 'Uthmani';
 
     const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
       null,

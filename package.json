@@ -51,6 +51,7 @@
     "@rneui/base": "^5.0.0",
     "@rneui/themed": "^5.0.0",
     "@shopify/flash-list": "2.0.2",
+    "@shopify/react-native-skia": "2.2.12",
     "@supabase/supabase-js": "^2.91.0",
     "burnt": "^0.13.0",
     "colorthief": "^2.4.0",

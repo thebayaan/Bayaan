@@ -16,27 +16,21 @@ import {Ionicons} from '@expo/vector-icons';
 import BottomSheetModal from '@/components/BottomSheetModal';
 import {BottomSheetFlatList} from '@gorhom/bottom-sheet';
 import {SURAHS} from '@/data/surahData';
-import qpcGlyphs from '../../data/mushaf/qpc-v2.json';
-import qpcGlyphsTajweed from '../../data/mushaf/qpc-v4.json';
-import surahHeaderGlyphs from '@/data/mushaf/SURAH_HEADERS.json' with { type: 'json' };
+import surahHeaderGlyphs from '@/data/mushaf/legacy/SURAH_HEADERS.json' with {type: 'json'};
 const surahHeaderGlyphsMap = surahHeaderGlyphs as Record<string, string>;
 import {SvgUri} from 'react-native-svg';
 import {Asset} from 'expo-asset';
-
-// Use require() for the SVG asset to avoid needing the SVG transformer
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const BasmalahAsset = require('@/data/mushaf/Bismillah..svg');
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import { SURAH_NAMES } from './constants';
-import { getFontRequires } from './fontRequires';
+import {SURAH_NAMES} from './constants';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import SkiaPage from './skia/SkiaPage';
 
-// Font cache to track which page fonts are already loaded
-// Separate caches for each font type
-const loadedFontsV1 = new Set<number>();
-const loadedFontsTajweed = new Set<number>();
-
-const surahHeaderFont = require('@/data/mushaf/SURAH_HEADERS.ttf');
+// SVG asset for basmallah (used by Indopak path)
+const BasmalahAsset = require('@/data/mushaf/legacy/Bismillah..svg');
 const basmalahUri = Asset.fromModule(BasmalahAsset).uri;
+
+// Surah header font (shared between Uthmani and Indopak)
+const surahHeaderFont = require('@/data/mushaf/legacy/SURAH_HEADERS.ttf');
 let isSurahHeaderFontLoaded = false;
 
 let isIndopakFontLoaded = false;
@@ -45,40 +39,12 @@ async function loadIndopakFont(): Promise<boolean> {
   if (isIndopakFontLoaded) return true;
   try {
     await Font.loadAsync({
-      Indopak: require('@/data/mushaf/indopak/font.ttf'),
+      Indopak: require('@/data/mushaf/legacy/indopak/font.ttf'),
     });
     isIndopakFontLoaded = true;
     return true;
   } catch (error) {
     console.error('Error loading indopak font:', error);
-    return false;
-  }
-}
-
-// Function to load font for a specific page
-async function loadPageFont(pageNumber: number, showTajweed: boolean): Promise<boolean> {
-  const loadedFonts = showTajweed ? loadedFontsTajweed : loadedFontsV1;
-
-  if (loadedFonts.has(pageNumber)) {
-    return true;
-  }
-
-  const fontRequires = getFontRequires(showTajweed);
-  const fontSource = fontRequires[pageNumber];
-  if (!fontSource) {
-    console.warn(`No font found for page ${pageNumber}`);
-    return false;
-  }
-
-  try {
-    const fontName = showTajweed ? `p${pageNumber}_tajweed` : `p${pageNumber}`;
-    await Font.loadAsync({
-      [fontName]: fontSource,
-    });
-    loadedFonts.add(pageNumber);
-    return true;
-  } catch (error) {
-    console.error(`Error loading font for page ${pageNumber}:`, error);
     return false;
   }
 }
@@ -101,61 +67,42 @@ async function loadSurahHeaderFont(): Promise<boolean> {
 }
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
-const TOTAL_PAGES_QPC = 604;
+const TOTAL_PAGES_UTHMANI = 604;
 const TOTAL_PAGES_INDOPAK = 610;
 const LINES_PER_PAGE = 15;
 
-// iPhone SE (2nd/3rd gen) has height 667, all Face ID iPhones are 812+
 const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
 
-// Tuned separately for compact (SE) vs modern devices
 const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 8 : 16;
 const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 30 : 110;
 const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 130;
-const AYAH_LINE_SPACING = IS_COMPACT_DEVICE ? 0.75 : 0.70;
+const AYAH_LINE_SPACING = IS_COMPACT_DEVICE ? 0.75 : 0.7;
 
 const CONTENT_WIDTH = SCREEN_WIDTH - PAGE_PADDING_HORIZONTAL * 2;
 const CONTENT_HEIGHT = SCREEN_HEIGHT - PAGE_PADDING_TOP - PAGE_PADDING_BOTTOM;
 const BASE_LINE_HEIGHT = CONTENT_HEIGHT / LINES_PER_PAGE;
 
-// Dynamic font scaling based on screen width (reference: iPhone 14/15 at 393px = 24pt)
 const REFERENCE_WIDTH = 400;
 const REFERENCE_FONT_SIZE = 24;
 const MIN_FONT_SIZE = 16;
 const MAX_FONT_SIZE = 56;
 
 const widthScale = SCREEN_WIDTH / REFERENCE_WIDTH;
+const maxFontFromHeight =
+  (CONTENT_HEIGHT / LINES_PER_PAGE) * AYAH_LINE_SPACING * 0.85;
 
-// Height ceiling: font must fit within the ayah line height
-const maxFontFromHeight = (CONTENT_HEIGHT / LINES_PER_PAGE) * AYAH_LINE_SPACING * 0.85;
-
-// QPC and Indopak fonts have different metrics — separate ratios
-const QPC_FONT_SIZE_RATIO = IS_COMPACT_DEVICE ? 0.90 : 0.85;
 const INDOPAK_FONT_SIZE_RATIO = IS_COMPACT_DEVICE ? 0.85 : 0.95;
-
-const QPC_FONT_SIZE = Math.max(MIN_FONT_SIZE,
-  Math.min(Math.round(REFERENCE_FONT_SIZE * widthScale * QPC_FONT_SIZE_RATIO), maxFontFromHeight, MAX_FONT_SIZE)
-);
-
-const INDOPAK_FONT_SIZE = Math.max(MIN_FONT_SIZE,
-  Math.min(Math.round(REFERENCE_FONT_SIZE * widthScale * INDOPAK_FONT_SIZE_RATIO), maxFontFromHeight, MAX_FONT_SIZE)
+const INDOPAK_FONT_SIZE = Math.max(
+  MIN_FONT_SIZE,
+  Math.min(
+    Math.round(REFERENCE_FONT_SIZE * widthScale * INDOPAK_FONT_SIZE_RATIO),
+    maxFontFromHeight,
+    MAX_FONT_SIZE,
+  ),
 );
 
 const SURAH_HEADER_FONT_SIZE = CONTENT_WIDTH * 0.25;
 const SURAH_HEADER_COLOR = '#5D4037';
-
-// Pre-process glyph data
-const glyphsById: Record<number, string> = {};
-for (const word of Object.values(qpcGlyphs)) {
-  glyphsById[word.id] = word.text;
-}
-
-const glyphsByIdTajweed: Record<number, string> = {};
-for (const word of Object.values(qpcGlyphsTajweed)) {
-  glyphsByIdTajweed[word.id] = word.text;
-}
-
-const BASMALLAH = '﷽';
 
 // Pre-loaded indopak word lookup (loaded once from DB)
 let indopakWordsById: Record<number, string> = {};
@@ -170,7 +117,9 @@ async function loadIndopakWords(): Promise<void> {
     try {
       let db = await SQLite.openDatabaseAsync('indopak_words.db');
       const tableCheck = await db
-        .getFirstAsync<{name: string}>(
+        .getFirstAsync<{
+          name: string;
+        }>(
           "SELECT name FROM sqlite_master WHERE type='table' AND name='words';",
         )
         .catch(() => null);
@@ -179,7 +128,7 @@ async function loadIndopakWords(): Promise<void> {
         await db.closeAsync();
         await SQLite.deleteDatabaseAsync('indopak_words.db');
         await SQLite.importDatabaseFromAssetAsync('indopak_words.db', {
-          assetId: require('../../data/mushaf/indopak/indopak-nastaleeq.db'),
+          assetId: require('../../data/mushaf/legacy/indopak/indopak-nastaleeq.db'),
         });
         db = await SQLite.openDatabaseAsync('indopak_words.db');
       }
@@ -202,45 +151,27 @@ async function loadIndopakWords(): Promise<void> {
   return indopakWordsLoading;
 }
 
-// Create a mapping of page number to surah for quick lookup (QPC)
-const QPC_PAGE_TO_SURAH: Record<number, number> = {};
-SURAHS.forEach(surah => {
-  const [start, end] = surah.pages.split('-').map(Number);
-  for (let page = start; page <= end; page++) {
-    if (!QPC_PAGE_TO_SURAH[page]) {
-      QPC_PAGE_TO_SURAH[page] = surah.id;
-    }
-  }
-});
-
-const QPC_SURAH_START_PAGES: Record<number, number> = {};
-SURAHS.forEach(surah => {
-  const startPage = parseInt(surah.pages.split('-')[0], 10);
-  QPC_SURAH_START_PAGES[surah.id] = startPage;
-});
-
 // Build indopak surah mappings from layout DB
-async function buildIndopakSurahMappings(
-  db: SQLite.SQLiteDatabase,
-): Promise<{
+async function buildIndopakSurahMappings(db: SQLite.SQLiteDatabase): Promise<{
   pageToSurah: Record<number, number>;
   surahStartPages: Record<number, number>;
 }> {
   const pageToSurah: Record<number, number> = {};
   const surahStartPages: Record<number, number> = {};
 
-  const rows = await db.getAllAsync<{page_number: number; surah_number: number}>(
+  const rows = await db.getAllAsync<{
+    page_number: number;
+    surah_number: number;
+  }>(
     "SELECT page_number, surah_number FROM pages WHERE line_type='surah_name' ORDER BY page_number;",
   );
 
-  // Build surah start pages from surah_name lines
   for (const row of rows) {
     if (!surahStartPages[row.surah_number]) {
       surahStartPages[row.surah_number] = row.page_number;
     }
   }
 
-  // Fill page-to-surah for all pages
   const surahIds = Object.keys(surahStartPages)
     .map(Number)
     .sort((a, b) => surahStartPages[a] - surahStartPages[b]);
@@ -272,72 +203,124 @@ interface MushafLine {
   surah_number: number;
 }
 
-const PageView: React.FC<{
+// ============================================================================
+// Uthmani PageView (Skia-based via DigitalKhatt)
+// ============================================================================
+const UthmaniPageView: React.FC<{
   pageNumber: number;
-  layoutDb: SQLite.SQLiteDatabase | null;
   textColor: string;
-  showTajweed: boolean;
-  isIndopak: boolean;
-}> = ({pageNumber, layoutDb, textColor, showTajweed, isIndopak}) => {
-  const [lines, setLines] = useState<MushafLine[]>([]);
-  const [loading, setLoading] = useState(true);
-  const loadedFonts = showTajweed ? loadedFontsTajweed : loadedFontsV1;
-  const [fontLoaded, setFontLoaded] = useState(
-    isIndopak ? indopakWordsLoaded : loadedFonts.has(pageNumber),
-  );
+}> = ({pageNumber, textColor}) => {
   const [surahHeaderFontLoaded, setSurahHeaderFontLoaded] = useState(
     isSurahHeaderFontLoaded,
   );
 
-  // Load the page font
   useEffect(() => {
     let isActive = true;
-
-    const loadFont = async () => {
-      if (isIndopak) {
-        const success = await loadIndopakFont();
-        await loadIndopakWords();
-        if (isActive) setFontLoaded(success && indopakWordsLoaded);
-        return;
-      }
-
-      if (loadedFonts.has(pageNumber)) {
-        setFontLoaded(true);
-        return;
-      }
-
-      const success = await loadPageFont(pageNumber, showTajweed);
-      if (isActive) {
-        setFontLoaded(success);
-      }
+    const load = async () => {
+      const success = await loadSurahHeaderFont();
+      if (isActive) setSurahHeaderFontLoaded(success);
     };
-
-    loadFont();
+    load();
     return () => {
       isActive = false;
     };
-  }, [pageNumber, showTajweed, loadedFonts, isIndopak]);
+  }, []);
+
+  // Get page lines from DigitalKhattDataService for surah header overlays
+  const pageLines = useMemo(
+    () => digitalKhattDataService.getPageLines(pageNumber),
+    [pageNumber],
+  );
+
+  const shouldCenterVertically = pageNumber === 1 || pageNumber === 2;
+
+  // Calculate Y positions for surah header overlays
+  const interLine = CONTENT_HEIGHT / pageLines.length;
+
+  return (
+    <View style={styles.page}>
+      {/* Skia Canvas renders ayah + basmallah lines */}
+      <SkiaPage pageNumber={pageNumber} textColor={textColor} />
+
+      {/* Surah header overlays (rendered as RN Text for the glyph font) */}
+      {surahHeaderFontLoaded &&
+        pageLines.map((line, index) => {
+          if (line.line_type !== 'surah_name') return null;
+
+          const yPos = PAGE_PADDING_TOP + index * interLine;
+          const headerTopOffset = BASE_LINE_HEIGHT * 0.15;
+
+          const surahText =
+            surahHeaderGlyphsMap[`surah-${line.surah_number}`] ??
+            `سورة ${SURAH_NAMES[line.surah_number]}`;
+
+          return (
+            <Text
+              key={`surah-${pageNumber}-${line.line_number}`}
+              style={[
+                styles.surahText,
+                {
+                  top: yPos + headerTopOffset,
+                  color: SURAH_HEADER_COLOR,
+                },
+              ]}>
+              {surahText}
+            </Text>
+          );
+        })}
+
+      <View style={styles.pageNumberContainer}>
+        <Text style={[styles.pageNumber, {color: textColor}]}>
+          {pageNumber}
+        </Text>
+      </View>
+    </View>
+  );
+};
+
+// ============================================================================
+// Indopak PageView (kept as-is with React Native Text)
+// ============================================================================
+const IndopakPageView: React.FC<{
+  pageNumber: number;
+  layoutDb: SQLite.SQLiteDatabase | null;
+  textColor: string;
+}> = ({pageNumber, layoutDb, textColor}) => {
+  const [lines, setLines] = useState<MushafLine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fontLoaded, setFontLoaded] = useState(indopakWordsLoaded);
+  const [surahHeaderFontLoaded, setSurahHeaderFontLoaded] = useState(
+    isSurahHeaderFontLoaded,
+  );
 
   useEffect(() => {
     let isActive = true;
     const loadFont = async () => {
-      const success = await loadSurahHeaderFont();
-      if (isActive) {
-        setSurahHeaderFontLoaded(success);
-      }
+      const success = await loadIndopakFont();
+      await loadIndopakWords();
+      if (isActive) setFontLoaded(success && indopakWordsLoaded);
     };
-
     loadFont();
     return () => {
       isActive = false;
     };
   }, []);
 
-  // Load page data from database
+  useEffect(() => {
+    let isActive = true;
+    const loadFont = async () => {
+      const success = await loadSurahHeaderFont();
+      if (isActive) setSurahHeaderFontLoaded(success);
+    };
+    loadFont();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (!layoutDb) return;
     let isActive = true;
-
     const loadPageData = async () => {
       setLoading(true);
       try {
@@ -353,7 +336,6 @@ const PageView: React.FC<{
         if (isActive) setLoading(false);
       }
     };
-
     loadPageData();
     return () => {
       isActive = false;
@@ -368,29 +350,27 @@ const PageView: React.FC<{
     );
   }
 
-  // Calculate line positions with tighter ayah spacing
-  // Surah headers get more space, ayahs are tighter
   const linePositions: number[] = [];
   let currentY = 0;
   for (let i = 0; i < lines.length; i++) {
     linePositions.push(currentY);
     const lineHeight =
       lines[i].line_type === 'surah_name'
-        ? BASE_LINE_HEIGHT * 1.2 // More space for surah header
-        : BASE_LINE_HEIGHT * AYAH_LINE_SPACING; // Tighter for ayahs/basmallah
+        ? BASE_LINE_HEIGHT * 1.2
+        : BASE_LINE_HEIGHT * AYAH_LINE_SPACING;
     currentY += lineHeight;
   }
   const totalContentHeight = currentY;
-
   const shouldCenterVertically = pageNumber === 1 || pageNumber === 2;
 
-  // For pages 1-2: center content
-  // For pages 3+: scale positions to fill entire page height
   const getY = (index: number) => {
     if (shouldCenterVertically) {
-      return PAGE_PADDING_TOP + linePositions[index] + (CONTENT_HEIGHT - totalContentHeight) / 2;
+      return (
+        PAGE_PADDING_TOP +
+        linePositions[index] +
+        (CONTENT_HEIGHT - totalContentHeight) / 2
+      );
     }
-    // Scale to fill full page
     const scaleFactor = CONTENT_HEIGHT / totalContentHeight;
     return PAGE_PADDING_TOP + linePositions[index] * scaleFactor;
   };
@@ -433,50 +413,15 @@ const PageView: React.FC<{
           );
         }
 
-        // Ayah line - render word by word
-        if (isIndopak) {
-          const words: string[] = [];
-          for (let i = line.first_word_id; i <= line.last_word_id; i++) {
-            if (indopakWordsById[i]) {
-              words.push(indopakWordsById[i]);
-            }
-          }
-
-          const indopakCentered = line.is_centered === 1 || shouldCenterVertically;
-
-          return (
-            <View
-              key={`line-${line.line_number}`}
-              style={[
-                styles.lineContainer,
-                {
-                  top: y,
-                  justifyContent: indopakCentered ? 'center' : 'space-between',
-                  gap: indopakCentered ? 8 : undefined,
-                },
-              ]}>
-              {words.map((word, idx) => (
-                <Text
-                  key={idx}
-                  allowFontScaling={false}
-                  style={[
-                    styles.indopakLineText,
-                    {color: textColor},
-                  ]}>
-                  {word}
-                </Text>
-              ))}
-            </View>
-          );
-        }
-
-        const glyphs = showTajweed ? glyphsByIdTajweed : glyphsById;
         const words: string[] = [];
         for (let i = line.first_word_id; i <= line.last_word_id; i++) {
-          if (glyphs[i]) {
-            words.push(glyphs[i]);
+          if (indopakWordsById[i]) {
+            words.push(indopakWordsById[i]);
           }
         }
+
+        const indopakCentered =
+          line.is_centered === 1 || shouldCenterVertically;
 
         return (
           <View
@@ -485,22 +430,16 @@ const PageView: React.FC<{
               styles.lineContainer,
               {
                 top: y,
-                justifyContent:
-                  line.is_centered === 1 ? 'center' : 'space-between',
+                justifyContent: indopakCentered ? 'center' : 'space-between',
+                gap: indopakCentered ? 8 : undefined,
               },
             ]}>
-            {words.map((glyph, idx) => (
+            {words.map((word, idx) => (
               <Text
                 key={idx}
                 allowFontScaling={false}
-                style={[
-                  styles.wordText,
-                  {
-                    color: textColor,
-                    fontFamily: showTajweed ? `p${pageNumber}_tajweed` : `p${pageNumber}`,
-                  },
-                ]}>
-                {glyph}
+                style={[styles.indopakLineText, {color: textColor}]}>
+                {word}
               </Text>
             ))}
           </View>
@@ -516,6 +455,9 @@ const PageView: React.FC<{
   );
 };
 
+// ============================================================================
+// MushafViewer (main exported component)
+// ============================================================================
 export default function MushafViewer({
   pageNumber: initialPage,
 }: {
@@ -530,30 +472,63 @@ export default function MushafViewer({
     pageToSurah: Record<number, number>;
     surahStartPages: Record<number, number>;
   } | null>(null);
+  const [dkDataReady, setDkDataReady] = useState(
+    digitalKhattDataService.initialized,
+  );
   const {theme} = useTheme();
   const flatListRef = useRef<FlatList>(null);
-  const showTajweed = useMushafSettingsStore(state => state.showTajweed);
-  const arabicFontFamily = useMushafSettingsStore(state => state.arabicFontFamily);
+  const arabicFontFamily = useMushafSettingsStore(
+    state => state.arabicFontFamily,
+  );
   const isIndopak = arabicFontFamily === 'Indopak';
-  const totalPages = isIndopak ? TOTAL_PAGES_INDOPAK : TOTAL_PAGES_QPC;
+  const isUthmani = !isIndopak;
+  const totalPages = isIndopak ? TOTAL_PAGES_INDOPAK : TOTAL_PAGES_UTHMANI;
 
   const pages = useMemo(
     () => Array.from({length: totalPages}, (_, i) => i + 1),
     [totalPages],
   );
 
-  const pageToSurah = isIndopak
-    ? indopakMappings?.pageToSurah ?? {}
-    : QPC_PAGE_TO_SURAH;
-  const surahStartPages = isIndopak
-    ? indopakMappings?.surahStartPages ?? {}
-    : QPC_SURAH_START_PAGES;
+  // Initialize DigitalKhatt data for Uthmani mode
+  useEffect(() => {
+    if (!isUthmani) return;
+    if (digitalKhattDataService.initialized) {
+      setDkDataReady(true);
+      return;
+    }
+    let isActive = true;
+    const init = async () => {
+      try {
+        await digitalKhattDataService.initialize();
+        if (isActive) setDkDataReady(true);
+      } catch (error) {
+        console.error('Error initializing DigitalKhatt data:', error);
+      }
+    };
+    init();
+    return () => {
+      isActive = false;
+    };
+  }, [isUthmani]);
 
-  // Get current surah based on page
+  // Surah mappings: for Uthmani use DigitalKhattDataService, for Indopak use layout DB
+  const uthmaniPageToSurah = dkDataReady
+    ? digitalKhattDataService.getPageToSurah()
+    : {};
+  const uthmaniSurahStartPages = dkDataReady
+    ? digitalKhattDataService.getSurahStartPages()
+    : {};
+
+  const pageToSurah = isIndopak
+    ? (indopakMappings?.pageToSurah ?? {})
+    : uthmaniPageToSurah;
+  const surahStartPages = isIndopak
+    ? (indopakMappings?.surahStartPages ?? {})
+    : uthmaniSurahStartPages;
+
   const currentSurahId = pageToSurah[currentPage] || 1;
   const currentSurahName = SURAH_NAMES[currentSurahId];
 
-  // Track visible page changes
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].item) {
@@ -570,19 +545,20 @@ export default function MushafViewer({
     [],
   );
 
-  // Navigate to a surah
-  const navigateToSurah = useCallback((surahId: number) => {
-    const targetPage = surahStartPages[surahId];
-    if (targetPage && flatListRef.current) {
-      flatListRef.current.scrollToIndex({
-        index: targetPage - 1,
-        animated: true,
-      });
-      setSurahSheetVisible(false);
-    }
-  }, [surahStartPages]);
+  const navigateToSurah = useCallback(
+    (surahId: number) => {
+      const targetPage = surahStartPages[surahId];
+      if (targetPage && flatListRef.current) {
+        flatListRef.current.scrollToIndex({
+          index: targetPage - 1,
+          animated: true,
+        });
+        setSurahSheetVisible(false);
+      }
+    },
+    [surahStartPages],
+  );
 
-  // Render surah item in bottom sheet
   const renderSurahItem = useCallback(
     ({item}: {item: (typeof SURAHS)[0]}) => {
       const isCurrentSurah = item.id === currentSurahId;
@@ -619,23 +595,20 @@ export default function MushafViewer({
     [currentSurahId, navigateToSurah, theme.colors],
   );
 
-
-
-
+  // Initialize Indopak layout DB (only when Indopak selected)
   useEffect(() => {
+    if (!isIndopak) {
+      setDbLoading(false);
+      return;
+    }
     let isActive = true;
     const initLayoutDb = async () => {
       try {
         setDbLoading(true);
-
-        const dbName = isIndopak ? 'indopak_layout.db' : 'mushaf_layout.db';
-        const assetId = isIndopak
-          ? require('../../data/mushaf/indopak/qudratullah-indopak-15-lines.db')
-          : require('../../data/mushaf/qpc-v2-15-lines.db');
+        const dbName = 'indopak_layout.db';
+        const assetId = require('../../data/mushaf/legacy/indopak/qudratullah-indopak-15-lines.db');
 
         let db = await SQLite.openDatabaseAsync(dbName);
-
-        // Check if the pages table exists
         const tableCheck = await db
           .getFirstAsync<{
             name: string;
@@ -643,7 +616,6 @@ export default function MushafViewer({
           .catch(() => null);
 
         if (!tableCheck) {
-          // Database is empty or corrupted, reimport from assets
           await db.closeAsync();
           await SQLite.deleteDatabaseAsync(dbName);
           await SQLite.importDatabaseFromAssetAsync(dbName, {assetId});
@@ -653,11 +625,8 @@ export default function MushafViewer({
         if (!isActive) return;
         setLayoutDb(db);
 
-        // Build surah mappings for indopak from the layout DB
-        if (isIndopak) {
-          const mappings = await buildIndopakSurahMappings(db);
-          if (isActive) setIndopakMappings(mappings);
-        }
+        const mappings = await buildIndopakSurahMappings(db);
+        if (isActive) setIndopakMappings(mappings);
       } catch (error) {
         console.error('Error initializing database:', error);
       } finally {
@@ -670,7 +639,12 @@ export default function MushafViewer({
     };
   }, [isIndopak]);
 
+  // Preload basmalah SVG asset (used by Indopak)
   useEffect(() => {
+    if (!isIndopak) {
+      setBasmalahLoaded(true);
+      return;
+    }
     let isActive = true;
     const loadBasmalah = async () => {
       try {
@@ -685,9 +659,12 @@ export default function MushafViewer({
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [isIndopak]);
 
-  if (dbLoading || !basmalahLoaded) {
+  // Show loading if dependencies not ready
+  const isLoading = isIndopak ? dbLoading || !basmalahLoaded : !dkDataReady;
+
+  if (isLoading) {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
@@ -719,15 +696,17 @@ export default function MushafViewer({
       <FlatList
         ref={flatListRef}
         data={pages}
-        renderItem={({item}) => (
-          <PageView
-            pageNumber={item}
-            layoutDb={layoutDb}
-            textColor={theme.colors.text}
-            showTajweed={isIndopak ? false : showTajweed}
-            isIndopak={isIndopak}
-          />
-        )}
+        renderItem={({item}) =>
+          isIndopak ? (
+            <IndopakPageView
+              pageNumber={item}
+              layoutDb={layoutDb}
+              textColor={theme.colors.text}
+            />
+          ) : (
+            <UthmaniPageView pageNumber={item} textColor={theme.colors.text} />
+          )
+        }
         keyExtractor={item => item.toString()}
         horizontal
         pagingEnabled
@@ -810,13 +789,6 @@ const styles = StyleSheet.create({
     left: PAGE_PADDING_HORIZONTAL,
     lineHeight: BASE_LINE_HEIGHT * 1.3,
   },
-  basmallahText: {
-    position: 'absolute',
-    fontSize: QPC_FONT_SIZE,
-    fontFamily: 'Traditional-Arabic',
-    textAlign: 'center',
-    width: SCREEN_WIDTH,
-  },
   lineContainer: {
     position: 'absolute',
     flexDirection: 'row-reverse',
@@ -825,9 +797,6 @@ const styles = StyleSheet.create({
     height: BASE_LINE_HEIGHT,
     alignItems: 'flex-start',
     overflow: 'visible',
-  },
-  wordText: {
-    fontSize: QPC_FONT_SIZE,
   },
   indopakLineText: {
     fontFamily: 'Indopak',
