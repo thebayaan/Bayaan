@@ -1,11 +1,17 @@
 import React, {useState, useCallback, useEffect} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
 import {PlaybackControls} from './PlaybackControls';
 import {ControlButtons} from './ControlButtons';
 import {UploadPlaceholder} from './UploadPlaceholder';
+import {Header} from './Header';
 import {moderateScale} from 'react-native-size-matters';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -13,25 +19,38 @@ import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import Color from 'color';
 
 interface PlayerContentProps {
   onSpeedPress: () => void;
   onSleepTimerPress: () => void;
   onMushafLayoutPress: () => void;
   onAmbientPress: () => void;
+  onOptionsPress: () => void;
 }
+
+const ANIMATION_DURATION = 300;
+const DEFAULT_HEADER_HEIGHT = 100;
+const DEFAULT_CONTROLS_HEIGHT = 250;
 
 const PlayerContent: React.FC<PlayerContentProps> = ({
   onSpeedPress,
   onSleepTimerPress,
   onMushafLayoutPress,
   onAmbientPress,
+  onOptionsPress,
 }) => {
-  useTheme();
+  const {theme} = useTheme();
   const [showQueue, setShowQueue] = useState(false);
-  const {updateQueue, removeFromQueue, play} = usePlayerActions();
+  const {updateQueue, removeFromQueue, play, toggleImmersive, setImmersive} =
+    usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
+  const isImmersive = usePlayerStore(s => s.isImmersive);
   const insets = useSafeAreaInsets();
+
+  // Overlay height measurement
+  const [headerHeight, setHeaderHeight] = useState(DEFAULT_HEADER_HEIGHT);
+  const [controlsHeight, setControlsHeight] = useState(DEFAULT_CONTROLS_HEIGHT);
 
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTranslation = useMushafSettingsStore(s => s.showTranslation);
@@ -45,6 +64,27 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const transliterationFontSize = useMushafSettingsStore(
     s => s.transliterationFontSize,
   );
+
+  // Reanimated shared value for overlay opacity
+  const overlayOpacity = useSharedValue(1);
+
+  // Animate overlay opacity when immersive state changes
+  useEffect(() => {
+    overlayOpacity.value = withTiming(isImmersive ? 0 : 1, {
+      duration: ANIMATION_DURATION,
+    });
+  }, [isImmersive, overlayOpacity]);
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  // Exit immersive when queue opens
+  useEffect(() => {
+    if (showQueue) {
+      setImmersive(false);
+    }
+  }, [showQueue, setImmersive]);
 
   const handleQueuePress = useCallback(() => {
     setShowQueue(prev => !prev);
@@ -73,12 +113,16 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     [removeFromQueue],
   );
 
-  const handleVersePress = useCallback(async (verseKey: string) => {
-    const [surahId, verseNumber] = verseKey
-      .split(':')
-      .map(num => parseInt(num, 10));
-    // TODO: Implement verse selection logic
-    console.log('Selected verse:', surahId, verseNumber);
+  const handleVersePress = useCallback(() => {
+    toggleImmersive();
+  }, [toggleImmersive]);
+
+  const handleHeaderLayout = useCallback((e: LayoutChangeEvent) => {
+    setHeaderHeight(e.nativeEvent.layout.height);
+  }, []);
+
+  const handleControlsLayout = useCallback((e: LayoutChangeEvent) => {
+    setControlsHeight(e.nativeEvent.layout.height);
   }, []);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
@@ -94,16 +138,17 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.viewsContainer}>
+      {/* QuranView / QueueList fills the entire area */}
+      <View style={StyleSheet.absoluteFill}>
         {showQueue ? (
-          <View style={styles.viewWrapper}>
+          <View style={styles.fullArea}>
             <QueueList
               onQueueItemPress={handleQueueItemPress}
               onRemoveQueueItem={handleRemoveQueueItem}
             />
           </View>
         ) : (
-          <View style={styles.viewWrapper}>
+          <View style={styles.fullArea}>
             {isUntaggedUpload ? (
               <UploadPlaceholder currentTrack={currentTrack} />
             ) : (
@@ -115,16 +160,48 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 transliterationFontSize={transliterationFontSize}
                 translationFontSize={translationFontSize}
                 arabicFontSize={arabicFontSize}
+                contentPaddingTop={headerHeight}
+                contentPaddingBottom={controlsHeight}
               />
             )}
           </View>
         )}
       </View>
-      <View
+
+      {/* Header overlay — absolute positioned at top */}
+      <Animated.View
         style={[
-          styles.controlsContainer,
-          {paddingBottom: insets.bottom || moderateScale(20)},
-        ]}>
+          styles.headerOverlay,
+          overlayAnimatedStyle,
+          {backgroundColor: theme.colors.background},
+        ]}
+        pointerEvents={isImmersive ? 'none' : 'auto'}
+        onLayout={handleHeaderLayout}>
+        <View style={styles.handleContainer}>
+          <View
+            style={[
+              styles.handle,
+              {
+                backgroundColor: Color(theme.colors.text).alpha(0.2).toString(),
+              },
+            ]}
+          />
+        </View>
+        <Header onOptionsPress={onOptionsPress} />
+      </Animated.View>
+
+      {/* Controls overlay — absolute positioned at bottom */}
+      <Animated.View
+        style={[
+          styles.controlsOverlay,
+          overlayAnimatedStyle,
+          {
+            backgroundColor: theme.colors.background,
+            paddingBottom: insets.bottom || moderateScale(20),
+          },
+        ]}
+        pointerEvents={isImmersive ? 'none' : 'auto'}
+        onLayout={handleControlsLayout}>
         <TrackInfo />
         <PlaybackControls />
         <ControlButtons
@@ -135,7 +212,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           onMushafLayoutPress={onMushafLayoutPress}
           onAmbientPress={onAmbientPress}
         />
-      </View>
+      </Animated.View>
     </View>
   );
 };
@@ -145,22 +222,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  viewsContainer: {
+  fullArea: {
     flex: 1,
-    width: '100%',
-    marginTop: moderateScale(5),
-    position: 'relative',
+    paddingHorizontal: moderateScale(20),
   },
-  viewWrapper: {
-    height: '100%',
+  headerOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: moderateScale(20),
+    alignItems: 'center',
+    paddingTop: moderateScale(12),
   },
-  controlsContainer: {
+  handleContainer: {
+    alignItems: 'center',
     width: '100%',
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+  },
+  controlsOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: moderateScale(20),
     paddingTop: moderateScale(10),
   },

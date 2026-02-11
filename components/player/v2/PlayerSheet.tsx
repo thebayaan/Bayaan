@@ -9,7 +9,6 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
-import {Header} from './PlayerContent/Header';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SURAHS} from '@/data/surahData';
@@ -23,10 +22,12 @@ export const PlayerSheet = () => {
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
 
-  const {setSheetMode, setRate, updateSettings} = usePlayerActions();
+  const {setSheetMode, setRate, updateSettings, setImmersive} =
+    usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
   const loading = usePlayerStore(s => s.loading);
   const sheetMode = usePlayerStore(s => s.sheetMode);
+  const isImmersive = usePlayerStore(s => s.isImmersive);
   const playbackRate = usePlayerStore(s => s.playback.rate);
   const settings = usePlayerStore(s => s.settings);
 
@@ -36,10 +37,14 @@ export const PlayerSheet = () => {
 
     const handleBackPress = () => {
       if (sheetMode === 'full') {
+        if (isImmersive) {
+          setImmersive(false);
+          return true;
+        }
         setSheetMode('hidden');
-        return true; // Prevent default behavior
+        return true;
       }
-      return false; // Let default behavior happen
+      return false;
     };
 
     const subscription = BackHandler.addEventListener(
@@ -48,7 +53,7 @@ export const PlayerSheet = () => {
     );
 
     return () => subscription.remove();
-  }, [sheetMode, setSheetMode]);
+  }, [sheetMode, isImmersive, setSheetMode, setImmersive]);
 
   // Effect to handle sleep timer remaining time
   useEffect(() => {
@@ -91,11 +96,12 @@ export const PlayerSheet = () => {
 
     const sheet = bottomSheetRef.current;
     if (sheetMode === 'hidden') {
+      setImmersive(false);
       sheet.close();
     } else if (sheetMode === 'full') {
       sheet.expand();
     }
-  }, [sheetMode]);
+  }, [sheetMode, setImmersive]);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const shouldShow = !loading?.stateRestoring && !!currentTrack;
@@ -220,19 +226,9 @@ export const PlayerSheet = () => {
 
   const renderHandleComponent = useCallback(
     (_props: BottomSheetHandleProps) => (
-      <View style={[styles.handleContainer, {paddingTop: insets.top + 12}]}>
-        <View
-          style={[
-            styles.handle,
-            {
-              backgroundColor: Color(theme.colors.text).alpha(0.2).toString(),
-            },
-          ]}
-        />
-        <Header onOptionsPress={handleShowOptionsSheet} />
-      </View>
+      <View style={{paddingTop: insets.top}} />
     ),
-    [insets.top, theme.colors.text, handleShowOptionsSheet],
+    [insets.top],
   );
 
   // Only render modals once settings are loaded to prevent hydration issues
@@ -247,7 +243,11 @@ export const PlayerSheet = () => {
   return (
     <>
       {sheetMode === 'full' && (
-        <StatusBar barStyle={isLightText ? 'light-content' : 'dark-content'} />
+        <StatusBar
+          barStyle={isLightText ? 'light-content' : 'dark-content'}
+          hidden={isImmersive}
+          animated
+        />
       )}
       <BottomSheet
         ref={bottomSheetRef}
@@ -270,6 +270,7 @@ export const PlayerSheet = () => {
           onSleepTimerPress={handleShowSleepTimerSheet}
           onMushafLayoutPress={handleShowMushafLayoutSheet}
           onAmbientPress={handleShowAmbientSheet}
+          onOptionsPress={handleShowOptionsSheet}
         />
       </BottomSheet>
     </>
@@ -284,13 +285,5 @@ const styles = StyleSheet.create({
   background: {
     borderTopLeftRadius: 45,
     borderTopRightRadius: 45,
-  },
-  handleContainer: {
-    alignItems: 'center',
-  },
-  handle: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
   },
 });

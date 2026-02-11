@@ -37,6 +37,9 @@ export function usePlayerActions() {
 
       setSheetMode: (mode: 'hidden' | 'full') =>
         usePlayerStore.getState().setSheetMode(mode),
+      toggleImmersive: () => usePlayerStore.getState().toggleImmersive(),
+      setImmersive: (value: boolean) =>
+        usePlayerStore.getState().setImmersive(value),
       setRepeatMode: (mode: PlaybackSettings['repeatMode']) =>
         usePlayerStore.getState().setRepeatMode(mode),
       toggleShuffle: () => usePlayerStore.getState().toggleShuffle(),

@@ -108,6 +108,7 @@ export interface PlaybackSettings {
 export interface UIState {
   sheetMode: 'hidden' | 'full';
   isTransitioning: boolean;
+  isImmersive: boolean;
 }
 
 /**

@@ -60,6 +60,8 @@ interface QuranViewProps {
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
+  contentPaddingTop?: number;
+  contentPaddingBottom?: number;
 }
 
 export const QuranView: React.FC<QuranViewProps> = ({
@@ -70,6 +72,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   transliterationFontSize,
   translationFontSize,
   arabicFontSize,
+  contentPaddingTop,
+  contentPaddingBottom,
 }) => {
   const {theme} = useTheme();
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
@@ -168,7 +172,10 @@ export const QuranView: React.FC<QuranViewProps> = ({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{
+          paddingTop: contentPaddingTop,
+          paddingBottom: (contentPaddingBottom || 0) + verticalScale(20),
+        }}
         renderScrollComponent={renderScrollComponent}
         showsVerticalScrollIndicator={false}
         bounces={true}
@@ -186,9 +193,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: moderateScale(15),
     overflow: 'hidden',
-  },
-  scrollContent: {
-    paddingBottom: verticalScale(20),
   },
   bismillahContainer: {
     width: '100%',
