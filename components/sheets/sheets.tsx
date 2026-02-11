@@ -31,7 +31,6 @@ import {VerseHighlightSheet} from './VerseHighlightSheet';
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {VerseTranslationSheet} from './VerseTranslationSheet';
 import {MushafSurahSheet} from './MushafSurahSheet';
-import {MushafVerseActionsSheet} from './MushafVerseActionsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -59,7 +58,6 @@ registerSheet('verse-highlight', VerseHighlightSheet);
 registerSheet('verse-note', VerseNoteSheet);
 registerSheet('verse-translation', VerseTranslationSheet);
 registerSheet('mushaf-surah-selector', MushafSurahSheet);
-registerSheet('mushaf-verse-actions', MushafVerseActionsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -196,8 +194,8 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
-        arabicText: string;
-        translation: string;
+        arabicText?: string;
+        translation?: string;
         transliteration?: string;
       };
     }>;
@@ -238,14 +236,6 @@ declare module 'react-native-actions-sheet' {
       payload: {
         currentSurahId: number;
         onSelect: (surahId: number) => void;
-      };
-    }>;
-    'mushaf-verse-actions': SheetDefinition<{
-      payload: {
-        verseKey: string;
-        surahNumber: number;
-        ayahNumber: number;
-        pageNumber: number;
       };
     }>;
   }

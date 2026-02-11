@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {View, Text, Pressable, Share} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -10,11 +10,15 @@ import ActionSheet, {
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {lightHaptics} from '@/utils/haptics';
 import Color from 'color';
 
 const surahData = require('@/data/surahData.json');
+const quranVerses = require('@/data/quran.json');
+const saheehData = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
+const transliterationData = require('@/data/transliteration.json');
 
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
@@ -25,9 +29,29 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const verseKey = payload?.verseKey ?? '';
   const surahNumber = payload?.surahNumber ?? 0;
   const ayahNumber = payload?.ayahNumber ?? 0;
-  const arabicText = payload?.arabicText ?? '';
-  const translation = payload?.translation ?? '';
-  const transliteration = payload?.transliteration ?? '';
+
+  const {arabicText, translation, transliteration} = useMemo(() => {
+    const resolvedArabic =
+      payload?.arabicText ||
+      (
+        Object.values(quranVerses) as Array<{verse_key: string; text: string}>
+      ).find(v => v.verse_key === verseKey)?.text ||
+      '';
+    const resolvedTranslation =
+      payload?.translation || saheehData[verseKey]?.t || '';
+    const resolvedTransliteration =
+      payload?.transliteration || transliterationData[verseKey]?.t || '';
+    return {
+      arabicText: resolvedArabic as string,
+      translation: resolvedTranslation as string,
+      transliteration: resolvedTransliteration as string,
+    };
+  }, [
+    verseKey,
+    payload?.arabicText,
+    payload?.translation,
+    payload?.transliteration,
+  ]);
 
   const surah = surahData.find(
     (s: {id: number; name: string}) => s.id === surahNumber,
@@ -111,6 +135,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleOnClose = useCallback(() => {
     useVerseSelectionStore.getState().clearSelection();
+    useMushafVerseSelectionStore.getState().clearSelection();
   }, []);
 
   if (!payload) return null;

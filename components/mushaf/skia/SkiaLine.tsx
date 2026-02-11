@@ -39,8 +39,7 @@ interface SkiaLineProps {
     paragraph: SkParagraph,
     xPos: number,
   ) => void;
-  highlightRange?: {start: number; end: number};
-  highlightColor?: string;
+  highlights?: Array<{start: number; end: number; color: string}>;
 }
 
 const SkiaLine: React.FC<SkiaLineProps> = ({
@@ -56,8 +55,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   charToRule,
   fontFamily = 'DigitalKhatt',
   onParagraphReady,
-  highlightRange,
-  highlightColor,
+  highlights,
 }) => {
   const paragraph = useMemo(() => {
     const scale = (fontSize * justResult.fontSizeRatio) / FONTSIZE;
@@ -94,13 +92,12 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
         const char = lineText.charAt(i);
         const justInfo = justResult.fontFeatures.get(i);
-        const isHighlighted =
-          highlightRange &&
-          i >= highlightRange.start &&
-          i <= highlightRange.end;
+        const matchedHighlight = highlights?.find(
+          h => i >= h.start && i <= h.end,
+        );
         const tajweedRule = charToRule?.get(i);
 
-        const needsCustomStyle = justInfo || tajweedRule || isHighlighted;
+        const needsCustomStyle = justInfo || tajweedRule || matchedHighlight;
 
         if (needsCustomStyle) {
           const charStyle: SkTextStyle = {
@@ -109,8 +106,8 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
           if (justInfo) {
             charStyle.fontFeatures = justInfo;
           }
-          if (isHighlighted) {
-            charStyle.color = Skia.Color(highlightColor!);
+          if (matchedHighlight) {
+            charStyle.color = Skia.Color(matchedHighlight.color);
           } else if (tajweedRule && tajweedColors[tajweedRule]) {
             charStyle.color = Skia.Color(tajweedColors[tajweedRule]);
           }
@@ -160,8 +157,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     textColor,
     charToRule,
     fontFamily,
-    highlightRange,
-    highlightColor,
+    highlights,
   ]);
 
   if (!paragraph) return null;
