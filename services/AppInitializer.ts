@@ -2,6 +2,7 @@ import {databaseService} from '@/services/database/DatabaseService';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
 import {uploadsService} from '@/services/uploads/UploadsService';
+import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -275,5 +276,19 @@ appInitializer.registerService({
     await useUploadsStore.getState().loadRecitations();
     await useUploadsStore.getState().loadCustomReciters();
     await uploadsService.maybeRunOrphanCleanup();
+  },
+});
+
+/**
+ * Verse Annotations Service (Priority 7)
+ * Initializes the verse annotations database for bookmarks, notes, highlights
+ * Non-critical - app can function without verse annotations
+ */
+appInitializer.registerService({
+  name: 'Verse Annotations',
+  priority: 7,
+  critical: false,
+  initialize: async () => {
+    await verseAnnotationService.initialize();
   },
 });
