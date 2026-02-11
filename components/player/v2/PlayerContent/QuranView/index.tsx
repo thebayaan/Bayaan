@@ -154,6 +154,24 @@ export const QuranView: React.FC<QuranViewProps> = ({
     );
   }, [surah?.bismillah_pre, theme.colors.text]);
 
+  // Open verse actions sheet for a given verse
+  const openVerseActions = useCallback(
+    (item: EnhancedVerse) => {
+      const vk = item.verse_key;
+      selectVerse(vk, item.surah_number, item.ayah_number);
+      SheetManager.show('verse-actions', {
+        payload: {
+          verseKey: vk,
+          surahNumber: item.surah_number,
+          ayahNumber: item.ayah_number,
+          arabicText: item.text,
+          translation: item.translation || '',
+        },
+      });
+    },
+    [selectVerse],
+  );
+
   // Render the verse items (optimized with LegendList)
   const renderItem = useCallback(
     ({item}: LegendListRenderItemProps<EnhancedVerse>) => {
@@ -176,17 +194,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
           hasNote={notedVerseKeys.has(vk)}
           onLongPress={() => {
             mediumHaptics();
-            selectVerse(vk, item.surah_number, item.ayah_number);
-            SheetManager.show('verse-actions', {
-              payload: {
-                verseKey: vk,
-                surahNumber: item.surah_number,
-                ayahNumber: item.ayah_number,
-                arabicText: item.text,
-                translation: item.translation || '',
-              },
-            });
+            openVerseActions(item);
           }}
+          onOptionsPress={() => openVerseActions(item)}
         />
       );
     },
@@ -203,7 +213,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       highlights,
       bookmarkedVerseKeys,
       notedVerseKeys,
-      selectVerse,
+      openVerseActions,
     ],
   );
 

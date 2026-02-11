@@ -122,7 +122,7 @@ class VerseAnnotationDatabaseService {
     await this.db.execAsync(`
       CREATE TABLE IF NOT EXISTS notes (
         id TEXT PRIMARY KEY,
-        verse_key TEXT NOT NULL UNIQUE,
+        verse_key TEXT NOT NULL,
         surah_number INTEGER NOT NULL,
         ayah_number INTEGER NOT NULL,
         content TEXT NOT NULL,
@@ -130,6 +130,44 @@ class VerseAnnotationDatabaseService {
         updated_at INTEGER NOT NULL
       );
     `);
+
+    // Migration: drop UNIQUE constraint if it exists from older schema
+    // SQLite doesn't support ALTER TABLE DROP CONSTRAINT, so we check and recreate
+    try {
+      const tableInfo = (await this.db.getAllAsync(
+        `PRAGMA index_list(notes)`,
+      )) as Array<{name: string; unique: number}>;
+      const hasUniqueIndex = tableInfo.some(
+        idx =>
+          idx.unique === 1 &&
+          idx.name !== 'sqlite_autoindex_notes_1' &&
+          idx.name.includes('verse_key'),
+      );
+      // If there's a sqlite autoindex from UNIQUE constraint, recreate table
+      const hasAutoIndex = tableInfo.some(
+        idx => idx.name === 'sqlite_autoindex_notes_1',
+      );
+      if (hasAutoIndex || hasUniqueIndex) {
+        await this.db.execAsync(`
+          CREATE TABLE IF NOT EXISTS notes_new (
+            id TEXT PRIMARY KEY,
+            verse_key TEXT NOT NULL,
+            surah_number INTEGER NOT NULL,
+            ayah_number INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+          );
+        `);
+        await this.db.execAsync(`
+          INSERT OR IGNORE INTO notes_new SELECT * FROM notes;
+        `);
+        await this.db.execAsync(`DROP TABLE notes;`);
+        await this.db.execAsync(`ALTER TABLE notes_new RENAME TO notes;`);
+      }
+    } catch {
+      // Migration already done or not needed
+    }
 
     await this.db.execAsync(`
       CREATE INDEX IF NOT EXISTS idx_notes_surah
@@ -218,7 +256,7 @@ class VerseAnnotationDatabaseService {
   }
 
   // Note operations
-  async upsertNote(
+  async addNote(
     verseKey: string,
     surahNumber: number,
     ayahNumber: number,
@@ -231,8 +269,7 @@ class VerseAnnotationDatabaseService {
 
     await this.db.runAsync(
       `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(verse_key) DO UPDATE SET content = excluded.content, updated_at = excluded.updated_at`,
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [id, verseKey, surahNumber, ayahNumber, content, now, now],
     );
 
@@ -247,18 +284,52 @@ class VerseAnnotationDatabaseService {
     };
   }
 
-  async getNote(verseKey: string): Promise<VerseNote | null> {
+  async updateNote(noteId: string, content: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    await this.db.runAsync(
+      `UPDATE notes SET content = ?, updated_at = ? WHERE id = ?`,
+      [content, Date.now(), noteId],
+    );
+  }
+
+  async getNoteById(noteId: string): Promise<VerseNote | null> {
     if (!this.db) throw new Error('Database not initialized');
     const row = (await this.db.getFirstAsync(
-      `SELECT * FROM notes WHERE verse_key = ?`,
-      [verseKey],
+      `SELECT * FROM notes WHERE id = ?`,
+      [noteId],
     )) as NoteRow | null;
     return row ? mapNoteRow(row) : null;
   }
 
-  async deleteNote(verseKey: string): Promise<void> {
+  async getNotesForVerse(verseKey: string): Promise<VerseNote[]> {
     if (!this.db) throw new Error('Database not initialized');
-    await this.db.runAsync(`DELETE FROM notes WHERE verse_key = ?`, [verseKey]);
+    const rows = (await this.db.getAllAsync(
+      `SELECT * FROM notes WHERE verse_key = ? ORDER BY created_at DESC`,
+      [verseKey],
+    )) as NoteRow[];
+    return rows.map(mapNoteRow);
+  }
+
+  async deleteNoteById(noteId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    await this.db.runAsync(`DELETE FROM notes WHERE id = ?`, [noteId]);
+  }
+
+  async getNotesCountForVerse(verseKey: string): Promise<number> {
+    if (!this.db) throw new Error('Database not initialized');
+    const row = (await this.db.getFirstAsync(
+      `SELECT COUNT(*) as count FROM notes WHERE verse_key = ?`,
+      [verseKey],
+    )) as {count: number} | null;
+    return row?.count ?? 0;
+  }
+
+  async getAllNotes(): Promise<VerseNote[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    const rows = (await this.db.getAllAsync(
+      `SELECT * FROM notes ORDER BY updated_at DESC`,
+    )) as NoteRow[];
+    return rows.map(mapNoteRow);
   }
 
   async getNotesBySurah(surahNumber: number): Promise<VerseNote[]> {

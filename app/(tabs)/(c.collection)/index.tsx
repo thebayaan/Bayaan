@@ -1,4 +1,4 @@
-import React, {useCallback} from 'react';
+import React, {useCallback, useState} from 'react';
 import {View, ScrollView, Platform, Text, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -23,6 +23,8 @@ import {
   ProfileIcon,
 } from '@/components/Icons';
 import {useUploadsStore} from '@/store/uploadsStore';
+import {useFocusEffect} from '@react-navigation/native';
+import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 
 interface CategoryItem {
   id: string;
@@ -44,6 +46,22 @@ export default function CollectionScreen() {
   const downloads = useDownloads();
   const {playlists} = usePlaylists();
   const {totalCount: uploadsTotalCount} = useUploadsStore();
+
+  const [bookmarkCount, setBookmarkCount] = useState(0);
+  const [noteCount, setNoteCount] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      verseAnnotationService
+        .getAllBookmarks()
+        .then(b => setBookmarkCount(b.length))
+        .catch(() => {});
+      verseAnnotationService
+        .getAllNotes()
+        .then(n => setNoteCount(n.length))
+        .catch(() => {});
+    }, []),
+  );
 
   const handleAddPress = useCallback(() => {
     SheetManager.show('add-to-collection');
@@ -89,6 +107,28 @@ export default function CollectionScreen() {
       count: lovedTracks.length,
       emptyText: 'No loved surahs yet',
       route: '/collection/loved',
+    },
+    {
+      id: 'bookmarks',
+      label: 'Bookmarks',
+      icon: (
+        <Feather name="bookmark" size={moderateScale(22)} color="#F59E0B" />
+      ),
+      color: '#F59E0B',
+      count: bookmarkCount,
+      emptyText: 'No bookmarks yet',
+      route: '/collection/bookmarks',
+    },
+    {
+      id: 'notes',
+      label: 'Notes',
+      icon: (
+        <Feather name="file-text" size={moderateScale(22)} color="#3B82F6" />
+      ),
+      color: '#3B82F6',
+      count: noteCount,
+      emptyText: 'No notes yet',
+      route: '/collection/notes',
     },
     {
       id: 'uploads',

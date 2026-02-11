@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback, useEffect} from 'react';
-import {View, Text, TextInput, TouchableOpacity} from 'react-native';
+import {View, Text, TextInput, Pressable} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
@@ -15,7 +15,6 @@ import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
@@ -24,39 +23,53 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const verseKey = props.payload?.verseKey ?? '';
   const surahNumber = props.payload?.surahNumber ?? 0;
   const ayahNumber = props.payload?.ayahNumber ?? 0;
+  const noteId = props.payload?.noteId;
 
   const [noteText, setNoteText] = useState('');
-  const [hasExistingNote, setHasExistingNote] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     if (!verseKey) return;
-    verseAnnotationService.getNote(verseKey).then(note => {
-      if (note) {
-        setNoteText(note.content);
-        setHasExistingNote(true);
-      }
-    });
-  }, [verseKey]);
+
+    if (noteId) {
+      // Edit mode: load specific note by id
+      verseAnnotationService.getNoteById(noteId).then(note => {
+        if (note) {
+          setNoteText(note.content);
+          setIsEditMode(true);
+        }
+      });
+    }
+  }, [verseKey, noteId]);
 
   const handleSave = useCallback(async () => {
     if (!noteText.trim()) return;
-    await verseAnnotationService.upsertNote(
-      verseKey,
-      surahNumber,
-      ayahNumber,
-      noteText.trim(),
-    );
-    useVerseAnnotationsStore.getState().addNote(verseKey);
-    SheetManager.hide('verse-note');
-    useVerseSelectionStore.getState().clearSelection();
-  }, [verseKey, surahNumber, ayahNumber, noteText]);
+
+    if (isEditMode && noteId) {
+      await verseAnnotationService.updateNote(noteId, noteText.trim());
+    } else {
+      await verseAnnotationService.addNote(
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        noteText.trim(),
+      );
+      useVerseAnnotationsStore.getState().addNote(verseKey);
+    }
+    SheetManager.hideAll();
+  }, [verseKey, surahNumber, ayahNumber, noteText, isEditMode, noteId]);
 
   const handleDelete = useCallback(async () => {
-    await verseAnnotationService.deleteNote(verseKey);
-    useVerseAnnotationsStore.getState().removeNote(verseKey);
-    SheetManager.hide('verse-note');
-    useVerseSelectionStore.getState().clearSelection();
-  }, [verseKey]);
+    if (!noteId) return;
+    await verseAnnotationService.deleteNoteById(noteId);
+    const remaining = await verseAnnotationService.getNotesCountForVerse(
+      verseKey,
+    );
+    if (remaining === 0) {
+      useVerseAnnotationsStore.getState().removeNote(verseKey);
+    }
+    SheetManager.hideAll();
+  }, [verseKey, noteId]);
 
   const canSave = noteText.trim().length > 0;
 
@@ -68,7 +81,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       gestureEnabled={true}>
       <View style={styles.container}>
         <Text style={styles.title}>
-          Note for {surahNumber}:{ayahNumber}
+          {isEditMode ? 'Edit Note' : 'Note'} for {surahNumber}:{ayahNumber}
         </Text>
 
         <TextInput
@@ -82,35 +95,29 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
           autoFocus
         />
 
-        <TouchableOpacity
+        <Pressable
           style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
           onPress={handleSave}
-          activeOpacity={1}
           disabled={!canSave}>
           <Feather
             name="save"
             size={moderateScale(18)}
-            color={
-              canSave ? theme.colors.background : theme.colors.textSecondary
-            }
+            color={canSave ? theme.colors.text : theme.colors.textSecondary}
           />
           <Text
             style={[
               styles.saveButtonText,
               !canSave && styles.saveButtonTextDisabled,
             ]}>
-            Save Note
+            {isEditMode ? 'Update Note' : 'Save Note'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        {hasExistingNote ? (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={handleDelete}
-            activeOpacity={1}>
+        {isEditMode && noteId ? (
+          <Pressable style={styles.deleteButton} onPress={handleDelete}>
             <Feather name="trash-2" size={moderateScale(18)} color="#ff4444" />
             <Text style={styles.deleteButtonText}>Delete Note</Text>
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
       </View>
     </ActionSheet>
@@ -154,9 +161,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.colors.text,
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       borderRadius: moderateScale(12),
-      paddingVertical: verticalScale(14),
+      paddingVertical: verticalScale(12),
       gap: moderateScale(8),
     },
     saveButtonDisabled: {
@@ -165,7 +172,7 @@ const createStyles = (theme: Theme) =>
     saveButtonText: {
       fontSize: moderateScale(16),
       fontFamily: theme.fonts.semiBold,
-      color: theme.colors.background,
+      color: theme.colors.text,
     },
     saveButtonTextDisabled: {
       color: theme.colors.textSecondary,

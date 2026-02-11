@@ -102,6 +102,7 @@ interface VerseItemProps {
   hasBookmark?: boolean;
   hasNote?: boolean;
   onLongPress?: () => void;
+  onOptionsPress?: () => void;
 }
 
 /**
@@ -129,6 +130,7 @@ export const VerseItem = memo<VerseItemProps>(
     hasBookmark,
     hasNote,
     onLongPress,
+    onOptionsPress,
   }) => {
     // Get settings from the store
     const {
@@ -264,12 +266,12 @@ export const VerseItem = memo<VerseItemProps>(
 
     return (
       <Pressable
-        style={({pressed}) => [
+        style={() => [
           styles.container,
-          {borderBottomColor: borderColor, opacity: pressed ? 0.7 : 1},
-          isSelected && styles.selectedContainer,
+          {borderBottomColor: borderColor},
           isSelected && {
-            borderLeftColor: Color(textColor).alpha(0.6).toString(),
+            backgroundColor: Color(textColor).alpha(0.06).toString(),
+            borderRadius: moderateScale(8),
           },
         ]}
         onPress={onPress}
@@ -291,12 +293,25 @@ export const VerseItem = memo<VerseItemProps>(
             )}
             {hasNote && (
               <Feather
-                name="edit-3"
+                name="file-text"
                 size={moderateScale(12)}
                 color={textColor}
                 style={styles.annotationIcon}
               />
             )}
+            <Pressable
+              onPress={onOptionsPress}
+              hitSlop={8}
+              style={({pressed}) => [
+                styles.optionsButton,
+                {opacity: pressed ? 0.5 : 1},
+              ]}>
+              <Feather
+                name="more-horizontal"
+                size={moderateScale(18)}
+                color={Color(textColor).alpha(0.5).toString()}
+              />
+            </Pressable>
           </View>
         </View>
         {/* ---> Simplified Arabic Text Rendering <-- */}
@@ -424,12 +439,11 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  selectedContainer: {
-    borderLeftWidth: 3,
-    paddingLeft: moderateScale(8),
+  optionsButton: {
+    marginLeft: 'auto',
+    padding: moderateScale(4),
   },
   verseInfoContainer: {
-    alignSelf: 'flex-start',
     marginBottom: verticalScale(6),
   },
   verseInfoRow: {

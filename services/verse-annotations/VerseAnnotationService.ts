@@ -34,16 +34,32 @@ class VerseAnnotationService {
     verseAnnotationDatabaseService,
   );
 
-  upsertNote = verseAnnotationDatabaseService.upsertNote.bind(
+  addNote = verseAnnotationDatabaseService.addNote.bind(
     verseAnnotationDatabaseService,
   );
-  getNote = verseAnnotationDatabaseService.getNote.bind(
+  updateNote = verseAnnotationDatabaseService.updateNote.bind(
     verseAnnotationDatabaseService,
   );
-  deleteNote = verseAnnotationDatabaseService.deleteNote.bind(
+  getNoteById = verseAnnotationDatabaseService.getNoteById.bind(
+    verseAnnotationDatabaseService,
+  );
+  getNotesForVerse = verseAnnotationDatabaseService.getNotesForVerse.bind(
+    verseAnnotationDatabaseService,
+  );
+  deleteNoteById = verseAnnotationDatabaseService.deleteNoteById.bind(
+    verseAnnotationDatabaseService,
+  );
+  getNotesCountForVerse =
+    verseAnnotationDatabaseService.getNotesCountForVerse.bind(
+      verseAnnotationDatabaseService,
+    );
+  getAllNotes = verseAnnotationDatabaseService.getAllNotes.bind(
     verseAnnotationDatabaseService,
   );
   getNotesBySurah = verseAnnotationDatabaseService.getNotesBySurah.bind(
+    verseAnnotationDatabaseService,
+  );
+  removeBookmark = verseAnnotationDatabaseService.removeBookmark.bind(
     verseAnnotationDatabaseService,
   );
 
