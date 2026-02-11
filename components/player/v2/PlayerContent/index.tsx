@@ -213,6 +213,20 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           onAmbientPress={onAmbientPress}
         />
       </Animated.View>
+
+      {/* Rounded TV frame between header and controls */}
+      <Animated.View
+        style={[
+          styles.tvFrame,
+          overlayAnimatedStyle,
+          {
+            top: headerHeight,
+            bottom: controlsHeight,
+            borderColor: Color(theme.colors.text).alpha(0.08).toString(),
+          },
+        ]}
+        pointerEvents="none"
+      />
     </View>
   );
 };
@@ -242,6 +256,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 5,
     borderRadius: 3,
+  },
+  tvFrame: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   controlsOverlay: {
     position: 'absolute',
