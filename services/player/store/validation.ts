@@ -384,6 +384,7 @@ export function createDefaultUnifiedPlayerState(): UnifiedPlayerState {
     ui: {
       sheetMode: 'hidden',
       isTransitioning: false,
+      isImmersive: false,
     },
   };
 }
@@ -395,5 +396,6 @@ export function createDefaultUIState(): UIState {
   return {
     sheetMode: 'hidden',
     isTransitioning: false,
+    isImmersive: false,
   };
 }
