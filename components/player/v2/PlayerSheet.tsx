@@ -9,30 +9,16 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
+import {Header} from './PlayerContent/Header';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
 
-// Custom handle component for the bottom sheet
-const CustomHandle = (_props: BottomSheetHandleProps) => {
-  const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={[styles.handleContainer, {paddingTop: insets.top + 12}]}>
-      <View
-        style={[
-          styles.handle,
-          {backgroundColor: Color(theme.colors.text).alpha(0.2).toString()},
-        ]}
-      />
-    </View>
-  );
-};
-
 export const PlayerSheet = () => {
   const {theme} = useTheme();
+  const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
@@ -232,6 +218,23 @@ export const PlayerSheet = () => {
     }
   }, [currentTrack, handleGoToReciter]);
 
+  const renderHandleComponent = useCallback(
+    (_props: BottomSheetHandleProps) => (
+      <View style={[styles.handleContainer, {paddingTop: insets.top + 12}]}>
+        <View
+          style={[
+            styles.handle,
+            {
+              backgroundColor: Color(theme.colors.text).alpha(0.2).toString(),
+            },
+          ]}
+        />
+        <Header onOptionsPress={handleShowOptionsSheet} />
+      </View>
+    ),
+    [insets.top, theme.colors.text, handleShowOptionsSheet],
+  );
+
   // Only render modals once settings are loaded to prevent hydration issues
   if (!shouldShow) {
     return null;
@@ -255,7 +258,7 @@ export const PlayerSheet = () => {
         backdropComponent={renderBackdrop}
         index={currentIndex}
         animateOnMount={false}
-        handleComponent={CustomHandle}
+        handleComponent={renderHandleComponent}
         enableContentPanningGesture
         style={styles.sheet}
         backgroundStyle={[
@@ -266,7 +269,6 @@ export const PlayerSheet = () => {
           onSpeedPress={handleShowSpeedSheet}
           onSleepTimerPress={handleShowSleepTimerSheet}
           onMushafLayoutPress={handleShowMushafLayoutSheet}
-          onOptionsPress={handleShowOptionsSheet}
           onAmbientPress={handleShowAmbientSheet}
         />
       </BottomSheet>
