@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -29,8 +29,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
     const hasAudio = !!dhikr.audioFile;
 
     return (
-      <TouchableOpacity
-        activeOpacity={1}
+      <Pressable
         style={styles.container}
         onPress={onPress}
         accessibilityRole="button"
@@ -65,7 +64,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
             <View style={styles.audioIndicator} />
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   },
 );
@@ -73,42 +72,30 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
 DhikrListItem.displayName = 'DhikrListItem';
 
 const createStyles = (theme: Theme) => {
-  const isDark =
-    theme.colors.background === '#000000' ||
-    Color(theme.colors.background).luminosity() < 0.5;
-
-  const parchmentBg = isDark
-    ? Color(theme.colors.card).lighten(0.1).toString()
-    : Color('#F5F0E6').mix(Color(theme.colors.card), 0.3).toString();
-
-  const inkColor = isDark
-    ? Color(theme.colors.text).alpha(0.9).toString()
-    : Color('#2C1810').mix(Color(theme.colors.text), 0.5).toString();
-
-  const goldAccent = isDark ? '#C9A85C' : '#8B7355';
+  const accentColor = theme.colors.textSecondary;
 
   return ScaledSheet.create({
     container: {
-      backgroundColor: parchmentBg,
+      backgroundColor: theme.colors.card,
       marginHorizontal: moderateScale(16),
       marginVertical: moderateScale(10),
-      borderRadius: moderateScale(16),
+      borderRadius: moderateScale(20),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: Color(goldAccent).alpha(0.3).toString(),
+      borderColor: Color(accentColor).alpha(0.15).toString(),
     },
     ornamentBar: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(8),
-      backgroundColor: Color(goldAccent).alpha(0.08).toString(),
+      backgroundColor: Color(accentColor).alpha(0.05).toString(),
       borderBottomWidth: 1,
-      borderBottomColor: Color(goldAccent).alpha(0.2).toString(),
+      borderBottomColor: Color(accentColor).alpha(0.1).toString(),
     },
     ornamentLeft: {
       flex: 1,
       height: 1,
-      backgroundColor: Color(goldAccent).alpha(0.4).toString(),
+      backgroundColor: Color(accentColor).alpha(0.2).toString(),
       marginLeft: moderateScale(16),
     },
     ornamentCenter: {
@@ -117,12 +104,12 @@ const createStyles = (theme: Theme) => {
     ornamentNumber: {
       fontSize: moderateScale(14),
       fontFamily: theme.fonts.semiBold,
-      color: goldAccent,
+      color: accentColor,
     },
     ornamentRight: {
       flex: 1,
       height: 1,
-      backgroundColor: Color(goldAccent).alpha(0.4).toString(),
+      backgroundColor: Color(accentColor).alpha(0.2).toString(),
       marginRight: moderateScale(16),
     },
     arabicContainer: {
@@ -132,7 +119,7 @@ const createStyles = (theme: Theme) => {
     arabicText: {
       fontSize: moderateScale(18),
       fontFamily: 'ScheherazadeNew-Regular',
-      color: inkColor,
+      color: theme.colors.text,
       textAlign: 'center',
       writingDirection: 'rtl',
       lineHeight: moderateScale(40),
@@ -143,13 +130,13 @@ const createStyles = (theme: Theme) => {
     },
     annotationLine: {
       height: 1,
-      backgroundColor: Color(inkColor).alpha(0.1).toString(),
+      backgroundColor: Color(accentColor).alpha(0.1).toString(),
       marginBottom: moderateScale(12),
     },
     translationText: {
       fontSize: moderateScale(13),
       fontFamily: theme.fonts.regular,
-      color: Color(inkColor).alpha(0.7).toString(),
+      color: accentColor,
       textAlign: 'center',
       lineHeight: moderateScale(20),
       fontStyle: 'italic',
@@ -160,20 +147,20 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       gap: moderateScale(12),
       paddingVertical: moderateScale(10),
-      backgroundColor: Color(goldAccent).alpha(0.05).toString(),
+      backgroundColor: Color(accentColor).alpha(0.05).toString(),
       borderTopWidth: 1,
-      borderTopColor: Color(goldAccent).alpha(0.15).toString(),
+      borderTopColor: Color(accentColor).alpha(0.15).toString(),
     },
     repeatText: {
       fontSize: moderateScale(11),
       fontFamily: theme.fonts.medium,
-      color: Color(goldAccent).darken(0.2).toString(),
+      color: accentColor,
     },
     audioIndicator: {
       width: moderateScale(6),
       height: moderateScale(6),
       borderRadius: moderateScale(3),
-      backgroundColor: goldAccent,
+      backgroundColor: accentColor,
     },
   });
 };

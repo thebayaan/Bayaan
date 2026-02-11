@@ -27,6 +27,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const ayahNumber = payload?.ayahNumber ?? 0;
   const arabicText = payload?.arabicText ?? '';
   const translation = payload?.translation ?? '';
+  const transliteration = payload?.transliteration ?? '';
 
   const surah = surahData.find(
     (s: {id: number; name: string}) => s.id === surahNumber,
@@ -36,7 +37,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const isBookmarked = useVerseAnnotationsStore(state =>
     state.isBookmarked(verseKey),
   );
-  const hasNote = useVerseAnnotationsStore(state => state.hasNote(verseKey));
   const isHighlighted = useVerseAnnotationsStore(
     state => !!state.highlights[verseKey],
   );
@@ -78,9 +78,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleCopy = useCallback(() => {
     SheetManager.show('verse-copy', {
-      payload: {verseKey, surahNumber, ayahNumber, arabicText, translation},
+      payload: {
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        arabicText,
+        translation,
+        transliteration,
+      },
     });
-  }, [verseKey, surahNumber, ayahNumber, arabicText, translation]);
+  }, [
+    verseKey,
+    surahNumber,
+    ayahNumber,
+    arabicText,
+    translation,
+    transliteration,
+  ]);
 
   const handleShare = useCallback(async () => {
     lightHaptics();
@@ -174,9 +188,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-            <Text style={styles.optionText}>
-              {hasNote ? 'Edit Note' : 'Add Note'}
-            </Text>
+            <Text style={styles.optionText}>Add Note</Text>
           </Pressable>
 
           <Pressable

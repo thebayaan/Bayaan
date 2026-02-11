@@ -166,6 +166,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
           ayahNumber: item.ayah_number,
           arabicText: item.text,
           translation: item.translation || '',
+          transliteration: item.transliteration || '',
         },
       });
     },

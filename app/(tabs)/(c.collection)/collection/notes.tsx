@@ -109,21 +109,24 @@ const NotesScreen = () => {
     [handleDeleteNote, handleNotePress],
   );
 
+  const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
+  const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
         <View style={{paddingTop: insets.top}} />
         <View style={styles.headerContent}>
           <View
-            style={[
-              styles.headerIcon,
-              {backgroundColor: Color('#3B82F6').alpha(0.15).toString()},
-            ]}>
-            <Feather
-              name="file-text"
-              size={moderateScale(28)}
-              color="#3B82F6"
-            />
+            style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
+            <View
+              style={[styles.heroIconInner, {backgroundColor: heroInnerBg}]}>
+              <Feather
+                name="file-text"
+                size={moderateScale(30)}
+                color={theme.colors.text}
+              />
+            </View>
           </View>
           <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
             Notes
@@ -138,13 +141,14 @@ const NotesScreen = () => {
         </View>
       </View>
     );
-  }, [notes.length, insets.top, theme]);
+  }, [notes.length, insets.top, theme, heroOuterBg, heroInnerBg]);
 
   const renderItem: ListRenderItem<NoteData> = ({item}) => (
     <NoteItem
       surahName={item.surahName}
       ayahNumber={item.note.ayahNumber}
       surahNumber={item.note.surahNumber}
+      verseKey={item.note.verseKey}
       notePreview={item.note.content}
       onPress={() => handleNotePress(item)}
       onOptionsPress={() => handleOptionsPress(item)}
@@ -280,13 +284,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: moderateScale(24),
   },
-  headerIcon: {
+  heroIconContainer: {
     width: moderateScale(64),
     height: moderateScale(64),
-    borderRadius: moderateScale(16),
+    borderRadius: moderateScale(32),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: moderateScale(12),
+  },
+  heroIconInner: {
+    width: moderateScale(56),
+    height: moderateScale(56),
+    borderRadius: moderateScale(28),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: moderateScale(22),
