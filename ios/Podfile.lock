@@ -316,8 +316,8 @@ PODS:
   - hermes-engine (0.81.5):
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
-  - libavif/core (0.11.1)
-  - libavif/libdav1d (0.11.1):
+  - libavif/core (1.0.0)
+  - libavif/libdav1d (1.0.0):
     - libavif/core
     - libdav1d (>= 0.6.0)
   - libdav1d (1.2.0)
@@ -2432,9 +2432,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - SDWebImage (5.21.5):
-    - SDWebImage/Core (= 5.21.5)
-  - SDWebImage/Core (5.21.5)
+  - SDWebImage (5.21.6):
+    - SDWebImage/Core (= 5.21.6)
+  - SDWebImage/Core (5.21.6)
   - SDWebImageAVIFCoder (0.11.1):
     - libavif/core (>= 0.11.0)
     - SDWebImage (~> 5.10)
@@ -2860,7 +2860,7 @@ SPEC CHECKSUMS:
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
-  libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
+  libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
@@ -2942,7 +2942,7 @@ SPEC CHECKSUMS:
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNSVG: 31d6639663c249b7d5abc9728dde2041eb2a3c34
   RNWorklets: 76fce72926e28e304afb44f0da23b2d24f2c1fa0
-  SDWebImage: e9c98383c7572d713c1a0d7dd2783b10599b9838
+  SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
