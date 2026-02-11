@@ -1,9 +1,10 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
-import {BottomSheetScrollView} from '@gorhom/bottom-sheet';
+import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {TrackItem} from '@/components/TrackItem';
@@ -215,14 +216,81 @@ interface QueueListProps {
   onRemoveQueueItem: (index: number) => void;
 }
 
+interface IndexedTrack extends Track {
+  _queueIndex: number;
+}
+
 export const QueueList: React.FC<QueueListProps> = ({
   onQueueItemPress,
   onRemoveQueueItem,
 }) => {
   const {theme} = useTheme();
-  const queue = usePlayerStore(s => s.queue);
+  const tracks = usePlayerStore(s => s.queue.tracks);
+  const renderScrollComponent = useBottomSheetScrollableCreator();
 
-  if (!queue?.tracks?.length) {
+  const indexedTracks: IndexedTrack[] = React.useMemo(
+    () => tracks.map((t, i) => ({...t, _queueIndex: i})),
+    [tracks],
+  );
+
+  const renderItem = useCallback(
+    ({item}: ListRenderItemInfo<IndexedTrack>) => {
+      const index = item._queueIndex;
+      return (
+        <View style={styles.trackItemContainer}>
+          {item.isUserUpload ? (
+            <UploadQueueItem
+              track={item}
+              index={index}
+              onPress={() => onQueueItemPress(index)}
+            />
+          ) : (
+            <TrackItem
+              reciterId={item.reciterId}
+              surahId={item.surahId || ''}
+              rewayatId={item.rewayatId}
+              onPress={() => onQueueItemPress(index)}
+            />
+          )}
+          <Pressable
+            style={styles.removeButton}
+            onPress={() => onRemoveQueueItem(index)}>
+            <MaterialCommunityIcons
+              name="close"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </View>
+      );
+    },
+    [onQueueItemPress, onRemoveQueueItem, theme.colors.text],
+  );
+
+  const keyExtractor = useCallback(
+    (item: IndexedTrack, index: number) => `${item.id}-${index}`,
+    [],
+  );
+
+  const renderHeader = useCallback(
+    () => (
+      <View style={[styles.header, {borderBottomColor: theme.colors.border}]}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
+            Queue
+          </Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Text style={[styles.queueCount, {color: theme.colors.text}]}>
+            {tracks.length} track{tracks.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+      </View>
+    ),
+    [theme.colors.border, theme.colors.text, tracks.length],
+  );
+
+  if (!tracks?.length) {
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>
@@ -242,55 +310,18 @@ export const QueueList: React.FC<QueueListProps> = ({
 
   return (
     <View style={styles.container}>
-      <BottomSheetScrollView
-        style={styles.list}
+      <FlashList
+        data={indexedTracks}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={renderHeader}
         contentContainerStyle={styles.listContent}
+        renderScrollComponent={renderScrollComponent}
         showsVerticalScrollIndicator={false}
         bounces={true}
-        overScrollMode="never">
-        {/* Header */}
-        <View style={[styles.header, {borderBottomColor: theme.colors.border}]}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
-              Queue
-            </Text>
-          </View>
-          <View style={styles.headerRight}>
-            <Text style={[styles.queueCount, {color: theme.colors.text}]}>
-              {queue.tracks.length} track{queue.tracks.length !== 1 ? 's' : ''}
-            </Text>
-          </View>
-        </View>
-
-        {/* Queue Items */}
-        {queue.tracks.map((track, index) => (
-          <View key={`${track.id}-${index}`} style={styles.trackItemContainer}>
-            {track.isUserUpload ? (
-              <UploadQueueItem
-                track={track}
-                index={index}
-                onPress={() => onQueueItemPress(index)}
-              />
-            ) : (
-              <TrackItem
-                reciterId={track.reciterId}
-                surahId={track.surahId || ''}
-                rewayatId={track.rewayatId}
-                onPress={() => onQueueItemPress(index)}
-              />
-            )}
-            <Pressable
-              style={styles.removeButton}
-              onPress={() => onRemoveQueueItem(index)}>
-              <MaterialCommunityIcons
-                name="close"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-            </Pressable>
-          </View>
-        ))}
-      </BottomSheetScrollView>
+        overScrollMode="never"
+        drawDistance={500}
+      />
     </View>
   );
 };
@@ -300,10 +331,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: 'transparent',
-  },
-  list: {
-    flex: 1,
-    borderRadius: moderateScale(15),
   },
   listContent: {
     paddingBottom: verticalScale(20),
