@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   },
   bismillah: {
     fontSize: moderateScale(30),
-    fontFamily: 'QPC',
+    fontFamily: 'Uthmani',
     textAlign: 'center',
   },
 });

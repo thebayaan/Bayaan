@@ -3,6 +3,7 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
 import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -249,13 +250,27 @@ appInitializer.registerService({
 });
 
 /**
- * Adhkar Store Data (Priority 5)
+ * DigitalKhatt Data (Priority 5)
+ * Loads DigitalKhatt font data from SQLite databases for Mushaf rendering
+ * Non-critical - Mushaf tab will show loading state until ready
+ */
+appInitializer.registerService({
+  name: 'DigitalKhatt Data',
+  priority: 5,
+  critical: false,
+  initialize: async () => {
+    await digitalKhattDataService.initialize();
+  },
+});
+
+/**
+ * Adhkar Store Data (Priority 6)
  * Loads adhkar categories from database into Zustand store
  * Non-critical - can be loaded later if fails
  */
 appInitializer.registerService({
   name: 'Adhkar Store Data',
-  priority: 5,
+  priority: 6,
   critical: false,
   initialize: async () => {
     await useAdhkarStore.getState().loadCategories();
@@ -263,7 +278,7 @@ appInitializer.registerService({
 });
 
 /**
- * Uploads Service (Priority 6)
+ * Uploads Service (Priority 7)
  * Initializes the uploads database and loads recitations into store
  * Non-critical - app can function without uploads
  */

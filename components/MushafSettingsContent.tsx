@@ -142,7 +142,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   };
 
   // Determine if this control is for Arabic text
-  const isQPC = sampleFontFamily === 'QPC';
+  const isQPC = sampleFontFamily === 'Uthmani';
   const isIndopak = sampleFontFamily === 'Indopak';
   const isArabic = isQPC || isIndopak;
 
@@ -464,7 +464,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   // Determine sample text and segments based on font
   const isIndopakSelected = arabicFontFamily === 'Indopak';
-  const isQPCSelected = arabicFontFamily === 'QPC';
+  const isQPCSelected = arabicFontFamily === 'Uthmani';
 
   // Can only show tajweed if QPC is selected
   const canShowTajweed = isQPCSelected; // Simpler check now
@@ -500,14 +500,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             <TouchableOpacity
               style={[
                 styles.fontFamilyButton,
-                arabicFontFamily === 'QPC' && styles.fontFamilyButtonActive,
+                arabicFontFamily === 'Uthmani' && styles.fontFamilyButtonActive,
               ]}
-              onPress={() => setArabicFontFamily('QPC')}
+              onPress={() => setArabicFontFamily('Uthmani')}
               activeOpacity={0.7}>
               <Text
                 style={[
                   styles.fontFamilyButtonText,
-                  arabicFontFamily === 'QPC' &&
+                  arabicFontFamily === 'Uthmani' &&
                     styles.fontFamilyButtonTextActive,
                 ]}>
                 Uthmani

@@ -32,7 +32,7 @@ interface MushafSettingsState {
   transliterationFontSize: number;
 
   // Font family
-  arabicFontFamily: 'QPC' | 'Indopak';
+  arabicFontFamily: 'Uthmani' | 'Indopak';
 
   // Actions
   toggleTranslation: () => void;
@@ -41,7 +41,7 @@ interface MushafSettingsState {
   setArabicFontSize: (size: number) => void;
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
-  setArabicFontFamily: (font: 'QPC' | 'Indopak') => void;
+  setArabicFontFamily: (font: 'Uthmani' | 'Indopak') => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -54,7 +54,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(4),
       transliterationFontSize: getActualFontSize(3),
-      arabicFontFamily: 'QPC', // Default font
+      arabicFontFamily: 'Uthmani', // Default font
 
       // Actions
       toggleTranslation: () =>
@@ -67,12 +67,23 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set({translationFontSize: size}),
       setTransliterationFontSize: (size: number) =>
         set({transliterationFontSize: size}),
-      setArabicFontFamily: (font: 'QPC' | 'Indopak') =>
+      setArabicFontFamily: (font: 'Uthmani' | 'Indopak') =>
         set({arabicFontFamily: font}),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Record<string, unknown>;
+        if (version === 0) {
+          // Migrate 'QPC' -> 'Uthmani'
+          if (state.arabicFontFamily === 'QPC') {
+            state.arabicFontFamily = 'Uthmani';
+          }
+        }
+        return state as unknown as MushafSettingsState;
+      },
     },
   ),
 );
