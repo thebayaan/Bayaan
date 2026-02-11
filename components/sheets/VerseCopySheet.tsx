@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
@@ -14,7 +14,6 @@ import ActionSheet, {
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 
 interface CheckboxRowProps {
   label: string;
@@ -34,10 +33,9 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
   styles,
 }) => {
   return (
-    <TouchableOpacity
+    <Pressable
       style={[styles.checkboxRow, disabled && styles.checkboxRowDisabled]}
       onPress={onToggle}
-      activeOpacity={1}
       disabled={disabled}>
       <View
         style={[
@@ -60,7 +58,7 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
         ]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -97,8 +95,7 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
       await Clipboard.setStringAsync(parts.join('\n\n'));
     }
 
-    SheetManager.hide('verse-copy');
-    useVerseSelectionStore.getState().clearSelection();
+    SheetManager.hideAll();
   }, [
     copyArabic,
     copyTranslation,
@@ -147,17 +144,14 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
           />
         </View>
 
-        <TouchableOpacity
+        <Pressable
           style={[styles.copyButton, !canCopy && styles.copyButtonDisabled]}
           onPress={handleCopy}
-          activeOpacity={1}
           disabled={!canCopy}>
           <Feather
             name="copy"
             size={moderateScale(18)}
-            color={
-              canCopy ? theme.colors.background : theme.colors.textSecondary
-            }
+            color={canCopy ? theme.colors.text : theme.colors.textSecondary}
           />
           <Text
             style={[
@@ -166,7 +160,7 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
             ]}>
             Copy to Clipboard
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </ActionSheet>
   );
@@ -246,9 +240,9 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.colors.text,
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       borderRadius: moderateScale(12),
-      paddingVertical: verticalScale(14),
+      paddingVertical: verticalScale(12),
       gap: moderateScale(8),
     },
     copyButtonDisabled: {
@@ -257,7 +251,7 @@ const createStyles = (theme: Theme) =>
     copyButtonText: {
       fontSize: moderateScale(16),
       fontFamily: theme.fonts.semiBold,
-      color: theme.colors.background,
+      color: theme.colors.text,
     },
     copyButtonTextDisabled: {
       color: theme.colors.textSecondary,

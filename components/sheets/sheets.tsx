@@ -217,6 +217,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        noteId?: string;
       };
     }>;
     'verse-translation': SheetDefinition<{

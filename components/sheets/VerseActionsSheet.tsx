@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, TouchableOpacity, Share} from 'react-native';
+import {View, Text, Pressable, Share} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -37,10 +37,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     state.isBookmarked(verseKey),
   );
   const hasNote = useVerseAnnotationsStore(state => state.hasNote(verseKey));
-
-  const handleClose = useCallback(() => {
-    SheetManager.hide('verse-actions');
-  }, []);
+  const isHighlighted = useVerseAnnotationsStore(
+    state => !!state.highlights[verseKey],
+  );
 
   const handleToggleBookmark = useCallback(async () => {
     lightHaptics();
@@ -55,14 +54,21 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     } else {
       store.removeBookmark(verseKey);
     }
-    handleClose();
-  }, [verseKey, surahNumber, ayahNumber, handleClose]);
-
-  const handleHighlight = useCallback(() => {
-    SheetManager.show('verse-highlight', {
-      payload: {verseKey, surahNumber, ayahNumber},
-    });
+    SheetManager.hideAll();
   }, [verseKey, surahNumber, ayahNumber]);
+
+  const handleHighlight = useCallback(async () => {
+    if (isHighlighted) {
+      lightHaptics();
+      await verseAnnotationService.removeHighlight(verseKey);
+      useVerseAnnotationsStore.getState().removeHighlight(verseKey);
+      SheetManager.hideAll();
+    } else {
+      SheetManager.show('verse-highlight', {
+        payload: {verseKey, surahNumber, ayahNumber},
+      });
+    }
+  }, [verseKey, surahNumber, ayahNumber, isHighlighted]);
 
   const handleNote = useCallback(() => {
     SheetManager.show('verse-note', {
@@ -80,8 +86,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lightHaptics();
     const message = `${arabicText}\n\n${translation}\n\n-- Quran ${surahNumber}:${ayahNumber}`;
     await Share.share({message});
-    handleClose();
-  }, [arabicText, translation, surahNumber, ayahNumber, handleClose]);
+    SheetManager.hideAll();
+  }, [arabicText, translation, surahNumber, ayahNumber]);
 
   const handleTranslation = useCallback(() => {
     SheetManager.show('verse-translation', {
@@ -111,111 +117,115 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         </View>
 
         <View style={styles.optionsGrid}>
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.option,
               pressedOption === 'bookmark' && styles.optionPressed,
             ]}
             onPress={handleToggleBookmark}
             onPressIn={() => setPressedOption('bookmark')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            onPressOut={() => setPressedOption(null)}>
             <Feather
-              name="bookmark"
+              name={isBookmarked ? 'trash-2' : 'bookmark'}
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>
               {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.option,
               pressedOption === 'highlight' && styles.optionPressed,
             ]}
             onPress={handleHighlight}
             onPressIn={() => setPressedOption('highlight')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
-            <Ionicons
-              name="color-palette-outline"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-            <Text style={styles.optionText}>Highlight</Text>
-          </TouchableOpacity>
+            onPressOut={() => setPressedOption(null)}>
+            {isHighlighted ? (
+              <Feather
+                name="trash-2"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            ) : (
+              <Ionicons
+                name="brush-outline"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            )}
+            <Text style={styles.optionText}>
+              {isHighlighted ? 'Remove Highlight' : 'Highlight'}
+            </Text>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.option,
               pressedOption === 'note' && styles.optionPressed,
             ]}
             onPress={handleNote}
             onPressIn={() => setPressedOption('note')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            onPressOut={() => setPressedOption(null)}>
             <Feather
-              name="edit-3"
+              name="file-text"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>
               {hasNote ? 'Edit Note' : 'Add Note'}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.option,
               pressedOption === 'copy' && styles.optionPressed,
             ]}
             onPress={handleCopy}
             onPressIn={() => setPressedOption('copy')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            onPressOut={() => setPressedOption(null)}>
             <Feather
               name="copy"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>Copy</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.option,
               pressedOption === 'share' && styles.optionPressed,
             ]}
             onPress={handleShare}
             onPressIn={() => setPressedOption('share')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            onPressOut={() => setPressedOption(null)}>
             <Feather
               name="share"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>Share</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             style={[
               styles.option,
               pressedOption === 'translation' && styles.optionPressed,
             ]}
             onPress={handleTranslation}
             onPressIn={() => setPressedOption('translation')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            onPressOut={() => setPressedOption(null)}>
             <Feather
               name="book-open"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>Translation</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </ActionSheet>

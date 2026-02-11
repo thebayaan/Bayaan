@@ -28,13 +28,13 @@ export function useVerseActions() {
         }
       },
 
-      upsertNote: async (
+      addNote: async (
         verseKey: string,
         surahNumber: number,
         ayahNumber: number,
         content: string,
       ) => {
-        await verseAnnotationService.upsertNote(
+        await verseAnnotationService.addNote(
           verseKey,
           surahNumber,
           ayahNumber,
@@ -43,9 +43,14 @@ export function useVerseActions() {
         useVerseAnnotationsStore.getState().addNote(verseKey);
       },
 
-      deleteNote: async (verseKey: string) => {
-        await verseAnnotationService.deleteNote(verseKey);
-        useVerseAnnotationsStore.getState().removeNote(verseKey);
+      deleteNoteById: async (noteId: string, verseKey: string) => {
+        await verseAnnotationService.deleteNoteById(noteId);
+        const remaining = await verseAnnotationService.getNotesCountForVerse(
+          verseKey,
+        );
+        if (remaining === 0) {
+          useVerseAnnotationsStore.getState().removeNote(verseKey);
+        }
       },
 
       setHighlight: async (

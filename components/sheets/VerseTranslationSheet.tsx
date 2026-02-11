@@ -1,5 +1,5 @@
 import React, {useState, useMemo} from 'react';
-import {View, Text, TouchableOpacity, ScrollView} from 'react-native';
+import {View, Text, Pressable, ScrollView} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
@@ -72,10 +72,9 @@ export const VerseTranslationSheet = (
         <Text style={styles.title}>Translation</Text>
 
         <View style={styles.tabRow}>
-          <TouchableOpacity
+          <Pressable
             style={[styles.tab, source === 'saheeh' && styles.tabActive]}
-            onPress={() => setSource('saheeh')}
-            activeOpacity={0.7}>
+            onPress={() => setSource('saheeh')}>
             <Text
               style={[
                 styles.tabText,
@@ -83,11 +82,10 @@ export const VerseTranslationSheet = (
               ]}>
               Saheeh International
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             style={[styles.tab, source === 'clear-quran' && styles.tabActive]}
-            onPress={() => setSource('clear-quran')}
-            activeOpacity={0.7}>
+            onPress={() => setSource('clear-quran')}>
             <Text
               style={[
                 styles.tabText,
@@ -95,7 +93,7 @@ export const VerseTranslationSheet = (
               ]}>
               Clear Quran
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <ScrollView

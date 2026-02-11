@@ -1,5 +1,5 @@
 import React, {useMemo, useCallback} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
@@ -16,7 +16,6 @@ import {Feather} from '@expo/vector-icons';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
@@ -39,8 +38,7 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
         color,
       );
       useVerseAnnotationsStore.getState().setHighlight(verseKey, color);
-      SheetManager.hide('verse-highlight');
-      useVerseSelectionStore.getState().clearSelection();
+      SheetManager.hideAll();
     },
     [verseKey, surahNumber, ayahNumber],
   );
@@ -48,8 +46,7 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
   const handleRemove = useCallback(async () => {
     await verseAnnotationService.removeHighlight(verseKey);
     useVerseAnnotationsStore.getState().removeHighlight(verseKey);
-    SheetManager.hide('verse-highlight');
-    useVerseSelectionStore.getState().clearSelection();
+    SheetManager.hideAll();
   }, [verseKey]);
 
   return (
@@ -65,31 +62,27 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
           {COLORS.map(([name, hex]) => {
             const isActive = currentColor === name;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={name}
                 style={[
                   styles.colorCircle,
                   {backgroundColor: hex},
                   isActive && styles.colorCircleActive,
                 ]}
-                onPress={() => handleSelectColor(name)}
-                activeOpacity={0.7}>
+                onPress={() => handleSelectColor(name)}>
                 {isActive ? (
                   <Feather name="check" size={moderateScale(22)} color="#333" />
                 ) : null}
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
 
         {currentColor ? (
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={handleRemove}
-            activeOpacity={1}>
+          <Pressable style={styles.removeButton} onPress={handleRemove}>
             <Feather name="x-circle" size={moderateScale(18)} color="#ff4444" />
             <Text style={styles.removeButtonText}>Remove Highlight</Text>
-          </TouchableOpacity>
+          </Pressable>
         ) : null}
       </View>
     </ActionSheet>

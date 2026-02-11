@@ -1,16 +1,9 @@
-export type HighlightColor =
-  | 'yellow'
-  | 'green'
-  | 'blue'
-  | 'pink'
-  | 'orange'
-  | 'purple';
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'orange' | 'purple';
 
 export const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
   yellow: '#FFF3B0',
   green: '#B8F0C0',
   blue: '#B0D4FF',
-  pink: '#FFB0D4',
   orange: '#FFD4B0',
   purple: '#D4B0FF',
 };
