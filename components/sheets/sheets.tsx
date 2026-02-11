@@ -25,6 +25,11 @@ import {UploadOptionsSheet} from './UploadOptionsSheet';
 import {AddToCollectionSheet} from './AddToCollectionSheet';
 import {AmbientSoundsSheet} from './AmbientSoundsSheet';
 import {CollectionOptionsSheet} from './CollectionOptionsSheet';
+import {VerseActionsSheet} from './VerseActionsSheet';
+import {VerseCopySheet} from './VerseCopySheet';
+import {VerseHighlightSheet} from './VerseHighlightSheet';
+import {VerseNoteSheet} from './VerseNoteSheet';
+import {VerseTranslationSheet} from './VerseTranslationSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -46,6 +51,11 @@ registerSheet('upload-options', UploadOptionsSheet);
 registerSheet('add-to-collection', AddToCollectionSheet);
 registerSheet('ambient-sounds', AmbientSoundsSheet);
 registerSheet('collection-options', CollectionOptionsSheet);
+registerSheet('verse-actions', VerseActionsSheet);
+registerSheet('verse-copy', VerseCopySheet);
+registerSheet('verse-highlight', VerseHighlightSheet);
+registerSheet('verse-note', VerseNoteSheet);
+registerSheet('verse-translation', VerseTranslationSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -175,6 +185,46 @@ declare module 'react-native-actions-sheet' {
           disabled?: boolean;
           customIcon?: React.ReactNode;
         }>;
+      };
+    }>;
+    'verse-actions': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+        arabicText: string;
+        translation: string;
+      };
+    }>;
+    'verse-copy': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+        arabicText: string;
+        translation: string;
+      };
+    }>;
+    'verse-highlight': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+      };
+    }>;
+    'verse-note': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+      };
+    }>;
+    'verse-translation': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+        arabicText: string;
       };
     }>;
   }
