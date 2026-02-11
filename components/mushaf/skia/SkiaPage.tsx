@@ -24,6 +24,8 @@ import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import SkiaLine from './SkiaLine';
 import {
   SCREEN_WIDTH,
@@ -68,6 +70,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     s => s.selectedPageNumber,
   );
   const selectVerse = useMushafVerseSelectionStore(s => s.selectVerse);
+
+  const persistentHighlights = useVerseAnnotationsStore(s => s.highlights);
 
   const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
     null,
@@ -216,12 +220,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       if (verseSegment) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         selectVerse(verseSegment.verseKey, pageNumber);
-        SheetManager.show('mushaf-verse-actions', {
+        SheetManager.show('verse-actions', {
           payload: {
             verseKey: verseSegment.verseKey,
             surahNumber: verseSegment.surahNumber,
             ayahNumber: verseSegment.ayahNumber,
-            pageNumber,
           },
         });
       }
@@ -241,25 +244,65 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [handleLongPress],
   );
 
-  // Compute per-line character ranges for the selected verse (used for text coloring)
-  const highlightRanges = useMemo<
-    Map<number, {start: number; end: number}>
+  // Compute per-line highlight arrays merging persistent annotations + temporary selection
+  const lineHighlightsMap = useMemo<
+    Map<number, Array<{start: number; end: number; color: string}>>
   >(() => {
-    if (!selectedVerseKey || selectedPageNumber !== pageNumber)
-      return new Map();
-    const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
-      pageNumber,
-      selectedVerseKey,
-    );
-    const map = new Map<number, {start: number; end: number}>();
-    for (const {lineIndex, segment} of verseLines) {
-      map.set(lineIndex, {
-        start: segment.startCharIndex,
-        end: segment.endCharIndex,
-      });
+    const map = new Map<
+      number,
+      Array<{start: number; end: number; color: string}>
+    >();
+
+    // Persistent annotation highlights
+    for (const [verseKey, colorName] of Object.entries(persistentHighlights)) {
+      const hex = HIGHLIGHT_COLORS[colorName];
+      if (!hex) continue;
+      const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
+        pageNumber,
+        verseKey,
+      );
+      for (const {lineIndex, segment} of verseLines) {
+        let arr = map.get(lineIndex);
+        if (!arr) {
+          arr = [];
+          map.set(lineIndex, arr);
+        }
+        arr.push({
+          start: segment.startCharIndex,
+          end: segment.endCharIndex,
+          color: hex,
+        });
+      }
     }
+
+    // Temporary selection highlight (takes priority — added last so find() returns it first)
+    if (selectedVerseKey && selectedPageNumber === pageNumber) {
+      const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
+        pageNumber,
+        selectedVerseKey,
+      );
+      for (const {lineIndex, segment} of verseLines) {
+        let arr = map.get(lineIndex);
+        if (!arr) {
+          arr = [];
+          map.set(lineIndex, arr);
+        }
+        arr.push({
+          start: segment.startCharIndex,
+          end: segment.endCharIndex,
+          color: highlightColor,
+        });
+      }
+    }
+
     return map;
-  }, [selectedVerseKey, selectedPageNumber, pageNumber]);
+  }, [
+    persistentHighlights,
+    selectedVerseKey,
+    selectedPageNumber,
+    pageNumber,
+    highlightColor,
+  ]);
 
   if (!fontMgr || !justResults || computing) {
     return (
@@ -310,8 +353,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
                 charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 onParagraphReady={handleParagraphReady}
-                highlightRange={highlightRanges.get(lineIndex)}
-                highlightColor={highlightColor}
+                highlights={lineHighlightsMap.get(lineIndex)}
               />
             );
           })}
