@@ -16,6 +16,35 @@ import {Feather} from '@expo/vector-icons';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+
+// Build verse_key -> text lookup once at module scope
+interface QuranEntry {
+  verse_key: string;
+  text: string;
+}
+const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
+const qpcTextByKey: Record<string, string> = {};
+for (const key of Object.keys(quranRaw)) {
+  const entry = quranRaw[key];
+  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
+}
+
+// Lazy-load Indopak data
+interface IndopakEntry {
+  text: string;
+}
+let indopakCache: Record<string, IndopakEntry> | null = null;
+function getIndopakData(): Record<string, IndopakEntry> | null {
+  if (!indopakCache) {
+    try {
+      indopakCache = require('@/data/IndopakNastaleeq.json');
+    } catch {
+      // not available
+    }
+  }
+  return indopakCache;
+}
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
@@ -27,7 +56,14 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
   const surahNumber = props.payload?.surahNumber ?? 0;
   const ayahNumber = props.payload?.ayahNumber ?? 0;
 
+  const {arabicFontFamily} = useMushafSettingsStore();
+
   const currentColor = useVerseAnnotationsStore(s => s.highlights[verseKey]);
+
+  const isIndopak = arabicFontFamily === 'Indopak';
+  const arabicText = isIndopak
+    ? getIndopakData()?.[verseKey]?.text ?? ''
+    : qpcTextByKey[verseKey] ?? '';
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
@@ -57,6 +93,14 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
       gestureEnabled={true}>
       <View style={styles.container}>
         <Text style={styles.title}>Highlight Color</Text>
+
+        {arabicText ? (
+          <View style={styles.ayahContainer}>
+            <Text style={[styles.ayahText, {fontFamily: arabicFontFamily}]}>
+              {arabicText}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.colorsGrid}>
           {COLORS.map(([name, hex]) => {
@@ -92,7 +136,7 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
@@ -110,7 +154,20 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.bold,
       color: theme.colors.text,
       textAlign: 'center',
+      marginBottom: verticalScale(12),
+    },
+    ayahContainer: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(12),
+      padding: moderateScale(16),
       marginBottom: verticalScale(20),
+    },
+    ayahText: {
+      fontSize: moderateScale(24),
+      color: theme.colors.text,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      lineHeight: moderateScale(48),
     },
     colorsGrid: {
       flexDirection: 'row',

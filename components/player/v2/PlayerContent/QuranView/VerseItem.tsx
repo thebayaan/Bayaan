@@ -273,6 +273,10 @@ export const VerseItem = memo<VerseItemProps>(
             backgroundColor: Color(textColor).alpha(0.06).toString(),
             borderRadius: moderateScale(8),
           },
+          highlightBgColor && {
+            backgroundColor: highlightBgColor,
+            borderRadius: moderateScale(8),
+          },
         ]}
         onPress={onPress}
         onLongPress={onLongPress}>
@@ -302,10 +306,7 @@ export const VerseItem = memo<VerseItemProps>(
             <Pressable
               onPress={onOptionsPress}
               hitSlop={8}
-              style={({pressed}) => [
-                styles.optionsButton,
-                {opacity: pressed ? 0.5 : 1},
-              ]}>
+              style={styles.optionsButton}>
               <Feather
                 name="more-horizontal"
                 size={moderateScale(18)}
@@ -315,12 +316,7 @@ export const VerseItem = memo<VerseItemProps>(
           </View>
         </View>
         {/* ---> Simplified Arabic Text Rendering <-- */}
-        <View
-          style={
-            highlightBgColor
-              ? [styles.highlightContainer, {backgroundColor: highlightBgColor}]
-              : undefined
-          }>
+        <View>
           {isIndopakSelected ? (
             // Indopak Rendering
             <Text
@@ -458,11 +454,6 @@ const styles = StyleSheet.create({
   },
   annotationIcon: {
     opacity: 0.7,
-  },
-  highlightContainer: {
-    borderRadius: moderateScale(4),
-    paddingHorizontal: moderateScale(4),
-    paddingVertical: moderateScale(2),
   },
   verseInfo: {
     fontSize: moderateScale(12),

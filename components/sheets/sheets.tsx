@@ -194,6 +194,7 @@ declare module 'react-native-actions-sheet' {
         ayahNumber: number;
         arabicText: string;
         translation: string;
+        transliteration?: string;
       };
     }>;
     'verse-copy': SheetDefinition<{
@@ -203,6 +204,7 @@ declare module 'react-native-actions-sheet' {
         ayahNumber: number;
         arabicText: string;
         translation: string;
+        transliteration?: string;
       };
     }>;
     'verse-highlight': SheetDefinition<{

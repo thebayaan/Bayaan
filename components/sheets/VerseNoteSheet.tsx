@@ -15,6 +15,35 @@ import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+
+// Build verse_key -> text lookup once at module scope
+interface QuranEntry {
+  verse_key: string;
+  text: string;
+}
+const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
+const qpcTextByKey: Record<string, string> = {};
+for (const key of Object.keys(quranRaw)) {
+  const entry = quranRaw[key];
+  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
+}
+
+// Lazy-load Indopak data
+interface IndopakEntry {
+  text: string;
+}
+let indopakCache: Record<string, IndopakEntry> | null = null;
+function getIndopakData(): Record<string, IndopakEntry> | null {
+  if (!indopakCache) {
+    try {
+      indopakCache = require('@/data/IndopakNastaleeq.json');
+    } catch {
+      // not available
+    }
+  }
+  return indopakCache;
+}
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
@@ -25,14 +54,20 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const ayahNumber = props.payload?.ayahNumber ?? 0;
   const noteId = props.payload?.noteId;
 
+  const {arabicFontFamily} = useMushafSettingsStore();
+
   const [noteText, setNoteText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
+
+  const isIndopak = arabicFontFamily === 'Indopak';
+  const arabicText = isIndopak
+    ? getIndopakData()?.[verseKey]?.text ?? ''
+    : qpcTextByKey[verseKey] ?? '';
 
   useEffect(() => {
     if (!verseKey) return;
 
     if (noteId) {
-      // Edit mode: load specific note by id
       verseAnnotationService.getNoteById(noteId).then(note => {
         if (note) {
           setNoteText(note.content);
@@ -84,6 +119,14 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
           {isEditMode ? 'Edit Note' : 'Note'} for {surahNumber}:{ayahNumber}
         </Text>
 
+        {arabicText ? (
+          <View style={styles.ayahContainer}>
+            <Text style={[styles.ayahText, {fontFamily: arabicFontFamily}]}>
+              {arabicText}
+            </Text>
+          </View>
+        ) : null}
+
         <TextInput
           style={styles.textInput}
           value={noteText}
@@ -127,7 +170,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
@@ -145,13 +188,26 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.bold,
       color: theme.colors.text,
       textAlign: 'center',
+      marginBottom: verticalScale(12),
+    },
+    ayahContainer: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(12),
+      padding: moderateScale(16),
       marginBottom: verticalScale(16),
+    },
+    ayahText: {
+      fontSize: moderateScale(24),
+      color: theme.colors.text,
+      textAlign: 'right',
+      writingDirection: 'rtl',
+      lineHeight: moderateScale(48),
     },
     textInput: {
       backgroundColor: theme.colors.card,
       borderRadius: moderateScale(12),
       padding: moderateScale(14),
-      minHeight: verticalScale(150),
+      minHeight: verticalScale(120),
       fontSize: moderateScale(15),
       fontFamily: theme.fonts.regular,
       color: theme.colors.text,

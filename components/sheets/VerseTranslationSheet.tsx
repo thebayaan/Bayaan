@@ -10,6 +10,7 @@ import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import type {QuranData} from '@/types/quran';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 const saheehData =
   require('@/data/SaheehInternational.translation-with-footnote-tags.json') as Record<
@@ -44,6 +45,8 @@ export const VerseTranslationSheet = (
 
   const verseKey = props.payload?.verseKey ?? '';
   const arabicText = props.payload?.arabicText ?? '';
+
+  const {arabicFontFamily} = useMushafSettingsStore();
 
   const [source, setSource] = useState<TranslationSource>('saheeh');
 
@@ -101,7 +104,9 @@ export const VerseTranslationSheet = (
           showsVerticalScrollIndicator={false}
           bounces={true}>
           {arabicText ? (
-            <Text style={styles.arabicText}>{arabicText}</Text>
+            <Text style={[styles.arabicText, {fontFamily: arabicFontFamily}]}>
+              {arabicText}
+            </Text>
           ) : null}
 
           {translationText ? (
@@ -118,7 +123,7 @@ export const VerseTranslationSheet = (
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
@@ -168,7 +173,6 @@ const createStyles = (theme: Theme) =>
     },
     arabicText: {
       fontSize: moderateScale(24),
-      fontFamily: 'QPC',
       color: theme.colors.text,
       textAlign: 'right',
       writingDirection: 'rtl',

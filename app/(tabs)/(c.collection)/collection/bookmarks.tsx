@@ -88,17 +88,24 @@ const BookmarksScreen = () => {
     [handleRemoveBookmark],
   );
 
+  const heroOuterBg = Color(theme.colors.textSecondary).alpha(0.1).toString();
+  const heroInnerBg = Color(theme.colors.textSecondary).alpha(0.08).toString();
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
         <View style={{paddingTop: insets.top}} />
         <View style={styles.headerContent}>
           <View
-            style={[
-              styles.headerIcon,
-              {backgroundColor: Color('#F59E0B').alpha(0.15).toString()},
-            ]}>
-            <Feather name="bookmark" size={moderateScale(28)} color="#F59E0B" />
+            style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
+            <View
+              style={[styles.heroIconInner, {backgroundColor: heroInnerBg}]}>
+              <Feather
+                name="bookmark"
+                size={moderateScale(30)}
+                color={theme.colors.text}
+              />
+            </View>
           </View>
           <Text style={[styles.headerTitle, {color: theme.colors.text}]}>
             Bookmarks
@@ -114,13 +121,14 @@ const BookmarksScreen = () => {
         </View>
       </View>
     );
-  }, [bookmarks.length, insets.top, theme]);
+  }, [bookmarks.length, insets.top, theme, heroOuterBg, heroInnerBg]);
 
   const renderItem: ListRenderItem<BookmarkData> = ({item}) => (
     <BookmarkItem
       surahName={item.surahName}
       ayahNumber={item.bookmark.ayahNumber}
       surahNumber={item.bookmark.surahNumber}
+      verseKey={item.bookmark.verseKey}
       onPress={() => {}}
       onOptionsPress={() => handleOptionsPress(item)}
     />
@@ -255,13 +263,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: moderateScale(24),
   },
-  headerIcon: {
+  heroIconContainer: {
     width: moderateScale(64),
     height: moderateScale(64),
-    borderRadius: moderateScale(16),
+    borderRadius: moderateScale(32),
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: moderateScale(12),
+  },
+  heroIconInner: {
+    width: moderateScale(56),
+    height: moderateScale(56),
+    borderRadius: moderateScale(28),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: moderateScale(22),
