@@ -21,7 +21,6 @@ import {getReciterById, getSurahById} from '@/services/dataService';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {usePlayerStore} from '@/services/player/store/playerStore';
 import {createDownloadedTrack} from '@/utils/track';
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
@@ -50,8 +49,7 @@ export default function DownloadsScreen() {
   const router = useRouter();
   const downloads = useDownloads();
   const {removeDownload, clearAllDownloads} = useDownloadActions();
-  const {updateQueue, addToQueue, play, pause} = usePlayerActions();
-  const playbackState = usePlayerStore(state => state.playback.state);
+  const {updateQueue, addToQueue, play} = usePlayerActions();
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
@@ -397,11 +395,6 @@ export default function DownloadsScreen() {
     if (downloadData.length === 0) return;
 
     try {
-      if (playbackState === 'playing') {
-        await pause();
-        return;
-      }
-
       const trackPromises = downloadData.map(async item => {
         if (!item.reciter || !item.surah) return null;
         return createDownloadedTrack(
@@ -423,7 +416,7 @@ export default function DownloadsScreen() {
     } catch (error) {
       console.error('Error playing all downloads:', error);
     }
-  }, [downloadData, updateQueue, play, pause, playbackState]);
+  }, [downloadData, updateQueue, play]);
 
   const handleShuffle = useCallback(async () => {
     if (downloadData.length === 0) return;

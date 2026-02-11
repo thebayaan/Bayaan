@@ -56,9 +56,7 @@ const LovedScreen = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const {lovedTracks, toggleLoved, unloveAll} = useLoved();
-  const {pause, addToQueue, updateQueue, play, toggleShuffle} =
-    usePlayerActions();
-  const playbackState = usePlayerStore(state => state.playback.state);
+  const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
   const {addRecentTrack} = useRecentlyPlayedStore();
   const {
@@ -277,11 +275,6 @@ const LovedScreen = () => {
     if (lovedData.length === 0) return;
 
     try {
-      if (playbackState === 'playing') {
-        await pause();
-        return;
-      }
-
       const allTracks = lovedData
         .filter(item => item.reciter && item.surah)
         .map(item => {
@@ -325,7 +318,7 @@ const LovedScreen = () => {
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  }, [lovedData, pause, playbackState, addRecentTrack, updateQueue]);
+  }, [lovedData, addRecentTrack, updateQueue]);
 
   // Shuffle all tracks
   const handleShuffle = useCallback(async () => {

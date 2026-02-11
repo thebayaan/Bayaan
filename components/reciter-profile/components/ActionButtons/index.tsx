@@ -7,16 +7,9 @@ import {useTheme} from '@/hooks/useTheme';
 import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ActionButtonsProps} from '@/components/reciter-profile/types';
 import Color from 'color';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-  useSharedValue,
-} from 'react-native-reanimated';
 import {Ionicons} from '@expo/vector-icons';
 
 const GOLD_COLOR = '#FFD700';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onFavoritePress,
@@ -27,79 +20,29 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   const {theme} = useTheme();
   const styles = createStyles(theme);
 
-  const favoriteScale = useSharedValue(1);
-  const shuffleScale = useSharedValue(1);
-  const playScale = useSharedValue(1);
-
-  const favoriteAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: favoriteScale.value}],
-  }));
-
-  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: shuffleScale.value}],
-  }));
-
-  const playAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: playScale.value}],
-  }));
-
-  const handlePressIn = (button: 'favorite' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'favorite'
-        ? favoriteScale
-        : button === 'shuffle'
-        ? shuffleScale
-        : playScale;
-
-    scale.value = withSpring(0.92, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = (button: 'favorite' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'favorite'
-        ? favoriteScale
-        : button === 'shuffle'
-        ? shuffleScale
-        : playScale;
-
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
   return (
     <View style={styles.actionButtons}>
-      <AnimatedPressable
-        style={[styles.circleButton, favoriteAnimatedStyle]}
-        onPress={onFavoritePress}
-        onPressIn={() => handlePressIn('favorite')}
-        onPressOut={() => handlePressOut('favorite')}>
+      <Pressable
+        style={styles.circleButton}
+        onPress={onFavoritePress}>
         <Ionicons
           name={isFavoriteReciter ? 'star' : 'star-outline'}
           size={moderateScale(20)}
           color={isFavoriteReciter ? GOLD_COLOR : theme.colors.textSecondary}
         />
-      </AnimatedPressable>
-      <AnimatedPressable
-        style={[styles.circleButton, styles.playButton, playAnimatedStyle]}
-        onPress={onPlayPress}
-        onPressIn={() => handlePressIn('play')}
-        onPressOut={() => handlePressOut('play')}>
+      </Pressable>
+      <Pressable
+        style={[styles.circleButton, styles.playButton]}
+        onPress={onPlayPress}>
         <View style={styles.playIconContainer}>
           <PlayIcon color={theme.colors.background} size={moderateScale(18)} />
         </View>
-      </AnimatedPressable>
-      <AnimatedPressable
-        style={[styles.circleButton, shuffleAnimatedStyle]}
-        onPress={onShufflePress}
-        onPressIn={() => handlePressIn('shuffle')}
-        onPressOut={() => handlePressOut('shuffle')}>
+      </Pressable>
+      <Pressable
+        style={styles.circleButton}
+        onPress={onShufflePress}>
         <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-      </AnimatedPressable>
+      </Pressable>
     </View>
   );
 };
