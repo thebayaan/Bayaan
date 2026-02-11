@@ -1,0 +1,100 @@
+diff --git a/node_modules/expo-media-control/android/src/main/java/expo/modules/mediacontrol/MediaPlaybackService.kt b/node_modules/expo-media-control/android/src/main/java/expo/modules/mediacontrol/MediaPlaybackService.kt
+index 7cf777a..cd4a256 100644
+--- a/node_modules/expo-media-control/android/src/main/java/expo/modules/mediacontrol/MediaPlaybackService.kt
++++ b/node_modules/expo-media-control/android/src/main/java/expo/modules/mediacontrol/MediaPlaybackService.kt
+@@ -384,35 +384,29 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
+     }
+ 
+     // Handle artwork
+-    metadata["artwork"]?.let { artworkData ->
+-      if (artworkData is Map<*, *>) {
+-        val uri = artworkData["uri"]?.toString()
+-        uri?.let { artworkUri ->
+-          serviceScope.launch {
+-            try {
+-              val bitmap = loadArtwork(artworkUri)
+-              bitmap?.let {
+-                builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it)
+-                mediaMetadata = builder.build()
+-                mediaSession.setMetadata(mediaMetadata)
+-                updateNotification()
+-              }
+-            } catch (e: Exception) {
+-              // Fallback without artwork
+-              mediaMetadata = builder.build()
+-              mediaSession.setMetadata(mediaMetadata)
+-              updateNotification()
+-            }
++    val artworkUri = (metadata["artwork"] as? Map<*, *>)?.get("uri")?.toString()
++
++    if (artworkUri != null) {
++      serviceScope.launch {
++        try {
++          val bitmap = loadArtwork(artworkUri)
++          if (bitmap != null) {
++            builder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+           }
+-          return // Exit early to handle async artwork loading
++        } catch (e: Exception) {
++          println("⚠️ Failed to load artwork: ${e.message}")
+         }
++        // ALWAYS set metadata regardless of artwork outcome
++        mediaMetadata = builder.build()
++        mediaSession.setMetadata(mediaMetadata)
++        updateNotification()
+       }
++    } else {
++      // No artwork — set metadata synchronously
++      mediaMetadata = builder.build()
++      mediaSession.setMetadata(mediaMetadata)
++      updateNotification()
+     }
+-    
+-    // Set metadata without artwork
+-    mediaMetadata = builder.build()
+-    mediaSession.setMetadata(mediaMetadata)
+-    updateNotification()
+   }
+ 
+   fun updatePlaybackState(state: Int, position: Double?, playbackRate: Double?) {
+@@ -694,22 +688,28 @@ class MediaPlaybackService : MediaBrowserServiceCompat() {
+   private suspend fun loadArtwork(uri: String): Bitmap? {
+     return try {
+       withContext(Dispatchers.IO) {
+-        if (uri.startsWith("http")) {
+-          // Load remote artwork on IO thread (simplified - you might want to add caching)
+-          val url = java.net.URL(uri)
+-          val connection = url.openConnection()
+-          connection.connectTimeout = 5000 // 5 second timeout
+-          connection.readTimeout = 5000    // 5 second read timeout
+-          android.graphics.BitmapFactory.decodeStream(connection.getInputStream())
+-        } else {
+-          // Load local artwork
+-          contentResolver.openInputStream(android.net.Uri.parse(uri))?.use { inputStream ->
+-            android.graphics.BitmapFactory.decodeStream(inputStream)
++        when {
++          uri.startsWith("data:") -> {
++            val base64Data = uri.substringAfter("base64,")
++            val bytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT)
++            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
++          }
++          uri.startsWith("http") -> {
++            val url = java.net.URL(uri)
++            val connection = url.openConnection()
++            connection.connectTimeout = 5000
++            connection.readTimeout = 5000
++            android.graphics.BitmapFactory.decodeStream(connection.getInputStream())
++          }
++          else -> {
++            contentResolver.openInputStream(android.net.Uri.parse(uri))?.use {
++              android.graphics.BitmapFactory.decodeStream(it)
++            }
+           }
+         }
+       }
+     } catch (e: Exception) {
+-      println("❌ Failed to load artwork: ${e.message}")
++      println("⚠️ Failed to load artwork: ${e.message}")
+       null
+     }
+   }
