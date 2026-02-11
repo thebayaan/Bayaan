@@ -77,6 +77,62 @@ interface Lookup {
   actions: {[key: string]: Action[]};
 }
 
+/**
+ * Compute named group indices from a regex match without the `d` flag.
+ * Hermes doesn't support regex `d` flag (hasIndices), so we find each named
+ * group's position within the input string manually.
+ *
+ * Returns an object mapping group names to [startIndex, endIndex] arrays
+ * (relative to the input string, matching match.indices.groups format).
+ */
+function computeGroupIndices(
+  match: RegExpExecArray,
+): {[key: string]: [number, number]} | undefined {
+  if (!match.groups) return undefined;
+
+  const result: {[key: string]: [number, number]} = {};
+  const matchStart = match.index ?? 0;
+  const inputStr = match.input || '';
+
+  // Collect all defined group names and their values
+  const groupNames = Object.keys(match.groups).filter(
+    name => match.groups![name] !== undefined,
+  );
+
+  if (groupNames.length === 0) return undefined;
+
+  // Sort groups by their likely position in the string.
+  // In the regex patterns used here, the groups appear in order within the word:
+  //   k1 before k2 (behBeh pattern)
+  //   k3 before k4/k5 (finalAssendant / generalKashida patterns)
+  // We find positions by scanning the input from left to right.
+
+  // Track search position to handle groups appearing in order
+  let searchFrom = matchStart;
+
+  // Process groups in pattern order: k1/k3 first, then k2/k4/k5
+  const firstGroups = groupNames.filter(n => n === 'k1' || n === 'k3');
+  const secondGroups = groupNames.filter(
+    n => n === 'k2' || n === 'k4' || n === 'k5',
+  );
+  const orderedGroups = [...firstGroups, ...secondGroups];
+
+  for (const name of orderedGroups) {
+    const groupValue = match.groups[name]!;
+
+    // Find this group's value in the input string, starting from searchFrom.
+    // Skip over combining marks (Arabic diacritics) between groups.
+    const idx = inputStr.indexOf(groupValue, searchFrom);
+    if (idx >= 0) {
+      result[name] = [idx, idx + groupValue.length];
+      // Next group should be found after this one (+ any combining marks)
+      searchFrom = idx + groupValue.length;
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 const finalIsolAlternates = 'ىصضسشفقبتثنكيئ';
 
 const dualJoinLetters = quranTextService.dualJoinLetters;
@@ -241,7 +297,7 @@ export class JustService {
     const behafterbeh = `^.*(?:[${dualJoinLetters}]\\p{Mn}*)+(?<k1>[بتثنيسشصض])\\p{Mn}*(?<k2>[بتثنيم])\\p{Mn}*(?:\\p{L}\\p{Mn}*)+$`;
 
     const behBehLookup: Lookup = {
-      regExprs: new RegExp(behafterbeh, 'gdu'),
+      regExprs: new RegExp(behafterbeh, 'gu'),
       actions: {
         k1: [
           {
@@ -271,11 +327,11 @@ export class JustService {
     const finalAssendantRegExprs = [
       new RegExp(
         `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k4>["آادذٱأإ"]).*$`,
-        'gdu',
+        'gu',
       ),
       new RegExp(
         `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k4>[كله])\\p{Mn}[${rightNoJoinLetters}].*$`,
-        'gdu',
+        'gu',
       ),
     ];
 
@@ -317,11 +373,11 @@ export class JustService {
         ...finalAssendantRegExprs,
         new RegExp(
           `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k5>[${mediLeftAsendant}]).*$`,
-          'gdu',
+          'gu',
         ),
         new RegExp(
           `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k5>[${left}]).*$`,
-          'gdu',
+          'gu',
         ),
       ],
       matchingCondition: (context: LookupContext) =>
@@ -374,7 +430,7 @@ export class JustService {
     };
 
     const kafAltLookup: Lookup = {
-      regExprs: new RegExp(`^.*(?<k1>[ك])\\p{Mn}*(?<k2>\\p{L}).*$`, 'gdu'),
+      regExprs: new RegExp(`^.*(?<k1>[ك])\\p{Mn}*(?<k2>\\p{L}).*$`, 'gu'),
       actions: {
         k1: [{name: 'cv03', calcNewValue: () => 1}],
         k2: [{name: 'cv03', calcNewValue: () => 1}],
@@ -423,7 +479,7 @@ export class JustService {
     nbLevels: number,
   ): void {
     const patternExpa = `^.*(?<expa>[${chars}])(\\p{Mn}*(?<fatha>\u064E)\\p{Mn}*|\\p{Mn}*)$`;
-    const regExprExpa = new RegExp(patternExpa, 'gdu');
+    const regExprExpa = new RegExp(patternExpa, 'gu');
 
     const expaLookup: Lookup = {
       regExprs: regExprExpa,
@@ -460,7 +516,7 @@ export class JustService {
     const decompLookup: Lookup = {
       regExprs: new RegExp(
         `^.*(?<k1>${firstChars})\\p{Mn}*(?<k2>${secondChars}).*$`,
-        'gdu',
+        'gu',
       ),
       actions: {
         k1: [{name: featureName, calcNewValue: () => 1}],
@@ -522,7 +578,9 @@ export class JustService {
       const match = regExpr.exec(wordInfo.text);
       if (!match) continue;
 
-      const groups = (match as any)?.indices?.groups;
+      // Use d-flag indices if available (V8), fall back to manual computation (Hermes)
+      const groups =
+        (match as any)?.indices?.groups || computeGroupIndices(match);
 
       if (lookup.matchingCondition) {
         if (!lookup.matchingCondition({justInfo, wordIndex, groups})) continue;
