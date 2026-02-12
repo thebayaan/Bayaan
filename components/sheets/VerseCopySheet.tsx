@@ -14,7 +14,6 @@ import ActionSheet, {
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Build verse_key -> text lookup once at module scope
 interface QuranEntry {
@@ -26,22 +25,6 @@ const qpcTextByKey: Record<string, string> = {};
 for (const key of Object.keys(quranRaw)) {
   const entry = quranRaw[key];
   if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
-}
-
-// Lazy-load Indopak data
-interface IndopakEntry {
-  text: string;
-}
-let indopakCache: Record<string, IndopakEntry> | null = null;
-function getIndopakData(): Record<string, IndopakEntry> | null {
-  if (!indopakCache) {
-    try {
-      indopakCache = require('@/data/IndopakNastaleeq.json');
-    } catch {
-      // not available
-    }
-  }
-  return indopakCache;
 }
 
 interface CheckboxRowProps {
@@ -98,16 +81,34 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
   const verseKey = props.payload?.verseKey ?? '';
   const surahNumber = props.payload?.surahNumber;
   const ayahNumber = props.payload?.ayahNumber;
+  const verseKeys = props.payload?.verseKeys;
+  const isRange = verseKeys && verseKeys.length > 1;
   const arabicText = props.payload?.arabicText;
   const translation = props.payload?.translation;
 
-  const {arabicFontFamily} = useMushafSettingsStore();
+  // Get Arabic text for display — multi-verse when range
+  const displayArabicText = useMemo(() => {
+    if (isRange) {
+      return verseKeys
+        .map(vk => qpcTextByKey[vk] ?? '')
+        .filter(Boolean)
+        .join(' ');
+    }
+    return qpcTextByKey[verseKey] ?? arabicText ?? '';
+  }, [verseKey, verseKeys, isRange, arabicText]);
 
-  // Get mushaf-type-aware Arabic text for display
-  const isIndopak = arabicFontFamily === 'Indopak';
-  const displayArabicText = isIndopak
-    ? getIndopakData()?.[verseKey]?.text ?? arabicText ?? ''
-    : qpcTextByKey[verseKey] ?? arabicText ?? '';
+  // Compute range-aware reference text
+  const verseRefText = useMemo(() => {
+    if (!isRange) return `${surahNumber}:${ayahNumber}`;
+    const firstKey = verseKeys[0];
+    const lastKey = verseKeys[verseKeys.length - 1];
+    const [firstSurah, firstAyah] = firstKey.split(':');
+    const [lastSurah, lastAyah] = lastKey.split(':');
+    if (firstSurah === lastSurah) {
+      return `${firstSurah}:${firstAyah}-${lastAyah}`;
+    }
+    return `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
+  }, [isRange, verseKeys, surahNumber, ayahNumber]);
 
   const transliterationRaw = props.payload?.transliteration;
 
@@ -131,8 +132,8 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
       parts.push(translation);
     }
 
-    if (copyReference && surahNumber != null && ayahNumber != null) {
-      parts.push(`Quran ${surahNumber}:${ayahNumber}`);
+    if (copyReference) {
+      parts.push(`Quran ${verseRefText}`);
     }
 
     if (parts.length > 0) {
@@ -148,8 +149,7 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
     arabicText,
     transliterationRaw,
     translation,
-    surahNumber,
-    ayahNumber,
+    verseRefText,
   ]);
 
   const canCopy =
@@ -167,7 +167,9 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
 
         {displayArabicText ? (
           <View style={styles.ayahContainer}>
-            <Text style={[styles.ayahText, {fontFamily: arabicFontFamily}]}>
+            <Text
+              style={[styles.ayahText, {fontFamily: 'Uthmani'}]}
+              numberOfLines={isRange ? 3 : 2}>
               {displayArabicText}
             </Text>
           </View>
@@ -266,11 +268,11 @@ const createStyles = (theme: Theme) =>
       marginBottom: verticalScale(16),
     },
     ayahText: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(18),
       color: theme.colors.text,
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: moderateScale(48),
+      lineHeight: moderateScale(36),
     },
     optionsContainer: {
       backgroundColor: theme.colors.card,

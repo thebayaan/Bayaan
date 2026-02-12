@@ -32,8 +32,10 @@ function processTajweedWord(wordText: string): TajweedSegment[] {
   const ruleStack: string[] = [];
   let currentIndex = 0;
 
-  // Regex to find opening or closing rule tags
-  const tagRegex = /<rule class=([^>]+)>|<\/rule>/g;
+  // Regex to find opening or closing rule tags.
+  // Handles both clean tags (<rule class=ham_wasl>) and corrupted tags with
+  // extra HTML attributes (<rule class="ikhafa_shafawi" data-bs-...>).
+  const tagRegex = /<rule class="?([a-z_-]+)"?[^>]*>|<\/rule>/g;
   let match: RegExpExecArray | null;
 
   while (currentIndex < wordText.length) {

@@ -22,12 +22,14 @@ const clearQuranData = require('@/data/clear-quran-translation.json') as {
 };
 const quranData = require('@/data/quran.json') as QuranData;
 
-// Build verse_key -> id lookup once at module scope
+// Build lookups once at module scope
 const verseKeyToId: Record<string, number> = {};
+const verseKeyToText: Record<string, string> = {};
 for (const key of Object.keys(quranData)) {
   const verse = quranData[key];
   if (verse?.verse_key) {
     verseKeyToId[verse.verse_key] = verse.id;
+    verseKeyToText[verse.verse_key] = verse.text;
   }
 }
 
@@ -35,7 +37,24 @@ function stripHtml(text: string): string {
   return text.replace(/<[^>]*>/g, '');
 }
 
+function getTranslation(vk: string, source: 'saheeh' | 'clear-quran'): string {
+  if (source === 'saheeh') {
+    const entry = saheehData[vk];
+    return entry ? stripHtml(entry.t) : '';
+  }
+  const verseId = verseKeyToId[vk];
+  if (verseId == null) return '';
+  const entry = clearQuranData.translations[verseId - 1];
+  return entry ? stripHtml(entry.text) : '';
+}
+
 type TranslationSource = 'saheeh' | 'clear-quran';
+
+interface VerseEntry {
+  verseKey: string;
+  arabicText: string;
+  translation: string;
+}
 
 export const VerseTranslationSheet = (
   props: SheetProps<'verse-translation'>,
@@ -45,25 +64,29 @@ export const VerseTranslationSheet = (
 
   const verseKey = props.payload?.verseKey ?? '';
   const arabicText = props.payload?.arabicText ?? '';
+  const verseKeys = props.payload?.verseKeys;
+  const isRange = verseKeys && verseKeys.length > 1;
 
   const {arabicFontFamily} = useMushafSettingsStore();
 
   const [source, setSource] = useState<TranslationSource>('saheeh');
 
-  const translationText = useMemo(() => {
-    if (!verseKey) return '';
-
-    if (source === 'saheeh') {
-      const entry = saheehData[verseKey];
-      return entry ? stripHtml(entry.t) : '';
+  const verseEntries: VerseEntry[] = useMemo(() => {
+    if (isRange) {
+      return verseKeys.map(vk => ({
+        verseKey: vk,
+        arabicText: verseKeyToText[vk] ?? '',
+        translation: getTranslation(vk, source),
+      }));
     }
-
-    // Clear Quran: look up verse id, then index into translations array
-    const verseId = verseKeyToId[verseKey];
-    if (verseId == null) return '';
-    const entry = clearQuranData.translations[verseId - 1];
-    return entry ? stripHtml(entry.text) : '';
-  }, [verseKey, source]);
+    return [
+      {
+        verseKey,
+        arabicText,
+        translation: getTranslation(verseKey, source),
+      },
+    ];
+  }, [verseKey, verseKeys, isRange, arabicText, source]);
 
   return (
     <ActionSheet
@@ -103,17 +126,35 @@ export const VerseTranslationSheet = (
           style={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={true}>
-          {arabicText ? (
-            <Text style={[styles.arabicText, {fontFamily: arabicFontFamily}]}>
-              {arabicText}
-            </Text>
-          ) : null}
+          {verseEntries.map((entry, index) => (
+            <View
+              key={entry.verseKey}
+              style={[
+                styles.verseSection,
+                index < verseEntries.length - 1 && styles.verseSectionDivider,
+              ]}>
+              {isRange ? (
+                <View style={styles.verseBadge}>
+                  <Text style={styles.verseBadgeText}>{entry.verseKey}</Text>
+                </View>
+              ) : null}
 
-          {translationText ? (
-            <Text style={styles.translationText}>{translationText}</Text>
-          ) : (
-            <Text style={styles.noTranslation}>Translation not available</Text>
-          )}
+              {entry.arabicText ? (
+                <Text
+                  style={[styles.arabicText, {fontFamily: arabicFontFamily}]}>
+                  {entry.arabicText}
+                </Text>
+              ) : null}
+
+              {entry.translation ? (
+                <Text style={styles.translationText}>{entry.translation}</Text>
+              ) : (
+                <Text style={styles.noTranslation}>
+                  Translation not available
+                </Text>
+              )}
+            </View>
+          ))}
         </ScrollView>
       </View>
     </ActionSheet>
@@ -127,7 +168,7 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
-      maxHeight: '80%',
+      maxHeight: '85%',
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
@@ -169,15 +210,36 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.background,
     },
     scrollContent: {
-      maxHeight: verticalScale(400),
+      maxHeight: verticalScale(450),
+    },
+    verseSection: {
+      paddingBottom: verticalScale(16),
+    },
+    verseSectionDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: Color(theme.colors.text).alpha(0.08).toString(),
+      marginBottom: verticalScale(16),
+    },
+    verseBadge: {
+      alignSelf: 'flex-end',
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(6),
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(3),
+      marginBottom: verticalScale(8),
+    },
+    verseBadgeText: {
+      fontSize: moderateScale(12),
+      fontFamily: theme.fonts.semiBold,
+      color: theme.colors.textSecondary,
     },
     arabicText: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(22),
       color: theme.colors.text,
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: moderateScale(48),
-      marginBottom: verticalScale(20),
+      lineHeight: moderateScale(42),
+      marginBottom: verticalScale(12),
     },
     translationText: {
       fontSize: moderateScale(16),

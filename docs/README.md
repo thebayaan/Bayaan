@@ -19,6 +19,7 @@ Welcome to the Bayaan Quran Audio App documentation. This directory contains com
 - [Player](features/player.md) - Audio player architecture and usage
 - [Queue Management](features/queue.md) - Queue system and track management
 - [Reciter Profiles](features/reciter-profile.md) - Reciter profile components
+- [Digital Khatt](features/digital-khatt/README.md) - Full Uthmani Mushaf rendering implementation and debugging guide
 
 ### Architecture
 
@@ -68,6 +69,15 @@ docs/
 │
 ├── features/                           # Feature documentation
 │   ├── downloads.md                    # Download system (comprehensive)
+│   ├── digital-khatt/                  # Digital Khatt implementation docs
+│   │   ├── README.md                   # Hub and reading order
+│   │   ├── architecture.md             # Ownership and lifecycle
+│   │   ├── data-pipeline.md            # SQLite to in-memory flow
+│   │   ├── rendering-pipeline.md       # React -> Skia rendering path
+│   │   ├── justification-engine.md     # Kashida/feature internals
+│   │   ├── debugging-playbook.md       # Symptom-based debugging
+│   │   ├── development-guide.md        # Safe change workflow
+│   │   └── glossary.md                 # Terminology
 │   ├── player.md                       # Audio player
 │   ├── queue.md                        # Queue management
 │   └── reciter-profile.md              # Reciter profiles
@@ -103,6 +113,10 @@ docs/
 - [Player Documentation](features/player.md) - Player architecture
 - [Queue Documentation](features/queue.md) - Queue management
 - [Playback Migration](architecture/playback-migration.md) - Migration history
+
+**Mushaf (Uthmani / Digital Khatt):**
+- [Digital Khatt Hub](features/digital-khatt/README.md) - Full architecture and implementation map
+- [Debugging Playbook](features/digital-khatt/debugging-playbook.md) - Fast troubleshooting workflow
 
 **UI Components:**
 - [Reciter Profiles](features/reciter-profile.md) - Profile components

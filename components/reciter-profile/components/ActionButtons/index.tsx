@@ -22,9 +22,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   return (
     <View style={styles.actionButtons}>
-      <Pressable
-        style={styles.circleButton}
-        onPress={onFavoritePress}>
+      <Pressable style={styles.circleButton} onPress={onFavoritePress}>
         <Ionicons
           name={isFavoriteReciter ? 'star' : 'star-outline'}
           size={moderateScale(20)}
@@ -38,9 +36,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           <PlayIcon color={theme.colors.background} size={moderateScale(18)} />
         </View>
       </Pressable>
-      <Pressable
-        style={styles.circleButton}
-        onPress={onShufflePress}>
+      <Pressable style={styles.circleButton} onPress={onShufflePress}>
         <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
       </Pressable>
     </View>
