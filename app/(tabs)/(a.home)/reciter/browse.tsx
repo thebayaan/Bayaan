@@ -22,8 +22,8 @@ export default function BrowseScreen() {
   const title = rewayatName
     ? rewayatName
     : surahId
-      ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
-      : 'Browse All';
+    ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
+    : 'Browse All';
 
   return (
     <BrowseReciters

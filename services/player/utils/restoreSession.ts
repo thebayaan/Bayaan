@@ -4,8 +4,8 @@ import {createTrack} from '@/utils/track';
 
 export const restoreSession = async () => {
   try {
-    const recentlyPlayedTracks =
-      await useRecentlyPlayedStore.getState().recentTracks;
+    const recentlyPlayedTracks = await useRecentlyPlayedStore.getState()
+      .recentTracks;
 
     if (recentlyPlayedTracks.length === 0) {
       return;

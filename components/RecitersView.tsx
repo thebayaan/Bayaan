@@ -71,12 +71,14 @@ const MemoizedFlatList = React.memo(
       )}
       keyExtractor={item =>
         'timestamp' in item
-          ? `${item.reciter?.id ?? 'unknown'}-${item.surah?.id ?? 'unknown'}-${item.timestamp}`
+          ? `${item.reciter?.id ?? 'unknown'}-${item.surah?.id ?? 'unknown'}-${
+              item.timestamp
+            }`
           : 'displayName' in item
-            ? item.id
-            : 'itemCount' in item && 'color' in item
-              ? item.id
-              : item.id
+          ? item.id
+          : 'itemCount' in item && 'color' in item
+          ? item.id
+          : item.id
       }
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -90,26 +92,26 @@ const MemoizedFlatList = React.memo(
           variant === 'circular'
             ? 80
             : variant === 'recent'
-              ? 200
-              : variant === 'featured'
-                ? 140
-                : variant === 'rewayat'
-                  ? 130
-                  : variant === 'playlist'
-                    ? 120
-                    : 140,
+            ? 200
+            : variant === 'featured'
+            ? 140
+            : variant === 'rewayat'
+            ? 130
+            : variant === 'playlist'
+            ? 120
+            : 140,
         offset:
           (variant === 'circular'
             ? 80
             : variant === 'recent'
-              ? 200
-              : variant === 'featured'
-                ? 140
-                : variant === 'rewayat'
-                  ? 130
-                  : variant === 'playlist'
-                    ? 120
-                    : 140) * index,
+            ? 200
+            : variant === 'featured'
+            ? 140
+            : variant === 'rewayat'
+            ? 130
+            : variant === 'playlist'
+            ? 120
+            : 140) * index,
         index,
       })}
     />
