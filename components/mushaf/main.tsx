@@ -21,7 +21,7 @@ import {Asset} from 'expo-asset';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {SURAH_NAMES} from './constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import SkiaPage from './skia/SkiaPage';
+import SkiaPage, {precomputePageLayout} from './skia/SkiaPage';
 
 // SVG asset for basmallah (used by Indopak path)
 const BasmalahAsset = require('@/data/mushaf/legacy/Bismillah..svg');
@@ -608,9 +608,11 @@ export default function MushafViewer({
     (surahId: number) => {
       const targetPage = surahStartPages[surahId];
       if (targetPage && flatListRef.current) {
+        // Pre-compute target page layout before scrolling so it renders instantly
+        precomputePageLayout(targetPage);
         flatListRef.current.scrollToIndex({
           index: targetPage - 1,
-          animated: true,
+          animated: false,
         });
       }
     },

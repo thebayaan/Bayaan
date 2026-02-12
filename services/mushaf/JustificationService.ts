@@ -757,10 +757,17 @@ export class JustService {
     fontMgr: SkTypefaceFontProvider,
     fontFamily: string = 'DigitalKhatt',
   ): JustResultByLine[] {
+    const cachedPage = JustService.getCachedPageLayout(
+      fontSizeLineWidthRatio,
+      pageNumber,
+      fontFamily,
+    );
+    if (cachedPage) {
+      return cachedPage;
+    }
+
     const paraBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
     const result: JustResultByLine[] = [];
-
-    const lines = quranTextService.getLineText(pageNumber, 0) ? true : false;
 
     // Get all lines for this page from the data service
     const {digitalKhattDataService} = require('./DigitalKhattDataService');
@@ -796,6 +803,12 @@ export class JustService {
       }
     }
 
+    JustService.cachePageLayout(
+      fontSizeLineWidthRatio,
+      pageNumber,
+      result,
+      fontFamily,
+    );
     return result;
   }
 
@@ -805,6 +818,7 @@ export class JustService {
   static async saveAllLayouts(
     fontSizeLineWidthRatio: number,
     fontMgr: SkTypefaceFontProvider,
+    fontFamily: string = 'DigitalKhatt',
     onProgress?: (page: number, total: number) => void,
   ): Promise<void> {
     const allResults: JustResultByLine[][] = [];
@@ -814,38 +828,105 @@ export class JustService {
         pageNumber,
         fontSizeLineWidthRatio,
         fontMgr,
+        fontFamily,
       );
       allResults.push(pageResult);
       onProgress?.(pageNumber, 604);
     }
 
-    await JustService.saveLayoutToStorage(fontSizeLineWidthRatio, allResults);
+    await JustService.saveLayoutToStorage(
+      fontSizeLineWidthRatio,
+      allResults,
+      fontFamily,
+    );
   }
 
   static async saveLayoutToStorage(
     fontSizeLineWidthRatio: number,
     result: JustResultByLine[][],
+    fontFamily: string = 'DigitalKhatt',
   ): Promise<void> {
-    const key = `dk_layout_${fontSizeLineWidthRatio}`;
+    const key = getLayoutStorageKey(fontSizeLineWidthRatio, fontFamily);
     const json = JSON.stringify(result, replacer);
     await AsyncStorage.setItem(key, json);
-    cachedLayouts.set(fontSizeLineWidthRatio, result);
+    storageMisses.delete(key);
+    const cacheKey = getLayoutCacheKey(fontSizeLineWidthRatio, fontFamily);
+    cachedLayouts.set(cacheKey, result);
+    const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
+    for (let index = 0; index < result.length; index++) {
+      pageCache.set(index + 1, result[index]);
+    }
   }
 
   static async getLayoutFromStorage(
     fontSizeLineWidthRatio: number,
+    fontFamily: string = 'DigitalKhatt',
   ): Promise<JustResultByLine[][] | undefined> {
-    const cached = cachedLayouts.get(fontSizeLineWidthRatio);
+    const cacheKey = getLayoutCacheKey(fontSizeLineWidthRatio, fontFamily);
+    const cached = cachedLayouts.get(cacheKey);
     if (cached) return cached;
 
-    const key = `dk_layout_${fontSizeLineWidthRatio}`;
+    const key = getLayoutStorageKey(fontSizeLineWidthRatio, fontFamily);
+    if (storageMisses.has(key)) {
+      return undefined;
+    }
     const json = await AsyncStorage.getItem(key);
     if (json) {
       const layout = JSON.parse(json, reviver) as JustResultByLine[][];
-      cachedLayouts.set(fontSizeLineWidthRatio, layout);
+      cachedLayouts.set(cacheKey, layout);
+      const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
+      for (let index = 0; index < layout.length; index++) {
+        pageCache.set(index + 1, layout[index]);
+      }
       return layout;
     }
+    storageMisses.add(key);
     return undefined;
+  }
+
+  static getCachedPageLayout(
+    fontSizeLineWidthRatio: number,
+    pageNumber: number,
+    fontFamily: string = 'DigitalKhatt',
+  ): JustResultByLine[] | undefined {
+    const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
+    return pageCache.get(pageNumber);
+  }
+
+  static cachePageLayout(
+    fontSizeLineWidthRatio: number,
+    pageNumber: number,
+    layout: JustResultByLine[],
+    fontFamily: string = 'DigitalKhatt',
+  ): void {
+    const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
+    pageCache.set(pageNumber, layout);
+  }
+
+  static prewarmPageRange(
+    centerPage: number,
+    radius: number,
+    fontSizeLineWidthRatio: number,
+    fontMgr: SkTypefaceFontProvider,
+    fontFamily: string = 'DigitalKhatt',
+  ): void {
+    const start = Math.max(1, centerPage - radius);
+    const end = Math.min(604, centerPage + radius);
+    for (let page = start; page <= end; page++) {
+      const cached = JustService.getCachedPageLayout(
+        fontSizeLineWidthRatio,
+        page,
+        fontFamily,
+      );
+      if (!cached) {
+        JustService.getPageLayout(
+          page,
+          fontSizeLineWidthRatio,
+          fontMgr,
+          fontFamily,
+        );
+      }
+    }
   }
 
   static async removeLayouts(): Promise<void> {
@@ -855,6 +936,8 @@ export class JustService {
       await AsyncStorage.multiRemove(layoutKeys);
     }
     cachedLayouts.clear();
+    pageLayoutsCache.clear();
+    storageMisses.clear();
   }
 }
 
@@ -877,4 +960,35 @@ function reviver(key: string, value: unknown): unknown {
   return value;
 }
 
-const cachedLayouts: Map<number, JustResultByLine[][]> = new Map();
+function getLayoutCacheKey(
+  fontSizeLineWidthRatio: number,
+  fontFamily: string,
+): string {
+  return `${fontFamily}::${fontSizeLineWidthRatio}`;
+}
+
+function getLayoutStorageKey(
+  fontSizeLineWidthRatio: number,
+  fontFamily: string,
+): string {
+  return `dk_layout_${fontFamily}_${fontSizeLineWidthRatio}`;
+}
+
+function getPageLayoutCache(
+  fontSizeLineWidthRatio: number,
+  fontFamily: string,
+): Map<number, JustResultByLine[]> {
+  const cacheKey = getLayoutCacheKey(fontSizeLineWidthRatio, fontFamily);
+  const existing = pageLayoutsCache.get(cacheKey);
+  if (existing) return existing;
+  const created = new Map<number, JustResultByLine[]>();
+  pageLayoutsCache.set(cacheKey, created);
+  return created;
+}
+
+const cachedLayouts: Map<string, JustResultByLine[][]> = new Map();
+const pageLayoutsCache: Map<
+  string,
+  Map<number, JustResultByLine[]>
+> = new Map();
+const storageMisses = new Set<string>();
