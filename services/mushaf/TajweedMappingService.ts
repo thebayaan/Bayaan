@@ -1,5 +1,6 @@
 import {digitalKhattDataService, type DKLine} from './DigitalKhattDataService';
 import {quranTextService} from './QuranTextService';
+import {alignWordTajweed, detectWordTafkhim} from './TajweedAlignmentService';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 
 /**
@@ -9,7 +10,8 @@ import type {IndexedTajweedData} from '@/utils/tajweedLoader';
  * 1. Get word IDs from DKLine (first_word_id..last_word_id)
  * 2. Look up each word's verse key and position via DigitalKhattDataService
  * 3. Match against indexed tajweed data (from tajweedStore)
- * 4. Build a Map<charIndex, ruleName> for the line's text
+ * 4. Use TajweedAlignmentService to align QPC segments onto DK text
+ * 5. Build a Map<charIndex, ruleName> for the line's text
  */
 export function getLineTajweedMap(
   pageNumber: number,
@@ -47,26 +49,22 @@ export function getLineTajweedMap(
     }
 
     // Find the matching tajweed word by position in verse
-    // w.word_index is a global sequential index across the Quran, not per-verse.
-    // Extract the per-verse position from w.location ("surah:ayah:wordPos").
     const tajweedWord = verseWords.find(w => {
       const pos = parseInt(w.location.split(':')[2], 10);
       return pos === wordInfo.wordPositionInVerse;
     });
 
-    if (tajweedWord) {
-      // Map each segment's characters to their rule
-      let segCharOffset = 0;
-      for (const segment of tajweedWord.segments) {
-        if (segment.rule) {
-          for (let j = 0; j < segment.text.length; j++) {
-            const lineCharIndex = charOffset + segCharOffset + j;
-            if (lineCharIndex < lineText.length) {
-              charToRule.set(lineCharIndex, segment.rule);
-            }
-          }
+    // Get per-character rules: aligned QPC rules + tafkhim detection
+    const wordRules = tajweedWord
+      ? alignWordTajweed(wordInfo.text, tajweedWord.segments)
+      : detectWordTafkhim(wordInfo.text);
+
+    if (wordRules) {
+      for (const [dkCharIdx, rule] of wordRules) {
+        const lineCharIndex = charOffset + dkCharIdx;
+        if (lineCharIndex < lineText.length) {
+          charToRule.set(lineCharIndex, rule);
         }
-        segCharOffset += segment.text.length;
       }
     }
 
