@@ -22,6 +22,7 @@ export interface VerseNote {
   surahNumber: number;
   ayahNumber: number;
   content: string;
+  verseKeys?: string[];
   createdAt: number;
   updatedAt: number;
 }
