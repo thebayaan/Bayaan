@@ -8,8 +8,8 @@ This document traces one page render from `MushafViewer` to final Skia draw call
 2. `UthmaniPageView` mounts for the target page.
 3. `SkiaPage` loads `DigitalKhatt` font and retrieves page lines.
 4. `SkiaPage` resolves per-line `JustResultByLine[]`:
-   - load cached layout from AsyncStorage/memory, or
-   - compute on demand via `JustService.getPageLayout`.
+   - check in-memory cache, then MMKV (both synchronous), or
+   - compute on demand via `JustService.getPageLayout` (first-launch fallback only).
 5. `SkiaPage` maps each non-`surah_name` line to `SkiaLine`.
 6. `SkiaLine` builds a `Paragraph`:
    - text direction RTL
@@ -17,6 +17,41 @@ This document traces one page render from `MushafViewer` to final Skia draw call
    - per-space letterSpacing based on space type
 7. `SkiaLine` computes x-position (centered vs justified) and renders `<Paragraph />`.
 8. `UthmaniPageView` overlays surah header text (RN `Text` with `SURAH_HEADERS` font).
+
+## Layout Caching Architecture (MMKV)
+
+All 604 page layouts are precomputed once per font family and stored in MMKV (`react-native-mmkv`), a memory-mapped key-value store with synchronous reads (~0.01-0.1ms).
+
+### Cache layers (checked in order)
+
+1. **In-memory `pageLayoutsCache`** — `Map<string, Map<number, JustResultByLine[]>>`, fastest (~0.001ms)
+2. **MMKV** — synchronous disk read via `MushafLayoutCacheService` (~1ms including JSON parse)
+3. **On-demand compute** — `JustService.getPageLayout()` (~20-100ms, only on first launch before MMKV is populated)
+
+### Key schema
+
+```
+"dk:{fontFamily}:{pageNumber}"     → JSON string of JustResultByLine[]
+"dk_complete:{fontFamily}"         → "true" when all 604 pages stored
+"dk_schema_version"                → number for cache invalidation
+```
+
+### Precomputation flow
+
+`MushafLayoutCacheService` (registered in `AppInitializer` at priority 8, non-critical):
+
+1. On app startup, checks if `dk_complete:{activeFontFamily}` is `"true"`
+2. If not, creates a `SkTypefaceFontProvider` outside React via `Skia.TypefaceFontProvider.Make()`
+3. Loops pages 1-604, computing each via `JustService.getPageLayout()` and writing to MMKV
+4. Yields to the event loop every 10 pages to avoid blocking UI
+5. After active font completes, precomputes the other font family
+6. On subsequent app launches, all pages are available instantly from MMKV
+
+### Files
+
+- `services/mushaf/MushafLayoutCacheService.ts` — singleton, MMKV read/write, precomputation orchestration
+- `services/mushaf/JustificationService.ts` — `getCachedPageLayout()` checks in-memory then MMKV
+- `services/AppInitializer.ts` — registers cache service at priority 8
 
 ## `SkiaPage` Responsibilities
 
@@ -45,13 +80,10 @@ File: `components/mushaf/skia/SkiaPage.tsx`
 
 ### Layout resolution strategy
 
-Effect workflow:
+1. `useState` initializer calls `getCachedPageLayout()` — synchronous check of in-memory then MMKV
+2. `useEffect` fallback: if no cached result and `fontMgr` is ready, compute on-demand (first launch only)
 
-1. call `JustService.getLayoutFromStorage(fontSizeLineWidthRatio)`
-2. if layout exists for this page -> use cached page result
-3. else call `JustService.getPageLayout(...)` and set local state
-
-Cancellation guard avoids state updates on unmount/page switch.
+No async storage, no pre-warming, no module-level shared state.
 
 ### Line mapping behavior
 
@@ -211,7 +243,7 @@ Highlight pass asks for all `2:256` segments on the page, then `SkiaLine` colors
 - `SkiaPage` and `SkiaLine` are wrapped with `React.memo`.
 - expensive per-line paragraph creation is in `useMemo`.
 - avoid changing prop identity unnecessarily for `justResult` and geometry props.
-- precomputed layouts (AsyncStorage + memory) are critical for smooth page transitions.
+- MMKV precomputed layouts guarantee <1ms page access after first launch.
 
 ## What to Inspect for Visual Misalignment
 
@@ -220,4 +252,3 @@ Highlight pass asks for all `2:256` segments on the page, then `SkiaLine` colors
 - `interLine` derivation based on page line count
 - `lineWidthRatio` adjustment path
 - x-position formula in `SkiaLine` (centered vs justified branches)
-

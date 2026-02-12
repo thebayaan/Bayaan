@@ -35,34 +35,6 @@ import {
   calculateLineYPositions,
 } from '../constants';
 
-// Module-level shared font state for pre-computation from outside the component
-let sharedFontMgr: ReturnType<typeof useFonts> = null;
-let sharedFontFamily = 'DigitalKhattV2';
-let sharedFontSizeLineWidthRatio = 0;
-
-/**
- * Pre-compute page layout synchronously so the page renders instantly
- * when the FlatList scrolls to it. Call before scrollToIndex.
- */
-export function precomputePageLayout(pageNumber: number): boolean {
-  if (!sharedFontMgr || !sharedFontSizeLineWidthRatio) return false;
-
-  const cached = JustService.getCachedPageLayout(
-    sharedFontSizeLineWidthRatio,
-    pageNumber,
-    sharedFontFamily,
-  );
-  if (cached) return true;
-
-  JustService.getPageLayout(
-    pageNumber,
-    sharedFontSizeLineWidthRatio,
-    sharedFontMgr,
-    sharedFontFamily,
-  );
-  return true;
-}
-
 interface ParagraphInfo {
   paragraph: SkParagraph;
   xPos: number;
@@ -107,16 +79,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const fontSize = FONTSIZE * scale * 0.9;
   const fontSizeLineWidthRatio = fontSize / lineWidth;
 
-  // Keep shared font state in sync for precomputePageLayout
-  useEffect(() => {
-    if (fontMgr) {
-      sharedFontMgr = fontMgr;
-      sharedFontFamily = fontFamily;
-      sharedFontSizeLineWidthRatio = fontSizeLineWidthRatio;
-    }
-  }, [fontMgr, fontFamily, fontSizeLineWidthRatio]);
-
-  // Initialize from synchronous in-memory cache to avoid blank frames
+  // Initialize from synchronous cache (in-memory → MMKV, both sync)
   const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
     () =>
       JustService.getCachedPageLayout(
@@ -126,87 +89,34 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       ) ?? null,
   );
 
-  // Track which page the current justResults belongs to
-  const justResultsPageRef = useRef<number | null>(
-    justResults ? pageNumber : null,
-  );
-
   // Get page lines for layout calculation
   const pageLines = useMemo<DKLine[]>(
     () => digitalKhattDataService.getPageLines(pageNumber),
     [pageNumber],
   );
 
-  // Calculate justification — try sync cache first, fall back to async
+  // Compute layout if not already cached (first-launch race condition fallback)
   useEffect(() => {
     if (!fontMgr) return;
 
-    // Sync cache hit — use immediately, no blank frame
-    const syncCached = JustService.getCachedPageLayout(
+    const cached = JustService.getCachedPageLayout(
       fontSizeLineWidthRatio,
       pageNumber,
       fontFamily,
     );
-    if (syncCached) {
-      setJustResults(syncCached);
-      justResultsPageRef.current = pageNumber;
-
-      // Pre-warm adjacent pages in the background
-      requestAnimationFrame(() => {
-        JustService.prewarmPageRange(
-          pageNumber,
-          2,
-          fontSizeLineWidthRatio,
-          fontMgr,
-          fontFamily,
-        );
-      });
+    if (cached) {
+      setJustResults(cached);
       return;
     }
 
-    // Async fallback — check storage then compute
-    let cancelled = false;
-
-    const computeLayout = async () => {
-      const cached = await JustService.getLayoutFromStorage(
-        fontSizeLineWidthRatio,
-        fontFamily,
-      );
-      if (cached && cached[pageNumber - 1]) {
-        if (!cancelled) {
-          setJustResults(cached[pageNumber - 1]);
-          justResultsPageRef.current = pageNumber;
-        }
-        return;
-      }
-
-      const result = JustService.getPageLayout(
-        pageNumber,
-        fontSizeLineWidthRatio,
-        fontMgr,
-        fontFamily,
-      );
-      if (!cancelled) {
-        setJustResults(result);
-        justResultsPageRef.current = pageNumber;
-
-        // Pre-warm adjacent pages after first compute
-        requestAnimationFrame(() => {
-          JustService.prewarmPageRange(
-            pageNumber,
-            2,
-            fontSizeLineWidthRatio,
-            fontMgr,
-            fontFamily,
-          );
-        });
-      }
-    };
-
-    computeLayout();
-    return () => {
-      cancelled = true;
-    };
+    // On-demand compute (only on first launch before MMKV is populated)
+    const result = JustService.getPageLayout(
+      pageNumber,
+      fontSizeLineWidthRatio,
+      fontMgr,
+      fontFamily,
+    );
+    setJustResults(result);
   }, [fontMgr, pageNumber, fontSizeLineWidthRatio, fontFamily]);
 
   // Calculate Y positions for each line
@@ -342,7 +252,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return map;
   }, [selectedVerseKey, selectedPageNumber, pageNumber]);
 
-  if (!fontMgr || !justResults || justResultsPageRef.current !== pageNumber) {
+  if (!fontMgr || !justResults) {
     return <View style={styles.page} />;
   }
 
