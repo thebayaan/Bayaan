@@ -115,7 +115,8 @@ export default function RootLayout() {
         'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
         Uthmani: require('@/assets/fonts/Uthmani.otf'),
         QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
-        Indopak: require('@/assets/fonts/Indopak.ttf'),
+        DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
+        DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf'),
       }).catch(err => {
         if (__DEV__) console.warn('[App] Deferred font loading failed:', err);
       });

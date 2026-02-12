@@ -1,11 +1,5 @@
 import React, {useState, useCallback} from 'react';
-import {
-  View,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Platform,
-} from 'react-native';
+import {View, Pressable, ScrollView, StyleSheet, Platform} from 'react-native';
 import {AntDesign} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
