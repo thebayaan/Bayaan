@@ -1,6 +1,13 @@
 import React, {memo, useCallback, useEffect, useMemo, useState} from 'react';
-import {StyleSheet, Pressable, Text, View} from 'react-native';
+import {
+  StyleSheet,
+  Pressable,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import {Verse} from '@/types/quran';
 import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
@@ -12,23 +19,8 @@ import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
-
-// ---> Lazy-load Indopak JSON data (1.7MB — only loaded when Indopak font is selected)
-interface IndopakNastaleeqData {
-  [verseKey: string]: {text: string};
-}
-let indopakNastaleeqDataCache: IndopakNastaleeqData | null = null;
-function getIndopakData(): IndopakNastaleeqData | null {
-  if (!indopakNastaleeqDataCache) {
-    try {
-      indopakNastaleeqDataCache = require('@/data/IndopakNastaleeq.json');
-    } catch (error) {
-      console.error('[VerseItem] Error loading Indopak data:', error);
-    }
-  }
-  return indopakNastaleeqDataCache;
-}
-// <--- End Indopak lazy loader
+import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import SkiaVerseText from './SkiaVerseText';
 
 // Type for processed word data from store
 interface ProcessedTajweedWord {
@@ -69,10 +61,13 @@ interface VerseItemProps {
   showTranslation?: boolean;
   showTransliteration?: boolean;
   showTajweed: boolean;
-  arabicFontFamily: 'QPC' | 'Indopak';
+  arabicFontFamily: 'Uthmani';
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
+  fontMgr: SkTypefaceFontProvider | null;
+  dkFontFamily: string;
+  indexedTajweedData: IndexedTajweedData | null;
 }
 
 /**
@@ -97,6 +92,9 @@ export const VerseItem = memo<VerseItemProps>(
     transliterationFontSize,
     translationFontSize,
     arabicFontSize,
+    fontMgr,
+    dkFontFamily,
+    indexedTajweedData,
   }) => {
     const verseKey = verse.verse_key;
 
@@ -126,13 +124,18 @@ export const VerseItem = memo<VerseItemProps>(
       s => s.indexedTajweedData?.[verseKey],
     );
 
-    // Determine font selection
-    const isIndopakSelected = arabicFontFamily === 'Indopak';
-    const isQPCSelected = arabicFontFamily === 'Uthmani';
+    const isQPCSelected = true;
 
     const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
       null,
     );
+
+    // Width for Skia canvas (measured via onLayout)
+    const [arabicContainerWidth, setArabicContainerWidth] = useState(0);
+    const handleArabicLayout = useCallback((e: LayoutChangeEvent) => {
+      const w = e.nativeEvent.layout.width;
+      setArabicContainerWidth(prev => (Math.abs(prev - w) > 1 ? w : prev));
+    }, []);
 
     // Reset footnote when cell is recycled by FlashList
     useEffect(() => {
@@ -264,12 +267,6 @@ export const VerseItem = memo<VerseItemProps>(
     }, [isQPCSelected, processedTajweedAyahData, showTajweed, textColor]);
     // --- End Building Nodes ---
 
-    // ---> Get Indopak text if applicable (lazy-loaded)
-    const indopakText = isIndopakSelected
-      ? getIndopakData()?.[verseKey]?.text
-      : null;
-    // <--- End Get Indopak text
-
     // Memoize container style — avoids Pressable function-form re-evaluation every frame
     const containerStyle = useMemo(
       () => [
@@ -384,18 +381,25 @@ export const VerseItem = memo<VerseItemProps>(
             </Pressable>
           </View>
         </View>
-        {/* ---> Simplified Arabic Text Rendering <-- */}
-        <View>
-          {isIndopakSelected ? (
-            // Indopak Rendering
-            <Text style={arabicStyle}>
-              {indopakText || 'Loading Indopak...'}
-            </Text>
+        {/* ---> Arabic Text Rendering <-- */}
+        <View onLayout={handleArabicLayout}>
+          {fontMgr && arabicContainerWidth > 0 ? (
+            // DK Skia Rendering (Uthmani with Digital Khatt font)
+            <SkiaVerseText
+              verseKey={verseKey}
+              fontMgr={fontMgr}
+              fontFamily={dkFontFamily}
+              fontSize={moderateScale(arabicFontSize)}
+              textColor={textColor}
+              showTajweed={showTajweed}
+              width={arabicContainerWidth}
+              indexedTajweedData={indexedTajweedData}
+            />
           ) : isQPCSelected && tajweedNodes ? (
             // QPC Rendering: Always use generated tajweedNodes
             <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
           ) : (
-            // Fallback (e.g., QPC selected but data is loading/missing)
+            // Fallback (e.g., data is loading/missing)
             <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
           )}
         </View>

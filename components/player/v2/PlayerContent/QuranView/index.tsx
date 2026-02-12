@@ -8,6 +8,9 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useTajweedStore} from '@/store/tajweedStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -82,7 +85,19 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
-  const arabicFontFamily = useMushafSettingsStore(s => s.arabicFontFamily);
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+
+  // DK Skia rendering: derive font family and fontMgr from mushafRenderer
+  const isDK =
+    (mushafRenderer === 'dk_v1' || mushafRenderer === 'dk_v2') &&
+    mushafPreloadService.initialized &&
+    digitalKhattDataService.initialized;
+  const dkFontFamily =
+    mushafRenderer === 'dk_v1' ? 'DigitalKhattV1' : 'DigitalKhattV2';
+  const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
+
+  // Tajweed data for DK Skia rendering (verse-level indexed)
+  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
   // Only need the loader — VerseItem subscribes to its own annotation data
   const loadAnnotationsForSurah = useVerseAnnotationsStore(
@@ -137,10 +152,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
         showTranslation={showTranslation}
         showTransliteration={showTransliteration}
         showTajweed={showTajweed}
-        arabicFontFamily={arabicFontFamily}
+        arabicFontFamily={'Uthmani'}
         transliterationFontSize={transliterationFontSize}
         translationFontSize={translationFontSize}
         arabicFontSize={arabicFontSize}
+        fontMgr={fontMgr}
+        dkFontFamily={dkFontFamily}
+        indexedTajweedData={indexedTajweedData}
       />
     ),
     [
@@ -150,10 +168,12 @@ export const QuranView: React.FC<QuranViewProps> = ({
       showTranslation,
       showTransliteration,
       showTajweed,
-      arabicFontFamily,
       transliterationFontSize,
       translationFontSize,
       arabicFontSize,
+      fontMgr,
+      dkFontFamily,
+      indexedTajweedData,
     ],
   );
 
