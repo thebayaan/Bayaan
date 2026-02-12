@@ -20,6 +20,8 @@ export const getDisplayValue = (actualFontSize: number): number => {
   );
 };
 
+export type MushafRenderer = 'dk_v1' | 'dk_v2';
+
 interface MushafSettingsState {
   // Display settings
   showTranslation: boolean;
@@ -31,9 +33,12 @@ interface MushafSettingsState {
   translationFontSize: number;
   transliterationFontSize: number;
 
-  // Font family
-  arabicFontFamily: 'Uthmani' | 'Indopak';
+  // Font family (legacy — kept for backward compatibility)
+  arabicFontFamily: 'Uthmani';
   uthmaniFont: 'v1' | 'v2';
+
+  // Mushaf renderer selection
+  mushafRenderer: MushafRenderer;
 
   // Actions
   toggleTranslation: () => void;
@@ -42,8 +47,9 @@ interface MushafSettingsState {
   setArabicFontSize: (size: number) => void;
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
-  setArabicFontFamily: (font: 'Uthmani' | 'Indopak') => void;
+  setArabicFontFamily: (font: 'Uthmani') => void;
   setUthmaniFont: (font: 'v1' | 'v2') => void;
+  setMushafRenderer: (renderer: MushafRenderer) => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -58,6 +64,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       transliterationFontSize: getActualFontSize(3),
       arabicFontFamily: 'Uthmani', // Default font
       uthmaniFont: 'v2', // Default to V2
+      mushafRenderer: 'dk_v2' as MushafRenderer, // Default to DK V2
 
       // Actions
       toggleTranslation: () =>
@@ -70,14 +77,19 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set({translationFontSize: size}),
       setTransliterationFontSize: (size: number) =>
         set({transliterationFontSize: size}),
-      setArabicFontFamily: (font: 'Uthmani' | 'Indopak') =>
-        set({arabicFontFamily: font}),
+      setArabicFontFamily: (font: 'Uthmani') => set({arabicFontFamily: font}),
       setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
+      setMushafRenderer: (renderer: MushafRenderer) =>
+        set({
+          mushafRenderer: renderer,
+          arabicFontFamily: 'Uthmani',
+          uthmaniFont: renderer === 'dk_v1' ? 'v1' : 'v2',
+        }),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -88,6 +100,18 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         if (version < 2) {
           state.uthmaniFont = 'v2';
+        }
+        if (version < 3) {
+          // Derive mushafRenderer from legacy fields
+          if (state.uthmaniFont === 'v1') {
+            state.mushafRenderer = 'dk_v1';
+          } else {
+            state.mushafRenderer = 'dk_v2';
+          }
+          // Migrate any old Indopak users to Uthmani
+          if (state.arabicFontFamily === 'Indopak') {
+            state.arabicFontFamily = 'Uthmani';
+          }
         }
         return state as unknown as MushafSettingsState;
       },

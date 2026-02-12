@@ -23,6 +23,7 @@ import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
@@ -46,35 +47,49 @@ interface SkiaPageProps {
   pageNumber: number;
   textColor: string;
   highlightColor: string;
+  onReady?: () => void;
 }
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
   textColor,
   highlightColor,
+  onReady,
 }) => {
-  const fontMgr = useFonts({
+  // Keep useFonts hook as fallback (can't conditionally call hooks).
+  // Prefer preloaded fontMgr from MushafPreloadService — ready synchronously
+  // on first render since AppInitializer runs before Mushaf tab mounts.
+  const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
     DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf')],
   });
+  const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontFamily = uthmaniFont === 'v1' ? 'DigitalKhattV1' : 'DigitalKhattV2';
 
-  const selectedVerseKey = useMushafVerseSelectionStore(
-    s => s.selectedVerseKey,
+  const selectedVerseKeys = useMushafVerseSelectionStore(
+    s => s.selectedVerseKeys,
   );
   const selectedPageNumber = useMushafVerseSelectionStore(
     s => s.selectedPageNumber,
   );
   const selectVerse = useMushafVerseSelectionStore(s => s.selectVerse);
+  const selectVerseRange = useMushafVerseSelectionStore(
+    s => s.selectVerseRange,
+  );
 
   const persistentHighlights = useVerseAnnotationsStore(s => s.highlights);
 
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
+
+  // onReady tracking — refs keep handleParagraphReady callback stable
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const readyFiredRef = useRef(false);
 
   // Calculate rendering dimensions
   const scale = CONTENT_WIDTH / PAGE_WIDTH;
@@ -139,15 +154,53 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return maps;
   }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
-  // Clear paragraph map when page changes
+  // Count lines that will render SkiaLine children (non-surah-name with justResults)
+  const expectedLineCount = useMemo(() => {
+    if (!justResults) return 0;
+    let count = 0;
+    for (let i = 0; i < pageLines.length; i++) {
+      if (justResults[i] && pageLines[i].line_type !== 'surah_name') {
+        count++;
+      }
+    }
+    return count;
+  }, [justResults, pageLines]);
+
+  const expectedLineCountRef = useRef(expectedLineCount);
+  expectedLineCountRef.current = expectedLineCount;
+
+  // Clear paragraph map and reset ready state when page changes
   useEffect(() => {
     paragraphMapRef.current.clear();
+    readyFiredRef.current = false;
   }, [pageNumber]);
+
+  // Edge case: if no SkiaLine children will render, fire onReady immediately
+  useEffect(() => {
+    if (
+      expectedLineCount === 0 &&
+      fontMgr &&
+      justResults &&
+      !readyFiredRef.current
+    ) {
+      readyFiredRef.current = true;
+      onReadyRef.current?.();
+    }
+  }, [expectedLineCount, fontMgr, justResults]);
 
   // Callback for SkiaLine to register its paragraph
   const handleParagraphReady = useCallback(
     (lineIndex: number, paragraph: SkParagraph, xPos: number) => {
       paragraphMapRef.current.set(lineIndex, {paragraph, xPos});
+
+      // Fire onReady once all expected paragraphs have reported in
+      if (
+        !readyFiredRef.current &&
+        paragraphMapRef.current.size >= expectedLineCountRef.current
+      ) {
+        readyFiredRef.current = true;
+        onReadyRef.current?.();
+      }
     },
     [],
   );
@@ -170,8 +223,20 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [lineYPositions],
   );
 
-  // Long press handler — runs on JS thread via runOnJS
-  const handleLongPress = useCallback(
+  // Ordered verse keys for drag range computation
+  const orderedVerseKeys = useMemo(
+    () => mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber),
+    [pageNumber],
+  );
+
+  // Refs for drag state (avoid re-renders during drag)
+  const dragStartVerseKeyRef = useRef<string | null>(null);
+  const dragCurrentVerseKeyRef = useRef<string | null>(null);
+  const orderedVerseKeysRef = useRef<string[]>(orderedVerseKeys);
+  orderedVerseKeysRef.current = orderedVerseKeys;
+
+  // Hit-test to find verse at a given touch coordinate
+  const hitTestVerse = useCallback(
     (eventX: number, eventY: number) => {
       const canvasX = eventX - PAGE_PADDING_HORIZONTAL;
       const canvasY = eventY - PAGE_PADDING_TOP;
@@ -182,17 +247,17 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         canvasY < 0 ||
         canvasY > CONTENT_HEIGHT
       ) {
-        return;
+        return null;
       }
 
       const lineIndex = findLineAtY(canvasY);
-      if (lineIndex < 0) return;
+      if (lineIndex < 0) return null;
 
       const line = pageLines[lineIndex];
-      if (!line || line.line_type === 'surah_name') return;
+      if (!line || line.line_type === 'surah_name') return null;
 
       const paragraphInfo = paragraphMapRef.current.get(lineIndex);
-      if (!paragraphInfo) return;
+      if (!paragraphInfo) return null;
 
       const paragraphX = canvasX - paragraphInfo.xPos;
       const paragraphY = canvasY - lineYPositions[lineIndex];
@@ -202,37 +267,120 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         paragraphY,
       );
 
-      const verseSegment = mushafVerseMapService.findVerseAtCharIndex(
+      return mushafVerseMapService.findVerseAtCharIndex(
         pageNumber,
         lineIndex,
         charIndex,
       );
-
-      if (verseSegment) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        selectVerse(verseSegment.verseKey, pageNumber);
-        SheetManager.show('verse-actions', {
-          payload: {
-            verseKey: verseSegment.verseKey,
-            surahNumber: verseSegment.surahNumber,
-            ayahNumber: verseSegment.ayahNumber,
-          },
-        });
-      }
     },
-    [pageNumber, pageLines, lineYPositions, findLineAtY, selectVerse],
+    [pageNumber, pageLines, lineYPositions, findLineAtY],
   );
 
-  // Long press gesture for verse selection
-  const longPressGesture = useMemo(
+  // Drag start: initial verse selection
+  const handleDragStart = useCallback(
+    (eventX: number, eventY: number) => {
+      const segment = hitTestVerse(eventX, eventY);
+      if (!segment) {
+        dragStartVerseKeyRef.current = null;
+        return;
+      }
+
+      dragStartVerseKeyRef.current = segment.verseKey;
+      dragCurrentVerseKeyRef.current = segment.verseKey;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      selectVerse(segment.verseKey, pageNumber);
+    },
+    [hitTestVerse, selectVerse, pageNumber],
+  );
+
+  // Drag update: extend selection range
+  const handleDragUpdate = useCallback(
+    (eventX: number, eventY: number) => {
+      const startKey = dragStartVerseKeyRef.current;
+      if (!startKey) return;
+
+      const segment = hitTestVerse(eventX, eventY);
+      if (!segment) return;
+
+      const currentKey = segment.verseKey;
+      if (currentKey === dragCurrentVerseKeyRef.current) return;
+
+      const ordered = orderedVerseKeysRef.current;
+      const startIdx = ordered.indexOf(startKey);
+      const currentIdx = ordered.indexOf(currentKey);
+
+      if (startIdx === -1 || currentIdx === -1) return;
+
+      // Only allow forward (downward) selection
+      if (currentIdx < startIdx) {
+        // Finger moved above start verse — keep only start
+        if (dragCurrentVerseKeyRef.current !== startKey) {
+          dragCurrentVerseKeyRef.current = startKey;
+          selectVerse(startKey, pageNumber);
+        }
+        return;
+      }
+
+      dragCurrentVerseKeyRef.current = currentKey;
+      const range = ordered.slice(startIdx, currentIdx + 1);
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      if (range.length === 1) {
+        selectVerse(range[0], pageNumber);
+      } else {
+        selectVerseRange(range, pageNumber);
+      }
+    },
+    [hitTestVerse, selectVerse, selectVerseRange, pageNumber],
+  );
+
+  // Drag end: open action sheet
+  const handleDragEnd = useCallback(() => {
+    const startKey = dragStartVerseKeyRef.current;
+    if (!startKey) return;
+
+    const store = useMushafVerseSelectionStore.getState();
+    const keys = store.selectedVerseKeys;
+    if (keys.length === 0) return;
+
+    const firstKey = keys[0];
+    const [surahStr, ayahStr] = firstKey.split(':');
+    const surahNumber = parseInt(surahStr, 10);
+    const ayahNumber = parseInt(ayahStr, 10);
+
+    SheetManager.show('verse-actions', {
+      payload: {
+        verseKey: firstKey,
+        surahNumber,
+        ayahNumber,
+        verseKeys: keys.length > 1 ? keys : undefined,
+      },
+    });
+
+    dragStartVerseKeyRef.current = null;
+    dragCurrentVerseKeyRef.current = null;
+  }, []);
+
+  // Pan gesture with long-press activation for verse selection + drag
+  const longPressDragGesture = useMemo(
     () =>
-      Gesture.LongPress()
-        .minDuration(400)
+      Gesture.Pan()
+        .activateAfterLongPress(400)
+        .minDistance(0)
         .onStart(event => {
           'worklet';
-          runOnJS(handleLongPress)(event.x, event.y);
+          runOnJS(handleDragStart)(event.x, event.y);
+        })
+        .onUpdate(event => {
+          'worklet';
+          runOnJS(handleDragUpdate)(event.x, event.y);
+        })
+        .onEnd(() => {
+          'worklet';
+          runOnJS(handleDragEnd)();
         }),
-    [handleLongPress],
+    [handleDragStart, handleDragUpdate, handleDragEnd],
   );
 
   // Compute per-line highlight arrays merging persistent annotations + temporary selection
@@ -244,8 +392,15 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       Array<{start: number; end: number; color: string}>
     >();
 
-    // Persistent annotation highlights
+    // Build set of selected verse keys for fast lookup
+    const selectedSet =
+      selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
+        ? new Set(selectedVerseKeys)
+        : null;
+
+    // Persistent annotation highlights (skip verses that are actively selected)
     for (const [verseKey, colorName] of Object.entries(persistentHighlights)) {
+      if (selectedSet?.has(verseKey)) continue;
       const hex = HIGHLIGHT_COLORS[colorName];
       if (!hex) continue;
       const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
@@ -267,29 +422,31 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     }
 
     // Temporary selection highlight (takes priority — added last so find() returns it first)
-    if (selectedVerseKey && selectedPageNumber === pageNumber) {
-      const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
-        pageNumber,
-        selectedVerseKey,
-      );
-      for (const {lineIndex, segment} of verseLines) {
-        let arr = map.get(lineIndex);
-        if (!arr) {
-          arr = [];
-          map.set(lineIndex, arr);
+    if (selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber) {
+      for (const vk of selectedVerseKeys) {
+        const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
+          pageNumber,
+          vk,
+        );
+        for (const {lineIndex, segment} of verseLines) {
+          let arr = map.get(lineIndex);
+          if (!arr) {
+            arr = [];
+            map.set(lineIndex, arr);
+          }
+          arr.push({
+            start: segment.startCharIndex,
+            end: segment.endCharIndex,
+            color: highlightColor,
+          });
         }
-        arr.push({
-          start: segment.startCharIndex,
-          end: segment.endCharIndex,
-          color: highlightColor,
-        });
       }
     }
 
     return map;
   }, [
     persistentHighlights,
-    selectedVerseKey,
+    selectedVerseKeys,
     selectedPageNumber,
     pageNumber,
     highlightColor,
@@ -300,7 +457,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   }
 
   return (
-    <GestureDetector gesture={longPressGesture}>
+    <GestureDetector gesture={longPressDragGesture}>
       <View style={styles.page}>
         <Canvas
           style={{
