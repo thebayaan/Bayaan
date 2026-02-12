@@ -1,12 +1,23 @@
 import {Dimensions} from 'react-native';
+import {
+  FLOATING_PLAYER_HEIGHT,
+  TAB_BAR_HEIGHT,
+  FLOATING_PLAYER_BOTTOM_MARGIN,
+} from '@/utils/constants';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
 export const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
 
+// Reserve space at the bottom for the floating player + tab bar
+export const PLAYER_RESERVED_HEIGHT =
+  FLOATING_PLAYER_HEIGHT + TAB_BAR_HEIGHT + FLOATING_PLAYER_BOTTOM_MARGIN;
+
 export const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 8 : 16;
 export const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 30 : 110;
-export const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 130;
+export const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE
+  ? PLAYER_RESERVED_HEIGHT + 15
+  : PLAYER_RESERVED_HEIGHT + 40;
 export const AYAH_LINE_SPACING = IS_COMPACT_DEVICE ? 0.75 : 0.7;
 export const LINES_PER_PAGE = 15;
 
