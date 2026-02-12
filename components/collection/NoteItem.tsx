@@ -4,7 +4,6 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
 
@@ -20,27 +19,12 @@ for (const key of Object.keys(quranRaw)) {
   if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
 }
 
-// Lazy-load Indopak data
-interface IndopakEntry {
-  text: string;
-}
-let indopakCache: Record<string, IndopakEntry> | null = null;
-function getIndopakData(): Record<string, IndopakEntry> | null {
-  if (!indopakCache) {
-    try {
-      indopakCache = require('@/data/IndopakNastaleeq.json');
-    } catch {
-      // not available
-    }
-  }
-  return indopakCache;
-}
-
 interface NoteItemProps {
   surahName: string;
   ayahNumber: number;
   surahNumber: number;
   verseKey: string;
+  verseKeys?: string[];
   notePreview: string;
   onPress: () => void;
   onOptionsPress: () => void;
@@ -52,19 +36,39 @@ export const NoteItem = memo<NoteItemProps>(
     ayahNumber,
     surahNumber,
     verseKey,
+    verseKeys,
     notePreview,
     onPress,
     onOptionsPress,
   }) => {
     const {theme} = useTheme();
-    const {arabicFontFamily} = useMushafSettingsStore();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const surahGlyph = surahGlyphMap[surahNumber] ?? '';
-    const isIndopak = arabicFontFamily === 'Indopak';
-    const arabicText = isIndopak
-      ? getIndopakData()?.[verseKey]?.text ?? ''
-      : qpcTextByKey[verseKey] ?? '';
+
+    const isRange = verseKeys && verseKeys.length > 1;
+
+    const arabicText = useMemo(() => {
+      if (isRange) {
+        return verseKeys
+          .map(vk => qpcTextByKey[vk] ?? '')
+          .filter(Boolean)
+          .join(' ');
+      }
+      return qpcTextByKey[verseKey] ?? '';
+    }, [verseKey, verseKeys, isRange]);
+
+    const verseRefText = useMemo(() => {
+      if (!isRange) return `${surahNumber}:${ayahNumber}`;
+      const firstKey = verseKeys[0];
+      const lastKey = verseKeys[verseKeys.length - 1];
+      const [firstSurah, firstAyah] = firstKey.split(':');
+      const [, lastAyah] = lastKey.split(':');
+      if (firstSurah === String(surahNumber)) {
+        return `${firstSurah}:${firstAyah}-${lastAyah}`;
+      }
+      return `${firstSurah}:${firstAyah} - ${lastKey}`;
+    }, [isRange, verseKeys, surahNumber, ayahNumber]);
 
     return (
       <Pressable
@@ -74,9 +78,7 @@ export const NoteItem = memo<NoteItemProps>(
         {/* Top bar: pill + surah glyph + options */}
         <View style={styles.topBar}>
           <View style={styles.versePill}>
-            <Text style={styles.versePillText}>
-              {surahNumber}:{ayahNumber}
-            </Text>
+            <Text style={styles.versePillText}>{verseRefText}</Text>
           </View>
           <View style={styles.lineLeft} />
           {surahGlyph ? (
@@ -97,7 +99,9 @@ export const NoteItem = memo<NoteItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <Text style={[styles.arabicText, {fontFamily: arabicFontFamily}]}>
+          <Text
+            style={[styles.arabicText, {fontFamily: 'Uthmani'}]}
+            numberOfLines={isRange ? 3 : undefined}>
             {arabicText}
           </Text>
         </View>
