@@ -13,9 +13,7 @@ import {
   FONTSIZE,
   SPACEWIDTH,
   type LineTextInfo,
-  type WordInfo,
 } from './QuranTextService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const lineParStyle = {
   textAlign: TextAlign.Left,
@@ -812,85 +810,33 @@ export class JustService {
     return result;
   }
 
-  /**
-   * Calculate and cache all page layouts
-   */
-  static async saveAllLayouts(
-    fontSizeLineWidthRatio: number,
-    fontMgr: SkTypefaceFontProvider,
-    fontFamily: string = 'DigitalKhatt',
-    onProgress?: (page: number, total: number) => void,
-  ): Promise<void> {
-    const allResults: JustResultByLine[][] = [];
-
-    for (let pageNumber = 1; pageNumber <= 604; pageNumber++) {
-      const pageResult = JustService.getPageLayout(
-        pageNumber,
-        fontSizeLineWidthRatio,
-        fontMgr,
-        fontFamily,
-      );
-      allResults.push(pageResult);
-      onProgress?.(pageNumber, 604);
-    }
-
-    await JustService.saveLayoutToStorage(
-      fontSizeLineWidthRatio,
-      allResults,
-      fontFamily,
-    );
-  }
-
-  static async saveLayoutToStorage(
-    fontSizeLineWidthRatio: number,
-    result: JustResultByLine[][],
-    fontFamily: string = 'DigitalKhatt',
-  ): Promise<void> {
-    const key = getLayoutStorageKey(fontSizeLineWidthRatio, fontFamily);
-    const json = JSON.stringify(result, replacer);
-    await AsyncStorage.setItem(key, json);
-    storageMisses.delete(key);
-    const cacheKey = getLayoutCacheKey(fontSizeLineWidthRatio, fontFamily);
-    cachedLayouts.set(cacheKey, result);
-    const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
-    for (let index = 0; index < result.length; index++) {
-      pageCache.set(index + 1, result[index]);
-    }
-  }
-
-  static async getLayoutFromStorage(
-    fontSizeLineWidthRatio: number,
-    fontFamily: string = 'DigitalKhatt',
-  ): Promise<JustResultByLine[][] | undefined> {
-    const cacheKey = getLayoutCacheKey(fontSizeLineWidthRatio, fontFamily);
-    const cached = cachedLayouts.get(cacheKey);
-    if (cached) return cached;
-
-    const key = getLayoutStorageKey(fontSizeLineWidthRatio, fontFamily);
-    if (storageMisses.has(key)) {
-      return undefined;
-    }
-    const json = await AsyncStorage.getItem(key);
-    if (json) {
-      const layout = JSON.parse(json, reviver) as JustResultByLine[][];
-      cachedLayouts.set(cacheKey, layout);
-      const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
-      for (let index = 0; index < layout.length; index++) {
-        pageCache.set(index + 1, layout[index]);
-      }
-      return layout;
-    }
-    storageMisses.add(key);
-    return undefined;
-  }
-
   static getCachedPageLayout(
     fontSizeLineWidthRatio: number,
     pageNumber: number,
     fontFamily: string = 'DigitalKhatt',
   ): JustResultByLine[] | undefined {
+    // 1. Check in-memory cache (fastest)
     const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
-    return pageCache.get(pageNumber);
+    const memoryHit = pageCache.get(pageNumber);
+    if (memoryHit) return memoryHit;
+
+    // 2. Check MMKV (synchronous, ~1ms)
+    try {
+      const {mushafLayoutCacheService} = require('./MushafLayoutCacheService');
+      const mmkvHit = mushafLayoutCacheService.getPageLayout(
+        pageNumber,
+        fontFamily,
+      );
+      if (mmkvHit) {
+        // Populate in-memory cache for fastest subsequent access
+        pageCache.set(pageNumber, mmkvHit);
+        return mmkvHit;
+      }
+    } catch {
+      // MMKV not available yet, fall through
+    }
+
+    return undefined;
   }
 
   static cachePageLayout(
@@ -902,46 +848,9 @@ export class JustService {
     const pageCache = getPageLayoutCache(fontSizeLineWidthRatio, fontFamily);
     pageCache.set(pageNumber, layout);
   }
-
-  static prewarmPageRange(
-    centerPage: number,
-    radius: number,
-    fontSizeLineWidthRatio: number,
-    fontMgr: SkTypefaceFontProvider,
-    fontFamily: string = 'DigitalKhatt',
-  ): void {
-    const start = Math.max(1, centerPage - radius);
-    const end = Math.min(604, centerPage + radius);
-    for (let page = start; page <= end; page++) {
-      const cached = JustService.getCachedPageLayout(
-        fontSizeLineWidthRatio,
-        page,
-        fontFamily,
-      );
-      if (!cached) {
-        JustService.getPageLayout(
-          page,
-          fontSizeLineWidthRatio,
-          fontMgr,
-          fontFamily,
-        );
-      }
-    }
-  }
-
-  static async removeLayouts(): Promise<void> {
-    const keys = await AsyncStorage.getAllKeys();
-    const layoutKeys = keys.filter(k => k.startsWith('dk_layout_'));
-    if (layoutKeys.length > 0) {
-      await AsyncStorage.multiRemove(layoutKeys);
-    }
-    cachedLayouts.clear();
-    pageLayoutsCache.clear();
-    storageMisses.clear();
-  }
 }
 
-function replacer(key: string, value: unknown): unknown {
+export function replacer(key: string, value: unknown): unknown {
   if (value instanceof Map) {
     return {
       dataType: 'Map',
@@ -951,7 +860,7 @@ function replacer(key: string, value: unknown): unknown {
   return value;
 }
 
-function reviver(key: string, value: unknown): unknown {
+export function reviver(key: string, value: unknown): unknown {
   if (typeof value === 'object' && value !== null) {
     if ((value as {dataType?: string}).dataType === 'Map') {
       return new Map((value as {value: [unknown, unknown][]}).value);
@@ -960,25 +869,11 @@ function reviver(key: string, value: unknown): unknown {
   return value;
 }
 
-function getLayoutCacheKey(
-  fontSizeLineWidthRatio: number,
-  fontFamily: string,
-): string {
-  return `${fontFamily}::${fontSizeLineWidthRatio}`;
-}
-
-function getLayoutStorageKey(
-  fontSizeLineWidthRatio: number,
-  fontFamily: string,
-): string {
-  return `dk_layout_${fontFamily}_${fontSizeLineWidthRatio}`;
-}
-
 function getPageLayoutCache(
   fontSizeLineWidthRatio: number,
   fontFamily: string,
 ): Map<number, JustResultByLine[]> {
-  const cacheKey = getLayoutCacheKey(fontSizeLineWidthRatio, fontFamily);
+  const cacheKey = `${fontFamily}::${fontSizeLineWidthRatio}`;
   const existing = pageLayoutsCache.get(cacheKey);
   if (existing) return existing;
   const created = new Map<number, JustResultByLine[]>();
@@ -986,9 +881,7 @@ function getPageLayoutCache(
   return created;
 }
 
-const cachedLayouts: Map<string, JustResultByLine[][]> = new Map();
 const pageLayoutsCache: Map<
   string,
   Map<number, JustResultByLine[]>
 > = new Map();
-const storageMisses = new Set<string>();
