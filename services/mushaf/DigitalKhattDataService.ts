@@ -2,6 +2,10 @@ import * as SQLite from 'expo-sqlite';
 
 const TOTAL_PAGES = 604;
 
+// Basmallah text is always the same 4 words — hardcoded to avoid DB lookup
+// (layout DB has NULL word IDs for basmallah lines)
+const BASMALLAH_TEXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
+
 export interface DKLine {
   page_number: number;
   line_number: number;
@@ -167,7 +171,8 @@ class DigitalKhattDataService {
   }
 
   getLineText(line: DKLine): string {
-    if (line.line_type !== 'ayah' && line.line_type !== 'basmallah') return '';
+    if (line.line_type === 'surah_name') return '';
+    if (line.line_type === 'basmallah') return BASMALLAH_TEXT;
     const words: string[] = [];
     for (let i = line.first_word_id; i <= line.last_word_id; i++) {
       const text = this.wordsById.get(i);

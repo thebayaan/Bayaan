@@ -4,6 +4,7 @@ import {playlistService} from '@/services/playlist/PlaylistService';
 import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -305,5 +306,20 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await verseAnnotationService.initialize();
+  },
+});
+
+/**
+ * Mushaf Layout Cache (Priority 8)
+ * Precomputes all 604 page layouts into MMKV for instant mushaf rendering.
+ * Depends on DigitalKhatt Data (priority 5) being loaded first.
+ * Non-critical - mushaf will compute on-demand if this hasn't finished.
+ */
+appInitializer.registerService({
+  name: 'Mushaf Layout Cache',
+  priority: 8,
+  critical: false,
+  initialize: async () => {
+    await mushafLayoutCacheService.initialize();
   },
 });

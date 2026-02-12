@@ -21,7 +21,7 @@ import {Asset} from 'expo-asset';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {SURAH_NAMES} from './constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import SkiaPage, {precomputePageLayout} from './skia/SkiaPage';
+import SkiaPage from './skia/SkiaPage';
 
 // SVG asset for basmallah (used by Indopak path)
 const BasmalahAsset = require('@/data/mushaf/legacy/Bismillah..svg');
@@ -240,7 +240,11 @@ const UthmaniPageView: React.FC<{
   return (
     <View style={styles.page}>
       {/* Skia Canvas renders ayah + basmallah lines */}
-      <SkiaPage pageNumber={pageNumber} textColor={textColor} highlightColor={highlightColor} />
+      <SkiaPage
+        pageNumber={pageNumber}
+        textColor={textColor}
+        highlightColor={highlightColor}
+      />
 
       {/* Surah header overlays (rendered as RN Text for the glyph font) */}
       {surahHeaderFontLoaded &&
@@ -467,10 +471,7 @@ const MushafInlineSettings: React.FC<{textColor: string}> = ({textColor}) => {
   return (
     <View style={styles.inlineSettings}>
       <Pressable
-        style={[
-          styles.settingsPill,
-          showTajweed && styles.settingsPillActive,
-        ]}
+        style={[styles.settingsPill, showTajweed && styles.settingsPillActive]}
         onPress={toggleTajweed}>
         <Text
           style={[
@@ -608,8 +609,6 @@ export default function MushafViewer({
     (surahId: number) => {
       const targetPage = surahStartPages[surahId];
       if (targetPage && flatListRef.current) {
-        // Pre-compute target page layout before scrolling so it renders instantly
-        precomputePageLayout(targetPage);
         flatListRef.current.scrollToIndex({
           index: targetPage - 1,
           animated: false,
@@ -642,7 +641,9 @@ export default function MushafViewer({
         const tableCheck = await db
           .getFirstAsync<{
             name: string;
-          }>("SELECT name FROM sqlite_master WHERE type='table' AND name='pages';")
+          }>(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='pages';",
+          )
           .catch(() => null);
 
         if (!tableCheck) {
@@ -692,9 +693,7 @@ export default function MushafViewer({
   }, [isIndopak]);
 
   // Show loading if dependencies not ready
-  const isLoading = isIndopak
-    ? dbLoading || !basmalahLoaded
-    : !dkDataReady;
+  const isLoading = isIndopak ? dbLoading || !basmalahLoaded : !dkDataReady;
 
   if (isLoading) {
     return (
@@ -712,8 +711,7 @@ export default function MushafViewer({
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable style={styles.surahSelector} onPress={openSurahSheet}>
-            <Text
-              style={[styles.headerSurahName, {color: theme.colors.text}]}>
+            <Text style={[styles.headerSurahName, {color: theme.colors.text}]}>
               {currentSurahName}
             </Text>
             <Ionicons
@@ -739,7 +737,11 @@ export default function MushafViewer({
               textColor={theme.colors.text}
             />
           ) : (
-            <UthmaniPageView pageNumber={item} textColor={theme.colors.text} highlightColor={theme.colors.primary} />
+            <UthmaniPageView
+              pageNumber={item}
+              textColor={theme.colors.text}
+              highlightColor={theme.colors.primary}
+            />
           )
         }
         keyExtractor={item => item.toString()}
