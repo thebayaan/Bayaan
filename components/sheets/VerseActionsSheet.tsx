@@ -29,8 +29,34 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const verseKey = payload?.verseKey ?? '';
   const surahNumber = payload?.surahNumber ?? 0;
   const ayahNumber = payload?.ayahNumber ?? 0;
+  const verseKeys = payload?.verseKeys;
+  const isRange = verseKeys && verseKeys.length > 1;
 
   const {arabicText, translation, transliteration} = useMemo(() => {
+    if (isRange) {
+      const arabicParts: string[] = [];
+      const translationParts: string[] = [];
+      const transliterationParts: string[] = [];
+      for (const vk of verseKeys) {
+        const arabic = (
+          Object.values(quranVerses) as Array<{
+            verse_key: string;
+            text: string;
+          }>
+        ).find(v => v.verse_key === vk)?.text;
+        if (arabic) arabicParts.push(arabic);
+        const trans = saheehData[vk]?.t;
+        if (trans) translationParts.push(trans);
+        const translit = transliterationData[vk]?.t;
+        if (translit) transliterationParts.push(translit);
+      }
+      return {
+        arabicText: arabicParts.join('\n'),
+        translation: translationParts.join('\n'),
+        transliteration: transliterationParts.join('\n'),
+      };
+    }
+
     const resolvedArabic =
       payload?.arabicText ||
       (
@@ -48,6 +74,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     };
   }, [
     verseKey,
+    verseKeys,
+    isRange,
     payload?.arabicText,
     payload?.translation,
     payload?.transliteration,
@@ -58,47 +86,72 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   );
   const surahName = surah?.name ?? '';
 
-  const isBookmarked = useVerseAnnotationsStore(state =>
-    state.isBookmarked(verseKey),
-  );
+  // Compute display range for multi-verse selection
+  const verseRefText = useMemo(() => {
+    if (!isRange) return `${surahNumber}:${ayahNumber}`;
+    const firstKey = verseKeys[0];
+    const lastKey = verseKeys[verseKeys.length - 1];
+    const [firstSurah, firstAyah] = firstKey.split(':');
+    const [lastSurah, lastAyah] = lastKey.split(':');
+    if (firstSurah === lastSurah) {
+      return `${firstSurah}:${firstAyah}-${lastAyah}`;
+    }
+    return `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
+  }, [isRange, verseKeys, surahNumber, ayahNumber]);
+
+  const isBookmarked = useVerseAnnotationsStore(state => {
+    const keys = isRange ? verseKeys : [verseKey];
+    return keys.every(vk => state.isBookmarked(vk));
+  });
   const isHighlighted = useVerseAnnotationsStore(
     state => !!state.highlights[verseKey],
   );
 
   const handleToggleBookmark = useCallback(async () => {
     lightHaptics();
-    const wasAdded = await verseAnnotationService.toggleBookmark(
-      verseKey,
-      surahNumber,
-      ayahNumber,
-    );
+    const keys = isRange ? verseKeys : [verseKey];
     const store = useVerseAnnotationsStore.getState();
-    if (wasAdded) {
-      store.addBookmark(verseKey);
+    if (isBookmarked) {
+      for (const vk of keys) {
+        await verseAnnotationService.removeBookmark(vk);
+        store.removeBookmark(vk);
+      }
     } else {
-      store.removeBookmark(verseKey);
+      for (const vk of keys) {
+        const [s, a] = vk.split(':');
+        await verseAnnotationService.addBookmark(
+          vk,
+          parseInt(s, 10),
+          parseInt(a, 10),
+        );
+        store.addBookmark(vk);
+      }
     }
     SheetManager.hideAll();
-  }, [verseKey, surahNumber, ayahNumber]);
+  }, [verseKey, verseKeys, isRange, isBookmarked]);
 
   const handleHighlight = useCallback(async () => {
     if (isHighlighted) {
       lightHaptics();
-      await verseAnnotationService.removeHighlight(verseKey);
-      useVerseAnnotationsStore.getState().removeHighlight(verseKey);
+      const keys = isRange ? verseKeys : [verseKey];
+      const store = useVerseAnnotationsStore.getState();
+      for (const vk of keys) {
+        await verseAnnotationService.removeHighlight(vk);
+        store.removeHighlight(vk);
+      }
       SheetManager.hideAll();
     } else {
       SheetManager.show('verse-highlight', {
-        payload: {verseKey, surahNumber, ayahNumber},
+        payload: {verseKey, surahNumber, ayahNumber, verseKeys},
       });
     }
-  }, [verseKey, surahNumber, ayahNumber, isHighlighted]);
+  }, [verseKey, verseKeys, isRange, surahNumber, ayahNumber, isHighlighted]);
 
   const handleNote = useCallback(() => {
     SheetManager.show('verse-note', {
-      payload: {verseKey, surahNumber, ayahNumber},
+      payload: {verseKey, surahNumber, ayahNumber, verseKeys},
     });
-  }, [verseKey, surahNumber, ayahNumber]);
+  }, [verseKey, surahNumber, ayahNumber, verseKeys]);
 
   const handleCopy = useCallback(() => {
     SheetManager.show('verse-copy', {
@@ -106,6 +159,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         verseKey,
         surahNumber,
         ayahNumber,
+        verseKeys,
         arabicText,
         translation,
         transliteration,
@@ -115,6 +169,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     verseKey,
     surahNumber,
     ayahNumber,
+    verseKeys,
     arabicText,
     translation,
     transliteration,
@@ -122,16 +177,16 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleShare = useCallback(async () => {
     lightHaptics();
-    const message = `${arabicText}\n\n${translation}\n\n-- Quran ${surahNumber}:${ayahNumber}`;
+    const message = `${arabicText}\n\n${translation}\n\n-- Quran ${verseRefText}`;
     await Share.share({message});
     SheetManager.hideAll();
-  }, [arabicText, translation, surahNumber, ayahNumber]);
+  }, [arabicText, translation, verseRefText]);
 
   const handleTranslation = useCallback(() => {
     SheetManager.show('verse-translation', {
-      payload: {verseKey, surahNumber, ayahNumber, arabicText},
+      payload: {verseKey, surahNumber, ayahNumber, verseKeys, arabicText},
     });
-  }, [verseKey, surahNumber, ayahNumber, arabicText]);
+  }, [verseKey, surahNumber, ayahNumber, verseKeys, arabicText]);
 
   const handleOnClose = useCallback(() => {
     useVerseSelectionStore.getState().clearSelection();
@@ -150,9 +205,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.surahName}>{surahName}</Text>
-          <Text style={styles.verseRef}>
-            {surahNumber}:{ayahNumber}
-          </Text>
+          <Text style={styles.verseRef}>{verseRefText}</Text>
         </View>
 
         <View style={styles.optionsGrid}>
