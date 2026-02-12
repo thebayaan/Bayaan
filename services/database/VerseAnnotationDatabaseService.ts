@@ -21,6 +21,7 @@ interface NoteRow {
   surah_number: number;
   ayah_number: number;
   content: string;
+  verse_keys: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -55,6 +56,7 @@ function mapNoteRow(row: NoteRow): VerseNote {
     surahNumber: row.surah_number,
     ayahNumber: row.ayah_number,
     content: row.content,
+    verseKeys: row.verse_keys ? row.verse_keys.split(',') : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -201,6 +203,13 @@ class VerseAnnotationDatabaseService {
       CREATE INDEX IF NOT EXISTS idx_highlights_surah
       ON highlights(surah_number);
     `);
+
+    // Migration: add verse_keys column to notes table
+    try {
+      await this.db.execAsync(`ALTER TABLE notes ADD COLUMN verse_keys TEXT;`);
+    } catch {
+      // Column already exists
+    }
   }
 
   // Bookmark operations
@@ -271,16 +280,18 @@ class VerseAnnotationDatabaseService {
     surahNumber: number,
     ayahNumber: number,
     content: string,
+    verseKeys?: string[],
   ): Promise<VerseNote> {
     const db = await this.ensureReady();
 
     const now = Date.now();
     const id = generateId();
+    const verseKeysStr = verseKeys?.length ? verseKeys.join(',') : null;
 
     await db.runAsync(
-      `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, verseKey, surahNumber, ayahNumber, content, now, now],
+      `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, verseKey, surahNumber, ayahNumber, content, verseKeysStr, now, now],
     );
 
     return {
@@ -289,6 +300,7 @@ class VerseAnnotationDatabaseService {
       surahNumber,
       ayahNumber,
       content,
+      verseKeys: verseKeys?.length ? verseKeys : undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -313,8 +325,8 @@ class VerseAnnotationDatabaseService {
   async getNotesForVerse(verseKey: string): Promise<VerseNote[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
-      `SELECT * FROM notes WHERE verse_key = ? ORDER BY created_at DESC`,
-      [verseKey],
+      `SELECT * FROM notes WHERE verse_key = ? OR (',' || verse_keys || ',') LIKE ? ORDER BY created_at DESC`,
+      [verseKey, `%,${verseKey},%`],
     )) as NoteRow[];
     return rows.map(mapNoteRow);
   }
@@ -327,8 +339,8 @@ class VerseAnnotationDatabaseService {
   async getNotesCountForVerse(verseKey: string): Promise<number> {
     const db = await this.ensureReady();
     const row = (await db.getFirstAsync(
-      `SELECT COUNT(*) as count FROM notes WHERE verse_key = ?`,
-      [verseKey],
+      `SELECT COUNT(*) as count FROM notes WHERE verse_key = ? OR (',' || verse_keys || ',') LIKE ?`,
+      [verseKey, `%,${verseKey},%`],
     )) as {count: number} | null;
     return row?.count ?? 0;
   }
