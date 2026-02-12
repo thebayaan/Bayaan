@@ -194,6 +194,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        verseKeys?: string[];
         arabicText?: string;
         translation?: string;
         transliteration?: string;
@@ -204,6 +205,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        verseKeys?: string[];
         arabicText: string;
         translation: string;
         transliteration?: string;
@@ -214,6 +216,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        verseKeys?: string[];
       };
     }>;
     'verse-note': SheetDefinition<{
@@ -221,6 +224,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        verseKeys?: string[];
         noteId?: string;
       };
     }>;
@@ -229,6 +233,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        verseKeys?: string[];
         arabicText: string;
       };
     }>;

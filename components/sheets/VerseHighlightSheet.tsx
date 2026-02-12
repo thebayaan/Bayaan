@@ -16,7 +16,6 @@ import {Feather} from '@expo/vector-icons';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Build verse_key -> text lookup once at module scope
 interface QuranEntry {
@@ -30,22 +29,6 @@ for (const key of Object.keys(quranRaw)) {
   if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
 }
 
-// Lazy-load Indopak data
-interface IndopakEntry {
-  text: string;
-}
-let indopakCache: Record<string, IndopakEntry> | null = null;
-function getIndopakData(): Record<string, IndopakEntry> | null {
-  if (!indopakCache) {
-    try {
-      indopakCache = require('@/data/IndopakNastaleeq.json');
-    } catch {
-      // not available
-    }
-  }
-  return indopakCache;
-}
-
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
 export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
@@ -55,35 +38,39 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
   const verseKey = props.payload?.verseKey ?? '';
   const surahNumber = props.payload?.surahNumber ?? 0;
   const ayahNumber = props.payload?.ayahNumber ?? 0;
-
-  const {arabicFontFamily} = useMushafSettingsStore();
+  const verseKeys = props.payload?.verseKeys;
+  const allKeys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
 
   const currentColor = useVerseAnnotationsStore(s => s.highlights[verseKey]);
 
-  const isIndopak = arabicFontFamily === 'Indopak';
-  const arabicText = isIndopak
-    ? getIndopakData()?.[verseKey]?.text ?? ''
-    : qpcTextByKey[verseKey] ?? '';
+  const arabicText = qpcTextByKey[verseKey] ?? '';
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
-      await verseAnnotationService.upsertHighlight(
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        color,
-      );
-      useVerseAnnotationsStore.getState().setHighlight(verseKey, color);
+      const store = useVerseAnnotationsStore.getState();
+      for (const vk of allKeys) {
+        const [s, a] = vk.split(':');
+        await verseAnnotationService.upsertHighlight(
+          vk,
+          parseInt(s, 10),
+          parseInt(a, 10),
+          color,
+        );
+        store.setHighlight(vk, color);
+      }
       SheetManager.hideAll();
     },
-    [verseKey, surahNumber, ayahNumber],
+    [allKeys],
   );
 
   const handleRemove = useCallback(async () => {
-    await verseAnnotationService.removeHighlight(verseKey);
-    useVerseAnnotationsStore.getState().removeHighlight(verseKey);
+    const store = useVerseAnnotationsStore.getState();
+    for (const vk of allKeys) {
+      await verseAnnotationService.removeHighlight(vk);
+      store.removeHighlight(vk);
+    }
     SheetManager.hideAll();
-  }, [verseKey]);
+  }, [allKeys]);
 
   return (
     <ActionSheet
@@ -96,7 +83,9 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
 
         {arabicText ? (
           <View style={styles.ayahContainer}>
-            <Text style={[styles.ayahText, {fontFamily: arabicFontFamily}]}>
+            <Text
+              style={[styles.ayahText, {fontFamily: 'Uthmani'}]}
+              numberOfLines={2}>
               {arabicText}
             </Text>
           </View>
@@ -163,11 +152,11 @@ const createStyles = (theme: Theme) =>
       marginBottom: verticalScale(20),
     },
     ayahText: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(18),
       color: theme.colors.text,
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: moderateScale(48),
+      lineHeight: moderateScale(36),
     },
     colorsGrid: {
       flexDirection: 'row',
