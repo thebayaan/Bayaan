@@ -1827,17 +1827,9 @@ export const qpcFontRequiresTajweed: Record<
   604: require('@/data/mushaf/legacy/QPCTajweed/p604.ttf'),
 };
 
-const indopackFont = require('@/data/mushaf/legacy/indopak/font.ttf');
-
 // Helper to get the correct font map based on tajweed setting
 export function getFontRequires(
   showTajweed: boolean,
-  isIndopak: boolean = false,
 ): Record<number, ReturnType<typeof require>> {
-  if (isIndopak) {
-    return {
-      1: indopackFont,
-    };
-  }
   return showTajweed ? qpcFontRequiresTajweed : qpcFontRequiresV2;
 }
