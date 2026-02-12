@@ -1,5 +1,5 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
-import {View, ActivityIndicator, StyleSheet} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import {Canvas, useFonts, type SkParagraph} from '@shopify/react-native-skia';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-reanimated';
@@ -35,6 +35,34 @@ import {
   calculateLineYPositions,
 } from '../constants';
 
+// Module-level shared font state for pre-computation from outside the component
+let sharedFontMgr: ReturnType<typeof useFonts> = null;
+let sharedFontFamily = 'DigitalKhattV2';
+let sharedFontSizeLineWidthRatio = 0;
+
+/**
+ * Pre-compute page layout synchronously so the page renders instantly
+ * when the FlatList scrolls to it. Call before scrollToIndex.
+ */
+export function precomputePageLayout(pageNumber: number): boolean {
+  if (!sharedFontMgr || !sharedFontSizeLineWidthRatio) return false;
+
+  const cached = JustService.getCachedPageLayout(
+    sharedFontSizeLineWidthRatio,
+    pageNumber,
+    sharedFontFamily,
+  );
+  if (cached) return true;
+
+  JustService.getPageLayout(
+    pageNumber,
+    sharedFontSizeLineWidthRatio,
+    sharedFontMgr,
+    sharedFontFamily,
+  );
+  return true;
+}
+
 interface ParagraphInfo {
   paragraph: SkParagraph;
   xPos: number;
@@ -69,11 +97,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   );
   const selectVerse = useMushafVerseSelectionStore(s => s.selectVerse);
 
-  const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
-    null,
-  );
-  const [computing, setComputing] = useState(false);
-
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
 
@@ -84,28 +107,75 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const fontSize = FONTSIZE * scale * 0.9;
   const fontSizeLineWidthRatio = fontSize / lineWidth;
 
+  // Keep shared font state in sync for precomputePageLayout
+  useEffect(() => {
+    if (fontMgr) {
+      sharedFontMgr = fontMgr;
+      sharedFontFamily = fontFamily;
+      sharedFontSizeLineWidthRatio = fontSizeLineWidthRatio;
+    }
+  }, [fontMgr, fontFamily, fontSizeLineWidthRatio]);
+
+  // Initialize from synchronous in-memory cache to avoid blank frames
+  const [justResults, setJustResults] = useState<JustResultByLine[] | null>(
+    () =>
+      JustService.getCachedPageLayout(
+        fontSizeLineWidthRatio,
+        pageNumber,
+        fontFamily,
+      ) ?? null,
+  );
+
+  // Track which page the current justResults belongs to
+  const justResultsPageRef = useRef<number | null>(
+    justResults ? pageNumber : null,
+  );
+
   // Get page lines for layout calculation
   const pageLines = useMemo<DKLine[]>(
     () => digitalKhattDataService.getPageLines(pageNumber),
     [pageNumber],
   );
 
-  // Calculate justification
+  // Calculate justification — try sync cache first, fall back to async
   useEffect(() => {
     if (!fontMgr) return;
 
+    // Sync cache hit — use immediately, no blank frame
+    const syncCached = JustService.getCachedPageLayout(
+      fontSizeLineWidthRatio,
+      pageNumber,
+      fontFamily,
+    );
+    if (syncCached) {
+      setJustResults(syncCached);
+      justResultsPageRef.current = pageNumber;
+
+      // Pre-warm adjacent pages in the background
+      requestAnimationFrame(() => {
+        JustService.prewarmPageRange(
+          pageNumber,
+          2,
+          fontSizeLineWidthRatio,
+          fontMgr,
+          fontFamily,
+        );
+      });
+      return;
+    }
+
+    // Async fallback — check storage then compute
     let cancelled = false;
 
     const computeLayout = async () => {
-      setComputing(true);
-
       const cached = await JustService.getLayoutFromStorage(
         fontSizeLineWidthRatio,
+        fontFamily,
       );
       if (cached && cached[pageNumber - 1]) {
         if (!cancelled) {
           setJustResults(cached[pageNumber - 1]);
-          setComputing(false);
+          justResultsPageRef.current = pageNumber;
         }
         return;
       }
@@ -118,7 +188,18 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       );
       if (!cancelled) {
         setJustResults(result);
-        setComputing(false);
+        justResultsPageRef.current = pageNumber;
+
+        // Pre-warm adjacent pages after first compute
+        requestAnimationFrame(() => {
+          JustService.prewarmPageRange(
+            pageNumber,
+            2,
+            fontSizeLineWidthRatio,
+            fontMgr,
+            fontFamily,
+          );
+        });
       }
     };
 
@@ -261,12 +342,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return map;
   }, [selectedVerseKey, selectedPageNumber, pageNumber]);
 
-  if (!fontMgr || !justResults || computing) {
-    return (
-      <View style={[styles.page, styles.loadingContainer]}>
-        <ActivityIndicator size="small" color={textColor} />
-      </View>
-    );
+  if (!fontMgr || !justResults || justResultsPageRef.current !== pageNumber) {
+    return <View style={styles.page} />;
   }
 
   return (
@@ -325,10 +402,6 @@ const styles = StyleSheet.create({
   page: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 
