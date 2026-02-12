@@ -14,7 +14,7 @@ import {CONTENT_WIDTH} from '@/components/mushaf/constants';
 
 // Bump this when font files change or layout computation logic changes.
 // Incrementing invalidates all cached layouts and forces recomputation.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 4;
 const TOTAL_PAGES = 604;
 
 const FONT_FAMILIES = ['DigitalKhattV1', 'DigitalKhattV2'] as const;

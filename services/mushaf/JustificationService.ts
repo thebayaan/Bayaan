@@ -77,8 +77,9 @@ interface Lookup {
 
 /**
  * Compute named group indices from a regex match without the `d` flag.
- * Hermes doesn't support regex `d` flag (hasIndices), so we find each named
- * group's position within the input string manually.
+ * Kept as a fallback for environments that don't support the `d` flag,
+ * but all current regex patterns use `"gdu"` so this should not be reached
+ * on Hermes (RN 0.73+).
  *
  * Returns an object mapping group names to [startIndex, endIndex] arrays
  * (relative to the input string, matching match.indices.groups format).
@@ -296,7 +297,7 @@ export class JustService {
     const behafterbeh = `^.*(?:[${dualJoinLetters}]\\p{Mn}*)+(?<k1>[بتثنيسشصض])\\p{Mn}*(?<k2>[بتثنيم])\\p{Mn}*(?:\\p{L}\\p{Mn}*)+$`;
 
     const behBehLookup: Lookup = {
-      regExprs: new RegExp(behafterbeh, 'gu'),
+      regExprs: new RegExp(behafterbeh, 'gdu'),
       actions: {
         k1: [
           {
@@ -326,11 +327,11 @@ export class JustService {
     const finalAssendantRegExprs = [
       new RegExp(
         `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k4>["آادذٱأإ"]).*$`,
-        'gu',
+        'gdu',
       ),
       new RegExp(
         `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k4>[كله])\\p{Mn}[${rightNoJoinLetters}].*$`,
-        'gu',
+        'gdu',
       ),
     ];
 
@@ -372,11 +373,11 @@ export class JustService {
         ...finalAssendantRegExprs,
         new RegExp(
           `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k5>[${mediLeftAsendant}]).*$`,
-          'gu',
+          'gdu',
         ),
         new RegExp(
           `${behafterbeh}|^.*(?<k3>[${right}])\\p{Mn}*(?<k5>[${left}]).*$`,
-          'gu',
+          'gdu',
         ),
       ],
       matchingCondition: (context: LookupContext) =>
@@ -429,7 +430,7 @@ export class JustService {
     };
 
     const kafAltLookup: Lookup = {
-      regExprs: new RegExp(`^.*(?<k1>[ك])\\p{Mn}*(?<k2>\\p{L}).*$`, 'gu'),
+      regExprs: new RegExp(`^.*(?<k1>[ك])\\p{Mn}*(?<k2>\\p{L}).*$`, 'gdu'),
       actions: {
         k1: [{name: 'cv03', calcNewValue: () => 1}],
         k2: [{name: 'cv03', calcNewValue: () => 1}],
@@ -478,7 +479,7 @@ export class JustService {
     nbLevels: number,
   ): void {
     const patternExpa = `^.*(?<expa>[${chars}])(\\p{Mn}*(?<fatha>\u064E)\\p{Mn}*|\\p{Mn}*)$`;
-    const regExprExpa = new RegExp(patternExpa, 'gu');
+    const regExprExpa = new RegExp(patternExpa, 'gdu');
 
     const expaLookup: Lookup = {
       regExprs: regExprExpa,
@@ -515,7 +516,7 @@ export class JustService {
     const decompLookup: Lookup = {
       regExprs: new RegExp(
         `^.*(?<k1>${firstChars})\\p{Mn}*(?<k2>${secondChars}).*$`,
-        'gu',
+        'gdu',
       ),
       actions: {
         k1: [{name: featureName, calcNewValue: () => 1}],

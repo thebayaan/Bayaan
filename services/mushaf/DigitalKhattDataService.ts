@@ -25,6 +25,7 @@ export interface DKWordInfo {
 class DigitalKhattDataService {
   private wordsById: Map<number, string> = new Map();
   private wordInfoById: Map<number, DKWordInfo> = new Map();
+  private verseWords: Map<string, DKWordInfo[]> = new Map();
   private pageLines: Map<number, DKLine[]> = new Map();
   private surahStartPages: Record<number, number> = {};
   private pageToSurah: Record<number, number> = {};
@@ -91,9 +92,23 @@ class DigitalKhattDataService {
         });
       }
     }
+    // Build verse-indexed lookup: group wordInfoById entries by verseKey
+    for (const wordInfo of this.wordInfoById.values()) {
+      const existing = this.verseWords.get(wordInfo.verseKey);
+      if (existing) {
+        existing.push(wordInfo);
+      } else {
+        this.verseWords.set(wordInfo.verseKey, [wordInfo]);
+      }
+    }
+    // Sort each verse's words by position
+    for (const words of this.verseWords.values()) {
+      words.sort((a, b) => a.wordPositionInVerse - b.wordPositionInVerse);
+    }
+
     await db.closeAsync();
     console.log(
-      `[DigitalKhattDataService] Loaded ${this.wordsById.size} words`,
+      `[DigitalKhattDataService] Loaded ${this.wordsById.size} words, ${this.verseWords.size} verses indexed`,
     );
   }
 
@@ -191,6 +206,16 @@ class DigitalKhattDataService {
 
   getPageToSurah(): Record<number, number> {
     return this.pageToSurah;
+  }
+
+  getVerseWords(verseKey: string): DKWordInfo[] {
+    return this.verseWords.get(verseKey) || [];
+  }
+
+  getVerseText(verseKey: string): string {
+    const words = this.verseWords.get(verseKey);
+    if (!words) return '';
+    return words.map(w => w.text).join(' ');
   }
 }
 
