@@ -149,6 +149,7 @@ const NotesScreen = () => {
       ayahNumber={item.note.ayahNumber}
       surahNumber={item.note.surahNumber}
       verseKey={item.note.verseKey}
+      verseKeys={item.note.verseKeys}
       notePreview={item.note.content}
       onPress={() => handleNotePress(item)}
       onOptionsPress={() => handleOptionsPress(item)}

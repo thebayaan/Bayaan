@@ -207,7 +207,7 @@ Bayaan is a React Native/Expo application for Quran audio playback.
 - **Navigation:** Expo Router v4 (file-based routing)
 - **State Management:** Zustand (4.5.5)
 - **Audio:** expo-audio (~1.1.1)
-- **Storage:** AsyncStorage, Expo SQLite
+- **Storage:** AsyncStorage, Expo SQLite, MMKV (mushaf layout cache)
 - **UI:** @gorhom/bottom-sheet, react-native-reanimated, moti
 - **Images:** expo-image (~3.0.11)
 - **i18n:** react-i18next
@@ -235,6 +235,12 @@ Bayaan is a React Native/Expo application for Quran audio playback.
    - Priority-based initialization order
    - Critical vs non-critical service handling
    - SQLite services must register here for preloading
+
+5. **Mushaf Layout Cache** (`services/mushaf/MushafLayoutCacheService.ts`):
+   - Precomputes all 604 Uthmani page justification layouts into MMKV
+   - Synchronous reads (<1ms) eliminate computation on the render path
+   - Registered in AppInitializer at priority 8 (non-critical, background)
+   - See `docs/features/digital-khatt/mmkv-layout-cache-proposal.md` for details
 
 ### Code Structure
 
@@ -568,6 +574,7 @@ Additional documentation is available in the `docs/` directory:
 - **[Player System](docs/features/player.md)** - Audio player architecture
 - **[Queue Management](docs/features/queue.md)** - Queue system
 - **[Ambient Sounds](docs/features/ambient-sounds.md)** - Ambient nature sounds feature
+- **[Digital Khatt](docs/features/digital-khatt/README.md)** - Uthmani Mushaf rendering architecture, internals, and debugging
 - **[Deployment Guide](docs/deployment/deployment.md)** - Build and release procedures
 - **[Version Management](docs/deployment/version-management.md)** - Git-based versioning
 - **[Git Workflow](docs/development/git-workflow.md)** - Branching and collaboration

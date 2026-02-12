@@ -33,10 +33,25 @@ class VerseAnnotationService {
   isBookmarked = verseAnnotationDatabaseService.isBookmarked.bind(
     verseAnnotationDatabaseService,
   );
-
-  addNote = verseAnnotationDatabaseService.addNote.bind(
+  addBookmark = verseAnnotationDatabaseService.addBookmark.bind(
     verseAnnotationDatabaseService,
   );
+
+  addNote(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    content: string,
+    verseKeys?: string[],
+  ) {
+    return verseAnnotationDatabaseService.addNote(
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      content,
+      verseKeys,
+    );
+  }
   updateNote = verseAnnotationDatabaseService.updateNote.bind(
     verseAnnotationDatabaseService,
   );

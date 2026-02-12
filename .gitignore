@@ -32,6 +32,9 @@ web-build/
 
 config.ts
 
+# Large data files
+assets/data/timestamps.db
+
 # Ignore app-example folder
 app-example/
 

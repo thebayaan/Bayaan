@@ -15,7 +15,6 @@ import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Build verse_key -> text lookup once at module scope
 interface QuranEntry {
@@ -29,22 +28,6 @@ for (const key of Object.keys(quranRaw)) {
   if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
 }
 
-// Lazy-load Indopak data
-interface IndopakEntry {
-  text: string;
-}
-let indopakCache: Record<string, IndopakEntry> | null = null;
-function getIndopakData(): Record<string, IndopakEntry> | null {
-  if (!indopakCache) {
-    try {
-      indopakCache = require('@/data/IndopakNastaleeq.json');
-    } catch {
-      // not available
-    }
-  }
-  return indopakCache;
-}
-
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -52,17 +35,36 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const verseKey = props.payload?.verseKey ?? '';
   const surahNumber = props.payload?.surahNumber ?? 0;
   const ayahNumber = props.payload?.ayahNumber ?? 0;
+  const verseKeys = props.payload?.verseKeys;
+  const isRange = verseKeys && verseKeys.length > 1;
   const noteId = props.payload?.noteId;
-
-  const {arabicFontFamily} = useMushafSettingsStore();
 
   const [noteText, setNoteText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
 
-  const isIndopak = arabicFontFamily === 'Indopak';
-  const arabicText = isIndopak
-    ? getIndopakData()?.[verseKey]?.text ?? ''
-    : qpcTextByKey[verseKey] ?? '';
+  // For range: concatenate Arabic text from all verses; for single: just the one
+  const arabicText = useMemo(() => {
+    if (isRange) {
+      return verseKeys
+        .map(vk => qpcTextByKey[vk] ?? '')
+        .filter(Boolean)
+        .join(' ');
+    }
+    return qpcTextByKey[verseKey] ?? '';
+  }, [verseKey, verseKeys, isRange]);
+
+  // Compute range-aware reference text
+  const verseRefText = useMemo(() => {
+    if (!isRange) return `${surahNumber}:${ayahNumber}`;
+    const firstKey = verseKeys[0];
+    const lastKey = verseKeys[verseKeys.length - 1];
+    const [firstSurah, firstAyah] = firstKey.split(':');
+    const [lastSurah, lastAyah] = lastKey.split(':');
+    if (firstSurah === lastSurah) {
+      return `${firstSurah}:${firstAyah}-${lastAyah}`;
+    }
+    return `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
+  }, [isRange, verseKeys, surahNumber, ayahNumber]);
 
   useEffect(() => {
     if (!verseKey) return;
@@ -83,16 +85,30 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     if (isEditMode && noteId) {
       await verseAnnotationService.updateNote(noteId, noteText.trim());
     } else {
+      const allKeys = isRange ? verseKeys : [verseKey];
       await verseAnnotationService.addNote(
         verseKey,
         surahNumber,
         ayahNumber,
         noteText.trim(),
+        isRange ? verseKeys : undefined,
       );
-      useVerseAnnotationsStore.getState().addNote(verseKey);
+      const store = useVerseAnnotationsStore.getState();
+      for (const vk of allKeys) {
+        store.addNote(vk);
+      }
     }
     SheetManager.hideAll();
-  }, [verseKey, surahNumber, ayahNumber, noteText, isEditMode, noteId]);
+  }, [
+    verseKey,
+    verseKeys,
+    isRange,
+    surahNumber,
+    ayahNumber,
+    noteText,
+    isEditMode,
+    noteId,
+  ]);
 
   const handleDelete = useCallback(async () => {
     if (!noteId) return;
@@ -116,12 +132,14 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       gestureEnabled={true}>
       <View style={styles.container}>
         <Text style={styles.title}>
-          {isEditMode ? 'Edit Note' : 'Note'} for {surahNumber}:{ayahNumber}
+          {isEditMode ? 'Edit Note' : 'Note'} for {verseRefText}
         </Text>
 
         {arabicText ? (
           <View style={styles.ayahContainer}>
-            <Text style={[styles.ayahText, {fontFamily: arabicFontFamily}]}>
+            <Text
+              style={[styles.ayahText, {fontFamily: 'Uthmani'}]}
+              numberOfLines={isRange ? 3 : 2}>
               {arabicText}
             </Text>
           </View>
@@ -197,11 +215,11 @@ const createStyles = (theme: Theme) =>
       marginBottom: verticalScale(16),
     },
     ayahText: {
-      fontSize: moderateScale(24),
+      fontSize: moderateScale(18),
       color: theme.colors.text,
       textAlign: 'right',
       writingDirection: 'rtl',
-      lineHeight: moderateScale(48),
+      lineHeight: moderateScale(36),
     },
     textInput: {
       backgroundColor: theme.colors.card,

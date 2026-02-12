@@ -4,7 +4,6 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
 
@@ -20,22 +19,6 @@ for (const key of Object.keys(quranRaw)) {
   if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
 }
 
-// Lazy-load Indopak data
-interface IndopakEntry {
-  text: string;
-}
-let indopakCache: Record<string, IndopakEntry> | null = null;
-function getIndopakData(): Record<string, IndopakEntry> | null {
-  if (!indopakCache) {
-    try {
-      indopakCache = require('@/data/IndopakNastaleeq.json');
-    } catch {
-      // not available
-    }
-  }
-  return indopakCache;
-}
-
 interface BookmarkItemProps {
   surahName: string;
   ayahNumber: number;
@@ -48,14 +31,10 @@ interface BookmarkItemProps {
 export const BookmarkItem = memo<BookmarkItemProps>(
   ({surahName, ayahNumber, surahNumber, verseKey, onPress, onOptionsPress}) => {
     const {theme} = useTheme();
-    const {arabicFontFamily} = useMushafSettingsStore();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const surahGlyph = surahGlyphMap[surahNumber] ?? '';
-    const isIndopak = arabicFontFamily === 'Indopak';
-    const arabicText = isIndopak
-      ? getIndopakData()?.[verseKey]?.text ?? ''
-      : qpcTextByKey[verseKey] ?? '';
+    const arabicText = qpcTextByKey[verseKey] ?? '';
 
     return (
       <Pressable
@@ -88,7 +67,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <Text style={[styles.arabicText, {fontFamily: arabicFontFamily}]}>
+          <Text style={[styles.arabicText, {fontFamily: 'Uthmani'}]}>
             {arabicText}
           </Text>
         </View>

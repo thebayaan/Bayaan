@@ -83,8 +83,7 @@ export const AddToCollectionSheet = (
         </View>
 
         <View style={styles.optionsGrid}>
-
-        <Pressable
+          <Pressable
             style={({pressed}) => [
               styles.option,
               pressed && styles.optionPressed,
@@ -96,7 +95,7 @@ export const AddToCollectionSheet = (
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>Upload Recitation</Text>
-          </Pressable>          
+          </Pressable>
 
           <Pressable
             style={({pressed}) => [

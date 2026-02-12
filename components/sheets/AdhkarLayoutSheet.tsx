@@ -163,7 +163,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
               theme={theme}
               styles={styles}
               sampleText="بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
-              sampleFontFamily="QPC"
+              sampleFontFamily="Uthmani"
               isArabic={true}
             />
           </View>

@@ -3,6 +3,8 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
 import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -249,13 +251,29 @@ appInitializer.registerService({
 });
 
 /**
- * Adhkar Store Data (Priority 5)
+ * Mushaf Preload (Priority 5)
+ * Loads DigitalKhatt data, Skia typefaces (V1+V2), and surah header font.
+ * Eliminates loading screens in the Mushaf tab by having everything ready
+ * before the user navigates there.
+ * Non-critical - Mushaf tab will render empty frames until ready (rare race).
+ */
+appInitializer.registerService({
+  name: 'Mushaf Preload',
+  priority: 5,
+  critical: false,
+  initialize: async () => {
+    await mushafPreloadService.initialize();
+  },
+});
+
+/**
+ * Adhkar Store Data (Priority 6)
  * Loads adhkar categories from database into Zustand store
  * Non-critical - can be loaded later if fails
  */
 appInitializer.registerService({
   name: 'Adhkar Store Data',
-  priority: 5,
+  priority: 6,
   critical: false,
   initialize: async () => {
     await useAdhkarStore.getState().loadCategories();
@@ -263,7 +281,7 @@ appInitializer.registerService({
 });
 
 /**
- * Uploads Service (Priority 6)
+ * Uploads Service (Priority 7)
  * Initializes the uploads database and loads recitations into store
  * Non-critical - app can function without uploads
  */
@@ -290,5 +308,20 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await verseAnnotationService.initialize();
+  },
+});
+
+/**
+ * Mushaf Layout Cache (Priority 8)
+ * Precomputes all 604 page layouts into MMKV for instant mushaf rendering.
+ * Depends on DigitalKhatt Data (priority 5) being loaded first.
+ * Non-critical - mushaf will compute on-demand if this hasn't finished.
+ */
+appInitializer.registerService({
+  name: 'Mushaf Layout Cache',
+  priority: 8,
+  critical: false,
+  initialize: async () => {
+    await mushafLayoutCacheService.initialize();
   },
 });
