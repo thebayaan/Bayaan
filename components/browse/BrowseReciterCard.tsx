@@ -1,10 +1,9 @@
 import React, {useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {ReciterImage} from '@/components/ReciterImage';
-import {BlurView} from '@react-native-community/blur';
 import Color from 'color';
 import Animated, {
   useAnimatedStyle,
@@ -74,16 +73,6 @@ function createStyles(theme: Theme, width: number, height: number) {
       ...StyleSheet.absoluteFillObject,
       overflow: 'hidden',
     },
-    overlay: {
-      // ...StyleSheet.absoluteFillObject,
-      // backgroundColor: theme.colors.card,
-      // opacity: 0.9,
-    },
-    imageOverlay: {
-      // ...StyleSheet.absoluteFillObject,
-      // // backgroundColor: theme.colors.background,
-      // opacity: 0.5,
-    },
     reciterName: {
       fontSize: moderateScale(12),
       fontFamily: theme.fonts.semiBold,
@@ -142,10 +131,6 @@ const BrowseReciterCard = React.memo(
       });
     };
 
-    // Reduced blur amounts for better performance
-    const backgroundBlurAmount = 15; // Reduced from 20
-    const contentBlurAmount = 8; // Reduced from 10
-
     return (
       <AnimatedTouchableOpacity
         activeOpacity={1}
@@ -153,34 +138,25 @@ const BrowseReciterCard = React.memo(
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.container, animatedStyle]}>
-        {/* Background blurred image */}
+        {/* Background blurred image — uses expo-image native blur instead of BlurView */}
         <View style={styles.backgroundImageContainer}>
           <ReciterImage
             imageUrl={reciter.image_url || undefined}
             reciterName={reciter.name}
             style={styles.backgroundImage}
             profileIconSize={moderateScale(40)}
+            blurRadius={20}
           />
-          {Platform.OS === 'ios' ? (
-            <BlurView
-              blurAmount={backgroundBlurAmount}
-              blurType={theme.isDarkMode ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}>
-              <View style={styles.imageOverlay} />
-            </BlurView>
-          ) : (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                styles.imageOverlay,
-                {
-                  backgroundColor: theme.isDarkMode
-                    ? 'rgba(0,0,0,0.75)'
-                    : 'rgba(255,255,255,0.8)',
-                },
-              ]}
-            />
-          )}
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: theme.isDarkMode
+                  ? 'rgba(0,0,0,0.3)'
+                  : 'rgba(255,255,255,0.3)',
+              },
+            ]}
+          />
         </View>
 
         {/* Foreground clear image */}
@@ -195,26 +171,16 @@ const BrowseReciterCard = React.memo(
 
         {/* Content Overlay */}
         <View style={styles.contentContainer}>
-          {Platform.OS === 'ios' ? (
-            <BlurView
-              blurAmount={contentBlurAmount}
-              blurType={theme.isDarkMode ? 'dark' : 'light'}
-              style={styles.blurContainer}>
-              <View style={styles.overlay} />
-            </BlurView>
-          ) : (
-            <View
-              style={[
-                styles.blurContainer,
-                styles.overlay,
-                {
-                  backgroundColor: theme.colors.card,
-                  opacity: 0.9, // Increased from 0.85 for better text visibility
-                },
-              ]}
-            />
-          )}
-          <View style={{paddingTop: Platform.OS === 'android' ? 2 : 0}}>
+          <View
+            style={[
+              styles.blurContainer,
+              {
+                backgroundColor: theme.colors.card,
+                opacity: 0.92,
+              },
+            ]}
+          />
+          <View>
             <Text style={styles.reciterName} numberOfLines={1}>
               {reciter.name}
             </Text>

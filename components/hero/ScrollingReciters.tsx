@@ -126,7 +126,7 @@ function useDistributedReciters(reciters: Reciter[]) {
 
     shuffled.forEach((reciter, index) => {
       const columnIndex = index % 5;
-      if (columns[columnIndex].length < 10) {
+      if (columns[columnIndex].length < 7) {
         columns[columnIndex].push(reciter);
       }
     });
@@ -241,7 +241,7 @@ const Column = React.memo(
     // Create duplicated array for seamless looping
     const duplicatedReciters = useMemo(() => {
       if (config.reciters.length === 0) return [];
-      return [...config.reciters, ...config.reciters, ...config.reciters];
+      return [...config.reciters, ...config.reciters];
     }, [config.reciters]);
 
     // Calculate content height for a single set of items
