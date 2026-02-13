@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {View, ScrollView, Platform, Text, Pressable} from 'react-native';
+import {View, ScrollView, Text, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -8,7 +8,6 @@ import {Feather} from '@expo/vector-icons';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useLoved} from '@/hooks/useLoved';
 import {Theme} from '@/utils/themeUtils';
-import {BlurView} from '@react-native-community/blur';
 import Color from 'color';
 
 import {CollectionHeader} from '@/components/collection/CollectionHeader';
@@ -144,39 +143,12 @@ export default function CollectionScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, {paddingTop: 0}]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={10}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={[styles.blurContainer]}>
-            <View
-              style={[
-                styles.overlay,
-                {
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              styles.blurContainer,
-              {
-                backgroundColor: theme.colors.background,
-                opacity: 0.95,
-              },
-            ]}>
-            <View
-              style={[
-                styles.overlay,
-                {
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
-            />
-          </View>
-        )}
+        <View
+          style={[
+            styles.blurContainer,
+            {backgroundColor: theme.colors.background},
+          ]}
+        />
       </View>
 
       <ScrollView
@@ -277,14 +249,6 @@ const createStyles = (theme: Theme) =>
       right: 0,
       bottom: 0,
     },
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      opacity: 0.85,
-    },
     content: {
       flex: 1,
     },
@@ -309,7 +273,7 @@ const createStyles = (theme: Theme) =>
     categoryRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(12),
+      paddingVertical: moderateScale(8),
     },
     categoryIcon: {
       width: moderateScale(46),

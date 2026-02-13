@@ -1,10 +1,9 @@
 import React from 'react';
-import {View, Text, Pressable, ViewStyle, Platform} from 'react-native';
+import {View, Text, Pressable, ViewStyle, StyleSheet} from 'react-native';
 import {Feather} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {BlurView} from '@react-native-community/blur';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface HeaderProps {
@@ -30,40 +29,14 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <View style={[styles.header, {paddingTop: insets.top}, containerStyle]}>
-      {showBlur &&
-        (Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={10}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={styles.blurContainer}>
-            <View
-              style={[
-                styles.overlay,
-                {
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              styles.blurContainer,
-              {
-                backgroundColor: theme.colors.background,
-                opacity: 0.9,
-              },
-            ]}>
-            <View
-              style={[
-                styles.overlay,
-                {
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
-            />
-          </View>
-        ))}
+      {showBlur && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {backgroundColor: theme.colors.background},
+          ]}
+        />
+      )}
       <View style={styles.headerContent}>
         <Pressable
           style={[styles.backButton, backButtonStyle]}
@@ -88,24 +61,6 @@ const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
       zIndex: 100,
-    },
-    blurContainer: {
-      overflow: 'hidden',
-      borderWidth: 0.1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    },
-    overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      opacity: 0.85,
     },
     headerContent: {
       height: moderateScale(56),
