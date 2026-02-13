@@ -8,7 +8,18 @@ import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheServi
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {setAudioModeAsync} from 'expo-audio';
+import {useReciterStore} from '@/store/reciterStore';
+import {useAmbientStore} from '@/store/ambientStore';
+import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useThemeStore} from '@/store/themeStore';
+import {useRecentRecitersStore} from '@/store/recentRecitersStore';
+import {useRecentSurahsStore} from '@/store/recentSurahStore';
+import {usePlayCountStore} from '@/store/playCountStore';
+import {useLovedStore} from '@/services/player/store/lovedStore';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
+import * as Font from 'expo-font';
 
 interface ServiceInitializer {
   name: string;
@@ -176,25 +187,6 @@ export const appInitializer = new AppInitializer();
 // ============================================================================
 
 /**
- * Audio Configuration (Priority 0)
- * Configures expo-audio for background playback support
- * Non-critical - app can function without background audio
- */
-appInitializer.registerService({
-  name: 'Audio Configuration',
-  priority: 0,
-  critical: false,
-  initialize: async () => {
-    await setAudioModeAsync({
-      shouldPlayInBackground: true,
-      playsInSilentMode: true,
-      interruptionModeAndroid: 'duckOthers',
-      interruptionMode: 'duckOthers',
-    });
-  },
-});
-
-/**
  * Database Service (Priority 1)
  * Initializes the SQLite database connection and creates tables
  * This is critical - app cannot function without it
@@ -323,5 +315,55 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await mushafLayoutCacheService.initialize();
+  },
+});
+
+/**
+ * Arabic Fonts (Priority 9)
+ * Loads Arabic/Quran fonts during initialization (while splash is showing)
+ * instead of after splash hides, preventing text flashes.
+ * Non-critical - fonts can still be loaded lazily if this fails.
+ */
+appInitializer.registerService({
+  name: 'Arabic Fonts',
+  priority: 9,
+  critical: false,
+  initialize: async () => {
+    await Font.loadAsync({
+      'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
+      'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
+      'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
+      'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
+      Uthmani: require('@/assets/fonts/Uthmani.otf'),
+      QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
+      DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
+      DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf'),
+    });
+  },
+});
+
+/**
+ * Store Hydration (Priority 3)
+ * Pre-warms all persisted Zustand stores so AsyncStorage reads complete
+ * before the user interacts with the app.
+ * Non-critical - stores will hydrate lazily on first access if this fails.
+ * Note: useDownloadStore and usePlayerStore are already pre-warmed in prepare().
+ */
+appInitializer.registerService({
+  name: 'Store Hydration',
+  priority: 3,
+  critical: false,
+  initialize: async () => {
+    useReciterStore.getState();
+    useAmbientStore.getState();
+    useAdhkarSettingsStore.getState();
+    useMushafSettingsStore.getState();
+    useThemeStore.getState();
+    useRecentRecitersStore.getState();
+    useRecentSurahsStore.getState();
+    usePlayCountStore.getState();
+    useLovedStore.getState();
+    useRecentlyPlayedStore.getState();
+    useFavoriteRecitersStore.getState();
   },
 });
