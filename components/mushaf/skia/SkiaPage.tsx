@@ -1,8 +1,8 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {Platform, View, StyleSheet} from 'react-native';
 import {Canvas, useFonts, type SkParagraph} from '@shopify/react-native-skia';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import {runOnJS} from 'react-native-reanimated';
+import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
 import {SheetManager} from 'react-native-actions-sheet';
 import {
@@ -362,7 +362,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     dragCurrentVerseKeyRef.current = null;
   }, []);
 
-  // Pan gesture with long-press activation for verse selection + drag
   const longPressDragGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -456,54 +455,55 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return <View style={styles.page} />;
   }
 
-  return (
-    <GestureDetector gesture={longPressDragGesture}>
-      <View style={styles.page}>
-        <Canvas
-          style={{
-            width: CONTENT_WIDTH,
-            height: CONTENT_HEIGHT,
-            marginLeft: PAGE_PADDING_HORIZONTAL,
-            marginTop: PAGE_PADDING_TOP,
-          }}>
-          {pageLines.map((line, lineIndex) => {
-            if (!justResults[lineIndex]) return null;
-            if (line.line_type === 'surah_name') return null;
+  const content = (
+    <View style={styles.page}>
+      <Canvas
+        style={{
+          width: CONTENT_WIDTH,
+          height: CONTENT_HEIGHT,
+          marginLeft: PAGE_PADDING_HORIZONTAL,
+          marginTop: PAGE_PADDING_TOP,
+        }}>
+        {pageLines.map((line, lineIndex) => {
+          if (!justResults[lineIndex]) return null;
+          if (line.line_type === 'surah_name') return null;
 
-            const yPos = lineYPositions[lineIndex];
+          const yPos = lineYPositions[lineIndex];
 
-            const lineInfo = quranTextService.getLineInfo(
-              pageNumber,
-              lineIndex,
-            );
-            let lineMargin = margin;
-            if (lineInfo.lineWidthRatio !== 1) {
-              const newLineWidth = lineWidth * lineInfo.lineWidthRatio;
-              lineMargin += (lineWidth - newLineWidth) / 2;
-            }
+          const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
+          let lineMargin = margin;
+          if (lineInfo.lineWidthRatio !== 1) {
+            const newLineWidth = lineWidth * lineInfo.lineWidthRatio;
+            lineMargin += (lineWidth - newLineWidth) / 2;
+          }
 
-            return (
-              <SkiaLine
-                key={`${pageNumber}-${lineIndex}`}
-                pageNumber={pageNumber}
-                lineIndex={lineIndex}
-                fontMgr={fontMgr}
-                justResult={justResults[lineIndex]}
-                pageWidth={CONTENT_WIDTH}
-                fontSize={fontSize}
-                margin={lineMargin}
-                yPos={yPos}
-                textColor={textColor}
-                charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
-                fontFamily={fontFamily}
-                onParagraphReady={handleParagraphReady}
-                highlights={lineHighlightsMap.get(lineIndex)}
-              />
-            );
-          })}
-        </Canvas>
-      </View>
-    </GestureDetector>
+          return (
+            <SkiaLine
+              key={`${pageNumber}-${lineIndex}`}
+              pageNumber={pageNumber}
+              lineIndex={lineIndex}
+              fontMgr={fontMgr}
+              justResult={justResults[lineIndex]}
+              pageWidth={CONTENT_WIDTH}
+              fontSize={fontSize}
+              margin={lineMargin}
+              yPos={yPos}
+              textColor={textColor}
+              charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
+              fontFamily={fontFamily}
+              onParagraphReady={handleParagraphReady}
+              highlights={lineHighlightsMap.get(lineIndex)}
+            />
+          );
+        })}
+      </Canvas>
+    </View>
+  );
+
+  return Platform.OS === 'ios' ? (
+    <GestureDetector gesture={longPressDragGesture}>{content}</GestureDetector>
+  ) : (
+    content
   );
 };
 
