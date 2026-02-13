@@ -889,16 +889,6 @@ export const OrganizeRecitationSheet = (
                       prev === opt.id ? null : (opt.id as RecordingType),
                     )
                   }>
-                  <Feather
-                    name={opt.icon}
-                    size={moderateScale(12)}
-                    color={
-                      recordingType === opt.id
-                        ? theme.colors.text
-                        : theme.colors.textSecondary
-                    }
-                    style={{marginRight: moderateScale(6)}}
-                  />
                   <Text
                     style={[
                       styles.chipText,

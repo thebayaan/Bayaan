@@ -1,5 +1,5 @@
 import React, {useState, useCallback} from 'react';
-import {View, Pressable, ScrollView, StyleSheet, Platform} from 'react-native';
+import {View, Pressable, ScrollView, StyleSheet} from 'react-native';
 import {AntDesign} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -16,7 +16,6 @@ import TabSelector from '@/components/TabSelector';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
-import {BlurView} from '@react-native-community/blur';
 import Animated from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
 import {EdgeInsets} from 'react-native-safe-area-context';
@@ -50,15 +49,6 @@ const Header = React.memo(
         right: 0,
         zIndex: 100,
       },
-      blurContainer: {
-        overflow: 'hidden',
-        borderWidth: 0.1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-      },
-      overlay: {
-        ...StyleSheet.absoluteFillObject,
-        opacity: 0.85,
-      },
       header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -88,40 +78,12 @@ const Header = React.memo(
 
     return (
       <Animated.View style={[headerStyles.container, {paddingTop: insets.top}]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={20}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={[StyleSheet.absoluteFill, headerStyles.blurContainer]}>
-            <View
-              style={[
-                headerStyles.overlay,
-                {
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              headerStyles.blurContainer,
-              {
-                backgroundColor: theme.colors.background,
-                opacity: 0.95,
-              },
-            ]}>
-            <View
-              style={[
-                headerStyles.overlay,
-                {
-                  backgroundColor: theme.colors.background,
-                },
-              ]}
-            />
-          </View>
-        )}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {backgroundColor: theme.colors.background},
+          ]}
+        />
         <View style={headerStyles.header}>
           <View style={headerStyles.leftPlaceholder}>
             {/* You can add a logo or other icon here if needed */}
