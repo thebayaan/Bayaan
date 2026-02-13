@@ -4,7 +4,7 @@ const TOTAL_PAGES = 604;
 
 // Basmallah text is always the same 4 words — hardcoded to avoid DB lookup
 // (layout DB has NULL word IDs for basmallah lines)
-const BASMALLAH_TEXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
+export const BASMALLAH_TEXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
 
 export interface DKLine {
   page_number: number;
