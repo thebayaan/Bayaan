@@ -11,10 +11,11 @@ interface ReciterImageProps {
   reciterName: string;
   style?: StyleProp<ViewStyle>;
   profileIconSize?: number;
+  blurRadius?: number;
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({reciterName = '', style, profileIconSize}) => {
+  ({reciterName = '', style, profileIconSize, blurRadius}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
@@ -62,6 +63,9 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
             source={localImageSource}
             style={styles.image}
             contentFit="cover"
+            recyclingKey={formattedName}
+            transition={100}
+            {...(blurRadius ? {blurRadius} : {})}
           />
         ) : (
           <ProfileIcon

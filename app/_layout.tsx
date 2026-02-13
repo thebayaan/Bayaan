@@ -2,7 +2,6 @@ import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
-import * as Font from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -105,40 +104,14 @@ export default function RootLayout() {
     SurahNames2: require('@/assets/fonts/surah_names_2.ttf'),
   });
 
-  // Deferred Arabic/Quran fonts — load after splash screen hides
-  useEffect(() => {
-    if (fontsLoaded && appIsReady) {
-      Font.loadAsync({
-        'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
-        'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
-        'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
-        'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
-        Uthmani: require('@/assets/fonts/Uthmani.otf'),
-        QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
-        DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
-        DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf'),
-      }).catch(err => {
-        if (__DEV__) console.warn('[App] Deferred font loading failed:', err);
-      });
-    }
-  }, [fontsLoaded, appIsReady]);
-
   // Handle share intents from other apps
   const {hasShareIntent, shareIntent, resetShareIntent} = useShareIntent({
     debug: __DEV__,
     resetOnBackground: true,
   });
 
-  // Background initialization: SQLite services + deferred tajweed preload
+  // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
-    // SQLite services (non-blocking)
-    appInitializer
-      .initialize()
-      .catch(err =>
-        console.error('[App] Failed to initialize SQLite services:', err),
-      );
-
-    // Tajweed data — defer until after first frame + interactions complete
     InteractionManager.runAfterInteractions(() => {
       if (__DEV__) console.log('[App] Preloading tajweed data...');
       preloadTajweedData();
@@ -169,6 +142,11 @@ export default function RootLayout() {
         // Initialize expo-audio service
         await expoAudioService.initialize();
         if (__DEV__) console.log('[App] expo-audio service initialized');
+
+        // Initialize all SQLite services, adhkar, playlists, mushaf, fonts, stores, etc.
+        // This blocks splash screen so everything is ready when the user sees the app
+        await appInitializer.initialize();
+        if (__DEV__) console.log('[App] AppInitializer complete');
 
         // PRE-WARM: Initialize stores BEFORE first play to prevent cold start lag
         try {
