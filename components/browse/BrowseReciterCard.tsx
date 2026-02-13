@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
@@ -138,26 +138,28 @@ const BrowseReciterCard = React.memo(
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.container, animatedStyle]}>
-        {/* Background blurred image — uses expo-image native blur instead of BlurView */}
-        <View style={styles.backgroundImageContainer}>
-          <ReciterImage
-            imageUrl={reciter.image_url || undefined}
-            reciterName={reciter.name}
-            style={styles.backgroundImage}
-            profileIconSize={moderateScale(40)}
-            blurRadius={20}
-          />
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: theme.isDarkMode
-                  ? 'rgba(0,0,0,0.3)'
-                  : 'rgba(255,255,255,0.3)',
-              },
-            ]}
-          />
-        </View>
+        {/* Background blurred image — iOS only (doesn't look good on Android) */}
+        {Platform.OS === 'ios' && (
+          <View style={styles.backgroundImageContainer}>
+            <ReciterImage
+              imageUrl={reciter.image_url || undefined}
+              reciterName={reciter.name}
+              style={styles.backgroundImage}
+              profileIconSize={moderateScale(40)}
+              blurRadius={20}
+            />
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: theme.isDarkMode
+                    ? 'rgba(0,0,0,0.3)'
+                    : 'rgba(255,255,255,0.3)',
+                },
+              ]}
+            />
+          </View>
+        )}
 
         {/* Foreground clear image */}
         <View style={styles.foregroundImageContainer}>
