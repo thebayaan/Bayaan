@@ -28,6 +28,7 @@ When Claude learns something essential about this project that should be remembe
 ## Tooling Rules
 
 - **GitHub operations:** Always use the `gh` CLI (e.g., `gh issue create`, `gh pr create`, `gh api`) via Bash. Never use the GitHub MCP server tools — authentication is broken and will fail.
+- **Never commit directly to `develop` or `main`.** Always create a feature/fix branch and open a PR targeting `develop`. The only exception is `CLAUDE.md` itself, which can be committed directly to `develop`.
 
 ---
 
