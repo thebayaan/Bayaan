@@ -1,9 +1,10 @@
 import React, {useCallback, useMemo, useRef, useEffect} from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
+import BasmalaHeader from './BasmalaHeader';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
@@ -135,11 +136,24 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const renderHeader = useCallback(() => {
     if (!surah?.bismillah_pre) return null;
     return (
-      <View style={styles.bismillahContainer}>
-        <Text style={[styles.bismillah, {color: theme.colors.text}]}>﷽</Text>
-      </View>
+      <BasmalaHeader
+        textColor={theme.colors.text}
+        showTajweed={showTajweed}
+        fontMgr={fontMgr}
+        dkFontFamily={dkFontFamily}
+        arabicFontSize={arabicFontSize}
+        indexedTajweedData={indexedTajweedData}
+      />
     );
-  }, [surah?.bismillah_pre, theme.colors.text]);
+  }, [
+    surah?.bismillah_pre,
+    theme.colors.text,
+    showTajweed,
+    fontMgr,
+    dkFontFamily,
+    arabicFontSize,
+    indexedTajweedData,
+  ]);
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
@@ -213,16 +227,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: moderateScale(15),
     overflow: 'hidden',
-  },
-  bismillahContainer: {
-    width: '100%',
-    paddingVertical: verticalScale(20),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bismillah: {
-    fontSize: moderateScale(30),
-    fontFamily: 'Uthmani',
-    textAlign: 'center',
   },
 });
