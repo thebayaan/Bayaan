@@ -147,7 +147,7 @@ export const SURAH_NAMES: Record<number, string> = {
 
 /**
  * Calculate Y positions for mushaf page lines, accounting for line type heights.
- * - surah_name lines get 1.2x base height
+ * - surah_name lines get 1.0x base height
  * - ayah/basmallah lines get AYAH_LINE_SPACING base height
  * - Pages 1-2 center content vertically
  * - Other pages scale to fill CONTENT_HEIGHT
@@ -162,7 +162,7 @@ export function calculateLineYPositions(
     linePositions.push(currentY);
     const lineHeight =
       lines[i].line_type === 'surah_name'
-        ? BASE_LINE_HEIGHT * 1.2
+        ? BASE_LINE_HEIGHT * 1.0
         : BASE_LINE_HEIGHT * AYAH_LINE_SPACING;
     currentY += lineHeight;
   }

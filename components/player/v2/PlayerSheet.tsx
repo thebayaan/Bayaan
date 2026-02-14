@@ -10,14 +10,12 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
 
 export const PlayerSheet = () => {
   const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
@@ -225,10 +223,8 @@ export const PlayerSheet = () => {
   }, [currentTrack, handleGoToReciter]);
 
   const renderHandleComponent = useCallback(
-    (_props: BottomSheetHandleProps) => (
-      <View style={{paddingTop: insets.top}} />
-    ),
-    [insets.top],
+    (_props: BottomSheetHandleProps) => <View />,
+    [],
   );
 
   // Only render modals once settings are loaded to prevent hydration issues

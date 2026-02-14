@@ -1,5 +1,4 @@
-import * as Font from 'expo-font';
-import React, {useEffect, useState, useMemo, useRef, useCallback} from 'react';
+import React, {useState, useMemo, useRef, useCallback} from 'react';
 import {
   View,
   StyleSheet,
@@ -11,57 +10,20 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
-const surahHeaderGlyphsMap: Record<
-  string,
-  string
-> = require('@/data/mushaf/legacy/SURAH_HEADERS.json');
 import {
   useMushafSettingsStore,
   type MushafRenderer,
 } from '@/store/mushafSettingsStore';
-import {SURAH_NAMES, PLAYER_RESERVED_HEIGHT} from './constants';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
-import SkiaPage from './skia/SkiaPage';
-
-// Surah header font
-const surahHeaderFont = require('@/data/mushaf/legacy/SURAH_HEADERS.ttf');
-let isSurahHeaderFontLoaded = false;
-
-async function loadSurahHeaderFont(): Promise<boolean> {
-  if (isSurahHeaderFontLoaded) {
-    return true;
-  }
-
-  try {
-    await Font.loadAsync({
-      SURAH_HEADERS: surahHeaderFont,
-    });
-    isSurahHeaderFontLoaded = true;
-    return true;
-  } catch (error) {
-    console.error('Error loading surah header font:', error);
-    return false;
-  }
-}
-
 import {
+  SURAH_NAMES,
+  PLAYER_RESERVED_HEIGHT,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
-  IS_COMPACT_DEVICE,
-  PAGE_PADDING_HORIZONTAL,
-  PAGE_PADDING_TOP,
-  AYAH_LINE_SPACING,
-  LINES_PER_PAGE,
-  CONTENT_WIDTH,
-  CONTENT_HEIGHT,
-  BASE_LINE_HEIGHT,
-  calculateLineYPositions,
 } from './constants';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import SkiaPage from './skia/SkiaPage';
 
 const TOTAL_PAGES = 604;
-
-const SURAH_HEADER_FONT_SIZE = CONTENT_WIDTH * 0.25;
 
 // ============================================================================
 // Digital Khatt PageView (Skia-based with DK V1/V2 fonts)
@@ -73,68 +35,14 @@ const DKPageView: React.FC<{
 }> = ({pageNumber, textColor, highlightColor}) => {
   const [pageReady, setPageReady] = useState(false);
 
-  // Prefer preloaded font from MushafPreloadService (ready before tab mounts).
-  // Fall back to module-level flag + async load for edge cases.
-  const [surahHeaderFontLoaded, setSurahHeaderFontLoaded] = useState(
-    mushafPreloadService.surahHeaderFontLoaded || isSurahHeaderFontLoaded,
-  );
-
-  useEffect(() => {
-    if (surahHeaderFontLoaded) return;
-    let isActive = true;
-    loadSurahHeaderFont().then(success => {
-      if (isActive) setSurahHeaderFontLoaded(success);
-    });
-    return () => {
-      isActive = false;
-    };
-  }, [surahHeaderFontLoaded]);
-
-  const pageLines = useMemo(
-    () => digitalKhattDataService.getPageLines(pageNumber),
-    [pageNumber],
-  );
-
-  const lineYPositions = useMemo(
-    () => calculateLineYPositions(pageLines, pageNumber),
-    [pageLines, pageNumber],
-  );
-
   return (
     <View style={[styles.page, {opacity: pageReady ? 1 : 0}]}>
-      {/* Skia Canvas renders ayah + basmallah lines */}
       <SkiaPage
         pageNumber={pageNumber}
         textColor={textColor}
         highlightColor={highlightColor}
         onReady={() => setPageReady(true)}
       />
-
-      {surahHeaderFontLoaded &&
-        pageLines.map((line, index) => {
-          if (line.line_type !== 'surah_name') return null;
-
-          const yPos = PAGE_PADDING_TOP + lineYPositions[index];
-          const headerTopOffset = BASE_LINE_HEIGHT * 0.15;
-
-          const surahText =
-            surahHeaderGlyphsMap[`surah-${line.surah_number}`] ??
-            `سورة ${SURAH_NAMES[line.surah_number]}`;
-
-          return (
-            <Text
-              key={`surah-${pageNumber}-${line.line_number}`}
-              style={[
-                styles.surahText,
-                {
-                  top: yPos + headerTopOffset,
-                  color: textColor,
-                },
-              ]}>
-              {surahText}
-            </Text>
-          );
-        })}
 
       <View style={styles.pageNumberContainer}>
         <Text style={[styles.pageNumber, {color: textColor}]}>
@@ -368,15 +276,6 @@ const styles = StyleSheet.create({
   page: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-  },
-  surahText: {
-    position: 'absolute',
-    fontSize: SURAH_HEADER_FONT_SIZE,
-    fontFamily: 'SURAH_HEADERS',
-    textAlign: 'center',
-    width: CONTENT_WIDTH,
-    left: PAGE_PADDING_HORIZONTAL,
-    lineHeight: BASE_LINE_HEIGHT * 1.3,
   },
   pageNumberContainer: {
     position: 'absolute',

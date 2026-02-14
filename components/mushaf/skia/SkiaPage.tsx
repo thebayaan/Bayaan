@@ -1,6 +1,11 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
 import {Platform, View, StyleSheet} from 'react-native';
-import {Canvas, useFonts, type SkParagraph} from '@shopify/react-native-skia';
+import {
+  Canvas,
+  Skia,
+  useFonts,
+  type SkParagraph,
+} from '@shopify/react-native-skia';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
@@ -24,10 +29,12 @@ import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useTheme} from '@/hooks/useTheme';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import SkiaLine from './SkiaLine';
+import SkiaSurahHeader from './SkiaSurahHeader';
 import {
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
@@ -35,6 +42,7 @@ import {
   PAGE_PADDING_TOP,
   CONTENT_WIDTH,
   CONTENT_HEIGHT,
+  BASE_LINE_HEIGHT,
   calculateLineYPositions,
 } from '../constants';
 
@@ -56,14 +64,35 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   highlightColor,
   onReady,
 }) => {
+  const {theme} = useTheme();
   // Keep useFonts hook as fallback (can't conditionally call hooks).
   // Prefer preloaded fontMgr from MushafPreloadService — ready synchronously
   // on first render since AppInitializer runs before Mushaf tab mounts.
   const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
     DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf')],
+    QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
+    SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
   });
   const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+
+  // Create scaled SkFont objects for surah header rendering (Skia Text path)
+  const surahHeaderFonts = useMemo(() => {
+    const qcTypeface = mushafPreloadService.quranCommonTypeface;
+    if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
+
+    // Measure divider glyph at reference size to compute scale
+    const refFont = Skia.Font(qcTypeface, 100);
+    const ids = refFont.getGlyphIDs('\uE000');
+    const widths = refFont.getGlyphWidths(ids);
+    const measuredW = widths[0] || 1;
+    const scaledSize = (CONTENT_WIDTH / measuredW) * 100;
+
+    return {
+      dividerFont: Skia.Font(qcTypeface, scaledSize),
+      nameFontSize: scaledSize * 0.5,
+    };
+  }, []);
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
@@ -465,8 +494,24 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
           marginTop: PAGE_PADDING_TOP,
         }}>
         {pageLines.map((line, lineIndex) => {
+          if (line.line_type === 'surah_name') {
+            if (!surahHeaderFonts.dividerFont || !fontMgr) return null;
+            return (
+              <SkiaSurahHeader
+                key={`surah-header-${pageNumber}-${lineIndex}`}
+                dividerFont={surahHeaderFonts.dividerFont}
+                fontMgr={fontMgr}
+                nameFontSize={surahHeaderFonts.nameFontSize}
+                surahNumber={line.surah_number}
+                yPos={lineYPositions[lineIndex]}
+                pageWidth={CONTENT_WIDTH}
+                dividerColor={theme.colors.textSecondary}
+                nameColor={textColor}
+                lineHeight={BASE_LINE_HEIGHT * 1.0}
+              />
+            );
+          }
           if (!justResults[lineIndex]) return null;
-          if (line.line_type === 'surah_name') return null;
 
           const yPos = lineYPositions[lineIndex];
 
