@@ -296,7 +296,7 @@ export const SYSTEM_PLAYLISTS: SystemPlaylist[] = [
       {surahId: 67}, // Al-Mulk
       {surahId: 112}, // Al-Ikhlas
     ],
-    heightMultiplier: 1,
+    heightMultiplier: 2,
     column: 'right',
     order: 6,
   },
