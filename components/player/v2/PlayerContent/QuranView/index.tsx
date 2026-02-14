@@ -1,10 +1,11 @@
-import React, {useCallback, useMemo, useRef, useEffect} from 'react';
-import {View, StyleSheet} from 'react-native';
+import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
+import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
+import SurahDivider from './SurahDivider';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
@@ -80,6 +81,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   contentPaddingBottom,
 }) => {
   const {theme} = useTheme();
+  const [dividerHeight, setDividerHeight] = useState(0);
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const surah = surahData.find(s => s.id === currentSurah);
@@ -132,27 +134,45 @@ export const QuranView: React.FC<QuranViewProps> = ({
     }
   }, [currentSurah]);
 
-  // Render the bismillah header (to be used as list header)
+  const handleDividerLayout = useCallback(
+    (e: LayoutChangeEvent) => setDividerHeight(e.nativeEvent.layout.height),
+    [],
+  );
+
+  // Render the surah divider + optional bismillah as list header
   const renderHeader = useCallback(() => {
-    if (!surah?.bismillah_pre) return null;
     return (
-      <BasmalaHeader
-        textColor={theme.colors.text}
-        showTajweed={showTajweed}
-        fontMgr={fontMgr}
-        dkFontFamily={dkFontFamily}
-        arabicFontSize={arabicFontSize}
-        indexedTajweedData={indexedTajweedData}
-      />
+      <>
+        <View onLayout={handleDividerLayout}>
+          <SurahDivider
+            surahNumber={currentSurah}
+            textColor={theme.colors.textSecondary}
+            nameColor={theme.colors.text}
+          />
+        </View>
+        {surah?.bismillah_pre && (
+          <BasmalaHeader
+            textColor={theme.colors.text}
+            showTajweed={showTajweed}
+            fontMgr={fontMgr}
+            dkFontFamily={dkFontFamily}
+            arabicFontSize={arabicFontSize}
+            indexedTajweedData={indexedTajweedData}
+          />
+        )}
+      </>
     );
   }, [
+    currentSurah,
     surah?.bismillah_pre,
+    theme.colors.textSecondary,
     theme.colors.text,
     showTajweed,
     fontMgr,
     dkFontFamily,
     arabicFontSize,
     indexedTajweedData,
+    handleDividerLayout,
   ]);
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
@@ -194,6 +214,14 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // Key extractor for items
   const keyExtractor = useCallback((item: EnhancedVerse) => item.verse_key, []);
 
+  const effectivePaddingTop = Math.max(
+    0,
+    (contentPaddingTop || 0) - dividerHeight,
+  );
+
+  const effectivePaddingBottom =
+    (contentPaddingBottom || 0) + verticalScale(20);
+
   if (!surah || !verses.length) {
     return null;
   }
@@ -207,8 +235,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
         keyExtractor={keyExtractor}
         ListHeaderComponent={renderHeader}
         contentContainerStyle={{
-          paddingTop: contentPaddingTop,
-          paddingBottom: (contentPaddingBottom || 0) + verticalScale(20),
+          paddingTop: effectivePaddingTop,
+          paddingBottom: effectivePaddingBottom,
         }}
         renderScrollComponent={renderScrollComponent}
         showsVerticalScrollIndicator={false}
@@ -225,7 +253,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: 'transparent',
-    borderRadius: moderateScale(15),
     overflow: 'hidden',
   },
 });
