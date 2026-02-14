@@ -1,14 +1,18 @@
-import {Skia, type SkTypefaceFontProvider} from '@shopify/react-native-skia';
+import {
+  Skia,
+  type SkTypefaceFontProvider,
+  type SkTypeface,
+} from '@shopify/react-native-skia';
 import {Image} from 'react-native';
-import * as Font from 'expo-font';
 import {digitalKhattDataService} from './DigitalKhattDataService';
 
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
   DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf'),
+  QuranCommon: require('@/data/mushaf/quran-common.ttf'),
+  SurahNameV4: require('@/data/mushaf/surah-name-v4.ttf'),
+  SurahNameQCF: require('@/data/mushaf/surah-name-qcf.ttf'),
 };
-
-const SURAH_HEADER_FONT = require('@/data/mushaf/legacy/SURAH_HEADERS.ttf');
 
 /**
  * Preloads everything the Mushaf screen needs at app startup (AppInitializer
@@ -16,12 +20,12 @@ const SURAH_HEADER_FONT = require('@/data/mushaf/legacy/SURAH_HEADERS.ttf');
  * DK data are available synchronously — no loading spinners.
  *
  * - DigitalKhatt SQLite data (word + layout databases)
- * - Skia TypefaceFontProvider with V1 + V2 fonts (for SkiaPage rendering)
- * - SURAH_HEADERS expo-font (for surah name overlays)
+ * - Skia TypefaceFontProvider with DK + ornamental fonts (for SkiaPage rendering)
  */
 class MushafPreloadService {
   private _fontMgr: SkTypefaceFontProvider | null = null;
-  private _surahHeaderFontLoaded = false;
+  private _quranCommonTypeface: SkTypeface | null = null;
+  private _surahNameTypeface: SkTypeface | null = null;
   private _initialized = false;
   private _initPromise: Promise<void> | null = null;
 
@@ -33,8 +37,12 @@ class MushafPreloadService {
     return this._fontMgr;
   }
 
-  get surahHeaderFontLoaded(): boolean {
-    return this._surahHeaderFontLoaded;
+  get quranCommonTypeface(): SkTypeface | null {
+    return this._quranCommonTypeface;
+  }
+
+  get surahNameTypeface(): SkTypeface | null {
+    return this._surahNameTypeface;
   }
 
   async initialize(): Promise<void> {
@@ -49,8 +57,7 @@ class MushafPreloadService {
     // DK data must be ready first — page lines are needed for layout computation
     await digitalKhattDataService.initialize();
 
-    // Load Skia font providers and surah header font in parallel
-    await Promise.all([this.loadSkiaFonts(), this.loadSurahHeaderFont()]);
+    await this.loadSkiaFonts();
 
     this._initialized = true;
     console.log('[MushafPreload] Initialization complete');
@@ -70,23 +77,17 @@ class MushafPreloadService {
           );
           continue;
         }
+        if (family === 'QuranCommon') this._quranCommonTypeface = typeface;
+        if (family === 'SurahNameV4') this._surahNameTypeface = typeface;
         fontMgr.registerFont(typeface, family);
+        console.log(
+          `[MushafPreload] Registered ${family}, typeface null? ${!typeface}`,
+        );
       }
 
       this._fontMgr = fontMgr;
     } catch (error) {
       console.warn('[MushafPreload] Failed to load Skia fonts:', error);
-    }
-  }
-
-  private async loadSurahHeaderFont(): Promise<void> {
-    try {
-      await Font.loadAsync({
-        SURAH_HEADERS: SURAH_HEADER_FONT,
-      });
-      this._surahHeaderFontLoaded = true;
-    } catch (error) {
-      console.warn('[MushafPreload] Failed to load surah header font:', error);
     }
   }
 }

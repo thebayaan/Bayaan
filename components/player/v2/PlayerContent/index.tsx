@@ -173,7 +173,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         style={[
           styles.headerOverlay,
           overlayAnimatedStyle,
-          {backgroundColor: theme.colors.background},
+          {
+            backgroundColor: theme.colors.background,
+            paddingTop: insets.top + moderateScale(12),
+          },
         ]}
         pointerEvents={isImmersive ? 'none' : 'auto'}
         onLayout={handleHeaderLayout}>
@@ -246,7 +249,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingTop: moderateScale(12),
+    paddingTop: 0,
   },
   handleContainer: {
     alignItems: 'center',
