@@ -10,9 +10,19 @@ import {noop} from 'lodash';
 import {useWindowDimensions} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+} from 'react-native-reanimated';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
+
+// Gap between cards (must match marginBottom on tiles)
+const CARD_GAP = moderateScale(8);
 
 interface BentoTile {
   id: string;
@@ -96,7 +106,7 @@ function createExplicitLayout(): ColumnLayout {
   return {leftColumn, rightColumn};
 }
 
-// BentoTile component
+// BentoTile component — matches AdhkarBentoCard styling
 const BentoTileComponent = React.memo(
   ({
     tile,
@@ -109,69 +119,129 @@ const BentoTileComponent = React.memo(
   }) => {
     const {theme} = useTheme();
 
-    // Subtle gradient incorporating the tile's unique color - more apparent
+    // Bouncy scale animation
+    const scaleVal = useSharedValue(1);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{scale: scaleVal.value}],
+    }));
+
+    const handlePressIn = () => {
+      scaleVal.value = withSpring(0.95, {
+        damping: 20,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    };
+
+    const handlePressOut = () => {
+      scaleVal.value = withSpring(1, {
+        damping: 20,
+        stiffness: 400,
+        mass: 0.5,
+      });
+    };
+
+    // Subtle gradient incorporating the tile's unique color
     const baseColor = Color(tile.backgroundColor);
     const gradientColors = [
-      baseColor.alpha(0.15).toString(), // Tile color at higher opacity
-      // Color(theme.colors.background).alpha(0.05).toString(), // Theme background
-      baseColor.alpha(0.25).toString(), // Tile color at much higher opacity
+      baseColor.alpha(0.15).toString(),
+      baseColor.alpha(0.25).toString(),
     ] as const;
 
-    const titleSize =
-      tile.heightMultiplier >= 2 ? moderateScale(16) : moderateScale(14);
+    const isLargeCard = tile.heightMultiplier >= 2;
+    const titleSize = isLargeCard ? moderateScale(16) : moderateScale(14);
     const subtitleSize = moderateScale(12);
 
-    const tileStyles = createStyles(theme);
-
     return (
-      <View
+      <AnimatedPressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         style={[
-          tileStyles.bentoTile,
           {
             width: dimensions.width,
             height: dimensions.height,
+            borderRadius: moderateScale(20),
+            overflow: 'hidden' as const,
             marginBottom: moderateScale(8),
-            // Border architecture from RecentReciterCard
-            borderWidth: 0.5,
-            borderColor: Color(theme.colors.border).alpha(0.15).toString(),
           },
+          animatedStyle,
         ]}>
-        <Pressable onPress={onPress} style={tileStyles.tileButton}>
-          <LinearGradient
-            colors={gradientColors}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 1}}
-            style={tileStyles.tileGradient}>
-            <View style={tileStyles.tileContent}>
-              <View
+        <LinearGradient
+          colors={gradientColors}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 1}}
+          style={tileInnerStyles.gradient}>
+          <View style={tileInnerStyles.content}>
+            <View
+              style={[
+                tileInnerStyles.textContainer,
+                isLargeCard
+                  ? tileInnerStyles.topLeftContainer
+                  : tileInnerStyles.centerLeftContainer,
+              ]}>
+              <Text
                 style={[
-                  tileStyles.tileTextContainer,
-                  tile.heightMultiplier === 1
-                    ? tileStyles.centerLeftContainer
-                    : tileStyles.topLeftContainer,
-                ]}>
+                  tileInnerStyles.title,
+                  {fontSize: titleSize, color: theme.colors.text},
+                ]}
+                numberOfLines={2}>
+                {tile.title}
+              </Text>
+              {tile.subtitle && (
                 <Text
-                  style={[tileStyles.tileTitle, {fontSize: titleSize}]}
-                  numberOfLines={tile.heightMultiplier >= 2 ? 2 : 2}>
-                  {tile.title}
+                  style={[
+                    tileInnerStyles.subtitle,
+                    {fontSize: subtitleSize, color: theme.colors.textSecondary},
+                  ]}
+                  numberOfLines={1}>
+                  {tile.subtitle}
                 </Text>
-                {tile.subtitle && (
-                  <Text
-                    style={[tileStyles.tileSubtitle, {fontSize: subtitleSize}]}
-                    numberOfLines={1}>
-                    {tile.subtitle}
-                  </Text>
-                )}
-              </View>
+              )}
             </View>
-          </LinearGradient>
-        </Pressable>
-      </View>
+          </View>
+        </LinearGradient>
+      </AnimatedPressable>
     );
   },
 );
 
 BentoTileComponent.displayName = 'BentoTileComponent';
+
+// Static inner styles for BentoTileComponent (no theme dependency)
+const tileInnerStyles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+    padding: moderateScale(16),
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  centerLeftContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  topLeftContainer: {
+    justifyContent: 'flex-start',
+  },
+  title: {
+    fontFamily: 'Manrope-SemiBold',
+    lineHeight: moderateScale(22),
+    textAlign: 'left',
+  },
+  subtitle: {
+    fontFamily: 'Manrope-Medium',
+    marginTop: moderateScale(2),
+    lineHeight: moderateScale(16),
+    textAlign: 'left',
+  },
+});
 
 export const ExploreView = React.memo(function ExploreView({
   onSearchPress,
@@ -217,17 +287,25 @@ export const ExploreView = React.memo(function ExploreView({
     (tiles: BentoTile[], columnKey: string) => {
       return (
         <View key={columnKey} style={styles.column}>
-          {tiles.map(tile => (
-            <BentoTileComponent
-              key={tile.id}
-              tile={tile}
-              dimensions={{
-                width: tileDimensions.columnWidth,
-                height: tileDimensions.baseHeight * tile.heightMultiplier,
-              }}
-              onPress={() => handleCategoryPress(tile.route)}
-            />
-          ))}
+          {tiles.map(tile => {
+            // Account for the gap between stacked 1x cards
+            // A 2x card = two 1x cards + the gap between them
+            const gapAdjustment = CARD_GAP * (tile.heightMultiplier - 1);
+            const cardHeight =
+              tileDimensions.baseHeight * tile.heightMultiplier + gapAdjustment;
+
+            return (
+              <BentoTileComponent
+                key={tile.id}
+                tile={tile}
+                dimensions={{
+                  width: tileDimensions.columnWidth,
+                  height: cardHeight,
+                }}
+                onPress={() => handleCategoryPress(tile.route)}
+              />
+            );
+          })}
         </View>
       );
     },
@@ -322,44 +400,5 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     },
     column: {
       flex: 1,
-    },
-    bentoTile: {
-      borderRadius: moderateScale(10),
-      overflow: 'hidden',
-    },
-    tileButton: {
-      flex: 1,
-    },
-    tileGradient: {
-      flex: 1,
-      padding: moderateScale(16),
-    },
-    tileContent: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    tileTextContainer: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    tileTitle: {
-      color: theme.colors.text,
-      fontFamily: 'Manrope-SemiBold',
-      lineHeight: moderateScale(22),
-      textAlign: 'left',
-    },
-    tileSubtitle: {
-      color: theme.colors.textSecondary,
-      fontFamily: 'Manrope-Medium',
-      marginTop: moderateScale(2),
-      lineHeight: moderateScale(16),
-      textAlign: 'left',
-    },
-    centerLeftContainer: {
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-    },
-    topLeftContainer: {
-      justifyContent: 'flex-start',
     },
   });

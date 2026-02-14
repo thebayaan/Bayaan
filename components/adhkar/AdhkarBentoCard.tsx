@@ -1,10 +1,12 @@
 import React from 'react';
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
+import {Image} from 'expo-image';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {SuperCategory} from '@/types/adhkar';
+import {ADHKAR_CATEGORY_IMAGES} from '@/constants/adhkarImages';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -13,6 +15,40 @@ import Animated, {
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
+
+const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
+  // Main adhkar
+  'morning-adhkar': 'top',
+  'evening-adhkar': 'bottom',
+  salah: 'top',
+  'before-sleep': 'top',
+  'after-salah': 'top',
+  'waking-up': 'top',
+  salawat: 'top',
+  'praises-of-allah': 'top',
+  istighfar: 'top',
+  nightmares: 'top',
+  'protection-of-iman': 'center',
+  'difficulties-happiness': 'top',
+  'quranic-duas': 'top',
+  // Other adhkar
+  'names-of-allah': 'top',
+  clothes: 'center',
+  'lavatory-wudu': 'bottom',
+  'adhan-masjid': 'top',
+  home: 'top',
+  istikharah: 'top',
+  gatherings: 'top',
+  'food-drink': 'top',
+  travel: 'top',
+  nature: 'top',
+  'social-interactions': 'top',
+  'hajj-umrah': 'top',
+  'marriage-children': 'top',
+  death: 'bottom',
+  'ruqyah-illness': 'top',
+  'money-shopping': 'top',
+};
 
 interface AdhkarBentoCardProps {
   category: SuperCategory;
@@ -28,6 +64,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
   height,
 }: AdhkarBentoCardProps) {
   const {theme} = useTheme();
+  const isDarkMode = theme.isDarkMode;
 
   // Bouncy scale animation
   const scale = useSharedValue(1);
@@ -59,11 +96,12 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
     baseColor.alpha(0.25).toString(),
   ] as const;
 
-  // Adjust text sizes based on card height
-  const isLargeCard = category.heightMultiplier >= 2;
-  const titleSize = isLargeCard ? moderateScale(16) : moderateScale(14);
+  const titleSize = moderateScale(14);
+  const textPosition = TEXT_POSITION[category.id];
 
-  const styles = createStyles(theme, width, height, category.color);
+  const styles = createStyles(theme, width, height);
+
+  const imageSet = ADHKAR_CATEGORY_IMAGES[category.id];
 
   return (
     <AnimatedTouchableOpacity
@@ -72,27 +110,64 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[styles.container, animatedStyle]}>
-      <LinearGradient
-        colors={gradientColors}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={styles.gradient}>
-        <View style={styles.content}>
-          <View
-            style={[
-              styles.textContainer,
-              isLargeCard
-                ? styles.topLeftContainer
-                : styles.centerLeftContainer,
-            ]}>
-            <Text
-              style={[styles.title, {fontSize: titleSize}]}
-              numberOfLines={isLargeCard ? 2 : 2}>
-              {category.title}
-            </Text>
+      {imageSet ? (
+        <View style={styles.gradient}>
+          <Image
+            source={isDarkMode ? imageSet.dark : imageSet.light}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
+          {isDarkMode && (
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.5)']}
+              start={{x: 0, y: 0.3}}
+              end={{x: 0, y: 1}}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <View style={styles.content}>
+            <View
+              style={[
+                styles.textContainer,
+                textPosition === 'top'
+                  ? styles.topLeftContainer
+                  : textPosition === 'bottom'
+                    ? styles.bottomLeftContainer
+                    : styles.centerLeftContainer,
+              ]}>
+              <Text
+                style={[styles.title, {fontSize: titleSize}]}
+                numberOfLines={2}>
+                {category.title}
+              </Text>
+            </View>
           </View>
         </View>
-      </LinearGradient>
+      ) : (
+        <LinearGradient
+          colors={gradientColors}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 1}}
+          style={styles.gradient}>
+          <View style={styles.content}>
+            <View
+              style={[
+                styles.textContainer,
+                textPosition === 'top'
+                  ? styles.topLeftContainer
+                  : textPosition === 'bottom'
+                    ? styles.bottomLeftContainer
+                    : styles.centerLeftContainer,
+              ]}>
+              <Text
+                style={[styles.title, {fontSize: titleSize}]}
+                numberOfLines={2}>
+                {category.title}
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+      )}
     </AnimatedTouchableOpacity>
   );
 });
@@ -101,7 +176,6 @@ const createStyles = (
   theme: ReturnType<typeof useTheme>['theme'],
   width: number,
   height: number,
-  color: string,
 ) =>
   StyleSheet.create({
     container: {
@@ -109,9 +183,6 @@ const createStyles = (
       height,
       borderRadius: moderateScale(20),
       overflow: 'hidden',
-      marginBottom: moderateScale(8),
-      borderWidth: 1,
-      borderColor: Color(color).alpha(0.15).toString(),
     },
     gradient: {
       flex: 1,
@@ -131,6 +202,10 @@ const createStyles = (
     },
     topLeftContainer: {
       justifyContent: 'flex-start',
+    },
+    bottomLeftContainer: {
+      justifyContent: 'flex-end',
+      alignItems: 'flex-start',
     },
     title: {
       fontFamily: 'Manrope-SemiBold',
