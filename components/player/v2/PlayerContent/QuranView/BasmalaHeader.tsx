@@ -179,7 +179,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingVertical: verticalScale(20),
+    paddingVertical: verticalScale(0),
     alignItems: 'center',
     justifyContent: 'center',
   },
