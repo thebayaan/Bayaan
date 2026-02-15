@@ -38,6 +38,7 @@ interface SurahCardProps {
   revelationPlace: string;
   color: string;
   onPress: () => void;
+  onLongPress?: () => void;
   onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
@@ -59,6 +60,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   revelationPlace,
   color,
   onPress,
+  onLongPress,
   onOptionsPress,
   style,
   isLoved = false,
@@ -298,7 +300,11 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     if (enableHaptics) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    onOptionsPress?.();
+    if (onLongPress) {
+      onLongPress();
+    } else {
+      onOptionsPress?.();
+    }
   };
 
   // Choose Touchable component based on animation prop
@@ -316,7 +322,9 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           : [styles.container, style]
       }
       onPress={handleCardPress}
-      onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
+      onLongPress={
+        onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+      }
       delayLongPress={500}
       // Conditionally add animation handlers
       onPressIn={enableAnimation ? handlePressIn : undefined}

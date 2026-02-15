@@ -7,6 +7,7 @@ import {
   Pressable,
   ViewToken,
 } from 'react-native';
+import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -106,13 +107,17 @@ const MushafInlineSettings: React.FC<{textColor: string}> = ({textColor}) => {
 // ============================================================================
 // MushafViewer (main exported component)
 // ============================================================================
+interface MushafViewerProps {
+  pageNumber: number;
+  initialVerseKey?: string;
+}
+
 export default function MushafViewer({
   pageNumber: initialPage,
-}: {
-  pageNumber: number;
-}) {
+}: MushafViewerProps) {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const {theme} = useTheme();
+  const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
 
   const pages = useMemo(
@@ -170,9 +175,17 @@ export default function MushafViewer({
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {/* Header with surah name + inline settings */}
+      {/* Header with back button, surah name + inline settings */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+          </Pressable>
+
           <Pressable style={styles.surahSelector} onPress={openSurahSheet}>
             <Text style={[styles.headerSurahName, {color: theme.colors.text}]}>
               {currentSurahName}
@@ -239,6 +252,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 4,
   },
   surahSelector: {
     flexDirection: 'row',

@@ -32,6 +32,7 @@ const SECTION_HEIGHT = moderateScale(150);
 interface SurahHeroSectionProps {
   surah: Surah;
   onPress: (surah: Surah) => void;
+  onLongPress?: (surah: Surah) => void;
   title?: string;
   isCompact?: boolean;
   style?: ViewStyle | ViewStyle[];
@@ -45,12 +46,16 @@ interface SurahHeroSectionProps {
 export const SurahHeroSection = ({
   surah,
   onPress,
+  onLongPress,
   title = 'SURAH OF THE DAY',
   style,
   gradientColors,
 }: SurahHeroSectionProps) => {
   const {theme} = useTheme();
   const handlePress = useCallback(() => onPress(surah), [surah, onPress]);
+  const handleLongPress = useCallback(() => {
+    onLongPress?.(surah);
+  }, [surah, onLongPress]);
 
   // Animation values
   const scale = useSharedValue(1);
@@ -96,6 +101,8 @@ export const SurahHeroSection = ({
       activeOpacity={1}
       style={[styles.hero, animatedStyle, style]}
       onPress={handlePress}
+      onLongPress={onLongPress ? handleLongPress : undefined}
+      delayLongPress={500}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}>
       <LinearGradient
@@ -233,13 +240,18 @@ const createStyles = (theme: Theme) =>
 interface SurahsHeroProps {
   surahOfTheDay: Surah;
   onSurahPress: (surah: Surah) => void;
+  onSurahLongPress?: (surah: Surah) => void;
 }
 
 /**
  * The main hero component for the SurahsView.
  * Displays the Surah of the Day in full width.
  */
-export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
+export function SurahsHero({
+  surahOfTheDay,
+  onSurahPress,
+  onSurahLongPress,
+}: SurahsHeroProps) {
   // Create card style for full-width display
   const cardStyle: ViewStyle = useMemo(() => {
     return {
@@ -258,6 +270,7 @@ export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
           <SurahOfTheDay
             surah={surahOfTheDay}
             onPress={onSurahPress}
+            onLongPress={onSurahLongPress}
             style={cardStyle}
           />
         </View>
