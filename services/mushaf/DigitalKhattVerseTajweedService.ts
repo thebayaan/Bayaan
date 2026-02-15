@@ -13,16 +13,30 @@ import type {IndexedTajweedData} from '@/utils/tajweedLoader';
  * 2. Match against indexed tajweed data by wordPositionInVerse
  * 3. Use TajweedAlignmentService to align QPC segments onto DK text
  * 4. Return Map<charIndex, ruleName>
+ *
+ * Results are cached — indexedTajweedData is loaded once at startup and never changes,
+ * so for a given verseKey the result is always the same.
  */
+const verseTajweedCache = new Map<string, Map<number, string> | null>();
+
 export function getVerseTajweedMap(
   verseKey: string,
   indexedTajweedData: IndexedTajweedData,
 ): Map<number, string> | null {
+  const cached = verseTajweedCache.get(verseKey);
+  if (cached !== undefined) return cached;
+
   const dkWords = digitalKhattDataService.getVerseWords(verseKey);
-  if (dkWords.length === 0) return null;
+  if (dkWords.length === 0) {
+    verseTajweedCache.set(verseKey, null);
+    return null;
+  }
 
   const tajweedWords = indexedTajweedData[verseKey];
-  if (!tajweedWords) return null;
+  if (!tajweedWords) {
+    verseTajweedCache.set(verseKey, null);
+    return null;
+  }
 
   const charToRule = new Map<number, string>();
 
@@ -53,7 +67,9 @@ export function getVerseTajweedMap(
     if (i < dkWords.length - 1) charOffset += 1;
   }
 
-  return charToRule.size > 0 ? charToRule : null;
+  const result = charToRule.size > 0 ? charToRule : null;
+  verseTajweedCache.set(verseKey, result);
+  return result;
 }
 
 /**
@@ -62,12 +78,21 @@ export function getVerseTajweedMap(
  * The basmala IS verse 1:1, so we look up tajweed data for '1:1' and
  * align the first 4 words (positions 1-4) onto the hardcoded text,
  * skipping position 5 (the verse-end marker ١).
+ *
+ * Result is cached — basmala tajweed never changes.
  */
+let basmalaTajweedCache: Map<number, string> | null | undefined;
+
 export function getBasmalaTajweedMap(
   indexedTajweedData: IndexedTajweedData,
 ): Map<number, string> | null {
+  if (basmalaTajweedCache !== undefined) return basmalaTajweedCache;
+
   const tajweedWords = indexedTajweedData['1:1'];
-  if (!tajweedWords) return null;
+  if (!tajweedWords) {
+    basmalaTajweedCache = null;
+    return null;
+  }
 
   const basmalaWords = BASMALLAH_TEXT.split(' ');
   const charToRule = new Map<number, string>();
@@ -96,5 +121,6 @@ export function getBasmalaTajweedMap(
     if (i < basmalaWords.length - 1) charOffset += 1;
   }
 
-  return charToRule.size > 0 ? charToRule : null;
+  basmalaTajweedCache = charToRule.size > 0 ? charToRule : null;
+  return basmalaTajweedCache;
 }
