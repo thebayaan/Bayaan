@@ -1,5 +1,6 @@
 import React, {useCallback, useEffect, useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
+import {usePathname} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import Animated, {
@@ -109,6 +110,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const scale = useSharedValue(1);
   const heartScale = useSharedValue(1);
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const isMushafActive = pathname === '/mushaf';
   // Create styles using insets
   const styles = useMemo(() => createStyles(insets.bottom), [insets.bottom]);
 
@@ -133,8 +136,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   }, [trackLoading, playbackState, currentTrack?.id]);
 
   const shouldShow = useMemo(
-    () => !stateRestoring && !!currentTrack,
-    [stateRestoring, currentTrack],
+    () => !stateRestoring && !!currentTrack && !isMushafActive,
+    [stateRestoring, currentTrack, isMushafActive],
   );
 
   const surahNumber = useMemo(() => {
