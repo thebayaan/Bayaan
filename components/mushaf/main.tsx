@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useRef, useCallback} from 'react';
+import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
 import {
   View,
   StyleSheet,
@@ -6,25 +6,30 @@ import {
   Text,
   Pressable,
   ViewToken,
+  StatusBar,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
-import {
-  useMushafSettingsStore,
-  type MushafRenderer,
-} from '@/store/mushafSettingsStore';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   SURAH_NAMES,
-  PLAYER_RESERVED_HEIGHT,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
+  getJuzForPage,
+  getHizbForPage,
 } from './constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import SkiaPage from './skia/SkiaPage';
 
 const TOTAL_PAGES = 604;
+const ANIMATION_DURATION = 300;
 
 // ============================================================================
 // Digital Khatt PageView (Skia-based with DK V1/V2 fonts)
@@ -33,7 +38,8 @@ const DKPageView: React.FC<{
   pageNumber: number;
   textColor: string;
   highlightColor: string;
-}> = ({pageNumber, textColor, highlightColor}) => {
+  onTap?: () => void;
+}> = ({pageNumber, textColor, highlightColor, onTap}) => {
   const [pageReady, setPageReady] = useState(false);
 
   return (
@@ -43,63 +49,8 @@ const DKPageView: React.FC<{
         textColor={textColor}
         highlightColor={highlightColor}
         onReady={() => setPageReady(true)}
+        onTap={onTap}
       />
-
-      <View style={styles.pageNumberContainer}>
-        <Text style={[styles.pageNumber, {color: textColor}]}>
-          {pageNumber}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-// ============================================================================
-// Inline settings toolbar (mushaf renderer toggle)
-// ============================================================================
-const MUSHAF_OPTIONS: {key: MushafRenderer; label: string}[] = [
-  {key: 'dk_v1', label: 'Madani 1405'},
-  {key: 'dk_v2', label: 'Madani 1421'},
-];
-
-const MushafInlineSettings: React.FC<{textColor: string}> = ({textColor}) => {
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const setMushafRenderer = useMushafSettingsStore(s => s.setMushafRenderer);
-  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
-  const toggleTajweed = useMushafSettingsStore(s => s.toggleTajweed);
-
-  return (
-    <View style={styles.inlineSettings}>
-      <Pressable
-        style={[styles.settingsPill, showTajweed && styles.settingsPillActive]}
-        onPress={toggleTajweed}>
-        <Text
-          style={[
-            styles.settingsPillText,
-            {color: showTajweed ? '#fff' : textColor},
-          ]}>
-          Tajweed
-        </Text>
-      </Pressable>
-      <View style={styles.fontToggleGroup}>
-        {MUSHAF_OPTIONS.map(opt => (
-          <Pressable
-            key={opt.key}
-            style={[
-              styles.settingsPill,
-              mushafRenderer === opt.key && styles.settingsPillActive,
-            ]}
-            onPress={() => setMushafRenderer(opt.key)}>
-            <Text
-              style={[
-                styles.settingsPillText,
-                {color: mushafRenderer === opt.key ? '#fff' : textColor},
-              ]}>
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
     </View>
   );
 };
@@ -116,9 +67,32 @@ export default function MushafViewer({
   pageNumber: initialPage,
 }: MushafViewerProps) {
   const [currentPage, setCurrentPage] = useState(initialPage);
+  const [isImmersive, setIsImmersive] = useState(false);
   const {theme} = useTheme();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+
+  // Reanimated overlay animation (same pattern as PlayerContent)
+  const overlayOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    overlayOpacity.value = withTiming(isImmersive ? 0 : 1, {
+      duration: ANIMATION_DURATION,
+    });
+  }, [isImmersive, overlayOpacity]);
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const immersiveAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - overlayOpacity.value,
+  }));
+
+  const toggleImmersive = useCallback(() => {
+    setIsImmersive(prev => !prev);
+  }, []);
 
   const pages = useMemo(
     () => Array.from({length: TOTAL_PAGES}, (_, i) => i + 1),
@@ -136,6 +110,8 @@ export default function MushafViewer({
 
   const currentSurahId = pageToSurah[currentPage] || 1;
   const currentSurahName = SURAH_NAMES[currentSurahId];
+  const currentJuz = getJuzForPage(currentPage);
+  const currentHizb = getHizbForPage(currentPage);
 
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
@@ -172,36 +148,14 @@ export default function MushafViewer({
     });
   }, [currentSurahId, navigateToSurah]);
 
+  const openSettingsSheet = useCallback(() => {
+    SheetManager.show('mushaf-layout');
+  }, []);
+
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {/* Header with back button, surah name + inline settings */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back">
-            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
-          </Pressable>
-
-          <Pressable style={styles.surahSelector} onPress={openSurahSheet}>
-            <Text style={[styles.headerSurahName, {color: theme.colors.text}]}>
-              {currentSurahName}
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={18}
-              color={theme.colors.text}
-              style={styles.chevronIcon}
-            />
-          </Pressable>
-
-          <MushafInlineSettings textColor={theme.colors.text} />
-        </View>
-      </View>
-
+      {/* FlatList fills the entire screen */}
       <FlatList
         ref={flatListRef}
         data={pages}
@@ -210,6 +164,7 @@ export default function MushafViewer({
             pageNumber={item}
             textColor={theme.colors.text}
             highlightColor={theme.colors.primary}
+            onTap={toggleImmersive}
           />
         )}
         keyExtractor={item => item.toString()}
@@ -230,6 +185,128 @@ export default function MushafViewer({
         initialNumToRender={1}
         decelerationRate="fast"
       />
+
+      {/* ================================================================ */}
+      {/* Normal mode header — fades out when immersive                    */}
+      {/* ================================================================ */}
+      <StatusBar hidden={isImmersive} animated />
+
+      <Animated.View
+        style={[
+          styles.header,
+          overlayAnimatedStyle,
+          {
+            paddingTop: insets.top + 8,
+            backgroundColor: theme.colors.background,
+          },
+        ]}
+        pointerEvents={isImmersive ? 'none' : 'auto'}>
+        <View style={styles.headerRow}>
+          {/* Left: back button */}
+          <Pressable
+            style={styles.headerIcon}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back">
+            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+          </Pressable>
+
+          {/* Center: surah name + page/juz/hizb info */}
+          <View style={styles.headerCenter}>
+            <Text
+              style={[styles.headerSurahName, {color: theme.colors.text}]}
+              numberOfLines={1}>
+              {currentSurahName}
+            </Text>
+            <Text
+              style={[
+                styles.headerSubtitle,
+                {color: theme.colors.textSecondary},
+              ]}>
+              Page {currentPage} | Juz {currentJuz} | Hizb {currentHizb}
+            </Text>
+          </View>
+
+          {/* Right: search + settings */}
+          <View style={styles.headerRight}>
+            <Pressable
+              style={styles.headerIcon}
+              onPress={openSurahSheet}
+              accessibilityRole="button"
+              accessibilityLabel="Search surahs">
+              <Ionicons
+                name="search-outline"
+                size={22}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Pressable
+              style={styles.headerIcon}
+              onPress={openSettingsSheet}
+              accessibilityRole="button"
+              accessibilityLabel="Mushaf settings">
+              <Ionicons
+                name="settings-outline"
+                size={22}
+                color={theme.colors.text}
+              />
+            </Pressable>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* ================================================================ */}
+      {/* Normal mode bottom bar — fades out when immersive                */}
+      {/* ================================================================ */}
+      <Animated.View
+        style={[
+          styles.bottomBar,
+          overlayAnimatedStyle,
+          {
+            paddingBottom: insets.bottom + 8,
+            backgroundColor: theme.colors.background,
+          },
+        ]}
+        pointerEvents={isImmersive ? 'none' : 'auto'}>
+        <Pressable
+          style={styles.headerIcon}
+          onPress={openSettingsSheet}
+          accessibilityRole="button"
+          accessibilityLabel="Mushaf settings">
+          <Ionicons
+            name="options-outline"
+            size={24}
+            color={theme.colors.text}
+          />
+        </Pressable>
+
+        <Pressable
+          style={styles.playButton}
+          accessibilityRole="button"
+          accessibilityLabel="Play">
+          <Ionicons name="play" size={24} color="#fff" />
+        </Pressable>
+      </Animated.View>
+
+      {/* ================================================================ */}
+      {/* Immersive mode overlay — fades IN when immersive                 */}
+      {/* ================================================================ */}
+      <Animated.View
+        style={[styles.immersiveOverlay, immersiveAnimatedStyle]}
+        pointerEvents="none">
+        {/* Top row */}
+        <View style={[styles.immersiveTop, {top: insets.top + 8}]}>
+          <Text style={styles.immersiveText}>{currentSurahName}</Text>
+          <Text style={styles.immersiveText}>
+            Juz {currentJuz} | Hizb {currentHizb}
+          </Text>
+        </View>
+
+        {/* Bottom row */}
+        <View style={[styles.immersiveBottom, {bottom: insets.bottom + 12}]}>
+          <Text style={styles.immersiveText}>{currentPage}</Text>
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -238,71 +315,89 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  page: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+
+  // Normal mode header
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingTop: 50,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingBottom: 8,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  backButton: {
-    padding: 4,
-    marginRight: 4,
-  },
-  surahSelector: {
-    flexDirection: 'row',
+  headerCenter: {
+    flex: 1,
     alignItems: 'center',
   },
   headerSurahName: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: 'Traditional-Arabic',
   },
-  chevronIcon: {
-    marginLeft: 4,
+  headerSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Manrope-Regular',
+    marginTop: 2,
   },
-  inlineSettings: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  fontToggleGroup: {
+  headerRight: {
     flexDirection: 'row',
     gap: 4,
   },
-  settingsPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(128,128,128,0.15)',
+  headerIcon: {
+    padding: 6,
   },
-  settingsPillActive: {
-    backgroundColor: 'rgba(80,80,80,0.7)',
-  },
-  settingsPillText: {
-    fontSize: 12,
-    fontFamily: 'Manrope-SemiBold',
-  },
-  page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  },
-  pageNumberContainer: {
+
+  // Normal mode bottom bar
+  bottomBar: {
     position: 'absolute',
-    bottom: PLAYER_RESERVED_HEIGHT + 10,
+    bottom: 0,
     left: 0,
     right: 0,
+    zIndex: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  pageNumber: {
-    fontSize: 14,
+  playButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#34C759',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Immersive mode overlay
+  immersiveOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
+  },
+  immersiveTop: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  immersiveBottom: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+  },
+  immersiveText: {
+    fontSize: 13,
     fontFamily: 'Manrope-Regular',
+    color: 'rgba(255,255,255,0.5)',
   },
 });

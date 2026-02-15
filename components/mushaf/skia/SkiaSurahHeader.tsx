@@ -30,6 +30,7 @@ interface SkiaSurahHeaderProps {
   nameColor: string;
   lineHeight: number;
   variant?: SurahNameVariant;
+  xOffset?: number;
 }
 
 const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
@@ -43,19 +44,22 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
   nameColor,
   lineHeight,
   variant = 'withIcon',
+  xOffset = 0,
 }) => {
   const divColor = useMemo(() => Skia.Color(dividerColor), [dividerColor]);
 
-  // Measure and position divider frame
+  // Measure and position divider frame (centered within lineHeight)
   const dividerLayout = useMemo(() => {
     const ids = dividerFont.getGlyphIDs(SURAH_DIVIDER_CHAR);
     const widths = dividerFont.getGlyphWidths(ids);
     const glyphWidth = widths[0] || 0;
     const metrics = dividerFont.getMetrics();
-    const x = (pageWidth - glyphWidth) / 2;
-    const baselineY = yPos + Math.abs(metrics.ascent);
+    const x = xOffset + (pageWidth - glyphWidth) / 2;
+    const glyphHeight = Math.abs(metrics.ascent) + metrics.descent;
+    const verticalOffset = Math.max(0, (lineHeight - glyphHeight) / 2);
+    const baselineY = yPos + verticalOffset + Math.abs(metrics.ascent);
     return {x, baselineY};
-  }, [dividerFont, yPos, pageWidth]);
+  }, [dividerFont, yPos, pageWidth, lineHeight, xOffset]);
 
   // ── withIcon: QCF font — single glyph includes name + icon ──
   const qcfNameStr = useMemo(
@@ -82,8 +86,12 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     if (!qcfParagraph) return null;
     const w = qcfParagraph.getLongestLine();
     const h = qcfParagraph.getHeight();
-    return {x: (pageWidth - w) / 2, y: yPos + (lineHeight - h) / 2, w};
-  }, [qcfParagraph, yPos, pageWidth, lineHeight]);
+    return {
+      x: xOffset + (pageWidth - w) / 2,
+      y: yPos + (lineHeight - h) / 2,
+      w,
+    };
+  }, [qcfParagraph, yPos, pageWidth, lineHeight, xOffset]);
 
   // QCF font has hardcoded black SVG fills — recolor with a SrcIn color filter
   const qcfColorPaint = useMemo(() => {
@@ -136,7 +144,7 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     const nameW = v4NameParagraph.getLongestLine();
     const gap = nameFontSize * 0.15;
     const totalW = iconW + gap + nameW;
-    const startX = (pageWidth - totalW) / 2;
+    const startX = xOffset + (pageWidth - totalW) / 2;
     const iconH = v4IconParagraph.getHeight();
     const nameH = v4NameParagraph.getHeight();
     return {
@@ -154,6 +162,7 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     pageWidth,
     lineHeight,
     nameFontSize,
+    xOffset,
   ]);
 
   return (
