@@ -49,8 +49,8 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return getVerseTajweedMap(verseKey, indexedTajweedData);
   }, [verseKey, showTajweed, indexedTajweedData]);
 
-  const paragraph = useMemo(() => {
-    if (!verseText || width <= 0) return null;
+  const {paragraph, height} = useMemo(() => {
+    if (!verseText || width <= 0) return {paragraph: null, height: 0};
 
     const color = Skia.Color(textColor);
     const baseStyle: SkTextStyle = {
@@ -82,12 +82,10 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     builder.pop();
     const p = builder.build();
     p.layout(width);
-    return p;
+    return {paragraph: p, height: p.getHeight()};
   }, [verseText, width, textColor, fontFamily, fontSize, fontMgr, charToRule]);
 
   if (!paragraph || width <= 0) return null;
-
-  const height = paragraph.getHeight();
 
   return (
     <Canvas style={{width, height, direction: 'rtl'}}>
