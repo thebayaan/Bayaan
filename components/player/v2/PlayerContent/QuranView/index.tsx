@@ -1,11 +1,11 @@
-import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
-import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
+import React, {useCallback, useRef, useEffect} from 'react';
+import {View, StyleSheet, useWindowDimensions} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Surah, QuranData, Verse} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
-import SurahDivider from './SurahDivider';
+import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
@@ -13,6 +13,8 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
+import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -57,6 +59,67 @@ Object.values(versesBySurah).forEach(arr =>
   arr.sort((a, b) => a.ayah_number - b.ayah_number),
 );
 
+// Pre-build enhanced verse arrays with translations at module scope — zero computation per surah change
+const enhancedVersesBySurah: Record<number, EnhancedVerse[]> = {};
+for (const [surahStr, surahVerses] of Object.entries(versesBySurah)) {
+  enhancedVersesBySurah[Number(surahStr)] = surahVerses.map(verse => {
+    const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
+    return {
+      ...verse,
+      translation: saheehDataCache?.[verseKey]?.t || '',
+      transliteration: transliterationDataCache?.[verseKey]?.t || '',
+    };
+  });
+}
+
+// Module-scope header — stable component identity prevents FlashList unmount/remount
+interface QuranListHeaderProps {
+  surahNumber: number;
+  showBismillah: boolean;
+  width: number;
+  textColor: string;
+  nameColor: string;
+  showTajweed: boolean;
+  fontMgr: SkTypefaceFontProvider | null;
+  dkFontFamily: string;
+  arabicFontSize: number;
+  indexedTajweedData: IndexedTajweedData | null;
+}
+
+const QuranListHeader = React.memo<QuranListHeaderProps>(
+  ({
+    surahNumber,
+    showBismillah,
+    width,
+    textColor,
+    nameColor,
+    showTajweed,
+    fontMgr,
+    dkFontFamily,
+    arabicFontSize,
+    indexedTajweedData,
+  }) => (
+    <>
+      <SurahDivider
+        width={width}
+        surahNumber={surahNumber}
+        textColor={textColor}
+        nameColor={nameColor}
+      />
+      <BasmalaHeader
+        visible={showBismillah}
+        width={width}
+        textColor={nameColor}
+        showTajweed={showTajweed}
+        fontMgr={fontMgr}
+        dkFontFamily={dkFontFamily}
+        arabicFontSize={arabicFontSize}
+        indexedTajweedData={indexedTajweedData}
+      />
+    </>
+  ),
+);
+
 interface QuranViewProps {
   currentSurah: number;
   onVersePress: (verseKey: string) => void;
@@ -81,7 +144,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   contentPaddingBottom,
 }) => {
   const {theme} = useTheme();
-  const [dividerHeight, setDividerHeight] = useState(0);
+  const {width: screenWidth} = useWindowDimensions();
+  const contentWidth = screenWidth - 2 * moderateScale(20);
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const surah = surahData.find(s => s.id === currentSurah);
@@ -112,20 +176,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
     loadAnnotationsForSurah(currentSurah);
   }, [currentSurah, loadAnnotationsForSurah]);
 
-  // Memoize verses array — only recomputed when surah changes
-  const verses = useMemo(() => {
-    const surahVerses = versesBySurah[currentSurah];
-    if (!surahVerses) return [];
-
-    return surahVerses.map(verse => {
-      const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
-      return {
-        ...verse,
-        translation: saheehDataCache?.[verseKey]?.t || '',
-        transliteration: transliterationDataCache?.[verseKey]?.t || '',
-      };
-    });
-  }, [currentSurah]);
+  // Direct lookup from module-scope pre-built arrays — zero computation per surah change
+  const verses = enhancedVersesBySurah[currentSurah] ?? [];
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {
@@ -133,47 +185,6 @@ export const QuranView: React.FC<QuranViewProps> = ({
       listRef.current.scrollToOffset({offset: 0, animated: false});
     }
   }, [currentSurah]);
-
-  const handleDividerLayout = useCallback(
-    (e: LayoutChangeEvent) => setDividerHeight(e.nativeEvent.layout.height),
-    [],
-  );
-
-  // Render the surah divider + optional bismillah as list header
-  const renderHeader = useCallback(() => {
-    return (
-      <>
-        <View onLayout={handleDividerLayout}>
-          <SurahDivider
-            surahNumber={currentSurah}
-            textColor={theme.colors.textSecondary}
-            nameColor={theme.colors.text}
-          />
-        </View>
-        {surah?.bismillah_pre && (
-          <BasmalaHeader
-            textColor={theme.colors.text}
-            showTajweed={showTajweed}
-            fontMgr={fontMgr}
-            dkFontFamily={dkFontFamily}
-            arabicFontSize={arabicFontSize}
-            indexedTajweedData={indexedTajweedData}
-          />
-        )}
-      </>
-    );
-  }, [
-    currentSurah,
-    surah?.bismillah_pre,
-    theme.colors.textSecondary,
-    theme.colors.text,
-    showTajweed,
-    fontMgr,
-    dkFontFamily,
-    arabicFontSize,
-    indexedTajweedData,
-    handleDividerLayout,
-  ]);
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
@@ -216,7 +227,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   const effectivePaddingTop = Math.max(
     0,
-    (contentPaddingTop || 0) - dividerHeight,
+    (contentPaddingTop || 0) - computeDividerTotalHeight(contentWidth),
   );
 
   const effectivePaddingBottom =
@@ -233,7 +244,20 @@ export const QuranView: React.FC<QuranViewProps> = ({
         data={verses}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        ListHeaderComponent={renderHeader}
+        ListHeaderComponent={
+          <QuranListHeader
+            surahNumber={currentSurah}
+            showBismillah={!!surah?.bismillah_pre}
+            width={contentWidth}
+            textColor={theme.colors.textSecondary}
+            nameColor={theme.colors.text}
+            showTajweed={showTajweed}
+            fontMgr={fontMgr}
+            dkFontFamily={dkFontFamily}
+            arabicFontSize={arabicFontSize}
+            indexedTajweedData={indexedTajweedData}
+          />
+        }
         contentContainerStyle={{
           paddingTop: effectivePaddingTop,
           paddingBottom: effectivePaddingBottom,
