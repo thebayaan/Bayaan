@@ -7,6 +7,7 @@ import {
   Pressable,
   ViewToken,
   StatusBar,
+  BackHandler,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -18,6 +19,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {BackButton} from '@/components/BackButton';
+import MushafSearchView from './MushafSearchView';
 import {PlayIcon} from '@/components/Icons';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
@@ -231,8 +233,10 @@ export default function MushafViewer({
 }: MushafViewerProps) {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [isImmersive, setIsImmersive] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const {theme, isDarkMode} = useTheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
+  const setLastReadPage = useMushafSettingsStore(s => s.setLastReadPage);
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : theme.colors.card;
   const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
@@ -280,9 +284,10 @@ export default function MushafViewer({
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].item) {
         setCurrentPage(viewableItems[0].item);
+        setLastReadPage(viewableItems[0].item);
       }
     },
-    [],
+    [setLastReadPage],
   );
 
   const viewabilityConfig = useMemo(
@@ -292,24 +297,33 @@ export default function MushafViewer({
     [],
   );
 
+  const navigateToPage = useCallback((targetPage: number) => {
+    setIsSearchMode(false);
+    flatListRef.current?.scrollToIndex({
+      index: targetPage - 1,
+      animated: false,
+    });
+  }, []);
+
   const navigateToSurah = useCallback(
     (surahId: number) => {
       const targetPage = surahStartPages[surahId];
-      if (targetPage && flatListRef.current) {
-        flatListRef.current.scrollToIndex({
-          index: targetPage - 1,
-          animated: false,
-        });
-      }
+      if (targetPage) navigateToPage(targetPage);
     },
-    [surahStartPages],
+    [surahStartPages, navigateToPage],
   );
 
-  const openSurahSheet = useCallback(() => {
-    SheetManager.show('mushaf-surah-selector', {
-      payload: {currentSurahId, onSelect: navigateToSurah},
+  const openSearchMode = useCallback(() => setIsSearchMode(true), []);
+
+  // Android back handler — exit search mode instead of popping screen
+  useEffect(() => {
+    if (!isSearchMode) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setIsSearchMode(false);
+      return true;
     });
-  }, [currentSurahId, navigateToSurah]);
+    return () => sub.remove();
+  }, [isSearchMode]);
 
   return (
     <View
@@ -359,104 +373,124 @@ export default function MushafViewer({
       {/* ================================================================ */}
       {/* Normal mode header — fades out when immersive                    */}
       {/* ================================================================ */}
-      <StatusBar hidden={isImmersive} animated />
+      <StatusBar hidden={isImmersive && !isSearchMode} animated />
 
-      <Animated.View
-        style={[
-          styles.header,
-          overlayAnimatedStyle,
-          {
-            paddingTop: insets.top + moderateScale(8),
-            backgroundColor: theme.colors.background,
-            borderBottomWidth: StyleSheet.hairlineWidth,
-            borderBottomColor: theme.colors.border,
-          },
-        ]}
-        pointerEvents={isImmersive ? 'none' : 'auto'}>
-        <View style={styles.headerRow}>
-          {/* Left: back button */}
-          <View style={styles.headerSide}>
-            <BackButton onPress={() => router.back()} />
-          </View>
+      {!isSearchMode && (
+        <>
+          <Animated.View
+            style={[
+              styles.header,
+              overlayAnimatedStyle,
+              {
+                paddingTop: insets.top + moderateScale(8),
+                backgroundColor: theme.colors.background,
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: theme.colors.border,
+              },
+            ]}
+            pointerEvents={isImmersive ? 'none' : 'auto'}>
+            <View style={styles.headerRow}>
+              {/* Left: back button */}
+              <View style={styles.headerSide}>
+                <BackButton onPress={() => router.back()} />
+              </View>
 
-          {/* Center: tappable surah name + page/juz info */}
-          <Pressable
-            style={styles.headerCenter}
-            onPress={openSurahSheet}
-            accessibilityRole="button"
-            accessibilityLabel="Search surahs">
-            <View
-              style={[
-                styles.headerBox,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.06)
-                    .toString(),
-                },
-              ]}>
-              <Text
-                style={[styles.headerSurahName, {color: theme.colors.text}]}
-                numberOfLines={1}>
-                {SURAHS[currentSurahId - 1].name}
-              </Text>
-              <Text
-                style={[
-                  styles.headerMeta,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                Page {currentPage} · Juz {getJuzForPage(currentPage)}
-              </Text>
+              {/* Center: tappable surah name + page/juz info */}
+              <Pressable
+                style={styles.headerCenter}
+                onPress={openSearchMode}
+                accessibilityRole="button"
+                accessibilityLabel="Search surahs">
+                <View
+                  style={[
+                    styles.headerBox,
+                    {
+                      backgroundColor: Color(theme.colors.text)
+                        .alpha(0.06)
+                        .toString(),
+                    },
+                  ]}>
+                  <Text
+                    style={[styles.headerSurahName, {color: theme.colors.text}]}
+                    numberOfLines={1}>
+                    {SURAHS[currentSurahId - 1].name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.headerMeta,
+                      {color: theme.colors.textSecondary},
+                    ]}>
+                    Page {currentPage} · Juz {getJuzForPage(currentPage)}
+                  </Text>
+                </View>
+              </Pressable>
+
+              {/* Right: settings */}
+              <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
+                <Pressable
+                  style={styles.headerIcon}
+                  onPress={() =>
+                    SheetManager.show('mushaf-layout', {
+                      payload: {context: 'mushaf'},
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel="Mushaf settings">
+                  <Ionicons
+                    name="options-outline"
+                    size={moderateScale(22)}
+                    color={theme.colors.text}
+                  />
+                </Pressable>
+              </View>
             </View>
-          </Pressable>
+          </Animated.View>
 
-          {/* Right: settings */}
-          <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
+          {/* ================================================================ */}
+          {/* Normal mode bottom bar — fades out when immersive                */}
+          {/* ================================================================ */}
+          <Animated.View
+            style={[
+              styles.bottomBar,
+              overlayAnimatedStyle,
+              {
+                paddingBottom: insets.bottom + 8,
+                backgroundColor: theme.colors.background,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: theme.colors.border,
+              },
+            ]}
+            pointerEvents={isImmersive ? 'none' : 'auto'}>
             <Pressable
-              style={styles.headerIcon}
-              onPress={() =>
-                SheetManager.show('mushaf-layout', {
-                  payload: {context: 'mushaf'},
-                })
-              }
+              style={[
+                styles.circleButton,
+                {backgroundColor: theme.colors.text},
+              ]}
               accessibilityRole="button"
-              accessibilityLabel="Mushaf settings">
-              <Ionicons
-                name="options-outline"
-                size={moderateScale(22)}
-                color={theme.colors.text}
-              />
+              accessibilityLabel="Play">
+              <View style={styles.playIconContainer}>
+                <PlayIcon
+                  color={theme.colors.background}
+                  size={moderateScale(18)}
+                />
+              </View>
             </Pressable>
-          </View>
-        </View>
-      </Animated.View>
+          </Animated.View>
+        </>
+      )}
 
       {/* ================================================================ */}
-      {/* Normal mode bottom bar — fades out when immersive                */}
+      {/* Search mode overlay                                               */}
       {/* ================================================================ */}
-      <Animated.View
-        style={[
-          styles.bottomBar,
-          overlayAnimatedStyle,
-          {
-            paddingBottom: insets.bottom + 8,
-            backgroundColor: theme.colors.background,
-            borderTopWidth: StyleSheet.hairlineWidth,
-            borderTopColor: theme.colors.border,
-          },
-        ]}
-        pointerEvents={isImmersive ? 'none' : 'auto'}>
-        <Pressable
-          style={[styles.circleButton, {backgroundColor: theme.colors.text}]}
-          accessibilityRole="button"
-          accessibilityLabel="Play">
-          <View style={styles.playIconContainer}>
-            <PlayIcon
-              color={theme.colors.background}
-              size={moderateScale(18)}
-            />
-          </View>
-        </Pressable>
-      </Animated.View>
+      {isSearchMode && (
+        <MushafSearchView
+          onNavigateToPage={navigateToPage}
+          onNavigateToSurah={navigateToSurah}
+          onClose={() => setIsSearchMode(false)}
+          surahStartPages={surahStartPages}
+          pageToSurah={pageToSurah}
+        />
+      )}
     </View>
   );
 }

@@ -44,6 +44,9 @@ interface MushafSettingsState {
   // Mushaf renderer selection
   mushafRenderer: MushafRenderer;
 
+  // Last read page tracking
+  lastReadPage: number | null;
+
   // Actions
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
@@ -55,6 +58,7 @@ interface MushafSettingsState {
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
   setPageLayout: (layout: MushafPageLayout) => void;
+  setLastReadPage: (page: number) => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -71,6 +75,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       uthmaniFont: 'v2', // Default to V2
       mushafRenderer: 'dk_v2' as MushafRenderer, // Default to DK V2
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
+      lastReadPage: null,
 
       // Actions
       toggleTranslation: () =>
@@ -92,6 +97,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           uthmaniFont: renderer === 'dk_v1' ? 'v1' : 'v2',
         }),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
+      setLastReadPage: (page: number) => set({lastReadPage: page}),
     }),
     {
       name: 'mushaf-settings',

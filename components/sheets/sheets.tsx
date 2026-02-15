@@ -30,7 +30,8 @@ import {VerseCopySheet} from './VerseCopySheet';
 import {VerseHighlightSheet} from './VerseHighlightSheet';
 import {VerseNoteSheet} from './VerseNoteSheet';
 import {VerseTranslationSheet} from './VerseTranslationSheet';
-import {MushafSurahSheet} from './MushafSurahSheet';
+import {VerseShareSheet} from './VerseShareSheet';
+import {SimilarVersesSheet} from './SimilarVersesSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -57,7 +58,8 @@ registerSheet('verse-copy', VerseCopySheet);
 registerSheet('verse-highlight', VerseHighlightSheet);
 registerSheet('verse-note', VerseNoteSheet);
 registerSheet('verse-translation', VerseTranslationSheet);
-registerSheet('mushaf-surah-selector', MushafSurahSheet);
+registerSheet('verse-share', VerseShareSheet);
+registerSheet('similar-verses', SimilarVersesSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -241,10 +243,21 @@ declare module 'react-native-actions-sheet' {
         arabicText: string;
       };
     }>;
-    'mushaf-surah-selector': SheetDefinition<{
+    'verse-share': SheetDefinition<{
       payload: {
-        currentSurahId: number;
-        onSelect: (surahId: number) => void;
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
+        verseKeys?: string[];
+        arabicText?: string;
+        translation?: string;
+      };
+    }>;
+    'similar-verses': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        surahNumber: number;
+        ayahNumber: number;
       };
     }>;
   }
