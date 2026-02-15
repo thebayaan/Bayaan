@@ -120,6 +120,7 @@ interface ContentProps {
   activeView: ViewOption;
   handleReciterPress: (reciter: Reciter) => void;
   handleSurahPress: (surah: Surah) => void;
+  handleSurahLongPress: (surah: Surah) => void;
   handleCategoryPress: (category: SuperCategory) => void;
   handleSavedPress: () => void;
   insets: EdgeInsets;
@@ -131,6 +132,7 @@ const Content = React.memo(
     activeView,
     handleReciterPress,
     handleSurahPress,
+    handleSurahLongPress,
     handleCategoryPress,
     handleSavedPress,
     insets,
@@ -205,7 +207,10 @@ const Content = React.memo(
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <SurahsView onSurahPress={handleSurahPress} />
+            <SurahsView
+              onSurahPress={handleSurahPress}
+              onSurahLongPress={handleSurahLongPress}
+            />
           </View>
         )}
 
@@ -230,6 +235,7 @@ const Content = React.memo(
     prevProps.activeView === nextProps.activeView &&
     prevProps.handleReciterPress === nextProps.handleReciterPress &&
     prevProps.handleSurahPress === nextProps.handleSurahPress &&
+    prevProps.handleSurahLongPress === nextProps.handleSurahLongPress &&
     prevProps.handleCategoryPress === nextProps.handleCategoryPress &&
     prevProps.handleSavedPress === nextProps.handleSavedPress &&
     prevProps.insets === nextProps.insets,
@@ -262,10 +268,20 @@ function HomeScreen() {
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
 
+  // Tap → open mushaf at surah's page
   const handleSurahPress = useCallback(
     (surah: Surah) => {
-      // For consistency and immediate feedback, always show select reciter sheet
-      // if askEveryTime is true
+      router.push({
+        pathname: '/mushaf',
+        params: {surah: surah.id.toString()},
+      });
+    },
+    [router],
+  );
+
+  // Long-press → audio playback flow
+  const handleSurahLongPress = useCallback(
+    (surah: Surah) => {
       if (askEveryTime) {
         SheetManager.show('select-reciter', {
           payload: {surahId: surah.id.toString(), source: 'home'},
@@ -273,7 +289,6 @@ function HomeScreen() {
         return;
       }
 
-      // Otherwise check the various conditions
       switch (defaultReciterSelection) {
         case 'browseAll':
           router.push({
@@ -354,6 +369,7 @@ function HomeScreen() {
         activeView={activeView}
         handleReciterPress={handleReciterPress}
         handleSurahPress={handleSurahPress}
+        handleSurahLongPress={handleSurahLongPress}
         handleCategoryPress={handleCategoryPress}
         handleSavedPress={handleSavedPress}
         insets={insets}

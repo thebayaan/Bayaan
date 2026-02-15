@@ -9,6 +9,7 @@ import Color from 'color';
 interface SurahOfTheDayProps {
   surah: Surah;
   onPress: (surah: Surah) => void;
+  onLongPress?: (surah: Surah) => void;
   style?: ViewStyle | ViewStyle[];
 }
 
@@ -16,7 +17,12 @@ interface SurahOfTheDayProps {
  * A component that displays the Surah of the Day card
  * with standardized styling and animations.
  */
-export function SurahOfTheDay({surah, onPress, style}: SurahOfTheDayProps) {
+export function SurahOfTheDay({
+  surah,
+  onPress,
+  onLongPress,
+  style,
+}: SurahOfTheDayProps) {
   const {theme} = useTheme();
 
   // Generate gradient colors
@@ -38,6 +44,7 @@ export function SurahOfTheDay({surah, onPress, style}: SurahOfTheDayProps) {
     <SurahHeroSection
       surah={surah}
       onPress={onPress}
+      onLongPress={onLongPress}
       title="SURAH OF THE DAY"
       isCompact={true}
       style={style}

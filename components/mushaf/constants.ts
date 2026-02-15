@@ -1,7 +1,6 @@
 import {Dimensions} from 'react-native';
 import {
   FLOATING_PLAYER_HEIGHT,
-  TAB_BAR_HEIGHT,
   FLOATING_PLAYER_BOTTOM_MARGIN,
 } from '@/utils/constants';
 
@@ -9,9 +8,9 @@ const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
 export const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
 
-// Reserve space at the bottom for the floating player + tab bar
+// Reserve space at the bottom for the floating player (no tab bar — mushaf is a stack screen)
 export const PLAYER_RESERVED_HEIGHT =
-  FLOATING_PLAYER_HEIGHT + TAB_BAR_HEIGHT + FLOATING_PLAYER_BOTTOM_MARGIN;
+  FLOATING_PLAYER_HEIGHT + FLOATING_PLAYER_BOTTOM_MARGIN;
 
 export const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 8 : 16;
 export const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 30 : 110;
