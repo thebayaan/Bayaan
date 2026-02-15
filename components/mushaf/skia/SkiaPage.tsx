@@ -97,7 +97,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
     return {
       dividerFont: Skia.Font(qcTypeface, scaledSize),
-      nameFontSize: scaledSize * 0.5,
+      nameFontSize: scaledSize * 0.4,
     };
   }, [lineWidth]);
 
