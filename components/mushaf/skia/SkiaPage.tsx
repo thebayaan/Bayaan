@@ -1,5 +1,5 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
-import {Platform, View, StyleSheet} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import {
   Canvas,
   Skia,
@@ -56,6 +56,7 @@ interface SkiaPageProps {
   textColor: string;
   highlightColor: string;
   onReady?: () => void;
+  onTap?: () => void;
 }
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
@@ -63,6 +64,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   textColor,
   highlightColor,
   onReady,
+  onTap,
 }) => {
   const {theme} = useTheme();
   // Keep useFonts hook as fallback (can't conditionally call hooks).
@@ -76,6 +78,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   });
   const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
 
+  // Calculate rendering dimensions (hoisted above surahHeaderFonts so lineWidth is available)
+  const scale = CONTENT_WIDTH / PAGE_WIDTH;
+  const margin = MARGIN * scale;
+  const lineWidth = CONTENT_WIDTH - 2 * margin;
+
   // Create scaled SkFont objects for surah header rendering (Skia Text path)
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
@@ -86,13 +93,13 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     const ids = refFont.getGlyphIDs('\uE000');
     const widths = refFont.getGlyphWidths(ids);
     const measuredW = widths[0] || 1;
-    const scaledSize = (CONTENT_WIDTH / measuredW) * 100;
+    const scaledSize = (lineWidth / measuredW) * 100;
 
     return {
       dividerFont: Skia.Font(qcTypeface, scaledSize),
       nameFontSize: scaledSize * 0.5,
     };
-  }, []);
+  }, [lineWidth]);
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
@@ -120,10 +127,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   onReadyRef.current = onReady;
   const readyFiredRef = useRef(false);
 
-  // Calculate rendering dimensions
-  const scale = CONTENT_WIDTH / PAGE_WIDTH;
-  const margin = MARGIN * scale;
-  const lineWidth = CONTENT_WIDTH - 2 * margin;
   const fontSize = FONTSIZE * scale * 0.9;
   const fontSizeLineWidthRatio = fontSize / lineWidth;
 
@@ -411,6 +414,20 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [handleDragStart, handleDragUpdate, handleDragEnd],
   );
 
+  const tapGesture = useMemo(
+    () =>
+      Gesture.Tap().onEnd(() => {
+        'worklet';
+        if (onTap) runOnJS(onTap)();
+      }),
+    [onTap],
+  );
+
+  const composedGesture = useMemo(
+    () => Gesture.Exclusive(longPressDragGesture, tapGesture),
+    [longPressDragGesture, tapGesture],
+  );
+
   // Compute per-line highlight arrays merging persistent annotations + temporary selection
   const lineHighlightsMap = useMemo<
     Map<number, Array<{start: number; end: number; color: string}>>
@@ -504,10 +521,15 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
                 nameFontSize={surahHeaderFonts.nameFontSize}
                 surahNumber={line.surah_number}
                 yPos={lineYPositions[lineIndex]}
-                pageWidth={CONTENT_WIDTH}
+                pageWidth={lineWidth}
+                xOffset={margin}
                 dividerColor={theme.colors.textSecondary}
                 nameColor={textColor}
-                lineHeight={BASE_LINE_HEIGHT * 1.0}
+                lineHeight={
+                  lineIndex < lineYPositions.length - 1
+                    ? lineYPositions[lineIndex + 1] - lineYPositions[lineIndex]
+                    : CONTENT_HEIGHT - lineYPositions[lineIndex]
+                }
               />
             );
           }
@@ -545,11 +567,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     </View>
   );
 
-  return Platform.OS === 'ios' ? (
-    <GestureDetector gesture={longPressDragGesture}>{content}</GestureDetector>
-  ) : (
-    content
-  );
+  return <GestureDetector gesture={composedGesture}>{content}</GestureDetector>;
 };
 
 const styles = StyleSheet.create({
