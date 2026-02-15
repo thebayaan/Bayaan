@@ -1,5 +1,5 @@
-import React, {useMemo, useState, useCallback} from 'react';
-import {View, Text, StyleSheet, type LayoutChangeEvent} from 'react-native';
+import React, {useMemo} from 'react';
+import {View, Text, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {
   Canvas,
@@ -20,7 +20,75 @@ const paragraphStyle = {
   textDirection: TextDirection.RTL,
 };
 
+// Module-scope cache for basmala paragraph + layout metrics
+interface BasmalaCacheEntry {
+  key: string;
+  paragraph: ReturnType<ReturnType<typeof Skia.ParagraphBuilder.Make>['build']>;
+  height: number;
+  xPos: number;
+  maxWidth: number;
+}
+let basmalaCache: BasmalaCacheEntry | null = null;
+
+function getOrBuildBasmala(
+  fontMgr: SkTypefaceFontProvider,
+  width: number,
+  textColor: string,
+  dkFontFamily: string,
+  fontSize: number,
+  charToRule: Map<number, string> | null,
+  showTajweed: boolean,
+): BasmalaCacheEntry {
+  const cacheKey = `${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}`;
+  if (basmalaCache?.key === cacheKey) return basmalaCache;
+
+  const color = Skia.Color(textColor);
+  const baseStyle: SkTextStyle = {
+    color,
+    fontFamilies: [dkFontFamily],
+    fontSize,
+    fontFeatures: [{name: 'basm', value: 1}],
+  };
+
+  const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
+  builder.pushStyle(baseStyle);
+
+  for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
+    const char = BASMALLAH_TEXT.charAt(i);
+    const rule = charToRule?.get(i);
+
+    if (rule && tajweedColors[rule]) {
+      const charStyle: SkTextStyle = {
+        ...baseStyle,
+        color: Skia.Color(tajweedColors[rule]),
+      };
+      builder.pushStyle(charStyle);
+      builder.addText(char);
+      builder.pop();
+    } else {
+      builder.addText(char);
+    }
+  }
+
+  builder.pop();
+  const p = builder.build();
+  const maxWidth = width * 2;
+  p.layout(maxWidth);
+  const lineWidth = p.getLongestLine();
+
+  basmalaCache = {
+    key: cacheKey,
+    paragraph: p,
+    height: p.getHeight(),
+    xPos: -(maxWidth - width + (width - lineWidth) / 2),
+    maxWidth,
+  };
+  return basmalaCache;
+}
+
 interface BasmalaHeaderProps {
+  visible: boolean;
+  width: number;
   textColor: string;
   showTajweed: boolean;
   fontMgr: SkTypefaceFontProvider | null;
@@ -30,6 +98,8 @@ interface BasmalaHeaderProps {
 }
 
 const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
+  visible,
+  width,
   textColor,
   showTajweed,
   fontMgr,
@@ -37,12 +107,6 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   arabicFontSize,
   indexedTajweedData,
 }) => {
-  const [containerWidth, setContainerWidth] = useState(0);
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    setContainerWidth(prev => (Math.abs(prev - w) > 1 ? w : prev));
-  }, []);
-
   const charToRule = useMemo(() => {
     if (!showTajweed || !indexedTajweedData) return null;
     return getBasmalaTajweedMap(indexedTajweedData);
@@ -50,47 +114,50 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
 
   const fontSize = moderateScale(arabicFontSize);
 
-  // Skia paragraph for DK path
-  const paragraph = useMemo(() => {
-    if (!fontMgr || containerWidth <= 0) return null;
+  const containerStyle = visible
+    ? styles.container
+    : [styles.container, styles.hidden];
 
-    const color = Skia.Color(textColor);
-    const baseStyle: SkTextStyle = {
-      color,
-      fontFamilies: [dkFontFamily],
+  // Skia rendering path — width is known synchronously, cache returns instantly on surah change
+  if (fontMgr && width > 0) {
+    const {paragraph, height, xPos, maxWidth} = getOrBuildBasmala(
+      fontMgr,
+      width,
+      textColor,
+      dkFontFamily,
       fontSize,
-      fontFeatures: [{name: 'basm', value: 1}],
-    };
+      charToRule,
+      showTajweed,
+    );
+    return (
+      <View style={containerStyle}>
+        <Canvas style={{width, height, direction: 'rtl'}}>
+          <Paragraph paragraph={paragraph} x={xPos} y={0} width={maxWidth} />
+        </Canvas>
+      </View>
+    );
+  }
 
-    const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
-    builder.pushStyle(baseStyle);
+  // Text-based fallback
+  return (
+    <View style={containerStyle}>
+      <BasmalaFallbackText
+        indexedTajweedData={indexedTajweedData}
+        showTajweed={showTajweed}
+        textColor={textColor}
+        fontSize={fontSize}
+      />
+    </View>
+  );
+};
 
-    for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
-      const char = BASMALLAH_TEXT.charAt(i);
-      const rule = charToRule?.get(i);
-
-      if (rule && tajweedColors[rule]) {
-        const charStyle: SkTextStyle = {
-          ...baseStyle,
-          color: Skia.Color(tajweedColors[rule]),
-        };
-        builder.pushStyle(charStyle);
-        builder.addText(char);
-        builder.pop();
-      } else {
-        builder.addText(char);
-      }
-    }
-
-    builder.pop();
-    const p = builder.build();
-    // Layout wide then center manually (same technique as SkiaLine.tsx)
-    const maxWidth = containerWidth * 2;
-    p.layout(maxWidth);
-    return p;
-  }, [fontMgr, containerWidth, textColor, dkFontFamily, fontSize, charToRule]);
-
-  // Text-based tajweed fallback nodes
+// Extracted fallback to keep the main component body lean
+const BasmalaFallbackText: React.FC<{
+  indexedTajweedData: IndexedTajweedData | null;
+  showTajweed: boolean;
+  textColor: string;
+  fontSize: number;
+}> = ({indexedTajweedData, showTajweed, textColor, fontSize}) => {
   const fallbackNodes = useMemo(() => {
     if (!indexedTajweedData) return null;
     const tajweedWords = indexedTajweedData['1:1'];
@@ -134,45 +201,22 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
     return nodes;
   }, [indexedTajweedData, showTajweed, textColor]);
 
-  // Skia rendering path
-  if (fontMgr) {
-    const height = paragraph ? paragraph.getHeight() : 0;
-    const maxWidth = containerWidth * 2;
-    const lineWidth = paragraph ? paragraph.getLongestLine() : 0;
-    const xPos = -(
-      maxWidth -
-      containerWidth +
-      (containerWidth - lineWidth) / 2
-    );
-
+  if (fallbackNodes) {
     return (
-      <View style={styles.container} onLayout={handleLayout}>
-        {paragraph && containerWidth > 0 && (
-          <Canvas style={{width: containerWidth, height, direction: 'rtl'}}>
-            <Paragraph paragraph={paragraph} x={xPos} y={0} width={maxWidth} />
-          </Canvas>
-        )}
-      </View>
+      <Text style={[styles.fallbackText, {fontSize, fontFamily: 'Uthmani'}]}>
+        {fallbackNodes}
+      </Text>
     );
   }
 
-  // Text-based fallback
   return (
-    <View style={styles.container}>
-      {fallbackNodes ? (
-        <Text style={[styles.fallbackText, {fontSize, fontFamily: 'Uthmani'}]}>
-          {fallbackNodes}
-        </Text>
-      ) : (
-        <Text
-          style={[
-            styles.fallbackText,
-            {color: textColor, fontSize, fontFamily: 'Uthmani'},
-          ]}>
-          {BASMALLAH_TEXT}
-        </Text>
-      )}
-    </View>
+    <Text
+      style={[
+        styles.fallbackText,
+        {color: textColor, fontSize, fontFamily: 'Uthmani'},
+      ]}>
+      {BASMALLAH_TEXT}
+    </Text>
   );
 };
 
@@ -182,6 +226,10 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(0),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  hidden: {
+    height: 0,
+    overflow: 'hidden' as const,
   },
   fallbackText: {
     textAlign: 'center',
