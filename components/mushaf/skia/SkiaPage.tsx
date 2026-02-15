@@ -55,6 +55,7 @@ interface SkiaPageProps {
   pageNumber: number;
   textColor: string;
   highlightColor: string;
+  contentMarginLeft?: number;
   onReady?: () => void;
   onTap?: () => void;
 }
@@ -63,6 +64,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
   textColor,
   highlightColor,
+  contentMarginLeft,
   onReady,
   onTap,
 }) => {
@@ -270,7 +272,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Hit-test to find verse at a given touch coordinate
   const hitTestVerse = useCallback(
     (eventX: number, eventY: number) => {
-      const canvasX = eventX - PAGE_PADDING_HORIZONTAL;
+      const canvasX = eventX - (contentMarginLeft ?? PAGE_PADDING_HORIZONTAL);
       const canvasY = eventY - PAGE_PADDING_TOP;
 
       if (
@@ -305,7 +307,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         charIndex,
       );
     },
-    [pageNumber, pageLines, lineYPositions, findLineAtY],
+    [pageNumber, pageLines, lineYPositions, findLineAtY, contentMarginLeft],
   );
 
   // Drag start: initial verse selection
@@ -507,7 +509,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         style={{
           width: CONTENT_WIDTH,
           height: CONTENT_HEIGHT,
-          marginLeft: PAGE_PADDING_HORIZONTAL,
+          marginLeft: contentMarginLeft ?? PAGE_PADDING_HORIZONTAL,
           marginTop: PAGE_PADDING_TOP,
         }}>
         {pageLines.map((line, lineIndex) => {

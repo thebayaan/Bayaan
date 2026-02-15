@@ -177,7 +177,7 @@ export const PlayerSheet = () => {
   }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
 
   const handleShowMushafLayoutSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout');
+    SheetManager.show('mushaf-layout', {payload: {context: 'player'}});
   }, []);
 
   const handleShowAmbientSheet = useCallback(() => {

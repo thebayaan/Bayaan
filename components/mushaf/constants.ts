@@ -7,6 +7,22 @@ export const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
 export const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 4 : 8;
 export const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 90 : 120;
 export const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 100;
+
+// Book page-edge decoration constants
+export const PAGE_EDGE_OUTER_MARGIN = 14;
+export const PAGE_EDGE_INNER_MARGIN = 2;
+
+export function getPageEdgeLayout(pageNumber: number) {
+  const isRightPage = pageNumber % 2 === 1;
+  return {
+    isRightPage,
+    // Right pages: outer edge on RIGHT → small left margin, large right margin
+    // Left pages: outer edge on LEFT → large left margin, small right margin
+    contentMarginLeft: isRightPage
+      ? PAGE_EDGE_INNER_MARGIN
+      : PAGE_EDGE_OUTER_MARGIN,
+  };
+}
 export const AYAH_LINE_SPACING = IS_COMPACT_DEVICE ? 0.75 : 0.7;
 export const SURAH_HEADER_TOP_GAP = 0.3;
 export const LINES_PER_PAGE = 15;
