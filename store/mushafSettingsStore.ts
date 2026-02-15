@@ -21,12 +21,16 @@ export const getDisplayValue = (actualFontSize: number): number => {
 };
 
 export type MushafRenderer = 'dk_v1' | 'dk_v2';
+export type MushafPageLayout = 'fullscreen' | 'book';
 
 interface MushafSettingsState {
   // Display settings
   showTranslation: boolean;
   showTransliteration: boolean;
   showTajweed: boolean;
+
+  // Mushaf page layout
+  pageLayout: MushafPageLayout;
 
   // Font sizes (actual values in points)
   arabicFontSize: number;
@@ -50,6 +54,7 @@ interface MushafSettingsState {
   setArabicFontFamily: (font: 'Uthmani') => void;
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
+  setPageLayout: (layout: MushafPageLayout) => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -65,6 +70,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       arabicFontFamily: 'Uthmani', // Default font
       uthmaniFont: 'v2', // Default to V2
       mushafRenderer: 'dk_v2' as MushafRenderer, // Default to DK V2
+      pageLayout: 'book' as MushafPageLayout, // Default to book page view
 
       // Actions
       toggleTranslation: () =>
@@ -85,6 +91,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           arabicFontFamily: 'Uthmani',
           uthmaniFont: renderer === 'dk_v1' ? 'v1' : 'v2',
         }),
+      setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
     }),
     {
       name: 'mushaf-settings',

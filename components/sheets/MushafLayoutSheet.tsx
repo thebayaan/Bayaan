@@ -23,7 +23,10 @@ export const MushafLayoutSheet = (props: SheetProps<'mushaf-layout'>) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        <MushafSettingsContent showTitle={true} />
+        <MushafSettingsContent
+          showTitle={true}
+          context={props.payload?.context}
+        />
       </ScrollView>
     </ActionSheet>
   );

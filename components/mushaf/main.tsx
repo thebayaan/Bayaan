@@ -26,14 +26,21 @@ import {
   SURAH_NAMES,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
+  PAGE_PADDING_HORIZONTAL,
   PAGE_PADDING_TOP,
   PAGE_PADDING_BOTTOM,
-  PAGE_PADDING_HORIZONTAL,
+  CONTENT_WIDTH,
   getJuzForPage,
+  getPageEdgeLayout,
 } from './constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {SURAHS} from '@/data/surahData';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import SkiaPage from './skia/SkiaPage';
+import PageEdgeDecoration, {
+  EDGE_BORDER_RADIUS,
+  EDGE_HORIZONTAL_INSET,
+} from './PageEdgeDecoration';
 
 const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
@@ -53,7 +60,14 @@ function getSurahNamesForPage(pageNumber: number): string {
       names.push(SURAHS[num - 1].name);
     }
   }
-  return names.join(' \u00B7 ');
+  if (names.length > 0) return names.join(' \u00B7 ');
+
+  // Fallback: surah_number is only set on surah_name lines in the DB,
+  // so pages without a header need the pageToSurah mapping.
+  const pageToSurah = digitalKhattDataService.getPageToSurah();
+  const surahId = pageToSurah[pageNumber];
+  if (surahId >= 1 && surahId <= 114) return SURAHS[surahId - 1].name;
+  return '';
 }
 
 // ============================================================================
@@ -67,6 +81,10 @@ const DKPageView: React.FC<{
   juzLabel: string;
   pageLabel: string;
   labelColor: string;
+  borderColor: string;
+  cardColor: string;
+  bgColor: string;
+  isBookLayout: boolean;
   onTap?: () => void;
 }> = ({
   pageNumber,
@@ -76,19 +94,86 @@ const DKPageView: React.FC<{
   juzLabel,
   pageLabel,
   labelColor,
+  borderColor,
+  cardColor,
+  bgColor,
+  isBookLayout,
   onTap,
 }) => {
   const [pageReady, setPageReady] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const {isRightPage, contentMarginLeft} = useMemo(
+    () => getPageEdgeLayout(pageNumber),
+    [pageNumber],
+  );
+
+  // In fullscreen mode, use symmetric padding; in book mode, use asymmetric
+  const effectiveMarginLeft = isBookLayout ? contentMarginLeft : undefined;
+  const effectiveOuterMargin = isBookLayout
+    ? SCREEN_WIDTH - contentMarginLeft - CONTENT_WIDTH
+    : PAGE_PADDING_HORIZONTAL;
+  const effectiveLabelLeft = isBookLayout
+    ? contentMarginLeft + 8
+    : PAGE_PADDING_HORIZONTAL + 8;
+
+  // Center page number vertically between content bottom and bottom border
+  const pageNumberBottom = isBookLayout
+    ? insets.top + (PAGE_PADDING_BOTTOM - insets.top) / 2 - 8
+    : PAGE_PADDING_BOTTOM - 35;
 
   return (
-    <View style={[styles.page, {opacity: pageReady ? 1 : 0}]}>
+    <View
+      style={[
+        styles.page,
+        {
+          backgroundColor: isBookLayout ? bgColor : cardColor,
+          opacity: pageReady ? 1 : 0,
+        },
+      ]}>
+      {isBookLayout && (
+        <>
+          {/* Card-colored background inside the frame, rounded to match outermost border */}
+          <View
+            style={[
+              {
+                position: 'absolute',
+                top: insets.top,
+                bottom: insets.top,
+                backgroundColor: cardColor,
+              },
+              isRightPage
+                ? {
+                    left: 0,
+                    right: EDGE_HORIZONTAL_INSET,
+                    borderTopRightRadius: EDGE_BORDER_RADIUS,
+                    borderBottomRightRadius: EDGE_BORDER_RADIUS,
+                  }
+                : {
+                    left: EDGE_HORIZONTAL_INSET,
+                    right: 0,
+                    borderTopLeftRadius: EDGE_BORDER_RADIUS,
+                    borderBottomLeftRadius: EDGE_BORDER_RADIUS,
+                  },
+            ]}
+          />
+        </>
+      )}
       <SkiaPage
         pageNumber={pageNumber}
         textColor={textColor}
         highlightColor={highlightColor}
+        contentMarginLeft={effectiveMarginLeft}
         onReady={() => setPageReady(true)}
         onTap={onTap}
       />
+      {isBookLayout && (
+        <PageEdgeDecoration
+          isRightPage={isRightPage}
+          borderColor={borderColor}
+          pageColor={cardColor}
+        />
+      )}
       {/* Surah name(s) — top left */}
       <Text
         style={[
@@ -96,7 +181,7 @@ const DKPageView: React.FC<{
           {
             color: labelColor,
             top: PAGE_PADDING_TOP - 30,
-            left: PAGE_PADDING_HORIZONTAL + 8,
+            left: effectiveLabelLeft,
           },
         ]}
         numberOfLines={1}>
@@ -109,7 +194,7 @@ const DKPageView: React.FC<{
           {
             color: labelColor,
             top: PAGE_PADDING_TOP - 30,
-            right: PAGE_PADDING_HORIZONTAL + 8,
+            right: effectiveOuterMargin + 8,
             textAlign: 'right',
           },
         ]}
@@ -122,7 +207,7 @@ const DKPageView: React.FC<{
           styles.pageLabel,
           {
             color: labelColor,
-            bottom: PAGE_PADDING_BOTTOM - 35,
+            bottom: pageNumberBottom,
             left: 0,
             right: 0,
             textAlign: 'center',
@@ -147,7 +232,14 @@ export default function MushafViewer({
 }: MushafViewerProps) {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [isImmersive, setIsImmersive] = useState(false);
-  const {theme} = useTheme();
+  const {theme, isDarkMode} = useTheme();
+  const pageLayout = useMushafSettingsStore(s => s.pageLayout);
+  const isBookLayout = pageLayout === 'book';
+  const edgeBg = isDarkMode ? '#000' : theme.colors.card;
+  const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
+  const edgeBorderColor = isDarkMode
+    ? Color(theme.colors.border).darken(0.3).toString()
+    : Color(theme.colors.border).lighten(0.3).toString();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
@@ -222,7 +314,11 @@ export default function MushafViewer({
   }, [currentSurahId, navigateToSurah]);
 
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.card}]}>
+    <View
+      style={[
+        styles.container,
+        {backgroundColor: isBookLayout ? edgeBg : theme.colors.card},
+      ]}>
       {/* FlatList fills the entire screen */}
       <FlatList
         ref={flatListRef}
@@ -236,6 +332,10 @@ export default function MushafViewer({
             juzLabel={`Juz ${getJuzForPage(item)}`}
             pageLabel={String(item)}
             labelColor={theme.colors.textSecondary}
+            borderColor={edgeBorderColor}
+            cardColor={pageBg}
+            bgColor={edgeBg}
+            isBookLayout={isBookLayout}
             onTap={toggleImmersive}
           />
         )}
@@ -327,6 +427,11 @@ export default function MushafViewer({
                 .toString(),
             },
           ]}
+          onPress={() =>
+            SheetManager.show('mushaf-layout', {
+              payload: {context: 'mushaf'},
+            })
+          }
           accessibilityRole="button"
           accessibilityLabel="Mushaf settings">
           <Ionicons

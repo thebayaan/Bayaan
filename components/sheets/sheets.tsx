@@ -141,7 +141,11 @@ declare module 'react-native-actions-sheet' {
         onTurnOffTimer: () => void;
       };
     }>;
-    'mushaf-layout': SheetDefinition;
+    'mushaf-layout': SheetDefinition<{
+      payload?: {
+        context?: 'mushaf' | 'player';
+      };
+    }>;
     'adhkar-layout': SheetDefinition;
     'adhkar-copy-options': SheetDefinition<{
       payload: {
