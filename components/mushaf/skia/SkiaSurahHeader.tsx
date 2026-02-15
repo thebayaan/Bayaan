@@ -86,9 +86,10 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     if (!qcfParagraph) return null;
     const w = qcfParagraph.getLongestLine();
     const h = qcfParagraph.getHeight();
+    const nudgeUp = lineHeight * 0.03;
     return {
       x: xOffset + (pageWidth - w) / 2,
-      y: yPos + (lineHeight - h) / 2,
+      y: yPos + (lineHeight - h) / 2 - nudgeUp,
       w,
     };
   }, [qcfParagraph, yPos, pageWidth, lineHeight, xOffset]);
@@ -147,12 +148,13 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     const startX = xOffset + (pageWidth - totalW) / 2;
     const iconH = v4IconParagraph.getHeight();
     const nameH = v4NameParagraph.getHeight();
+    const nudgeUp = lineHeight * 0.03;
     return {
       nameX: startX,
-      nameY: yPos + (lineHeight - nameH) / 2,
+      nameY: yPos + (lineHeight - nameH) / 2 - nudgeUp,
       nameW,
       iconX: startX + nameW + gap,
-      iconY: yPos + (lineHeight - iconH) / 2,
+      iconY: yPos + (lineHeight - iconH) / 2 - nudgeUp,
       iconW,
     };
   }, [
