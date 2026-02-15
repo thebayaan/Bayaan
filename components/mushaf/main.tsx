@@ -23,7 +23,6 @@ import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
-  SURAH_NAMES,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
   PAGE_PADDING_HORIZONTAL,
@@ -276,7 +275,6 @@ export default function MushafViewer({
     : {};
 
   const currentSurahId = pageToSurah[currentPage] || 1;
-  const currentSurahName = SURAH_NAMES[currentSurahId];
 
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
@@ -368,7 +366,7 @@ export default function MushafViewer({
           styles.header,
           overlayAnimatedStyle,
           {
-            paddingTop: insets.top + 8,
+            paddingTop: insets.top + moderateScale(8),
             backgroundColor: theme.colors.background,
             borderBottomWidth: StyleSheet.hairlineWidth,
             borderBottomColor: theme.colors.border,
@@ -377,29 +375,58 @@ export default function MushafViewer({
         pointerEvents={isImmersive ? 'none' : 'auto'}>
         <View style={styles.headerRow}>
           {/* Left: back button */}
-          <BackButton onPress={() => router.back()} />
-
-          {/* Center: surah name */}
-          <View style={styles.headerCenter}>
-            <Text
-              style={[styles.headerSurahName, {color: theme.colors.text}]}
-              numberOfLines={1}>
-              {currentSurahName}
-            </Text>
+          <View style={styles.headerSide}>
+            <BackButton onPress={() => router.back()} />
           </View>
 
-          {/* Right: search */}
+          {/* Center: tappable surah name + page/juz info */}
           <Pressable
-            style={styles.headerIcon}
+            style={styles.headerCenter}
             onPress={openSurahSheet}
             accessibilityRole="button"
             accessibilityLabel="Search surahs">
-            <Ionicons
-              name="search-outline"
-              size={22}
-              color={theme.colors.text}
-            />
+            <View
+              style={[
+                styles.headerBox,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.06)
+                    .toString(),
+                },
+              ]}>
+              <Text
+                style={[styles.headerSurahName, {color: theme.colors.text}]}
+                numberOfLines={1}>
+                {SURAHS[currentSurahId - 1].name}
+              </Text>
+              <Text
+                style={[
+                  styles.headerMeta,
+                  {color: theme.colors.textSecondary},
+                ]}>
+                Page {currentPage} · Juz {getJuzForPage(currentPage)}
+              </Text>
+            </View>
           </Pressable>
+
+          {/* Right: settings */}
+          <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
+            <Pressable
+              style={styles.headerIcon}
+              onPress={() =>
+                SheetManager.show('mushaf-layout', {
+                  payload: {context: 'mushaf'},
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Mushaf settings">
+              <Ionicons
+                name="options-outline"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+          </View>
         </View>
       </Animated.View>
 
@@ -418,29 +445,6 @@ export default function MushafViewer({
           },
         ]}
         pointerEvents={isImmersive ? 'none' : 'auto'}>
-        <Pressable
-          style={[
-            styles.circleButton,
-            {
-              backgroundColor: Color(theme.colors.textSecondary)
-                .alpha(0.08)
-                .toString(),
-            },
-          ]}
-          onPress={() =>
-            SheetManager.show('mushaf-layout', {
-              payload: {context: 'mushaf'},
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Mushaf settings">
-          <Ionicons
-            name="options-outline"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-
         <Pressable
           style={[styles.circleButton, {backgroundColor: theme.colors.text}]}
           accessibilityRole="button"
@@ -480,24 +484,37 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingHorizontal: moderateScale(12),
+    paddingBottom: moderateScale(8),
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  headerSide: {
+    width: moderateScale(44),
   },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerBox: {
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(10),
+  },
   headerSurahName: {
-    fontSize: 17,
-    fontFamily: 'Traditional-Arabic',
+    fontSize: moderateScale(16),
+    fontFamily: 'Manrope-SemiBold',
+  },
+  headerMeta: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-Regular',
   },
   headerIcon: {
-    padding: 6,
+    padding: moderateScale(6),
   },
 
   // Normal mode bottom bar
@@ -509,7 +526,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     paddingHorizontal: 16,
     paddingTop: 8,
   },
