@@ -36,7 +36,6 @@ export default function TabsLayout() {
           name="(c.collection)"
           options={{title: 'Your Collection'}}
         />
-        <Tabs.Screen name="(d.mushaf)" options={{title: 'Mushaf'}} />
       </Tabs>
       {/* <FloatingPlayer /> */}
     </>

@@ -25,6 +25,7 @@ import {GradientText} from '@/components/GradientText';
 interface SurahItemProps {
   item: Surah;
   onPress: (item: Surah) => void;
+  onLongPress?: (item: Surah) => void;
   reciterId?: string;
   isLoved?: boolean;
   isDownloaded?: boolean;
@@ -38,6 +39,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   ({
     item,
     onPress,
+    onLongPress,
     reciterId,
     isLoved = false,
     onOptionsPress,
@@ -132,6 +134,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       onPress(item);
     }, [item, onPress, enableHaptics]);
 
+    const handleLongPress = React.useCallback(() => {
+      if (enableHaptics) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      onLongPress?.(item);
+    }, [item, onLongPress, enableHaptics]);
+
     const handleOptionsPress = React.useCallback(
       (e?: GestureResponderEvent) => {
         e?.stopPropagation();
@@ -157,7 +166,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
         <Pressable
           style={styles.playZone}
           onPress={handlePress}
-          onLongPress={handlePress}
+          onLongPress={onLongPress ? handleLongPress : undefined}
           accessibilityRole="button"
           accessibilityLabel={`Surah ${item.name}, ${
             item.translated_name_english

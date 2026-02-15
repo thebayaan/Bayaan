@@ -22,6 +22,7 @@ import {getJuzForSurah, getJuzName} from '@/data/juzData';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
+  onSurahLongPress?: (surah: Surah) => void;
 }
 
 type ViewMode = 'card' | 'list';
@@ -61,7 +62,10 @@ const ItemSeparator = React.memo(() => {
 });
 ItemSeparator.displayName = 'ItemSeparator';
 
-export default function SurahsView({onSurahPress}: SurahsViewProps) {
+export default function SurahsView({
+  onSurahPress,
+  onSurahLongPress,
+}: SurahsViewProps) {
   const {theme} = useTheme();
 
   // Memoize the surah of the day to prevent recalculation
@@ -225,6 +229,9 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
                 revelationPlace={surah.revelation_place}
                 color={getColorForSurah(surah.id)}
                 onPress={() => onSurahPress(surah)}
+                onLongPress={
+                  onSurahLongPress ? () => onSurahLongPress(surah) : undefined
+                }
                 style={styles.surahCard}
               />
             ))}
@@ -232,12 +239,19 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
           </View>
         );
       } else {
-        return <SurahItem item={surahs[0]} onPress={onSurahPress} />;
+        return (
+          <SurahItem
+            item={surahs[0]}
+            onPress={onSurahPress}
+            onLongPress={onSurahLongPress}
+          />
+        );
       }
     },
     [
       getColorForSurah,
       onSurahPress,
+      onSurahLongPress,
       theme.colors.textSecondary,
       theme.colors.border,
       theme.colors.text,
@@ -379,10 +393,14 @@ export default function SurahsView({onSurahPress}: SurahsViewProps) {
   const ListHeader = useMemo(
     () => (
       <View style={styles.heroContainer}>
-        <SurahsHero surahOfTheDay={surahOfTheDay} onSurahPress={onSurahPress} />
+        <SurahsHero
+          surahOfTheDay={surahOfTheDay}
+          onSurahPress={onSurahPress}
+          onSurahLongPress={onSurahLongPress}
+        />
       </View>
     ),
-    [surahOfTheDay, onSurahPress],
+    [surahOfTheDay, onSurahPress, onSurahLongPress],
   );
 
   const keyExtractor = useCallback((item: ListItem, index: number) => {

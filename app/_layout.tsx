@@ -325,6 +325,13 @@ export default function RootLayout() {
                     animation: 'fade',
                   }}>
                   <Stack.Screen name="(tabs)" options={{headerShown: false}} />
+                  <Stack.Screen
+                    name="mushaf"
+                    options={{
+                      headerShown: false,
+                      animation: 'slide_from_right',
+                    }}
+                  />
                 </Stack>
                 <FloatingPlayer />
                 <PlayerSheet />

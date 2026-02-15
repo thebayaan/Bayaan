@@ -251,6 +251,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     [recentSearches],
   );
 
+  // Tap on surah → open mushaf at that surah's page
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
       Keyboard.dismiss();
@@ -264,43 +265,58 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         });
       } else {
         const surah = result.item as Surah;
-        if (askEveryTime) {
-          SheetManager.show('select-reciter', {
-            payload: {surahId: surah.id.toString(), source: 'search'},
-          });
-          return;
-        }
+        router.push({
+          pathname: '/mushaf',
+          params: {surah: surah.id.toString()},
+        });
+      }
+    },
+    [router, addToRecentSearches],
+  );
 
-        switch (defaultReciterSelection) {
-          case 'browseAll':
+  // Long-press on surah → audio playback flow
+  const handleSurahLongPress = useCallback(
+    async (result: SearchResult) => {
+      Keyboard.dismiss();
+      await addToRecentSearches(result);
+
+      const surah = result.item as Surah;
+      if (askEveryTime) {
+        SheetManager.show('select-reciter', {
+          payload: {surahId: surah.id.toString(), source: 'search'},
+        });
+        return;
+      }
+
+      switch (defaultReciterSelection) {
+        case 'browseAll':
+          router.push({
+            pathname: '/(tabs)/(b.search)/reciter/browse',
+            params: {view: 'all', surahId: surah.id},
+          });
+          break;
+        case 'searchFavorites':
+          router.push({
+            pathname: '/(tabs)/(b.search)/reciter/browse',
+            params: {view: 'favorites', surahId: surah.id},
+          });
+          break;
+        case 'useDefault':
+          if (defaultReciter) {
             router.push({
-              pathname: '/(tabs)/(b.search)/reciter/browse',
-              params: {view: 'all', surahId: surah.id},
+              pathname: '/player',
+              params: {reciterImageUrl: defaultReciter.image_url},
             });
-            break;
-          case 'searchFavorites':
-            router.push({
-              pathname: '/(tabs)/(b.search)/reciter/browse',
-              params: {view: 'favorites', surahId: surah.id},
-            });
-            break;
-          case 'useDefault':
-            if (defaultReciter) {
-              router.push({
-                pathname: '/player',
-                params: {reciterImageUrl: defaultReciter.image_url},
-              });
-            } else {
-              SheetManager.show('select-reciter', {
-                payload: {surahId: surah.id.toString(), source: 'search'},
-              });
-            }
-            break;
-          default:
+          } else {
             SheetManager.show('select-reciter', {
               payload: {surahId: surah.id.toString(), source: 'search'},
             });
-        }
+          }
+          break;
+        default:
+          SheetManager.show('select-reciter', {
+            payload: {surahId: surah.id.toString(), source: 'search'},
+          });
       }
     },
     [
@@ -319,6 +335,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           <SurahItem
             item={item.item as Surah}
             onPress={() => handleResultPress(item)}
+            onLongPress={() => handleSurahLongPress(item)}
           />
         );
       } else {
@@ -330,7 +347,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         );
       }
     },
-    [handleResultPress],
+    [handleResultPress, handleSurahLongPress],
   );
 
   const renderRecentSearch = useCallback(
