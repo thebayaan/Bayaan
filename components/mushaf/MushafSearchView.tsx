@@ -5,6 +5,7 @@ import {
   TextInput,
   ScrollView,
   FlatList,
+  SectionList,
   Keyboard,
   StyleSheet,
   Pressable,
@@ -41,10 +42,13 @@ interface MushafSearchViewProps {
 
 type SortOption = 'asc' | 'desc' | 'revelation';
 
-type BrowseListItem =
-  | {type: 'sort-bar'}
-  | {type: 'juz-header'; juzNumber: number; juzName: string}
-  | {type: 'surah-row'; surah: Surah};
+type BrowseListItem = {type: 'surah-row'; surah: Surah};
+
+type BrowseSection = {
+  juzNumber: number | null;
+  juzName: string | null;
+  data: BrowseListItem[];
+};
 
 type SearchResultItem =
   | {type: 'surah'; surah: Surah; primary: string; secondary: string}
@@ -514,7 +518,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   // Browse mode data
   // ──────────────────────────────────────────────────────────
-  const browseData = useMemo(() => {
+  const browseSections = useMemo((): BrowseSection[] => {
     const sorted = [...SURAHS];
     switch (sortOption) {
       case 'asc':
@@ -528,35 +532,33 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         break;
     }
 
-    const items: BrowseListItem[] = [{type: 'sort-bar'}];
     const showJuzHeaders = sortOption === 'asc' || sortOption === 'desc';
     if (!showJuzHeaders) {
-      for (const s of sorted) items.push({type: 'surah-row', surah: s});
-      return items;
+      return [
+        {
+          juzNumber: null,
+          juzName: null,
+          data: sorted.map(s => ({type: 'surah-row', surah: s})),
+        },
+      ];
     }
 
+    const sections: BrowseSection[] = [];
     let currentJuz: number | null = null;
     for (const surah of sorted) {
       const juz = getJuzForSurah(surah.id);
       if (juz !== currentJuz) {
         currentJuz = juz;
-        items.push({type: 'juz-header', juzNumber: juz, juzName: getJuzName(juz)});
+        sections.push({
+          juzNumber: juz,
+          juzName: getJuzName(juz),
+          data: [],
+        });
       }
-      items.push({type: 'surah-row', surah});
+      sections[sections.length - 1].data.push({type: 'surah-row', surah});
     }
-    return items;
+    return sections;
   }, [sortOption]);
-
-  // Sort bar (index 0) + all juz headers are sticky; +1 offset for ListHeaderComponent
-  const stickyIndices = useMemo(() => {
-    const indices: number[] = [];
-    browseData.forEach((item, i) => {
-      if (item.type === 'sort-bar' || item.type === 'juz-header') {
-        indices.push(i + 1); // +1 for ListHeaderComponent at child 0
-      }
-    });
-    return indices;
-  }, [browseData]);
 
   const handleSurahPress = useCallback(
     (surah: Surah) => {
@@ -586,92 +588,34 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   const renderBrowseItem = useCallback(
     ({item}: {item: BrowseListItem}) => {
-      if (item.type === 'sort-bar') {
-        return (
-          <View
-            style={[
-              styles.sortBar,
-              {backgroundColor: theme.colors.background},
-            ]}>
-            <View style={styles.sortOptions}>
-              {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
-                const isActive = sortOption === option;
-                const iconName =
-                  option === 'asc'
-                    ? 'arrow-up'
-                    : option === 'desc'
-                    ? 'arrow-down'
-                    : 'calendar';
-                const label =
-                  option === 'asc'
-                    ? 'Asc'
-                    : option === 'desc'
-                    ? 'Desc'
-                    : 'Rev';
-                return (
-                  <Pressable
-                    key={option}
-                    style={[
-                      styles.sortButton,
-                      isActive && {
-                        backgroundColor: Color(theme.colors.text)
-                          .alpha(0.1)
-                          .toString(),
-                      },
-                    ]}
-                    onPress={() => changeSortOption(option)}>
-                    <Feather
-                      name={iconName}
-                      size={ms(14)}
-                      color={
-                        isActive
-                          ? theme.colors.text
-                          : theme.colors.textSecondary
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.sortButtonText,
-                        {
-                          color: isActive
-                            ? theme.colors.text
-                            : theme.colors.textSecondary,
-                        },
-                      ]}>
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        );
-      }
-      if (item.type === 'juz-header') {
-        return (
-          <View
-            style={[
-              styles.juzHeader,
-              {backgroundColor: theme.colors.background},
-            ]}>
-            <Text
-              style={[
-                styles.juzHeaderText,
-                {color: theme.colors.textSecondary},
-              ]}>
-              {item.juzName}
-            </Text>
-          </View>
-        );
-      }
       return <SurahItem item={item.surah} onPress={handleSurahPress} />;
     },
-    [handleSurahPress, sortOption, theme.colors, changeSortOption],
+    [handleSurahPress],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({section}: {section: BrowseSection}) => {
+      if (!section.juzName) return null;
+      return (
+        <View
+          style={[
+            styles.juzHeader,
+            {backgroundColor: theme.colors.background},
+          ]}>
+          <Text
+            style={[
+              styles.juzHeaderText,
+              {color: theme.colors.textSecondary},
+            ]}>
+            {section.juzName}
+          </Text>
+        </View>
+      );
+    },
+    [theme.colors],
   );
 
   const keyExtractor = useCallback((item: BrowseListItem, index: number) => {
-    if (item.type === 'sort-bar') return 'sort-bar';
-    if (item.type === 'juz-header') return `juz-${item.juzNumber}`;
     return `surah-${item.surah.id}-${index}`;
   }, []);
 
@@ -774,13 +718,73 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           </Pressable>
         </View>
 
-        {/* Surah list with sticky sort bar + juz headers */}
-        <FlatList
-          data={browseData}
+        {/* Fixed sort bar */}
+        <View
+          style={[
+            styles.sortBar,
+            {backgroundColor: theme.colors.background},
+          ]}>
+          <View style={styles.sortOptions}>
+            {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
+              const isActive = sortOption === option;
+              const iconName =
+                option === 'asc'
+                  ? 'arrow-up'
+                  : option === 'desc'
+                  ? 'arrow-down'
+                  : 'calendar';
+              const label =
+                option === 'asc'
+                  ? 'Asc'
+                  : option === 'desc'
+                  ? 'Desc'
+                  : 'Rev';
+              return (
+                <Pressable
+                  key={option}
+                  style={[
+                    styles.sortButton,
+                    isActive && {
+                      backgroundColor: Color(theme.colors.text)
+                        .alpha(0.1)
+                        .toString(),
+                    },
+                  ]}
+                  onPress={() => changeSortOption(option)}>
+                  <Feather
+                    name={iconName}
+                    size={ms(14)}
+                    color={
+                      isActive
+                        ? theme.colors.text
+                        : theme.colors.textSecondary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.sortButtonText,
+                      {
+                        color: isActive
+                          ? theme.colors.text
+                          : theme.colors.textSecondary,
+                      },
+                    ]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Surah list with sticky juz headers */}
+        <SectionList
+          sections={browseSections}
           renderItem={renderBrowseItem}
+          renderSectionHeader={renderSectionHeader}
           ListHeaderComponent={BrowseListHeader}
           keyExtractor={keyExtractor}
-          stickyHeaderIndices={stickyIndices}
+          stickySectionHeadersEnabled={true}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
