@@ -1,5 +1,5 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, Platform} from 'react-native';
 import {
   Canvas,
   Skia,
@@ -327,9 +327,10 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [hitTestVerse, selectVerse, pageNumber],
   );
 
-  // Drag update: extend selection range
+  // Drag update: extend selection range (disabled on Android to avoid gesture conflicts)
   const handleDragUpdate = useCallback(
     (eventX: number, eventY: number) => {
+      if (Platform.OS === 'android') return;
       const startKey = dragStartVerseKeyRef.current;
       if (!startKey) return;
 
@@ -398,21 +399,35 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   const longPressDragGesture = useMemo(
     () =>
-      Gesture.Pan()
-        .activateAfterLongPress(400)
-        .minDistance(0)
-        .onStart(event => {
-          'worklet';
-          runOnJS(handleDragStart)(event.x, event.y);
-        })
-        .onUpdate(event => {
-          'worklet';
-          runOnJS(handleDragUpdate)(event.x, event.y);
-        })
-        .onEnd(() => {
-          'worklet';
-          runOnJS(handleDragEnd)();
-        }),
+      Platform.OS === 'android'
+        ? // Android: use a true LongPress gesture (requires finger to stay still)
+          Gesture.LongPress()
+            .minDuration(400)
+            .maxDistance(20)
+            .onStart(event => {
+              'worklet';
+              runOnJS(handleDragStart)(event.x, event.y);
+            })
+            .onEnd(() => {
+              'worklet';
+              runOnJS(handleDragEnd)();
+            })
+        : // iOS: Pan with long press delay allows drag-to-select range
+          Gesture.Pan()
+            .activateAfterLongPress(400)
+            .minDistance(0)
+            .onStart(event => {
+              'worklet';
+              runOnJS(handleDragStart)(event.x, event.y);
+            })
+            .onUpdate(event => {
+              'worklet';
+              runOnJS(handleDragUpdate)(event.x, event.y);
+            })
+            .onEnd(() => {
+              'worklet';
+              runOnJS(handleDragEnd)();
+            }),
     [handleDragStart, handleDragUpdate, handleDragEnd],
   );
 
