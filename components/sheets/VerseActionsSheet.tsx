@@ -197,7 +197,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, [verseKey, surahNumber, ayahNumber, verseKeys, arabicText]);
 
   // QUL data: theme label and per-feature availability
-  const [themeLabel, setThemeLabel] = useState<string | null>(null);
   const [hasSimilarVerses, setHasSimilarVerses] = useState(false);
   const [hasSharedPhrases, setHasSharedPhrases] = useState(false);
 
@@ -207,18 +206,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const vk = `${surahNumber}:${ayahNumber}`;
 
     (async () => {
-      const [themes, similar, phrases] = await Promise.all([
-        qulDataService.getThemesForVerse(surahNumber, ayahNumber),
+      const [similar, phrases] = await Promise.all([
         qulDataService.hasSimilarVerses(vk),
         qulDataService.hasSharedPhrases(vk),
       ]);
       if (cancelled) return;
-      if (themes.length > 0) {
-        const best = themes.reduce((a, b) =>
-          a.totalAyahs <= b.totalAyahs ? a : b,
-        );
-        setThemeLabel(best.theme);
-      }
       setHasSimilarVerses(similar);
       setHasSharedPhrases(phrases);
     })();
@@ -258,9 +250,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         <View style={styles.header}>
           <Text style={styles.surahName}>{surahName}</Text>
           <Text style={styles.verseRef}>{verseRefText}</Text>
-          {themeLabel ? (
-            <Text style={styles.themeLabel}>{themeLabel}</Text>
-          ) : null}
         </View>
 
         <View style={styles.optionsGrid}>
@@ -446,14 +435,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
       textAlign: 'center',
-    },
-    themeLabel: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-      fontStyle: 'italic',
-      textAlign: 'center',
-      marginTop: moderateScale(2),
     },
     optionsGrid: {
       gap: moderateScale(8),
