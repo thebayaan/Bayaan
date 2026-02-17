@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useCallback} from 'react';
+import React, {useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -70,21 +70,11 @@ export default function SurahsView({
   // Memoize the surah of the day to prevent recalculation
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
 
-  // Retrieve persisted settings
-  const browseViewModeSetting = useSettings(state => state.browseViewMode);
-  const setBrowseViewModeSetting = useSettings(
-    state => state.setBrowseViewMode,
-  );
-  const browseSortOptionSetting = useSettings(state => state.browseSortOption);
-  const setBrowseSortOptionSetting = useSettings(
-    state => state.setBrowseSortOption,
-  );
-
-  // Initialize local state from persisted settings
-  const [viewMode, setViewMode] = useState<ViewMode>(browseViewModeSetting);
-  const [sortOption, setSortOption] = useState<SortOption>(
-    browseSortOptionSetting,
-  );
+  // Persisted settings (read/write directly from store)
+  const viewMode = useSettings(state => state.browseViewMode);
+  const setBrowseViewMode = useSettings(state => state.setBrowseViewMode);
+  const sortOption = useSettings(state => state.browseSortOption);
+  const setBrowseSortOption = useSettings(state => state.setBrowseSortOption);
 
   // Sort surahs based on selected option
   const displaySurahs = useMemo(() => {
@@ -158,17 +148,14 @@ export default function SurahsView({
   }, []);
 
   const toggleViewMode = useCallback(() => {
-    const newMode = viewMode === 'card' ? 'list' : 'card';
-    setViewMode(newMode);
-    setBrowseViewModeSetting(newMode);
-  }, [viewMode, setBrowseViewModeSetting]);
+    setBrowseViewMode(viewMode === 'card' ? 'list' : 'card');
+  }, [viewMode, setBrowseViewMode]);
 
   const changeSortOption = useCallback(
     (option: SortOption) => {
-      setSortOption(option);
-      setBrowseSortOptionSetting(option);
+      setBrowseSortOption(option);
     },
-    [setBrowseSortOptionSetting],
+    [setBrowseSortOption],
   );
 
   // Render item for SectionList
