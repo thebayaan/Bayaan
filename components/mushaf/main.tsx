@@ -2,13 +2,13 @@ import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
 import {
   View,
   StyleSheet,
-  FlatList,
   Text,
   Pressable,
   ViewToken,
   StatusBar,
   BackHandler,
 } from 'react-native';
+import {FlatList} from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,

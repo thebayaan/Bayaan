@@ -562,6 +562,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               fontFamily={fontFamily}
               onParagraphReady={handleParagraphReady}
               highlights={lineHighlightsMap.get(lineIndex)}
+              lineHeight={
+                lineIndex < lineYPositions.length - 1
+                  ? lineYPositions[lineIndex + 1] - lineYPositions[lineIndex]
+                  : CONTENT_HEIGHT - lineYPositions[lineIndex]
+              }
             />
           );
         })}

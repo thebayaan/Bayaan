@@ -47,7 +47,10 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
   xOffset = 0,
 }) => {
   const divColor = useMemo(() => Skia.Color(dividerColor), [dividerColor]);
-  const shiftDown = lineHeight * 0.25;
+
+  // Mid-page headers: shift content down slightly to avoid tashkeel overlap from line above
+  const topInset = yPos < 1 ? 0 : lineHeight * 0.08;
+  const contentHeight = lineHeight - topInset;
 
   // Measure and position divider frame (centered within lineHeight)
   const dividerLayout = useMemo(() => {
@@ -57,10 +60,25 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     const metrics = dividerFont.getMetrics();
     const x = xOffset + (pageWidth - glyphWidth) / 2;
     const glyphHeight = Math.abs(metrics.ascent) + metrics.descent;
-    const verticalOffset = Math.max(0, (lineHeight - glyphHeight) / 2);
-    const baselineY = yPos + verticalOffset + Math.abs(metrics.ascent) + shiftDown;
-    return {x, baselineY};
-  }, [dividerFont, yPos, pageWidth, lineHeight, xOffset, shiftDown]);
+    const verticalOffset =
+      topInset + Math.max(0, (contentHeight - glyphHeight) / 2);
+    const baselineY = yPos + verticalOffset + Math.abs(metrics.ascent);
+
+    // Squish the ornament vertically so it doesn't overflow into adjacent lines
+    const scaleY = 0.85;
+    const originX = xOffset + pageWidth / 2;
+    const originY = yPos + topInset + contentHeight / 2;
+
+    return {x, baselineY, scaleY, originX, originY};
+  }, [
+    dividerFont,
+    yPos,
+    pageWidth,
+    lineHeight,
+    xOffset,
+    topInset,
+    contentHeight,
+  ]);
 
   // ── withIcon: QCF font — single glyph includes name + icon ──
   const qcfNameStr = useMemo(
@@ -87,13 +105,20 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     if (!qcfParagraph) return null;
     const w = qcfParagraph.getLongestLine();
     const h = qcfParagraph.getHeight();
-    const nudgeUp = lineHeight * 0.03;
     return {
       x: xOffset + (pageWidth - w) / 2,
-      y: yPos + (lineHeight - h) / 2 - nudgeUp + shiftDown,
+      y: yPos + topInset + (contentHeight - h) / 2,
       w,
     };
-  }, [qcfParagraph, yPos, pageWidth, lineHeight, xOffset, shiftDown]);
+  }, [
+    qcfParagraph,
+    yPos,
+    pageWidth,
+    lineHeight,
+    xOffset,
+    topInset,
+    contentHeight,
+  ]);
 
   // QCF font has hardcoded black SVG fills — recolor with a SrcIn color filter
   const qcfColorPaint = useMemo(() => {
@@ -149,13 +174,12 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     const startX = xOffset + (pageWidth - totalW) / 2;
     const iconH = v4IconParagraph.getHeight();
     const nameH = v4NameParagraph.getHeight();
-    const nudgeUp = lineHeight * 0.03;
     return {
       nameX: startX,
-      nameY: yPos + (lineHeight - nameH) / 2 - nudgeUp + shiftDown,
+      nameY: yPos + topInset + (contentHeight - nameH) / 2,
       nameW,
       iconX: startX + nameW + gap,
-      iconY: yPos + (lineHeight - iconH) / 2 - nudgeUp + shiftDown,
+      iconY: yPos + topInset + (contentHeight - iconH) / 2,
       iconW,
     };
   }, [
@@ -166,18 +190,23 @@ const SkiaSurahHeader: React.FC<SkiaSurahHeaderProps> = ({
     lineHeight,
     nameFontSize,
     xOffset,
-    shiftDown,
+    topInset,
+    contentHeight,
   ]);
 
   return (
     <>
-      <SkiaText
-        text={SURAH_DIVIDER_CHAR}
-        font={dividerFont}
-        x={dividerLayout.x}
-        y={dividerLayout.baselineY}
-        color={divColor}
-      />
+      <Group
+        transform={[{scaleY: dividerLayout.scaleY}]}
+        origin={Skia.Point(dividerLayout.originX, dividerLayout.originY)}>
+        <SkiaText
+          text={SURAH_DIVIDER_CHAR}
+          font={dividerFont}
+          x={dividerLayout.x}
+          y={dividerLayout.baselineY}
+          color={divColor}
+        />
+      </Group>
 
       {/* withIcon: QCF single glyph (recolored via SrcIn filter) */}
       {qcfLayout && qcfParagraph && (
