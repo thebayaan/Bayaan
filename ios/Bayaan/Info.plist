@@ -51,7 +51,7 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>387</string>
+    <string>422</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -71,6 +71,10 @@
     <string>This app does not use the camera.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app uses the microphone to play audio.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to save photos</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your photos</string>
     <key>NSPrivacyPolicyURL</key>
     <string>https://osmansaeday.github.io/bayaan-privacy-policy</string>
     <key>NSUserActivityTypes</key>
