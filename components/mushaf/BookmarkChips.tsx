@@ -37,8 +37,12 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
 
     return (
       <View style={styles.container}>
-        <Text style={[styles.label, {color: theme.colors.textSecondary}]}>
-          Bookmarks
+        <Text
+          style={[
+            styles.label,
+            {color: Color(theme.colors.textSecondary).alpha(0.5).toString()},
+          ]}>
+          BOOKMARKS
         </Text>
         <ScrollView
           horizontal
@@ -58,7 +62,10 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
                   styles.chip,
                   {
                     backgroundColor: Color(theme.colors.text)
-                      .alpha(0.06)
+                      .alpha(0.05)
+                      .toString(),
+                    borderColor: Color(theme.colors.text)
+                      .alpha(0.08)
                       .toString(),
                   },
                 ]}
@@ -85,14 +92,13 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
 BookmarkChips.displayName = 'BookmarkChips';
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: moderateScale(12),
-  },
+  container: {},
   label: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(10.5),
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 1.0,
+    marginTop: moderateScale(12),
     marginBottom: moderateScale(8),
     paddingHorizontal: moderateScale(16),
   },
@@ -103,9 +109,10 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(8),
-    borderRadius: moderateScale(20),
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScale(10),
+    borderRadius: moderateScale(10),
+    borderWidth: 1,
     gap: moderateScale(6),
   },
   chipText: {

@@ -37,6 +37,8 @@ import {
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import SkiaPage from './skia/SkiaPage';
 import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
@@ -237,6 +239,7 @@ export default function MushafViewer({
   const {theme, isDarkMode} = useTheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const setLastReadPage = useMushafSettingsStore(s => s.setLastReadPage);
+  const addRecentRead = useMushafSettingsStore(s => s.addRecentRead);
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : theme.colors.card;
   const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
@@ -283,11 +286,14 @@ export default function MushafViewer({
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].item) {
-        setCurrentPage(viewableItems[0].item);
-        setLastReadPage(viewableItems[0].item);
+        const page = viewableItems[0].item as number;
+        setCurrentPage(page);
+        setLastReadPage(page);
+        const surahId = pageToSurah[page];
+        if (surahId) addRecentRead(surahId, page);
       }
     },
-    [setLastReadPage],
+    [setLastReadPage, addRecentRead, pageToSurah],
   );
 
   const viewabilityConfig = useMemo(
@@ -312,6 +318,30 @@ export default function MushafViewer({
     },
     [surahStartPages, navigateToPage],
   );
+
+  // Subscribe to external navigation requests (e.g. from SimilarVersesSheet)
+  const navRequestId = useMushafNavigationStore(s => s.requestId);
+  useEffect(() => {
+    if (navRequestId === 0) return;
+    const {targetPage, targetVerseKey, clear} =
+      useMushafNavigationStore.getState();
+    if (targetPage) {
+      navigateToPage(targetPage);
+      if (targetVerseKey) {
+        useMushafVerseSelectionStore
+          .getState()
+          .selectVerse(targetVerseKey, targetPage);
+      }
+      clear();
+    }
+
+    // Auto-clear the temporary highlight after 2 seconds
+    const timer = setTimeout(() => {
+      useMushafVerseSelectionStore.getState().clearSelection();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [navRequestId, navigateToPage]);
 
   const openSearchMode = useCallback(() => setIsSearchMode(true), []);
 

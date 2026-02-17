@@ -1,25 +1,36 @@
-import React, {useState, useMemo, useCallback} from 'react';
+import React, {useState, useMemo, useCallback, useEffect, useRef} from 'react';
 import {
   View,
   Text,
+  TextInput,
   SectionList,
+  ScrollView,
+  FlatList,
   Keyboard,
   StyleSheet,
   Pressable,
+  Animated as RNAnimated,
+  BackHandler,
 } from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale as ms} from 'react-native-size-matters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {LinearGradient} from 'expo-linear-gradient';
 import {SearchInput} from '@/components/SearchInput';
 import {SurahItem} from '@/components/SurahItem';
 import {SURAHS, Surah} from '@/data/surahData';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
 import {useSettings} from '@/hooks/useSettings';
-import {ContinueReadingCard} from './ContinueReadingCard';
 import {BookmarkChips} from './BookmarkChips';
+import {JUZ_START_PAGES} from './constants';
+import {useMushafSettingsStore, RecentRead} from '@/store/mushafSettingsStore';
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface MushafSearchViewProps {
   onNavigateToPage: (page: number) => void;
@@ -31,9 +42,290 @@ interface MushafSearchViewProps {
 
 type SortOption = 'asc' | 'desc' | 'revelation';
 
-type ListItem =
+type BrowseListItem =
   | {type: 'juz-header'; juzNumber: number; juzName: string}
   | {type: 'surah-row'; surah: Surah};
+
+type SearchResultItem =
+  | {type: 'surah'; surah: Surah; primary: string; secondary: string}
+  | {
+      type: 'verse';
+      surahId: number;
+      verse: number;
+      primary: string;
+      secondary: string;
+    }
+  | {type: 'page'; page: number; primary: string; secondary: string}
+  | {
+      type: 'juz';
+      juz: number;
+      page: number;
+      primary: string;
+      secondary: string;
+    };
+
+interface SearchHistoryItem {
+  type: string;
+  label: string;
+  surahId?: number;
+  page?: number;
+  verse?: number;
+  juz?: number;
+  timestamp: number;
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const SEARCH_HISTORY_KEY = 'mushaf-search-history';
+const MAX_HISTORY = 10;
+
+// ============================================================================
+// Smart Search Parser
+// ============================================================================
+
+function parseSearchQuery(
+  query: string,
+  surahStartPages: Record<number, number>,
+  pageToSurah: Record<number, number>,
+): SearchResultItem[] {
+  const q = query.trim();
+  if (!q) return [];
+
+  const results: SearchResultItem[] = [];
+
+  // 1. "page N" or "pg N"
+  const pageMatch = q.match(/^(?:page|pg)\s+(\d+)$/i);
+  if (pageMatch) {
+    const page = parseInt(pageMatch[1], 10);
+    if (page >= 1 && page <= 604) {
+      const surahId = pageToSurah[page];
+      const surahName =
+        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+      results.push({
+        type: 'page',
+        page,
+        primary: `Page ${page}`,
+        secondary: surahName,
+      });
+    }
+    return results;
+  }
+
+  // 2. "juz N"
+  const juzMatch = q.match(/^juz\s+(\d+)$/i);
+  if (juzMatch) {
+    const juz = parseInt(juzMatch[1], 10);
+    if (juz >= 1 && juz <= 30) {
+      const page = JUZ_START_PAGES[juz - 1];
+      const surahId = pageToSurah[page];
+      const surahName =
+        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+      results.push({
+        type: 'juz',
+        juz,
+        page,
+        primary: `Juz ${juz}`,
+        secondary: `Page ${page} \u00B7 ${surahName}`,
+      });
+    }
+    return results;
+  }
+
+  // 3. "N:M" (surah:verse)
+  const verseMatch = q.match(/^(\d+):(\d+)$/);
+  if (verseMatch) {
+    const surahId = parseInt(verseMatch[1], 10);
+    const verse = parseInt(verseMatch[2], 10);
+    if (surahId >= 1 && surahId <= 114) {
+      const surah = SURAHS[surahId - 1];
+      if (verse >= 1 && verse <= surah.verses_count) {
+        results.push({
+          type: 'verse',
+          surahId,
+          verse,
+          primary: `${surah.name} ${surahId}:${verse}`,
+          secondary: `Verse ${verse}`,
+        });
+      }
+    }
+    return results;
+  }
+
+  // 4. Plain number → show both matching surah and page
+  const plainNum = /^\d+$/.test(q) ? parseInt(q, 10) : null;
+  if (plainNum !== null) {
+    if (plainNum >= 1 && plainNum <= 114) {
+      const surah = SURAHS[plainNum - 1];
+      results.push({
+        type: 'surah',
+        surah,
+        primary: surah.name,
+        secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
+      });
+    }
+    if (plainNum >= 1 && plainNum <= 604) {
+      const surahId = pageToSurah[plainNum];
+      const surahName =
+        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+      results.push({
+        type: 'page',
+        page: plainNum,
+        primary: `Page ${plainNum}`,
+        secondary: surahName,
+      });
+    }
+    return results;
+  }
+
+  // 5. Fuzzy match on surah names
+  const lower = q.toLowerCase();
+  for (const surah of SURAHS) {
+    if (
+      surah.name.toLowerCase().includes(lower) ||
+      surah.translated_name_english.toLowerCase().includes(lower) ||
+      surah.name_arabic.includes(q)
+    ) {
+      results.push({
+        type: 'surah',
+        surah,
+        primary: surah.name,
+        secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
+      });
+    }
+  }
+
+  return results;
+}
+
+// ============================================================================
+// Sub-components
+// ============================================================================
+
+const SearchResultRow: React.FC<{
+  item: SearchResultItem;
+  textColor: string;
+  secondaryColor: string;
+  onPress: () => void;
+}> = React.memo(({item, textColor, secondaryColor, onPress}) => (
+  <Pressable
+    style={({pressed}) => [styles.resultRow, {opacity: pressed ? 0.5 : 1}]}
+    onPress={onPress}>
+    <Feather
+      name="search"
+      size={ms(16)}
+      color={Color(secondaryColor).alpha(0.3).toString()}
+    />
+    <View style={styles.resultTextContainer}>
+      <Text
+        style={[styles.resultPrimary, {color: textColor}]}
+        numberOfLines={1}>
+        {item.primary}
+      </Text>
+      <Text
+        style={[
+          styles.resultSecondary,
+          {color: Color(secondaryColor).alpha(0.45).toString()},
+        ]}
+        numberOfLines={1}>
+        {item.secondary}
+      </Text>
+    </View>
+  </Pressable>
+));
+
+SearchResultRow.displayName = 'SearchResultRow';
+
+const HistoryRow: React.FC<{
+  item: SearchHistoryItem;
+  textColor: string;
+  secondaryColor: string;
+  onPress: () => void;
+}> = React.memo(({item, textColor, secondaryColor, onPress}) => (
+  <Pressable
+    style={({pressed}) => [styles.historyRow, {opacity: pressed ? 0.5 : 1}]}
+    onPress={onPress}>
+    <Feather
+      name="clock"
+      size={ms(16)}
+      color={Color(secondaryColor).alpha(0.35).toString()}
+    />
+    <Text
+      style={[
+        styles.historyText,
+        {color: Color(textColor).alpha(0.85).toString()},
+      ]}
+      numberOfLines={1}>
+      {item.label}
+    </Text>
+  </Pressable>
+));
+
+HistoryRow.displayName = 'HistoryRow';
+
+const RecentReadChips: React.FC<{
+  recentPages: RecentRead[];
+  textColor: string;
+  secondaryColor: string;
+  onPress: (page: number) => void;
+}> = React.memo(({recentPages, textColor, secondaryColor, onPress}) => {
+  if (recentPages.length === 0) return null;
+
+  return (
+    <View>
+      <Text
+        style={[
+          styles.sectionLabel,
+          {color: Color(secondaryColor).alpha(0.5).toString()},
+        ]}>
+        RECENTLY READ
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsScroll}>
+        {recentPages.map(item => {
+          const surah =
+            item.surahId >= 1 && item.surahId <= 114
+              ? SURAHS[item.surahId - 1]
+              : null;
+          if (!surah) return null;
+
+          return (
+            <Pressable
+              key={item.surahId}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: Color(textColor).alpha(0.05).toString(),
+                  borderColor: Color(textColor).alpha(0.08).toString(),
+                },
+              ]}
+              onPress={() => onPress(item.page)}>
+              <Text style={[styles.chipName, {color: textColor}]}>
+                {surah.name}
+              </Text>
+              <Text
+                style={[
+                  styles.chipPage,
+                  {color: Color(secondaryColor).alpha(0.5).toString()},
+                ]}>
+                Page {item.page}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+});
+
+RecentReadChips.displayName = 'RecentReadChips';
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   onNavigateToPage,
@@ -44,13 +336,47 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 }) => {
   const {theme, isDarkMode} = useTheme();
   const insets = useSafeAreaInsets();
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
 
   const browseSortOption = useSettings(s => s.browseSortOption);
   const setBrowseSortOption = useSettings(s => s.setBrowseSortOption);
   const [sortOption, setSortOption] = useState<SortOption>(browseSortOption);
 
-  const isSearching = searchQuery.trim().length > 0;
+  const recentPages = useMushafSettingsStore(s => s.recentPages);
+  const searchInputRef = useRef<TextInput>(null);
+
+  // Fade animation refs
+  const browseOpacity = useRef(new RNAnimated.Value(1)).current;
+  const searchOpacity = useRef(new RNAnimated.Value(0)).current;
+
+  // Load search history when entering search mode
+  useEffect(() => {
+    if (!isSearchMode) return;
+    AsyncStorage.getItem(SEARCH_HISTORY_KEY).then(raw => {
+      if (raw) {
+        try {
+          setSearchHistory(JSON.parse(raw));
+        } catch {
+          setSearchHistory([]);
+        }
+      }
+    });
+  }, [isSearchMode]);
+
+  // Android back handler — exit search mode instead of closing overlay
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isSearchMode) {
+        exitSearchMode();
+        return true;
+      }
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isSearchMode, onClose]);
 
   const changeSortOption = useCallback(
     (option: SortOption) => {
@@ -60,42 +386,156 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [setBrowseSortOption],
   );
 
-  const listData = useMemo(() => {
-    let filtered: Surah[];
-    if (isSearching) {
-      const q = searchQuery.trim().toLowerCase();
-      filtered = SURAHS.filter(
-        s =>
-          s.name.toLowerCase().includes(q) ||
-          s.translated_name_english.toLowerCase().includes(q) ||
-          s.id.toString() === q,
-      );
-    } else {
-      filtered = [...SURAHS];
-    }
+  // ──────────────────────────────────────────────────────────
+  // Mode transitions
+  // ──────────────────────────────────────────────────────────
+  const enterSearchMode = useCallback(() => {
+    setIsSearchMode(true);
+    setTimeout(() => searchInputRef.current?.focus(), 100);
+    RNAnimated.parallel([
+      RNAnimated.timing(browseOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(searchOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [browseOpacity, searchOpacity]);
 
+  const exitSearchMode = useCallback(() => {
+    Keyboard.dismiss();
+    setSearchQuery('');
+    setIsSearchMode(false);
+    RNAnimated.parallel([
+      RNAnimated.timing(searchOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(browseOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [browseOpacity, searchOpacity]);
+
+  // ──────────────────────────────────────────────────────────
+  // Search history management
+  // ──────────────────────────────────────────────────────────
+  const addToHistory = useCallback(
+    async (item: SearchHistoryItem) => {
+      const deduped = searchHistory.filter(
+        h =>
+          !(
+            h.type === item.type &&
+            h.surahId === item.surahId &&
+            h.page === item.page &&
+            h.juz === item.juz
+          ),
+      );
+      const updated = [item, ...deduped].slice(0, MAX_HISTORY);
+      setSearchHistory(updated);
+      await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+    },
+    [searchHistory],
+  );
+
+  const clearHistory = useCallback(async () => {
+    setSearchHistory([]);
+    await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify([]));
+  }, []);
+
+  // ──────────────────────────────────────────────────────────
+  // Search results
+  // ──────────────────────────────────────────────────────────
+  const searchResults = useMemo(
+    () => parseSearchQuery(searchQuery, surahStartPages, pageToSurah),
+    [searchQuery, surahStartPages, pageToSurah],
+  );
+
+  const handleResultPress = useCallback(
+    (item: SearchResultItem) => {
+      Keyboard.dismiss();
+      const historyItem: SearchHistoryItem = {
+        type: item.type,
+        label: item.primary,
+        timestamp: Date.now(),
+      };
+
+      switch (item.type) {
+        case 'surah':
+          historyItem.surahId = item.surah.id;
+          addToHistory(historyItem);
+          onNavigateToSurah(item.surah.id);
+          break;
+        case 'verse': {
+          historyItem.surahId = item.surahId;
+          historyItem.verse = item.verse;
+          addToHistory(historyItem);
+          // Navigate to surah start page (verse-level nav would require page lookup)
+          onNavigateToSurah(item.surahId);
+          break;
+        }
+        case 'page':
+          historyItem.page = item.page;
+          addToHistory(historyItem);
+          onNavigateToPage(item.page);
+          break;
+        case 'juz':
+          historyItem.juz = item.juz;
+          historyItem.page = item.page;
+          addToHistory(historyItem);
+          onNavigateToPage(item.page);
+          break;
+      }
+    },
+    [addToHistory, onNavigateToPage, onNavigateToSurah],
+  );
+
+  const handleHistoryPress = useCallback(
+    (item: SearchHistoryItem) => {
+      Keyboard.dismiss();
+      if (item.page) {
+        onNavigateToPage(item.page);
+      } else if (item.surahId) {
+        onNavigateToSurah(item.surahId);
+      }
+    },
+    [onNavigateToPage, onNavigateToSurah],
+  );
+
+  // ──────────────────────────────────────────────────────────
+  // Browse mode data
+  // ──────────────────────────────────────────────────────────
+  const browseData = useMemo(() => {
+    const sorted = [...SURAHS];
     switch (sortOption) {
       case 'asc':
-        filtered.sort((a, b) => a.id - b.id);
+        sorted.sort((a, b) => a.id - b.id);
         break;
       case 'desc':
-        filtered.sort((a, b) => b.id - a.id);
+        sorted.sort((a, b) => b.id - a.id);
         break;
       case 'revelation':
-        filtered.sort((a, b) => a.revelation_order - b.revelation_order);
+        sorted.sort((a, b) => a.revelation_order - b.revelation_order);
         break;
     }
 
-    const shouldShowJuzHeaders =
-      !isSearching && (sortOption === 'asc' || sortOption === 'desc');
-
-    if (!shouldShowJuzHeaders) {
-      return filtered.map(s => ({type: 'surah-row' as const, surah: s}));
+    const showJuzHeaders = sortOption === 'asc' || sortOption === 'desc';
+    if (!showJuzHeaders) {
+      return sorted.map(s => ({type: 'surah-row' as const, surah: s}));
     }
 
-    const items: ListItem[] = [];
+    const items: BrowseListItem[] = [];
     let currentJuz: number | null = null;
-    for (const surah of filtered) {
+    for (const surah of sorted) {
       const juz = getJuzForSurah(surah.id);
       if (juz !== currentJuz) {
         currentJuz = juz;
@@ -108,11 +548,11 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
       items.push({type: 'surah-row', surah});
     }
     return items;
-  }, [searchQuery, sortOption, isSearching]);
+  }, [sortOption]);
 
   const sections = useMemo(
-    () => [{title: 'surahs', data: listData}],
-    [listData],
+    () => [{title: 'surahs', data: browseData}],
+    [browseData],
   );
 
   const handleSurahPress = useCallback(
@@ -131,73 +571,55 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [onNavigateToSurah],
   );
 
-  const handleCancel = useCallback(() => {
-    Keyboard.dismiss();
-    onClose();
-  }, [onClose]);
+  const handleChipPress = useCallback(
+    (page: number) => {
+      onNavigateToPage(page);
+    },
+    [onNavigateToPage],
+  );
 
-  const renderItem = useCallback(
-    ({item}: {item: ListItem}) => {
+  // ──────────────────────────────────────────────────────────
+  // Browse mode renderers
+  // ──────────────────────────────────────────────────────────
+  const renderBrowseItem = useCallback(
+    ({item}: {item: BrowseListItem}) => {
       if (item.type === 'juz-header') {
         return (
           <View style={styles.juzHeader}>
-            <LinearGradient
-              colors={['transparent', theme.colors.border]}
-              locations={[0, 0.5]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
-            <View
+            <Text
               style={[
-                styles.juzHeaderPill,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.05)
-                    .toString(),
-                },
+                styles.juzHeaderText,
+                {color: theme.colors.textSecondary},
               ]}>
-              <Text
-                style={[
-                  styles.juzHeaderText,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                {item.juzName}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={[theme.colors.border, 'transparent']}
-              locations={[0.5, 1]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
+              {item.juzName}
+            </Text>
           </View>
         );
       }
-
       return <SurahItem item={item.surah} onPress={handleSurahPress} />;
     },
     [handleSurahPress, theme.colors],
   );
 
-  const keyExtractor = useCallback((item: ListItem, index: number) => {
+  const keyExtractor = useCallback((item: BrowseListItem, index: number) => {
     if (item.type === 'juz-header') return `juz-${item.juzNumber}`;
     return `surah-${item.surah.id}-${index}`;
   }, []);
 
-  const ListHeader = useMemo(() => {
-    if (isSearching) return null;
-    return (
+  const BrowseListHeader = useMemo(
+    () => (
       <View>
-        <ContinueReadingCard
-          onPress={onNavigateToPage}
-          pageToSurah={pageToSurah}
+        <RecentReadChips
+          recentPages={recentPages}
+          textColor={theme.colors.text}
+          secondaryColor={theme.colors.textSecondary}
+          onPress={handleChipPress}
         />
         <BookmarkChips onPress={handleBookmarkPress} />
       </View>
-    );
-  }, [isSearching, onNavigateToPage, pageToSurah, handleBookmarkPress]);
+    ),
+    [recentPages, theme.colors, handleBookmarkPress, handleChipPress],
+  );
 
   const renderSectionHeader = useCallback(
     () => (
@@ -228,7 +650,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                 onPress={() => changeSortOption(option)}>
                 <Feather
                   name={iconName}
-                  size={moderateScale(14)}
+                  size={ms(14)}
                   color={
                     isActive ? theme.colors.text : theme.colors.textSecondary
                   }
@@ -253,6 +675,38 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     [sortOption, theme.colors, changeSortOption],
   );
 
+  // ──────────────────────────────────────────────────────────
+  // Search mode renderers
+  // ──────────────────────────────────────────────────────────
+  const renderSearchResult = useCallback(
+    ({item}: {item: SearchResultItem}) => (
+      <SearchResultRow
+        item={item}
+        textColor={theme.colors.text}
+        secondaryColor={theme.colors.textSecondary}
+        onPress={() => handleResultPress(item)}
+      />
+    ),
+    [theme.colors, handleResultPress],
+  );
+
+  const renderHistoryItem = useCallback(
+    ({item}: {item: SearchHistoryItem}) => (
+      <HistoryRow
+        item={item}
+        textColor={theme.colors.text}
+        secondaryColor={theme.colors.textSecondary}
+        onPress={() => handleHistoryPress(item)}
+      />
+    ),
+    [theme.colors, handleHistoryPress],
+  );
+
+  const isQueryEmpty = searchQuery.trim().length === 0;
+
+  // ──────────────────────────────────────────────────────────
+  // Render
+  // ──────────────────────────────────────────────────────────
   return (
     <View
       style={[
@@ -262,52 +716,286 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           paddingTop: insets.top,
         },
       ]}>
-      {/* Header with search input */}
-      <SearchInput
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        onCancel={handleCancel}
-        placeholder="Search surahs..."
-        autoFocus
-        showCancelButton={true}
-        iconColor={theme.colors.textSecondary}
-        textColor={theme.colors.text}
-        backgroundColor={Color(theme.colors.text).alpha(0.06).toString()}
-        borderColor={Color(theme.colors.border).alpha(0.2).toString()}
-        keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-      />
+      {/* ============================================================ */}
+      {/* Browse Mode — always mounted, hidden via opacity              */}
+      {/* ============================================================ */}
+      <RNAnimated.View
+        style={[styles.modeContainer, {opacity: browseOpacity}]}
+        pointerEvents={isSearchMode ? 'none' : 'auto'}>
+        {/* Header: back button + inactive search bar */}
+        <View style={styles.browseHeader}>
+          <Pressable
+            style={({pressed}) => [
+              styles.backButton,
+              {opacity: pressed ? 0.3 : 0.6},
+            ]}
+            onPress={onClose}
+            hitSlop={8}>
+            <Feather
+              name="chevron-left"
+              size={ms(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <Pressable style={styles.searchBarTap} onPress={enterSearchMode}>
+            <SearchInput
+              value=""
+              onChangeText={() => {}}
+              placeholder="Search surahs, pages, or juz..."
+              showCancelButton={false}
+              editable={false}
+              pointerEvents="none"
+              iconColor={theme.colors.textSecondary}
+              iconOpacity={0.25}
+              placeholderTextColor={Color(theme.colors.text)
+                .alpha(0.35)
+                .toString()}
+              textColor={theme.colors.text}
+              backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+              borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+              containerStyle={styles.searchBarContainer}
+              style={styles.searchBarInput}
+            />
+          </Pressable>
+        </View>
 
-      {/* Surah list with sticky sort header */}
-      <SectionList
-        sections={sections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        ListHeaderComponent={ListHeader}
-        keyExtractor={keyExtractor}
-        stickySectionHeadersEnabled={true}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={styles.listContent}
-        initialNumToRender={20}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-      />
+        {/* Surah list with sticky sort header */}
+        <SectionList
+          sections={sections}
+          renderItem={renderBrowseItem}
+          renderSectionHeader={renderSectionHeader}
+          ListHeaderComponent={BrowseListHeader}
+          keyExtractor={keyExtractor}
+          stickySectionHeadersEnabled={true}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={styles.listContent}
+          initialNumToRender={20}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+        />
+      </RNAnimated.View>
+
+      {/* ============================================================ */}
+      {/* Search Mode — always mounted, hidden via opacity              */}
+      {/* ============================================================ */}
+      <RNAnimated.View
+        style={[
+          styles.modeContainer,
+          styles.modeOverlay,
+          {
+            opacity: searchOpacity,
+            backgroundColor: theme.colors.background,
+            paddingTop: insets.top,
+          },
+        ]}
+        pointerEvents={isSearchMode ? 'auto' : 'none'}>
+        {/* Active search input with cancel */}
+        <SearchInput
+          ref={searchInputRef}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onCancel={exitSearchMode}
+          placeholder="Search surahs, pages, or juz..."
+          showCancelButton={true}
+          iconColor={theme.colors.textSecondary}
+          textColor={theme.colors.text}
+          backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+          borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+          keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+        />
+
+        {isQueryEmpty ? (
+          // Empty query: show history or empty state
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.searchContent}>
+            {searchHistory.length > 0 ? (
+              <View>
+                <View style={styles.historyHeader}>
+                  <Text
+                    style={[styles.historyTitle, {color: theme.colors.text}]}>
+                    Recent searches
+                  </Text>
+                  <Pressable onPress={clearHistory}>
+                    <Text
+                      style={[
+                        styles.historyClear,
+                        {color: theme.colors.textSecondary},
+                      ]}>
+                      Clear
+                    </Text>
+                  </Pressable>
+                </View>
+                {searchHistory.map((item, index) => (
+                  <HistoryRow
+                    key={`${item.type}-${item.label}-${index}`}
+                    item={item}
+                    textColor={theme.colors.text}
+                    secondaryColor={theme.colors.textSecondary}
+                    onPress={() => handleHistoryPress(item)}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Feather
+                  name="search"
+                  size={ms(36)}
+                  color={Color(theme.colors.textSecondary)
+                    .alpha(0.12)
+                    .toString()}
+                />
+                <Text
+                  style={[
+                    styles.emptyTitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.35)
+                        .toString(),
+                    },
+                  ]}>
+                  Search the Mushaf
+                </Text>
+                <Text
+                  style={[
+                    styles.emptySubtitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.2)
+                        .toString(),
+                    },
+                  ]}>
+                  Find surahs, verses, pages, or juz
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        ) : (
+          // With query: show results
+          <FlatList
+            data={searchResults}
+            renderItem={renderSearchResult}
+            keyExtractor={(item, index) =>
+              `${item.type}-${item.primary}-${index}`
+            }
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={styles.searchContent}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <Feather
+                  name="search"
+                  size={ms(36)}
+                  color={Color(theme.colors.textSecondary)
+                    .alpha(0.12)
+                    .toString()}
+                />
+                <Text
+                  style={[
+                    styles.emptyTitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.35)
+                        .toString(),
+                    },
+                  ]}>
+                  No results found
+                </Text>
+              </View>
+            }
+          />
+        )}
+      </RNAnimated.View>
     </View>
   );
 };
 
 export default MushafSearchView;
 
+// ============================================================================
+// Styles
+// ============================================================================
+
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
   },
+  modeContainer: {
+    flex: 1,
+  },
+  modeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+
+  // Browse header
+  browseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: ms(10),
+    paddingBottom: ms(6),
+    paddingHorizontal: ms(12),
+    gap: ms(4),
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchBarTap: {
+    flex: 1,
+  },
+  searchBarContainer: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  searchBarInput: {
+    height: ms(42),
+  },
+
+  // Section labels (uppercase editorial)
+  sectionLabel: {
+    fontSize: ms(10.5),
+    fontFamily: 'Manrope-SemiBold',
+    letterSpacing: 1.0,
+    textTransform: 'uppercase',
+    marginBottom: ms(8),
+    marginTop: ms(12),
+    paddingHorizontal: ms(16),
+  },
+
+  // Recently Read chips
+  chipsScroll: {
+    paddingHorizontal: ms(16),
+    gap: ms(8),
+  },
+  chip: {
+    paddingVertical: ms(10),
+    paddingHorizontal: ms(14),
+    borderRadius: ms(10),
+    borderWidth: 1,
+  },
+  chipName: {
+    fontSize: ms(13),
+    fontFamily: 'Manrope-SemiBold',
+  },
+  chipPage: {
+    fontSize: ms(11),
+    fontFamily: 'Manrope-Medium',
+    marginTop: ms(2),
+  },
+
+  // Sort bar
   sortBar: {
-    paddingHorizontal: moderateScale(16),
-    paddingTop: moderateScale(8),
-    paddingBottom: moderateScale(8),
+    paddingHorizontal: ms(16),
+    paddingTop: ms(12),
+    paddingBottom: ms(4),
   },
   sortOptions: {
     flexDirection: 'row',
@@ -316,40 +1004,107 @@ const styles = StyleSheet.create({
   sortButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: moderateScale(8),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(16),
-    marginRight: moderateScale(8),
+    paddingHorizontal: ms(8),
+    paddingVertical: ms(6),
+    borderRadius: ms(16),
+    marginRight: ms(8),
   },
   sortButtonText: {
-    fontSize: moderateScale(12),
+    fontSize: ms(12),
     fontFamily: 'Manrope-SemiBold',
-    marginLeft: moderateScale(4),
+    marginLeft: ms(4),
   },
-  listContent: {
-    paddingBottom: moderateScale(40),
-  },
+
+  // Juz headers
   juzHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(16),
-    marginTop: moderateScale(8),
-    marginBottom: moderateScale(-4),
-  },
-  juzHeaderLine: {
-    flex: 1,
-    height: 1,
-  },
-  juzHeaderPill: {
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(5),
-    borderRadius: moderateScale(12),
-    marginHorizontal: moderateScale(8),
+    paddingHorizontal: ms(16),
+    paddingTop: ms(14),
+    paddingBottom: ms(6),
   },
   juzHeaderText: {
-    fontSize: moderateScale(10),
+    fontSize: ms(12),
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+
+  listContent: {
+    paddingBottom: ms(40),
+  },
+
+  // Search mode
+  searchContent: {
+    paddingTop: ms(8),
+    paddingBottom: ms(40),
+  },
+
+  // Search history
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: ms(16),
+    marginBottom: ms(12),
+  },
+  historyTitle: {
+    fontSize: ms(17),
+    fontFamily: 'Manrope-Bold',
+  },
+  historyClear: {
+    fontSize: ms(13),
+    fontFamily: 'Manrope-SemiBold',
+  },
+
+  // History rows
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: ms(48),
+    paddingHorizontal: ms(16),
+    gap: ms(14),
+  },
+  historyText: {
+    flex: 1,
+    fontSize: ms(15),
+    fontFamily: 'Manrope-Medium',
+  },
+
+  // Search result rows
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: ms(52),
+    paddingHorizontal: ms(16),
+    gap: ms(14),
+  },
+  resultTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: ms(2),
+  },
+  resultPrimary: {
+    fontSize: ms(15),
+    fontFamily: 'Manrope-Medium',
+  },
+  resultSecondary: {
+    fontSize: ms(12),
+    fontFamily: 'Manrope-Regular',
+  },
+
+  // Empty state
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: '35%',
+    gap: ms(5),
+  },
+  emptyTitle: {
+    fontSize: ms(15),
+    fontFamily: 'Manrope-SemiBold',
+    marginTop: ms(14),
+  },
+  emptySubtitle: {
+    fontSize: ms(12.5),
+    fontFamily: 'Manrope-Medium',
   },
 });
