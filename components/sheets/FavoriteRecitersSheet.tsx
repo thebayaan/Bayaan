@@ -12,7 +12,11 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import ActionSheet, {SheetProps, FlatList} from 'react-native-actions-sheet';
+import ActionSheet, {
+  SheetProps,
+  SheetManager,
+  FlatList,
+} from 'react-native-actions-sheet';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {SearchInput} from '@/components/SearchInput';
@@ -107,10 +111,19 @@ export const FavoriteRecitersSheet = (
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Favorite Reciters</Text>
-        <Text style={styles.headerSubtitle}>
-          {favoriteReciters.length} selected
-        </Text>
+        <View style={styles.headerSpacer} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Favorite Reciters</Text>
+          <Text style={styles.headerSubtitle}>
+            {favoriteReciters.length} selected
+          </Text>
+        </View>
+        <Pressable
+          style={styles.doneButton}
+          onPress={() => SheetManager.hide('favorite-reciters')}
+          hitSlop={8}>
+          <Text style={styles.doneButtonText}>Done</Text>
+        </Pressable>
       </View>
 
       <View style={styles.container}>
@@ -169,8 +182,17 @@ const createStyles = (theme: Theme) =>
       width: moderateScale(40),
     },
     header: {
+      flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
+    },
+    headerSpacer: {
+      width: moderateScale(50),
+    },
+    headerCenter: {
+      flex: 1,
+      alignItems: 'center',
       gap: moderateScale(4),
     },
     headerTitle: {
@@ -182,6 +204,15 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
+    },
+    doneButton: {
+      width: moderateScale(50),
+      alignItems: 'flex-end',
+    },
+    doneButtonText: {
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
     },
     container: {
       flex: 1,

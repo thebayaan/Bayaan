@@ -4,6 +4,7 @@ import {useLocalSearchParams} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import MushafViewer from '@/components/mushaf/main';
 
 export type MushafScreenParams = {
@@ -46,6 +47,14 @@ export default function MushafScreen() {
     if (surah && ayah) return `${surah}:${ayah}`;
     return undefined;
   }, [surah, ayah]);
+
+  // Track mushaf screen for session restore
+  useEffect(() => {
+    useMushafSettingsStore.getState().setLastScreenWasMushaf(true);
+    return () => {
+      useMushafSettingsStore.getState().setLastScreenWasMushaf(false);
+    };
+  }, []);
 
   // Set verse highlight on mount, clear on unmount
   useEffect(() => {

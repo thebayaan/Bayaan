@@ -39,6 +39,7 @@ import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -63,6 +64,7 @@ SystemUI.setBackgroundColorAsync(
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
+  const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
   const initializationRef = useRef(false);
@@ -120,13 +122,25 @@ export default function RootLayout() {
 
   const onLayoutRootView = useCallback(async () => {
     try {
-      if (appIsReady && fontsLoaded && isPlayerReady && !hasShareIntent) {
+      if (
+        appIsReady &&
+        fontsLoaded &&
+        isPlayerReady &&
+        !hasShareIntent &&
+        mushafRestoreHandled
+      ) {
         await SplashScreen.hideAsync();
       }
     } catch (e) {
       if (__DEV__) console.warn('Error hiding splash screen:', e);
     }
-  }, [appIsReady, fontsLoaded, isPlayerReady, hasShareIntent]);
+  }, [
+    appIsReady,
+    fontsLoaded,
+    isPlayerReady,
+    hasShareIntent,
+    mushafRestoreHandled,
+  ]);
 
   // Initialize app with expo-audio
   useEffect(() => {
@@ -282,6 +296,60 @@ export default function RootLayout() {
     isPlayerReady,
     shareIntent,
     resetShareIntent,
+  ]);
+
+  // Restore mushaf screen if it was open when the app was killed.
+  // Navigation happens behind the splash; splash hides after it settles.
+  useEffect(() => {
+    if (!appIsReady || !isPlayerReady || hasShareIntent) return;
+
+    const restoreIfNeeded = () => {
+      const {lastScreenWasMushaf, lastReadPage} =
+        useMushafSettingsStore.getState();
+
+      if (lastScreenWasMushaf) {
+        router.push({
+          pathname: '/mushaf',
+          params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+        });
+        // Let the navigation animation finish behind the splash before revealing
+        InteractionManager.runAfterInteractions(() => {
+          setMushafRestoreHandled(true);
+        });
+      } else {
+        setMushafRestoreHandled(true);
+      }
+    };
+
+    // Store hydrates from AsyncStorage asynchronously — wait for it
+    if (useMushafSettingsStore.persist.hasHydrated()) {
+      restoreIfNeeded();
+    } else {
+      const unsub =
+        useMushafSettingsStore.persist.onFinishHydration(restoreIfNeeded);
+      return unsub;
+    }
+  }, [appIsReady, isPlayerReady, hasShareIntent]);
+
+  // Hide splash once mushaf restore (if any) has settled.
+  // onLayout only fires once, so this effect covers the case where
+  // mushafRestoreHandled flips after the initial layout.
+  useEffect(() => {
+    if (
+      appIsReady &&
+      fontsLoaded &&
+      isPlayerReady &&
+      !hasShareIntent &&
+      mushafRestoreHandled
+    ) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [
+    appIsReady,
+    fontsLoaded,
+    isPlayerReady,
+    hasShareIntent,
+    mushafRestoreHandled,
   ]);
 
   if (fontError) {

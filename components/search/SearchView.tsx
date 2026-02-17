@@ -7,7 +7,6 @@ import {
   FlatList,
   TextInput,
   Keyboard,
-  Platform,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,7 +22,6 @@ import {moderateScale} from 'react-native-size-matters';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {BlurView} from '@react-native-community/blur';
 import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
@@ -390,70 +388,59 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   return (
     <View
-      style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={80}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}>
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: Color(theme.colors.card)
-                    .alpha(0.7)
-                    .toString(),
-                },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: theme.colors.card,
-                opacity: 0.95,
-              },
-            ]}
-          />
-        )}
-        <View style={styles.searchBoxContainer}>
-          <SearchInput
-            ref={searchInputRef}
-            placeholder="Search surahs or reciters"
-            value={query}
-            onChangeText={setQuery}
-            onCancel={handleSearchCancel}
-            iconColor={theme.colors.text}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
-            borderColor={Color(theme.colors.border).alpha(0.5).toString()}
-            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-            autoCorrect={false}
-            autoComplete="off"
-            autoCapitalize="none"
-            autoFocus={true}
-          />
-        </View>
-      </View>
+      style={[
+        styles.container,
+        {backgroundColor: theme.colors.background, paddingTop: insets.top},
+      ]}>
+      <SearchInput
+        ref={searchInputRef}
+        placeholder="Search surahs or reciters"
+        value={query}
+        onChangeText={setQuery}
+        onCancel={handleSearchCancel}
+        iconColor={theme.colors.text}
+        iconOpacity={0.25}
+        placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
+        textColor={theme.colors.text}
+        backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+        borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+        keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+        autoCorrect={false}
+        autoComplete="off"
+        autoCapitalize="none"
+        autoFocus={true}
+      />
 
       {query.length === 0 ? (
         <ScrollView
-          style={styles.content}
+          style={styles.flexFill}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled">
           {recentSearches.length > 0 ? (
             <View>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+                <Text
+                  style={[
+                    styles.sectionTitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.5)
+                        .toString(),
+                    },
+                  ]}>
                   Recent searches
                 </Text>
                 <Pressable onPress={clearRecentSearches}>
                   <Text
-                    style={[styles.clearButton, {color: theme.colors.text}]}>
+                    style={[
+                      styles.clearButton,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.5)
+                          .toString(),
+                      },
+                    ]}>
                     Clear
                   </Text>
                 </Pressable>
@@ -474,23 +461,31 @@ export function SearchView({onClose, visible}: SearchViewProps) {
               />
             </View>
           ) : (
-            <View style={styles.emptyRecentContainer}>
+            <View style={styles.emptyState}>
               <Feather
                 name="search"
-                size={moderateScale(48)}
-                color={theme.colors.textSecondary}
+                size={moderateScale(36)}
+                color={Color(theme.colors.textSecondary).alpha(0.12).toString()}
               />
               <Text
                 style={[
-                  styles.emptyRecentText,
-                  {color: theme.colors.textSecondary},
+                  styles.emptyTitle,
+                  {
+                    color: Color(theme.colors.textSecondary)
+                      .alpha(0.35)
+                      .toString(),
+                  },
                 ]}>
                 No recent searches
               </Text>
               <Text
                 style={[
-                  styles.emptyRecentSubtext,
-                  {color: theme.colors.textSecondary},
+                  styles.emptySubtitle,
+                  {
+                    color: Color(theme.colors.textSecondary)
+                      .alpha(0.2)
+                      .toString(),
+                  },
                 ]}>
                 Your search history will appear here
               </Text>
@@ -499,10 +494,11 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         </ScrollView>
       ) : (
         <FlatList
+          style={styles.flexFill}
           data={searchResults}
           renderItem={renderSearchResult}
           keyExtractor={(item, index) => `${item.type}-${index}`}
-          contentContainerStyle={styles.resultsContainer}
+          contentContainerStyle={styles.resultsContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={() => Keyboard.dismiss()}
@@ -512,14 +508,33 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                 <LoadingIndicator size={24} />
               </View>
             ) : searchResults.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, {color: theme.colors.text}]}>
+              <View style={styles.emptyState}>
+                <Feather
+                  name="search"
+                  size={moderateScale(36)}
+                  color={Color(theme.colors.textSecondary)
+                    .alpha(0.12)
+                    .toString()}
+                />
+                <Text
+                  style={[
+                    styles.emptyTitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.35)
+                        .toString(),
+                    },
+                  ]}>
                   No results found
                 </Text>
                 <Text
                   style={[
-                    styles.emptySubtext,
-                    {color: theme.colors.textSecondary},
+                    styles.emptySubtitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.2)
+                        .toString(),
+                    },
                   ]}>
                   Try different keywords or check the spelling
                 </Text>
@@ -535,20 +550,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-  },
-  headerContainer: {
-    paddingTop: moderateScale(8),
-  },
-  searchBoxContainer: {
-    paddingBottom: moderateScale(8),
-  },
-  content: {
     flex: 1,
   },
-  contentContainer: {
-    paddingVertical: moderateScale(20),
+  flexFill: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: moderateScale(20),
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -558,50 +566,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(16),
   },
   sectionTitle: {
-    fontSize: moderateScale(18),
-    fontFamily: 'Manrope-Bold',
+    fontSize: moderateScale(10.5),
+    fontFamily: 'Manrope-SemiBold',
+    letterSpacing: 1.0,
+    textTransform: 'uppercase',
   },
   clearButton: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-SemiBold',
+    fontSize: moderateScale(11),
+    fontFamily: 'Manrope-Medium',
   },
-  resultsContainer: {
+  resultsContent: {
     paddingTop: moderateScale(8),
   },
   loadingContainer: {
     paddingVertical: moderateScale(20),
     alignItems: 'center',
   },
-  emptyContainer: {
-    paddingVertical: moderateScale(20),
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: moderateScale(16),
-    fontFamily: 'Manrope-Bold',
-    marginBottom: moderateScale(4),
-  },
-  emptySubtext: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-Medium',
-  },
   footer: {
     height: moderateScale(20),
   },
-  emptyRecentContainer: {
-    paddingVertical: moderateScale(60),
-    paddingHorizontal: moderateScale(16),
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: '35%',
+    gap: moderateScale(5),
   },
-  emptyRecentText: {
-    fontSize: moderateScale(16),
+  emptyTitle: {
+    fontSize: moderateScale(15),
     fontFamily: 'Manrope-SemiBold',
-    marginTop: moderateScale(16),
+    marginTop: moderateScale(14),
   },
-  emptyRecentSubtext: {
-    fontSize: moderateScale(14),
+  emptySubtitle: {
+    fontSize: moderateScale(12.5),
     fontFamily: 'Manrope-Medium',
-    marginTop: moderateScale(4),
   },
 });

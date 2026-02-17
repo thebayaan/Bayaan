@@ -321,11 +321,13 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
 interface MushafSettingsContentProps {
   containerStyle?: object;
   showTitle?: boolean;
+  context?: 'mushaf' | 'player';
 }
 
 export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   containerStyle,
   showTitle = true,
+  context,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -349,6 +351,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     setTransliterationFontSize,
     mushafRenderer,
     setMushafRenderer,
+    pageLayout,
+    setPageLayout,
   } = useMushafSettingsStore();
 
   const verseKey = '3:138'; // Target verse for examples
@@ -401,6 +405,53 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   return (
     <View style={[styles.container, containerStyle]}>
       {showTitle && <Text style={styles.title}>Mushaf Settings</Text>}
+
+      {/* Mushaf Tab Section — page layout (hidden from player context) */}
+      {context !== 'player' && (
+        <>
+          <Text style={styles.sectionHeader}>Mushaf Tab</Text>
+          <View style={styles.card}>
+            <View style={styles.fontFamilySelectorRow}>
+              <Text style={styles.optionLabel}>Page Layout</Text>
+              <View style={styles.fontFamilyButtonsContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.fontFamilyButton,
+                    pageLayout === 'book' && styles.fontFamilyButtonActive,
+                  ]}
+                  onPress={() => setPageLayout('book')}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.fontFamilyButtonText,
+                      pageLayout === 'book' &&
+                        styles.fontFamilyButtonTextActive,
+                    ]}>
+                    Book
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.fontFamilyButton,
+                    pageLayout === 'fullscreen' &&
+                      styles.fontFamilyButtonActive,
+                  ]}
+                  onPress={() => setPageLayout('fullscreen')}
+                  activeOpacity={0.7}>
+                  <Text
+                    style={[
+                      styles.fontFamilyButtonText,
+                      pageLayout === 'fullscreen' &&
+                        styles.fontFamilyButtonTextActive,
+                    ]}>
+                    Fullscreen
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </>
+      )}
 
       {/* Arabic Text Section - Shared between Mushaf Tab and Player View */}
       <Text style={styles.sectionHeader}>Arabic Text</Text>
@@ -461,86 +512,90 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         </View>
       </View>
 
-      {/* Player View Section */}
-      <Text style={styles.sectionHeader}>Player View</Text>
-      <Text style={styles.sectionSubHeader}>
-        Font sizes and display options during playback
-      </Text>
+      {/* Player View Section (hidden from mushaf context) */}
+      {context !== 'mushaf' && (
+        <>
+          <Text style={styles.sectionHeader}>Player View</Text>
+          <Text style={styles.sectionSubHeader}>
+            Font sizes and display options during playback
+          </Text>
 
-      {/* Arabic Font Size for Player View */}
-      <View style={styles.card}>
-        <FontSizeControl
-          label="Arabic Font Size"
-          currentActualSize={arabicFontSize}
-          onChange={setArabicFontSize}
-          theme={theme}
-          styles={styles}
-          processedSampleSegments={flatVerseSegments}
-          sampleFontFamily={'Uthmani'}
-          showTajweed={showTajweed}
-        />
-      </View>
-
-      {/* Transliteration Section */}
-      <View style={styles.card}>
-        <View style={styles.optionRow}>
-          <Text style={styles.optionLabel}>Transliteration</Text>
-          <Switch
-            trackColor={trackColor}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor={trackColor.false}
-            onValueChange={toggleTransliteration}
-            value={showTransliteration}
-            style={styles.switchStyle}
-          />
-        </View>
-        {showTransliteration && (
-          <>
-            <View style={styles.divider} />
+          {/* Arabic Font Size for Player View */}
+          <View style={styles.card}>
             <FontSizeControl
-              label="Font Size"
-              currentActualSize={transliterationFontSize}
-              onChange={setTransliterationFontSize}
+              label="Arabic Font Size"
+              currentActualSize={arabicFontSize}
+              onChange={setArabicFontSize}
               theme={theme}
               styles={styles}
-              sampleText={actualTransliterationText}
-              sampleFontFamily="Manrope-Regular"
+              processedSampleSegments={flatVerseSegments}
+              sampleFontFamily={'Uthmani'}
+              showTajweed={showTajweed}
             />
-          </>
-        )}
-      </View>
+          </View>
 
-      {/* Translation Section */}
-      <View style={styles.card}>
-        <View style={styles.optionRow}>
-          <Text style={styles.optionLabel}>Translation</Text>
-          <Switch
-            trackColor={trackColor}
-            thumbColor="#FFFFFF"
-            ios_backgroundColor={trackColor.false}
-            onValueChange={toggleTranslation}
-            value={showTranslation}
-            style={styles.switchStyle}
-          />
-        </View>
-        <Text style={styles.helperText}>
-          Using: Saheeh International Translation with footnotes
-        </Text>
-        {showTranslation && (
-          <>
-            <View style={styles.divider} />
-            <FontSizeControl
-              label="Font Size"
-              currentActualSize={translationFontSize}
-              onChange={setTranslationFontSize}
-              theme={theme}
-              styles={styles}
-              sampleText={actualTranslationText}
-              sampleFontFamily="Manrope-Regular"
-            />
-          </>
-        )}
-      </View>
+          {/* Transliteration Section */}
+          <View style={styles.card}>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>Transliteration</Text>
+              <Switch
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                onValueChange={toggleTransliteration}
+                value={showTransliteration}
+                style={styles.switchStyle}
+              />
+            </View>
+            {showTransliteration && (
+              <>
+                <View style={styles.divider} />
+                <FontSizeControl
+                  label="Font Size"
+                  currentActualSize={transliterationFontSize}
+                  onChange={setTransliterationFontSize}
+                  theme={theme}
+                  styles={styles}
+                  sampleText={actualTransliterationText}
+                  sampleFontFamily="Manrope-Regular"
+                />
+              </>
+            )}
+          </View>
+
+          {/* Translation Section */}
+          <View style={styles.card}>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>Translation</Text>
+              <Switch
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                onValueChange={toggleTranslation}
+                value={showTranslation}
+                style={styles.switchStyle}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Using: Saheeh International Translation with footnotes
+            </Text>
+            {showTranslation && (
+              <>
+                <View style={styles.divider} />
+                <FontSizeControl
+                  label="Font Size"
+                  currentActualSize={translationFontSize}
+                  onChange={setTranslationFontSize}
+                  theme={theme}
+                  styles={styles}
+                  sampleText={actualTranslationText}
+                  sampleFontFamily="Manrope-Regular"
+                />
+              </>
+            )}
+          </View>
+        </>
+      )}
     </View>
   );
 };

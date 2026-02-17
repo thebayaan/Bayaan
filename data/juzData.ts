@@ -198,7 +198,7 @@ export function getJuzForSurah(surahId: number): number {
  */
 export function getJuzName(juzNumber: number): string {
   if (juzNumber === 30) {
-    return "Juz' 'Amma";
+    return "Juz 'Amma";
   }
-  return `Juz' ${juzNumber}`;
+  return `Juz ${juzNumber}`;
 }

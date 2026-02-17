@@ -1,30 +1,77 @@
-import React, {useState, useMemo, useRef, useCallback} from 'react';
+import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
 import {
   View,
   StyleSheet,
-  FlatList,
   Text,
   Pressable,
   ViewToken,
+  StatusBar,
+  BackHandler,
 } from 'react-native';
+import {FlatList} from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
+import {BackButton} from '@/components/BackButton';
+import MushafSearchView from './MushafSearchView';
+import {PlayIcon} from '@/components/Icons';
+import {moderateScale} from 'react-native-size-matters';
+import Color from 'color';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
-  useMushafSettingsStore,
-  type MushafRenderer,
-} from '@/store/mushafSettingsStore';
-import {
-  SURAH_NAMES,
-  PLAYER_RESERVED_HEIGHT,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
+  PAGE_PADDING_HORIZONTAL,
+  PAGE_PADDING_TOP,
+  PAGE_PADDING_BOTTOM,
+  CONTENT_WIDTH,
+  getJuzForPage,
+  getPageEdgeLayout,
 } from './constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {SURAHS} from '@/data/surahData';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import SkiaPage from './skia/SkiaPage';
+import PageEdgeDecoration, {
+  EDGE_BORDER_RADIUS,
+  EDGE_HORIZONTAL_INSET,
+} from './PageEdgeDecoration';
 
 const TOTAL_PAGES = 604;
+const ANIMATION_DURATION = 300;
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+function getSurahNamesForPage(pageNumber: number): string {
+  const lines = digitalKhattDataService.getPageLines(pageNumber);
+  const seen = new Set<number>();
+  const names: string[] = [];
+  for (const line of lines) {
+    const num = line.surah_number;
+    if (num >= 1 && num <= 114 && !seen.has(num)) {
+      seen.add(num);
+      names.push(SURAHS[num - 1].name);
+    }
+  }
+  if (names.length > 0) return names.join(' \u00B7 ');
+
+  // Fallback: surah_number is only set on surah_name lines in the DB,
+  // so pages without a header need the pageToSurah mapping.
+  const pageToSurah = digitalKhattDataService.getPageToSurah();
+  const surahId = pageToSurah[pageNumber];
+  if (surahId >= 1 && surahId <= 114) return SURAHS[surahId - 1].name;
+  return '';
+}
 
 // ============================================================================
 // Digital Khatt PageView (Skia-based with DK V1/V2 fonts)
@@ -33,73 +80,144 @@ const DKPageView: React.FC<{
   pageNumber: number;
   textColor: string;
   highlightColor: string;
-}> = ({pageNumber, textColor, highlightColor}) => {
+  surahLabel: string;
+  juzLabel: string;
+  pageLabel: string;
+  labelColor: string;
+  borderColor: string;
+  cardColor: string;
+  bgColor: string;
+  isBookLayout: boolean;
+  onTap?: () => void;
+}> = ({
+  pageNumber,
+  textColor,
+  highlightColor,
+  surahLabel,
+  juzLabel,
+  pageLabel,
+  labelColor,
+  borderColor,
+  cardColor,
+  bgColor,
+  isBookLayout,
+  onTap,
+}) => {
   const [pageReady, setPageReady] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const {isRightPage, contentMarginLeft} = useMemo(
+    () => getPageEdgeLayout(pageNumber),
+    [pageNumber],
+  );
+
+  // In fullscreen mode, use symmetric padding; in book mode, use asymmetric
+  const effectiveMarginLeft = isBookLayout ? contentMarginLeft : undefined;
+  const effectiveOuterMargin = isBookLayout
+    ? SCREEN_WIDTH - contentMarginLeft - CONTENT_WIDTH
+    : PAGE_PADDING_HORIZONTAL;
+  const effectiveLabelLeft = isBookLayout
+    ? contentMarginLeft + 8
+    : PAGE_PADDING_HORIZONTAL + 8;
+
+  // Center page number vertically between content bottom and bottom border
+  const pageNumberBottom = isBookLayout
+    ? insets.top + (PAGE_PADDING_BOTTOM - insets.top) / 2 - 8
+    : PAGE_PADDING_BOTTOM - 35;
 
   return (
-    <View style={[styles.page, {opacity: pageReady ? 1 : 0}]}>
+    <View
+      style={[
+        styles.page,
+        {
+          backgroundColor: isBookLayout ? bgColor : cardColor,
+          opacity: pageReady ? 1 : 0,
+        },
+      ]}>
+      {isBookLayout && (
+        <>
+          {/* Card-colored background inside the frame, rounded to match outermost border */}
+          <View
+            style={[
+              {
+                position: 'absolute',
+                top: insets.top,
+                bottom: insets.top,
+                backgroundColor: cardColor,
+              },
+              isRightPage
+                ? {
+                    left: 0,
+                    right: EDGE_HORIZONTAL_INSET,
+                    borderTopRightRadius: EDGE_BORDER_RADIUS,
+                    borderBottomRightRadius: EDGE_BORDER_RADIUS,
+                  }
+                : {
+                    left: EDGE_HORIZONTAL_INSET,
+                    right: 0,
+                    borderTopLeftRadius: EDGE_BORDER_RADIUS,
+                    borderBottomLeftRadius: EDGE_BORDER_RADIUS,
+                  },
+            ]}
+          />
+        </>
+      )}
       <SkiaPage
         pageNumber={pageNumber}
         textColor={textColor}
         highlightColor={highlightColor}
+        contentMarginLeft={effectiveMarginLeft}
         onReady={() => setPageReady(true)}
+        onTap={onTap}
       />
-
-      <View style={styles.pageNumberContainer}>
-        <Text style={[styles.pageNumber, {color: textColor}]}>
-          {pageNumber}
-        </Text>
-      </View>
-    </View>
-  );
-};
-
-// ============================================================================
-// Inline settings toolbar (mushaf renderer toggle)
-// ============================================================================
-const MUSHAF_OPTIONS: {key: MushafRenderer; label: string}[] = [
-  {key: 'dk_v1', label: 'Madani 1405'},
-  {key: 'dk_v2', label: 'Madani 1421'},
-];
-
-const MushafInlineSettings: React.FC<{textColor: string}> = ({textColor}) => {
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const setMushafRenderer = useMushafSettingsStore(s => s.setMushafRenderer);
-  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
-  const toggleTajweed = useMushafSettingsStore(s => s.toggleTajweed);
-
-  return (
-    <View style={styles.inlineSettings}>
-      <Pressable
-        style={[styles.settingsPill, showTajweed && styles.settingsPillActive]}
-        onPress={toggleTajweed}>
-        <Text
-          style={[
-            styles.settingsPillText,
-            {color: showTajweed ? '#fff' : textColor},
-          ]}>
-          Tajweed
-        </Text>
-      </Pressable>
-      <View style={styles.fontToggleGroup}>
-        {MUSHAF_OPTIONS.map(opt => (
-          <Pressable
-            key={opt.key}
-            style={[
-              styles.settingsPill,
-              mushafRenderer === opt.key && styles.settingsPillActive,
-            ]}
-            onPress={() => setMushafRenderer(opt.key)}>
-            <Text
-              style={[
-                styles.settingsPillText,
-                {color: mushafRenderer === opt.key ? '#fff' : textColor},
-              ]}>
-              {opt.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      {isBookLayout && (
+        <PageEdgeDecoration
+          isRightPage={isRightPage}
+          borderColor={borderColor}
+          pageColor={cardColor}
+        />
+      )}
+      {/* Surah name(s) — top left */}
+      <Text
+        style={[
+          styles.pageLabel,
+          {
+            color: labelColor,
+            top: PAGE_PADDING_TOP - 30,
+            left: effectiveLabelLeft,
+          },
+        ]}
+        numberOfLines={1}>
+        {surahLabel}
+      </Text>
+      {/* Juz number — top right */}
+      <Text
+        style={[
+          styles.pageLabel,
+          {
+            color: labelColor,
+            top: PAGE_PADDING_TOP - 30,
+            right: effectiveOuterMargin + 8,
+            textAlign: 'right',
+          },
+        ]}
+        numberOfLines={1}>
+        {juzLabel}
+      </Text>
+      {/* Page number — bottom center */}
+      <Text
+        style={[
+          styles.pageLabel,
+          {
+            color: labelColor,
+            bottom: pageNumberBottom,
+            left: 0,
+            right: 0,
+            textAlign: 'center',
+          },
+        ]}>
+        {pageLabel}
+      </Text>
     </View>
   );
 };
@@ -116,9 +234,38 @@ export default function MushafViewer({
   pageNumber: initialPage,
 }: MushafViewerProps) {
   const [currentPage, setCurrentPage] = useState(initialPage);
-  const {theme} = useTheme();
+  const [isImmersive, setIsImmersive] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const {theme, isDarkMode} = useTheme();
+  const pageLayout = useMushafSettingsStore(s => s.pageLayout);
+  const setLastReadPage = useMushafSettingsStore(s => s.setLastReadPage);
+  const addRecentRead = useMushafSettingsStore(s => s.addRecentRead);
+  const isBookLayout = pageLayout === 'book';
+  const edgeBg = isDarkMode ? '#000' : theme.colors.card;
+  const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
+  const edgeBorderColor = isDarkMode
+    ? Color(theme.colors.border).darken(0.3).toString()
+    : Color(theme.colors.border).lighten(0.3).toString();
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
+
+  // Reanimated overlay animation (same pattern as PlayerContent)
+  const overlayOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    overlayOpacity.value = withTiming(isImmersive ? 0 : 1, {
+      duration: ANIMATION_DURATION,
+    });
+  }, [isImmersive, overlayOpacity]);
+
+  const overlayAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const toggleImmersive = useCallback(() => {
+    setIsImmersive(prev => !prev);
+  }, []);
 
   const pages = useMemo(
     () => Array.from({length: TOTAL_PAGES}, (_, i) => i + 1),
@@ -135,15 +282,18 @@ export default function MushafViewer({
     : {};
 
   const currentSurahId = pageToSurah[currentPage] || 1;
-  const currentSurahName = SURAH_NAMES[currentSurahId];
 
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].item) {
-        setCurrentPage(viewableItems[0].item);
+        const page = viewableItems[0].item as number;
+        setCurrentPage(page);
+        setLastReadPage(page);
+        const surahId = pageToSurah[page];
+        if (surahId) addRecentRead(surahId, page);
       }
     },
-    [],
+    [setLastReadPage, addRecentRead, pageToSurah],
   );
 
   const viewabilityConfig = useMemo(
@@ -153,55 +303,65 @@ export default function MushafViewer({
     [],
   );
 
+  const navigateToPage = useCallback((targetPage: number) => {
+    setIsSearchMode(false);
+    flatListRef.current?.scrollToIndex({
+      index: targetPage - 1,
+      animated: false,
+    });
+  }, []);
+
   const navigateToSurah = useCallback(
     (surahId: number) => {
       const targetPage = surahStartPages[surahId];
-      if (targetPage && flatListRef.current) {
-        flatListRef.current.scrollToIndex({
-          index: targetPage - 1,
-          animated: false,
-        });
-      }
+      if (targetPage) navigateToPage(targetPage);
     },
-    [surahStartPages],
+    [surahStartPages, navigateToPage],
   );
 
-  const openSurahSheet = useCallback(() => {
-    SheetManager.show('mushaf-surah-selector', {
-      payload: {currentSurahId, onSelect: navigateToSurah},
+  // Subscribe to external navigation requests (e.g. from SimilarVersesSheet)
+  const navRequestId = useMushafNavigationStore(s => s.requestId);
+  useEffect(() => {
+    if (navRequestId === 0) return;
+    const {targetPage, targetVerseKey, clear} =
+      useMushafNavigationStore.getState();
+    if (targetPage) {
+      navigateToPage(targetPage);
+      if (targetVerseKey) {
+        useMushafVerseSelectionStore
+          .getState()
+          .selectVerse(targetVerseKey, targetPage);
+      }
+      clear();
+    }
+
+    // Auto-clear the temporary highlight after 2 seconds
+    const timer = setTimeout(() => {
+      useMushafVerseSelectionStore.getState().clearSelection();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [navRequestId, navigateToPage]);
+
+  const openSearchMode = useCallback(() => setIsSearchMode(true), []);
+
+  // Android back handler — exit search mode instead of popping screen
+  useEffect(() => {
+    if (!isSearchMode) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setIsSearchMode(false);
+      return true;
     });
-  }, [currentSurahId, navigateToSurah]);
+    return () => sub.remove();
+  }, [isSearchMode]);
 
   return (
     <View
-      style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {/* Header with back button, surah name + inline settings */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back">
-            <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
-          </Pressable>
-
-          <Pressable style={styles.surahSelector} onPress={openSurahSheet}>
-            <Text style={[styles.headerSurahName, {color: theme.colors.text}]}>
-              {currentSurahName}
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={18}
-              color={theme.colors.text}
-              style={styles.chevronIcon}
-            />
-          </Pressable>
-
-          <MushafInlineSettings textColor={theme.colors.text} />
-        </View>
-      </View>
-
+      style={[
+        styles.container,
+        {backgroundColor: isBookLayout ? edgeBg : theme.colors.card},
+      ]}>
+      {/* FlatList fills the entire screen */}
       <FlatList
         ref={flatListRef}
         data={pages}
@@ -210,6 +370,15 @@ export default function MushafViewer({
             pageNumber={item}
             textColor={theme.colors.text}
             highlightColor={theme.colors.primary}
+            surahLabel={getSurahNamesForPage(item)}
+            juzLabel={`Juz ${getJuzForPage(item)}`}
+            pageLabel={String(item)}
+            labelColor={theme.colors.textSecondary}
+            borderColor={edgeBorderColor}
+            cardColor={pageBg}
+            bgColor={edgeBg}
+            isBookLayout={isBookLayout}
+            onTap={toggleImmersive}
           />
         )}
         keyExtractor={item => item.toString()}
@@ -230,6 +399,138 @@ export default function MushafViewer({
         initialNumToRender={1}
         decelerationRate="fast"
       />
+
+      {/* ================================================================ */}
+      {/* Normal mode header — fades out when immersive                    */}
+      {/* ================================================================ */}
+      <StatusBar hidden={isImmersive && !isSearchMode} animated />
+
+      {!isSearchMode && (
+        <>
+          <Animated.View
+            style={[
+              styles.header,
+              overlayAnimatedStyle,
+              {
+                paddingTop: insets.top + moderateScale(8),
+                backgroundColor: theme.colors.background,
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: theme.colors.border,
+              },
+            ]}
+            pointerEvents={isImmersive ? 'none' : 'auto'}>
+            <View style={styles.headerRow}>
+              {/* Left: back button */}
+              <View style={styles.headerSide}>
+                <BackButton onPress={() => router.back()} />
+              </View>
+
+              {/* Center: tappable surah name + page/juz info */}
+              <Pressable
+                style={styles.headerCenter}
+                onPress={openSearchMode}
+                accessibilityRole="button"
+                accessibilityLabel="Search surahs">
+                <View
+                  style={[
+                    styles.headerBox,
+                    {
+                      backgroundColor: Color(theme.colors.text)
+                        .alpha(0.06)
+                        .toString(),
+                    },
+                  ]}>
+                  <View style={styles.headerBoxFirstRow}>
+                    <Text
+                      style={[
+                        styles.headerSurahName,
+                        {color: theme.colors.text},
+                      ]}
+                      numberOfLines={1}>
+                      {SURAHS[currentSurahId - 1].name}
+                    </Text>
+                    <Ionicons
+                      name="chevron-down"
+                      size={moderateScale(14)}
+                      color={theme.colors.textSecondary}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.headerMeta,
+                      {color: theme.colors.textSecondary},
+                    ]}>
+                    Page {currentPage} · Juz {getJuzForPage(currentPage)}
+                  </Text>
+                </View>
+              </Pressable>
+
+              {/* Right: settings */}
+              <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
+                <Pressable
+                  style={styles.headerIcon}
+                  onPress={() =>
+                    SheetManager.show('mushaf-layout', {
+                      payload: {context: 'mushaf'},
+                    })
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel="Mushaf settings">
+                  <Ionicons
+                    name="options-outline"
+                    size={moderateScale(22)}
+                    color={theme.colors.text}
+                  />
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* ================================================================ */}
+          {/* Normal mode bottom bar — fades out when immersive                */}
+          {/* ================================================================ */}
+          <Animated.View
+            style={[
+              styles.bottomBar,
+              overlayAnimatedStyle,
+              {
+                paddingBottom: insets.bottom + 8,
+                backgroundColor: theme.colors.background,
+                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopColor: theme.colors.border,
+              },
+            ]}
+            pointerEvents={isImmersive ? 'none' : 'auto'}>
+            <Pressable
+              style={[
+                styles.circleButton,
+                {backgroundColor: theme.colors.text},
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Play">
+              <View style={styles.playIconContainer}>
+                <PlayIcon
+                  color={theme.colors.background}
+                  size={moderateScale(18)}
+                />
+              </View>
+            </Pressable>
+          </Animated.View>
+        </>
+      )}
+
+      {/* ================================================================ */}
+      {/* Search mode overlay                                               */}
+      {/* ================================================================ */}
+      {isSearchMode && (
+        <MushafSearchView
+          onNavigateToPage={navigateToPage}
+          onNavigateToSurah={navigateToSurah}
+          onClose={() => setIsSearchMode(false)}
+          surahStartPages={surahStartPages}
+          pageToSurah={pageToSurah}
+        />
+      )}
     </View>
   );
 }
@@ -238,71 +539,84 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  page: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+
+  // Per-page metadata labels
+  pageLabel: {
+    position: 'absolute',
+    fontSize: 12,
+    fontFamily: 'Manrope-Regular',
+  },
+
+  // Normal mode header
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
-    paddingTop: 50,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: moderateScale(12),
+    paddingBottom: moderateScale(8),
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  backButton: {
-    padding: 4,
-    marginRight: 4,
+  headerSide: {
+    width: moderateScale(44),
   },
-  surahSelector: {
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBox: {
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(10),
+  },
+  headerBoxFirstRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: moderateScale(4),
   },
   headerSurahName: {
-    fontSize: 18,
-    fontFamily: 'Traditional-Arabic',
-  },
-  chevronIcon: {
-    marginLeft: 4,
-  },
-  inlineSettings: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  fontToggleGroup: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  settingsPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(128,128,128,0.15)',
-  },
-  settingsPillActive: {
-    backgroundColor: 'rgba(80,80,80,0.7)',
-  },
-  settingsPillText: {
-    fontSize: 12,
+    fontSize: moderateScale(16),
     fontFamily: 'Manrope-SemiBold',
   },
-  page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+  headerMeta: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-Regular',
   },
-  pageNumberContainer: {
+  headerIcon: {
+    padding: moderateScale(6),
+  },
+
+  // Normal mode bottom bar
+  bottomBar: {
     position: 'absolute',
-    bottom: PLAYER_RESERVED_HEIGHT + 10,
+    bottom: 0,
     left: 0,
     right: 0,
+    zIndex: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  pageNumber: {
-    fontSize: 14,
-    fontFamily: 'Manrope-Regular',
+  circleButton: {
+    width: moderateScale(42),
+    height: moderateScale(42),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: moderateScale(12),
+  },
+  playIconContainer: {
+    paddingLeft: moderateScale(4),
   },
 });

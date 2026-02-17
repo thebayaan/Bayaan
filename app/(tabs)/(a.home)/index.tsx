@@ -7,7 +7,7 @@ import {createStyles} from './_styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
-import AdhkarView from '@/components/AdhkarView';
+import AdhkarsView from '@/components/AdhkarsView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {SuperCategory} from '@/types/adhkar';
@@ -21,12 +21,15 @@ import {Theme} from '@/utils/themeUtils';
 import {EdgeInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
+import {QuranIcon} from '@/components/Icons';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
-type ViewOption = 'Reciters' | 'Surahs' | 'Adhkar';
+type ViewOption = 'Reciters' | 'Surahs' | 'Adhkars';
 
 interface HeaderProps {
   activeView: ViewOption;
   handleToggle: (option: ViewOption) => void;
+  handleMushafPress: () => void;
   handleSettingsPress: () => void;
   theme: Theme;
   insets: EdgeInsets;
@@ -37,6 +40,7 @@ const Header = React.memo(
   ({
     activeView,
     handleToggle,
+    handleMushafPress,
     handleSettingsPress,
     theme,
     insets,
@@ -85,12 +89,17 @@ const Header = React.memo(
           ]}
         />
         <View style={headerStyles.header}>
-          <View style={headerStyles.leftPlaceholder}>
-            {/* You can add a logo or other icon here if needed */}
-          </View>
+          <Pressable
+            style={headerStyles.leftPlaceholder}
+            onPress={handleMushafPress}>
+            <QuranIcon
+              size={moderateScale(30)}
+              color={theme.colors.textSecondary}
+            />
+          </Pressable>
           <View style={headerStyles.centerContainer}>
             <TabSelector
-              options={['Reciters', 'Surahs', 'Adhkar']}
+              options={['Reciters', 'Surahs', 'Adhkars']}
               selectedOption={activeView}
               onSelect={handleToggle}
             />
@@ -110,6 +119,7 @@ const Header = React.memo(
   },
   (prevProps, nextProps) =>
     prevProps.activeView === nextProps.activeView &&
+    prevProps.handleMushafPress === nextProps.handleMushafPress &&
     prevProps.theme === nextProps.theme &&
     prevProps.insets === nextProps.insets,
 );
@@ -148,7 +158,7 @@ const Content = React.memo(
         setHasViewedReciters(true);
       } else if (activeView === 'Surahs' && !hasViewedSurahs) {
         setHasViewedSurahs(true);
-      } else if (activeView === 'Adhkar' && !hasViewedAdhkar) {
+      } else if (activeView === 'Adhkars' && !hasViewedAdhkar) {
         setHasViewedAdhkar(true);
       }
     }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedAdhkar]);
@@ -214,15 +224,15 @@ const Content = React.memo(
           </View>
         )}
 
-        {/* AdhkarView - only render if it has been viewed once */}
+        {/* AdhkarsView - only render if it has been viewed once */}
         {hasViewedAdhkar && (
           <View
             style={[
-              activeView === 'Adhkar'
+              activeView === 'Adhkars'
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <AdhkarView
+            <AdhkarsView
               onCategoryPress={handleCategoryPress}
               onSavedPress={handleSavedPress}
             />
@@ -336,6 +346,18 @@ function HomeScreen() {
     ],
   );
 
+  const handleMushafPress = useCallback(() => {
+    const lastReadPage = useMushafSettingsStore.getState().lastReadPage;
+    if (lastReadPage) {
+      router.push({
+        pathname: '/mushaf',
+        params: {page: lastReadPage.toString()},
+      });
+    } else {
+      router.push('/mushaf');
+    }
+  }, [router]);
+
   const handleSettingsPress = useCallback(() => {
     router.push('/settings');
   }, [router]);
@@ -361,6 +383,7 @@ function HomeScreen() {
       <Header
         activeView={activeView}
         handleToggle={handleToggle}
+        handleMushafPress={handleMushafPress}
         handleSettingsPress={handleSettingsPress}
         theme={theme}
         insets={insets}

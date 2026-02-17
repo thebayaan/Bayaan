@@ -29,6 +29,7 @@ class DigitalKhattDataService {
   private pageLines: Map<number, DKLine[]> = new Map();
   private surahStartPages: Record<number, number> = {};
   private pageToSurah: Record<number, number> = {};
+  private verseToPage: Map<string, number> | null = null;
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
 
@@ -216,6 +217,24 @@ class DigitalKhattDataService {
     const words = this.verseWords.get(verseKey);
     if (!words) return '';
     return words.map(w => w.text).join(' ');
+  }
+
+  getPageForVerse(verseKey: string): number | undefined {
+    if (!this.verseToPage) {
+      this.verseToPage = new Map();
+      for (const [pageNum, lines] of this.pageLines) {
+        for (const line of lines) {
+          if (line.line_type !== 'ayah') continue;
+          for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
+            const info = this.wordInfoById.get(wid);
+            if (info && !this.verseToPage.has(info.verseKey)) {
+              this.verseToPage.set(info.verseKey, pageNum);
+            }
+          }
+        }
+      }
+    }
+    return this.verseToPage.get(verseKey);
   }
 }
 

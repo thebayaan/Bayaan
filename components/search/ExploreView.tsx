@@ -318,43 +318,34 @@ export const ExploreView = React.memo(function ExploreView({
   );
 
   return (
-    <View style={styles.content}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + moderateScale(48),
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: moderateScale(35),
-          },
-        ]}>
-        <Pressable onPress={onSearchPress} style={styles.searchButton}>
-          <SearchInput
-            placeholder="Search surahs, reciters, or keywords"
-            value=""
-            onChangeText={noop}
-            iconColor={theme.colors.text}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.background)
-              .alpha(0.5)
-              .toString()}
-            borderColor={Color(theme.colors.border).alpha(0.5).toString()}
-            pointerEvents="none"
-            containerStyle={styles.searchInputContainer}
-            style={styles.searchInput}
-            editable={false}
-          />
-        </Pressable>
-      </View>
+    <View
+      style={[styles.content, {paddingTop: insets.top + moderateScale(16)}]}>
+      <Pressable
+        onPress={onSearchPress}
+        style={[styles.searchButton, {paddingHorizontal: horizontalPadding}]}>
+        <SearchInput
+          placeholder="Search surahs, reciters, or keywords"
+          value=""
+          onChangeText={noop}
+          iconColor={theme.colors.text}
+          iconOpacity={0.25}
+          placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
+          textColor={theme.colors.text}
+          backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+          borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+          pointerEvents="none"
+          containerStyle={styles.searchInputContainer}
+          style={styles.searchInput}
+          editable={false}
+        />
+      </Pressable>
 
       <ScrollView
-        style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
           {
             paddingHorizontal: horizontalPadding,
             paddingBottom: insets.bottom + moderateScale(20),
-            paddingTop: moderateScale(8),
           },
         ]}
         showsVerticalScrollIndicator={false}>
@@ -373,12 +364,8 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       flex: 1,
       width: '100%',
     },
-    header: {
-      paddingBottom: moderateScale(8),
-      width: '100%',
-    },
     searchButton: {
-      flex: 1,
+      marginBottom: moderateScale(16),
     },
     searchInputContainer: {
       paddingHorizontal: 0,
@@ -386,9 +373,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     searchInput: {
       height: moderateScale(50),
       fontSize: moderateScale(16),
-    },
-    scrollView: {
-      flex: 1,
     },
     scrollContent: {
       flexGrow: 1,
