@@ -109,6 +109,7 @@ module.exports = {
       'expo-asset',
       'expo-audio',
       'expo-sqlite',
+      'expo-media-library',
       [
         'expo-splash-screen',
         {
