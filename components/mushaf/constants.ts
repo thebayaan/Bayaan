@@ -152,7 +152,7 @@ export const SURAH_NAMES: Record<number, string> = {
 };
 
 // Standard Uthmani (Medina) mushaf juz start pages (30 juz)
-const JUZ_START_PAGES: number[] = [
+export const JUZ_START_PAGES: number[] = [
   1, 22, 42, 62, 82, 102, 121, 142, 162, 182, 201, 222, 242, 262, 282, 302, 322,
   342, 362, 382, 402, 422, 442, 462, 482, 502, 522, 542, 562, 582,
 ];
