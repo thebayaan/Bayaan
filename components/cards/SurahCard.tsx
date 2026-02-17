@@ -164,7 +164,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     container: {
       width: moderateScale(120),
       height: moderateScale(120),
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(20),
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: Color(color).alpha(0.15).toString(),

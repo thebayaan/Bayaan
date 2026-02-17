@@ -619,6 +619,63 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
     return `surah-${item.surah.id}-${index}`;
   }, []);
 
+  const SortBar = useMemo(
+    () => (
+      <View style={styles.sortBar}>
+        <View style={styles.sortOptions}>
+          {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
+            const isActive = sortOption === option;
+            const iconName =
+              option === 'asc'
+                ? 'arrow-up'
+                : option === 'desc'
+                ? 'arrow-down'
+                : 'calendar';
+            const label =
+              option === 'asc'
+                ? 'Asc'
+                : option === 'desc'
+                ? 'Desc'
+                : 'Rev';
+            return (
+              <Pressable
+                key={option}
+                style={[
+                  styles.sortButton,
+                  isActive && {
+                    backgroundColor: Color(theme.colors.text)
+                      .alpha(0.1)
+                      .toString(),
+                  },
+                ]}
+                onPress={() => changeSortOption(option)}>
+                <Feather
+                  name={iconName}
+                  size={ms(14)}
+                  color={
+                    isActive ? theme.colors.text : theme.colors.textSecondary
+                  }
+                />
+                <Text
+                  style={[
+                    styles.sortButtonText,
+                    {
+                      color: isActive
+                        ? theme.colors.text
+                        : theme.colors.textSecondary,
+                    },
+                  ]}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    ),
+    [sortOption, theme.colors, changeSortOption],
+  );
+
   const BrowseListHeader = useMemo(
     () => (
       <View>
@@ -629,9 +686,10 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           onPress={handleChipPress}
         />
         <BookmarkChips onPress={handleBookmarkPress} />
+        {SortBar}
       </View>
     ),
-    [recentPages, theme.colors, handleBookmarkPress, handleChipPress],
+    [recentPages, theme.colors, handleBookmarkPress, handleChipPress, SortBar],
   );
 
   // ──────────────────────────────────────────────────────────
@@ -716,65 +774,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               style={styles.searchBarInput}
             />
           </Pressable>
-        </View>
-
-        {/* Fixed sort bar */}
-        <View
-          style={[
-            styles.sortBar,
-            {backgroundColor: theme.colors.background},
-          ]}>
-          <View style={styles.sortOptions}>
-            {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
-              const isActive = sortOption === option;
-              const iconName =
-                option === 'asc'
-                  ? 'arrow-up'
-                  : option === 'desc'
-                  ? 'arrow-down'
-                  : 'calendar';
-              const label =
-                option === 'asc'
-                  ? 'Asc'
-                  : option === 'desc'
-                  ? 'Desc'
-                  : 'Rev';
-              return (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.sortButton,
-                    isActive && {
-                      backgroundColor: Color(theme.colors.text)
-                        .alpha(0.1)
-                        .toString(),
-                    },
-                  ]}
-                  onPress={() => changeSortOption(option)}>
-                  <Feather
-                    name={iconName}
-                    size={ms(14)}
-                    color={
-                      isActive
-                        ? theme.colors.text
-                        : theme.colors.textSecondary
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.sortButtonText,
-                      {
-                        color: isActive
-                          ? theme.colors.text
-                          : theme.colors.textSecondary,
-                      },
-                    ]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
 
         {/* Surah list with sticky juz headers */}
