@@ -440,11 +440,21 @@ export default function MushafViewer({
                         .toString(),
                     },
                   ]}>
-                  <Text
-                    style={[styles.headerSurahName, {color: theme.colors.text}]}
-                    numberOfLines={1}>
-                    {SURAHS[currentSurahId - 1].name}
-                  </Text>
+                  <View style={styles.headerBoxFirstRow}>
+                    <Text
+                      style={[
+                        styles.headerSurahName,
+                        {color: theme.colors.text},
+                      ]}
+                      numberOfLines={1}>
+                      {SURAHS[currentSurahId - 1].name}
+                    </Text>
+                    <Ionicons
+                      name="chevron-down"
+                      size={moderateScale(14)}
+                      color={theme.colors.textSecondary}
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.headerMeta,
@@ -568,6 +578,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(14),
     paddingVertical: moderateScale(6),
     borderRadius: moderateScale(10),
+  },
+  headerBoxFirstRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(4),
   },
   headerSurahName: {
     fontSize: moderateScale(16),
