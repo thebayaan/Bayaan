@@ -5,6 +5,8 @@ import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
+import {qulDataService} from '@/services/mushaf/QulDataService';
+import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -300,6 +302,7 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await verseAnnotationService.initialize();
+    await warmBookmarkCache();
   },
 });
 
@@ -339,6 +342,21 @@ appInitializer.registerService({
       DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
       DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf'),
     });
+  },
+});
+
+/**
+ * QUL Data Service (Priority 10)
+ * Opens ayah-themes, matching-ayah, and mutashabihat SQLite databases.
+ * Used for verse themes, similar ayahs, and shared phrases in mushaf sheets.
+ * Non-critical - similar verses features degrade gracefully without it.
+ */
+appInitializer.registerService({
+  name: 'QUL Data',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await qulDataService.initialize();
   },
 });
 

@@ -18,7 +18,7 @@ import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
 // Gap between cards
 const CARD_GAP = moderateScale(8);
 
-interface AdhkarViewProps {
+interface AdhkarsViewProps {
   onCategoryPress: (superCategory: SuperCategory) => void;
   onSavedPress: () => void;
 }
@@ -83,7 +83,7 @@ const CategoryGrid = React.memo(function CategoryGrid({
   );
 });
 
-export const AdhkarView: React.FC<AdhkarViewProps> = ({
+export const AdhkarsView: React.FC<AdhkarsViewProps> = ({
   onCategoryPress,
   onSavedPress,
 }) => {
@@ -215,4 +215,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(AdhkarView);
+export default React.memo(AdhkarsView);

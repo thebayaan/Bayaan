@@ -55,7 +55,7 @@ export const useSettings = create<SettingsState>()(
       browseSortOption: 'asc' as BrowseSortOption, // Default to ascending sort
       setBrowseSortOption: (option: BrowseSortOption) =>
         set({browseSortOption: option}),
-      reciterProfileViewMode: 'card' as ReciterProfileViewMode, // Default to card view
+      reciterProfileViewMode: 'list' as ReciterProfileViewMode, // Default to list view
       setReciterProfileViewMode: (mode: ReciterProfileViewMode) =>
         set({reciterProfileViewMode: mode}),
       reciterProfileSortOption: 'asc' as ReciterProfileSortOption, // Default to ascending sort

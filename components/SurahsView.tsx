@@ -1,11 +1,6 @@
-import React, {useState, useMemo, useCallback} from 'react';
-import {
-  View,
-  Text,
-  SectionList,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import React, {useMemo, useCallback} from 'react';
+import {View, Text, StyleSheet, Pressable} from 'react-native';
+import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {SurahCard} from './cards/SurahCard';
@@ -14,7 +9,6 @@ import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
 import {SurahsHero} from '@/components/hero/SurahsHero';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
-import {LinearGradient} from 'expo-linear-gradient';
 import {Feather} from '@expo/vector-icons';
 import {useSettings} from '@/hooks/useSettings';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
@@ -28,10 +22,9 @@ interface SurahsViewProps {
 type ViewMode = 'card' | 'list';
 type SortOption = 'asc' | 'desc' | 'revelation';
 
-// Type for list items - can be either a Juz header or surah row
-type ListItem =
-  | {type: 'juz-header'; juzNumber: number; juzName: string}
-  | {type: 'surah-row'; surahs: Surah[]};
+type FlatItem =
+  | {type: 'juz-header'; juzName: string; key: string}
+  | {type: 'surah-row'; surahs: Surah[]; key: string};
 
 function getSurahOfTheDay(): Surah {
   const today = new Date();
@@ -43,7 +36,6 @@ function getSurahOfTheDay(): Surah {
   return SURAHS[surahIndex];
 }
 
-// Group surahs into pairs for card view (2 columns)
 function groupSurahsIntoPairs(surahs: Surah[]): Surah[][] {
   const pairs: Surah[][] = [];
   for (let i = 0; i < surahs.length; i += 2) {
@@ -56,41 +48,22 @@ function groupSurahsIntoPairs(surahs: Surah[]): Surah[][] {
   return pairs;
 }
 
-// Shared ItemSeparator component
-const ItemSeparator = React.memo(() => {
-  return <View style={styles.itemSeparator} />;
-});
-ItemSeparator.displayName = 'ItemSeparator';
-
 export default function SurahsView({
   onSurahPress,
   onSurahLongPress,
 }: SurahsViewProps) {
   const {theme} = useTheme();
 
-  // Memoize the surah of the day to prevent recalculation
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
 
-  // Retrieve persisted settings
-  const browseViewModeSetting = useSettings(state => state.browseViewMode);
-  const setBrowseViewModeSetting = useSettings(
-    state => state.setBrowseViewMode,
-  );
-  const browseSortOptionSetting = useSettings(state => state.browseSortOption);
-  const setBrowseSortOptionSetting = useSettings(
-    state => state.setBrowseSortOption,
-  );
+  // Persisted settings
+  const viewMode = useSettings(state => state.browseViewMode);
+  const setBrowseViewMode = useSettings(state => state.setBrowseViewMode);
+  const sortOption = useSettings(state => state.browseSortOption);
+  const setBrowseSortOption = useSettings(state => state.setBrowseSortOption);
 
-  // Initialize local state from persisted settings
-  const [viewMode, setViewMode] = useState<ViewMode>(browseViewModeSetting);
-  const [sortOption, setSortOption] = useState<SortOption>(
-    browseSortOptionSetting,
-  );
-
-  // Sort surahs based on selected option
   const displaySurahs = useMemo(() => {
     const result = [...SURAHS];
-
     switch (sortOption) {
       case 'asc':
         return result.sort((a, b) => a.id - b.id);
@@ -103,120 +76,91 @@ export default function SurahsView({
     }
   }, [sortOption]);
 
-  // Prepare section data based on view mode
-  const sections = useMemo(() => {
-    // Only show Juz headers in list view with asc/desc sort (not revelation)
-    const shouldShowJuzHeaders =
+  // Build flat data array + sticky header indices
+  const {data, stickyIndices} = useMemo(() => {
+    const items: FlatItem[] = [];
+    const stickies: number[] = [];
+    const showJuzHeaders =
       viewMode === 'list' && (sortOption === 'asc' || sortOption === 'desc');
 
     if (viewMode === 'card') {
-      // Card view: pairs of surahs, no Juz headers
       const pairs = groupSurahsIntoPairs(displaySurahs);
-      const data: ListItem[] = pairs.map(pair => ({
-        type: 'surah-row' as const,
-        surahs: pair,
-      }));
-      return [{title: 'surahs', data, viewMode: 'card' as const}];
-    } else if (shouldShowJuzHeaders) {
-      // List view with Juz grouping
-      const data: ListItem[] = [];
+      for (const pair of pairs) {
+        items.push({
+          type: 'surah-row',
+          surahs: pair,
+          key: `card-${pair.map(s => s.id).join('-')}`,
+        });
+      }
+    } else if (showJuzHeaders) {
       let currentJuz: number | null = null;
-
-      displaySurahs.forEach(surah => {
-        const surahJuz = getJuzForSurah(surah.id);
-
-        // Add Juz header when we encounter a new Juz
-        if (surahJuz !== currentJuz) {
-          currentJuz = surahJuz;
-          data.push({
+      for (const surah of displaySurahs) {
+        const juz = getJuzForSurah(surah.id);
+        if (juz !== currentJuz) {
+          currentJuz = juz;
+          stickies.push(items.length);
+          items.push({
             type: 'juz-header',
-            juzNumber: surahJuz,
-            juzName: getJuzName(surahJuz),
+            juzName: getJuzName(juz),
+            key: `juz-${juz}`,
           });
         }
-
-        // Add the surah
-        data.push({
+        items.push({
           type: 'surah-row',
           surahs: [surah],
+          key: `surah-${surah.id}`,
         });
-      });
-
-      return [{title: 'surahs', data, viewMode: 'list' as const}];
+      }
     } else {
-      // List view without Juz grouping (revelation order)
-      const data: ListItem[] = displaySurahs.map(s => ({
-        type: 'surah-row' as const,
-        surahs: [s],
-      }));
-      return [{title: 'surahs', data, viewMode: 'list' as const}];
+      for (const surah of displaySurahs) {
+        items.push({
+          type: 'surah-row',
+          surahs: [surah],
+          key: `surah-${surah.id}`,
+        });
+      }
     }
+
+    return {data: items, stickyIndices: stickies};
   }, [displaySurahs, viewMode, sortOption]);
 
-  // Function to generate a consistent color for each surah
   const getColorForSurah = useCallback((id: number): string => {
     return GRADIENT_COLORS[id % GRADIENT_COLORS.length];
   }, []);
 
   const toggleViewMode = useCallback(() => {
-    const newMode = viewMode === 'card' ? 'list' : 'card';
-    setViewMode(newMode);
-    setBrowseViewModeSetting(newMode);
-  }, [viewMode, setBrowseViewModeSetting]);
+    setBrowseViewMode(viewMode === 'card' ? 'list' : 'card');
+  }, [viewMode, setBrowseViewMode]);
 
   const changeSortOption = useCallback(
     (option: SortOption) => {
-      setSortOption(option);
-      setBrowseSortOptionSetting(option);
+      setBrowseSortOption(option);
     },
-    [setBrowseSortOptionSetting],
+    [setBrowseSortOption],
   );
 
-  // Render item for SectionList
   const renderItem = useCallback(
-    ({item, section}: {item: ListItem; section: {viewMode: ViewMode}}) => {
-      // Handle Juz header
+    ({item}: ListRenderItemInfo<FlatItem>) => {
       if (item.type === 'juz-header') {
         return (
-          <View style={styles.juzHeader}>
-            <LinearGradient
-              colors={['transparent', theme.colors.border]}
-              locations={[0, 0.5]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
-            <View
+          <View
+            style={[
+              styles.juzHeader,
+              {backgroundColor: theme.colors.background},
+            ]}>
+            <Text
               style={[
-                styles.juzHeaderPill,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.05)
-                    .toString(),
-                },
+                styles.juzHeaderText,
+                {color: theme.colors.textSecondary},
               ]}>
-              <Text
-                style={[
-                  styles.juzHeaderText,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                {item.juzName}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={[theme.colors.border, 'transparent']}
-              locations={[0.5, 1]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
+              {item.juzName}
+            </Text>
           </View>
         );
       }
 
-      // Handle surah row
       const surahs = item.surahs;
-      if (section.viewMode === 'card') {
+      if (viewMode === 'card') {
         return (
           <View style={styles.cardRow}>
             {surahs.map(surah => (
@@ -238,194 +182,128 @@ export default function SurahsView({
             {surahs.length === 1 && <View style={styles.surahCard} />}
           </View>
         );
-      } else {
-        return (
-          <SurahItem
-            item={surahs[0]}
-            onPress={onSurahPress}
-            onLongPress={onSurahLongPress}
-          />
-        );
       }
+
+      return (
+        <SurahItem
+          item={surahs[0]}
+          onPress={onSurahPress}
+          onLongPress={onSurahLongPress}
+        />
+      );
     },
     [
+      viewMode,
       getColorForSurah,
       onSurahPress,
       onSurahLongPress,
+      theme.colors.background,
       theme.colors.textSecondary,
-      theme.colors.border,
-      theme.colors.text,
     ],
   );
 
-  // Render section header (sticky sort options)
-  const renderSectionHeader = useCallback(
+  const ListHeader = useMemo(
     () => (
-      <View
-        style={[
-          styles.stickyHeader,
-          {backgroundColor: theme.colors.background},
-        ]}>
-        <View style={styles.optionsRow}>
-          {/* Sort options */}
+      <View>
+        <View style={styles.heroContainer}>
+          <SurahsHero
+            surahOfTheDay={surahOfTheDay}
+            onSurahPress={onSurahPress}
+            onSurahLongPress={onSurahLongPress}
+          />
+        </View>
+
+        <View style={styles.optionsBar}>
           <View style={styles.sortOptions}>
-            <TouchableOpacity
-              style={[
-                styles.sortButton,
-                sortOption === 'asc' && {
-                  backgroundColor: Color(theme.colors.primary)
-                    .alpha(0.1)
-                    .toString(),
-                },
-              ]}
-              activeOpacity={1}
-              onPress={() => changeSortOption('asc')}>
-              <Feather
-                name="arrow-up"
-                size={moderateScale(14)}
-                color={
-                  sortOption === 'asc'
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.sortButtonText,
-                  {
-                    color:
-                      sortOption === 'asc'
-                        ? theme.colors.primary
-                        : theme.colors.textSecondary,
-                  },
-                ]}>
-                Asc
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.sortButton,
-                sortOption === 'desc' && {
-                  backgroundColor: Color(theme.colors.primary)
-                    .alpha(0.1)
-                    .toString(),
-                },
-              ]}
-              activeOpacity={1}
-              onPress={() => changeSortOption('desc')}>
-              <Feather
-                name="arrow-down"
-                size={moderateScale(14)}
-                color={
-                  sortOption === 'desc'
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.sortButtonText,
-                  {
-                    color:
-                      sortOption === 'desc'
-                        ? theme.colors.primary
-                        : theme.colors.textSecondary,
-                  },
-                ]}>
-                Desc
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.sortButton,
-                sortOption === 'revelation' && {
-                  backgroundColor: Color(theme.colors.primary)
-                    .alpha(0.1)
-                    .toString(),
-                },
-              ]}
-              activeOpacity={1}
-              onPress={() => changeSortOption('revelation')}>
-              <Feather
-                name="calendar"
-                size={moderateScale(14)}
-                color={
-                  sortOption === 'revelation'
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary
-                }
-              />
-              <Text
-                style={[
-                  styles.sortButtonText,
-                  {
-                    color:
-                      sortOption === 'revelation'
-                        ? theme.colors.primary
-                        : theme.colors.textSecondary,
-                  },
-                ]}>
-                Rev
-              </Text>
-            </TouchableOpacity>
+            {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
+              const isActive = sortOption === option;
+              const iconName =
+                option === 'asc'
+                  ? 'arrow-up'
+                  : option === 'desc'
+                  ? 'arrow-down'
+                  : 'calendar';
+              const label =
+                option === 'asc'
+                  ? 'Asc'
+                  : option === 'desc'
+                  ? 'Desc'
+                  : 'Rev';
+              return (
+                <Pressable
+                  key={option}
+                  style={[
+                    styles.sortButton,
+                    isActive && {
+                      backgroundColor: Color(theme.colors.text)
+                        .alpha(0.1)
+                        .toString(),
+                    },
+                  ]}
+                  onPress={() => changeSortOption(option)}>
+                  <Feather
+                    name={iconName}
+                    size={moderateScale(14)}
+                    color={
+                      isActive
+                        ? theme.colors.text
+                        : theme.colors.textSecondary
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.sortButtonText,
+                      {
+                        color: isActive
+                          ? theme.colors.text
+                          : theme.colors.textSecondary,
+                      },
+                    ]}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          {/* View mode toggle */}
-          <TouchableOpacity
-            style={styles.viewModeButton}
-            onPress={toggleViewMode}
-            activeOpacity={1}>
+          <Pressable style={styles.viewModeButton} onPress={toggleViewMode}>
             <Feather
               name={viewMode === 'card' ? 'list' : 'grid'}
               size={moderateScale(16)}
               color={theme.colors.text}
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     ),
-    [sortOption, viewMode, theme, changeSortOption, toggleViewMode],
+    [
+      surahOfTheDay,
+      onSurahPress,
+      onSurahLongPress,
+      sortOption,
+      viewMode,
+      theme.colors,
+      changeSortOption,
+      toggleViewMode,
+    ],
   );
 
-  // List header (hero section)
-  const ListHeader = useMemo(
-    () => (
-      <View style={styles.heroContainer}>
-        <SurahsHero
-          surahOfTheDay={surahOfTheDay}
-          onSurahPress={onSurahPress}
-          onSurahLongPress={onSurahLongPress}
-        />
-      </View>
-    ),
-    [surahOfTheDay, onSurahPress, onSurahLongPress],
-  );
+  const keyExtractor = useCallback((item: FlatItem) => item.key, []);
 
-  const keyExtractor = useCallback((item: ListItem, index: number) => {
-    if (item.type === 'juz-header') {
-      return `juz-${item.juzNumber}`;
-    }
-    return `row-${index}-${item.surahs.map(s => s.id).join('-')}`;
-  }, []);
+  const getItemType = useCallback((item: FlatItem) => item.type, []);
 
   return (
     <View style={styles.container}>
-      <SectionList
-        sections={sections}
+      <FlashList
+        data={data}
         renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
         ListHeaderComponent={ListHeader}
         keyExtractor={keyExtractor}
-        stickySectionHeadersEnabled={true}
+        getItemType={getItemType}
+        stickyHeaderIndices={stickyIndices}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
-        ItemSeparatorComponent={ItemSeparator}
-        initialNumToRender={25}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        removeClippedSubviews={true}
+        drawDistance={moderateScale(300)}
       />
     </View>
   );
@@ -441,15 +319,13 @@ const styles = StyleSheet.create({
   heroContainer: {
     marginBottom: 0,
   },
-  stickyHeader: {
-    paddingTop: moderateScale(12),
-    paddingBottom: moderateScale(12),
-    paddingHorizontal: moderateScale(16),
-  },
-  optionsRow: {
+  optionsBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: moderateScale(12),
+    paddingBottom: moderateScale(12),
+    paddingHorizontal: moderateScale(16),
   },
   sortOptions: {
     flexDirection: 'row',
@@ -475,32 +351,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: moderateScale(16),
+    paddingBottom: moderateScale(12),
   },
   surahCard: {
     width: '48%',
   },
-  itemSeparator: {
-    height: moderateScale(12),
-  },
   juzHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: moderateScale(16),
-    marginTop: moderateScale(8),
-    marginBottom: moderateScale(-4),
-  },
-  juzHeaderLine: {
-    flex: 1,
-    height: 1,
-  },
-  juzHeaderPill: {
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(5),
-    borderRadius: moderateScale(12),
-    marginHorizontal: moderateScale(8),
+    paddingTop: moderateScale(14),
+    paddingBottom: moderateScale(6),
   },
   juzHeaderText: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(12),
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 0.8,

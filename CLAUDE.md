@@ -181,6 +181,7 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 ### UI and Styling
 
 - **Use `Pressable` instead of `TouchableOpacity`** — the opacity flash on press is unwanted. Use `Pressable` for all interactive elements.
+- **Never use accent/primary colors** (e.g., `theme.colors.primary`) for UI elements. Stick to `theme.colors.text`, `theme.colors.textSecondary`, and alpha-based variants of those for all text, icons, and interactive elements.
 - Use consistent styling through `StyleSheet.create()`
 - Ensure responsive design by considering different screen sizes and orientations
 - Optimize image handling using `expo-image`

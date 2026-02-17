@@ -12,6 +12,7 @@ const FONT_ASSETS: Record<string, number> = {
   QuranCommon: require('@/data/mushaf/quran-common.ttf'),
   SurahNameV4: require('@/data/mushaf/surah-name-v4.ttf'),
   SurahNameQCF: require('@/data/mushaf/surah-name-qcf.ttf'),
+  ManropeSemiBold: require('@/assets/fonts/Manrope-SemiBold.ttf'),
 };
 
 /**

@@ -31,6 +31,7 @@ interface SkiaLineProps {
   fontSize: number;
   margin: number;
   yPos: number;
+  lineHeight?: number;
   textColor: string;
   charToRule?: Map<number, string>;
   fontFamily?: string;
@@ -51,6 +52,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   fontSize,
   margin,
   yPos,
+  lineHeight,
   textColor,
   charToRule,
   fontFamily = 'DigitalKhatt',
@@ -185,7 +187,26 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     }
   }, [paragraph, lineIndex, xPos, onParagraphReady]);
 
-  return <Paragraph paragraph={paragraph} x={xPos} y={yPos} width={maxWidth} />;
+  // Vertically center basmallah within its slot (top-aligned for all other lines)
+  let adjustedYPos = yPos;
+  if (
+    lineHeight &&
+    lineInfo.lineType === 2 &&
+    pageNumber !== 1 &&
+    pageNumber !== 2
+  ) {
+    const pHeight = paragraph.getHeight();
+    adjustedYPos = yPos + Math.max(0, (lineHeight - pHeight) / 2);
+  }
+
+  return (
+    <Paragraph
+      paragraph={paragraph}
+      x={xPos}
+      y={adjustedYPos}
+      width={maxWidth}
+    />
+  );
 };
 
 export default React.memo(SkiaLine);

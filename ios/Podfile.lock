@@ -246,6 +246,9 @@ PODS:
     - ExpoModulesCore
   - ExpoMediaControl (1.0.10):
     - ExpoModulesCore
+  - ExpoMediaLibrary (18.2.1):
+    - ExpoModulesCore
+    - React-Core
   - ExpoModulesCore (3.0.29):
     - hermes-engine
     - RCTRequired
@@ -270,6 +273,8 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - ExpoShareIntentModule (5.1.1):
+    - ExpoModulesCore
+  - ExpoSharing (14.0.8):
     - ExpoModulesCore
   - ExpoSplashScreen (31.0.13):
     - ExpoModulesCore
@@ -2524,8 +2529,10 @@ DEPENDENCIES:
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoMediaControl (from `../node_modules/expo-media-control/ios`)
+  - ExpoMediaLibrary (from `../node_modules/expo-media-library/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoShareIntentModule (from `../node_modules/expo-share-intent/ios`)
+  - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
   - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
@@ -2688,10 +2695,14 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-linking/ios"
   ExpoMediaControl:
     :path: "../node_modules/expo-media-control/ios"
+  ExpoMediaLibrary:
+    :path: "../node_modules/expo-media-library/ios"
   ExpoModulesCore:
     :path: "../node_modules/expo-modules-core"
   ExpoShareIntentModule:
     :path: "../node_modules/expo-share-intent/ios"
+  ExpoSharing:
+    :path: "../node_modules/expo-sharing/ios"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
   ExpoSQLite:
@@ -2904,8 +2915,10 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: 809102bdb979f590083af49f7fa4805cd931bd58
   ExpoLinking: 8f0aaf69aa56f832913030503b6263dc6f647f37
   ExpoMediaControl: 4682e7ae0cb2b14eee299d526938debb3af12bfe
+  ExpoMediaLibrary: a3093b04365b245bb23b25b6eba84eb6ab55fecb
   ExpoModulesCore: f3da4f1ab5a8375d0beafab763739dbee8446583
   ExpoShareIntentModule: 928ff229dd5e577561944786f0de08be339f640b
+  ExpoSharing: 0d983394ed4a80334bab5a0d5384f75710feb7e8
   ExpoSplashScreen: bc3cffefca2716e5f22350ca109badd7e50ec14d
   ExpoSQLite: 7eedbe476870a5f18d6b89c817c4ac6f299830ad
   ExpoStoreReview: 32bb43b6fae9c8db3e33cad69996dff3785eef5f
