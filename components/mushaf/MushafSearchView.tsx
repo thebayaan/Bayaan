@@ -5,13 +5,13 @@ import {
   TextInput,
   ScrollView,
   FlatList,
-  SectionList,
   Keyboard,
   StyleSheet,
   Pressable,
   Animated as RNAnimated,
   BackHandler,
 } from 'react-native';
+import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {moderateScale as ms} from 'react-native-size-matters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -42,13 +42,9 @@ interface MushafSearchViewProps {
 
 type SortOption = 'asc' | 'desc' | 'revelation';
 
-type BrowseListItem = {type: 'surah-row'; surah: Surah};
-
-type BrowseSection = {
-  juzNumber: number | null;
-  juzName: string | null;
-  data: BrowseListItem[];
-};
+type BrowseItem =
+  | {type: 'juz-header'; juzName: string; key: string}
+  | {type: 'surah-row'; surah: Surah; key: string};
 
 type SearchResultItem =
   | {type: 'surah'; surah: Surah; primary: string; secondary: string}
@@ -518,7 +514,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   // Browse mode data
   // ──────────────────────────────────────────────────────────
-  const browseSections = useMemo((): BrowseSection[] => {
+  const {browseData, stickyIndices} = useMemo(() => {
     const sorted = [...SURAHS];
     switch (sortOption) {
       case 'asc':
@@ -532,32 +528,32 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         break;
     }
 
+    const items: BrowseItem[] = [];
+    const stickies: number[] = [];
     const showJuzHeaders = sortOption === 'asc' || sortOption === 'desc';
-    if (!showJuzHeaders) {
-      return [
-        {
-          juzNumber: null,
-          juzName: null,
-          data: sorted.map(s => ({type: 'surah-row', surah: s})),
-        },
-      ];
+
+    if (showJuzHeaders) {
+      let currentJuz: number | null = null;
+      for (const surah of sorted) {
+        const juz = getJuzForSurah(surah.id);
+        if (juz !== currentJuz) {
+          currentJuz = juz;
+          stickies.push(items.length);
+          items.push({
+            type: 'juz-header',
+            juzName: getJuzName(juz),
+            key: `juz-${juz}`,
+          });
+        }
+        items.push({type: 'surah-row', surah, key: `surah-${surah.id}`});
+      }
+    } else {
+      for (const surah of sorted) {
+        items.push({type: 'surah-row', surah, key: `surah-${surah.id}`});
+      }
     }
 
-    const sections: BrowseSection[] = [];
-    let currentJuz: number | null = null;
-    for (const surah of sorted) {
-      const juz = getJuzForSurah(surah.id);
-      if (juz !== currentJuz) {
-        currentJuz = juz;
-        sections.push({
-          juzNumber: juz,
-          juzName: getJuzName(juz),
-          data: [],
-        });
-      }
-      sections[sections.length - 1].data.push({type: 'surah-row', surah});
-    }
-    return sections;
+    return {browseData: items, stickyIndices: stickies};
   }, [sortOption]);
 
   const handleSurahPress = useCallback(
@@ -587,37 +583,32 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Browse mode renderers
   // ──────────────────────────────────────────────────────────
   const renderBrowseItem = useCallback(
-    ({item}: {item: BrowseListItem}) => {
+    ({item}: ListRenderItemInfo<BrowseItem>) => {
+      if (item.type === 'juz-header') {
+        return (
+          <View
+            style={[
+              styles.juzHeader,
+              {backgroundColor: theme.colors.background},
+            ]}>
+            <Text
+              style={[
+                styles.juzHeaderText,
+                {color: theme.colors.textSecondary},
+              ]}>
+              {item.juzName}
+            </Text>
+          </View>
+        );
+      }
       return <SurahItem item={item.surah} onPress={handleSurahPress} />;
     },
-    [handleSurahPress],
+    [handleSurahPress, theme.colors],
   );
 
-  const renderSectionHeader = useCallback(
-    ({section}: {section: BrowseSection}) => {
-      if (!section.juzName) return null;
-      return (
-        <View
-          style={[
-            styles.juzHeader,
-            {backgroundColor: theme.colors.background},
-          ]}>
-          <Text
-            style={[
-              styles.juzHeaderText,
-              {color: theme.colors.textSecondary},
-            ]}>
-            {section.juzName}
-          </Text>
-        </View>
-      );
-    },
-    [theme.colors],
-  );
+  const browseKeyExtractor = useCallback((item: BrowseItem) => item.key, []);
 
-  const keyExtractor = useCallback((item: BrowseListItem, index: number) => {
-    return `surah-${item.surah.id}-${index}`;
-  }, []);
+  const getItemType = useCallback((item: BrowseItem) => item.type, []);
 
   const SortBar = useMemo(
     () => (
@@ -632,11 +623,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
                 ? 'arrow-down'
                 : 'calendar';
             const label =
-              option === 'asc'
-                ? 'Asc'
-                : option === 'desc'
-                ? 'Desc'
-                : 'Rev';
+              option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
             return (
               <Pressable
                 key={option}
@@ -777,20 +764,18 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         </View>
 
         {/* Surah list with sticky juz headers */}
-        <SectionList
-          sections={browseSections}
+        <FlashList
+          data={browseData}
           renderItem={renderBrowseItem}
-          renderSectionHeader={renderSectionHeader}
           ListHeaderComponent={BrowseListHeader}
-          keyExtractor={keyExtractor}
-          stickySectionHeadersEnabled={true}
+          keyExtractor={browseKeyExtractor}
+          getItemType={getItemType}
+          stickyHeaderIndices={stickyIndices}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           contentContainerStyle={styles.listContent}
-          initialNumToRender={20}
-          maxToRenderPerBatch={10}
-          windowSize={5}
+          drawDistance={ms(300)}
         />
       </RNAnimated.View>
 
