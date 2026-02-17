@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
@@ -35,20 +35,7 @@ function createStyles(theme: Theme, width: number, height: number) {
       // borderWidth: 0.5,
       borderColor: Color(theme.colors.border).alpha(0.15).toString(),
     },
-    backgroundImageContainer: {
-      position: 'absolute',
-      top: -10,
-      left: -10,
-      right: -10,
-      bottom: -10,
-      overflow: 'hidden',
-    },
-    backgroundImage: {
-      width: '90%',
-      height: '90%',
-      // transform: [{scale: 1.2}],
-    },
-    foregroundImageContainer: {
+foregroundImageContainer: {
       width: '100%',
       height: '65%', // Reduced from 70% to give more space to the text
       justifyContent: 'flex-start',
@@ -138,29 +125,6 @@ const BrowseReciterCard = React.memo(
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={[styles.container, animatedStyle]}>
-        {/* Background blurred image — iOS only (doesn't look good on Android) */}
-        {Platform.OS === 'ios' && (
-          <View style={styles.backgroundImageContainer}>
-            <ReciterImage
-              imageUrl={reciter.image_url || undefined}
-              reciterName={reciter.name}
-              style={styles.backgroundImage}
-              profileIconSize={moderateScale(40)}
-              blurRadius={20}
-            />
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: theme.isDarkMode
-                    ? 'rgba(0,0,0,0.3)'
-                    : 'rgba(255,255,255,0.3)',
-                },
-              ]}
-            />
-          </View>
-        )}
-
         {/* Foreground clear image */}
         <View style={styles.foregroundImageContainer}>
           <ReciterImage

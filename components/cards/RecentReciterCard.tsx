@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Platform} from 'react-native';
+import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
@@ -17,7 +17,6 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import {BlurView} from '@react-native-community/blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -257,23 +256,15 @@ export const RecentReciterCard = ({
       onPress={handlePress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}>
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          blurAmount={40}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: theme.colors.card,
-              opacity: 0.9,
-            },
-          ]}
-        />
-      )}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.colors.card,
+            opacity: 0.9,
+          },
+        ]}
+      />
       <LinearGradient
         colors={[
           Color(theme.colors.textSecondary).alpha(0.03).toString(),
