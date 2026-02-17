@@ -44,6 +44,7 @@ const createStyles = (theme: Theme) =>
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     scrollView: {
       flex: 1,

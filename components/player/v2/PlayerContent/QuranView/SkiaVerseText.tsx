@@ -19,7 +19,8 @@ const paragraphStyle = {
 };
 
 interface SkiaVerseTextProps {
-  verseKey: string;
+  verseKey?: string;
+  text?: string;
   fontMgr: SkTypefaceFontProvider;
   fontFamily: string;
   fontSize: number;
@@ -31,6 +32,7 @@ interface SkiaVerseTextProps {
 
 const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   verseKey,
+  text,
   fontMgr,
   fontFamily,
   fontSize,
@@ -40,12 +42,13 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   indexedTajweedData,
 }) => {
   const verseText = useMemo(
-    () => digitalKhattDataService.getVerseText(verseKey),
-    [verseKey],
+    () =>
+      text ?? (verseKey ? digitalKhattDataService.getVerseText(verseKey) : ''),
+    [text, verseKey],
   );
 
   const charToRule = useMemo(() => {
-    if (!showTajweed || !indexedTajweedData) return null;
+    if (!verseKey || !showTajweed || !indexedTajweedData) return null;
     return getVerseTajweedMap(verseKey, indexedTajweedData);
   }, [verseKey, showTajweed, indexedTajweedData]);
 
@@ -88,7 +91,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   if (!paragraph || width <= 0) return null;
 
   return (
-    <Canvas style={{width, height, direction: 'rtl'}}>
+    <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>
       <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
     </Canvas>
   );
