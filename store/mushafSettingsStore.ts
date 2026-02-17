@@ -56,7 +56,11 @@ interface MushafSettingsState {
   // Recently read surahs (last 10, deduplicated by surahId)
   recentPages: RecentRead[];
 
+  // Session restore
+  lastScreenWasMushaf: boolean;
+
   // Actions
+  setLastScreenWasMushaf: (value: boolean) => void;
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
   toggleTajweed: () => void;
@@ -87,8 +91,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
       lastReadPage: null,
       recentPages: [],
+      lastScreenWasMushaf: false,
 
       // Actions
+      setLastScreenWasMushaf: (value: boolean) =>
+        set({lastScreenWasMushaf: value}),
       toggleTranslation: () =>
         set(state => ({showTranslation: !state.showTranslation})),
       toggleTransliteration: () =>
