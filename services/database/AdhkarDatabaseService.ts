@@ -66,6 +66,12 @@ interface SuperCategoryRow {
   category_ids: string; // JSON array stored as string
 }
 
+/** Escape a value for direct SQL interpolation (single-quoted string or NULL). */
+function esc(value: string | null | undefined): string {
+  if (value == null) return 'NULL';
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 // Data version - increment when seed data changes to trigger re-seed
 // Version 1: Initial adhkar data (267 items)
 // Version 2: Added Quranic Duas (40 items, total 307)
@@ -563,69 +569,86 @@ class AdhkarDatabaseService {
     return (result?.count ?? 0) > 0;
   }
 
-  // Seed database from JSON data
+  // Seed database from JSON data (batch inserts for performance)
   async seedDatabase(data: AdhkarSeedData): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     const db = this.db;
 
-    await db.withTransactionAsync(async () => {
-      // Clear existing data
-      await db.runAsync(`DELETE FROM category_tags`);
-      await db.runAsync(`DELETE FROM adhkar_tags`);
-      await db.runAsync(`DELETE FROM adhkar`);
-      await db.runAsync(`DELETE FROM adhkar_categories`);
+    // Clear existing data
+    await db.execAsync(`
+      DELETE FROM category_tags;
+      DELETE FROM adhkar_tags;
+      DELETE FROM adhkar;
+      DELETE FROM adhkar_categories;
+    `);
 
-      // Insert categories
-      for (const category of data.categories) {
-        await db.runAsync(
-          `INSERT INTO adhkar_categories (id, title, dhikr_count) VALUES (?, ?, ?)`,
-          [category.id, category.title, category.dhikr_count],
-        );
+    // Batch insert categories
+    if (data.categories.length > 0) {
+      const categoryValues = data.categories
+        .map(c => `(${esc(c.id)}, ${esc(c.title)}, ${c.dhikr_count})`)
+        .join(',\n');
+      await db.execAsync(
+        `INSERT INTO adhkar_categories (id, title, dhikr_count) VALUES ${categoryValues};`,
+      );
+    }
 
-        // Insert tags for this category
-        for (const tagName of category.broad_tags) {
-          // Get or create tag
-          let tag = (await db.getFirstAsync(
-            `SELECT id, name FROM adhkar_tags WHERE name = ?`,
-            [tagName],
-          )) as TagRow | null;
-
-          if (!tag) {
-            const result = await db.runAsync(
-              `INSERT INTO adhkar_tags (name) VALUES (?)`,
-              [tagName],
-            );
-            tag = {id: result.lastInsertRowId, name: tagName};
-          }
-
-          // Link category to tag
-          await db.runAsync(
-            `INSERT OR IGNORE INTO category_tags (category_id, tag_id) VALUES (?, ?)`,
-            [category.id, tag.id],
-          );
-        }
+    // Collect all unique tags and category-tag links
+    const tagSet = new Set<string>();
+    const categoryTagLinks: Array<{categoryId: string; tagName: string}> = [];
+    for (const category of data.categories) {
+      for (const tagName of category.broad_tags) {
+        tagSet.add(tagName);
+        categoryTagLinks.push({categoryId: category.id, tagName});
       }
+    }
 
-      // Insert adhkar
-      for (const dhikr of data.adhkar) {
-        await db.runAsync(
-          `INSERT INTO adhkar (id, category_id, arabic, translation, transliteration, instruction, repeat_count, audio_file, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            dhikr.id,
-            dhikr.category_id,
-            dhikr.arabic,
-            dhikr.translation,
-            dhikr.transliteration,
-            dhikr.instruction,
-            dhikr.repeat_count,
-            dhikr.audio_file,
-            dhikr.order_index,
-          ],
+    // Batch insert tags
+    if (tagSet.size > 0) {
+      const tagValues = [...tagSet].map(t => `(${esc(t)})`).join(',');
+      await db.execAsync(`INSERT INTO adhkar_tags (name) VALUES ${tagValues};`);
+    }
+
+    // Get tag IDs for linking (single query)
+    const allTags = (await db.getAllAsync(
+      'SELECT id, name FROM adhkar_tags',
+    )) as Array<{id: number; name: string}>;
+    const tagIdMap = new Map(allTags.map(t => [t.name, t.id]));
+
+    // Batch insert category-tag links
+    if (categoryTagLinks.length > 0) {
+      const linkValues = categoryTagLinks
+        .map(link => {
+          const tagId = tagIdMap.get(link.tagName);
+          return tagId != null ? `(${esc(link.categoryId)}, ${tagId})` : null;
+        })
+        .filter(Boolean)
+        .join(',');
+      if (linkValues) {
+        await db.execAsync(
+          `INSERT OR IGNORE INTO category_tags (category_id, tag_id) VALUES ${linkValues};`,
         );
       }
-    });
+    }
+
+    // Batch insert adhkar in chunks of ~100 to avoid SQL size limits
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < data.adhkar.length; i += CHUNK_SIZE) {
+      const chunk = data.adhkar.slice(i, i + CHUNK_SIZE);
+      const adhkarValues = chunk
+        .map(
+          d =>
+            `(${esc(d.id)}, ${esc(d.category_id)}, ${esc(d.arabic)}, ${esc(
+              d.translation,
+            )}, ${esc(d.transliteration)}, ${esc(d.instruction)}, ${
+              d.repeat_count
+            }, ${esc(d.audio_file)}, ${d.order_index})`,
+        )
+        .join(',\n');
+      await db.execAsync(
+        `INSERT INTO adhkar (id, category_id, arabic, translation, transliteration, instruction, repeat_count, audio_file, sort_order) VALUES ${adhkarValues};`,
+      );
+    }
   }
 
   // Seed super categories
@@ -1015,29 +1038,23 @@ class AdhkarDatabaseService {
 
     const allSuperCategories = [...mainAdhkar, ...otherAdhkar];
 
-    await db.withTransactionAsync(async () => {
-      // Clear existing super categories
-      await db.runAsync(`DELETE FROM super_categories`);
-
-      // Insert all super categories
-      for (const cat of allSuperCategories) {
-        await db.runAsync(
-          `INSERT INTO super_categories (id, title, arabic_title, color, height_multiplier, column, sort_order, section, category_ids)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            cat.id,
-            cat.title,
-            cat.arabic_title,
+    // Clear and batch insert all super categories
+    const superValues = allSuperCategories
+      .map(
+        cat =>
+          `(${esc(cat.id)}, ${esc(cat.title)}, ${esc(cat.arabic_title)}, ${esc(
             cat.color,
-            cat.height_multiplier,
-            cat.column,
-            cat.sort_order,
-            cat.section,
-            JSON.stringify(cat.category_ids),
-          ],
-        );
-      }
-    });
+          )}, ${cat.height_multiplier}, ${esc(cat.column)}, ${
+            cat.sort_order
+          }, ${esc(cat.section)}, ${esc(JSON.stringify(cat.category_ids))})`,
+      )
+      .join(',\n');
+
+    await db.execAsync(`
+      DELETE FROM super_categories;
+      INSERT INTO super_categories (id, title, arabic_title, color, height_multiplier, column, sort_order, section, category_ids)
+      VALUES ${superValues};
+    `);
   }
 
   // Close database
