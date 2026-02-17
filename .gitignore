@@ -34,6 +34,8 @@ config.ts
 
 # Large data files
 assets/data/timestamps.db
+assets/data/timestamps.db-shm
+assets/data/timestamps.db-wal
 
 # Ignore app-example folder
 app-example/
