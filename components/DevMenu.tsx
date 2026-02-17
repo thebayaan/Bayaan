@@ -3,6 +3,7 @@ import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
+import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {WhatsNewModalRef} from '@/components/modals/WhatsNewModal';
 import Color from 'color';
 
@@ -122,6 +123,32 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
             onPressOut={() => setPressedItem(null)}>
             <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
               📊 Log Version State
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[
+              styles.devMenuItem,
+              {
+                backgroundColor:
+                  pressedItem === 'clearLayoutCache'
+                    ? Color(theme.colors.text).alpha(0.08).toString()
+                    : 'transparent',
+              },
+            ]}
+            onPress={() => {
+              mushafLayoutCacheService.clearAll();
+              Alert.alert(
+                'Layout Cache Cleared',
+                'MMKV mushaf layout cache has been wiped. Reopen the Mushaf tab to recompute on-demand.',
+                [{text: 'OK'}],
+              );
+            }}
+            onPressIn={() => setPressedItem('clearLayoutCache')}
+            onPressOut={() => setPressedItem(null)}>
+            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
+              🗑️ Clear Layout Cache
             </Text>
           </TouchableOpacity>
 

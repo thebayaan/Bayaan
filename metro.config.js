@@ -16,4 +16,8 @@ config.transformer.getTransformOptions = async () => ({
   },
 });
 
+// Allow .db files to be bundled as assets (for timestamps.db)
+config.resolver.assetExts = config.resolver.assetExts ?? [];
+config.resolver.assetExts.push('db');
+
 module.exports = config;
