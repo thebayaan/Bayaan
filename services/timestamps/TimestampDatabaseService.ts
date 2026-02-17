@@ -1,6 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import {Asset} from 'expo-asset';
-import * as FileSystem from 'expo-file-system/legacy';
 import type {
   AyahTimestamp,
   TimestampMeta,
@@ -8,6 +6,9 @@ import type {
   TimestampMetaRow,
 } from '@/types/timestamps';
 import {mapAyahTimestampRow, mapTimestampMetaRow} from '@/types/timestamps';
+
+const DB_NAME = 'timestamps.db';
+const SCHEMA_VERSION = 2; // v1 = original with segments, v2 = stripped
 
 class TimestampDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -19,29 +20,36 @@ class TimestampDatabaseService {
 
     this.initPromise = (async () => {
       try {
-        const dbPath = `${FileSystem.documentDirectory}SQLite/timestamps.db`;
-        const info = await FileSystem.getInfoAsync(dbPath);
+        let db = await SQLite.openDatabaseAsync(DB_NAME);
 
-        if (!info.exists) {
-          // Copy from bundled asset to writable directory
-          const asset = await Asset.fromModule(
+        // Check if DB has expected table and correct schema version
+        const tableCheck = await db
+          .getFirstAsync<{name: string}>(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='ayah_timestamps'",
+          )
+          .catch(() => null);
+
+        const versionResult = tableCheck
+          ? await db.getFirstAsync<{user_version: number}>(
+              'PRAGMA user_version',
+            )
+          : null;
+
+        if (
+          !tableCheck ||
+          (versionResult?.user_version ?? 0) < SCHEMA_VERSION
+        ) {
+          await db.closeAsync();
+          await SQLite.deleteDatabaseAsync(DB_NAME);
+          await SQLite.importDatabaseFromAssetAsync(DB_NAME, {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            require('@/assets/data/timestamps.db'),
-          ).downloadAsync();
-
-          // Ensure SQLite directory exists
-          await FileSystem.makeDirectoryAsync(
-            `${FileSystem.documentDirectory}SQLite`,
-            {intermediates: true},
-          );
-
-          await FileSystem.copyAsync({
-            from: asset.localUri!,
-            to: dbPath,
+            assetId: require('@/assets/data/timestamps.db'),
           });
+          db = await SQLite.openDatabaseAsync(DB_NAME);
+          await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
         }
 
-        this.db = await SQLite.openDatabaseAsync('timestamps.db');
+        this.db = db;
       } catch (error) {
         console.error('Failed to initialize timestamps database:', error);
         this.initPromise = null;
@@ -59,7 +67,10 @@ class TimestampDatabaseService {
     if (!this.db) throw new Error('Timestamps database not initialized');
 
     const rows = (await this.db.getAllAsync(
-      `SELECT * FROM ayah_timestamps WHERE rewayat_id = ? AND surah_number = ? ORDER BY ayah_number`,
+      `SELECT rewayat_id, surah_number, ayah_number, timestamp_from, timestamp_to, duration_ms
+       FROM ayah_timestamps
+       WHERE rewayat_id = ? AND surah_number = ?
+       ORDER BY ayah_number`,
       [rewayatId, surahNumber],
     )) as AyahTimestampRow[];
 

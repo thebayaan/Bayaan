@@ -1,24 +1,17 @@
 // Domain types (camelCase)
 
-export interface WordSegment {
-  wordIndex: number; // 1-indexed
-  startMs: number;
-  endMs: number;
-}
-
 export interface AyahTimestamp {
   surahNumber: number;
   ayahNumber: number;
   timestampFrom: number; // milliseconds
   timestampTo: number; // milliseconds
   durationMs: number;
-  segments: WordSegment[]; // may be empty
 }
 
 export interface TimestampMeta {
   rewayatId: string;
   slug: string;
-  source: string; // 'qurancom' | 'qul'
+  source: string; // 'qurancom'
   audioSource: string; // 'quranicaudio' | etc.
   version: number;
   totalAyahs: number;
@@ -56,23 +49,9 @@ export interface AyahTimestampRow {
   timestamp_from: number;
   timestamp_to: number;
   duration_ms: number;
-  segments: string; // JSON string
 }
 
 // Mapping functions
-
-export function parseSegments(json: string): WordSegment[] {
-  try {
-    const raw = JSON.parse(json) as number[][];
-    return raw.map(([wordIndex, startMs, endMs]) => ({
-      wordIndex,
-      startMs,
-      endMs,
-    }));
-  } catch {
-    return [];
-  }
-}
 
 export function mapTimestampMetaRow(row: TimestampMetaRow): TimestampMeta {
   return {
@@ -95,6 +74,5 @@ export function mapAyahTimestampRow(row: AyahTimestampRow): AyahTimestamp {
     timestampFrom: row.timestamp_from,
     timestampTo: row.timestamp_to,
     durationMs: row.duration_ms,
-    segments: parseSegments(row.segments),
   };
 }
