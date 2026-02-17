@@ -1,5 +1,5 @@
-import React, {useCallback, useMemo, useState} from 'react';
-import {View, Text, Pressable, Share} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -12,6 +12,7 @@ import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {qulDataService} from '@/services/mushaf/QulDataService';
 import {lightHaptics} from '@/utils/haptics';
 import Color from 'color';
 
@@ -175,18 +176,69 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     transliteration,
   ]);
 
-  const handleShare = useCallback(async () => {
+  const handleShare = useCallback(() => {
     lightHaptics();
-    const message = `${arabicText}\n\n${translation}\n\n-- Quran ${verseRefText}`;
-    await Share.share({message});
-    SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText]);
+    SheetManager.show('verse-share', {
+      payload: {
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        verseKeys,
+        arabicText,
+        translation,
+      },
+    });
+  }, [verseKey, surahNumber, ayahNumber, verseKeys, arabicText, translation]);
 
   const handleTranslation = useCallback(() => {
     SheetManager.show('verse-translation', {
       payload: {verseKey, surahNumber, ayahNumber, verseKeys, arabicText},
     });
   }, [verseKey, surahNumber, ayahNumber, verseKeys, arabicText]);
+
+  // QUL data: theme label and per-feature availability
+  const [themeLabel, setThemeLabel] = useState<string | null>(null);
+  const [hasSimilarVerses, setHasSimilarVerses] = useState(false);
+  const [hasSharedPhrases, setHasSharedPhrases] = useState(false);
+
+  useEffect(() => {
+    if (!surahNumber || !ayahNumber || isRange) return;
+    let cancelled = false;
+    const vk = `${surahNumber}:${ayahNumber}`;
+
+    (async () => {
+      const [themes, similar, phrases] = await Promise.all([
+        qulDataService.getThemesForVerse(surahNumber, ayahNumber),
+        qulDataService.hasSimilarVerses(vk),
+        qulDataService.hasSharedPhrases(vk),
+      ]);
+      if (cancelled) return;
+      if (themes.length > 0) {
+        const best = themes.reduce((a, b) =>
+          a.totalAyahs <= b.totalAyahs ? a : b,
+        );
+        setThemeLabel(best.theme);
+      }
+      setHasSimilarVerses(similar);
+      setHasSharedPhrases(phrases);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [surahNumber, ayahNumber, isRange]);
+
+  const handleSimilarVerses = useCallback(() => {
+    SheetManager.show('similar-verses', {
+      payload: {verseKey, surahNumber, ayahNumber, section: 'similar'},
+    });
+  }, [verseKey, surahNumber, ayahNumber]);
+
+  const handleSharedPhrases = useCallback(() => {
+    SheetManager.show('similar-verses', {
+      payload: {verseKey, surahNumber, ayahNumber, section: 'phrases'},
+    });
+  }, [verseKey, surahNumber, ayahNumber]);
 
   const handleOnClose = useCallback(() => {
     useVerseSelectionStore.getState().clearSelection();
@@ -206,6 +258,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         <View style={styles.header}>
           <Text style={styles.surahName}>{surahName}</Text>
           <Text style={styles.verseRef}>{verseRefText}</Text>
+          {themeLabel ? (
+            <Text style={styles.themeLabel}>{themeLabel}</Text>
+          ) : null}
         </View>
 
         <View style={styles.optionsGrid}>
@@ -268,6 +323,42 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             />
             <Text style={styles.optionText}>Add Note</Text>
           </Pressable>
+
+          {hasSimilarVerses && !isRange ? (
+            <Pressable
+              style={[
+                styles.option,
+                pressedOption === 'similar' && styles.optionPressed,
+              ]}
+              onPress={handleSimilarVerses}
+              onPressIn={() => setPressedOption('similar')}
+              onPressOut={() => setPressedOption(null)}>
+              <Feather
+                name="layers"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+              <Text style={styles.optionText}>Similar Verses</Text>
+            </Pressable>
+          ) : null}
+
+          {hasSharedPhrases && !isRange ? (
+            <Pressable
+              style={[
+                styles.option,
+                pressedOption === 'phrases' && styles.optionPressed,
+              ]}
+              onPress={handleSharedPhrases}
+              onPressIn={() => setPressedOption('phrases')}
+              onPressOut={() => setPressedOption(null)}>
+              <Feather
+                name="link"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+              <Text style={styles.optionText}>Shared Phrases</Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
             style={[
@@ -355,6 +446,14 @@ const createStyles = (theme: Theme) =>
       fontFamily: 'Manrope-Medium',
       color: theme.colors.textSecondary,
       textAlign: 'center',
+    },
+    themeLabel: {
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Medium',
+      color: theme.colors.textSecondary,
+      fontStyle: 'italic',
+      textAlign: 'center',
+      marginTop: moderateScale(2),
     },
     optionsGrid: {
       gap: moderateScale(8),

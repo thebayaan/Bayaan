@@ -258,6 +258,7 @@ declare module 'react-native-actions-sheet' {
         verseKey: string;
         surahNumber: number;
         ayahNumber: number;
+        section?: 'similar' | 'phrases';
       };
     }>;
   }
