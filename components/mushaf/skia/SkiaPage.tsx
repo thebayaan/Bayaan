@@ -24,6 +24,7 @@ import {
   digitalKhattDataService,
   type DKLine,
 } from '@/services/mushaf/DigitalKhattDataService';
+import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -162,7 +163,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       return;
     }
 
-    // On-demand compute (only on first launch before MMKV is populated)
+    // On-demand compute (first view of this page with this font)
     const result = JustService.getPageLayout(
       pageNumber,
       fontSizeLineWidthRatio,
@@ -170,6 +171,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       fontFamily,
     );
     setJustResults(result);
+
+    // Persist to MMKV so the layout survives app restarts
+    if (result.length > 0) {
+      mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
+    }
   }, [fontMgr, pageNumber, fontSizeLineWidthRatio, fontFamily]);
 
   // Calculate Y positions for each line
