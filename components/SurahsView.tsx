@@ -14,7 +14,6 @@ import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
 import {SurahsHero} from '@/components/hero/SurahsHero';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
-import {LinearGradient} from 'expo-linear-gradient';
 import {Feather} from '@expo/vector-icons';
 import {useSettings} from '@/hooks/useSettings';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
@@ -179,37 +178,13 @@ export default function SurahsView({
       if (item.type === 'juz-header') {
         return (
           <View style={styles.juzHeader}>
-            <LinearGradient
-              colors={['transparent', theme.colors.border]}
-              locations={[0, 0.5]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
-            <View
+            <Text
               style={[
-                styles.juzHeaderPill,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.05)
-                    .toString(),
-                },
+                styles.juzHeaderText,
+                {color: theme.colors.textSecondary},
               ]}>
-              <Text
-                style={[
-                  styles.juzHeaderText,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                {item.juzName}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={[theme.colors.border, 'transparent']}
-              locations={[0.5, 1]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
+              {item.juzName}
+            </Text>
           </View>
         );
       }
@@ -483,24 +458,12 @@ const styles = StyleSheet.create({
     height: moderateScale(12),
   },
   juzHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: moderateScale(16),
-    marginTop: moderateScale(8),
-    marginBottom: moderateScale(-4),
-  },
-  juzHeaderLine: {
-    flex: 1,
-    height: 1,
-  },
-  juzHeaderPill: {
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(5),
-    borderRadius: moderateScale(12),
-    marginHorizontal: moderateScale(8),
+    paddingTop: moderateScale(14),
+    paddingBottom: moderateScale(6),
   },
   juzHeaderText: {
-    fontSize: moderateScale(10),
+    fontSize: moderateScale(12),
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
