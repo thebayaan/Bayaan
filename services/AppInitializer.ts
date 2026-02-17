@@ -4,9 +4,9 @@ import {playlistService} from '@/services/playlist/PlaylistService';
 import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
-import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
+import {timestampService} from '@/services/timestamps/TimestampService';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -307,29 +307,28 @@ appInitializer.registerService({
 });
 
 /**
- * Mushaf Layout Cache (Priority 8)
- * Precomputes all 604 page layouts into MMKV for instant mushaf rendering.
- * Depends on DigitalKhatt Data (priority 5) being loaded first.
- * Non-critical - mushaf will compute on-demand if this hasn't finished.
+ * Timestamp Service (Priority 9)
+ * Copies bundled timestamps.db to writable directory and opens it
+ * Non-critical - app can function without ayah timestamps
  */
 appInitializer.registerService({
-  name: 'Mushaf Layout Cache',
-  priority: 8,
+  name: 'Timestamps',
+  priority: 9,
   critical: false,
   initialize: async () => {
-    await mushafLayoutCacheService.initialize();
+    await timestampService.initialize();
   },
 });
 
 /**
- * Arabic Fonts (Priority 9)
+ * Arabic Fonts (Priority 10)
  * Loads Arabic/Quran fonts during initialization (while splash is showing)
  * instead of after splash hides, preventing text flashes.
  * Non-critical - fonts can still be loaded lazily if this fails.
  */
 appInitializer.registerService({
   name: 'Arabic Fonts',
-  priority: 9,
+  priority: 10,
   critical: false,
   initialize: async () => {
     await Font.loadAsync({

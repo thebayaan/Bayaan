@@ -68,6 +68,7 @@ interface VerseItemProps {
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
   indexedTajweedData: IndexedTajweedData | null;
+  isActive?: boolean;
 }
 
 /**
@@ -95,6 +96,7 @@ export const VerseItem = memo<VerseItemProps>(
     fontMgr,
     dkFontFamily,
     indexedTajweedData,
+    isActive,
   }) => {
     const verseKey = verse.verse_key;
 
@@ -153,6 +155,7 @@ export const VerseItem = memo<VerseItemProps>(
         highlightBg: highlightColor
           ? Color(highlightColor).alpha(0.3).toString()
           : undefined,
+        activeBg: Color(textColor).alpha(0.12).toString(),
       }),
       [textColor, highlightColor],
     );
@@ -272,6 +275,10 @@ export const VerseItem = memo<VerseItemProps>(
       () => [
         styles.container,
         {borderBottomColor: borderColor},
+        isActive && {
+          backgroundColor: derivedColors.activeBg,
+          borderRadius: moderateScale(8),
+        },
         isSelected && {
           backgroundColor: derivedColors.selectedBg,
           borderRadius: moderateScale(8),
@@ -283,6 +290,8 @@ export const VerseItem = memo<VerseItemProps>(
       ],
       [
         borderColor,
+        isActive,
+        derivedColors.activeBg,
         isSelected,
         derivedColors.selectedBg,
         derivedColors.highlightBg,
@@ -460,7 +469,9 @@ VerseItem.displayName = 'VerseItem';
 const styles = StyleSheet.create({
   container: {
     paddingVertical: verticalScale(12),
+    paddingHorizontal: moderateScale(8),
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: moderateScale(8),
   },
   optionsButton: {
     marginLeft: 'auto',

@@ -20,6 +20,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
+import {useTimestampLoader} from '@/hooks/useTimestampLoader';
+import {useAyahTracker} from '@/hooks/useAyahTracker';
+import {useTimestampStore} from '@/store/timestampStore';
+import {findAyahTimestamp} from '@/utils/timestampUtils';
 
 interface PlayerContentProps {
   onSpeedPress: () => void;
@@ -42,8 +46,18 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
 }) => {
   const {theme} = useTheme();
   const [showQueue, setShowQueue] = useState(false);
-  const {updateQueue, removeFromQueue, play, toggleImmersive, setImmersive} =
-    usePlayerActions();
+  const {
+    updateQueue,
+    removeFromQueue,
+    play,
+    seekTo,
+    toggleImmersive,
+    setImmersive,
+  } = usePlayerActions();
+
+  // Mount ayah timestamp hooks
+  useTimestampLoader();
+  useAyahTracker();
   const queue = usePlayerStore(s => s.queue);
   const isImmersive = usePlayerStore(s => s.isImmersive);
   const insets = useSafeAreaInsets();
@@ -112,6 +126,32 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     },
     [removeFromQueue],
   );
+
+  const seekToAyah = useCallback(
+    (verseKey: string) => {
+      const [, ayahStr] = verseKey.split(':');
+      const ayahNumber = parseInt(ayahStr, 10);
+
+      const timestamps = useTimestampStore.getState().currentSurahTimestamps;
+      if (!timestamps) return;
+
+      const ts = findAyahTimestamp(timestamps, ayahNumber);
+      if (!ts) return;
+
+      seekTo(ts.timestampFrom / 1000); // ms → seconds
+      useTimestampStore.getState().setCurrentAyah({
+        surahNumber: ts.surahNumber,
+        ayahNumber: ts.ayahNumber,
+        verseKey,
+        timestampFrom: ts.timestampFrom,
+        timestampTo: ts.timestampTo,
+      });
+    },
+    [seekTo],
+  );
+
+  // Keep seekToAyah available for future UI interaction
+  void seekToAyah;
 
   const handleVersePress = useCallback(() => {
     toggleImmersive();
