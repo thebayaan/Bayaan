@@ -5,7 +5,7 @@ const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 export const IS_COMPACT_DEVICE = SCREEN_HEIGHT < 700;
 
 export const PAGE_PADDING_HORIZONTAL = IS_COMPACT_DEVICE ? 4 : 8;
-export const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 90 : 120;
+export const PAGE_PADDING_TOP = IS_COMPACT_DEVICE ? 95 : 130;
 export const PAGE_PADDING_BOTTOM = IS_COMPACT_DEVICE ? 70 : 100;
 
 // Book page-edge decoration constants
@@ -23,8 +23,6 @@ export function getPageEdgeLayout(pageNumber: number) {
       : PAGE_EDGE_OUTER_MARGIN,
   };
 }
-export const AYAH_LINE_SPACING = IS_COMPACT_DEVICE ? 0.75 : 0.7;
-export const SURAH_HEADER_TOP_GAP = 0.3;
 export const LINES_PER_PAGE = 15;
 
 export const CONTENT_WIDTH = SCREEN_WIDTH - PAGE_PADDING_HORIZONTAL * 2;
@@ -180,44 +178,19 @@ export function getHizbForPage(page: number): number {
 }
 
 /**
- * Calculate Y positions for mushaf page lines, accounting for line type heights.
- * - surah_name lines get 1.0x base height
- * - ayah/basmallah lines get AYAH_LINE_SPACING base height
- * - Pages 1-2 center content vertically
- * - Other pages scale to fill CONTENT_HEIGHT
+ * Calculate Y positions for mushaf page lines with uniform line heights.
+ * Every line (surah_name, basmallah, ayah) gets exactly BASE_LINE_HEIGHT.
+ * Pages 1-2 center the block vertically; pages 3-604 start from the top.
  */
 export function calculateLineYPositions(
   lines: {line_type: string}[],
   pageNumber: number,
 ): number[] {
-  const linePositions: number[] = [];
-  let currentY = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const isSurahName = lines[i].line_type === 'surah_name';
-
-    // Extra gap above mid-page surah headers
-    if (isSurahName && i > 0) {
-      currentY += BASE_LINE_HEIGHT * SURAH_HEADER_TOP_GAP;
-    }
-
-    linePositions.push(currentY);
-
-    // Surah headers get full base height; ayah lines use compressed spacing
-    currentY += BASE_LINE_HEIGHT * (isSurahName ? 1.0 : AYAH_LINE_SPACING);
+  if (pageNumber === 1 || pageNumber === 2) {
+    const totalHeight = lines.length * BASE_LINE_HEIGHT;
+    const topOffset = (CONTENT_HEIGHT - totalHeight) / 2;
+    return lines.map((_, i) => topOffset + i * BASE_LINE_HEIGHT);
   }
-  const totalContentHeight = currentY;
-  const shouldCenter = pageNumber === 1 || pageNumber === 2;
 
-  const yPositions: number[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    if (shouldCenter) {
-      yPositions.push(
-        linePositions[i] + (CONTENT_HEIGHT - totalContentHeight) / 2,
-      );
-    } else {
-      const scaleFactor = CONTENT_HEIGHT / totalContentHeight;
-      yPositions.push(linePositions[i] * scaleFactor);
-    }
-  }
-  return yPositions;
+  return lines.map((_, i) => i * BASE_LINE_HEIGHT);
 }
