@@ -7,6 +7,7 @@ import {
   FlatList,
   TextInput,
   Keyboard,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -63,6 +64,10 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const [reciterFuse, setReciterFuse] = useState<Fuse<Reciter> | null>(null);
   const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
 
+  // Fade animation refs (mushaf search pattern — both views always mounted)
+  const browseOpacity = useRef(new RNAnimated.Value(1)).current;
+  const searchOpacity = useRef(new RNAnimated.Value(0)).current;
+
   const {theme} = useTheme();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
@@ -73,8 +78,10 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     if (!visible) {
       setQuery('');
       setIsSearchMode(false);
+      browseOpacity.setValue(1);
+      searchOpacity.setValue(0);
     }
-  }, [visible]);
+  }, [visible, browseOpacity, searchOpacity]);
 
   // Debounce search query
   useEffect(() => {
@@ -85,23 +92,45 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Handle search input focus - enter search mode
-  const handleSearchFocus = useCallback(() => {
+  // Mode transitions (mushaf search pattern)
+  const enterSearchMode = useCallback(() => {
     setIsSearchMode(true);
-    // Focus the input after a slight delay to ensure the component is rendered
-    setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
-  }, []);
+    setTimeout(() => searchInputRef.current?.focus(), 100);
+    RNAnimated.parallel([
+      RNAnimated.timing(browseOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(searchOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [browseOpacity, searchOpacity]);
 
-  // Handle search cancel - return to explore mode
-  const handleSearchCancel = useCallback(() => {
+  const exitSearchMode = useCallback(() => {
     Keyboard.dismiss();
     setQuery('');
     setIsSearchMode(false);
     searchInputRef.current?.blur();
+    RNAnimated.parallel([
+      RNAnimated.timing(searchOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      RNAnimated.timing(browseOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 50,
+        useNativeDriver: true,
+      }),
+    ]).start();
     onClose();
-  }, [onClose]);
+  }, [browseOpacity, searchOpacity, onClose]);
 
   // Lazy-init Fuse.js — only when user activates search mode
   const fuseInitialized = useRef(false);
@@ -381,133 +410,95 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   if (!visible) return null;
 
-  // Show ExploreView when not in search mode
-  if (!isSearchMode) {
-    return <ExploreView onSearchPress={handleSearchFocus} />;
-  }
-
   return (
-    <View
-      style={[
-        styles.container,
-        {backgroundColor: theme.colors.background, paddingTop: insets.top},
-      ]}>
-      <SearchInput
-        ref={searchInputRef}
-        placeholder="Search surahs or reciters"
-        value={query}
-        onChangeText={setQuery}
-        onCancel={handleSearchCancel}
-        iconColor={theme.colors.text}
-        iconOpacity={0.25}
-        placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
-        textColor={theme.colors.text}
-        backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
-        borderColor={Color(theme.colors.text).alpha(0.06).toString()}
-        keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-        autoCorrect={false}
-        autoComplete="off"
-        autoCapitalize="none"
-        autoFocus={true}
-      />
+    <View style={styles.container}>
+      {/* Browse Mode — always mounted, hidden via opacity */}
+      <RNAnimated.View
+        style={[styles.modeContainer, {opacity: browseOpacity}]}
+        pointerEvents={isSearchMode ? 'none' : 'auto'}>
+        <ExploreView onSearchPress={enterSearchMode} />
+      </RNAnimated.View>
 
-      {query.length === 0 ? (
-        <ScrollView
-          style={styles.flexFill}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled">
-          {recentSearches.length > 0 ? (
-            <View>
-              <View style={styles.sectionHeader}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    {
-                      color: Color(theme.colors.textSecondary)
-                        .alpha(0.5)
-                        .toString(),
-                    },
-                  ]}>
-                  Recent searches
-                </Text>
-                <Pressable onPress={clearRecentSearches}>
+      {/* Search Mode — always mounted, hidden via opacity */}
+      <RNAnimated.View
+        style={[
+          styles.modeContainer,
+          styles.modeOverlay,
+          {
+            opacity: searchOpacity,
+            backgroundColor: theme.colors.background,
+            paddingTop: insets.top,
+          },
+        ]}
+        pointerEvents={isSearchMode ? 'auto' : 'none'}>
+        <SearchInput
+          ref={searchInputRef}
+          placeholder="Search surahs or reciters"
+          value={query}
+          onChangeText={setQuery}
+          onCancel={exitSearchMode}
+          iconColor={theme.colors.text}
+          iconOpacity={0.25}
+          placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
+          textColor={theme.colors.text}
+          backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+          borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+          keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
+          autoCorrect={false}
+          autoComplete="off"
+          autoCapitalize="none"
+        />
+
+        {query.length === 0 ? (
+          <ScrollView
+            style={styles.flexFill}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled">
+            {recentSearches.length > 0 ? (
+              <View>
+                <View style={styles.sectionHeader}>
                   <Text
                     style={[
-                      styles.clearButton,
+                      styles.sectionTitle,
                       {
                         color: Color(theme.colors.textSecondary)
                           .alpha(0.5)
                           .toString(),
                       },
                     ]}>
-                    Clear
+                    Recent searches
                   </Text>
-                </Pressable>
+                  <Pressable onPress={clearRecentSearches}>
+                    <Text
+                      style={[
+                        styles.clearButton,
+                        {
+                          color: Color(theme.colors.textSecondary)
+                            .alpha(0.5)
+                            .toString(),
+                        },
+                      ]}>
+                      Clear
+                    </Text>
+                  </Pressable>
+                </View>
+                <FlatList
+                  data={recentSearches}
+                  renderItem={renderRecentSearch}
+                  keyExtractor={(item, index) =>
+                    `${item.type}-${
+                      item.type === 'surah'
+                        ? (item.item as Surah).id
+                        : (item.item as Reciter).id
+                    }-${index}`
+                  }
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                />
               </View>
-              <FlatList
-                data={recentSearches}
-                renderItem={renderRecentSearch}
-                keyExtractor={(item, index) =>
-                  `${item.type}-${
-                    item.type === 'surah'
-                      ? (item.item as Surah).id
-                      : (item.item as Reciter).id
-                  }-${index}`
-                }
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              />
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Feather
-                name="search"
-                size={moderateScale(36)}
-                color={Color(theme.colors.textSecondary).alpha(0.12).toString()}
-              />
-              <Text
-                style={[
-                  styles.emptyTitle,
-                  {
-                    color: Color(theme.colors.textSecondary)
-                      .alpha(0.35)
-                      .toString(),
-                  },
-                ]}>
-                No recent searches
-              </Text>
-              <Text
-                style={[
-                  styles.emptySubtitle,
-                  {
-                    color: Color(theme.colors.textSecondary)
-                      .alpha(0.2)
-                      .toString(),
-                  },
-                ]}>
-                Your search history will appear here
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      ) : (
-        <FlatList
-          style={styles.flexFill}
-          data={searchResults}
-          renderItem={renderSearchResult}
-          keyExtractor={(item, index) => `${item.type}-${index}`}
-          contentContainerStyle={styles.resultsContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onScrollBeginDrag={() => Keyboard.dismiss()}
-          ListHeaderComponent={
-            searching ? (
-              <View style={styles.loadingContainer}>
-                <LoadingIndicator size={24} />
-              </View>
-            ) : searchResults.length === 0 ? (
+            ) : (
               <View style={styles.emptyState}>
                 <Feather
                   name="search"
@@ -525,7 +516,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                         .toString(),
                     },
                   ]}>
-                  No results found
+                  No recent searches
                 </Text>
                 <Text
                   style={[
@@ -536,14 +527,64 @@ export function SearchView({onClose, visible}: SearchViewProps) {
                         .toString(),
                     },
                   ]}>
-                  Try different keywords or check the spelling
+                  Your search history will appear here
                 </Text>
               </View>
-            ) : null
-          }
-          ListFooterComponent={<View style={styles.footer} />}
-        />
-      )}
+            )}
+          </ScrollView>
+        ) : (
+          <FlatList
+            style={styles.flexFill}
+            data={searchResults}
+            renderItem={renderSearchResult}
+            keyExtractor={(item, index) => `${item.type}-${index}`}
+            contentContainerStyle={styles.resultsContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={() => Keyboard.dismiss()}
+            ListHeaderComponent={
+              searching ? (
+                <View style={styles.loadingContainer}>
+                  <LoadingIndicator size={24} />
+                </View>
+              ) : searchResults.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Feather
+                    name="search"
+                    size={moderateScale(36)}
+                    color={Color(theme.colors.textSecondary)
+                      .alpha(0.12)
+                      .toString()}
+                  />
+                  <Text
+                    style={[
+                      styles.emptyTitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.35)
+                          .toString(),
+                      },
+                    ]}>
+                    No results found
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.2)
+                          .toString(),
+                      },
+                    ]}>
+                    Try different keywords or check the spelling
+                  </Text>
+                </View>
+              ) : null
+            }
+            ListFooterComponent={<View style={styles.footer} />}
+          />
+        )}
+      </RNAnimated.View>
     </View>
   );
 }
@@ -551,6 +592,13 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  modeContainer: {
+    flex: 1,
+  },
+  modeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
   flexFill: {
     flex: 1,
