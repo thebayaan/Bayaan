@@ -7,6 +7,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {timestampService} from '@/services/timestamps/TimestampService';
+import {useTimestampStore} from '@/store/timestampStore';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {useUploadsStore} from '@/store/uploadsStore';
@@ -317,6 +318,7 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await timestampService.initialize();
+    await useTimestampStore.getState().loadFollowAlongRegistry();
   },
 });
 

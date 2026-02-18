@@ -9,10 +9,11 @@ export function useAyahTracker() {
   const hasTimestamps = useTimestampStore(
     s => s.currentSurahTimestamps !== null,
   );
+  const followAlongEnabled = useTimestampStore(s => s.followAlongEnabled);
   const lastAyahRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (playbackState !== 'playing' || !hasTimestamps) {
+    if (playbackState !== 'playing' || !hasTimestamps || !followAlongEnabled) {
       return;
     }
 
@@ -49,5 +50,5 @@ export function useAyahTracker() {
       clearInterval(interval);
       lastAyahRef.current = null;
     };
-  }, [playbackState, hasTimestamps]);
+  }, [playbackState, hasTimestamps, followAlongEnabled]);
 }
