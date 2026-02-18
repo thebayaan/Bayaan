@@ -26,6 +26,8 @@ import {Surah} from '@/data/surahData';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
+import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
+import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -57,6 +59,7 @@ export const RecentReciterCard = ({
   const {theme} = useTheme();
   const {updateQueue} = usePlayerActions();
   const {addRecentTrack} = useRecentlyPlayedStore();
+  const hasFollowAlong = useRewayatFollowAlong(rewayatId);
 
   // Single consolidated subscription with shallow equality
   const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
@@ -290,9 +293,17 @@ export const RecentReciterCard = ({
           <Text style={styles.reciterName} numberOfLines={1}>
             {reciterName}
           </Text>
-          <Text style={styles.surahName} numberOfLines={1}>
-            {surahName}
-          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: moderateScale(4),
+            }}>
+            <Text style={styles.surahName} numberOfLines={1}>
+              {surahName}
+            </Text>
+            {hasFollowAlong && <FollowAlongBadge size="small" />}
+          </View>
 
           {/* Progress Section */}
           <View style={styles.progressSection}>

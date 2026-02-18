@@ -1,5 +1,12 @@
 import React from 'react';
-import {Text, TouchableOpacity, ScrollView, View, Linking} from 'react-native';
+import {
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  View,
+  Linking,
+  Switch,
+} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -12,6 +19,7 @@ import Color from 'color';
 import Header from '@/components/Header';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
 import {QuranIcon} from '@/components/Icons';
+import {useDevSettingsStore} from '@/store/devSettingsStore';
 
 // App Store IDs - Replace with your actual IDs
 
@@ -166,6 +174,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
   const [pressedOption, setPressedOption] = React.useState<string | null>(null);
+  const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
@@ -422,6 +431,47 @@ export default function SettingsScreen() {
             </View>
           </View>
         ))}
+
+        {__DEV__ && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+              Developer
+            </Text>
+            <View style={[styles.settingsItemCard, styles.settingsItem]}>
+              <View style={styles.settingsItemContent}>
+                <View style={styles.settingsItemIcon}>
+                  <Feather
+                    name="tool"
+                    size={moderateScale(20)}
+                    color={theme.colors.textSecondary}
+                  />
+                </View>
+                <View style={styles.settingsTextContainer}>
+                  <Text
+                    style={[styles.settingsTitle, {color: theme.colors.text}]}>
+                    Floating Dev Menu
+                  </Text>
+                  <Text
+                    style={[
+                      styles.settingsDescription,
+                      {color: theme.colors.textSecondary},
+                    ]}>
+                    Show the floating developer tools button
+                  </Text>
+                </View>
+                <Switch
+                  value={showFloatingDevMenu}
+                  onValueChange={toggleFloatingDevMenu}
+                  trackColor={{
+                    false: Color(theme.colors.text).alpha(0.15).toString(),
+                    true: Color(theme.colors.text).alpha(0.3).toString(),
+                  }}
+                  thumbColor={theme.colors.text}
+                />
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

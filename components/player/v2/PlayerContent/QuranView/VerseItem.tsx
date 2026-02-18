@@ -15,7 +15,6 @@ import {Feather, Ionicons} from '@expo/vector-icons';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
-import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
@@ -113,13 +112,6 @@ export const VerseItem = memo<VerseItemProps>(
     const hasNote = useVerseAnnotationsStore(
       useCallback(s => s.notedVerseKeys.has(verseKey), [verseKey]),
     );
-    const highlightColorKey = useVerseAnnotationsStore(
-      useCallback(s => s.highlights[verseKey] ?? null, [verseKey]),
-    );
-    const highlightColor = highlightColorKey
-      ? HIGHLIGHT_COLORS[highlightColorKey]
-      : null;
-
     // Fetch tajweed data directly from store — granular selector means only
     // the ~10 visible VerseItems re-render when tajweed finishes loading
     const processedTajweedAyahData = useTajweedStore(
@@ -152,12 +144,9 @@ export const VerseItem = memo<VerseItemProps>(
         selectedBg: Color(textColor).alpha(0.06).toString(),
         optionsIcon: Color(textColor).alpha(0.5).toString(),
         translationSource: Color(textColor).alpha(0.6).toString(),
-        highlightBg: highlightColor
-          ? Color(highlightColor).alpha(0.3).toString()
-          : undefined,
         activeBg: Color(textColor).alpha(0.12).toString(),
       }),
-      [textColor, highlightColor],
+      [textColor],
     );
 
     // Handle footnote press - uses module-scope cached data
@@ -215,6 +204,7 @@ export const VerseItem = memo<VerseItemProps>(
           arabicText: verse.text,
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
+          source: 'player',
         },
       });
     }, [verseKey, verse, selectVerse]);
@@ -230,6 +220,7 @@ export const VerseItem = memo<VerseItemProps>(
           arabicText: verse.text,
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
+          source: 'player',
         },
       });
     }, [verseKey, verse, selectVerse]);
@@ -283,10 +274,6 @@ export const VerseItem = memo<VerseItemProps>(
           backgroundColor: derivedColors.selectedBg,
           borderRadius: moderateScale(8),
         },
-        derivedColors.highlightBg && {
-          backgroundColor: derivedColors.highlightBg,
-          borderRadius: moderateScale(8),
-        },
       ],
       [
         borderColor,
@@ -294,7 +281,6 @@ export const VerseItem = memo<VerseItemProps>(
         derivedColors.activeBg,
         isSelected,
         derivedColors.selectedBg,
-        derivedColors.highlightBg,
       ],
     );
 

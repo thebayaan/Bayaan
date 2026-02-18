@@ -237,7 +237,7 @@ export const QueueList: React.FC<QueueListProps> = ({
     ({item}: ListRenderItemInfo<IndexedTrack>) => {
       const index = item._queueIndex;
       return (
-        <View style={styles.trackItemContainer}>
+        <View style={[styles.trackItemContainer, {backgroundColor: theme.colors.card}]}>
           {item.isUserUpload ? (
             <UploadQueueItem
               track={item}
@@ -264,7 +264,7 @@ export const QueueList: React.FC<QueueListProps> = ({
         </View>
       );
     },
-    [onQueueItemPress, onRemoveQueueItem, theme.colors.text],
+    [onQueueItemPress, onRemoveQueueItem, theme.colors.text, theme.colors.card],
   );
 
   const keyExtractor = useCallback(
@@ -333,6 +333,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   listContent: {
+    paddingTop: verticalScale(8),
     paddingBottom: verticalScale(20),
   },
   emptyContainer: {

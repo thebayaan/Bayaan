@@ -13,8 +13,15 @@ import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {lightHaptics} from '@/utils/haptics';
+import {PlayIcon, RepeatIcon} from '@/components/Icons';
 import Color from 'color';
+import {router} from 'expo-router';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useTimestampStore} from '@/store/timestampStore';
+import {findAyahTimestamp} from '@/utils/timestampUtils';
 
 const surahData = require('@/data/surahData.json');
 const quranVerses = require('@/data/quran.json');
@@ -32,6 +39,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const ayahNumber = payload?.ayahNumber ?? 0;
   const verseKeys = payload?.verseKeys;
   const isRange = verseKeys && verseKeys.length > 1;
+  const source = payload?.source;
 
   const {arabicText, translation, transliteration} = useMemo(() => {
     if (isRange) {
@@ -232,6 +240,178 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     });
   }, [verseKey, surahNumber, ayahNumber]);
 
+  const startPlaybackForSelection = useCallback(
+    (loop: boolean) => {
+      lightHaptics();
+      const store = useMushafPlayerStore.getState();
+
+      // Need a reciter — fall back to options sheet if none selected
+      if (!store.rewayatId) {
+        const keys = isRange ? verseKeys! : [verseKey];
+        const firstKey = keys[0];
+        const page =
+          digitalKhattDataService.getPageForVerse(firstKey) ||
+          store.currentPage ||
+          1;
+        useMushafPlayerStore.setState({
+          currentPage: page,
+          pendingStartVerseKey: firstKey,
+        });
+        SheetManager.hideAll();
+        setTimeout(() => {
+          SheetManager.show('mushaf-player-options', {
+            payload: {currentPage: page},
+          });
+        }, 300);
+        return;
+      }
+
+      const keys = isRange ? verseKeys! : [verseKey];
+      const firstKey = keys[0];
+      const lastKey = keys[keys.length - 1];
+      const [startS, startA] = firstKey.split(':').map(Number);
+      const [endS, endA] = lastKey.split(':').map(Number);
+
+      const page =
+        digitalKhattDataService.getPageForVerse(firstKey) ||
+        store.currentPage ||
+        1;
+
+      store.stop();
+      store.setRange({surah: startS, ayah: startA}, {surah: endS, ayah: endA});
+
+      if (loop) {
+        store.setVerseRepeatCount(isRange ? 1 : 0);
+        store.setRangeRepeatCount(0);
+      } else {
+        // Reset repeat settings so previous loop mode doesn't carry over
+        store.setVerseRepeatCount(1);
+        store.setRangeRepeatCount(1);
+      }
+
+      SheetManager.hideAll();
+      store.startPlayback(page, firstKey);
+    },
+    [verseKey, verseKeys, isRange],
+  );
+
+  const handlePlaySelection = useCallback(
+    () => startPlaybackForSelection(false),
+    [startPlaybackForSelection],
+  );
+
+  const handleRepeatSelection = useCallback(
+    () => startPlaybackForSelection(true),
+    [startPlaybackForSelection],
+  );
+
+  const isCurrentTrackTimestamped = useCallback(() => {
+    const playerState = usePlayerStore.getState();
+    const currentTrack =
+      playerState.queue.tracks[playerState.queue.currentIndex];
+    const trackRewayatId = currentTrack?.rewayatId;
+    if (!trackRewayatId) return false;
+    return useTimestampStore.getState().supportedRewayatIds.has(trackRewayatId);
+  }, []);
+
+  const handleShowFollowAlong = useCallback(() => {
+    lightHaptics();
+    SheetManager.hideAll();
+    setTimeout(() => {
+      SheetManager.show('follow-along');
+    }, 300);
+  }, []);
+
+  const handlePlayerPlayFromHere = useCallback(() => {
+    lightHaptics();
+    const keys = isRange ? verseKeys! : [verseKey];
+    const firstKey = keys[0];
+    const [, ayahStr] = firstKey.split(':');
+    const ayahNumber = parseInt(ayahStr, 10);
+
+    const timestamps = useTimestampStore.getState().currentSurahTimestamps;
+    if (!timestamps) return;
+
+    const ts = findAyahTimestamp(timestamps, ayahNumber);
+    if (!ts) return;
+
+    const playerState = usePlayerStore.getState();
+    playerState.seekTo(ts.timestampFrom / 1000);
+    if (playerState.playback.state !== 'playing') {
+      playerState.play();
+    }
+    useTimestampStore.getState().setCurrentAyah({
+      surahNumber: ts.surahNumber,
+      ayahNumber: ts.ayahNumber,
+      verseKey: firstKey,
+      timestampFrom: ts.timestampFrom,
+      timestampTo: ts.timestampTo,
+    });
+
+    SheetManager.hideAll();
+  }, [verseKey, verseKeys, isRange]);
+
+  const handlePlayerRepeat = useCallback(() => {
+    lightHaptics();
+    const keys = isRange ? verseKeys! : [verseKey];
+    const firstKey = keys[0];
+    const [sStr, aStr] = firstKey.split(':');
+    const sNum = parseInt(sStr, 10);
+    const aNum = parseInt(aStr, 10);
+
+    // Get reciter info from the currently playing track
+    const playerState = usePlayerStore.getState();
+    const currentTrack =
+      playerState.queue.tracks[playerState.queue.currentIndex];
+    const trackRewayatId = currentTrack?.rewayatId;
+    const trackReciterName = currentTrack?.reciterName;
+
+    // Get the mushaf page for this verse
+    const page =
+      digitalKhattDataService.getPageForVerse(firstKey) ||
+      useMushafPlayerStore.getState().currentPage ||
+      1;
+
+    // Pre-populate mushaf player store with reciter if available
+    const mushafStore = useMushafPlayerStore.getState();
+    if (trackRewayatId && trackReciterName) {
+      mushafStore.setReciter(trackRewayatId, trackReciterName);
+    }
+    useMushafPlayerStore.setState({currentPage: page});
+
+    // Pause the main player
+    if (playerState.playback.state === 'playing') {
+      playerState.pause();
+    }
+
+    // Dismiss all sheets and close the player sheet
+    SheetManager.hideAll();
+    playerState.setSheetMode('hidden');
+
+    // Set pending verse so mushaf playback starts from the correct verse
+    useMushafPlayerStore.setState({
+      currentPage: page,
+      pendingStartVerseKey: firstKey,
+    });
+
+    // Navigate to mushaf
+    router.push({
+      pathname: '/mushaf',
+      params: {
+        page: String(page),
+        surah: String(sNum),
+        ayah: String(aNum),
+      },
+    });
+
+    // After navigation settles, open playback settings
+    setTimeout(() => {
+      SheetManager.show('mushaf-player-options', {
+        payload: {currentPage: page},
+      });
+    }, 600);
+  }, [verseKey, verseKeys, isRange]);
+
   const handleOnClose = useCallback(() => {
     useVerseSelectionStore.getState().clearSelection();
     useMushafVerseSelectionStore.getState().clearSelection();
@@ -253,6 +433,44 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         </View>
 
         <View style={styles.optionsGrid}>
+          <Pressable
+            style={[
+              styles.option,
+              pressedOption === 'play-selection' && styles.optionPressed,
+            ]}
+            onPress={
+              source === 'player'
+                ? isCurrentTrackTimestamped()
+                  ? handlePlayerPlayFromHere
+                  : handleShowFollowAlong
+                : handlePlaySelection
+            }
+            onPressIn={() => setPressedOption('play-selection')}
+            onPressOut={() => setPressedOption(null)}>
+            <PlayIcon size={moderateScale(20)} color={theme.colors.text} />
+            <Text style={styles.optionText}>
+              {isRange ? 'Play Selection' : 'Play from Here'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.option,
+              pressedOption === 'repeat-selection' && styles.optionPressed,
+            ]}
+            onPress={
+              source === 'player'
+                ? isCurrentTrackTimestamped()
+                  ? handlePlayerRepeat
+                  : handleShowFollowAlong
+                : handleRepeatSelection
+            }
+            onPressIn={() => setPressedOption('repeat-selection')}
+            onPressOut={() => setPressedOption(null)}>
+            <RepeatIcon size={moderateScale(20)} color={theme.colors.text} />
+            <Text style={styles.optionText}>Repeat</Text>
+          </Pressable>
+
           <Pressable
             style={[
               styles.option,

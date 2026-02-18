@@ -20,7 +20,6 @@ import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
-import {PlayIcon} from '@/components/Icons';
 import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -39,6 +38,9 @@ import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
+import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
 import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
@@ -79,7 +81,6 @@ function getSurahNamesForPage(pageNumber: number): string {
 const DKPageView: React.FC<{
   pageNumber: number;
   textColor: string;
-  highlightColor: string;
   surahLabel: string;
   juzLabel: string;
   pageLabel: string;
@@ -92,7 +93,6 @@ const DKPageView: React.FC<{
 }> = ({
   pageNumber,
   textColor,
-  highlightColor,
   surahLabel,
   juzLabel,
   pageLabel,
@@ -165,7 +165,6 @@ const DKPageView: React.FC<{
       <SkiaPage
         pageNumber={pageNumber}
         textColor={textColor}
-        highlightColor={highlightColor}
         contentMarginLeft={effectiveMarginLeft}
         onReady={() => setPageReady(true)}
         onTap={onTap}
@@ -311,6 +310,16 @@ export default function MushafViewer({
     });
   }, []);
 
+  const navigateToPageAnimated = useCallback((targetPage: number) => {
+    flatListRef.current?.scrollToIndex({
+      index: targetPage - 1,
+      animated: true,
+    });
+  }, []);
+
+  // Auto-page-turn during mushaf playback
+  useMushafAutoPageTurn(currentPage, navigateToPageAnimated);
+
   const navigateToSurah = useCallback(
     (surahId: number) => {
       const targetPage = surahStartPages[surahId];
@@ -345,6 +354,17 @@ export default function MushafViewer({
 
   const openSearchMode = useCallback(() => setIsSearchMode(true), []);
 
+  // Mushaf player state
+  const mushafPlaybackState = useMushafPlayerStore(s => s.playbackState);
+  const isPlayerActive = mushafPlaybackState !== 'idle';
+
+  // Update mushaf player store with current page for auto-page-turn
+  useEffect(() => {
+    if (isPlayerActive) {
+      useMushafPlayerStore.setState({currentPage: currentPage});
+    }
+  }, [currentPage, isPlayerActive]);
+
   // Android back handler — exit search mode instead of popping screen
   useEffect(() => {
     if (!isSearchMode) return;
@@ -369,7 +389,6 @@ export default function MushafViewer({
           <DKPageView
             pageNumber={item}
             textColor={theme.colors.text}
-            highlightColor={theme.colors.primary}
             surahLabel={getSurahNamesForPage(item)}
             juzLabel={`Juz ${getJuzForPage(item)}`}
             pageLabel={String(item)}
@@ -501,20 +520,7 @@ export default function MushafViewer({
               },
             ]}
             pointerEvents={isImmersive ? 'none' : 'auto'}>
-            <Pressable
-              style={[
-                styles.circleButton,
-                {backgroundColor: theme.colors.text},
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Play">
-              <View style={styles.playIconContainer}>
-                <PlayIcon
-                  color={theme.colors.background}
-                  size={moderateScale(18)}
-                />
-              </View>
-            </Pressable>
+            <MushafPlayerBar currentPage={currentPage} />
           </Animated.View>
         </>
       )}
@@ -603,20 +609,5 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  circleButton: {
-    width: moderateScale(42),
-    height: moderateScale(42),
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: moderateScale(12),
-  },
-  playIconContainer: {
-    paddingLeft: moderateScale(4),
   },
 });

@@ -17,9 +17,12 @@ import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {expoAudioService} from './ExpoAudioService';
 import {lockScreenService} from './LockScreenService';
 import {ambientAudioService} from './AmbientAudioService';
+import {audioCoordinator} from './AudioCoordinator';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useAmbientStore} from '@/store/ambientStore';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {mushafAudioService} from './MushafAudioService';
 
 // Throttle interval for progress updates — wider on Android to reduce re-renders
 const PROGRESS_UPDATE_INTERVAL = Platform.OS === 'android' ? 2000 : 1000;
@@ -105,6 +108,11 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
 
     const currentState = usePlayerStore.getState().playback.state;
     if (currentState !== state && currentState !== 'loading') {
+      // When main player starts playing, coordinate with mushaf player
+      if (state === 'playing' && currentState !== 'playing') {
+        audioCoordinator.mainWillPlay();
+      }
+
       updatePlaybackState({state});
 
       // Save progress when pausing (to capture final position)
@@ -186,41 +194,49 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
   }, [status.didJustFinish, handleTrackEnd]);
 
   // ========== AMBIENT SOUND SYNC ==========
-  // Sync ambient playback with Quran player state changes.
-  // Ambient should pause when Quran pauses, resume when Quran plays,
+  // Sync ambient playback with the active audio source (main or mushaf).
+  // Ambient should pause when audio pauses, resume when audio plays,
   // and fade out when the queue ends.
-  const prevQuranPlaying = useRef(false);
+  const prevAudioPlaying = useRef(false);
+
+  // Subscribe to mushaf playback state for ambient sync
+  const mushafPlaybackState = useMushafPlayerStore(s => s.playbackState);
 
   useEffect(() => {
-    const isQuranPlaying = status.playing;
-    const wasQuranPlaying = prevQuranPlaying.current;
-    prevQuranPlaying.current = isQuranPlaying;
+    // Determine if any Quran audio source is currently playing
+    const activeSource = audioCoordinator.getActiveSource();
+    const isAudioPlaying =
+      activeSource === 'mushaf'
+        ? mushafPlaybackState === 'playing'
+        : status.playing;
+    const wasAudioPlaying = prevAudioPlaying.current;
+    prevAudioPlaying.current = isAudioPlaying;
 
     // Only act on actual transitions
-    if (isQuranPlaying === wasQuranPlaying) return;
+    if (isAudioPlaying === wasAudioPlaying) return;
 
     const {isEnabled, currentSound} = useAmbientStore.getState();
     if (!isEnabled || !currentSound) return;
 
-    if (isQuranPlaying) {
-      // Quran started playing -> resume ambient
+    if (isAudioPlaying) {
+      // Audio started playing -> resume ambient
       if (
         ambientAudioService.hasPlayer() &&
         !ambientAudioService.getIsPlaying()
       ) {
         ambientAudioService.play();
         if (__DEV__)
-          console.log('[ExpoAudioProvider] Ambient resumed with Quran');
+          console.log('[ExpoAudioProvider] Ambient resumed with audio');
       }
     } else {
-      // Quran paused -> pause ambient
+      // Audio paused -> pause ambient
       if (ambientAudioService.getIsPlaying()) {
         ambientAudioService.pause();
         if (__DEV__)
-          console.log('[ExpoAudioProvider] Ambient paused with Quran');
+          console.log('[ExpoAudioProvider] Ambient paused with audio');
       }
     }
-  }, [status.playing]);
+  }, [status.playing, mushafPlaybackState]);
 
   // Handle queue end — fade out ambient when queue is done
   useEffect(() => {
