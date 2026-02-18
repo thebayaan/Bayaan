@@ -5,7 +5,37 @@ import {LinearGradient} from 'expo-linear-gradient';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {OnboardingPage as OnboardingPageType} from '@/data/onboardingPages';
-import {QuranIcon, RepeatIcon} from '@/components/Icons';
+import {
+  QuranIcon,
+  RepeatIcon,
+  DownloadIcon,
+  PlaylistIcon,
+} from '@/components/Icons';
+
+const CUSTOM_ICONS: Record<
+  string,
+  {component: React.FC<{size: number; color: string}>; size: number}
+> = {
+  mushaf: {component: QuranIcon, size: moderateScale(64)},
+  memorize: {component: RepeatIcon, size: moderateScale(64)},
+  downloads: {component: DownloadIcon, size: moderateScale(56)},
+  playlists: {component: PlaylistIcon, size: moderateScale(56)},
+};
+
+function renderIcon(page: OnboardingPageType) {
+  const custom = page.isCustomIcon ? CUSTOM_ICONS[page.id] : undefined;
+  if (custom) {
+    const Icon = custom.component;
+    return <Icon size={custom.size} color="#FFFFFF" />;
+  }
+  return (
+    <Ionicons
+      name={page.icon as any}
+      size={moderateScale(44)}
+      color="#FFFFFF"
+    />
+  );
+}
 
 interface OnboardingPageProps {
   page: OnboardingPageType;
@@ -35,17 +65,7 @@ function OnboardingPageComponent({
             start={{x: 0, y: 0}}
             end={{x: 1, y: 1}}
             style={styles.iconCircle}>
-            {page.isCustomIcon && page.id === 'mushaf' ? (
-              <QuranIcon size={moderateScale(64)} color="#FFFFFF" />
-            ) : page.isCustomIcon && page.id === 'memorize' ? (
-              <RepeatIcon size={moderateScale(64)} color="#FFFFFF" />
-            ) : (
-              <Ionicons
-                name={page.icon as any}
-                size={moderateScale(44)}
-                color="#FFFFFF"
-              />
-            )}
+            {renderIcon(page)}
           </LinearGradient>
         )}
 
