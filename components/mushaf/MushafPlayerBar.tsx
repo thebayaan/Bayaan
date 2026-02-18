@@ -17,6 +17,7 @@ import {
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {SheetManager} from 'react-native-actions-sheet';
+import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
@@ -96,11 +97,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     return (
       <View style={styles.content}>
         <Pressable
-          style={[styles.playButtonRect, {backgroundColor: theme.colors.text}]}
+          style={[styles.playButtonRect, {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()}]}
           onPress={handlePlayPress}
           accessibilityRole="button"
           accessibilityLabel="Play">
-          <PlayIcon color={theme.colors.background} size={moderateScale(16)} />
+          <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
         </Pressable>
 
         <Text

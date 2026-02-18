@@ -571,7 +571,7 @@ export const MushafPlayerOptionsSheet = (
               styles.playButtonText,
               !canPlay && styles.playButtonTextDisabled,
             ]}>
-            Play Audio
+            Play
           </Text>
         </Pressable>
       </View>
