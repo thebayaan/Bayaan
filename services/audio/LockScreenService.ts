@@ -20,19 +20,28 @@ import {
 } from 'expo-media-control';
 import type {MediaControlEvent} from 'expo-media-control';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {expoAudioService} from './ExpoAudioService';
+import {mushafAudioService} from './MushafAudioService';
+import {audioCoordinator} from './AudioCoordinator';
 
 const POSITION_SYNC_INTERVAL = 1000;
 
 class LockScreenService {
   private static instance: LockScreenService;
   private storeUnsubscribe: (() => void) | null = null;
+  private mushafStoreUnsubscribe: (() => void) | null = null;
   private commandUnsubscribe: (() => void) | null = null;
   private positionInterval: ReturnType<typeof setInterval> | null = null;
   private isEnabled = false;
   private lastTrackId: string | null = null;
   private lastState: string | null = null;
   private lastDuration: number = 0;
+
+  // Mushaf override
+  private isMushafActive = false;
+  private lastMushafVerseKey: string | null = null;
+  private lastMushafPlaybackState: string | null = null;
 
   private constructor() {}
 
@@ -84,6 +93,7 @@ class LockScreenService {
 
     this.listenForCommands();
     this.subscribeToStore();
+    this.subscribeToMushafStore();
     this.startPositionSync();
 
     // Immediately sync current state so metadata appears right away
@@ -100,6 +110,10 @@ class LockScreenService {
       this.storeUnsubscribe();
       this.storeUnsubscribe = null;
     }
+    if (this.mushafStoreUnsubscribe) {
+      this.mushafStoreUnsubscribe();
+      this.mushafStoreUnsubscribe = null;
+    }
     if (this.commandUnsubscribe) {
       this.commandUnsubscribe();
       this.commandUnsubscribe = null;
@@ -112,6 +126,9 @@ class LockScreenService {
     this.lastTrackId = null;
     this.lastState = null;
     this.lastDuration = 0;
+    this.isMushafActive = false;
+    this.lastMushafVerseKey = null;
+    this.lastMushafPlaybackState = null;
 
     if (__DEV__) console.log('[LockScreenService] Sync stopped');
   }
@@ -155,6 +172,12 @@ class LockScreenService {
 
   private listenForCommands(): void {
     this.commandUnsubscribe = addListener((event: MediaControlEvent) => {
+      // Route commands based on active audio source
+      if (audioCoordinator.getActiveSource() === 'mushaf') {
+        this.handleMushafCommand(event);
+        return;
+      }
+
       const store = usePlayerStore.getState();
 
       switch (event.command) {
@@ -185,9 +208,35 @@ class LockScreenService {
     });
   }
 
+  private handleMushafCommand(event: MediaControlEvent): void {
+    const mushafStore = useMushafPlayerStore.getState();
+
+    switch (event.command) {
+      case Command.PLAY:
+        mushafAudioService.play();
+        mushafStore.setPlaybackState('playing');
+        break;
+      case Command.PAUSE:
+        mushafAudioService.pause();
+        mushafStore.setPlaybackState('paused');
+        break;
+      case Command.NEXT_TRACK:
+      case Command.SKIP_FORWARD:
+        mushafAudioService.seekToNextAyah();
+        break;
+      case Command.PREVIOUS_TRACK:
+      case Command.SKIP_BACKWARD:
+        mushafAudioService.seekToPreviousAyah();
+        break;
+    }
+  }
+
   private subscribeToStore(): void {
     // Subscribe to Zustand store changes outside React
     this.storeUnsubscribe = usePlayerStore.subscribe(state => {
+      // Skip main player updates when mushaf is the active source
+      if (this.isMushafActive) return;
+
       const {queue, playback} = state;
       const currentTrack = queue.tracks[queue.currentIndex];
 
@@ -209,6 +258,102 @@ class LockScreenService {
         this.lastState = playback.state;
         this.syncPlaybackState(playback.state);
       }
+    });
+  }
+
+  private subscribeToMushafStore(): void {
+    this.mushafStoreUnsubscribe = useMushafPlayerStore.subscribe(state => {
+      const {playbackState, currentVerseKey, reciterName, currentSurah} = state;
+
+      // Detect mushaf becoming active
+      if (playbackState === 'playing' || playbackState === 'loading') {
+        if (!this.isMushafActive) {
+          this.isMushafActive = true;
+          if (__DEV__)
+            console.log('[LockScreenService] Mushaf override activated');
+        }
+      }
+
+      // Update metadata when verse or surah changes (mushaf active)
+      if (this.isMushafActive && currentVerseKey !== this.lastMushafVerseKey) {
+        this.lastMushafVerseKey = currentVerseKey;
+
+        if (currentVerseKey && currentSurah > 0) {
+          // Lazy-load surah name
+          try {
+            const surahData = require('@/data/surahData.json');
+            const surah = surahData.find(
+              (s: {id: number; name: string}) => s.id === currentSurah,
+            );
+            const title = surah
+              ? `${surah.name} · ${currentVerseKey}`
+              : currentVerseKey;
+
+            updateMetadata({
+              title,
+              artist: reciterName || 'Quran',
+              duration: mushafAudioService.getDurationMs() / 1000,
+            }).catch(() => {});
+          } catch {
+            // Silently ignore metadata update failures
+          }
+        }
+      }
+
+      // Update playback state when it changes
+      if (
+        this.isMushafActive &&
+        playbackState !== this.lastMushafPlaybackState
+      ) {
+        this.lastMushafPlaybackState = playbackState;
+
+        if (playbackState === 'idle') {
+          // Mushaf stopped — revert to main player
+          this.isMushafActive = false;
+          this.lastMushafVerseKey = null;
+          this.lastMushafPlaybackState = null;
+          // Force re-sync main player state
+          this.lastTrackId = null;
+          this.lastState = null;
+          this.lastDuration = 0;
+          this.syncCurrentState();
+          if (__DEV__)
+            console.log('[LockScreenService] Mushaf override cleared');
+          return;
+        }
+
+        this.syncMushafPlaybackState(playbackState);
+      }
+    });
+  }
+
+  private syncMushafPlaybackState(playbackState: string): void {
+    let mediaState: PlaybackState;
+
+    switch (playbackState) {
+      case 'playing':
+        mediaState = PlaybackState.PLAYING;
+        break;
+      case 'paused':
+        mediaState = PlaybackState.PAUSED;
+        break;
+      case 'loading':
+        mediaState = PlaybackState.BUFFERING;
+        break;
+      default:
+        mediaState = PlaybackState.NONE;
+        break;
+    }
+
+    const position = mushafAudioService.getCurrentPositionMs() / 1000;
+    const rate = 1.0;
+
+    updateMediaPlaybackState(mediaState, position, rate).catch(error => {
+      if (__DEV__)
+        console.warn(
+          '[LockScreenService] Failed to update mushaf playback state:',
+          error,
+        );
     });
   }
 
@@ -270,6 +415,19 @@ class LockScreenService {
     this.positionInterval = setInterval(() => {
       if (!this.isEnabled) return;
 
+      // When mushaf is active, sync mushaf position
+      if (this.isMushafActive) {
+        const mushafState = useMushafPlayerStore.getState();
+        if (mushafState.playbackState !== 'playing') return;
+
+        const position = mushafAudioService.getCurrentPositionMs() / 1000;
+        updateMediaPlaybackState(PlaybackState.PLAYING, position, 1.0).catch(
+          () => {},
+        );
+        return;
+      }
+
+      // Main player position sync
       const state = usePlayerStore.getState();
       if (state.playback.state !== 'playing') return;
 

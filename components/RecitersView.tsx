@@ -24,11 +24,14 @@ import {
   getBeginnerFriendlyReciters,
   getFeaturedReciters,
   getBayaanOriginalsReciters,
+  getFollowAlongReciters,
 } from '@/data/reciterCollections';
+import {useTimestampStore} from '@/store/timestampStore';
 import {getAllRewayatTypes, RewayatInfo} from '@/data/rewayatCollections';
 import RewayatCard from '@/components/cards/RewayatCard';
 import {useSettings} from '@/hooks/useSettings';
 import {useRouter} from 'expo-router';
+import {useReciterFollowAlong} from '@/hooks/useFollowAlong';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
@@ -160,6 +163,15 @@ const RenderSectionItem = React.memo(
         : 0,
     );
 
+    // Derive reciter ID for follow-along badge
+    const reciterId =
+      'timestamp' in item
+        ? (item as RecentlyPlayedTrack).reciter?.id
+        : 'rewayat' in item
+        ? (item as Reciter).id
+        : undefined;
+    const showFollowAlong = useReciterFollowAlong(reciterId);
+
     if (variant === 'recent' && 'timestamp' in item) {
       if (!item.reciter?.name || !item.surah?.name) {
         return null;
@@ -187,6 +199,7 @@ const RenderSectionItem = React.memo(
           imageUrl={reciter.image_url ?? undefined}
           name={reciter.name}
           onPress={() => onReciterPress(reciter)}
+          showFollowAlong={showFollowAlong}
         />
       );
     }
@@ -200,6 +213,7 @@ const RenderSectionItem = React.memo(
           width={moderateScale(140)}
           height={moderateScale(160)}
           theme={theme}
+          showFollowAlong={showFollowAlong}
         />
       );
     }
@@ -238,6 +252,7 @@ const RenderSectionItem = React.memo(
         width={moderateScale(120)}
         height={moderateScale(140)}
         theme={theme}
+        showFollowAlong={showFollowAlong}
       />
     );
   },
@@ -402,6 +417,14 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     () => seededShuffle(getMemorizationReciters(10), sessionSeed + 6),
     [sessionSeed],
   );
+  const registryLoaded = useTimestampStore(s => s.registryLoaded);
+  const followAlongReciters = useMemo(
+    () =>
+      registryLoaded
+        ? seededShuffle(getFollowAlongReciters(), sessionSeed + 9)
+        : [],
+    [sessionSeed, registryLoaded],
+  );
   const rewayatTypes = useMemo(
     () => seededShuffle(getAllRewayatTypes(), sessionSeed + 7),
     [sessionSeed],
@@ -486,6 +509,17 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         <Section
           title="Featured Reciters"
           data={featuredReciters}
+          variant="default"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* Follow Along - reciters with verse-by-verse tracking */}
+      {followAlongReciters.length > 0 && (
+        <Section
+          title="Follow Along"
+          data={followAlongReciters}
           variant="default"
           onReciterPress={onReciterPress}
           theme={theme}

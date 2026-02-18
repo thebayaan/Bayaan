@@ -88,8 +88,7 @@ const TIMESTAMP_AUDIO_OVERRIDES: Record<
     padded: false,
   },
   '243312ab-9884-4af2-a034-64774b0f2276': {
-    baseUrl:
-      'https://download.quranicaudio.com/quran/maher_almu3aiqly/year1440',
+    baseUrl: 'https://server12.mp3quran.net/maher',
     padded: true,
   },
   'd375b45c-0c0f-48e1-a940-526bc1f68890': {

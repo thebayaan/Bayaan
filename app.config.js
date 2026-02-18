@@ -117,15 +117,15 @@ module.exports = {
           resizeMode: 'native',
           backgroundColor: '#ffffff',
           imageResizeMode: 'native',
-          imageWidth: 1000,
+          imageWidth: 500,
           dark: {
             image: './assets/images/splash-icon-dark.png',
             backgroundColor: '#000000',
           },
           android: {
-            image: './assets/images/android-splash-icon.png',
+            image: './assets/images/splash-icon.png',
             dark: {
-              image: './assets/images/android-splash-icon-dark.png',
+              image: './assets/images/splash-icon-dark.png',
             },
           },
           userInterfaceStyle: 'automatic',
