@@ -5,6 +5,7 @@ import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
+import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -17,6 +18,7 @@ interface BrowseReciterCardProps {
   width: number;
   height: number;
   theme: Theme;
+  showFollowAlong?: boolean;
 }
 
 // Remove or comment out the unused type
@@ -35,7 +37,7 @@ function createStyles(theme: Theme, width: number, height: number) {
       // borderWidth: 0.5,
       borderColor: Color(theme.colors.border).alpha(0.15).toString(),
     },
-foregroundImageContainer: {
+    foregroundImageContainer: {
       width: '100%',
       height: '65%', // Reduced from 70% to give more space to the text
       justifyContent: 'flex-start',
@@ -81,7 +83,14 @@ foregroundImageContainer: {
 }
 
 const BrowseReciterCard = React.memo(
-  ({reciter, onPress, width, height, theme}: BrowseReciterCardProps) => {
+  ({
+    reciter,
+    onPress,
+    width,
+    height,
+    theme,
+    showFollowAlong,
+  }: BrowseReciterCardProps) => {
     const styles = useMemo(
       () => createStyles(theme, width, height),
       [theme, width, height],
@@ -155,6 +164,7 @@ const BrowseReciterCard = React.memo(
                 ? `${uniqueRewayatNames.length} rewayat available`
                 : reciter.rewayat[0]?.name || ''}
             </Text>
+            {showFollowAlong && <FollowAlongBadge />}
           </View>
         </View>
       </AnimatedTouchableOpacity>
@@ -164,7 +174,8 @@ const BrowseReciterCard = React.memo(
     prevProps.reciter === nextProps.reciter &&
     prevProps.width === nextProps.width &&
     prevProps.height === nextProps.height &&
-    prevProps.theme === nextProps.theme,
+    prevProps.theme === nextProps.theme &&
+    prevProps.showFollowAlong === nextProps.showFollowAlong,
 );
 
 BrowseReciterCard.displayName = 'BrowseReciterCard';
