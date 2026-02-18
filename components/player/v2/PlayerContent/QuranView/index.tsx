@@ -264,7 +264,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {backgroundColor: theme.colors.card}]}>
       <FlashList
         ref={listRef}
         data={verses}

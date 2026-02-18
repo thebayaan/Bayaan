@@ -132,7 +132,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
       {/* Row 1: [Stop] ---- [Prev] [Play/Pause] [Next] ---- [Options] */}
       <View style={styles.activeRow}>
         <Pressable
-          style={styles.iconButton}
+          style={styles.edgeButton}
           onPress={handleStop}
           accessibilityRole="button"
           accessibilityLabel="Stop">
@@ -150,17 +150,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Previous ayah">
             <Feather
-              name="chevron-left"
+              name="chevrons-left"
               size={moderateScale(22)}
               color={theme.colors.text}
             />
           </Pressable>
 
           <Pressable
-            style={[
-              styles.iconButton,
-              !isPlaying && !isLoading && {paddingLeft: moderateScale(11)},
-            ]}
+            style={styles.playPauseButton}
             onPress={handlePlayPause}
             disabled={isLoading}
             accessibilityRole="button"
@@ -170,7 +167,9 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             ) : isPlaying ? (
               <PauseIcon color={theme.colors.text} size={moderateScale(22)} />
             ) : (
-              <PlayIcon color={theme.colors.text} size={moderateScale(22)} />
+              <View style={styles.playIconOffset}>
+                <PlayIcon color={theme.colors.text} size={moderateScale(22)} />
+              </View>
             )}
           </Pressable>
 
@@ -180,7 +179,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Next ayah">
             <Feather
-              name="chevron-right"
+              name="chevrons-right"
               size={moderateScale(22)}
               color={theme.colors.text}
             />
@@ -188,7 +187,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
         </View>
 
         <Pressable
-          style={styles.iconButton}
+          style={styles.edgeButton}
           onPress={handleOptions}
           accessibilityRole="button"
           accessibilityLabel="Playback options">
@@ -235,6 +234,21 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: moderateScale(8),
+  },
+  edgeButton: {
+    width: moderateScale(36),
+    height: moderateScale(36),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playPauseButton: {
+    width: moderateScale(38),
+    height: moderateScale(38),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playIconOffset: {
+    marginLeft: moderateScale(3),
   },
   chevronButton: {
     paddingVertical: moderateScale(8),
