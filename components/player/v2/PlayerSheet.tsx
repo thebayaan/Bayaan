@@ -13,6 +13,8 @@ import Color from 'color';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
+import {useTimestampStore} from '@/store/timestampStore';
+import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
 
 export const PlayerSheet = () => {
   const {theme} = useTheme();
@@ -184,6 +186,16 @@ export const PlayerSheet = () => {
     SheetManager.show('ambient-sounds');
   }, []);
 
+  const followAlongAvailable = useRewayatFollowAlong(currentTrack?.rewayatId);
+
+  const handleFollowAlongPress = useCallback(() => {
+    if (followAlongAvailable) {
+      useTimestampStore.getState().toggleFollowAlong();
+    } else {
+      SheetManager.show('follow-along');
+    }
+  }, [followAlongAvailable]);
+
   const handleShowOptionsSheet = useCallback(() => {
     if (!currentTrack) return;
 
@@ -267,6 +279,7 @@ export const PlayerSheet = () => {
           onMushafLayoutPress={handleShowMushafLayoutSheet}
           onAmbientPress={handleShowAmbientSheet}
           onOptionsPress={handleShowOptionsSheet}
+          onFollowAlongPress={handleFollowAlongPress}
         />
       </BottomSheet>
     </>

@@ -28,6 +28,9 @@ interface ControlButtonsProps {
   showQueue: boolean;
   onMushafLayoutPress?: () => void;
   onAmbientPress: () => void;
+  onFollowAlongPress: () => void;
+  followAlongActive: boolean;
+  followAlongAvailable: boolean;
 }
 
 interface Styles {
@@ -36,6 +39,7 @@ interface Styles {
   speedButton: ViewStyle;
   sleepButton: ViewStyle;
   ambientButton: ViewStyle;
+  followAlongButton: ViewStyle;
   middleButton: ViewStyle;
   activeButton: ViewStyle;
   speedButtonText: TextStyle;
@@ -57,6 +61,9 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   showQueue,
   onMushafLayoutPress,
   onAmbientPress,
+  onFollowAlongPress,
+  followAlongActive,
+  followAlongAvailable,
 }) => {
   const {theme} = useTheme();
   const {updateSettings} = usePlayerActions();
@@ -190,6 +197,25 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
             filled={ambientEnabled}
           />
         </Pressable>
+
+        <Pressable
+          onPress={onFollowAlongPress}
+          style={[
+            styles.button,
+            styles.followAlongButton,
+            followAlongAvailable &&
+              followAlongActive && [
+                styles.activeButton,
+                {backgroundColor: activeBackgroundColor},
+              ],
+            !followAlongAvailable && {opacity: 0.35},
+          ]}>
+          <Ionicons
+            name="locate-outline"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
       </View>
 
       <Pressable
@@ -288,6 +314,10 @@ const styles = StyleSheet.create<Styles>({
     borderRadius: moderateScale(12),
   },
   ambientButton: {
+    marginLeft: moderateScale(6),
+    borderRadius: moderateScale(12),
+  },
+  followAlongButton: {
     marginLeft: moderateScale(6),
     borderRadius: moderateScale(12),
   },
