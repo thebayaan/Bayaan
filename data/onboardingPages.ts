@@ -75,4 +75,22 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     description:
       'The complete Hisnul Muslim collection with audio playback, Play All mode, and saved favorites.',
   },
+  {
+    id: 'downloads',
+    icon: 'download-outline',
+    isCustomIcon: true,
+    gradientColors: ['#14B8A6', '#0D9488'],
+    title: 'Offline Downloads',
+    description:
+      'Download individual surahs or entire playlists so you can listen without an internet connection.',
+  },
+  {
+    id: 'playlists',
+    icon: 'list-outline',
+    isCustomIcon: true,
+    gradientColors: ['#F97316', '#EA580C'],
+    title: 'Playlists',
+    description:
+      'Create custom playlists, reorder tracks, and build your own listening routines.',
+  },
 ];
