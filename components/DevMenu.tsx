@@ -4,7 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
-import {WhatsNewModalRef} from '@/components/modals/WhatsNewModal';
+import {WhatsNewModalRef} from '@/components/modals/WhatsNewOnboarding';
 import Color from 'color';
 
 interface DevMenuProps {
