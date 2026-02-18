@@ -130,7 +130,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
 
     return (
       <View
-        style={[styles.trackItem, {backgroundColor: theme.colors.background}]}>
+        style={[styles.trackItem, {backgroundColor: theme.colors.card}]}>
         {/* Play zone */}
         <Pressable
           style={styles.playZone}
