@@ -11,6 +11,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
+import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -27,6 +28,7 @@ interface CircularReciterCardProps {
   addTextStyle?: StyleProp<TextStyle>;
   width?: number;
   height?: number;
+  showFollowAlong?: boolean;
 }
 
 const AnimatedTouchableOpacity =
@@ -42,6 +44,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   addTextStyle,
   width,
   height,
+  showFollowAlong,
 }) => {
   const {theme} = useTheme();
 
@@ -146,6 +149,11 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
               style={styles.reciterImage}
             />
             {isSelected && <View style={styles.selectedOverlay} />}
+            {showFollowAlong && (
+              <View style={{position: 'absolute', bottom: 0, right: 0}}>
+                <FollowAlongBadge size="small" />
+              </View>
+            )}
           </>
         ) : (
           <Feather
