@@ -5,6 +5,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {WhatsNewModalRef} from '@/components/modals/WhatsNewOnboarding';
+import {useDevSettingsStore} from '@/store/devSettingsStore';
 import Color from 'color';
 
 interface DevMenuProps {
@@ -15,8 +16,9 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
   const {theme} = useTheme();
   const [visible, setVisible] = useState(false);
   const [pressedItem, setPressedItem] = useState<string | null>(null);
+  const showFloatingDevMenu = useDevSettingsStore(s => s.showFloatingDevMenu);
 
-  if (!__DEV__) return null;
+  if (!__DEV__ || !showFloatingDevMenu) return null;
 
   async function handleTestWhatsNew() {
     await quickTestWhatsNew();
