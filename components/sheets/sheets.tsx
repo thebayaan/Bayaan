@@ -32,6 +32,7 @@ import {VerseNoteSheet} from './VerseNoteSheet';
 import {VerseTranslationSheet} from './VerseTranslationSheet';
 import {VerseShareSheet} from './VerseShareSheet';
 import {SimilarVersesSheet} from './SimilarVersesSheet';
+import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -60,6 +61,7 @@ registerSheet('verse-note', VerseNoteSheet);
 registerSheet('verse-translation', VerseTranslationSheet);
 registerSheet('verse-share', VerseShareSheet);
 registerSheet('similar-verses', SimilarVersesSheet);
+registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -259,6 +261,11 @@ declare module 'react-native-actions-sheet' {
         surahNumber: number;
         ayahNumber: number;
         section?: 'similar' | 'phrases';
+      };
+    }>;
+    'mushaf-player-options': SheetDefinition<{
+      payload: {
+        currentPage: number;
       };
     }>;
   }

@@ -1,11 +1,16 @@
-import {Reciter} from '@/data/reciterData';
-import {useDownloadStore} from '@/services/player/store/downloadStore';
-import {resolveFilePath} from '@/services/downloadService';
+/**
+ * Mushaf Audio Utilities
+ *
+ * Resolves audio URLs for mushaf playback, using the same TIMESTAMP_AUDIO_OVERRIDES
+ * from audioUtils.ts to ensure timestamp-aligned audio.
+ */
 
-// TEMPORARY: Use quranicaudio.com URLs so ayah timestamps align with audio.
-// The timestamp data was generated from quranicaudio recordings, not mp3quran.
-// Remove this map once we re-generate timestamps against mp3quran audio or
-// permanently switch audio sources.
+// Re-export the TIMESTAMP_AUDIO_OVERRIDES from audioUtils for direct access
+// We import the generateAudioUrl function to reuse the override logic
+import {RECITERS, type Reciter} from '@/data/reciterData';
+
+// Mirror of TIMESTAMP_AUDIO_OVERRIDES from audioUtils.ts
+// These overrides ensure audio URLs match the timestamps in the DB
 const TIMESTAMP_AUDIO_OVERRIDES: Record<
   string,
   {baseUrl: string; padded: boolean}
@@ -84,8 +89,8 @@ const TIMESTAMP_AUDIO_OVERRIDES: Record<
     padded: false,
   },
   '6f5b0661-0e21-418a-ab60-2f8b2cdc9b5f': {
-    baseUrl: 'https://download.quranicaudio.com/qdc/khalil_al_husary/murattal',
-    padded: false,
+    baseUrl: 'https://server13.mp3quran.net/husr',
+    padded: true,
   },
   '243312ab-9884-4af2-a034-64774b0f2276': {
     baseUrl: 'https://server12.mp3quran.net/maher',
@@ -138,13 +143,12 @@ const TIMESTAMP_AUDIO_OVERRIDES: Record<
     padded: true,
   },
   'efeccedb-81c6-4ba5-b49a-f69fc723c46b': {
-    baseUrl:
-      'https://download.quranicaudio.com/qdc/siddiq_al-minshawi/mujawwad',
+    baseUrl: 'https://server10.mp3quran.net/minsh/Almusshaf-Al-Mojawwad',
     padded: true,
   },
   '03c3971a-a438-4f11-8795-53ac35eba8d6': {
-    baseUrl: 'https://download.quranicaudio.com/qdc/siddiq_minshawi/murattal',
-    padded: false,
+    baseUrl: 'https://server10.mp3quran.net/minsh',
+    padded: true,
   },
   'a6f8542d-c32d-4db5-9a51-2abeb4c15393': {
     baseUrl: 'https://download.quranicaudio.com/qdc/yasser_ad-dussary/mp3',
@@ -152,87 +156,55 @@ const TIMESTAMP_AUDIO_OVERRIDES: Record<
   },
 };
 
-export function generateAudioUrl(
-  reciter: Reciter,
-  surahId: string,
-  rewayatId?: string,
+/**
+ * Resolve the audio URL for a given rewayat and surah number.
+ * Checks TIMESTAMP_AUDIO_OVERRIDES first, then falls back to the rewayat's server URL.
+ */
+export function resolveMushafAudioUrl(
+  rewayatId: string,
+  surahNumber: number,
 ): string {
-  const paddedSurahId = surahId.padStart(3, '0');
+  const paddedSurah = surahNumber.toString().padStart(3, '0');
 
-  // Get the rewayat - either specified or default to first one
-  const rewayat = rewayatId
-    ? reciter.rewayat.find(r => r.id === rewayatId)
-    : reciter.rewayat[0];
-
-  if (!rewayat) {
-    throw new Error('No rewayat found for reciter');
-  }
-
-  // TEMPORARY: Override to quranicaudio URLs for timestamp-aligned audio
-  const override = TIMESTAMP_AUDIO_OVERRIDES[rewayat.id];
+  // Check timestamp audio overrides first
+  const override = TIMESTAMP_AUDIO_OVERRIDES[rewayatId];
   if (override) {
     const filename = override.padded
-      ? `${paddedSurahId}.mp3`
-      : `${parseInt(surahId, 10)}.mp3`;
+      ? `${paddedSurah}.mp3`
+      : `${surahNumber}.mp3`;
     return `${override.baseUrl}/${filename}`;
   }
 
-  // If the server URL is a Supabase storage URL
-  if (rewayat.server.includes('supabase.co')) {
-    return `${rewayat.server}/${paddedSurahId}.mp3`;
+  // Fall back to rewayat server URL
+  const reciter = RECITERS.find(r => r.rewayat.some(rw => rw.id === rewayatId));
+  if (reciter) {
+    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
+    if (rewayat) {
+      return `${rewayat.server}/${paddedSurah}.mp3`;
+    }
   }
 
-  // Default mp3quran.net URL
-  return `${rewayat.server}/${paddedSurahId}.mp3`;
+  // Last resort: construct from rewayat ID (shouldn't happen)
+  throw new Error(`Cannot resolve audio URL for rewayat ${rewayatId}`);
 }
 
 /**
- * Generates an audio URL that prefers local downloaded files over remote URLs
- * @param reciter - Reciter object
- * @param surahId - Surah ID as string
- * @param rewayatId - Optional specific rewayat ID
- * @returns Local file path if downloaded, otherwise remote URL
+ * Find the reciter and rewayat info for a given rewayat ID.
  */
-export function generateSmartAudioUrl(
-  reciter: Reciter,
-  surahId: string,
-  rewayatId?: string,
-): string {
-  const downloadStore = useDownloadStore.getState();
-
-  // Check if downloaded with specific rewayat
-  if (rewayatId) {
-    const download = downloadStore.getDownloadWithRewayat(
-      reciter.id,
-      surahId,
-      rewayatId,
-    );
-    if (download) {
-      // Resolve the relative path to absolute path at runtime
-      // This ensures paths remain valid after iOS app updates
-      const absolutePath = resolveFilePath(download.filePath);
-      console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId} (Rewayat: ${rewayatId}): ${absolutePath}`,
-      );
-      return absolutePath;
-    }
-  } else {
-    // Check without rewayat (legacy downloads without rewayatId)
-    const download = downloadStore.getDownload(reciter.id, surahId);
-    if (download && download.status === 'completed') {
-      const absolutePath = resolveFilePath(download.filePath);
-      console.log(
-        `Using local file for ${reciter.name} - Surah ${surahId}: ${absolutePath}`,
-      );
-      return absolutePath;
+export function findReciterForRewayat(rewayatId: string): {
+  reciter: Reciter;
+  rewayatName: string;
+  style: string;
+} | null {
+  for (const reciter of RECITERS) {
+    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
+    if (rewayat) {
+      return {
+        reciter,
+        rewayatName: rewayat.name,
+        style: rewayat.style,
+      };
     }
   }
-
-  // Fall back to remote URL if not downloaded
-  console.log(
-    `Using remote URL for ${reciter.name} - Surah ${surahId}${
-      rewayatId ? ` (Rewayat: ${rewayatId})` : ''
-    }`,
-  );
-  return generateAudioUrl(reciter, surahId, rewayatId);
+  return null;
 }
