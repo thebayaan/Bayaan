@@ -204,6 +204,7 @@ export const VerseItem = memo<VerseItemProps>(
           arabicText: verse.text,
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
+          source: 'player',
         },
       });
     }, [verseKey, verse, selectVerse]);
@@ -219,6 +220,7 @@ export const VerseItem = memo<VerseItemProps>(
           arabicText: verse.text,
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
+          source: 'player',
         },
       });
     }, [verseKey, verse, selectVerse]);

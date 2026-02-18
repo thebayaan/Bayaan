@@ -403,6 +403,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         surahNumber,
         ayahNumber,
         verseKeys: keys.length > 1 ? keys : undefined,
+        source: 'mushaf',
       },
     });
 
