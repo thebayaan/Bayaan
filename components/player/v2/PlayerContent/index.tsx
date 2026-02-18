@@ -26,6 +26,7 @@ import {useTimestampLoader} from '@/hooks/useTimestampLoader';
 import {useAyahTracker} from '@/hooks/useAyahTracker';
 import {useTimestampStore} from '@/store/timestampStore';
 import {findAyahTimestamp} from '@/utils/timestampUtils';
+import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
 
 interface PlayerContentProps {
   onSpeedPress: () => void;
@@ -33,6 +34,7 @@ interface PlayerContentProps {
   onMushafLayoutPress: () => void;
   onAmbientPress: () => void;
   onOptionsPress: () => void;
+  onFollowAlongPress: () => void;
 }
 
 const ANIMATION_DURATION = 300;
@@ -45,6 +47,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onMushafLayoutPress,
   onAmbientPress,
   onOptionsPress,
+  onFollowAlongPress,
 }) => {
   const {theme} = useTheme();
   const [showQueue, setShowQueue] = useState(false);
@@ -188,6 +191,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     : undefined;
   const isUntaggedUpload = currentTrack?.isUserUpload && !currentTrack?.surahId;
 
+  // Follow Along state
+  const followAlongAvailable = useRewayatFollowAlong(currentTrack?.rewayatId);
+  const followAlongEnabled = useTimestampStore(s => s.followAlongEnabled);
+
   // Clear verse selection when surah changes
   useEffect(() => {
     useVerseSelectionStore.getState().clearSelection();
@@ -196,7 +203,8 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   return (
     <View style={styles.container}>
       {/* QuranView / QueueList fills the entire area */}
-      <View style={StyleSheet.absoluteFill}>
+      <View
+        style={[StyleSheet.absoluteFill, {backgroundColor: theme.colors.card}]}>
         {showQueue ? (
           <View style={styles.fullArea}>
             <QueueList
@@ -276,6 +284,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
             showQueue={showQueue}
             onMushafLayoutPress={onMushafLayoutPress}
             onAmbientPress={onAmbientPress}
+            onFollowAlongPress={onFollowAlongPress}
+            followAlongActive={followAlongAvailable && followAlongEnabled}
+            followAlongAvailable={followAlongAvailable}
           />
         </Animated.View>
       </GestureDetector>
