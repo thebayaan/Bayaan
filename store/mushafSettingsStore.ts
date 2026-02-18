@@ -81,13 +81,13 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       // Default values
       showTranslation: true,
       showTransliteration: false,
-      showTajweed: true,
+      showTajweed: false,
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
-      translationFontSize: getActualFontSize(4),
+      translationFontSize: getActualFontSize(3),
       transliterationFontSize: getActualFontSize(3),
       arabicFontFamily: 'Uthmani', // Default font
-      uthmaniFont: 'v2', // Default to V2
-      mushafRenderer: 'dk_v2' as MushafRenderer, // Default to DK V2
+      uthmaniFont: 'v1', // Default to V1
+      mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
       lastReadPage: null,
       recentPages: [],

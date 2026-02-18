@@ -16,9 +16,9 @@ import {
   RepeatIcon,
   RepeatOneIcon,
   QueueIcon,
-  QuranIcon,
   AmbientIcon,
 } from '@/components/Icons';
+import {Ionicons} from '@expo/vector-icons';
 import {useAmbientStore} from '@/store/ambientStore';
 
 interface ControlButtonsProps {
@@ -93,7 +93,11 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         <Pressable
           onPress={handleMushafLayoutPress}
           style={[styles.sideButton, styles.mushafLayoutButton]}>
-          <QuranIcon size={moderateScale(28)} color={theme.colors.text} />
+          <Ionicons
+            name="options-outline"
+            size={moderateScale(22)}
+            color={theme.colors.text}
+          />
         </Pressable>
       )}
 
