@@ -57,7 +57,6 @@ interface ParagraphInfo {
 interface SkiaPageProps {
   pageNumber: number;
   textColor: string;
-  highlightColor: string;
   contentMarginLeft?: number;
   onReady?: () => void;
   onTap?: () => void;
@@ -66,7 +65,6 @@ interface SkiaPageProps {
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
   textColor,
-  highlightColor,
   contentMarginLeft,
   onReady,
   onTap,
@@ -460,29 +458,49 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [longPressDragGesture, tapGesture],
   );
 
-  // Compute per-line highlight arrays merging persistent annotations + temporary selection
-  const lineHighlightsMap = useMemo<
+  // Compute per-line background highlight arrays for all highlight types
+  const playbackBgColor = useMemo(
+    () =>
+      Color(textColor)
+        .alpha(isDarkMode ? 0.1 : 0.12)
+        .toString(),
+    [textColor, isDarkMode],
+  );
+
+  const selectionBgColor = useMemo(
+    () =>
+      Color(textColor)
+        .alpha(isDarkMode ? 0.15 : 0.18)
+        .toString(),
+    [textColor, isDarkMode],
+  );
+
+  const EMPTY_BG_MAP = useMemo(
+    () => new Map<number, Array<{start: number; end: number; color: string}>>(),
+    [],
+  );
+
+  const lineBackgroundHighlightsMap = useMemo<
     Map<number, Array<{start: number; end: number; color: string}>>
   >(() => {
-    const map = new Map<
-      number,
-      Array<{start: number; end: number; color: string}>
-    >();
-
-    // Build set of selected verse keys for fast lookup
+    const hasAnnotations = Object.keys(persistentHighlights).length > 0;
+    const hasPlayback = !!playbackVerseKey;
     const selectedSet =
       selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
         ? new Set(selectedVerseKeys)
         : null;
 
-    // Persistent annotation highlights (skip verses that are actively selected)
-    for (const [verseKey, colorName] of Object.entries(persistentHighlights)) {
-      if (selectedSet?.has(verseKey)) continue;
-      const hex = HIGHLIGHT_COLORS[colorName];
-      if (!hex) continue;
+    if (!hasAnnotations && !hasPlayback && !selectedSet) return EMPTY_BG_MAP;
+
+    const map = new Map<
+      number,
+      Array<{start: number; end: number; color: string}>
+    >();
+
+    const addVerseHighlight = (vk: string, color: string) => {
       const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
         pageNumber,
-        verseKey,
+        vk,
       );
       for (const {lineIndex, segment} of verseLines) {
         let arr = map.get(lineIndex);
@@ -493,89 +511,43 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         arr.push({
           start: segment.startCharIndex,
           end: segment.endCharIndex,
-          color: hex,
+          color,
         });
       }
+    };
+
+    // Layer 1: Persistent annotation highlights (lowest priority)
+    for (const [verseKey, colorName] of Object.entries(persistentHighlights)) {
+      if (selectedSet?.has(verseKey)) continue;
+      if (playbackVerseKey === verseKey) continue;
+      const color = HIGHLIGHT_COLORS[colorName];
+      if (!color) continue;
+      addVerseHighlight(verseKey, color);
     }
 
-    // Temporary selection highlight (takes priority — added last so find() returns it first)
-    if (selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber) {
+    // Layer 2: Playback highlight (skip if selected)
+    if (playbackVerseKey && !selectedSet?.has(playbackVerseKey)) {
+      addVerseHighlight(playbackVerseKey, playbackBgColor);
+    }
+
+    // Layer 3: Selection highlight (highest priority)
+    if (selectedSet) {
       for (const vk of selectedVerseKeys) {
-        const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
-          pageNumber,
-          vk,
-        );
-        for (const {lineIndex, segment} of verseLines) {
-          let arr = map.get(lineIndex);
-          if (!arr) {
-            arr = [];
-            map.set(lineIndex, arr);
-          }
-          arr.push({
-            start: segment.startCharIndex,
-            end: segment.endCharIndex,
-            color: highlightColor,
-          });
-        }
+        addVerseHighlight(vk, selectionBgColor);
       }
     }
 
     return map;
   }, [
     persistentHighlights,
+    playbackVerseKey,
+    playbackBgColor,
     selectedVerseKeys,
     selectedPageNumber,
     pageNumber,
-    highlightColor,
+    selectionBgColor,
+    EMPTY_BG_MAP,
   ]);
-
-  // Compute per-line background highlight arrays for active playback ayah
-  const playbackBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(isDarkMode ? 0.1 : 0.12)
-        .toString(),
-    [textColor, isDarkMode],
-  );
-
-  const EMPTY_BG_MAP = useMemo(
-    () =>
-      new Map<number, Array<{start: number; end: number; color: string}>>(),
-    [],
-  );
-
-  const lineBackgroundHighlightsMap = useMemo<
-    Map<number, Array<{start: number; end: number; color: string}>>
-  >(() => {
-    if (!playbackVerseKey) return EMPTY_BG_MAP;
-
-    // Check if this verse is actually on this page
-    const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
-      pageNumber,
-      playbackVerseKey,
-    );
-    if (verseLines.length === 0) return EMPTY_BG_MAP;
-
-    const map = new Map<
-      number,
-      Array<{start: number; end: number; color: string}>
-    >();
-
-    for (const {lineIndex, segment} of verseLines) {
-      let arr = map.get(lineIndex);
-      if (!arr) {
-        arr = [];
-        map.set(lineIndex, arr);
-      }
-      arr.push({
-        start: segment.startCharIndex,
-        end: segment.endCharIndex,
-        color: playbackBgColor,
-      });
-    }
-
-    return map;
-  }, [playbackVerseKey, pageNumber, playbackBgColor, EMPTY_BG_MAP]);
 
   if (!fontMgr || !justResults) {
     return <View style={styles.page} />;
@@ -639,7 +611,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               onParagraphReady={handleParagraphReady}
-              highlights={lineHighlightsMap.get(lineIndex)}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
               lineHeight={
                 lineIndex < lineYPositions.length - 1

@@ -42,7 +42,6 @@ interface SkiaLineProps {
     paragraph: SkParagraph,
     xPos: number,
   ) => void;
-  highlights?: Array<{start: number; end: number; color: string}>;
   backgroundHighlights?: Array<{start: number; end: number; color: string}>;
 }
 
@@ -60,7 +59,6 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   charToRule,
   fontFamily = 'DigitalKhatt',
   onParagraphReady,
-  highlights,
   backgroundHighlights,
 }) => {
   const paragraph = useMemo(() => {
@@ -98,12 +96,9 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
         const char = lineText.charAt(i);
         const justInfo = justResult.fontFeatures.get(i);
-        const matchedHighlight = highlights?.find(
-          h => i >= h.start && i <= h.end,
-        );
         const tajweedRule = charToRule?.get(i);
 
-        const needsCustomStyle = justInfo || tajweedRule || matchedHighlight;
+        const needsCustomStyle = justInfo || tajweedRule;
 
         if (needsCustomStyle) {
           const charStyle: SkTextStyle = {
@@ -112,9 +107,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
           if (justInfo) {
             charStyle.fontFeatures = justInfo;
           }
-          if (matchedHighlight) {
-            charStyle.color = Skia.Color(matchedHighlight.color);
-          } else if (tajweedRule && tajweedColors[tajweedRule]) {
+          if (tajweedRule && tajweedColors[tajweedRule]) {
             charStyle.color = Skia.Color(tajweedColors[tajweedRule]);
           }
           paragraphBuilder.pushStyle(charStyle);
@@ -163,7 +156,6 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     textColor,
     charToRule,
     fontFamily,
-    highlights,
   ]);
 
   if (!paragraph) return null;
