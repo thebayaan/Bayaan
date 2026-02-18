@@ -23,7 +23,7 @@ import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
-} from '@/components/modals/WhatsNewModal';
+} from '@/components/modals/WhatsNewOnboarding';
 import {DevMenu} from '@/components/DevMenu';
 import {SheetProvider} from 'react-native-actions-sheet';
 import '@/components/sheets/sheets'; // Register action sheets
