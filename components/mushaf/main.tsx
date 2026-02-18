@@ -81,7 +81,6 @@ function getSurahNamesForPage(pageNumber: number): string {
 const DKPageView: React.FC<{
   pageNumber: number;
   textColor: string;
-  highlightColor: string;
   surahLabel: string;
   juzLabel: string;
   pageLabel: string;
@@ -94,7 +93,6 @@ const DKPageView: React.FC<{
 }> = ({
   pageNumber,
   textColor,
-  highlightColor,
   surahLabel,
   juzLabel,
   pageLabel,
@@ -167,7 +165,6 @@ const DKPageView: React.FC<{
       <SkiaPage
         pageNumber={pageNumber}
         textColor={textColor}
-        highlightColor={highlightColor}
         contentMarginLeft={effectiveMarginLeft}
         onReady={() => setPageReady(true)}
         onTap={onTap}
@@ -392,7 +389,6 @@ export default function MushafViewer({
           <DKPageView
             pageNumber={item}
             textColor={theme.colors.text}
-            highlightColor={theme.colors.primary}
             surahLabel={getSurahNamesForPage(item)}
             juzLabel={`Juz ${getJuzForPage(item)}`}
             pageLabel={String(item)}
