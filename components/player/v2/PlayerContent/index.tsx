@@ -1,10 +1,12 @@
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+import {Gesture, GestureDetector} from 'react-native-gesture-handler';
+import {useBottomSheetGestureHandlers} from '@gorhom/bottom-sheet';
 import {QueueList} from './QueueList';
 import {QuranView} from './QuranView';
 import {TrackInfo} from './TrackInfo';
@@ -61,6 +63,21 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   const queue = usePlayerStore(s => s.queue);
   const isImmersive = usePlayerStore(s => s.isImmersive);
   const insets = useSafeAreaInsets();
+
+  // Use the bottom-sheet handle gesture so overlay pans close the sheet
+  // regardless of the FlashList scroll offset
+  const {handlePanGestureHandler} = useBottomSheetGestureHandlers();
+  const sheetDragGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onStart(handlePanGestureHandler.handleOnStart)
+        .onChange(handlePanGestureHandler.handleOnChange)
+        .onEnd(handlePanGestureHandler.handleOnEnd)
+        .onFinalize(handlePanGestureHandler.handleOnFinalize)
+        .shouldCancelWhenOutside(false)
+        .runOnJS(false),
+    [handlePanGestureHandler],
+  );
 
   // Overlay height measurement
   const [headerHeight, setHeaderHeight] = useState(DEFAULT_HEADER_HEIGHT);
@@ -209,53 +226,59 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
       </View>
 
       {/* Header overlay — absolute positioned at top */}
-      <Animated.View
-        style={[
-          styles.headerOverlay,
-          overlayAnimatedStyle,
-          {
-            backgroundColor: theme.colors.background,
-            paddingTop: insets.top + moderateScale(12),
-          },
-        ]}
-        pointerEvents={isImmersive ? 'none' : 'auto'}
-        onLayout={handleHeaderLayout}>
-        <View style={styles.handleContainer}>
-          <View
-            style={[
-              styles.handle,
-              {
-                backgroundColor: Color(theme.colors.text).alpha(0.2).toString(),
-              },
-            ]}
-          />
-        </View>
-        <Header onOptionsPress={onOptionsPress} />
-      </Animated.View>
+      <GestureDetector gesture={sheetDragGesture}>
+        <Animated.View
+          style={[
+            styles.headerOverlay,
+            overlayAnimatedStyle,
+            {
+              backgroundColor: theme.colors.background,
+              paddingTop: insets.top + moderateScale(12),
+            },
+          ]}
+          pointerEvents={isImmersive ? 'none' : 'auto'}
+          onLayout={handleHeaderLayout}>
+          <View style={styles.handleContainer}>
+            <View
+              style={[
+                styles.handle,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.2)
+                    .toString(),
+                },
+              ]}
+            />
+          </View>
+          <Header onOptionsPress={onOptionsPress} />
+        </Animated.View>
+      </GestureDetector>
 
       {/* Controls overlay — absolute positioned at bottom */}
-      <Animated.View
-        style={[
-          styles.controlsOverlay,
-          overlayAnimatedStyle,
-          {
-            backgroundColor: theme.colors.background,
-            paddingBottom: insets.bottom || moderateScale(20),
-          },
-        ]}
-        pointerEvents={isImmersive ? 'none' : 'auto'}
-        onLayout={handleControlsLayout}>
-        <TrackInfo />
-        <PlaybackControls />
-        <ControlButtons
-          onSpeedPress={onSpeedPress}
-          onSleepTimerPress={onSleepTimerPress}
-          onQueuePress={handleQueuePress}
-          showQueue={showQueue}
-          onMushafLayoutPress={onMushafLayoutPress}
-          onAmbientPress={onAmbientPress}
-        />
-      </Animated.View>
+      <GestureDetector gesture={sheetDragGesture}>
+        <Animated.View
+          style={[
+            styles.controlsOverlay,
+            overlayAnimatedStyle,
+            {
+              backgroundColor: theme.colors.background,
+              paddingBottom: insets.bottom || moderateScale(20),
+            },
+          ]}
+          pointerEvents={isImmersive ? 'none' : 'auto'}
+          onLayout={handleControlsLayout}>
+          <TrackInfo />
+          <PlaybackControls />
+          <ControlButtons
+            onSpeedPress={onSpeedPress}
+            onSleepTimerPress={onSleepTimerPress}
+            onQueuePress={handleQueuePress}
+            showQueue={showQueue}
+            onMushafLayoutPress={onMushafLayoutPress}
+            onAmbientPress={onAmbientPress}
+          />
+        </Animated.View>
+      </GestureDetector>
 
       {/* Rounded TV frame between header and controls */}
       <Animated.View
