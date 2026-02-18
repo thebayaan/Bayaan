@@ -32,8 +32,10 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
+import Color from 'color';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
 import {
@@ -121,6 +123,13 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   );
 
   const persistentHighlights = useVerseAnnotationsStore(s => s.highlights);
+
+  // Mushaf playback highlighting: only subscribe when verse is on this page
+  const {isDarkMode} = useTheme();
+  const playbackVerseKey = useMushafPlayerStore(s => {
+    if (!s.currentVerseKey || s.playbackState === 'idle') return null;
+    return s.currentVerseKey;
+  });
 
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
@@ -520,6 +529,54 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     highlightColor,
   ]);
 
+  // Compute per-line background highlight arrays for active playback ayah
+  const playbackBgColor = useMemo(
+    () =>
+      Color(textColor)
+        .alpha(isDarkMode ? 0.1 : 0.12)
+        .toString(),
+    [textColor, isDarkMode],
+  );
+
+  const EMPTY_BG_MAP = useMemo(
+    () =>
+      new Map<number, Array<{start: number; end: number; color: string}>>(),
+    [],
+  );
+
+  const lineBackgroundHighlightsMap = useMemo<
+    Map<number, Array<{start: number; end: number; color: string}>>
+  >(() => {
+    if (!playbackVerseKey) return EMPTY_BG_MAP;
+
+    // Check if this verse is actually on this page
+    const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
+      pageNumber,
+      playbackVerseKey,
+    );
+    if (verseLines.length === 0) return EMPTY_BG_MAP;
+
+    const map = new Map<
+      number,
+      Array<{start: number; end: number; color: string}>
+    >();
+
+    for (const {lineIndex, segment} of verseLines) {
+      let arr = map.get(lineIndex);
+      if (!arr) {
+        arr = [];
+        map.set(lineIndex, arr);
+      }
+      arr.push({
+        start: segment.startCharIndex,
+        end: segment.endCharIndex,
+        color: playbackBgColor,
+      });
+    }
+
+    return map;
+  }, [playbackVerseKey, pageNumber, playbackBgColor, EMPTY_BG_MAP]);
+
   if (!fontMgr || !justResults) {
     return <View style={styles.page} />;
   }
@@ -583,6 +640,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               fontFamily={fontFamily}
               onParagraphReady={handleParagraphReady}
               highlights={lineHighlightsMap.get(lineIndex)}
+              backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
               lineHeight={
                 lineIndex < lineYPositions.length - 1
                   ? lineYPositions[lineIndex + 1] - lineYPositions[lineIndex]

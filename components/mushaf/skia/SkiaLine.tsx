@@ -1,6 +1,8 @@
 import React, {useMemo, useEffect} from 'react';
 import {
   Paragraph,
+  Group,
+  RoundedRect,
   Skia,
   TextHeightBehavior,
   TextDirection,
@@ -41,6 +43,7 @@ interface SkiaLineProps {
     xPos: number,
   ) => void;
   highlights?: Array<{start: number; end: number; color: string}>;
+  backgroundHighlights?: Array<{start: number; end: number; color: string}>;
 }
 
 const SkiaLine: React.FC<SkiaLineProps> = ({
@@ -58,6 +61,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   fontFamily = 'DigitalKhatt',
   onParagraphReady,
   highlights,
+  backgroundHighlights,
 }) => {
   const paragraph = useMemo(() => {
     const scale = (fontSize * justResult.fontSizeRatio) / FONTSIZE;
@@ -197,6 +201,68 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   ) {
     const pHeight = paragraph.getHeight();
     adjustedYPos = yPos + Math.max(0, (lineHeight - pHeight) / 2);
+  }
+
+  // Compute background highlight rects (for mushaf playback ayah tracking)
+  const bgRects = useMemo(() => {
+    if (
+      !paragraph ||
+      !backgroundHighlights ||
+      backgroundHighlights.length === 0
+    ) {
+      return null;
+    }
+
+    const rects: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color: string;
+    }> = [];
+
+    for (const hl of backgroundHighlights) {
+      try {
+        const skRects = paragraph.getRectsForRange(hl.start, hl.end + 1);
+        for (const rect of skRects) {
+          rects.push({
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            color: hl.color,
+          });
+        }
+      } catch {
+        // Ignore rect computation failures
+      }
+    }
+
+    return rects.length > 0 ? rects : null;
+  }, [paragraph, backgroundHighlights]);
+
+  if (bgRects) {
+    return (
+      <Group>
+        {bgRects.map((rect, i) => (
+          <RoundedRect
+            key={i}
+            x={xPos + rect.x}
+            y={adjustedYPos + rect.y}
+            width={rect.width}
+            height={rect.height}
+            r={4}
+            color={rect.color}
+          />
+        ))}
+        <Paragraph
+          paragraph={paragraph}
+          x={xPos}
+          y={adjustedYPos}
+          width={maxWidth}
+        />
+      </Group>
+    );
   }
 
   return (
