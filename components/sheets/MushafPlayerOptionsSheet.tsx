@@ -185,21 +185,36 @@ export const MushafPlayerOptionsSheet = (
     useMushafPlayerStore.getState().setRate(newRate);
   }, []);
 
-  const toggleSection = useCallback((section: AccordionSection) => {
-    setExpandedSection(prev => {
-      if (prev === section) return null;
-      // Reset sub-states when opening
-      if (section === 'startVerse') {
-        setStartPickStep('surahList');
-        setStartPickSurah(null);
-      }
-      if (section === 'endVerse') {
-        setEndPickStep('surahList');
-        setEndPickSurah(null);
-      }
-      return section;
-    });
-  }, []);
+  const toggleSection = useCallback(
+    (section: AccordionSection) => {
+      setExpandedSection(prev => {
+        if (prev === section) return null;
+        // Pre-select the already-chosen surah so the picker opens to the ayah grid
+        if (section === 'startVerse') {
+          const [s] = startVerseKey.split(':').map(Number);
+          if (s >= 1 && s <= 114) {
+            setStartPickSurah(s);
+            setStartPickStep('ayahGrid');
+          } else {
+            setStartPickStep('surahList');
+            setStartPickSurah(null);
+          }
+        }
+        if (section === 'endVerse') {
+          const [s] = endVerseKey.split(':').map(Number);
+          if (s >= 1 && s <= 114) {
+            setEndPickSurah(s);
+            setEndPickStep('ayahGrid');
+          } else {
+            setEndPickStep('surahList');
+            setEndPickSurah(null);
+          }
+        }
+        return section;
+      });
+    },
+    [startVerseKey, endVerseKey],
+  );
 
   // Handle surah selection in verse picker
   const handleStartSurahPick = useCallback((surahId: number) => {
