@@ -21,6 +21,7 @@ import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTimestampStore} from '@/store/timestampStore';
+import {findAyahTimestamp} from '@/utils/timestampUtils';
 
 const surahData = require('@/data/surahData.json');
 const quranVerses = require('@/data/quran.json');
@@ -321,6 +322,35 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }, 300);
   }, []);
 
+  const handlePlayerPlayFromHere = useCallback(() => {
+    lightHaptics();
+    const keys = isRange ? verseKeys! : [verseKey];
+    const firstKey = keys[0];
+    const [, ayahStr] = firstKey.split(':');
+    const ayahNumber = parseInt(ayahStr, 10);
+
+    const timestamps = useTimestampStore.getState().currentSurahTimestamps;
+    if (!timestamps) return;
+
+    const ts = findAyahTimestamp(timestamps, ayahNumber);
+    if (!ts) return;
+
+    const playerState = usePlayerStore.getState();
+    playerState.seekTo(ts.timestampFrom / 1000);
+    if (playerState.playback.state !== 'playing') {
+      playerState.play();
+    }
+    useTimestampStore.getState().setCurrentAyah({
+      surahNumber: ts.surahNumber,
+      ayahNumber: ts.ayahNumber,
+      verseKey: firstKey,
+      timestampFrom: ts.timestampFrom,
+      timestampTo: ts.timestampTo,
+    });
+
+    SheetManager.hideAll();
+  }, [verseKey, verseKeys, isRange]);
+
   const handlePlayerRepeat = useCallback(() => {
     lightHaptics();
     const keys = isRange ? verseKeys! : [verseKey];
@@ -411,7 +441,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
             onPress={
               source === 'player'
                 ? isCurrentTrackTimestamped()
-                  ? handlePlayerRepeat
+                  ? handlePlayerPlayFromHere
                   : handleShowFollowAlong
                 : handlePlaySelection
             }

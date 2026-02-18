@@ -22,7 +22,8 @@ export default function PlaylistsScreen() {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {playlists, deletePlaylist, updatePlaylist} = usePlaylists();
+  const {playlists, createPlaylist, deletePlaylist, updatePlaylist} =
+    usePlaylists();
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
@@ -222,11 +223,14 @@ export default function PlaylistsScreen() {
     [existingColors, updatePlaylist, deletePlaylist],
   );
 
-  const handleCreatePlaylist = useCallback(() => {
-    SheetManager.show('create-playlist', {
+  const handleCreatePlaylist = useCallback(async () => {
+    const result = await SheetManager.show('create-playlist', {
       payload: {existingColors},
     });
-  }, [existingColors]);
+    if (result?.name && result?.color) {
+      await createPlaylist(result.name, result.color);
+    }
+  }, [existingColors, createPlaylist]);
 
   const renderItem = useCallback(
     ({item}: {item: (typeof playlists)[0]}) => (
