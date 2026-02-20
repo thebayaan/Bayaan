@@ -5,6 +5,7 @@
 **Complexity:** Medium–High (depending on chosen approach)
 **Created:** 2026-02-20
 **GitHub Issue:** [#117](https://github.com/thebayaan/Bayaan/issues/117)
+**Related:** [Cloud Sync (#120)](https://github.com/thebayaan/Bayaan/issues/120), [`docs/features/cloud-sync.md`](cloud-sync.md)
 
 ## Overview
 
