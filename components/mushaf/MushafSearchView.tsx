@@ -18,7 +18,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { Feather } from '@expo/vector-icons';
 import Color from 'color';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SearchInput } from '@/components/SearchInput';
 import { SurahItem } from '@/components/SurahItem';
 import { SURAHS, Surah } from '@/data/surahData';
@@ -307,114 +306,60 @@ HistoryRow.displayName = 'HistoryRow';
 
 const RecentReadChips: React.FC<{
   recentPages: RecentRead[];
-  lastPage: RecentRead;
   textColor: string;
   secondaryColor: string;
   onPress: (page: number) => void;
-}> = React.memo(({ recentPages, lastPage, textColor, secondaryColor, onPress }) => {
+}> = React.memo(({ recentPages, textColor, secondaryColor, onPress }) => {
   if (recentPages.length === 0) return null;
-
-  const lastSurah = lastPage
-    ? lastPage.surahId >= 1 && lastPage.surahId <= 114
-      ? SURAHS[lastPage.surahId - 1]
-      : null
-    : null;
 
   return (
     <View style={styles.recentReadContainer}>
-      {lastSurah && (
-        <View style={styles.mostRecentSection}>
-          <Text
-            style={[
-              styles.sectionLabel,
-              {
-                color: Color(secondaryColor).alpha(0.5).toString(),
-                marginTop: ms(4),
-              },
-            ]}>
-            Continue Reading
-          </Text>
-          <Pressable
-            onPress={() => onPress(lastPage.page)}
-            style={({ pressed }) => [
-              styles.mostRecentCard,
-              {
-                backgroundColor: Color(textColor).alpha(0.05).toString(),
-                borderColor: Color(textColor).alpha(0.08).toString(),
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}>
-            <View>
-              <Text style={[styles.mostRecentSurah, { color: textColor }]}>
-                {lastSurah.name}
+      <Text
+        style={[
+          styles.sectionLabel,
+          {
+            color: Color(secondaryColor).alpha(0.5).toString(),
+            marginTop: ms(4),
+          },
+        ]}>
+        RECENT READS
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsScroll}>
+        {recentPages.map((item, index) => {
+          const surah =
+            item.surahId >= 1 && item.surahId <= 114
+              ? SURAHS[item.surahId - 1]
+              : null;
+          if (!surah) return null;
+
+          return (
+            <Pressable
+              key={`${item.surahId}-${item.page}-${index}`}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: Color(textColor).alpha(0.05).toString(),
+                  borderColor: Color(textColor).alpha(0.08).toString(),
+                },
+              ]}
+              onPress={() => onPress(item.page)}>
+              <Text style={[styles.chipName, { color: textColor }]}>
+                {surah.name}
               </Text>
               <Text
                 style={[
-                  styles.mostRecentPage,
-                  { color: Color(secondaryColor).alpha(0.6).toString() },
+                  styles.chipPage,
+                  { color: Color(secondaryColor).alpha(0.5).toString() },
                 ]}>
-                Page {lastPage.page}
+                Page {item.page}
               </Text>
-            </View>
-            <Feather
-              name="chevron-right"
-              size={ms(24)}
-              color={Color(secondaryColor).alpha(0.3).toString()}
-            />
-          </Pressable>
-        </View>
-      )}
-
-      {recentPages.length > 1 && (
-        <View>
-          <Text
-            style={[
-              styles.sectionLabel,
-              {
-                color: Color(secondaryColor).alpha(0.5).toString(),
-                marginTop: ms(16),
-              },
-            ]}>
-            RECENT READS
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsScroll}>
-            {recentPages.slice(1).map((item, index) => {
-              const surah =
-                item.surahId >= 1 && item.surahId <= 114
-                  ? SURAHS[item.surahId - 1]
-                  : null;
-              if (!surah) return null;
-
-              return (
-                <Pressable
-                  key={`${item.surahId}-${item.page}-${index}`}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: Color(textColor).alpha(0.05).toString(),
-                      borderColor: Color(textColor).alpha(0.08).toString(),
-                    },
-                  ]}
-                  onPress={() => onPress(item.page)}>
-                  <Text style={[styles.chipName, { color: textColor }]}>
-                    {surah.name}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.chipPage,
-                      { color: Color(secondaryColor).alpha(0.5).toString() },
-                    ]}>
-                    Page {item.page}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 });
@@ -443,7 +388,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const [sortOption, setSortOption] = useState<SortOption>(browseSortOption);
 
   const recentPages = useMushafSettingsStore(s => s.recentPages);
-  const lastPage = useMushafSettingsStore(s => s.recentPages[0]);
   const searchInputRef = useRef<TextInput>(null);
 
   // Fade animation refs
@@ -770,7 +714,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           textColor={theme.colors.text}
           secondaryColor={theme.colors.textSecondary}
           onPress={handleChipPress}
-          lastPage={lastPage}
         />
         <BookmarkChips onPress={handleBookmarkPress} />
         {SortBar}
@@ -1130,32 +1073,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
 
-  // Featured Recent Read
+  // Recent Read chips
   recentReadContainer: {
     paddingTop: ms(4),
-  },
-  mostRecentSection: {
-    marginBottom: ms(4),
-  },
-  mostRecentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: ms(16),
-    paddingHorizontal: ms(20),
-    marginHorizontal: ms(16),
-    borderRadius: ms(16),
-    borderWidth: 1,
-  },
-  mostRecentSurah: {
-    fontSize: ms(19),
-    fontFamily: 'Manrope-Bold',
-    letterSpacing: -0.2,
-  },
-  mostRecentPage: {
-    fontSize: ms(13),
-    fontFamily: 'Manrope-Medium',
-    marginTop: ms(2),
   },
 
   listContent: {
