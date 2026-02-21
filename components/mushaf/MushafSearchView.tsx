@@ -93,6 +93,7 @@ function parseSearchQuery(
   const q = query.trim();
   if (!q) return [];
 
+  const lower = q.toLowerCase();
   const results: SearchResultItem[] = [];
 
   // 1. "page N" or "pg N"
@@ -113,10 +114,35 @@ function parseSearchQuery(
     return results;
   }
 
-  // 2. "juz N"
-  const juzMatch = q.match(/^juz\s+(\d+)$/i);
-  if (juzMatch) {
-    const juz = parseInt(juzMatch[1], 10);
+  // 2. Show all Juz list if typing "juz" or "jz"
+  if (lower === 'juz' || lower === 'jz') {
+    for (let i = 1; i <= 30; i++) {
+      const page = JUZ_START_PAGES[i - 1];
+      const surahId = pageToSurah[page];
+      const surahName =
+        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+      results.push({
+        type: 'juz',
+        juz: i,
+        page,
+        primary: i === 30 ? "Juz 'Amma" : i === 29 ? 'Juz Tabarak' : `Juz ${i}`,
+        secondary: `Page ${page} \u00B7 ${surahName}`,
+      });
+    }
+    return results;
+  }
+
+  // 3. "juz N", "j N", "jz N" or common names like "Amma"
+  const juzMatch = q.match(/^(?:juz|j|jz)\s*(\d+)$/i);
+  const juzNames: Record<string, number> = {
+    'amma': 30,
+    'juz amma': 30,
+    'tabarak': 29,
+    'juz tabarak': 29,
+  };
+
+  if (juzMatch || juzNames[lower]) {
+    const juz = juzMatch ? parseInt(juzMatch[1], 10) : juzNames[lower];
     if (juz >= 1 && juz <= 30) {
       const page = JUZ_START_PAGES[juz - 1];
       const surahId = pageToSurah[page];
@@ -126,14 +152,14 @@ function parseSearchQuery(
         type: 'juz',
         juz,
         page,
-        primary: `Juz ${juz}`,
+        primary: juz === 30 ? "Juz 'Amma" : juz === 29 ? 'Juz Tabarak' : `Juz ${juz}`,
         secondary: `Page ${page} \u00B7 ${surahName}`,
       });
     }
-    return results;
+    if (juzMatch) return results; // Only return early if it was an explicit "juz N" search
   }
 
-  // 3. "N:M" (surah:verse)
+  // 4. "N:M" (surah:verse)
   const verseMatch = q.match(/^(\d+):(\d+)$/);
   if (verseMatch) {
     const surahId = parseInt(verseMatch[1], 10);
@@ -153,9 +179,10 @@ function parseSearchQuery(
     return results;
   }
 
-  // 4. Plain number → show both matching surah and page
+  // 4. Plain number → show matching surah, page, and juz
   const plainNum = /^\d+$/.test(q) ? parseInt(q, 10) : null;
   if (plainNum !== null) {
+    // Surah result
     if (plainNum >= 1 && plainNum <= 114) {
       const surah = SURAHS[plainNum - 1];
       results.push({
@@ -165,6 +192,21 @@ function parseSearchQuery(
         secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
       });
     }
+    // Juz result
+    if (plainNum >= 1 && plainNum <= 30) {
+      const page = JUZ_START_PAGES[plainNum - 1];
+      const surahId = pageToSurah[page];
+      const surahName =
+        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+      results.push({
+        type: 'juz',
+        juz: plainNum,
+        page,
+        primary: `Juz ${plainNum}`,
+        secondary: `Page ${page} \u00B7 ${surahName}`,
+      });
+    }
+    // Page result
     if (plainNum >= 1 && plainNum <= 604) {
       const surahId = pageToSurah[plainNum];
       const surahName =
@@ -180,7 +222,6 @@ function parseSearchQuery(
   }
 
   // 5. Fuzzy match on surah names
-  const lower = q.toLowerCase();
   for (const surah of SURAHS) {
     if (
       surah.name.toLowerCase().includes(lower) ||
