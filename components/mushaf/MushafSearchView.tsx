@@ -1,4 +1,4 @@
-import React, {useState, useMemo, useCallback, useEffect, useRef} from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,22 +11,22 @@ import {
   Animated as RNAnimated,
   BackHandler,
 } from 'react-native';
-import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
-import {moderateScale as ms} from 'react-native-size-matters';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useTheme} from '@/hooks/useTheme';
-import {Feather} from '@expo/vector-icons';
+import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
+import { moderateScale as ms } from 'react-native-size-matters';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/hooks/useTheme';
+import { Feather } from '@expo/vector-icons';
 import Color from 'color';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {LinearGradient} from 'expo-linear-gradient';
-import {SearchInput} from '@/components/SearchInput';
-import {SurahItem} from '@/components/SurahItem';
-import {SURAHS, Surah} from '@/data/surahData';
-import {getJuzForSurah, getJuzName} from '@/data/juzData';
-import {useSettings} from '@/hooks/useSettings';
-import {BookmarkChips} from './BookmarkChips';
-import {JUZ_START_PAGES} from './constants';
-import {useMushafSettingsStore, RecentRead} from '@/store/mushafSettingsStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SearchInput } from '@/components/SearchInput';
+import { SurahItem } from '@/components/SurahItem';
+import { SURAHS, Surah } from '@/data/surahData';
+import { getJuzForSurah, getJuzName } from '@/data/juzData';
+import { useSettings } from '@/hooks/useSettings';
+import { BookmarkChips } from './BookmarkChips';
+import { JUZ_START_PAGES } from './constants';
+import { useMushafSettingsStore, RecentRead } from '@/store/mushafSettingsStore';
 
 // ============================================================================
 // Types
@@ -43,26 +43,26 @@ interface MushafSearchViewProps {
 type SortOption = 'asc' | 'desc' | 'revelation';
 
 type BrowseItem =
-  | {type: 'juz-header'; juzName: string; key: string}
-  | {type: 'surah-row'; surah: Surah; key: string};
+  | { type: 'juz-header'; juzName: string; key: string }
+  | { type: 'surah-row'; surah: Surah; key: string };
 
 type SearchResultItem =
-  | {type: 'surah'; surah: Surah; primary: string; secondary: string}
+  | { type: 'surah'; surah: Surah; primary: string; secondary: string }
   | {
-      type: 'verse';
-      surahId: number;
-      verse: number;
-      primary: string;
-      secondary: string;
-    }
-  | {type: 'page'; page: number; primary: string; secondary: string}
+    type: 'verse';
+    surahId: number;
+    verse: number;
+    primary: string;
+    secondary: string;
+  }
+  | { type: 'page'; page: number; primary: string; secondary: string }
   | {
-      type: 'juz';
-      juz: number;
-      page: number;
-      primary: string;
-      secondary: string;
-    };
+    type: 'juz';
+    juz: number;
+    page: number;
+    primary: string;
+    secondary: string;
+  };
 
 interface SearchHistoryItem {
   type: string;
@@ -208,9 +208,9 @@ const SearchResultRow: React.FC<{
   textColor: string;
   secondaryColor: string;
   onPress: () => void;
-}> = React.memo(({item, textColor, secondaryColor, onPress}) => (
+}> = React.memo(({ item, textColor, secondaryColor, onPress }) => (
   <Pressable
-    style={({pressed}) => [styles.resultRow, {opacity: pressed ? 0.5 : 1}]}
+    style={({ pressed }) => [styles.resultRow, { opacity: pressed ? 0.5 : 1 }]}
     onPress={onPress}>
     <Feather
       name="search"
@@ -219,14 +219,14 @@ const SearchResultRow: React.FC<{
     />
     <View style={styles.resultTextContainer}>
       <Text
-        style={[styles.resultPrimary, {color: textColor}]}
+        style={[styles.resultPrimary, { color: textColor }]}
         numberOfLines={1}>
         {item.primary}
       </Text>
       <Text
         style={[
           styles.resultSecondary,
-          {color: Color(secondaryColor).alpha(0.45).toString()},
+          { color: Color(secondaryColor).alpha(0.45).toString() },
         ]}
         numberOfLines={1}>
         {item.secondary}
@@ -242,9 +242,9 @@ const HistoryRow: React.FC<{
   textColor: string;
   secondaryColor: string;
   onPress: () => void;
-}> = React.memo(({item, textColor, secondaryColor, onPress}) => (
+}> = React.memo(({ item, textColor, secondaryColor, onPress }) => (
   <Pressable
-    style={({pressed}) => [styles.historyRow, {opacity: pressed ? 0.5 : 1}]}
+    style={({ pressed }) => [styles.historyRow, { opacity: pressed ? 0.5 : 1 }]}
     onPress={onPress}>
     <Feather
       name="clock"
@@ -254,7 +254,7 @@ const HistoryRow: React.FC<{
     <Text
       style={[
         styles.historyText,
-        {color: Color(textColor).alpha(0.85).toString()},
+        { color: Color(textColor).alpha(0.85).toString() },
       ]}
       numberOfLines={1}>
       {item.label}
@@ -266,57 +266,114 @@ HistoryRow.displayName = 'HistoryRow';
 
 const RecentReadChips: React.FC<{
   recentPages: RecentRead[];
+  lastPage: RecentRead;
   textColor: string;
   secondaryColor: string;
   onPress: (page: number) => void;
-}> = React.memo(({recentPages, textColor, secondaryColor, onPress}) => {
+}> = React.memo(({ recentPages, lastPage, textColor, secondaryColor, onPress }) => {
   if (recentPages.length === 0) return null;
 
-  return (
-    <View>
-      <Text
-        style={[
-          styles.sectionLabel,
-          {color: Color(secondaryColor).alpha(0.5).toString()},
-        ]}>
-        RECENTLY READ
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsScroll}>
-        {recentPages.map(item => {
-          const surah =
-            item.surahId >= 1 && item.surahId <= 114
-              ? SURAHS[item.surahId - 1]
-              : null;
-          if (!surah) return null;
+  const lastSurah = lastPage
+    ? lastPage.surahId >= 1 && lastPage.surahId <= 114
+      ? SURAHS[lastPage.surahId - 1]
+      : null
+    : null;
 
-          return (
-            <Pressable
-              key={item.surahId}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: Color(textColor).alpha(0.05).toString(),
-                  borderColor: Color(textColor).alpha(0.08).toString(),
-                },
-              ]}
-              onPress={() => onPress(item.page)}>
-              <Text style={[styles.chipName, {color: textColor}]}>
-                {surah.name}
+  return (
+    <View style={styles.recentReadContainer}>
+      {lastSurah && (
+        <View style={styles.mostRecentSection}>
+          <Text
+            style={[
+              styles.sectionLabel,
+              {
+                color: Color(secondaryColor).alpha(0.5).toString(),
+                marginTop: ms(4),
+              },
+            ]}>
+            Continue Reading
+          </Text>
+          <Pressable
+            onPress={() => onPress(lastPage.page)}
+            style={({ pressed }) => [
+              styles.mostRecentCard,
+              {
+                backgroundColor: Color(textColor).alpha(0.05).toString(),
+                borderColor: Color(textColor).alpha(0.08).toString(),
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}>
+            <View>
+              <Text style={[styles.mostRecentSurah, { color: textColor }]}>
+                {lastSurah.name}
               </Text>
               <Text
                 style={[
-                  styles.chipPage,
-                  {color: Color(secondaryColor).alpha(0.5).toString()},
+                  styles.mostRecentPage,
+                  { color: Color(secondaryColor).alpha(0.6).toString() },
                 ]}>
-                Page {item.page}
+                Page {lastPage.page}
               </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+            </View>
+            <Feather
+              name="chevron-right"
+              size={ms(24)}
+              color={Color(secondaryColor).alpha(0.3).toString()}
+            />
+          </Pressable>
+        </View>
+      )}
+
+      {recentPages.length > 1 && (
+        <View>
+          <Text
+            style={[
+              styles.sectionLabel,
+              {
+                color: Color(secondaryColor).alpha(0.5).toString(),
+                marginTop: ms(16),
+              },
+            ]}>
+            RECENT READS
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScroll}>
+            {recentPages.slice(1).map((item, index) => {
+              const surah =
+                item.surahId >= 1 && item.surahId <= 114
+                  ? SURAHS[item.surahId - 1]
+                  : null;
+              if (!surah) return null;
+
+              return (
+                <Pressable
+                  key={`${item.surahId}-${item.page}-${index}`}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: Color(textColor).alpha(0.05).toString(),
+                      borderColor: Color(textColor).alpha(0.08).toString(),
+                    },
+                  ]}
+                  onPress={() => onPress(item.page)}>
+                  <Text style={[styles.chipName, { color: textColor }]}>
+                    {surah.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.chipPage,
+                      { color: Color(secondaryColor).alpha(0.5).toString() },
+                    ]}>
+                    Page {item.page}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
 });
@@ -334,7 +391,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   surahStartPages,
   pageToSurah,
 }) => {
-  const {theme, isDarkMode} = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const insets = useSafeAreaInsets();
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -345,6 +402,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const [sortOption, setSortOption] = useState<SortOption>(browseSortOption);
 
   const recentPages = useMushafSettingsStore(s => s.recentPages);
+  const lastPage = useMushafSettingsStore(s => s.recentPages[0]);
   const searchInputRef = useRef<TextInput>(null);
 
   // Fade animation refs
@@ -514,7 +572,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   // Browse mode data
   // ──────────────────────────────────────────────────────────
-  const {browseData, stickyIndices} = useMemo(() => {
+  const { browseData, stickyIndices } = useMemo(() => {
     const sorted = [...SURAHS];
     switch (sortOption) {
       case 'asc':
@@ -545,15 +603,15 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
             key: `juz-${juz}`,
           });
         }
-        items.push({type: 'surah-row', surah, key: `surah-${surah.id}`});
+        items.push({ type: 'surah-row', surah, key: `surah-${surah.id}` });
       }
     } else {
       for (const surah of sorted) {
-        items.push({type: 'surah-row', surah, key: `surah-${surah.id}`});
+        items.push({ type: 'surah-row', surah, key: `surah-${surah.id}` });
       }
     }
 
-    return {browseData: items, stickyIndices: stickies};
+    return { browseData: items, stickyIndices: stickies };
   }, [sortOption]);
 
   const handleSurahPress = useCallback(
@@ -583,18 +641,18 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Browse mode renderers
   // ──────────────────────────────────────────────────────────
   const renderBrowseItem = useCallback(
-    ({item}: ListRenderItemInfo<BrowseItem>) => {
+    ({ item }: ListRenderItemInfo<BrowseItem>) => {
       if (item.type === 'juz-header') {
         return (
           <View
             style={[
               styles.juzHeader,
-              {backgroundColor: theme.colors.background},
+              { backgroundColor: theme.colors.background },
             ]}>
             <Text
               style={[
                 styles.juzHeaderText,
-                {color: theme.colors.textSecondary},
+                { color: theme.colors.textSecondary },
               ]}>
               {item.juzName}
             </Text>
@@ -620,8 +678,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               option === 'asc'
                 ? 'arrow-up'
                 : option === 'desc'
-                ? 'arrow-down'
-                : 'calendar';
+                  ? 'arrow-down'
+                  : 'calendar';
             const label =
               option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
             return (
@@ -671,6 +729,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           textColor={theme.colors.text}
           secondaryColor={theme.colors.textSecondary}
           onPress={handleChipPress}
+          lastPage={lastPage}
         />
         <BookmarkChips onPress={handleBookmarkPress} />
         {SortBar}
@@ -683,7 +742,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Search mode renderers
   // ──────────────────────────────────────────────────────────
   const renderSearchResult = useCallback(
-    ({item}: {item: SearchResultItem}) => (
+    ({ item }: { item: SearchResultItem }) => (
       <SearchResultRow
         item={item}
         textColor={theme.colors.text}
@@ -695,7 +754,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   );
 
   const renderHistoryItem = useCallback(
-    ({item}: {item: SearchHistoryItem}) => (
+    ({ item }: { item: SearchHistoryItem }) => (
       <HistoryRow
         item={item}
         textColor={theme.colors.text}
@@ -724,14 +783,14 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
       {/* Browse Mode — always mounted, hidden via opacity              */}
       {/* ============================================================ */}
       <RNAnimated.View
-        style={[styles.modeContainer, {opacity: browseOpacity}]}
+        style={[styles.modeContainer, { opacity: browseOpacity }]}
         pointerEvents={isSearchMode ? 'none' : 'auto'}>
         {/* Header: back button + inactive search bar */}
         <View style={styles.browseHeader}>
           <Pressable
-            style={({pressed}) => [
+            style={({ pressed }) => [
               styles.backButton,
-              {opacity: pressed ? 0.3 : 0.6},
+              { opacity: pressed ? 0.3 : 0.6 },
             ]}
             onPress={onClose}
             hitSlop={8}>
@@ -744,7 +803,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           <Pressable style={styles.searchBarTap} onPress={enterSearchMode}>
             <SearchInput
               value=""
-              onChangeText={() => {}}
+              onChangeText={() => { }}
               placeholder="Search surahs, pages, or juz..."
               showCancelButton={false}
               editable={false}
@@ -818,14 +877,14 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               <View>
                 <View style={styles.historyHeader}>
                   <Text
-                    style={[styles.historyTitle, {color: theme.colors.text}]}>
+                    style={[styles.historyTitle, { color: theme.colors.text }]}>
                     Recent searches
                   </Text>
                   <Pressable onPress={clearHistory}>
                     <Text
                       style={[
                         styles.historyClear,
-                        {color: theme.colors.textSecondary},
+                        { color: theme.colors.textSecondary },
                       ]}>
                       Clear
                     </Text>
@@ -1028,6 +1087,34 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-SemiBold',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
+  },
+
+  // Featured Recent Read
+  recentReadContainer: {
+    paddingTop: ms(4),
+  },
+  mostRecentSection: {
+    marginBottom: ms(4),
+  },
+  mostRecentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: ms(16),
+    paddingHorizontal: ms(20),
+    marginHorizontal: ms(16),
+    borderRadius: ms(16),
+    borderWidth: 1,
+  },
+  mostRecentSurah: {
+    fontSize: ms(19),
+    fontFamily: 'Manrope-Bold',
+    letterSpacing: -0.2,
+  },
+  mostRecentPage: {
+    fontSize: ms(13),
+    fontFamily: 'Manrope-Medium',
+    marginTop: ms(2),
   },
 
   listContent: {
