@@ -134,7 +134,7 @@ module.exports = {
       [
         'expo-notifications',
         {
-          icon: './assets/images/notification-icon.png',
+          icon: './assets/images/notification_icon.png',
           color: '#ffffff',
           sounds: [],
         },
@@ -154,7 +154,7 @@ module.exports = {
         {
           enableBackgroundAudio: true,
           audioSessionCategory: 'playback',
-          notificationIcon: './assets/images/notification-icon.png',
+          notificationIcon: './assets/images/notification_icon.png',
         },
       ],
       './withAndroidSigning.js',
