@@ -47,7 +47,10 @@ class DigitalKhattDataService {
 
   private async _doInit(): Promise<void> {
     try {
-      await Promise.all([this.loadWords(), this.loadLayout()]);
+      // We must load words first because loadLayout now uses wordInfo mappings
+      // to accurately determine surah start pages based on verse content.
+      await this.loadWords();
+      await this.loadLayout();
       this._initialized = true;
     } catch (error) {
       console.error('[DigitalKhattDataService] Initialization failed:', error);
@@ -145,7 +148,23 @@ class DigitalKhattDataService {
       }
     }
 
-    // Build surah mappings from surah_name lines
+    // Build surah mappings by identifying the first Ayah of each surah.
+    // This solves the "header at bottom of previous page" issue by anchoring the 
+    // surah to the page where its actual verse content begins.
+    for (const row of rows) {
+      if (row.line_type === 'ayah') {
+        const info = this.wordInfoById.get(row.first_word_id);
+        if (info) {
+          const surahId = parseInt(info.verseKey.split(':')[0], 10);
+          if (surahId && !this.surahStartPages[surahId]) {
+            this.surahStartPages[surahId] = row.page_number;
+          }
+        }
+      }
+    }
+
+    // Fallback: If any surahs are missing ayahs in the DB (unlikely), 
+    // use the surah_name lines as a secondary source.
     const surahNameRows = rows.filter(r => r.line_type === 'surah_name');
     for (const row of surahNameRows) {
       if (row.surah_number && !this.surahStartPages[row.surah_number]) {
