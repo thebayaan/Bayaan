@@ -341,7 +341,7 @@ appInitializer.registerService({
       Uthmani: require('@/assets/fonts/Uthmani.otf'),
       QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
       DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
-      DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf'),
+      DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
     });
   },
 });
