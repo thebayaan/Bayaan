@@ -75,7 +75,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // on first render since AppInitializer runs before Mushaf tab mounts.
   const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
-    DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattV2.otf')],
+    DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf')],
     QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
     SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
   });
