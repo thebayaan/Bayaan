@@ -1,4 +1,5 @@
 import React, {useState, useMemo, useRef, useCallback, useEffect} from 'react';
+import {useKeepAwake} from 'expo-keep-awake';
 import {
   View,
   StyleSheet,
@@ -232,6 +233,7 @@ interface MushafViewerProps {
 export default function MushafViewer({
   pageNumber: initialPage,
 }: MushafViewerProps) {
+  useKeepAwake();
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [isImmersive, setIsImmersive] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
