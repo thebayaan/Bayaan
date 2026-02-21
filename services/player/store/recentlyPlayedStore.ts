@@ -153,11 +153,27 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
       getProgress: (reciterId, surahId) => {
         const state = get();
         const key = `${reciterId}:${surahId}`;
-        return state.progressMap[key] || 0;
+        if (state.progressMap[key] !== undefined) {
+          return state.progressMap[key];
+        }
+        // Fallback to recentTracks data (progressMap is not persisted across sessions)
+        const track = state.recentTracks.find(
+          t => t.reciter.id === reciterId && t.surah.id === surahId,
+        );
+        return track?.progress ?? 0;
       },
 
       getDuration: (reciterId, surahId) => {
-        return get().durationMap[`${reciterId}:${surahId}`] || 0;
+        const state = get();
+        const key = `${reciterId}:${surahId}`;
+        if (state.durationMap[key] !== undefined) {
+          return state.durationMap[key];
+        }
+        // Fallback to recentTracks data (durationMap is not persisted across sessions)
+        const track = state.recentTracks.find(
+          t => t.reciter.id === reciterId && t.surah.id === surahId,
+        );
+        return track?.duration ?? 0;
       },
 
       resetTrackProgress: (reciterId, surahId) => {

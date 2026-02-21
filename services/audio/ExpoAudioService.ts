@@ -155,12 +155,30 @@ class ExpoAudioService {
   }
 
   /**
-   * Wait for the player to be loaded with a timeout
+   * Wait for the player to be loaded with a timeout.
+   * Two-phase approach: first wait for isLoaded to become false
+   * (indicating replace() has started processing the new source),
+   * then wait for it to become true (new source fully loaded).
+   * This prevents a race where isLoaded is still true from the
+   * previous track and we return before the new track is ready.
    */
   private async waitForLoaded(timeoutMs = 5000): Promise<void> {
     const startTime = Date.now();
-    const pollInterval = 50; // Check every 50ms
+    const pollInterval = 50;
 
+    // Phase 1: Wait for player to begin loading the new source
+    // (isLoaded becomes false when replace() starts processing).
+    // Cap at 500ms — if isLoaded never becomes false (e.g. instant load
+    // or first-ever load where isLoaded starts false), fall through.
+    const resetDeadline = startTime + 500;
+    while (Date.now() < resetDeadline) {
+      if (!this.player?.isLoaded) {
+        break;
+      }
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    // Phase 2: Wait for the new track to finish loading
     while (Date.now() - startTime < timeoutMs) {
       if (this.player?.isLoaded) {
         return;
