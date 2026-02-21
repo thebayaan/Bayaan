@@ -12,7 +12,7 @@
  */
 
 import React, {useEffect, useRef, useCallback} from 'react';
-import {Platform} from 'react-native';
+import {AppState, Platform} from 'react-native';
 import {useAudioPlayer, useAudioPlayerStatus} from 'expo-audio';
 import {expoAudioService} from './ExpoAudioService';
 import {lockScreenService} from './LockScreenService';
@@ -26,6 +26,7 @@ import {mushafAudioService} from './MushafAudioService';
 
 // Throttle interval for progress updates — wider on Android to reduce re-renders
 const PROGRESS_UPDATE_INTERVAL = Platform.OS === 'android' ? 2000 : 1000;
+const PROGRESS_PERSIST_INTERVAL = 10000;
 
 interface ExpoAudioProviderProps {
   children: React.ReactNode;
@@ -40,6 +41,13 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
 
   // Refs for tracking state
   const lastProgressUpdate = useRef(0);
+  const lastPersistedAt = useRef(0);
+  const lastPersistedProgress = useRef(0);
+  const latestStatusRef = useRef({
+    isLoaded: false,
+    currentTime: 0,
+    duration: 0,
+  });
   const isHandlingTrackEnd = useRef(false);
   const wasPlaying = useRef(false);
 
@@ -48,6 +56,39 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     state => state.updatePlaybackState,
   );
   const skipToNext = usePlayerStore(state => state.skipToNext);
+
+  const persistCurrentProgress = useCallback(
+    (position: number, duration: number, force = false) => {
+      if (duration <= 0 || position < 0) return;
+
+      const store = usePlayerStore.getState();
+      const currentTrack = store.queue.tracks[store.queue.currentIndex];
+      if (!currentTrack?.reciterId || !currentTrack?.surahId) return;
+
+      const progress = Math.max(0, Math.min(1, position / duration));
+      const now = Date.now();
+      const progressDelta = Math.abs(progress - lastPersistedProgress.current);
+      const elapsed = now - lastPersistedAt.current;
+
+      // Avoid writing every second; persist meaningful progress or forced events.
+      if (!force && elapsed < PROGRESS_PERSIST_INTERVAL && progressDelta < 0.01) {
+        return;
+      }
+
+      useRecentlyPlayedStore
+        .getState()
+        .updateProgress(
+          currentTrack.reciterId,
+          parseInt(currentTrack.surahId, 10),
+          progress,
+          duration,
+        );
+
+      lastPersistedAt.current = now;
+      lastPersistedProgress.current = progress;
+    },
+    [],
+  );
 
   // Connect player to service on mount
   useEffect(() => {
@@ -94,6 +135,10 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
         duration: status.duration,
         buffering: status.isBuffering,
       });
+
+      if (status.playing) {
+        persistCurrentProgress(status.currentTime, status.duration);
+      }
     }
 
     // Playback state mapping (always check, not throttled)
@@ -117,24 +162,7 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
 
       // Save progress when pausing (to capture final position)
       if (state === 'paused' && wasPlaying.current && status.duration > 0) {
-        const store = usePlayerStore.getState();
-        const currentTrack = store.queue.tracks[store.queue.currentIndex];
-        if (currentTrack?.reciterId && currentTrack?.surahId) {
-          const progress = status.currentTime / status.duration;
-          useRecentlyPlayedStore
-            .getState()
-            .updateProgress(
-              currentTrack.reciterId,
-              parseInt(currentTrack.surahId, 10),
-              progress,
-              status.duration,
-            );
-          if (__DEV__)
-            console.log(
-              '[ExpoAudioProvider] Saved progress on pause:',
-              progress,
-            );
-        }
+        persistCurrentProgress(status.currentTime, status.duration, true);
       }
     }
 
@@ -146,7 +174,31 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
     status.isBuffering,
     status.playing,
     updatePlaybackState,
+    persistCurrentProgress,
   ]);
+
+  // Keep latest status in refs for background persistence events.
+  useEffect(() => {
+    latestStatusRef.current = {
+      isLoaded: status.isLoaded,
+      currentTime: status.currentTime,
+      duration: status.duration,
+    };
+  }, [status.isLoaded, status.currentTime, status.duration]);
+
+  // Persist playback progress when app goes to background/inactive.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') return;
+      const latest = latestStatusRef.current;
+      if (!latest.isLoaded || latest.duration <= 0) return;
+      persistCurrentProgress(latest.currentTime, latest.duration, true);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [persistCurrentProgress]);
 
   // Handle track end (didJustFinish)
   const handleTrackEnd = useCallback(async () => {

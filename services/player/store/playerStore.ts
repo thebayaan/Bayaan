@@ -103,11 +103,26 @@ async function loadTrackAtIndex(
   await expoAudioService.loadTrack(track.url);
 
   if (startPosition > 0) {
+    if (__DEV__)
+      console.log('[PlayerStore] PRE-SEEK state:', {
+        startPosition,
+        isLoaded: expoAudioService.getIsLoaded(),
+        duration: expoAudioService.getDuration(),
+        currentTime: expoAudioService.getCurrentTime(),
+      });
     await expoAudioService.seekTo(startPosition);
+    if (__DEV__)
+      console.log('[PlayerStore] POST-SEEK state:', {
+        currentTime: expoAudioService.getCurrentTime(),
+      });
   }
 
   if (autoPlay) {
     await expoAudioService.play();
+    if (__DEV__ && startPosition > 0)
+      console.log('[PlayerStore] POST-PLAY state:', {
+        currentTime: expoAudioService.getCurrentTime(),
+      });
   }
 }
 

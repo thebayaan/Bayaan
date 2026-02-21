@@ -190,6 +190,15 @@ export const RecentReciterCard = ({
           ? storePosition
           : progress * duration;
 
+      if (__DEV__)
+        console.log('[RecentReciterCard] Resume debug:', {
+          isCurrentlyPlaying,
+          storePosition,
+          progress,
+          duration,
+          startPosition,
+        });
+
       if (startIndex === -1) {
         // Fallback: just play the selected surah
         const track = await createTracksForReciter(
