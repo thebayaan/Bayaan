@@ -286,6 +286,7 @@ export default function MushafViewer({
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].item) {
         const page = viewableItems[0].item as number;
+        const lastPage = useMushafSettingsStore.getState().recentPages[0];
         setCurrentPage(page);
         setLastReadPage(page);
         const surahId = pageToSurah[page];
