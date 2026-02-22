@@ -115,7 +115,7 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
         extrapolate: 'clamp',
       }),
     }));
-  }, [tabs, scrollX, screenWidth, activeTabId]);
+  }, [tabs, scrollX, screenWidth]);
 
   const handleTabPress = useCallback(
     (tabId: string) => {
