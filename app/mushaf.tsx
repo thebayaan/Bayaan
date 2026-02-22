@@ -56,12 +56,19 @@ export default function MushafScreen() {
     };
   }, []);
 
-  // Set verse highlight on mount, clear on unmount
+  // Set verse highlight on mount, auto-clear after 3s, clear on unmount
   useEffect(() => {
     if (initialVerseKey) {
       useMushafVerseSelectionStore
         .getState()
         .selectVerse(initialVerseKey, pageNumber);
+      const timer = setTimeout(() => {
+        useMushafVerseSelectionStore.getState().clearSelection();
+      }, 3000);
+      return () => {
+        clearTimeout(timer);
+        useMushafVerseSelectionStore.getState().clearSelection();
+      };
     }
     return () => {
       useMushafVerseSelectionStore.getState().clearSelection();

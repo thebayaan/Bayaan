@@ -17,6 +17,7 @@ import {ListRenderItem} from 'react-native';
 import {getSurahById} from '@/services/dataService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -129,7 +130,20 @@ const BookmarksScreen = () => {
       ayahNumber={item.bookmark.ayahNumber}
       surahNumber={item.bookmark.surahNumber}
       verseKey={item.bookmark.verseKey}
-      onPress={() => {}}
+      onPress={() => {
+        const verseKey = `${item.bookmark.surahNumber}:${item.bookmark.ayahNumber}`;
+        const page = digitalKhattDataService.getPageForVerse(verseKey);
+        const surahStartPages = digitalKhattDataService.getSurahStartPages();
+        const fallbackPage = surahStartPages[item.bookmark.surahNumber] || 1;
+        router.push({
+          pathname: '/mushaf',
+          params: {
+            surah: String(item.bookmark.surahNumber),
+            ayah: String(item.bookmark.ayahNumber),
+            page: String(page || fallbackPage),
+          },
+        });
+      }}
       onOptionsPress={() => handleOptionsPress(item)}
     />
   );
