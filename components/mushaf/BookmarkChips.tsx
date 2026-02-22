@@ -17,7 +17,7 @@ export async function warmBookmarkCache(): Promise<void> {
 }
 
 interface BookmarkChipsProps {
-  onPress: (surahId: number) => void;
+  onPress: (surahId: number, ayahNumber: number) => void;
 }
 
 export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
@@ -69,7 +69,9 @@ export const BookmarkChips: React.FC<BookmarkChipsProps> = React.memo(
                       .toString(),
                   },
                 ]}
-                onPress={() => onPress(bookmark.surahNumber)}>
+                onPress={() =>
+                  onPress(bookmark.surahNumber, bookmark.ayahNumber)
+                }>
                 <Feather
                   name="bookmark"
                   size={moderateScale(12)}
