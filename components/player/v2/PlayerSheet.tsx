@@ -1,28 +1,28 @@
-import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
-import {StyleSheet, StatusBar, View, Platform, BackHandler} from 'react-native';
+import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
+import { StyleSheet, StatusBar, View, Platform, BackHandler } from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
-import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useTheme} from '@/hooks/useTheme';
+import { usePlayerActions } from '@/hooks/usePlayerActions';
+import { usePlayerStore } from '@/services/player/store/playerStore';
+import { useTheme } from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
-import {SURAHS} from '@/data/surahData';
-import {useReciterNavigation} from '@/hooks/useReciterNavigation';
-import {SheetManager} from 'react-native-actions-sheet';
-import {useTimestampStore} from '@/store/timestampStore';
-import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
+import { SURAHS } from '@/data/surahData';
+import { useReciterNavigation } from '@/hooks/useReciterNavigation';
+import { SheetManager } from 'react-native-actions-sheet';
+import { useTimestampStore } from '@/store/timestampStore';
+import { useRewayatFollowAlong } from '@/hooks/useFollowAlong';
 
 export const PlayerSheet = () => {
-  const {theme} = useTheme();
+  const { theme } = useTheme();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
-  const {navigateToReciterProfile} = useReciterNavigation();
+  const { navigateToReciterProfile } = useReciterNavigation();
 
-  const {setSheetMode, setRate, updateSettings, setImmersive} =
+  const { setSheetMode, setRate, updateSettings, setImmersive } =
     usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
   const loading = usePlayerStore(s => s.loading);
@@ -139,13 +139,13 @@ export const PlayerSheet = () => {
 
   const handleSleepTimerChange = useCallback(
     (minutes: number) => {
-      updateSettings({sleepTimer: minutes});
+      updateSettings({ sleepTimer: minutes });
     },
     [updateSettings],
   );
 
   const handleTurnOffTimer = useCallback(() => {
-    updateSettings({sleepTimer: 0});
+    updateSettings({ sleepTimer: 0 });
   }, [updateSettings]);
 
   const handleGoToReciter = useCallback(() => {
@@ -179,7 +179,7 @@ export const PlayerSheet = () => {
   }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
 
   const handleShowMushafLayoutSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout', {payload: {context: 'player'}});
+    SheetManager.show('mushaf-layout', { payload: { context: 'player' } });
   }, []);
 
   const handleShowAmbientSheet = useCallback(() => {
@@ -189,10 +189,24 @@ export const PlayerSheet = () => {
   const followAlongAvailable = useRewayatFollowAlong(currentTrack?.rewayatId);
 
   const handleFollowAlongPress = useCallback(() => {
-    if (followAlongAvailable) {
-      useTimestampStore.getState().toggleFollowAlong();
-    } else {
+    if (!followAlongAvailable) {
       SheetManager.show('follow-along');
+      return;
+    }
+
+    const state = useTimestampStore.getState();
+
+    // If follow along is enabled but user scrolled away (not locked), re-lock
+    if (state.followAlongEnabled && !state.isLocked) {
+      state.setIsLocked(true);
+      return;
+    }
+
+    // Otherwise toggle follow along on/off
+    state.toggleFollowAlong();
+    // When enabling, also lock
+    if (!state.followAlongEnabled) {
+      state.setIsLocked(true);
     }
   }, [followAlongAvailable]);
 
@@ -271,7 +285,7 @@ export const PlayerSheet = () => {
         style={styles.sheet}
         backgroundStyle={[
           styles.background,
-          {backgroundColor: theme.colors.background},
+          { backgroundColor: theme.colors.background },
         ]}>
         <PlayerContent
           onSpeedPress={handleShowSpeedSheet}
