@@ -357,6 +357,18 @@ export default function MushafViewer({
     return () => clearTimeout(timer);
   }, [navRequestId, navigateToPage]);
 
+  const navigateToVerse = useCallback(
+    (verseKey: string, page: number) => {
+      navigateToPage(page);
+      useMushafVerseSelectionStore.getState().selectVerse(verseKey, page);
+      const timer = setTimeout(() => {
+        useMushafVerseSelectionStore.getState().clearSelection();
+      }, 3000);
+      return () => clearTimeout(timer);
+    },
+    [navigateToPage],
+  );
+
   const openSearchMode = useCallback(() => setIsSearchMode(true), []);
 
   // Mushaf player state
@@ -537,6 +549,7 @@ export default function MushafViewer({
         <MushafSearchView
           onNavigateToPage={navigateToPage}
           onNavigateToSurah={navigateToSurah}
+          onNavigateToVerse={navigateToVerse}
           onClose={() => setIsSearchMode(false)}
           surahStartPages={surahStartPages}
           pageToSurah={pageToSurah}
