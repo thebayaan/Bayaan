@@ -1,6 +1,7 @@
 import React, {useCallback, useState, useRef, useEffect, useMemo} from 'react';
 import {
   View,
+  Text,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -93,30 +94,6 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
     return scrollX.interpolate({inputRange, outputRange, extrapolate: 'clamp'});
   }, [allLayoutsReady, tabs, tabLayouts, scrollX, screenWidth]);
 
-  // Per-tab opacity interpolations — native-driven, frame-perfect sync with swipe
-  const tabOpacities = useMemo(() => {
-    if (tabs.length < 2) {
-      const activeIdx = tabs.findIndex(t => t.id === activeTabId);
-      return tabs.map((_, tabIndex) => ({
-        active: new RNAnimated.Value(tabIndex === activeIdx ? 1 : 0),
-        inactive: new RNAnimated.Value(tabIndex === activeIdx ? 0 : 1),
-      }));
-    }
-    const inputRange = tabs.map((_, i) => i * screenWidth);
-    return tabs.map((_, tabIndex) => ({
-      active: scrollX.interpolate({
-        inputRange,
-        outputRange: tabs.map((_, i) => (i === tabIndex ? 1 : 0)),
-        extrapolate: 'clamp',
-      }),
-      inactive: scrollX.interpolate({
-        inputRange,
-        outputRange: tabs.map((_, i) => (i === tabIndex ? 0 : 1)),
-        extrapolate: 'clamp',
-      }),
-    }));
-  }, [tabs, scrollX, screenWidth]);
-
   const handleTabPress = useCallback(
     (tabId: string) => {
       const layout = tabLayouts.get(tabId);
@@ -149,30 +126,17 @@ export const RewayatTabBar: React.FC<RewayatTabBarProps> = ({
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabsRow}>
-        {tabs.map((tab, tabIndex) => {
-          const {active: activeOpacity, inactive: inactiveOpacity} =
-            tabOpacities[tabIndex];
+        {tabs.map(tab => {
+          const isActive = tab.id === activeTabId;
           return (
             <Pressable
               key={tab.id}
               style={styles.tab}
               onPress={() => handleTabPress(tab.id)}
               onLayout={e => handleTabLayout(tab.id, e)}>
-              {/* Wrapper keeps both texts aligned — bold drives size */}
-              <View style={styles.tabTextWrapper}>
-                <RNAnimated.Text
-                  style={[styles.tabTextActive, {opacity: activeOpacity}]}>
-                  {tab.label}
-                </RNAnimated.Text>
-                <RNAnimated.Text
-                  style={[
-                    styles.tabText,
-                    styles.tabTextOverlay,
-                    {opacity: inactiveOpacity},
-                  ]}>
-                  {tab.label}
-                </RNAnimated.Text>
-              </View>
+              <Text style={isActive ? styles.tabTextActive : styles.tabText}>
+                {tab.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -211,11 +175,6 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(12),
       alignItems: 'center',
     },
-    tabTextWrapper: {
-      position: 'relative',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     tabText: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
@@ -225,9 +184,6 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
-    },
-    tabTextOverlay: {
-      position: 'absolute',
     },
     indicator: {
       position: 'absolute',
