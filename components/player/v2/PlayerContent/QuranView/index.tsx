@@ -1,22 +1,22 @@
-import React, {useCallback, useRef, useEffect, useState} from 'react';
-import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
-import {Ionicons} from '@expo/vector-icons';
-import {useTheme} from '@/hooks/useTheme';
-import {Surah, QuranData, Verse} from '@/types/quran';
-import {VerseItem} from './VerseItem';
+import React, { useCallback, useRef, useEffect } from 'react';
+import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import { moderateScale, verticalScale } from 'react-native-size-matters';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/hooks/useTheme';
+import { Surah, QuranData, Verse } from '@/types/quran';
+import { VerseItem } from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
-import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
-import {FlashList, type FlashListRef} from '@shopify/flash-list';
-import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
-import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useTajweedStore} from '@/store/tajweedStore';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
-import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import {useTimestampStore} from '@/store/timestampStore';
+import SurahDivider, { computeDividerTotalHeight } from './SurahDivider';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { useBottomSheetScrollableCreator } from '@gorhom/bottom-sheet';
+import { useVerseAnnotationsStore } from '@/store/verseAnnotationsStore';
+import { useMushafSettingsStore } from '@/store/mushafSettingsStore';
+import { useTajweedStore } from '@/store/tajweedStore';
+import { mushafPreloadService } from '@/services/mushaf/MushafPreloadService';
+import { digitalKhattDataService } from '@/services/mushaf/DigitalKhattDataService';
+import type { SkTypefaceFontProvider } from '@shopify/react-native-skia';
+import type { IndexedTajweedData } from '@/utils/tajweedLoader';
+import { useTimestampStore } from '@/store/timestampStore';
 
 // Import data with type safety - move outside component to load only once
 const quranData = require('@/data/quran.json') as QuranData;
@@ -145,8 +145,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   contentPaddingTop,
   contentPaddingBottom,
 }) => {
-  const {theme} = useTheme();
-  const {width: screenWidth} = useWindowDimensions();
+  const { theme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
   const contentWidth = screenWidth - 2 * moderateScale(20);
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
@@ -154,8 +154,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   // Ayah timestamp tracking
   const currentVerseKey = useTimestampStore(s => s.currentAyah?.verseKey);
-  const isFollowingRef = useRef(true);
-  const [showRecenter, setShowRecenter] = useState(false);
+  const isLocked = useTimestampStore(s => s.isLocked);
+  const setIsLocked = useTimestampStore(s => s.setIsLocked);
 
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
@@ -189,30 +189,29 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // Reset scroll position when currentSurah changes
   useEffect(() => {
     if (listRef.current) {
-      listRef.current.scrollToOffset({offset: 0, animated: false});
+      listRef.current.scrollToOffset({ offset: 0, animated: false });
     }
-    isFollowingRef.current = true;
-    setShowRecenter(false);
-  }, [currentSurah]);
+    setIsLocked(true);
+  }, [currentSurah, setIsLocked]);
 
-  // Auto-scroll to active ayah
+  // Auto-scroll to active ayah (only when locked)
   useEffect(() => {
-    if (!currentVerseKey || !isFollowingRef.current || !listRef.current) return;
+    if (!currentVerseKey || !isLocked || !listRef.current) return;
 
     const index = verses.findIndex(v => v.verse_key === currentVerseKey);
     if (index === -1) return;
 
     try {
-      listRef.current.scrollToIndex({index, animated: true, viewPosition: 0.3});
+      listRef.current.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
     } catch {
       // Index may be out of range during recycling — ignore
     }
-  }, [currentVerseKey, verses]);
+  }, [currentVerseKey, verses, isLocked]);
 
 
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
-    ({item}: {item: EnhancedVerse}) => (
+    ({ item }: { item: EnhancedVerse }) => (
       <VerseItem
         verse={item}
         onVersePress={onVersePress}
@@ -228,7 +227,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
         indexedTajweedData={indexedTajweedData}
-        isActive={item.verse_key === currentVerseKey}
+        isActive={isLocked && item.verse_key === currentVerseKey}
       />
     ),
     [
@@ -245,6 +244,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       dkFontFamily,
       indexedTajweedData,
       currentVerseKey,
+      isLocked,
     ],
   );
 
@@ -295,17 +295,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
         drawDistance={1500}
         onScrollBeginDrag={() => {
           if (currentVerseKey) {
-            isFollowingRef.current = false;
-            setShowRecenter(true);
+            setIsLocked(false);
           }
         }}
       />
-      {showRecenter && currentVerseKey && (
+      {!isLocked && currentVerseKey && (
         <Pressable
-          style={[styles.recenterButton, {backgroundColor: theme.colors.card}]}
+          style={[styles.recenterButton, { backgroundColor: theme.colors.card }]}
           onPress={() => {
-            isFollowingRef.current = true;
-            setShowRecenter(false);
+            setIsLocked(true);
             const index = verses.findIndex(
               v => v.verse_key === currentVerseKey,
             );
@@ -342,7 +340,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },

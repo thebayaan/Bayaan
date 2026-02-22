@@ -8,14 +8,17 @@ interface TimestampState {
   currentAyah: AyahTrackingState | null;
   currentSurahTimestamps: AyahTimestamp[] | null;
   currentTimestampKey: string | null;
+  isLocked: boolean;
 
   // Follow Along registry
   supportedRewayatIds: Set<string>;
   supportedReciterIds: Set<string>;
   registryLoaded: boolean;
   followAlongEnabled: boolean;
+  
 
   setCurrentAyah: (state: AyahTrackingState) => void;
+  setIsLocked: (isLocked: boolean) => void;
   clearCurrentAyah: () => void;
   loadTimestampsForSurah: (
     rewayatId: string,
@@ -30,12 +33,15 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
   currentAyah: null,
   currentSurahTimestamps: null,
   currentTimestampKey: null,
+  isLocked: true,
 
   // Follow Along registry defaults
   supportedRewayatIds: new Set<string>(),
   supportedReciterIds: new Set<string>(),
   registryLoaded: false,
   followAlongEnabled: true,
+
+  setIsLocked: isLocked => set({isLocked}),
 
   setCurrentAyah: ayahState => set({currentAyah: ayahState}),
 
