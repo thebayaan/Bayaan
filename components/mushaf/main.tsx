@@ -37,6 +37,7 @@ import {
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -239,7 +240,6 @@ export default function MushafViewer({
   const [isSearchMode, setIsSearchMode] = useState(false);
   const {theme, isDarkMode} = useTheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
-  const setLastReadPage = useMushafSettingsStore(s => s.setLastReadPage);
   const addRecentRead = useMushafSettingsStore(s => s.addRecentRead);
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : theme.colors.card;
@@ -289,10 +289,10 @@ export default function MushafViewer({
       if (viewableItems.length > 0 && viewableItems[0].item) {
         const page = viewableItems[0].item as number;
         setCurrentPage(page);
-        setLastReadPage(page);
+        mushafSessionStore.setLastReadPage(page);
       }
     },
-    [setLastReadPage],
+    [],
   );
 
   const viewabilityConfig = useMemo(
