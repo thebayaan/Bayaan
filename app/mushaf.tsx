@@ -4,7 +4,7 @@ import {useLocalSearchParams} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import MushafViewer from '@/components/mushaf/main';
 
 export type MushafScreenParams = {
@@ -48,11 +48,11 @@ export default function MushafScreen() {
     return undefined;
   }, [surah, ayah]);
 
-  // Track mushaf screen for session restore
+  // Track mushaf screen for session restore (MMKV — sync writes survive force-kill)
   useEffect(() => {
-    useMushafSettingsStore.getState().setLastScreenWasMushaf(true);
+    mushafSessionStore.setLastScreenWasMushaf(true);
     return () => {
-      useMushafSettingsStore.getState().setLastScreenWasMushaf(false);
+      mushafSessionStore.setLastScreenWasMushaf(false);
     };
   }, []);
 
