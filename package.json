@@ -1,7 +1,7 @@
 {
   "name": "bayaan",
   "main": "expo-router/entry",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "scripts": {
     "postinstall": "patch-package && gzip -dkf assets/data/timestamps.db.gz 2>/dev/null || true",
     "start": "expo start",
