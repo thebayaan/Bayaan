@@ -50,17 +50,10 @@ interface MushafSettingsState {
   // Mushaf renderer selection
   mushafRenderer: MushafRenderer;
 
-  // Last read page tracking
-  lastReadPage: number | null;
-
   // Recently read surahs (last 10, deduplicated by surahId)
   recentPages: RecentRead[];
 
-  // Session restore
-  lastScreenWasMushaf: boolean;
-
   // Actions
-  setLastScreenWasMushaf: (value: boolean) => void;
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
   toggleTajweed: () => void;
@@ -71,7 +64,6 @@ interface MushafSettingsState {
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
   setPageLayout: (layout: MushafPageLayout) => void;
-  setLastReadPage: (page: number) => void;
   addRecentRead: (surahId: number, page: number) => void;
 }
 
@@ -89,13 +81,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       uthmaniFont: 'v1', // Default to V1
       mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
-      lastReadPage: null,
       recentPages: [],
-      lastScreenWasMushaf: false,
 
       // Actions
-      setLastScreenWasMushaf: (value: boolean) =>
-        set({lastScreenWasMushaf: value}),
       toggleTranslation: () =>
         set(state => ({showTranslation: !state.showTranslation})),
       toggleTransliteration: () =>
@@ -115,7 +103,6 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           uthmaniFont: renderer === 'dk_v1' ? 'v1' : 'v2',
         }),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
-      setLastReadPage: (page: number) => set({lastReadPage: page}),
       addRecentRead: (surahId: number, page: number) =>
         set(state => {
           const filtered = state.recentPages.filter(r => r.surahId !== surahId);
@@ -130,7 +117,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 4,
+      version: 5,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -156,6 +143,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         if (version < 4) {
           state.recentPages = [];
+        }
+        if (version < 5) {
+          // lastScreenWasMushaf & lastReadPage moved to MMKV — drop stale keys
+          delete state.lastScreenWasMushaf;
+          delete state.lastReadPage;
         }
         return state as unknown as MushafSettingsState;
       },

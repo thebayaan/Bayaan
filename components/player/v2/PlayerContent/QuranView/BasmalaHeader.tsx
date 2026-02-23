@@ -129,10 +129,18 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
       charToRule,
       showTajweed,
     );
+    // Extra horizontal room so the basm glyph isn't clipped at canvas edges
+    const hPad = moderateScale(12);
     return (
       <View style={containerStyle}>
-        <Canvas style={{width, height, direction: 'rtl'}}>
-          <Paragraph paragraph={paragraph} x={xPos} y={0} width={maxWidth} />
+        <Canvas
+          style={{width: width + hPad * 2, height, direction: 'rtl'}}>
+          <Paragraph
+            paragraph={paragraph}
+            x={xPos + hPad}
+            y={0}
+            width={maxWidth}
+          />
         </Canvas>
       </View>
     );

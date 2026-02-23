@@ -39,7 +39,7 @@ import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -299,35 +299,24 @@ export default function RootLayout() {
   ]);
 
   // Restore mushaf screen if it was open when the app was killed.
-  // Navigation happens behind the splash; splash hides after it settles.
+  // MMKV reads are synchronous — no hydration wait needed.
   useEffect(() => {
     if (!appIsReady || !isPlayerReady || hasShareIntent) return;
 
-    const restoreIfNeeded = () => {
-      const {lastScreenWasMushaf, lastReadPage} =
-        useMushafSettingsStore.getState();
+    const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
+    const lastReadPage = mushafSessionStore.getLastReadPage();
 
-      if (lastScreenWasMushaf) {
-        router.push({
-          pathname: '/mushaf',
-          params: lastReadPage ? {page: String(lastReadPage)} : undefined,
-        });
-        // Let the navigation animation finish behind the splash before revealing
-        InteractionManager.runAfterInteractions(() => {
-          setMushafRestoreHandled(true);
-        });
-      } else {
+    if (lastScreenWasMushaf) {
+      router.push({
+        pathname: '/mushaf',
+        params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+      });
+      // Let the navigation animation finish behind the splash before revealing
+      InteractionManager.runAfterInteractions(() => {
         setMushafRestoreHandled(true);
-      }
-    };
-
-    // Store hydrates from AsyncStorage asynchronously — wait for it
-    if (useMushafSettingsStore.persist.hasHydrated()) {
-      restoreIfNeeded();
+      });
     } else {
-      const unsub =
-        useMushafSettingsStore.persist.onFinishHydration(restoreIfNeeded);
-      return unsub;
+      setMushafRestoreHandled(true);
     }
   }, [appIsReady, isPlayerReady, hasShareIntent]);
 
