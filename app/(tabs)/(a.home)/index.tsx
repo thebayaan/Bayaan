@@ -22,7 +22,7 @@ import {EdgeInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {QuranIcon} from '@/components/Icons';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 
 type ViewOption = 'Reciters' | 'Surahs' | 'Adhkars';
 
@@ -347,7 +347,7 @@ function HomeScreen() {
   );
 
   const handleMushafPress = useCallback(() => {
-    const lastReadPage = useMushafSettingsStore.getState().lastReadPage;
+    const lastReadPage = mushafSessionStore.getLastReadPage();
     if (lastReadPage) {
       router.push({
         pathname: '/mushaf',
