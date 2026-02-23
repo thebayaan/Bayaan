@@ -4,7 +4,6 @@ import * as semver from 'semver';
 import {ChangelogEntry} from '@/types/changelog';
 
 const LAST_SEEN_VERSION_KEY = '@bayaan_last_seen_version';
-const FIRST_INSTALL_KEY = '@bayaan_first_install';
 
 /**
  * Normalize version string to valid semver format
@@ -39,23 +38,6 @@ export async function getLastSeenVersion(): Promise<string | null> {
   } catch (error) {
     console.error('[VersionUtils] Failed to get last seen version:', error);
     return null;
-  }
-}
-
-/**
- * Check if this is the first time the app is being installed
- */
-export async function isFirstInstall(): Promise<boolean> {
-  try {
-    const flag = await AsyncStorage.getItem(FIRST_INSTALL_KEY);
-    if (!flag) {
-      await AsyncStorage.setItem(FIRST_INSTALL_KEY, 'true');
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('[VersionUtils] Failed to check first install:', error);
-    return false;
   }
 }
 
@@ -96,19 +78,11 @@ export async function hasVersionChanged(): Promise<boolean> {
   try {
     const currentVersion = getCurrentVersion();
     const lastSeenVersion = await getLastSeenVersion();
-    const firstInstall = await isFirstInstall();
 
     console.log('[VersionUtils] Current version:', currentVersion);
     console.log('[VersionUtils] Last seen version:', lastSeenVersion);
-    console.log('[VersionUtils] First install:', firstInstall);
 
-    // Don't show on first install
-    if (firstInstall) {
-      await markVersionAsSeen();
-      return false;
-    }
-
-    // Show if no version seen (updating from pre-changelog version)
+    // Show if no version seen (first install or pre-changelog update)
     if (!lastSeenVersion) {
       return true;
     }
