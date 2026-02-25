@@ -1,12 +1,5 @@
-import React from 'react';
-import {
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  View,
-  Linking,
-  Switch,
-} from 'react-native';
+import React, {useMemo} from 'react';
+import {Text, Pressable, ScrollView, View, Linking, Switch} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -21,8 +14,6 @@ import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
 import {QuranIcon} from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 
-// App Store IDs - Replace with your actual IDs
-
 const formatColorName = (colorName: string): string => {
   return colorName
     .replace(/([A-Z])/g, ' $1')
@@ -32,7 +23,6 @@ const formatColorName = (colorName: string): string => {
     .join(' ');
 };
 
-// Helper function to determine if a setting is an external link
 const isExternalLink = (type: string): boolean => {
   return ['support', 'featureRequest', 'terms', 'privacy', 'rateApp'].includes(
     type,
@@ -82,7 +72,6 @@ const settingsItems = [
         icon: 'users',
         iconType: 'feather',
       },
-      // Add more audio settings here as needed
     ],
   },
   {
@@ -95,8 +84,6 @@ const settingsItems = [
         icon: 'hard-drive',
         iconType: 'feather',
       },
-
-      // Add more app settings here as needed
     ],
   },
   {
@@ -167,14 +154,49 @@ const settingsItems = [
   },
 ];
 
+const renderIcon = (
+  item: {icon: string; iconType: string},
+  iconColor: string,
+) => {
+  if (item.iconType === 'custom' && item.icon === 'quran') {
+    return <QuranIcon size={moderateScale(20)} color={iconColor} />;
+  }
+  if (item.iconType === 'material') {
+    return (
+      <MaterialIcons
+        name={item.icon as any}
+        size={moderateScale(20)}
+        color={iconColor}
+      />
+    );
+  }
+  return (
+    <Feather
+      name={item.icon as any}
+      size={moderateScale(20)}
+      color={iconColor}
+    />
+  );
+};
+
 export default function SettingsScreen() {
   const router = useRouter();
   const {theme, themeMode, setThemeMode, primaryColor, setPrimaryColor} =
     useTheme();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(theme);
-  const [pressedOption, setPressedOption] = React.useState<string | null>(null);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
+
+  const iconColor = Color(theme.colors.text).alpha(0.7).toString();
+  const chevronColor = Color(theme.colors.text).alpha(0.2).toString();
+
+  const trackColor = useMemo(
+    () => ({
+      false: Color(theme.colors.text).alpha(0.1).toString(),
+      true: Color(theme.colors.text).alpha(0.65).toString(),
+    }),
+    [theme.colors.text],
+  );
 
   const handleSettingPress = async (type: string) => {
     switch (type) {
@@ -194,9 +216,7 @@ export default function SettingsScreen() {
         await clearPlayerCache();
         break;
       case 'rateApp':
-        // Mark that the user has manually chosen to rate the app
         await markAsRated();
-        // Open the app store for review
         await openAppStoreForReview();
         break;
       case 'whatsNew':
@@ -235,103 +255,88 @@ export default function SettingsScreen() {
           {paddingTop: insets.top + moderateScale(56)},
         ]}
         showsVerticalScrollIndicator={false}>
+        {/* Theme Selector */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-            Theme
-          </Text>
-          <View style={styles.themeContainer}>
-            {themeOptions.map((option, index) => (
-              <TouchableOpacity
-                activeOpacity={1}
-                key={option.value}
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor:
-                      themeMode === option.value
-                        ? Color(theme.colors.text).alpha(0.1).toString()
-                        : Color(theme.colors.card).alpha(0.5).toString(),
-                    borderWidth: themeMode === option.value ? 1.5 : 0,
-                    borderColor: theme.colors.text,
-                  },
-                  index === 0 && styles.firstThemeOption,
-                  index === themeOptions.length - 1 && styles.lastThemeOption,
-                  pressedOption === `theme-${option.value}` &&
-                    styles.optionPressed,
-                ]}
-                onPress={() => setThemeMode(option.value)}
-                onPressIn={() => setPressedOption(`theme-${option.value}`)}
-                onPressOut={() => setPressedOption(null)}>
-                <View style={styles.themeContent}>
-                  <View style={[styles.iconContainer]}>
+          <Text style={styles.sectionHeader}>THEME</Text>
+          <View style={styles.segmentedTrack}>
+            {themeOptions.map(option => {
+              const isActive = themeMode === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={[styles.segment, isActive && styles.segmentActive]}
+                  onPress={() => setThemeMode(option.value)}>
+                  <View style={styles.segmentIconWrap}>
                     {option.iconType === 'ionicon' ? (
                       <Ionicons
                         name={option.icon as any}
-                        size={moderateScale(20)}
-                        color={theme.colors.text}
+                        size={moderateScale(16)}
+                        color={
+                          isActive
+                            ? theme.colors.text
+                            : Color(theme.colors.textSecondary)
+                                .alpha(0.6)
+                                .toString()
+                        }
                       />
                     ) : (
                       <Feather
                         name={option.icon as any}
-                        size={moderateScale(20)}
-                        color={theme.colors.text}
+                        size={moderateScale(16)}
+                        color={
+                          isActive
+                            ? theme.colors.text
+                            : Color(theme.colors.textSecondary)
+                                .alpha(0.6)
+                                .toString()
+                        }
                       />
                     )}
                   </View>
                   <Text
                     style={[
-                      styles.themeText,
+                      styles.segmentText,
                       {
-                        color: theme.colors.text,
-                        fontFamily:
-                          themeMode === option.value
-                            ? theme.fonts.semiBold
-                            : theme.fonts.regular,
+                        color: isActive
+                          ? theme.colors.text
+                          : Color(theme.colors.textSecondary)
+                              .alpha(0.6)
+                              .toString(),
+                        fontFamily: isActive
+                          ? 'Manrope-SemiBold'
+                          : 'Manrope-Medium',
                       },
                     ]}>
                     {option.label}
                   </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
-        <View style={[styles.section, styles.colorSection]}>
-          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-            Accent Color
-          </Text>
+        {/* Accent Color */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>ACCENT COLOR</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.colorScrollContent}>
             {Object.entries(primaryColors).map(([color, value]) => {
+              const isSelected = primaryColor === color;
               return (
-                <TouchableOpacity
-                  activeOpacity={1}
+                <Pressable
                   key={color}
-                  style={[
-                    styles.colorOptionContainer,
-                    pressedOption === `color-${color}` &&
-                      styles.colorOptionPressed,
-                  ]}
-                  onPress={() => setPrimaryColor(color as PrimaryColor)}
-                  onPressIn={() => setPressedOption(`color-${color}`)}
-                  onPressOut={() => setPressedOption(null)}>
+                  style={styles.colorOptionContainer}
+                  onPress={() => setPrimaryColor(color as PrimaryColor)}>
                   <View
                     style={[
                       styles.colorOption,
                       {
                         backgroundColor: value,
-                        borderColor:
-                          primaryColor === color
-                            ? theme.colors.text
-                            : 'transparent',
-                        shadowColor: value,
-                        shadowOffset: {width: 0, height: 2},
-                        shadowOpacity: 0.25,
-                        shadowRadius: 3.84,
-                        elevation: 5,
+                        borderColor: isSelected
+                          ? Color(theme.colors.text).alpha(0.4).toString()
+                          : Color(theme.colors.text).alpha(0.08).toString(),
                       },
                     ]}
                   />
@@ -339,134 +344,91 @@ export default function SettingsScreen() {
                     style={[
                       styles.colorLabel,
                       {
-                        color:
-                          primaryColor === color
-                            ? theme.colors.text
-                            : theme.colors.textSecondary,
-                        fontFamily:
-                          primaryColor === color
-                            ? theme.fonts.medium
-                            : theme.fonts.regular,
+                        color: isSelected
+                          ? Color(theme.colors.text).alpha(0.85).toString()
+                          : Color(theme.colors.textSecondary)
+                              .alpha(0.45)
+                              .toString(),
+                        fontFamily: isSelected
+                          ? 'Manrope-Medium'
+                          : 'Manrope-Regular',
                       },
                     ]}>
                     {formatColorName(color)}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </ScrollView>
         </View>
 
+        {/* Settings Sections */}
         {settingsItems.map(section => (
           <View key={section.section} style={styles.section}>
-            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-              {section.section}
+            <Text style={styles.sectionHeader}>
+              {section.section.toUpperCase()}
             </Text>
-            <View style={styles.settingsGroup}>
+            <View style={styles.card}>
               {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={item.type}
-                  style={[
-                    styles.settingsItem,
-                    styles.settingsItemCard,
-                    itemIndex > 0 && styles.settingsItemMarginTop,
-                    pressedOption === `setting-${item.type}` &&
-                      styles.optionPressed,
-                  ]}
-                  onPress={() => handleSettingPress(item.type)}
-                  onPressIn={() => setPressedOption(`setting-${item.type}`)}
-                  onPressOut={() => setPressedOption(null)}
-                  activeOpacity={1}>
-                  <View style={styles.settingsItemContent}>
+                <React.Fragment key={item.type}>
+                  {itemIndex > 0 && <View style={styles.divider} />}
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.settingsRow,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => handleSettingPress(item.type)}>
                     <View style={styles.settingsItemIcon}>
-                      {item.iconType === 'custom' && item.icon === 'quran' ? (
-                        <QuranIcon
-                          size={moderateScale(24)}
-                          color={theme.colors.textSecondary}
-                        />
-                      ) : item.iconType === 'material' ? (
-                        <MaterialIcons
-                          name={item.icon as any}
-                          size={moderateScale(20)}
-                          color={theme.colors.textSecondary}
-                        />
-                      ) : (
-                        <Feather
-                          name={item.icon as any}
-                          size={moderateScale(20)}
-                          color={theme.colors.textSecondary}
-                        />
-                      )}
+                      {renderIcon(item, iconColor)}
                     </View>
                     <View style={styles.settingsTextContainer}>
-                      <Text
-                        style={[
-                          styles.settingsTitle,
-                          {color: theme.colors.text},
-                        ]}>
-                        {item.title}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.settingsDescription,
-                          {color: theme.colors.textSecondary},
-                        ]}>
+                      <Text style={styles.settingsTitle}>{item.title}</Text>
+                      <Text style={styles.settingsDescription}>
                         {item.description}
                       </Text>
                     </View>
-                    <View style={{opacity: 0.6}}>
-                      <Feather
-                        name={
-                          isExternalLink(item.type)
-                            ? 'external-link'
-                            : 'arrow-right'
-                        }
-                        size={moderateScale(20)}
-                        color={theme.colors.textSecondary}
-                      />
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                    <Feather
+                      name={
+                        isExternalLink(item.type)
+                          ? 'external-link'
+                          : 'chevron-right'
+                      }
+                      size={moderateScale(16)}
+                      color={chevronColor}
+                    />
+                  </Pressable>
+                </React.Fragment>
               ))}
             </View>
           </View>
         ))}
 
+        {/* Developer Section */}
         {__DEV__ && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-              Developer
-            </Text>
-            <View style={[styles.settingsItemCard, styles.settingsItem]}>
-              <View style={styles.settingsItemContent}>
+            <Text style={styles.sectionHeader}>DEVELOPER</Text>
+            <View style={styles.card}>
+              <View style={styles.settingsRow}>
                 <View style={styles.settingsItemIcon}>
                   <Feather
                     name="tool"
                     size={moderateScale(20)}
-                    color={theme.colors.textSecondary}
+                    color={iconColor}
                   />
                 </View>
                 <View style={styles.settingsTextContainer}>
-                  <Text
-                    style={[styles.settingsTitle, {color: theme.colors.text}]}>
-                    Floating Dev Menu
-                  </Text>
-                  <Text
-                    style={[
-                      styles.settingsDescription,
-                      {color: theme.colors.textSecondary},
-                    ]}>
+                  <Text style={styles.settingsTitle}>Floating Dev Menu</Text>
+                  <Text style={styles.settingsDescription}>
                     Show the floating developer tools button
                   </Text>
                 </View>
                 <Switch
                   value={showFloatingDevMenu}
                   onValueChange={toggleFloatingDevMenu}
-                  trackColor={{
-                    false: Color(theme.colors.text).alpha(0.15).toString(),
-                    true: Color(theme.colors.text).alpha(0.3).toString(),
-                  }}
-                  thumbColor={theme.colors.text}
+                  trackColor={trackColor}
+                  thumbColor="#FFFFFF"
+                  ios_backgroundColor={trackColor.false}
+                  style={styles.switchStyle}
                 />
               </View>
             </View>
@@ -488,47 +450,50 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(40),
     },
     section: {
-      marginBottom: moderateScale(24),
+      marginBottom: moderateScale(20),
     },
-    sectionTitle: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.medium,
-      marginBottom: moderateScale(8),
-      marginLeft: moderateScale(4),
+    sectionHeader: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: moderateScale(6),
+      marginLeft: moderateScale(2),
     },
-    themeContainer: {
+
+    // --- Theme Segmented Control ---
+    segmentedTrack: {
       flexDirection: 'row',
-      borderRadius: moderateScale(12),
-      overflow: 'hidden',
-      gap: moderateScale(8),
+      borderRadius: moderateScale(10),
+      padding: moderateScale(3),
+      backgroundColor: Color(theme.colors.text).alpha(0.05).toString(),
     },
-    themeOption: {
+    segment: {
       flex: 1,
-      paddingVertical: moderateScale(14),
+      paddingVertical: moderateScale(7),
+      borderRadius: moderateScale(8),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: moderateScale(12),
+      gap: moderateScale(3),
     },
-    themeContent: {
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: moderateScale(4),
+    segmentActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 1},
+      shadowOpacity: 0.06,
+      shadowRadius: 3,
+      elevation: 1,
     },
-    iconContainer: {
-      width: moderateScale(42),
-      height: moderateScale(42),
-      borderRadius: moderateScale(21),
-      alignItems: 'center',
+    segmentIconWrap: {
+      height: moderateScale(18),
       justifyContent: 'center',
-      borderColor: 'transparent',
     },
-    themeText: {
+    segmentText: {
       fontSize: moderateScale(11),
-      fontWeight: '500',
     },
-    colorSection: {
-      marginBottom: moderateScale(14),
-    },
+
+    // --- Accent Color ---
     colorScrollContent: {
       paddingHorizontal: moderateScale(4),
       gap: moderateScale(16),
@@ -549,31 +514,33 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10),
       textAlign: 'center',
     },
-    settingsGroup: {
-      borderRadius: moderateScale(12),
+
+    // --- Cards ---
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       overflow: 'hidden',
-      gap: moderateScale(1),
     },
-    settingsItem: {
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(16),
+    },
+
+    // --- Settings Rows ---
+    settingsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      width: '100%',
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(14),
     },
-    settingsItemCard: {
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
-      padding: moderateScale(12),
-    },
-    settingsItemMarginTop: {
-      marginTop: moderateScale(8),
-    },
-    settingsItemContent: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
+    pressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     settingsItemIcon: {
-      marginRight: moderateScale(15),
+      marginRight: moderateScale(12),
       width: moderateScale(24),
       alignItems: 'center',
     },
@@ -582,28 +549,19 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateScale(10),
     },
     settingsTitle: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.medium,
-      color: theme.colors.text,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
     },
     settingsDescription: {
       fontSize: moderateScale(11),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      marginTop: moderateScale(2),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      marginTop: moderateScale(1),
     },
-    firstThemeOption: {
-      borderTopLeftRadius: moderateScale(12),
-      borderBottomLeftRadius: moderateScale(12),
-    },
-    lastThemeOption: {
-      borderTopRightRadius: moderateScale(12),
-      borderBottomRightRadius: moderateScale(12),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
-    },
-    colorOptionPressed: {
-      opacity: 0.6,
+
+    // --- Switch ---
+    switchStyle: {
+      transform: [{scaleX: 0.8}, {scaleY: 0.8}],
     },
   });
