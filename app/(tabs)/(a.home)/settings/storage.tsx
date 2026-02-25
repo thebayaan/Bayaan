@@ -1,5 +1,5 @@
-import React, {useState} from 'react';
-import {View, Text, ScrollView, TouchableOpacity, Alert} from 'react-native';
+import React, {useState, useMemo} from 'react';
+import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -16,7 +16,6 @@ interface StorageCategoryProps {
   color: string;
   label: string;
   size: string;
-  theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }
 
@@ -24,19 +23,23 @@ const StorageCategory = ({
   color,
   label,
   size,
-  theme,
   styles,
 }: StorageCategoryProps) => (
   <View style={styles.categoryRow}>
     <View style={[styles.dot, {backgroundColor: color}]} />
-    <Text style={[styles.categoryLabel, {color: theme.colors.text}]}>
-      {label}
-    </Text>
-    <Text style={[styles.categorySize, {color: theme.colors.text}]}>
-      {size}
-    </Text>
+    <Text style={styles.categoryLabel}>{label}</Text>
+    <Text style={styles.categorySize}>{size}</Text>
   </View>
 );
+
+interface ActionSectionProps {
+  title: string;
+  description: string;
+  buttonLabel: string;
+  onPress: () => void;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+}
 
 const ActionSection = ({
   title,
@@ -45,30 +48,21 @@ const ActionSection = ({
   onPress,
   theme,
   styles,
-}: {
-  title: string;
-  description: string;
-  buttonLabel: string;
-  onPress: () => void;
-  theme: Theme;
-  styles: ReturnType<typeof createStyles>;
-}) => (
+}: ActionSectionProps) => (
   <View style={styles.actionSection}>
     <View style={styles.actionContent}>
-      <Text style={[styles.actionTitle, {color: theme.colors.text}]}>
-        {title}
-      </Text>
-      <Text
-        style={[styles.actionDescription, {color: theme.colors.textSecondary}]}>
-        {description}
-      </Text>
+      <Text style={styles.actionTitle}>{title}</Text>
+      <Text style={styles.actionDescription}>{description}</Text>
     </View>
-    <TouchableOpacity
-      style={[styles.actionButton, {backgroundColor: theme.colors.text}]}
-      onPress={onPress}
-      activeOpacity={0.7}>
+    <Pressable
+      style={({pressed}) => [
+        styles.actionButton,
+        {backgroundColor: theme.colors.text},
+        pressed && {opacity: 0.8},
+      ]}
+      onPress={onPress}>
       <Text style={styles.actionButtonText}>{buttonLabel}</Text>
-    </TouchableOpacity>
+    </Pressable>
   </View>
 );
 
@@ -76,7 +70,7 @@ export default function StorageScreen() {
   const {theme} = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [, setIsClearing] = useState(false);
 
   const {free, downloads, cache, otherApps, loading, error, rawData, refresh} =
@@ -95,7 +89,6 @@ export default function StorageScreen() {
             try {
               setIsClearing(true);
               await useDownloadStore.getState().clearAllDownloads();
-              // Refresh storage breakdown
               refresh();
               Alert.alert('Success', 'All downloads have been removed.');
             } catch (downloadError) {
@@ -121,10 +114,7 @@ export default function StorageScreen() {
           onPress: async () => {
             try {
               setIsClearing(true);
-              // Clear both AsyncStorage cache AND file system cache
               await clearPlayerCache();
-              //   await clearCacheDirectory();
-              // Refresh storage breakdown
               refresh();
               Alert.alert('Success', 'Cache has been cleared.');
             } catch (cacheError) {
@@ -138,21 +128,12 @@ export default function StorageScreen() {
     );
   };
 
-  // Calculate progress percentages for each category
   const totalRaw = rawData.total || 1;
   let otherAppsPercentage = (rawData.otherApps / totalRaw) * 100;
   let downloadsPercentage = (rawData.downloads / totalRaw) * 100;
   let cachePercentage = (rawData.cache / totalRaw) * 100;
   let freePercentage = (rawData.free / totalRaw) * 100;
 
-  console.log('[StorageScreen] Raw percentages:', {
-    otherApps: otherAppsPercentage.toFixed(2) + '%',
-    downloads: downloadsPercentage.toFixed(2) + '%',
-    cache: cachePercentage.toFixed(2) + '%',
-    free: freePercentage.toFixed(2) + '%',
-  });
-
-  // Ensure minimum 2% width for small segments so they're visible
   const MIN_PERCENTAGE = 2;
   if (downloadsPercentage > 0 && downloadsPercentage < MIN_PERCENTAGE) {
     downloadsPercentage = MIN_PERCENTAGE;
@@ -168,7 +149,6 @@ export default function StorageScreen() {
       100 - downloadsPercentage - cachePercentage - freePercentage,
     );
   }
-  // Recalculate to ensure total is 100%
   const totalPercentage =
     otherAppsPercentage +
     downloadsPercentage +
@@ -182,19 +162,11 @@ export default function StorageScreen() {
     freePercentage *= scale;
   }
 
-  console.log('[StorageScreen] Final percentages:', {
-    otherApps: otherAppsPercentage.toFixed(2) + '%',
-    downloads: downloadsPercentage.toFixed(2) + '%',
-    cache: cachePercentage.toFixed(2) + '%',
-    free: freePercentage.toFixed(2) + '%',
-  });
-
-  // Define colors for each category
   const colors = {
-    downloads: '#34C759', // Green
-    cache: '#8E8E93', // Grey
-    otherApps: '#007AFF', // Blue
-    free: '#E5E5EA', // Light grey
+    downloads: '#34C759',
+    cache: '#8E8E93',
+    otherApps: '#007AFF',
+    free: '#E5E5EA',
   };
 
   return (
@@ -207,8 +179,7 @@ export default function StorageScreen() {
         showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <Text
-              style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
+            <Text style={styles.loadingText}>
               Loading storage information...
             </Text>
           </View>
@@ -219,12 +190,13 @@ export default function StorageScreen() {
               size={moderateScale(48)}
               color={theme.colors.error}
             />
-            <Text style={[styles.errorText, {color: theme.colors.text}]}>
-              {error}
-            </Text>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : (
           <>
+            {/* Storage Breakdown */}
+            <Text style={styles.sectionHeader}>STORAGE BREAKDOWN</Text>
+
             {/* Progress Bar */}
             <View style={styles.progressContainer}>
               <View style={styles.progressBarContainer}>
@@ -267,39 +239,35 @@ export default function StorageScreen() {
               </View>
             </View>
 
-            {/* Storage Breakdown */}
             <View style={styles.breakdownContainer}>
               <StorageCategory
                 color={colors.otherApps}
                 label="Other apps"
                 size={otherApps}
-                theme={theme}
                 styles={styles}
               />
               <StorageCategory
                 color={colors.downloads}
                 label="Downloads"
                 size={downloads}
-                theme={theme}
                 styles={styles}
               />
               <StorageCategory
                 color={colors.cache}
                 label="Cache"
                 size={cache}
-                theme={theme}
                 styles={styles}
               />
               <StorageCategory
                 color={colors.free}
                 label="Free"
                 size={free}
-                theme={theme}
                 styles={styles}
               />
             </View>
 
-            {/* Action Sections */}
+            {/* Manage Storage */}
+            <Text style={styles.sectionHeader}>MANAGE STORAGE</Text>
             <View>
               <ActionSection
                 title="Remove all downloads"
@@ -344,14 +312,24 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(20),
       paddingBottom: moderateScale(160),
     },
+    sectionHeader: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: moderateScale(10),
+      marginLeft: moderateScale(2),
+    },
     loadingContainer: {
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: moderateScale(60),
     },
     loadingText: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
     },
     errorContainer: {
       alignItems: 'center',
@@ -360,11 +338,12 @@ const createStyles = (theme: Theme) =>
       gap: moderateScale(16),
     },
     errorText: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.medium,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
     },
     progressContainer: {
-      marginBottom: moderateScale(32),
+      marginBottom: moderateScale(24),
     },
     progressBarContainer: {
       height: moderateScale(8),
@@ -378,7 +357,7 @@ const createStyles = (theme: Theme) =>
     },
     breakdownContainer: {
       gap: moderateScale(16),
-      marginBottom: moderateScale(40),
+      marginBottom: moderateScale(32),
     },
     categoryRow: {
       flexDirection: 'row',
@@ -392,34 +371,40 @@ const createStyles = (theme: Theme) =>
     },
     categoryLabel: {
       flex: 1,
-      fontSize: moderateScale(15),
-      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
     },
     categorySize: {
-      fontSize: moderateScale(15),
-      fontFamily: theme.fonts.medium,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
     },
     actionSection: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       gap: moderateScale(16),
     },
     actionContent: {
       flex: 1,
     },
     actionTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
       marginBottom: moderateScale(4),
     },
     actionDescription: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.regular,
-      lineHeight: moderateScale(18),
+      fontSize: moderateScale(11.5),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      lineHeight: moderateScale(17),
     },
     actionButton: {
       paddingHorizontal: moderateScale(20),
@@ -427,9 +412,9 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(8),
     },
     actionButtonText: {
-      color: '#FFFFFF',
+      color: theme.colors.background,
       fontSize: moderateScale(14),
-      fontFamily: theme.fonts.semiBold,
+      fontFamily: 'Manrope-SemiBold',
     },
     actionSpacer: {
       height: moderateScale(12),
