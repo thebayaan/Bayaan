@@ -1,4 +1,4 @@
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useMemo} from 'react';
 import {View, Text, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {
@@ -7,6 +7,7 @@ import {
   verticalScale,
 } from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
+import Color from 'color';
 import SearchBar from '@/components/SearchBar';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -20,13 +21,12 @@ export default function DefaultReciterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Reciter[]>([]);
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Helper function to check if a reciter has complete Quran
   const hasCompleteQuran = useCallback((reciter: Reciter) => {
     return reciter.rewayat.some(
       r => r.surah_list?.filter(id => id !== null).length === 114,
@@ -90,18 +90,10 @@ export default function DefaultReciterScreen() {
                 style={styles.currentReciterImage}
               />
               <View style={styles.currentReciterInfo}>
-                <Text
-                  style={[
-                    styles.currentReciterName,
-                    {color: theme.colors.text},
-                  ]}>
+                <Text style={styles.currentReciterName}>
                   {defaultReciter.name}
                 </Text>
-                <Text
-                  style={[
-                    styles.currentReciterMoshaf,
-                    {color: theme.colors.textSecondary},
-                  ]}>
+                <Text style={styles.currentReciterMoshaf}>
                   {defaultReciter.rewayat[0].name}
                 </Text>
               </View>
@@ -110,9 +102,7 @@ export default function DefaultReciterScreen() {
         )}
 
         <View style={styles.searchSection}>
-          <Text style={[styles.searchLabel, {color: theme.colors.text}]}>
-            Change Default Reciter
-          </Text>
+          <Text style={styles.searchLabel}>CHANGE DEFAULT RECITER</Text>
           <View style={styles.searchContainer}>
             <SearchBar
               placeholder="Search reciters..."
@@ -128,8 +118,7 @@ export default function DefaultReciterScreen() {
           keyExtractor={item => item.id}
           style={styles.reciterList}
           ListEmptyComponent={
-            <Text
-              style={[styles.emptyText, {color: theme.colors.textSecondary}]}>
+            <Text style={styles.emptyText}>
               {searchQuery.trim() === ''
                 ? 'Only reciters with complete Quran are shown'
                 : 'No reciters found'}
@@ -152,19 +141,22 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(16),
     },
     currentReciterContainer: {
-      padding: moderateScale(20),
-      marginBottom: verticalScale(20),
-      borderRadius: moderateScale(12),
+      padding: moderateScale(16),
+      marginBottom: verticalScale(16),
+      borderRadius: moderateScale(14),
       marginHorizontal: moderateScale(15),
       marginTop: moderateScale(15),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     currentReciterContent: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     currentReciterImage: {
-      width: moderateScale(80),
-      height: moderateScale(80),
+      width: moderateScale(72),
+      height: moderateScale(72),
       borderRadius: moderateScale(10),
       marginRight: moderateScale(15),
     },
@@ -172,20 +164,27 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     currentReciterName: {
-      fontSize: moderateScale(20),
-      fontWeight: 'bold',
+      fontSize: moderateScale(16),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
       marginBottom: verticalScale(4),
     },
     currentReciterMoshaf: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(12),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
     },
     searchSection: {
       paddingHorizontal: moderateScale(15),
     },
     searchLabel: {
-      fontSize: moderateScale(16),
-      fontWeight: 'bold',
-      marginBottom: verticalScale(10),
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: verticalScale(8),
+      marginLeft: moderateScale(2),
     },
     searchContainer: {
       marginBottom: verticalScale(15),
@@ -195,7 +194,9 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(15),
     },
     emptyText: {
-      fontSize: moderateScale(16),
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
       textAlign: 'center',
       paddingVertical: moderateScale(15),
     },

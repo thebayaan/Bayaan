@@ -163,6 +163,81 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 
 ---
 
+## Design System
+
+**Always use the `frontend-design` skill when making UI decisions.**
+
+The app uses a unified alpha-based color system derived from `theme.colors.text` and `theme.colors.textSecondary`. Never use `theme.colors.primary` or accent colors for UI chrome. Reference implementations: `MushafSettingsContent.tsx`, `VerseActionsSheet.tsx`.
+
+### Color Tokens
+
+| Token | Value | Usage |
+|---|---|---|
+| Card bg | `Color(theme.colors.text).alpha(0.04)` | Surface backgrounds |
+| Card border | `Color(theme.colors.text).alpha(0.06)` | 1px borders on cards |
+| Divider | `Color(theme.colors.text).alpha(0.06)` | Hairline separators inside cards |
+| Pressed bg | `Color(theme.colors.text).alpha(0.06)` | Pressable feedback |
+| Secondary bg | `Color(theme.colors.text).alpha(0.08)` | Selected/active cards |
+| Switch track off | `Color(theme.colors.text).alpha(0.1)` | Switch inactive |
+| Segmented active | `Color(theme.colors.text).alpha(0.12)` | Active segment bg |
+| Chevron | `Color(theme.colors.text).alpha(0.2)` | Nav arrows |
+| Icon | `Color(theme.colors.text).alpha(0.7)` | Secondary icons |
+| Option label | `Color(theme.colors.text).alpha(0.85)` | Row labels |
+| Switch track on | `Color(theme.colors.text).alpha(0.65)` | Switch active |
+| Section header | `Color(theme.colors.textSecondary).alpha(0.5)` | ALL CAPS labels |
+| Hint/description | `Color(theme.colors.textSecondary).alpha(0.45)` | Sub-text, descriptions |
+| Switch thumb | `#FFFFFF` | Always white |
+| Primary btn bg | `theme.colors.text` | Action buttons |
+| Primary btn text | `theme.colors.background` | Button text |
+
+### Typography
+
+| Role | Font | Size | Extra |
+|---|---|---|---|
+| Section header | `Manrope-SemiBold` | `ms(10.5)` | `uppercase`, `letterSpacing: 1.2` |
+| Option label | `Manrope-Medium` | `ms(13.5)` | |
+| Description | `Manrope-Regular` | `ms(11-11.5)` | |
+| Hint text | `Manrope-Regular` | `ms(11.5)` | |
+| Primary btn | `Manrope-SemiBold` | `ms(15)` | |
+
+### Card Pattern
+
+```tsx
+backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+borderWidth: 1,
+borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+borderRadius: moderateScale(14),
+overflow: 'hidden',
+```
+
+### Grouped Card with Dividers
+
+Use a single wrapping card with hairline dividers between rows:
+
+```tsx
+<View style={styles.card}>
+  {items.map((item, idx) => (
+    <React.Fragment key={item.key}>
+      {idx > 0 && <View style={styles.divider} />}
+      <Pressable style={({pressed}) => [styles.row, pressed && styles.pressed]}>
+        {/* row content */}
+      </Pressable>
+    </React.Fragment>
+  ))}
+</View>
+```
+
+### Switch Pattern
+
+```tsx
+trackColor={{ false: Color(theme.colors.text).alpha(0.1).toString(), true: Color(theme.colors.text).alpha(0.65).toString() }}
+thumbColor="#FFFFFF"
+ios_backgroundColor={trackColor.false}
+style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+```
+
+---
+
 ## Performance Optimization
 
 ### React Native Best Practices
