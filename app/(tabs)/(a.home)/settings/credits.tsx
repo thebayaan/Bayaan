@@ -1,5 +1,5 @@
-import React from 'react';
-import {View, Text, ScrollView, TouchableOpacity, Linking} from 'react-native';
+import React, {useMemo} from 'react';
+import {View, Text, ScrollView, Pressable, Linking} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -123,7 +123,10 @@ export default function CreditsScreen() {
   const {theme} = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const linkIconColor = Color(theme.colors.text).alpha(0.35).toString();
+  const pressedBg = Color(theme.colors.text).alpha(0.06).toString();
 
   const handleLinkPress = async (url?: string) => {
     if (url) {
@@ -139,65 +142,52 @@ export default function CreditsScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View>
-          <Text style={[styles.introText, {color: theme.colors.textSecondary}]}>
+          <Text style={styles.introText}>
             Bayaan wouldn&apos;t be possible without the incredible work of
             these projects, organizations, and individuals. We&apos;re deeply
             grateful for their contributions to the Muslim community and the
             tech world.
           </Text>
 
-          {CREDITS.map((section, sectionIndex) => (
+          {CREDITS.map(section => (
             <View key={section.section} style={styles.section}>
-              <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-                {section.section}
+              <Text style={styles.sectionHeader}>
+                {section.section.toUpperCase()}
               </Text>
-              <View style={styles.creditsList}>
+              <View style={styles.card}>
                 {section.items.map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    activeOpacity={item.link ? 0.7 : 1}
-                    onPress={() => handleLinkPress(item.link)}
-                    style={[
-                      styles.creditItem,
-                      {
-                        backgroundColor: Color(theme.colors.card)
-                          .alpha(0.5)
-                          .toString(),
-                      },
-                    ]}>
-                    <View style={styles.creditContent}>
-                      <Text
-                        style={[
-                          styles.creditTitle,
-                          {color: theme.colors.text},
-                        ]}>
-                        {item.title}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.creditDescription,
-                          {color: theme.colors.textSecondary},
-                        ]}>
-                        {item.description}
-                      </Text>
-                    </View>
-                    {item.link && (
-                      <Feather
-                        name="external-link"
-                        size={moderateScale(16)}
-                        color={theme.colors.textSecondary}
-                      />
-                    )}
-                  </TouchableOpacity>
+                  <React.Fragment key={index}>
+                    {index > 0 && <View style={styles.divider} />}
+                    <Pressable
+                      style={({pressed}) => [
+                        styles.creditRow,
+                        pressed && item.link
+                          ? {backgroundColor: pressedBg}
+                          : null,
+                      ]}
+                      onPress={() => handleLinkPress(item.link)}
+                      disabled={!item.link}>
+                      <View style={styles.creditContent}>
+                        <Text style={styles.creditTitle}>{item.title}</Text>
+                        <Text style={styles.creditDescription}>
+                          {item.description}
+                        </Text>
+                      </View>
+                      {item.link && (
+                        <Feather
+                          name="external-link"
+                          size={moderateScale(14)}
+                          color={linkIconColor}
+                        />
+                      )}
+                    </Pressable>
+                  </React.Fragment>
                 ))}
               </View>
             </View>
           ))}
 
-          <Text
-            style={[styles.footerText, {color: theme.colors.textSecondary}]}>
-            Made with ❤️ by the Bayaan team
-          </Text>
+          <Text style={styles.footerText}>Made with ❤️ by the Bayaan team</Text>
         </View>
       </ScrollView>
     </View>
@@ -214,52 +204,68 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: moderateScale(24),
+      paddingHorizontal: moderateScale(20),
       paddingVertical: moderateScale(20),
       paddingBottom: moderateScale(160),
     },
     introText: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.regular,
-      lineHeight: moderateScale(24),
-      marginBottom: moderateScale(32),
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      lineHeight: moderateScale(20),
+      marginBottom: moderateScale(28),
       textAlign: 'center',
     },
     section: {
-      marginBottom: moderateScale(24),
+      marginBottom: moderateScale(20),
     },
-    sectionTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      marginBottom: moderateScale(12),
-      marginLeft: moderateScale(4),
+    sectionHeader: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: moderateScale(6),
+      marginLeft: moderateScale(2),
     },
-    creditsList: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      overflow: 'hidden',
     },
-    creditItem: {
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(16),
+    },
+    creditRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: moderateScale(16),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
     },
     creditContent: {
       flex: 1,
       marginRight: moderateScale(12),
     },
     creditTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
       marginBottom: moderateScale(2),
     },
     creditDescription: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
+      fontSize: moderateScale(11.5),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
     },
     footerText: {
       textAlign: 'center',
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.medium,
-      marginTop: moderateScale(32),
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      marginTop: moderateScale(24),
     },
   });

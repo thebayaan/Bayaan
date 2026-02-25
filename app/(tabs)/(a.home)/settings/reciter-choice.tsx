@@ -1,5 +1,5 @@
-import React from 'react';
-import {View, Text, TouchableOpacity, Switch, ScrollView} from 'react-native';
+import React, {useMemo} from 'react';
+import {View, Text, Pressable, Switch, ScrollView} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -12,7 +12,7 @@ import {useSettings} from '@/hooks/useSettings';
 
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const {
@@ -21,6 +21,14 @@ export default function ReciterChoiceScreen() {
     defaultReciterSelection,
     setDefaultReciterSelection,
   } = useSettings();
+
+  const trackColor = useMemo(
+    () => ({
+      false: Color(theme.colors.text).alpha(0.1).toString(),
+      true: Color(theme.colors.text).alpha(0.65).toString(),
+    }),
+    [theme.colors.text],
+  );
 
   const options = [
     {
@@ -49,70 +57,45 @@ export default function ReciterChoiceScreen() {
           {paddingTop: insets.top + moderateScale(56)},
         ]}
         showsVerticalScrollIndicator={false}>
-        <View>
-          <Text style={[styles.subtitle, {color: theme.colors.textSecondary}]}>
-            Choose how you want to select reciters when playing Surahs
-          </Text>
+        <Text style={styles.subtitle}>
+          Choose how you want to select reciters when playing Surahs
+        </Text>
 
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-              Selection Preference
-            </Text>
-            <View style={[styles.card, {backgroundColor: theme.colors.card}]}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text
-                    style={[styles.settingTitle, {color: theme.colors.text}]}>
-                    Ask Every Time
-                  </Text>
-                  <Text
-                    style={[
-                      styles.settingDescription,
-                      {color: theme.colors.textSecondary},
-                    ]}>
-                    Choose a reciter each time you play
-                  </Text>
-                </View>
-                <Switch
-                  value={askEveryTime}
-                  onValueChange={() => setAskEveryTime(!askEveryTime)}
-                  trackColor={{
-                    false: Color(theme.colors.border).alpha(0.3).toString(),
-                    true: Color(theme.colors.text).alpha(0.6).toString(),
-                  }}
-                  thumbColor={theme.colors.background}
-                  ios_backgroundColor={Color(theme.colors.border)
-                    .alpha(0.3)
-                    .toString()}
-                />
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>SELECTION PREFERENCE</Text>
+          <View style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <Text style={styles.settingTitle}>Ask Every Time</Text>
+                <Text style={styles.settingDescription}>
+                  Choose a reciter each time you play
+                </Text>
               </View>
+              <Switch
+                value={askEveryTime}
+                onValueChange={() => setAskEveryTime(!askEveryTime)}
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                style={styles.switchStyle}
+              />
             </View>
           </View>
+        </View>
 
-          {!askEveryTime && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-                Default Selection Method
-              </Text>
-              <View style={styles.optionsContainer}>
-                {options.map(option => (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
+        {!askEveryTime && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>DEFAULT SELECTION METHOD</Text>
+            <View style={styles.optionsContainer}>
+              {options.map(option => {
+                const isSelected = defaultReciterSelection === option.action;
+                return (
+                  <Pressable
                     key={option.action}
-                    style={[
+                    style={({pressed}) => [
                       styles.card,
-                      {backgroundColor: theme.colors.card},
-                      defaultReciterSelection === option.action && [
-                        styles.selectedCard,
-                        {
-                          backgroundColor: Color(theme.colors.text)
-                            .alpha(0.05)
-                            .toString(),
-                          borderColor: Color(theme.colors.text)
-                            .alpha(0.2)
-                            .toString(),
-                        },
-                      ],
+                      isSelected && styles.selectedCard,
+                      pressed && styles.pressed,
                     ]}
                     onPress={() => setDefaultReciterSelection(option.action)}>
                     <View style={styles.optionContent}>
@@ -120,25 +103,26 @@ export default function ReciterChoiceScreen() {
                         style={[
                           styles.iconContainer,
                           {
-                            backgroundColor:
-                              defaultReciterSelection === option.action
-                                ? Color(theme.colors.text).alpha(0.1).toString()
-                                : Color(theme.colors.card)
-                                    .lighten(0.1)
-                                    .toString(),
+                            backgroundColor: isSelected
+                              ? Color(theme.colors.text).alpha(0.08).toString()
+                              : Color(theme.colors.text).alpha(0.04).toString(),
                           },
                         ]}>
                         {option.iconType === 'antdesign' ? (
                           <AntDesign
                             name={option.icon as any}
                             size={moderateScale(20)}
-                            color={theme.colors.text}
+                            color={Color(theme.colors.text)
+                              .alpha(0.7)
+                              .toString()}
                           />
                         ) : (
                           <Feather
                             name={option.icon as any}
                             size={moderateScale(20)}
-                            color={theme.colors.text}
+                            color={Color(theme.colors.text)
+                              .alpha(0.7)
+                              .toString()}
                           />
                         )}
                       </View>
@@ -147,37 +131,31 @@ export default function ReciterChoiceScreen() {
                           style={[
                             styles.optionTitle,
                             {
-                              color: theme.colors.text,
-                              fontFamily:
-                                defaultReciterSelection === option.action
-                                  ? theme.fonts.semiBold
-                                  : theme.fonts.medium,
+                              fontFamily: isSelected
+                                ? 'Manrope-SemiBold'
+                                : 'Manrope-Medium',
                             },
                           ]}>
                           {option.label}
                         </Text>
-                        <Text
-                          style={[
-                            styles.optionDescription,
-                            {color: theme.colors.textSecondary},
-                          ]}>
+                        <Text style={styles.optionDescription}>
                           {option.description}
                         </Text>
                       </View>
-                      {defaultReciterSelection === option.action && (
+                      {isSelected && (
                         <Feather
                           name="check-circle"
-                          size={24}
-                          color={Color(theme.colors.text).alpha(0.8).toString()}
+                          size={moderateScale(20)}
+                          color={Color(theme.colors.text).alpha(0.7).toString()}
                         />
                       )}
                     </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                  </Pressable>
+                );
+              })}
             </View>
-          )}
-        </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -194,25 +172,37 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(160),
     },
     subtitle: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(11.5),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
       marginBottom: moderateScale(24),
-      fontFamily: theme.fonts.regular,
-      lineHeight: moderateScale(20),
+      lineHeight: moderateScale(18),
     },
     section: {
       marginBottom: moderateScale(24),
     },
-    sectionTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      marginBottom: moderateScale(12),
+    sectionHeader: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: moderateScale(6),
+      marginLeft: moderateScale(2),
     },
     card: {
-      borderRadius: moderateScale(12),
-      padding: moderateScale(16),
-      marginBottom: moderateScale(8),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
       borderWidth: 1,
-      borderColor: 'transparent',
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      padding: moderateScale(14),
+      marginBottom: moderateScale(8),
+    },
+    selectedCard: {
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    },
+    pressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     settingRow: {
       flexDirection: 'row',
@@ -221,22 +211,25 @@ const createStyles = (theme: Theme) =>
     },
     settingInfo: {
       flex: 1,
+      marginRight: moderateScale(12),
     },
     settingTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.medium,
-      marginBottom: moderateScale(4),
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
+      marginBottom: moderateScale(2),
     },
     settingDescription: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
-      lineHeight: moderateScale(20),
+      fontSize: moderateScale(11.5),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      lineHeight: moderateScale(17),
+    },
+    switchStyle: {
+      transform: [{scaleX: 0.8}, {scaleY: 0.8}],
     },
     optionsContainer: {
       gap: moderateScale(8),
-    },
-    selectedCard: {
-      borderWidth: 1,
     },
     optionContent: {
       flexDirection: 'row',
@@ -254,12 +247,14 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     optionTitle: {
-      fontSize: moderateScale(16),
-      marginBottom: moderateScale(4),
+      fontSize: moderateScale(13.5),
+      color: Color(theme.colors.text).alpha(0.85).toString(),
+      marginBottom: moderateScale(2),
     },
     optionDescription: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
-      lineHeight: moderateScale(18),
+      fontSize: moderateScale(11.5),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      lineHeight: moderateScale(17),
     },
   });
