@@ -34,6 +34,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 
 interface MushafSearchViewProps {
   onNavigateToPage: (page: number) => void;
+  onResumeChain: (index: number, page: number) => void;
   onNavigateToSurah: (surahId: number) => void;
   onNavigateToVerse: (verseKey: string, page: number) => void;
   onClose: () => void;
@@ -311,61 +312,80 @@ const RecentReadChips: React.FC<{
   recentPages: RecentRead[];
   textColor: string;
   secondaryColor: string;
-  onPress: (page: number) => void;
-}> = React.memo(({recentPages, textColor, secondaryColor, onPress}) => {
-  if (recentPages.length === 0) return null;
+  onPress: (index: number, page: number) => void;
+  onClear: () => void;
+}> = React.memo(
+  ({recentPages, textColor, secondaryColor, onPress, onClear}) => {
+    if (recentPages.length === 0) return null;
 
-  return (
-    <View style={styles.recentReadContainer}>
-      <Text
-        style={[
-          styles.sectionLabel,
-          {
-            color: Color(secondaryColor).alpha(0.5).toString(),
-            marginTop: ms(4),
-          },
-        ]}>
-        RECENT READS
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsScroll}>
-        {recentPages.map((item, index) => {
-          const surah =
-            item.surahId >= 1 && item.surahId <= 114
-              ? SURAHS[item.surahId - 1]
-              : null;
-          if (!surah) return null;
-
-          return (
-            <Pressable
-              key={`${item.surahId}-${item.page}-${index}`}
+    return (
+      <View style={styles.recentReadContainer}>
+        <View style={styles.recentReadHeader}>
+          <Text
+            style={[
+              styles.sectionLabel,
+              {
+                color: Color(secondaryColor).alpha(0.5).toString(),
+                marginTop: ms(4),
+                marginBottom: 0,
+                flex: 1,
+              },
+            ]}>
+            RECENT READS
+          </Text>
+          <Pressable
+            onPress={onClear}
+            hitSlop={8}
+            style={styles.recentClearBtn}>
+            <Text
               style={[
-                styles.chip,
-                {
-                  backgroundColor: Color(textColor).alpha(0.05).toString(),
-                  borderColor: Color(textColor).alpha(0.08).toString(),
-                },
-              ]}
-              onPress={() => onPress(item.page)}>
-              <Text style={[styles.chipName, {color: textColor}]}>
-                {surah.name}
-              </Text>
-              <Text
+                styles.recentClearText,
+                {color: Color(secondaryColor).alpha(0.45).toString()},
+              ]}>
+              Clear
+            </Text>
+          </Pressable>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsScroll}>
+          {recentPages.map((item, index) => {
+            const surah =
+              item.surahId >= 1 && item.surahId <= 114
+                ? SURAHS[item.surahId - 1]
+                : null;
+            if (!surah) return null;
+
+            return (
+              <Pressable
+                key={`${item.surahId}-${item.page}-${index}`}
                 style={[
-                  styles.chipPage,
-                  {color: Color(secondaryColor).alpha(0.5).toString()},
-                ]}>
-                Page {item.page}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </View>
-  );
-});
+                  styles.chip,
+                  {
+                    backgroundColor: Color(textColor).alpha(0.05).toString(),
+                    borderColor: Color(textColor).alpha(0.08).toString(),
+                  },
+                ]}
+                onPress={() => onPress(index, item.page)}>
+                <Text style={[styles.chipName, {color: textColor}]}>
+                  {surah.name}
+                </Text>
+                <Text
+                  style={[
+                    styles.chipPage,
+                    {color: Color(secondaryColor).alpha(0.5).toString()},
+                  ]}>
+                  Page {item.page}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  },
+);
 
 RecentReadChips.displayName = 'RecentReadChips';
 
@@ -375,6 +395,7 @@ RecentReadChips.displayName = 'RecentReadChips';
 
 const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   onNavigateToPage,
+  onResumeChain,
   onNavigateToSurah,
   onNavigateToVerse,
   onClose,
@@ -639,11 +660,15 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   );
 
   const handleChipPress = useCallback(
-    (page: number) => {
-      onNavigateToPage(page);
+    (index: number, page: number) => {
+      onResumeChain(index, page);
     },
-    [onNavigateToPage],
+    [onResumeChain],
   );
+
+  const handleClearRecentReads = useCallback(() => {
+    useMushafSettingsStore.getState().clearRecentPages();
+  }, []);
 
   // ──────────────────────────────────────────────────────────
   // Browse mode renderers
@@ -737,12 +762,20 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           textColor={theme.colors.text}
           secondaryColor={theme.colors.textSecondary}
           onPress={handleChipPress}
+          onClear={handleClearRecentReads}
         />
         <BookmarkChips onPress={handleBookmarkPress} />
         {SortBar}
       </View>
     ),
-    [recentPages, theme.colors, handleBookmarkPress, handleChipPress, SortBar],
+    [
+      recentPages,
+      theme.colors,
+      handleBookmarkPress,
+      handleChipPress,
+      handleClearRecentReads,
+      SortBar,
+    ],
   );
 
   // ──────────────────────────────────────────────────────────
@@ -1099,6 +1132,20 @@ const styles = StyleSheet.create({
   // Recent Read chips
   recentReadContainer: {
     paddingTop: ms(4),
+  },
+  recentReadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: ms(16),
+    marginBottom: ms(8),
+  },
+  recentClearBtn: {
+    paddingVertical: ms(4),
+    paddingHorizontal: ms(4),
+  },
+  recentClearText: {
+    fontSize: ms(12),
+    fontFamily: 'Manrope-SemiBold',
   },
 
   listContent: {

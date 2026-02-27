@@ -20,8 +20,9 @@ export const getDisplayValue = (actualFontSize: number): number => {
   );
 };
 
-export type MushafRenderer = 'dk_v1' | 'dk_v2';
+export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
+export type MushafViewMode = 'mushaf' | 'reading';
 
 export interface RecentRead {
   surahId: number;
@@ -50,8 +51,14 @@ interface MushafSettingsState {
   // Mushaf renderer selection
   mushafRenderer: MushafRenderer;
 
-  // Recently read surahs (last 10, deduplicated by surahId)
+  // View mode (mushaf pages vs reading view)
+  viewMode: MushafViewMode;
+
+  // Recently read positions (last 10, chain-based — not deduplicated by surahId)
   recentPages: RecentRead[];
+
+  // Active translation (bundled or downloaded remote)
+  selectedTranslationId: string;
 
   // Actions
   toggleTranslation: () => void;
@@ -64,7 +71,12 @@ interface MushafSettingsState {
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
   setPageLayout: (layout: MushafPageLayout) => void;
-  addRecentRead: (surahId: number, page: number) => void;
+  setViewMode: (mode: MushafViewMode) => void;
+  updateActiveChain: (surahId: number, page: number) => void;
+  startNewChain: (surahId: number, page: number) => void;
+  resumeChain: (index: number) => void;
+  clearRecentPages: () => void;
+  setSelectedTranslationId: (id: string) => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -80,8 +92,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       arabicFontFamily: 'Uthmani', // Default font
       uthmaniFont: 'v1', // Default to V1
       mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
+      viewMode: 'mushaf' as MushafViewMode,
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
       recentPages: [],
+      selectedTranslationId: 'saheeh',
 
       // Actions
       toggleTranslation: () =>
@@ -100,24 +114,48 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set({
           mushafRenderer: renderer,
           arabicFontFamily: 'Uthmani',
-          uthmaniFont: renderer === 'dk_v1' ? 'v1' : 'v2',
+          uthmaniFont:
+            renderer === 'dk_v1'
+              ? 'v1'
+              : renderer === 'dk_indopak'
+              ? 'v2'
+              : 'v2',
         }),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
-      addRecentRead: (surahId: number, page: number) =>
+      setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
+      updateActiveChain: (surahId: number, page: number) =>
         set(state => {
-          const filtered = state.recentPages.filter(r => r.surahId !== surahId);
-          return {
-            recentPages: [
-              {surahId, page, timestamp: Date.now()},
-              ...filtered,
-            ].slice(0, 10),
-          };
+          const updated = [...state.recentPages];
+          if (updated.length === 0) {
+            updated.push({surahId, page, timestamp: Date.now()});
+          } else {
+            updated[0] = {surahId, page, timestamp: Date.now()};
+          }
+          return {recentPages: updated};
         }),
+      startNewChain: (surahId: number, page: number) =>
+        set(state => ({
+          recentPages: [
+            {surahId, page, timestamp: Date.now()},
+            ...state.recentPages,
+          ].slice(0, 10),
+        })),
+      resumeChain: (index: number) =>
+        set(state => {
+          if (index <= 0 || index >= state.recentPages.length) return state;
+          const updated = [...state.recentPages];
+          const [entry] = updated.splice(index, 1);
+          updated.unshift({...entry, timestamp: Date.now()});
+          return {recentPages: updated};
+        }),
+      clearRecentPages: () => set({recentPages: []}),
+      setSelectedTranslationId: (id: string) =>
+        set({selectedTranslationId: id}),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 5,
+      version: 7,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -148,6 +186,12 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           // lastScreenWasMushaf & lastReadPage moved to MMKV — drop stale keys
           delete state.lastScreenWasMushaf;
           delete state.lastReadPage;
+        }
+        if (version < 6) {
+          state.selectedTranslationId = 'saheeh';
+        }
+        if (version < 7) {
+          state.viewMode = 'mushaf';
         }
         return state as unknown as MushafSettingsState;
       },

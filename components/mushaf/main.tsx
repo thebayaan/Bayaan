@@ -44,6 +44,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
+import ReadingPageView from './reading/ReadingPageView';
 import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
@@ -240,7 +241,7 @@ export default function MushafViewer({
   const [isSearchMode, setIsSearchMode] = useState(false);
   const {theme, isDarkMode} = useTheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
-  const addRecentRead = useMushafSettingsStore(s => s.addRecentRead);
+  const viewMode = useMushafSettingsStore(s => s.viewMode);
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : theme.colors.card;
   const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
@@ -290,6 +291,13 @@ export default function MushafViewer({
         const page = viewableItems[0].item as number;
         setCurrentPage(page);
         mushafSessionStore.setLastReadPage(page);
+        // Update the active reading chain (swipe = same chain, even across surah boundaries)
+        const surahId = digitalKhattDataService.initialized
+          ? digitalKhattDataService.getPageToSurah()[page]
+          : undefined;
+        if (surahId) {
+          useMushafSettingsStore.getState().updateActiveChain(surahId, page);
+        }
       }
     },
     [],
@@ -302,18 +310,20 @@ export default function MushafViewer({
     [],
   );
 
-  const navigateToPage = useCallback(
-    (targetPage: number) => {
-      setIsSearchMode(false);
-      const surahId = pageToSurah[targetPage];
-      if (surahId) addRecentRead(surahId, targetPage);
-      flatListRef.current?.scrollToIndex({
-        index: targetPage - 1,
-        animated: false,
-      });
-    },
-    [pageToSurah, addRecentRead],
-  );
+  const navigateToPage = useCallback((targetPage: number) => {
+    setIsSearchMode(false);
+    // Explicit navigation = start a new chain (preserves old position)
+    const surahId = digitalKhattDataService.initialized
+      ? digitalKhattDataService.getPageToSurah()[targetPage]
+      : undefined;
+    if (surahId) {
+      useMushafSettingsStore.getState().startNewChain(surahId, targetPage);
+    }
+    flatListRef.current?.scrollToIndex({
+      index: targetPage - 1,
+      animated: false,
+    });
+  }, []);
 
   const navigateToPageAnimated = useCallback((targetPage: number) => {
     flatListRef.current?.scrollToIndex({
@@ -369,6 +379,15 @@ export default function MushafViewer({
     [navigateToPage],
   );
 
+  const resumeChain = useCallback((index: number, page: number) => {
+    setIsSearchMode(false);
+    useMushafSettingsStore.getState().resumeChain(index);
+    flatListRef.current?.scrollToIndex({
+      index: page - 1,
+      animated: false,
+    });
+  }, []);
+
   const openSearchMode = useCallback(() => setIsSearchMode(true), []);
 
   // Mushaf player state
@@ -402,21 +421,26 @@ export default function MushafViewer({
       <FlatList
         ref={flatListRef}
         data={pages}
-        renderItem={({item}) => (
-          <DKPageView
-            pageNumber={item}
-            textColor={theme.colors.text}
-            surahLabel={getSurahNamesForPage(item)}
-            juzLabel={`Juz ${getJuzForPage(item)}`}
-            pageLabel={String(item)}
-            labelColor={theme.colors.textSecondary}
-            borderColor={edgeBorderColor}
-            cardColor={pageBg}
-            bgColor={edgeBg}
-            isBookLayout={isBookLayout}
-            onTap={toggleImmersive}
-          />
-        )}
+        renderItem={({item}) => {
+          const commonProps = {
+            pageNumber: item,
+            textColor: theme.colors.text,
+            surahLabel: getSurahNamesForPage(item),
+            juzLabel: `Juz ${getJuzForPage(item)}`,
+            pageLabel: String(item),
+            labelColor: theme.colors.textSecondary,
+            borderColor: edgeBorderColor,
+            cardColor: pageBg,
+            bgColor: edgeBg,
+            isBookLayout,
+            onTap: toggleImmersive,
+          };
+          return viewMode === 'reading' ? (
+            <ReadingPageView {...commonProps} />
+          ) : (
+            <DKPageView {...commonProps} />
+          );
+        }}
         keyExtractor={item => item.toString()}
         horizontal
         pagingEnabled
@@ -548,6 +572,7 @@ export default function MushafViewer({
       {isSearchMode && (
         <MushafSearchView
           onNavigateToPage={navigateToPage}
+          onResumeChain={resumeChain}
           onNavigateToSurah={navigateToSurah}
           onNavigateToVerse={navigateToVerse}
           onClose={() => setIsSearchMode(false)}
