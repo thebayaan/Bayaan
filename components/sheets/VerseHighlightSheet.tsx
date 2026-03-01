@@ -16,18 +16,7 @@ import {Feather} from '@expo/vector-icons';
 import {HIGHLIGHT_COLORS, HighlightColor} from '@/types/verse-annotations';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
-
-// Build verse_key -> text lookup once at module scope
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const qpcTextByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
-}
+import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 
 const COLORS = Object.entries(HIGHLIGHT_COLORS) as [HighlightColor, string][];
 
@@ -42,8 +31,6 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
   const allKeys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
 
   const currentColor = useVerseAnnotationsStore(s => s.highlights[verseKey]);
-
-  const arabicText = qpcTextByKey[verseKey] ?? '';
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
@@ -81,15 +68,9 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
       <View style={styles.container}>
         <Text style={styles.title}>Highlight Color</Text>
 
-        {arabicText ? (
-          <View style={styles.ayahContainer}>
-            <Text
-              style={[styles.ayahText, {fontFamily: 'Uthmani'}]}
-              numberOfLines={2}>
-              {arabicText}
-            </Text>
-          </View>
-        ) : null}
+        <View style={styles.ayahContainer}>
+          <SkiaVersePreview verseKey={verseKey} verseKeys={verseKeys} />
+        </View>
 
         <View style={styles.colorsGrid}>
           {COLORS.map(([name, hex]) => {
@@ -150,13 +131,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(12),
       padding: moderateScale(16),
       marginBottom: verticalScale(20),
-    },
-    ayahText: {
-      fontSize: moderateScale(18),
-      color: theme.colors.text,
-      textAlign: 'right',
-      writingDirection: 'rtl',
-      lineHeight: moderateScale(36),
     },
     colorsGrid: {
       flexDirection: 'row',
