@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, ScrollView, Dimensions} from 'react-native';
+import {View, Dimensions, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
+import ActionSheet, {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import Color from 'color';
 import {MushafSettingsContent} from '@/components/MushafSettingsContent';
 
@@ -35,11 +35,15 @@ export const MushafLayoutSheet = (props: SheetProps<'mushaf-layout'>) => {
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
-      height: SCREEN_HEIGHT * 0.6,
+      height: SCREEN_HEIGHT * 0.68,
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
