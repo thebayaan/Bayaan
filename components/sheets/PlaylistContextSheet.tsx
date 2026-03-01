@@ -1,5 +1,12 @@
 import React, {useState, useCallback, useRef, useEffect} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Alert} from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import ActionSheet, {
@@ -10,7 +17,6 @@ import {useTheme} from '@/hooks/useTheme';
 import {usePlaylistsStore} from '@/store/playlistsStore';
 import {downloadSurah} from '@/services/downloadService';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
-import {ActivityIndicator} from 'react-native';
 import {CheckIcon} from '@/components/Icons';
 import {Ionicons} from '@expo/vector-icons';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
@@ -389,7 +395,13 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
       id={props.sheetId}
       containerStyle={[
         styles.sheetContainer,
-        {backgroundColor: theme.colors.background},
+        {
+          backgroundColor: theme.colors.background,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderLeftWidth: StyleSheet.hairlineWidth,
+          borderRightWidth: StyleSheet.hairlineWidth,
+          borderColor: Color(theme.colors.text).alpha(0.08).toString(),
+        },
       ]}
       indicatorStyle={[
         styles.indicator,
@@ -402,26 +414,39 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
         </Text>
 
         {isDownloadingPlaylist && (
-          <View style={styles.progressContainer}>
+          <View
+            style={[
+              styles.progressContainer,
+              {
+                backgroundColor: Color(theme.colors.text)
+                  .alpha(0.04)
+                  .toString(),
+              },
+            ]}>
             <View style={styles.progressHeader}>
               <Text style={[styles.progressText, {color: theme.colors.text}]}>
                 Downloading playlist...
               </Text>
               <Text
-                style={[
-                  styles.progressPercentage,
-                  {color: theme.colors.primary},
-                ]}>
+                style={[styles.progressPercentage, {color: theme.colors.text}]}>
                 {Math.round(downloadProgress.percentage)}%
               </Text>
             </View>
-            <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBarContainer,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.08)
+                    .toString(),
+                },
+              ]}>
               <View
                 style={[
                   styles.progressBar,
                   {
                     width: `${downloadProgress.percentage}%`,
-                    backgroundColor: theme.colors.primary,
+                    backgroundColor: theme.colors.text,
                   },
                 ]}
               />
@@ -436,72 +461,95 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
           </View>
         )}
 
-        <View style={styles.optionsContainer}>
+        <View
+          style={[
+            styles.optionsCard,
+            {
+              backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+              borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+            },
+          ]}>
           {options.map((option, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.option,
-                !option.destructive && {backgroundColor: theme.colors.card},
-                option.disabled && styles.optionDisabled,
-                option.destructive && [
-                  styles.optionDestructive,
-                  {backgroundColor: 'rgba(255, 68, 68, 0.1)'},
-                ],
-              ]}
-              onPress={option.onPress}
-              disabled={option.disabled}
-              activeOpacity={option.disabled ? 1 : 0.7}>
-              {isDownloadingPlaylist && option.isDownloadOption ? (
-                <ActivityIndicator
-                  size="small"
-                  color={theme.colors.primary}
-                  style={styles.downloadIcon}
-                />
-              ) : option.isDownloadOption ? (
-                downloadState.allDownloaded && !downloadState.hasNoTracks ? (
-                  <CheckIcon
-                    color={
-                      option.disabled
-                        ? theme.colors.textSecondary
-                        : theme.colors.text
-                    }
-                    size={moderateScale(20)}
-                  />
-                ) : (
-                  <Ionicons
-                    name="arrow-down"
-                    size={moderateScale(20)}
-                    color={
-                      option.disabled
-                        ? theme.colors.textSecondary
-                        : theme.colors.text
-                    }
-                  />
-                )
-              ) : (
-                <Feather
-                  name={option.icon as any}
-                  size={moderateScale(20)}
-                  color={
-                    option.disabled
-                      ? theme.colors.textSecondary
-                      : option.destructive
-                      ? '#ff4444'
-                      : theme.colors.text
-                  }
+            <React.Fragment key={index}>
+              {index > 0 && (
+                <View
+                  style={[
+                    styles.divider,
+                    {
+                      backgroundColor: Color(theme.colors.text)
+                        .alpha(0.06)
+                        .toString(),
+                    },
+                  ]}
                 />
               )}
-              <Text
-                style={[
-                  styles.optionText,
-                  {color: theme.colors.text},
-                  option.disabled && styles.optionTextDisabled,
-                  option.destructive && styles.optionTextDestructive,
-                ]}>
-                {option.label}
-              </Text>
-            </TouchableOpacity>
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  option.disabled && styles.optionDisabled,
+                  option.destructive && {
+                    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+                  },
+                  pressed &&
+                    !option.disabled && {
+                      backgroundColor: Color(theme.colors.text)
+                        .alpha(0.06)
+                        .toString(),
+                    },
+                ]}
+                onPress={option.onPress}
+                disabled={option.disabled}>
+                {isDownloadingPlaylist && option.isDownloadOption ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.text}
+                    style={styles.downloadIcon}
+                  />
+                ) : option.isDownloadOption ? (
+                  downloadState.allDownloaded && !downloadState.hasNoTracks ? (
+                    <CheckIcon
+                      color={
+                        option.disabled
+                          ? theme.colors.textSecondary
+                          : theme.colors.text
+                      }
+                      size={moderateScale(20)}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="arrow-down"
+                      size={moderateScale(20)}
+                      color={
+                        option.disabled
+                          ? theme.colors.textSecondary
+                          : theme.colors.text
+                      }
+                    />
+                  )
+                ) : (
+                  <Feather
+                    name={option.icon as any}
+                    size={moderateScale(20)}
+                    color={
+                      option.disabled
+                        ? theme.colors.textSecondary
+                        : option.destructive
+                        ? '#ff4444'
+                        : theme.colors.text
+                    }
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.optionText,
+                    {color: Color(theme.colors.text).alpha(0.85).toString()},
+                    option.disabled && styles.optionTextDisabled,
+                    option.destructive && styles.optionTextDestructive,
+                  ]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            </React.Fragment>
           ))}
         </View>
       </View>
@@ -517,6 +565,7 @@ const styles = StyleSheet.create({
   },
   indicator: {
     width: moderateScale(40),
+    height: 2.5,
   },
   container: {
     padding: moderateScale(16),
@@ -524,28 +573,28 @@ const styles = StyleSheet.create({
   },
   playlistName: {
     fontSize: moderateScale(18),
-    fontWeight: '600',
+    fontFamily: 'Manrope-SemiBold',
     textAlign: 'center',
     marginBottom: moderateScale(20),
   },
-  optionsContainer: {
-    gap: moderateScale(8),
+  optionsCard: {
+    borderWidth: 1,
+    borderRadius: moderateScale(14),
+    overflow: 'hidden',
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: moderateScale(16),
     paddingHorizontal: moderateScale(16),
-    borderRadius: moderateScale(8),
   },
   optionDisabled: {
     opacity: 0.5,
   },
-  optionDestructive: {},
   optionText: {
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(13.5),
     marginLeft: moderateScale(12),
-    fontWeight: '500',
+    fontFamily: 'Manrope-Medium',
   },
   optionTextDisabled: {
     opacity: 0.5,
@@ -553,11 +602,13 @@ const styles = StyleSheet.create({
   optionTextDestructive: {
     color: '#ff4444',
   },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
   progressContainer: {
     marginBottom: moderateScale(16),
     padding: moderateScale(12),
     borderRadius: moderateScale(8),
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
   },
   progressHeader: {
     flexDirection: 'row',
@@ -567,15 +618,14 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: moderateScale(14),
-    fontWeight: '500',
+    fontFamily: 'Manrope-Medium',
   },
   progressPercentage: {
     fontSize: moderateScale(14),
-    fontWeight: '600',
+    fontFamily: 'Manrope-SemiBold',
   },
   progressBarContainer: {
     height: moderateScale(4),
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     borderRadius: moderateScale(2),
     overflow: 'hidden',
     marginBottom: moderateScale(4),

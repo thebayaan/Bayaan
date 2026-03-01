@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, Dimensions} from 'react-native';
+import {View, Text, Pressable, Dimensions, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import ActionSheet, {
@@ -85,14 +85,14 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
           <Text style={styles.sectionTitle}>Available Rewayat</Text>
           <View style={styles.rewayatList}>
             {availableRewayat.map(rewayat => (
-              <TouchableOpacity
+              <Pressable
                 key={rewayat.id}
-                style={[
+                style={({pressed}) => [
                   styles.rewayatItem,
                   selectedRewayatId === rewayat.id && styles.selectedRewayat,
+                  pressed && styles.rewayatItemPressed,
                 ]}
-                onPress={() => handleRewayatSelect(rewayat.id)}
-                activeOpacity={0.7}>
+                onPress={() => handleRewayatSelect(rewayat.id)}>
                 <View>
                   <Text style={styles.rewayatName}>{rewayat.name}</Text>
                   <Text style={styles.rewayatStyle}>{rewayat.style}</Text>
@@ -100,7 +100,7 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
                 {selectedRewayatId === rewayat.id && (
                   <View style={styles.selectedIndicator} />
                 )}
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -118,15 +118,21 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
       height: SCREEN_HEIGHT * 0.85,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
+      backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),
@@ -155,15 +161,17 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateScale(8),
     },
     divider: {
-      height: 1,
-      backgroundColor: Color(theme.colors.border).alpha(0.1).toString(),
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       marginVertical: moderateScale(10),
     },
     sectionTitle: {
-      fontSize: moderateScale(18),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       marginBottom: moderateScale(16),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
     },
     rewayatList: {
       gap: moderateScale(12),
@@ -173,12 +181,17 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: moderateScale(16),
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     selectedRewayat: {
-      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
       borderColor: theme.colors.text,
+    },
+    rewayatItemPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     rewayatName: {
       fontSize: moderateScale(16),

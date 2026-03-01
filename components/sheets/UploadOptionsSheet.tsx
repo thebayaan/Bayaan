@@ -3,6 +3,7 @@ import {
   View,
   Text,
   Pressable,
+  StyleSheet,
   Alert,
   useWindowDimensions,
   Dimensions,
@@ -129,7 +130,6 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const surah = surahNumber ? getSurahById(surahNumber) : null;
   const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
-  const isSurahType = recitation?.type === 'surah' && !!surah;
   const hasSurah = !!surah;
   const hasReciter = !!reciterId;
 
@@ -253,6 +253,139 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
   const title = getDisplayTitle(recitation);
   const subtitle = getDisplaySubtitle(recitation);
 
+  // Build option entries for the grouped card
+  const optionEntries: {key: string; render: () => React.ReactNode}[] = [];
+
+  optionEntries.push({
+    key: 'play',
+    render: () => (
+      <Pressable
+        style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
+        onPress={handlePlay}>
+        <PlayIcon color={theme.colors.text} size={moderateScale(18)} />
+        <Text style={styles.optionText}>Play Now</Text>
+      </Pressable>
+    ),
+  });
+
+  optionEntries.push({
+    key: 'organize',
+    render: () => (
+      <Pressable
+        style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
+        onPress={handleOrganize}>
+        <Feather
+          name="sliders"
+          size={moderateScale(18)}
+          color={theme.colors.text}
+        />
+        <Text style={styles.optionText}>Edit Details</Text>
+      </Pressable>
+    ),
+  });
+
+  optionEntries.push({
+    key: 'queue',
+    render: () => (
+      <Pressable
+        style={({pressed}) => [styles.option, pressed && styles.optionPressed]}
+        onPress={handleAddToQueue}>
+        <View style={styles.rotatedIcon}>
+          <QueueIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={true}
+          />
+        </View>
+        <Text style={styles.optionText}>Add to Queue</Text>
+      </Pressable>
+    ),
+  });
+
+  if (hasSurah && hasReciter) {
+    optionEntries.push({
+      key: 'love',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleToggleLove}>
+          <HeartIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={isLovedState}
+          />
+          <Text style={styles.optionText}>
+            {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+          </Text>
+        </Pressable>
+      ),
+    });
+
+    optionEntries.push({
+      key: 'collection',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleAddToPlaylist}>
+          <Feather
+            name="plus-circle"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Add to Collection</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (hasReciter) {
+    optionEntries.push({
+      key: 'reciter',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleGoToReciter}>
+          <ProfileIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={false}
+          />
+          <Text style={styles.optionText}>Go to Reciter</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (hasSurah) {
+    optionEntries.push({
+      key: 'info',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleViewInfo}>
+          <Feather
+            name="info"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Learn About Surah</Text>
+        </Pressable>
+      ),
+    });
+  }
+
   return (
     <ActionSheet
       id={props.sheetId}
@@ -303,113 +436,16 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
             ) : null}
           </View>
 
-          <View style={styles.optionsGrid}>
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handlePlay}>
-              <PlayIcon color={theme.colors.text} size={moderateScale(20)} />
-              <Text style={styles.optionText}>Play Now</Text>
-            </Pressable>
+          <View style={styles.card}>
+            {optionEntries.map((entry, idx) => (
+              <React.Fragment key={entry.key}>
+                {idx > 0 && <View style={styles.divider} />}
+                {entry.render()}
+              </React.Fragment>
+            ))}
+          </View>
 
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleOrganize}>
-              <Feather
-                name="sliders"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.optionText}>Edit Details</Text>
-            </Pressable>
-
-            <Pressable
-              style={({pressed}) => [
-                styles.option,
-                pressed && styles.optionPressed,
-              ]}
-              onPress={handleAddToQueue}>
-              <View style={styles.rotatedIcon}>
-                <QueueIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={true}
-                />
-              </View>
-              <Text style={styles.optionText}>Add to Queue</Text>
-            </Pressable>
-
-            {hasSurah && hasReciter && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleLove}>
-                <HeartIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={isLovedState}
-                />
-                <Text style={styles.optionText}>
-                  {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
-                </Text>
-              </Pressable>
-            )}
-
-            {hasSurah && hasReciter && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleAddToPlaylist}>
-                <Feather
-                  name="plus-circle"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Add to Collection</Text>
-              </Pressable>
-            )}
-
-            {hasReciter && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleGoToReciter}>
-                <ProfileIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={false}
-                />
-                <Text style={styles.optionText}>Go to Reciter</Text>
-              </Pressable>
-            )}
-
-            {hasSurah && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleViewInfo}>
-                <Feather
-                  name="info"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Learn About Surah</Text>
-              </Pressable>
-            )}
-
+          <View style={styles.destructiveCard}>
             <Pressable
               style={({pressed}) => [
                 styles.optionDestructive,
@@ -418,7 +454,7 @@ export const UploadOptionsSheet = (props: SheetProps<'upload-options'>) => {
               onPress={handleDelete}>
               <Feather
                 name="trash-2"
-                size={moderateScale(20)}
+                size={moderateScale(18)}
                 color="#ff4444"
               />
               <Text style={styles.optionTextDestructive}>Delete</Text>
@@ -436,6 +472,10 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
     },
     sheetContainerExpanded: {
@@ -444,6 +484,7 @@ const createStyles = (theme: Theme) =>
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
@@ -451,60 +492,71 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       alignItems: 'center',
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(20),
-      gap: moderateScale(4),
+      marginTop: moderateScale(4),
+      marginBottom: moderateScale(14),
+      gap: moderateScale(2),
     },
     title: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     subtitle: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
-    optionsGrid: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
+    },
+    destructiveCard: {
+      backgroundColor: 'rgba(255, 68, 68, 0.1)',
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(14),
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     optionDestructive: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: 'rgba(255, 68, 68, 0.1)',
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionDestructivePressed: {
       backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: '#ff4444',
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     rotatedIcon: {
       transform: [{rotate: '180deg'}],
@@ -513,7 +565,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),

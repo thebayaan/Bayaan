@@ -1,5 +1,5 @@
 import React, {useCallback} from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import Slider from '@react-native-community/slider';
 import {useTheme} from '@/hooks/useTheme';
@@ -177,16 +177,21 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),
@@ -209,12 +214,12 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(16),
       paddingHorizontal: moderateScale(12),
       borderRadius: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       alignItems: 'center',
       justifyContent: 'center',
       gap: moderateScale(6),
-      borderWidth: 1.5,
-      borderColor: 'transparent',
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     soundCardSelected: {
       backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),

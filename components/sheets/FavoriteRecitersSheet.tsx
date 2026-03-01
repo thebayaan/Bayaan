@@ -133,8 +133,8 @@ export const FavoriteRecitersSheet = (
             placeholder="Search reciters..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
-            borderColor={Color(theme.colors.border).alpha(0.1).toString()}
+            backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+            borderColor={Color(theme.colors.text).alpha(0.06).toString()}
             iconColor={theme.colors.textSecondary}
             textColor={theme.colors.text}
             showCancelButton={false}
@@ -176,10 +176,15 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
       height: SCREEN_HEIGHT * 0.85,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     header: {
       flexDirection: 'row',

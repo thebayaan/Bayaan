@@ -1,5 +1,12 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, TouchableOpacity, Alert, Dimensions} from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -153,13 +160,13 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
             nestedScrollEnabled={true}>
             {/* Add to Loved Option */}
             {reciterId && (
-              <TouchableOpacity
-                style={[
+              <Pressable
+                style={({pressed}) => [
                   styles.lovedOption,
                   isLovedState && styles.lovedOptionActive,
+                  pressed && styles.lovedOptionPressed,
                 ]}
-                onPress={handleToggleLoved}
-                activeOpacity={0.7}>
+                onPress={handleToggleLoved}>
                 <View
                   style={[
                     styles.lovedIconContainer,
@@ -178,26 +185,28 @@ export const SelectPlaylistSheet = (props: SheetProps<'select-playlist'>) => {
                   ]}>
                   Loved
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
 
             {/* Create New Playlist Button */}
-            <TouchableOpacity
-              style={styles.createButton}
+            <Pressable
+              style={({pressed}) => [
+                styles.createButton,
+                pressed && styles.createButtonPressed,
+              ]}
               onPress={handleShowCreatePlaylist}
-              activeOpacity={0.7}
               disabled={isCreating}>
               <View style={styles.createButtonContent}>
                 <Feather
                   name="plus"
-                  size={moderateScale(20)}
+                  size={moderateScale(18)}
                   color={theme.colors.text}
                 />
                 <Text style={styles.createButtonText}>
                   {isCreating ? 'Creating...' : 'Create New Playlist'}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
 
             {/* Existing Playlists */}
             {playlists.length > 0 && (
@@ -241,18 +250,23 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
       height: SCREEN_HEIGHT * 0.75,
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),
@@ -266,18 +280,18 @@ const createStyles = (theme: Theme) =>
     header: {
       alignItems: 'center',
       marginVertical: moderateScale(16),
-      gap: moderateScale(4),
+      gap: moderateScale(2),
     },
     surahName: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     surahTranslation: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
     scrollView: {
@@ -288,15 +302,18 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(12),
       paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderRadius: moderateScale(12),
       marginBottom: moderateScale(16),
       borderWidth: 1,
-      borderColor: 'transparent',
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     lovedOptionActive: {
       backgroundColor: Color('#FF6B6B').alpha(0.08).toString(),
       borderColor: Color('#FF6B6B').alpha(0.2).toString(),
+    },
+    lovedOptionPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     lovedIconContainer: {
       width: moderateScale(50),
@@ -312,7 +329,7 @@ const createStyles = (theme: Theme) =>
     },
     lovedText: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
       marginLeft: moderateScale(12),
@@ -321,21 +338,26 @@ const createStyles = (theme: Theme) =>
       color: '#FF6B6B',
     },
     createButton: {
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderRadius: moderateScale(12),
       marginBottom: moderateScale(20),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    createButtonPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     createButtonContent: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
+      paddingVertical: moderateScale(14),
+      paddingHorizontal: moderateScale(14),
     },
     createButtonText: {
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     playlistsContainer: {
       marginBottom: moderateScale(20),

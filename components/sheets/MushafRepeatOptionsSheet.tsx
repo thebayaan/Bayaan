@@ -293,10 +293,15 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: ms(20),
       borderTopRightRadius: ms(20),
       paddingTop: ms(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: ms(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: ms(20),
