@@ -86,6 +86,10 @@ function getOrBuildBasmala(
   return basmalaCache;
 }
 
+// Fixed size for basmallah — always renders at the default (level 5) size,
+// independent of the user's arabic font size preference.
+const BASMALA_FONT_SIZE = 26;
+
 interface BasmalaHeaderProps {
   visible: boolean;
   width: number;
@@ -93,7 +97,6 @@ interface BasmalaHeaderProps {
   showTajweed: boolean;
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
-  arabicFontSize: number;
   indexedTajweedData: IndexedTajweedData | null;
 }
 
@@ -104,7 +107,6 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   showTajweed,
   fontMgr,
   dkFontFamily,
-  arabicFontSize,
   indexedTajweedData,
 }) => {
   const charToRule = useMemo(() => {
@@ -112,7 +114,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
     return getBasmalaTajweedMap(indexedTajweedData);
   }, [showTajweed, indexedTajweedData]);
 
-  const fontSize = moderateScale(arabicFontSize);
+  const fontSize = moderateScale(BASMALA_FONT_SIZE);
 
   const containerStyle = visible
     ? styles.container
@@ -133,8 +135,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
     const hPad = moderateScale(12);
     return (
       <View style={containerStyle}>
-        <Canvas
-          style={{width: width + hPad * 2, height, direction: 'rtl'}}>
+        <Canvas style={{width: width + hPad * 2, height, direction: 'rtl'}}>
           <Paragraph
             paragraph={paragraph}
             x={xPos + hPad}

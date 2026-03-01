@@ -1,13 +1,22 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Dimensions,
+  BackHandler,
+  Platform,
+} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
-import {Feather, Ionicons} from '@expo/vector-icons';
+import {Feather, Ionicons, MaterialCommunityIcons} from '@expo/vector-icons';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -16,22 +25,52 @@ import {qulDataService} from '@/services/mushaf/QulDataService';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {lightHaptics} from '@/utils/haptics';
-import {PlayIcon, RepeatIcon} from '@/components/Icons';
+import {PlayIcon, RepeatIcon, TafseerIcon} from '@/components/Icons';
 import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTimestampStore} from '@/store/timestampStore';
 import {findAyahTimestamp} from '@/utils/timestampUtils';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getTranslationTextRaw} from '@/utils/translationLookup';
+import * as Clipboard from 'expo-clipboard';
+import {HighlightContent} from './verse-actions/HighlightContent';
+import {NoteContent} from './verse-actions/NoteContent';
+import {ShareContent} from './verse-actions/ShareContent';
+import {SimilarVersesContent} from './verse-actions/SimilarVersesContent';
+import {TranslationContent} from './verse-actions/TranslationContent';
+import {TafseerContent} from './verse-actions/TafseerContent';
 
 const surahData = require('@/data/surahData.json');
 const quranVerses = require('@/data/quran.json');
-const saheehData = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
 const transliterationData = require('@/data/transliteration.json');
+
+type ActiveScreen =
+  | 'highlight'
+  | 'note'
+  | 'share'
+  | 'similar'
+  | 'phrases'
+  | 'translation'
+  | 'tafseer'
+  | null;
+
+const SCREEN_TITLES: Record<string, string> = {
+  highlight: 'Highlight',
+  note: 'Add Note',
+  share: 'Share',
+  similar: 'Similar Verses',
+  phrases: 'Shared Phrases',
+  translation: 'Translation',
+  tafseer: 'Tafseer',
+};
+
+const SHEET_HEIGHT = Dimensions.get('window').height * 0.85;
 
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const [pressedOption, setPressedOption] = useState<string | null>(null);
+  const [activeScreen, setActiveScreen] = useState<ActiveScreen>(null);
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
@@ -40,6 +79,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const verseKeys = payload?.verseKeys;
   const isRange = verseKeys && verseKeys.length > 1;
   const source = payload?.source;
+
+  const selectedTranslationId = useMushafSettingsStore(
+    s => s.selectedTranslationId,
+  );
 
   const {arabicText, translation, transliteration} = useMemo(() => {
     if (isRange) {
@@ -54,7 +97,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           }>
         ).find(v => v.verse_key === vk)?.text;
         if (arabic) arabicParts.push(arabic);
-        const trans = saheehData[vk]?.t;
+        const trans = getTranslationTextRaw(vk, selectedTranslationId);
         if (trans) translationParts.push(trans);
         const translit = transliterationData[vk]?.t;
         if (translit) transliterationParts.push(translit);
@@ -73,7 +116,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       ).find(v => v.verse_key === verseKey)?.text ||
       '';
     const resolvedTranslation =
-      payload?.translation || saheehData[verseKey]?.t || '';
+      payload?.translation ||
+      getTranslationTextRaw(verseKey, selectedTranslationId) ||
+      '';
     const resolvedTransliteration =
       payload?.transliteration || transliterationData[verseKey]?.t || '';
     return {
@@ -88,6 +133,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     payload?.arabicText,
     payload?.translation,
     payload?.transliteration,
+    selectedTranslationId,
   ]);
 
   const surah = surahData.find(
@@ -95,7 +141,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   );
   const surahName = surah?.name ?? '';
 
-  // Compute display range for multi-verse selection
   const verseRefText = useMemo(() => {
     if (!isRange) return `${surahNumber}:${ayahNumber}`;
     const firstKey = verseKeys[0];
@@ -150,59 +195,36 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       }
       SheetManager.hideAll();
     } else {
-      SheetManager.show('verse-highlight', {
-        payload: {verseKey, surahNumber, ayahNumber, verseKeys},
-      });
+      setActiveScreen('highlight');
     }
-  }, [verseKey, verseKeys, isRange, surahNumber, ayahNumber, isHighlighted]);
+  }, [verseKey, verseKeys, isRange, isHighlighted]);
 
   const handleNote = useCallback(() => {
-    SheetManager.show('verse-note', {
-      payload: {verseKey, surahNumber, ayahNumber, verseKeys},
-    });
-  }, [verseKey, surahNumber, ayahNumber, verseKeys]);
+    setActiveScreen('note');
+  }, []);
 
-  const handleCopy = useCallback(() => {
-    SheetManager.show('verse-copy', {
-      payload: {
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        verseKeys,
-        arabicText,
-        translation,
-        transliteration,
-      },
-    });
-  }, [
-    verseKey,
-    surahNumber,
-    ayahNumber,
-    verseKeys,
-    arabicText,
-    translation,
-    transliteration,
-  ]);
+  const handleCopy = useCallback(async () => {
+    lightHaptics();
+    const parts: string[] = [];
+    if (arabicText) parts.push(arabicText);
+    if (translation) parts.push(translation);
+    parts.push(`Quran ${verseRefText}`);
+    await Clipboard.setStringAsync(parts.join('\n\n'));
+    SheetManager.hideAll();
+  }, [arabicText, translation, verseRefText]);
 
   const handleShare = useCallback(() => {
     lightHaptics();
-    SheetManager.show('verse-share', {
-      payload: {
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        verseKeys,
-        arabicText,
-        translation,
-      },
-    });
-  }, [verseKey, surahNumber, ayahNumber, verseKeys, arabicText, translation]);
+    setActiveScreen('share');
+  }, []);
 
   const handleTranslation = useCallback(() => {
-    SheetManager.show('verse-translation', {
-      payload: {verseKey, surahNumber, ayahNumber, verseKeys, arabicText},
-    });
-  }, [verseKey, surahNumber, ayahNumber, verseKeys, arabicText]);
+    setActiveScreen('translation');
+  }, []);
+
+  const handleTafseer = useCallback(() => {
+    setActiveScreen('tafseer');
+  }, []);
 
   // QUL data: theme label and per-feature availability
   const [hasSimilarVerses, setHasSimilarVerses] = useState(false);
@@ -229,23 +251,18 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, [surahNumber, ayahNumber, isRange]);
 
   const handleSimilarVerses = useCallback(() => {
-    SheetManager.show('similar-verses', {
-      payload: {verseKey, surahNumber, ayahNumber, section: 'similar'},
-    });
-  }, [verseKey, surahNumber, ayahNumber]);
+    setActiveScreen('similar');
+  }, []);
 
   const handleSharedPhrases = useCallback(() => {
-    SheetManager.show('similar-verses', {
-      payload: {verseKey, surahNumber, ayahNumber, section: 'phrases'},
-    });
-  }, [verseKey, surahNumber, ayahNumber]);
+    setActiveScreen('phrases');
+  }, []);
 
   const startPlaybackForSelection = useCallback(
     (loop: boolean) => {
       lightHaptics();
       const store = useMushafPlayerStore.getState();
 
-      // Need a reciter — fall back to options sheet if none selected
       if (!store.rewayatId) {
         const keys = isRange ? verseKeys! : [verseKey];
         const firstKey = keys[0];
@@ -278,13 +295,21 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         1;
 
       store.stop();
-      store.setRange({surah: startS, ayah: startA}, {surah: endS, ayah: endA});
 
       if (loop) {
+        store.setRange(
+          {surah: startS, ayah: startA},
+          {surah: endS, ayah: endA},
+        );
         store.setVerseRepeatCount(isRange ? 1 : 0);
         store.setRangeRepeatCount(0);
       } else {
-        // Reset repeat settings so previous loop mode doesn't carry over
+        const surahInfo = surahData.find((s: {id: number}) => s.id === startS);
+        const lastAyah = surahInfo?.verses_count ?? endA;
+        store.setRange(
+          {surah: startS, ayah: startA},
+          {surah: startS, ayah: lastAyah},
+        );
         store.setVerseRepeatCount(1);
         store.setRangeRepeatCount(1);
       }
@@ -359,42 +384,35 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const sNum = parseInt(sStr, 10);
     const aNum = parseInt(aStr, 10);
 
-    // Get reciter info from the currently playing track
     const playerState = usePlayerStore.getState();
     const currentTrack =
       playerState.queue.tracks[playerState.queue.currentIndex];
     const trackRewayatId = currentTrack?.rewayatId;
     const trackReciterName = currentTrack?.reciterName;
 
-    // Get the mushaf page for this verse
     const page =
       digitalKhattDataService.getPageForVerse(firstKey) ||
       useMushafPlayerStore.getState().currentPage ||
       1;
 
-    // Pre-populate mushaf player store with reciter if available
     const mushafStore = useMushafPlayerStore.getState();
     if (trackRewayatId && trackReciterName) {
       mushafStore.setReciter(trackRewayatId, trackReciterName);
     }
     useMushafPlayerStore.setState({currentPage: page});
 
-    // Pause the main player
     if (playerState.playback.state === 'playing') {
       playerState.pause();
     }
 
-    // Dismiss all sheets and close the player sheet
     SheetManager.hideAll();
     playerState.setSheetMode('hidden');
 
-    // Set pending verse so mushaf playback starts from the correct verse
     useMushafPlayerStore.setState({
       currentPage: page,
       pendingStartVerseKey: firstKey,
     });
 
-    // Navigate to mushaf
     router.push({
       pathname: '/mushaf',
       params: {
@@ -404,7 +422,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       },
     });
 
-    // After navigation settles, open playback settings
     setTimeout(() => {
       SheetManager.show('mushaf-player-options', {
         payload: {currentPage: page},
@@ -412,209 +429,332 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     }, 600);
   }, [verseKey, verseKeys, isRange]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !activeScreen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setActiveScreen(null);
+      return true;
+    });
+    return () => sub.remove();
+  }, [activeScreen]);
+
   const handleOnClose = useCallback(() => {
+    setActiveScreen(null);
     useVerseSelectionStore.getState().clearSelection();
     useMushafVerseSelectionStore.getState().clearSelection();
   }, []);
 
+  const handleDismiss = useCallback(() => {
+    SheetManager.hideAll();
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setActiveScreen(null);
+  }, []);
+
   if (!payload) return null;
+
+  const isSimilar = activeScreen === 'similar' || activeScreen === 'phrases';
+  const isFullScreen =
+    activeScreen === 'translation' || activeScreen === 'tafseer';
 
   return (
     <ActionSheet
       id={props.sheetId}
-      containerStyle={styles.sheetContainer}
-      indicatorStyle={styles.indicator}
+      containerStyle={[
+        styles.sheetContainer,
+        activeScreen && {height: SHEET_HEIGHT},
+      ]}
+      indicatorStyle={activeScreen ? {height: 0} : styles.indicator}
       gestureEnabled={true}
       onClose={handleOnClose}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.surahName}>{surahName}</Text>
-          <Text style={styles.verseRef}>{verseRefText}</Text>
-        </View>
+      <View style={[styles.container, activeScreen && {flex: 1}]}>
+        {!activeScreen && (
+          <View style={styles.header}>
+            <Text style={styles.surahName}>{surahName}</Text>
+            <Text style={styles.verseRef}>{verseRefText}</Text>
+          </View>
+        )}
 
-        <View style={styles.optionsGrid}>
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'play-selection' && styles.optionPressed,
-            ]}
-            onPress={
-              source === 'player'
-                ? isCurrentTrackTimestamped()
-                  ? handlePlayerPlayFromHere
-                  : handleShowFollowAlong
-                : handlePlaySelection
-            }
-            onPressIn={() => setPressedOption('play-selection')}
-            onPressOut={() => setPressedOption(null)}>
-            <PlayIcon size={moderateScale(20)} color={theme.colors.text} />
-            <Text style={styles.optionText}>
-              {isRange ? 'Play Selection' : 'Play from Here'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'repeat-selection' && styles.optionPressed,
-            ]}
-            onPress={
-              source === 'player'
-                ? isCurrentTrackTimestamped()
-                  ? handlePlayerRepeat
-                  : handleShowFollowAlong
-                : handleRepeatSelection
-            }
-            onPressIn={() => setPressedOption('repeat-selection')}
-            onPressOut={() => setPressedOption(null)}>
-            <RepeatIcon size={moderateScale(20)} color={theme.colors.text} />
-            <Text style={styles.optionText}>Repeat</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'bookmark' && styles.optionPressed,
-            ]}
-            onPress={handleToggleBookmark}
-            onPressIn={() => setPressedOption('bookmark')}
-            onPressOut={() => setPressedOption(null)}>
-            <Feather
-              name={isBookmarked ? 'trash-2' : 'bookmark'}
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-            <Text style={styles.optionText}>
-              {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'highlight' && styles.optionPressed,
-            ]}
-            onPress={handleHighlight}
-            onPressIn={() => setPressedOption('highlight')}
-            onPressOut={() => setPressedOption(null)}>
-            {isHighlighted ? (
+        {activeScreen ? (
+          <>
+            <Pressable
+              onPress={handleBack}
+              style={({pressed}) => [styles.backRow, pressed && {opacity: 0.6}]}
+              hitSlop={8}>
               <Feather
-                name="trash-2"
-                size={moderateScale(20)}
+                name="chevron-left"
+                size={moderateScale(16)}
                 color={theme.colors.text}
               />
+              <Text style={styles.backRowText}>
+                {SCREEN_TITLES[activeScreen] ?? 'Back'}
+              </Text>
+            </Pressable>
+            {isFullScreen ? (
+              <View style={{flex: 1}}>
+                {activeScreen === 'translation' && (
+                  <TranslationContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'tafseer' && (
+                  <TafseerContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    onBack={handleBack}
+                  />
+                )}
+              </View>
             ) : (
-              <Ionicons
-                name="brush-outline"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
+              <>
+                {activeScreen === 'highlight' && (
+                  <HighlightContent
+                    verseKey={verseKey}
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    verseKeys={verseKeys}
+                    onDone={handleDismiss}
+                  />
+                )}
+                {activeScreen === 'note' && (
+                  <NoteContent
+                    verseKey={verseKey}
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    verseKeys={verseKeys}
+                    onDone={handleDismiss}
+                  />
+                )}
+                {activeScreen === 'share' && (
+                  <ShareContent
+                    verseKey={verseKey}
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    verseKeys={verseKeys}
+                    arabicText={arabicText}
+                    translation={translation}
+                    onDone={handleDismiss}
+                  />
+                )}
+                {isSimilar && (
+                  <SimilarVersesContent
+                    verseKey={verseKey}
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    section={activeScreen === 'similar' ? 'similar' : 'phrases'}
+                    onDone={handleDismiss}
+                  />
+                )}
+              </>
             )}
-            <Text style={styles.optionText}>
-              {isHighlighted ? 'Remove Highlight' : 'Highlight'}
-            </Text>
-          </Pressable>
+          </>
+        ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            contentContainerStyle={{paddingBottom: moderateScale(10)}}>
+            {/* LISTEN */}
+            <View style={styles.card}>
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={
+                  source === 'player'
+                    ? isCurrentTrackTimestamped()
+                      ? handlePlayerPlayFromHere
+                      : handleShowFollowAlong
+                    : handlePlaySelection
+                }>
+                <PlayIcon size={moderateScale(18)} color={theme.colors.text} />
+                <Text style={styles.optionText}>
+                  {isRange ? 'Play Selection' : 'Play from Here'}
+                </Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={
+                  source === 'player'
+                    ? isCurrentTrackTimestamped()
+                      ? handlePlayerRepeat
+                      : handleShowFollowAlong
+                    : handleRepeatSelection
+                }>
+                <RepeatIcon
+                  size={moderateScale(24)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Repeat</Text>
+              </Pressable>
+            </View>
 
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'note' && styles.optionPressed,
-            ]}
-            onPress={handleNote}
-            onPressIn={() => setPressedOption('note')}
-            onPressOut={() => setPressedOption(null)}>
-            <Feather
-              name="file-text"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-            <Text style={styles.optionText}>Add Note</Text>
-          </Pressable>
+            {/* STUDY */}
+            <View style={styles.card}>
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleToggleBookmark}>
+                <Feather
+                  name={isBookmarked ? 'minus-circle' : 'bookmark'}
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>
+                  {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
+                </Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleHighlight}>
+                {isHighlighted ? (
+                  <Feather
+                    name="minus-circle"
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                ) : (
+                  <Ionicons
+                    name="brush-outline"
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                )}
+                <Text style={styles.optionText}>
+                  {isHighlighted ? 'Remove Highlight' : 'Highlight'}
+                </Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleNote}>
+                <Feather
+                  name="file-text"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Add Note</Text>
+              </Pressable>
+            </View>
 
-          {hasSimilarVerses && !isRange ? (
-            <Pressable
-              style={[
-                styles.option,
-                pressedOption === 'similar' && styles.optionPressed,
-              ]}
-              onPress={handleSimilarVerses}
-              onPressIn={() => setPressedOption('similar')}
-              onPressOut={() => setPressedOption(null)}>
-              <Feather
-                name="layers"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.optionText}>Similar Verses</Text>
-            </Pressable>
-          ) : null}
+            {/* EXPLORE */}
+            <View style={styles.card}>
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleTranslation}>
+                <MaterialCommunityIcons
+                  name="translate"
+                  size={moderateScale(19)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Translation</Text>
+              </Pressable>
+              {!isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleTafseer}>
+                    <TafseerIcon
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Tafseer</Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {hasSimilarVerses && !isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleSimilarVerses}>
+                    <Feather
+                      name="layers"
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Similar Verses</Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {hasSharedPhrases && !isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleSharedPhrases}>
+                    <Feather
+                      name="link"
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Shared Phrases</Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </View>
 
-          {hasSharedPhrases && !isRange ? (
-            <Pressable
-              style={[
-                styles.option,
-                pressedOption === 'phrases' && styles.optionPressed,
-              ]}
-              onPress={handleSharedPhrases}
-              onPressIn={() => setPressedOption('phrases')}
-              onPressOut={() => setPressedOption(null)}>
-              <Feather
-                name="link"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.optionText}>Shared Phrases</Text>
-            </Pressable>
-          ) : null}
-
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'copy' && styles.optionPressed,
-            ]}
-            onPress={handleCopy}
-            onPressIn={() => setPressedOption('copy')}
-            onPressOut={() => setPressedOption(null)}>
-            <Feather
-              name="copy"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-            <Text style={styles.optionText}>Copy</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'share' && styles.optionPressed,
-            ]}
-            onPress={handleShare}
-            onPressIn={() => setPressedOption('share')}
-            onPressOut={() => setPressedOption(null)}>
-            <Feather
-              name="share"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-            <Text style={styles.optionText}>Share</Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.option,
-              pressedOption === 'translation' && styles.optionPressed,
-            ]}
-            onPress={handleTranslation}
-            onPressIn={() => setPressedOption('translation')}
-            onPressOut={() => setPressedOption(null)}>
-            <Feather
-              name="book-open"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-            <Text style={styles.optionText}>Translation</Text>
-          </Pressable>
-        </View>
+            {/* SHARE */}
+            <View style={styles.card}>
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleCopy}>
+                <Feather
+                  name="copy"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Copy</Text>
+              </Pressable>
+              <View style={styles.divider} />
+              <Pressable
+                style={({pressed}) => [
+                  styles.option,
+                  pressed && styles.optionPressed,
+                ]}
+                onPress={handleShare}>
+                <Feather
+                  name="share"
+                  size={moderateScale(18)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.optionText}>Share</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        )}
       </View>
     </ActionSheet>
   );
@@ -626,53 +766,77 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
-      paddingBottom: moderateScale(40),
+      paddingBottom: moderateScale(30),
     },
     header: {
       alignItems: 'center',
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(20),
-      gap: moderateScale(4),
+      marginTop: moderateScale(4),
+      marginBottom: moderateScale(14),
+      gap: moderateScale(2),
     },
     surahName: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     verseRef: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
-    optionsGrid: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
+    },
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(14),
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
+    },
+    backRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(2),
+      marginBottom: moderateScale(10),
+    },
+    backRowText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
     },
   });

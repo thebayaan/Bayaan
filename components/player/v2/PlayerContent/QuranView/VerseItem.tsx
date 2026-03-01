@@ -20,6 +20,10 @@ import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import SkiaVerseText from './SkiaVerseText';
+import {
+  isBundledTranslation,
+  getBundledFootnotes,
+} from '@/utils/translationLookup';
 
 // Type for processed word data from store
 interface ProcessedTajweedWord {
@@ -68,6 +72,9 @@ interface VerseItemProps {
   dkFontFamily: string;
   indexedTajweedData: IndexedTajweedData | null;
   isActive?: boolean;
+  translationName?: string;
+  translationId?: string;
+  source?: 'player' | 'mushaf';
 }
 
 /**
@@ -96,6 +103,9 @@ export const VerseItem = memo<VerseItemProps>(
     dkFontFamily,
     indexedTajweedData,
     isActive,
+    translationName,
+    translationId,
+    source,
   }) => {
     const verseKey = verse.verse_key;
 
@@ -149,7 +159,7 @@ export const VerseItem = memo<VerseItemProps>(
       [textColor],
     );
 
-    // Handle footnote press - uses module-scope cached data
+    // Handle footnote press - uses module-scope cached data or translationLookup
     const handleFootnotePress = useCallback(
       (footnoteId: string, footnoteNumber: string) => {
         // If tapping the same footnote again, close it
@@ -158,33 +168,28 @@ export const VerseItem = memo<VerseItemProps>(
           return;
         }
 
-        const verseData = saheehDataForFootnotes[verseKey];
+        // For bundled translations, use translationLookup; for remote, no footnotes
+        const effectiveId = translationId ?? 'saheeh';
+        const footnotes = isBundledTranslation(effectiveId)
+          ? getBundledFootnotes(verseKey, effectiveId)
+          : undefined;
 
-        if (verseData?.f) {
-          const footnoteContent = verseData.f[footnoteId];
-
-          if (footnoteContent) {
-            setActiveFootnote({
-              id: footnoteId,
-              number: footnoteNumber,
-              content: footnoteContent,
-            });
-          } else {
-            setActiveFootnote({
-              id: footnoteId,
-              number: footnoteNumber,
-              content: 'Footnote content not available',
-            });
-          }
+        if (footnotes) {
+          const footnoteContent = footnotes[footnoteId];
+          setActiveFootnote({
+            id: footnoteId,
+            number: footnoteNumber,
+            content: footnoteContent ?? 'Footnote content not available',
+          });
         } else {
           setActiveFootnote({
             id: footnoteId,
             number: footnoteNumber,
-            content: 'Footnote data structure issue',
+            content: 'Footnote data not available',
           });
         }
       },
-      [verseKey, activeFootnote],
+      [verseKey, activeFootnote, translationId],
     );
 
     // Close the footnote display
@@ -415,7 +420,9 @@ export const VerseItem = memo<VerseItemProps>(
 
             {/* Display Translation Source */}
             {verse.translation && (
-              <Text style={translationSourceStyle}>Saheeh International</Text>
+              <Text style={translationSourceStyle}>
+                {translationName ?? 'Saheeh International'}
+              </Text>
             )}
           </View>
         )}
