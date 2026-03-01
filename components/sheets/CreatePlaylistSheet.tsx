@@ -2,7 +2,8 @@ import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
+  StyleSheet,
   Platform,
   Dimensions,
   Keyboard,
@@ -90,13 +91,13 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
       keyboardHandlerEnabled={true}>
       {/* Header */}
       <View style={styles.headerContainer}>
-        <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+        <Pressable onPress={handleClose} style={styles.headerButton}>
           <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.headerTitle}>
           {isEditMode ? 'Edit Playlist' : 'New Playlist'}
         </Text>
-        <TouchableOpacity
+        <Pressable
           onPress={handleCreate}
           style={[
             styles.headerButton,
@@ -104,7 +105,7 @@ export const CreatePlaylistSheet = (props: SheetProps<'create-playlist'>) => {
           ]}
           disabled={!playlistName.trim()}>
           <Text style={styles.saveText}>Save</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <ScrollView
@@ -175,10 +176,15 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
       height: SCREEN_HEIGHT * 0.6,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       flexDirection: 'row',
@@ -187,7 +193,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(20),
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerButton: {
       minWidth: moderateScale(60),

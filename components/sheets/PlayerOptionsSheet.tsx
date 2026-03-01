@@ -3,6 +3,7 @@ import {
   View,
   Text,
   Pressable,
+  StyleSheet,
   useWindowDimensions,
   Dimensions,
 } from 'react-native';
@@ -63,7 +64,6 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {width} = useWindowDimensions();
-  const [pressedOption, setPressedOption] = useState<string | null>(null);
   const [showSurahInfo, setShowSurahInfo] = useState(false);
 
   // Extract payload
@@ -275,6 +275,154 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const showGoToReciter = !!onGoToReciter;
   const showLearnAboutSurah = !!surah;
 
+  // Build option entries for the card
+  const optionEntries: {key: string; render: () => React.ReactNode}[] = [];
+
+  if (showEditDetails) {
+    optionEntries.push({
+      key: 'edit',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleEditDetails}>
+          <FontAwesome5
+            name="sliders-h"
+            size={moderateScale(16)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Edit Details</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showDownload) {
+    optionEntries.push({
+      key: 'download',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleDownload}>
+          {isCurrentlyDownloading ? (
+            <CircularProgress
+              progress={downloadProgress}
+              size={moderateScale(18)}
+              strokeWidth={moderateScale(2.5)}
+              color={theme.colors.text}
+            />
+          ) : isTrackDownloaded ? (
+            <CheckIcon color={theme.colors.text} size={moderateScale(18)} />
+          ) : (
+            <Ionicons
+              name="arrow-down"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          )}
+          <Text style={styles.optionText}>
+            {isCurrentlyDownloading
+              ? `Downloading ${Math.round(downloadProgress * 100)}%`
+              : isTrackDownloaded
+              ? 'Downloaded'
+              : 'Download'}
+          </Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showAddToCollection) {
+    optionEntries.push({
+      key: 'collection',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleAddToPlaylist}>
+          <Feather
+            name="plus-circle"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Add to Collection</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showLove) {
+    optionEntries.push({
+      key: 'love',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleToggleLove}>
+          <HeartIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={isLovedState}
+          />
+          <Text style={styles.optionText}>
+            {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+          </Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showGoToReciter) {
+    optionEntries.push({
+      key: 'reciter',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleGoToReciter}>
+          <ProfileIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={false}
+          />
+          <Text style={styles.optionText}>Go to Reciter</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showLearnAboutSurah) {
+    optionEntries.push({
+      key: 'info',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleViewInfo}>
+          <Feather
+            name="info"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Learn About Surah</Text>
+        </Pressable>
+      ),
+    });
+  }
+
   return (
     <ActionSheet
       id={props.sheetId}
@@ -326,124 +474,13 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             </Text>
           </View>
 
-          <View style={styles.optionsGrid}>
-            {showEditDetails && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleEditDetails}>
-                <FontAwesome5
-                  name="sliders-h"
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Edit Details</Text>
-              </Pressable>
-            )}
-
-            {showDownload && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleDownload}>
-                {isCurrentlyDownloading ? (
-                  <CircularProgress
-                    progress={downloadProgress}
-                    size={moderateScale(20)}
-                    strokeWidth={moderateScale(2.5)}
-                    color={theme.colors.text}
-                  />
-                ) : isTrackDownloaded ? (
-                  <CheckIcon
-                    color={theme.colors.text}
-                    size={moderateScale(20)}
-                  />
-                ) : (
-                  <Ionicons
-                    name="arrow-down"
-                    size={moderateScale(20)}
-                    color={theme.colors.text}
-                  />
-                )}
-                <Text style={styles.optionText}>
-                  {isCurrentlyDownloading
-                    ? `Downloading ${Math.round(downloadProgress * 100)}%`
-                    : isTrackDownloaded
-                    ? 'Downloaded'
-                    : 'Download'}
-                </Text>
-              </Pressable>
-            )}
-
-            {showAddToCollection && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleAddToPlaylist}>
-                <Feather
-                  name="plus-circle"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Add to Collection</Text>
-              </Pressable>
-            )}
-
-            {showLove && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleToggleLove}>
-                <HeartIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={isLovedState}
-                />
-                <Text style={styles.optionText}>
-                  {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
-                </Text>
-              </Pressable>
-            )}
-
-            {showGoToReciter && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleGoToReciter}>
-                <ProfileIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={false}
-                />
-                <Text style={styles.optionText}>Go to Reciter</Text>
-              </Pressable>
-            )}
-
-            {showLearnAboutSurah && (
-              <Pressable
-                style={({pressed}) => [
-                  styles.option,
-                  pressed && styles.optionPressed,
-                ]}
-                onPress={handleViewInfo}>
-                <Feather
-                  name="info"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-                <Text style={styles.optionText}>Learn About Surah</Text>
-              </Pressable>
-            )}
+          <View style={styles.card}>
+            {optionEntries.map((entry, idx) => (
+              <React.Fragment key={entry.key}>
+                {idx > 0 && <View style={styles.divider} />}
+                {entry.render()}
+              </React.Fragment>
+            ))}
           </View>
         </View>
       )}
@@ -457,6 +494,10 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
     },
     sheetContainerExpanded: {
@@ -465,6 +506,7 @@ const createStyles = (theme: Theme) =>
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
@@ -472,49 +514,57 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       alignItems: 'center',
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(20),
-      gap: moderateScale(4),
+      marginTop: moderateScale(4),
+      marginBottom: moderateScale(14),
+      gap: moderateScale(2),
     },
     surahName: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     surahTranslation: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
-    optionsGrid: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
+    },
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(14),
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     // Surah Info styles
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),

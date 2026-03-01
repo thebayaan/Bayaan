@@ -2,7 +2,8 @@ import React, {useCallback, useState, useMemo} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
+  StyleSheet,
   useWindowDimensions,
   Dimensions,
 } from 'react-native';
@@ -63,7 +64,6 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {width} = useWindowDimensions();
-  const [pressedOption, setPressedOption] = useState<string | null>(null);
   const [showSurahInfo, setShowSurahInfo] = useState(false);
 
   // Extract payload - these hooks only run when sheet is shown
@@ -301,20 +301,17 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
             </Text>
           </View>
 
-          <View style={styles.optionsGrid}>
-            <TouchableOpacity
-              style={[
+          <View style={styles.card}>
+            <Pressable
+              style={({pressed}) => [
                 styles.option,
                 !reciterId && styles.optionDisabled,
-                pressedOption === 'loved' && styles.optionPressed,
+                pressed && styles.optionPressed,
               ]}
-              onPress={handleToggleLove}
-              onPressIn={() => setPressedOption('loved')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
+              onPress={handleToggleLove}>
               <HeartIcon
                 color={theme.colors.text}
-                size={moderateScale(20)}
+                size={moderateScale(18)}
                 filled={isLovedState}
               />
               <Text
@@ -324,31 +321,30 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 ]}>
                 {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[
+            <View style={styles.divider} />
+
+            <Pressable
+              style={({pressed}) => [
                 styles.option,
                 !reciterId && styles.optionDisabled,
-                pressedOption === 'download' && styles.optionPressed,
+                pressed && styles.optionPressed,
               ]}
-              onPress={handleDownload}
-              onPressIn={() => setPressedOption('download')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
+              onPress={handleDownload}>
               {isCurrentlyDownloading ? (
                 <CircularProgress
                   progress={downloadProgress}
-                  size={moderateScale(20)}
+                  size={moderateScale(18)}
                   strokeWidth={moderateScale(2.5)}
                   color={theme.colors.text}
                 />
               ) : isTrackDownloaded ? (
-                <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
+                <CheckIcon color={theme.colors.text} size={moderateScale(18)} />
               ) : (
                 <Ionicons
                   name="arrow-down"
-                  size={moderateScale(20)}
+                  size={moderateScale(18)}
                   color={theme.colors.text}
                 />
               )}
@@ -359,22 +355,21 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                   ? 'Downloaded'
                   : 'Download'}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[
+            <View style={styles.divider} />
+
+            <Pressable
+              style={({pressed}) => [
                 styles.option,
                 !onAddToQueue && styles.optionDisabled,
-                pressedOption === 'queue' && styles.optionPressed,
+                pressed && styles.optionPressed,
               ]}
-              onPress={handleAddToQueue}
-              onPressIn={() => setPressedOption('queue')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
+              onPress={handleAddToQueue}>
               <View style={styles.rotatedIcon}>
                 <QueueIcon
                   color={theme.colors.text}
-                  size={moderateScale(20)}
+                  size={moderateScale(18)}
                   filled={true}
                 />
               </View>
@@ -385,21 +380,20 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 ]}>
                 Add to Queue
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[
+            <View style={styles.divider} />
+
+            <Pressable
+              style={({pressed}) => [
                 styles.option,
                 !reciterId && styles.optionDisabled,
-                pressedOption === 'collection' && styles.optionPressed,
+                pressed && styles.optionPressed,
               ]}
-              onPress={handleAddToPlaylist}
-              onPressIn={() => setPressedOption('collection')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
+              onPress={handleAddToPlaylist}>
               <Feather
                 name="plus-circle"
-                size={moderateScale(20)}
+                size={moderateScale(18)}
                 color={theme.colors.text}
               />
               <Text
@@ -409,65 +403,63 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 ]}>
                 Add to Collection
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
             {reciterId && !payload?.hideGoToReciter && (
-              <TouchableOpacity
-                style={[
-                  styles.option,
-                  pressedOption === 'reciter' && styles.optionPressed,
-                ]}
-                onPress={handleGoToReciter}
-                onPressIn={() => setPressedOption('reciter')}
-                onPressOut={() => setPressedOption(null)}
-                activeOpacity={1}>
-                <ProfileIcon
-                  color={theme.colors.text}
-                  size={moderateScale(20)}
-                  filled={false}
-                />
-                <Text style={styles.optionText}>Go to Reciter</Text>
-              </TouchableOpacity>
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleGoToReciter}>
+                  <ProfileIcon
+                    color={theme.colors.text}
+                    size={moderateScale(18)}
+                    filled={false}
+                  />
+                  <Text style={styles.optionText}>Go to Reciter</Text>
+                </Pressable>
+              </>
             )}
 
-            <TouchableOpacity
-              style={[
+            <View style={styles.divider} />
+
+            <Pressable
+              style={({pressed}) => [
                 styles.option,
-                pressedOption === 'info' && styles.optionPressed,
+                pressed && styles.optionPressed,
               ]}
-              onPress={handleViewInfo}
-              onPressIn={() => setPressedOption('info')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
+              onPress={handleViewInfo}>
               <Feather
                 name="info"
-                size={moderateScale(20)}
+                size={moderateScale(18)}
                 color={theme.colors.text}
               />
               <Text style={styles.optionText}>Learn About Surah</Text>
-            </TouchableOpacity>
+            </Pressable>
+          </View>
 
-            {onRemoveFromPlaylist && (
-              <TouchableOpacity
-                style={[
+          {onRemoveFromPlaylist && (
+            <View style={styles.destructiveCard}>
+              <Pressable
+                style={({pressed}) => [
                   styles.optionDestructive,
-                  pressedOption === 'remove' && styles.optionDestructivePressed,
+                  pressed && styles.optionDestructivePressed,
                 ]}
-                onPress={handleRemoveFromPlaylist}
-                onPressIn={() => setPressedOption('remove')}
-                onPressOut={() => setPressedOption(null)}
-                activeOpacity={1}>
+                onPress={handleRemoveFromPlaylist}>
                 <Feather
                   name="minus-circle"
-                  size={moderateScale(20)}
+                  size={moderateScale(18)}
                   color="#ff4444"
                 />
                 <Text style={styles.optionTextDestructive}>
                   Remove from Playlist
                 </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              </Pressable>
+            </View>
+          )}
         </View>
       )}
     </ActionSheet>
@@ -480,6 +472,10 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
     },
     sheetContainerExpanded: {
@@ -488,6 +484,7 @@ const createStyles = (theme: Theme) =>
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
@@ -495,45 +492,58 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       alignItems: 'center',
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(20),
-      gap: moderateScale(4),
+      marginTop: moderateScale(4),
+      marginBottom: moderateScale(14),
+      gap: moderateScale(2),
     },
     surahName: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     surahTranslation: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
-    optionsGrid: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
+    },
+    destructiveCard: {
+      backgroundColor: 'rgba(255, 68, 68, 0.1)',
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+    },
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(14),
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionDisabled: {
       opacity: 0.5,
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     optionTextDisabled: {
       color: theme.colors.textSecondary,
@@ -544,27 +554,25 @@ const createStyles = (theme: Theme) =>
     optionDestructive: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: 'rgba(255, 68, 68, 0.1)',
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionDestructivePressed: {
       backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
     optionTextDestructive: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: '#ff4444',
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     // Surah Info styles
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),
