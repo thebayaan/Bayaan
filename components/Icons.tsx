@@ -737,6 +737,27 @@ export const MicrophoneIcon: React.FC<IconProps> = ({color, size}) => (
   </Svg>
 );
 
+export const TafseerIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M2 7C2 7 3.5 5 7 5C10.5 5 12 7 12 7V20C12 20 10.5 18.5 7 18.5C3.5 18.5 2 20 2 20V7Z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 7C12 7 13.5 5 17 5C20.5 5 22 7 22 7V20C22 20 20.5 18.5 17 18.5C13.5 18.5 12 20 12 20V7Z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="19" cy="3.5" r="2.5" stroke={color} strokeWidth="1.3" />
+    <Circle cx="19" cy="3.5" r="0.6" fill={color} />
+  </Svg>
+);
+
 export const AmbientIcon: React.FC<IconProps> = ({color, size, filled}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {filled ? (

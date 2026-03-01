@@ -53,6 +53,13 @@ const settingsItems = [
         icon: 'quran',
         iconType: 'custom',
       },
+      {
+        title: 'Translations & Tafaseer',
+        type: 'translations',
+        description: 'Manage Quran translations and commentary',
+        icon: 'globe',
+        iconType: 'feather',
+      },
     ],
   },
   {
@@ -159,7 +166,7 @@ const renderIcon = (
   iconColor: string,
 ) => {
   if (item.iconType === 'custom' && item.icon === 'quran') {
-    return <QuranIcon size={moderateScale(20)} color={iconColor} />;
+    return <QuranIcon size={moderateScale(24)} color={iconColor} />;
   }
   if (item.iconType === 'material') {
     return (
@@ -202,6 +209,9 @@ export default function SettingsScreen() {
     switch (type) {
       case 'mushafSettings':
         router.push('/settings/mushaf-settings');
+        break;
+      case 'translations':
+        router.push('/settings/translations');
         break;
       case 'defaultReciter':
         router.push('/settings/default-reciter');
