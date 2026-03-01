@@ -35,6 +35,7 @@ import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
+import {restoreSession} from '@/services/player/utils/restoreSession';
 import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -171,6 +172,14 @@ export default function RootLayout() {
           if (__DEV__) console.log('[App] Player store pre-warmed');
         } catch (error) {
           console.debug('[App] Failed to pre-warm stores:', error);
+        }
+
+        // Restore last session so floating player + lock screen show last track
+        try {
+          await restoreSession();
+          if (__DEV__) console.log('[App] Session restored');
+        } catch (error) {
+          console.debug('[App] Failed to restore session:', error);
         }
 
         // Mark app as ready
