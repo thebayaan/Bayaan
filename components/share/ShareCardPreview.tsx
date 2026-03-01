@@ -2,7 +2,7 @@ import React, {useMemo} from 'react';
 import {
   Canvas,
   Paragraph,
-  RoundedRect,
+  Rect,
   Group,
   Path,
   Skia,
@@ -18,19 +18,18 @@ import {
   CARD_HEADER_BOTTOM_GAP,
   CARD_VERSE_BOTTOM_GAP,
   CARD_SURAH_GAP,
+  CARD_BASMALLAH_BOTTOM_GAP,
   STARBURST_PATH_DATA,
 } from './shareCardConstants';
-import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 
 interface ShareCardPreviewProps {
   verseKeys: string[];
   isDarkMode: boolean;
   showWatermark: boolean;
+  showBasmallah: boolean;
   fontMgr: SkTypefaceFontProvider;
   quranCommonTypeface: SkTypeface | null;
   fontFamily: string;
-  showTajweed: boolean;
-  indexedTajweedData: IndexedTajweedData | null;
   width: number;
   /** Optional ref forwarded to the underlying Canvas (used for image capture). */
   canvasRef?: React.RefObject<any>;
@@ -40,11 +39,10 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
   verseKeys,
   isDarkMode,
   showWatermark,
+  showBasmallah,
   fontMgr,
   quranCommonTypeface,
   fontFamily,
-  showTajweed,
-  indexedTajweedData,
   width,
   canvasRef,
 }) => {
@@ -62,8 +60,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
         showWatermark,
         quranCommonTypeface,
         fontFamily,
-        showTajweed,
-        indexedTajweedData,
+        showBasmallah,
       ),
     [
       verseKeys,
@@ -73,8 +70,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
       showWatermark,
       quranCommonTypeface,
       fontFamily,
-      showTajweed,
-      indexedTajweedData,
+      showBasmallah,
     ],
   );
 
@@ -101,12 +97,11 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
   return (
     <Canvas ref={canvasRef} style={{width, height: totalHeight}}>
       {/* Background */}
-      <RoundedRect
+      <Rect
         x={0}
         y={0}
         width={width}
         height={totalHeight}
-        r={12 * scale}
         color={elements.colors.background}
       />
 
@@ -143,6 +138,20 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
           );
 
           y += section.dividerHeight + CARD_HEADER_BOTTOM_GAP * scale;
+
+          // Basmallah (between divider and verse text)
+          if (section.basmallahParagraph) {
+            nodes.push(
+              <Paragraph
+                key={`basm-${i}`}
+                paragraph={section.basmallahParagraph}
+                x={padding}
+                y={y}
+                width={contentWidth}
+              />,
+            );
+            y += section.basmallahHeight + CARD_BASMALLAH_BOTTOM_GAP * scale;
+          }
 
           // Verse text
           nodes.push(

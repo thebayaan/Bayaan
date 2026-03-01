@@ -27,13 +27,13 @@ import {
   CARD_BOTTOM_PADDING,
   CARD_SURAH_GAP,
   CARD_HEADER_NAME_RATIO,
+  CARD_BASMALLAH_FONT_RATIO,
+  CARD_BASMALLAH_BOTTOM_GAP,
   LIGHT_COLORS,
   DARK_COLORS,
   type ShareCardColors,
 } from './shareCardConstants';
-import {tajweedColors} from '@/constants/tajweedColors';
-import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
-import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {BASMALLAH_TEXT} from '@/services/mushaf/DigitalKhattDataService';
 
 interface QuranEntry {
   verse_key: string;
@@ -58,13 +58,15 @@ interface SurahSection {
 }
 
 export interface ShareCardElements {
-  /** Sections: each is a surah header + its verse text paragraph */
+  /** Sections: each is a surah header + optional basmallah + verse text paragraph */
   sections: Array<{
     surahNumber: number;
     dividerParagraph: SkParagraph;
     dividerHeight: number;
     nameParagraph: SkParagraph;
     nameHeight: number;
+    basmallahParagraph: SkParagraph | null;
+    basmallahHeight: number;
     verseParagraph: SkParagraph;
     verseHeight: number;
   }>;
@@ -115,39 +117,6 @@ function addVerseMarker(text: string): string {
   return text.replace(/([٠-٩]+)$/, '\u06DD$1');
 }
 
-/**
- * Build a combined tajweed map for the full joined text of a section.
- * Indices are relative to the final marked+joined string.
- */
-function buildCombinedTajweedMap(
-  verseKeys: string[],
-  verseTexts: string[],
-  indexedTajweedData: IndexedTajweedData,
-): Map<number, string> {
-  const combined = new Map<number, string>();
-  let globalOffset = 0;
-
-  for (let vi = 0; vi < verseTexts.length; vi++) {
-    const markedText = addVerseMarker(verseTexts[vi]);
-    const tajMap = getVerseTajweedMap(verseKeys[vi], indexedTajweedData);
-
-    if (tajMap) {
-      for (const [rawIdx, rule] of tajMap) {
-        // Tajweed rules apply to word characters, which come before the
-        // verse-end digits. addVerseMarker only inserts ۝ before trailing
-        // digits, so indices for word characters are unchanged.
-        combined.set(globalOffset + rawIdx, rule);
-      }
-    }
-
-    globalOffset += markedText.length;
-    // +1 for the joining space between verses
-    if (vi < verseTexts.length - 1) globalOffset += 1;
-  }
-
-  return combined;
-}
-
 export function buildShareCardParagraphs(
   verseKeys: string[],
   contentWidth: number,
@@ -156,8 +125,7 @@ export function buildShareCardParagraphs(
   showWatermark: boolean,
   quranCommonTypeface: SkTypeface | null,
   fontFamily: string,
-  showTajweed: boolean,
-  indexedTajweedData: IndexedTajweedData | null,
+  showBasmallah: boolean,
 ): ShareCardElements {
   const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
   const scale = contentWidth / CARD_CONTENT_WIDTH;
@@ -168,6 +136,7 @@ export function buildShareCardParagraphs(
   const verseBottomGap = CARD_VERSE_BOTTOM_GAP * scale;
   const bottomPadding = CARD_BOTTOM_PADDING * scale;
   const surahGap = CARD_SURAH_GAP * scale;
+  const basmallahBottomGap = CARD_BASMALLAH_BOTTOM_GAP * scale;
 
   const groups = groupBySurah(verseKeys);
 
@@ -209,19 +178,37 @@ export function buildShareCardParagraphs(
     nameParagraph.layout(contentWidth);
     const nameHeight = nameParagraph.getHeight();
 
-    // Verse text paragraph — mirrors SkiaLine's rendering approach exactly:
-    // char-by-char addText, inner push/pop spreads the full textStyle
-    // (color + fontFamilies + fontSize) so Skia never falls back to defaults.
+    // Basmallah paragraph (between divider and verse text)
+    // Skip for Al-Fatiha (verse 1 IS the basmallah) and At-Tawbah (no basmallah)
+    let basmallahParagraph: SkParagraph | null = null;
+    let basmallahHeight = 0;
+    const skipBasmallah = group.surahNumber === 1 || group.surahNumber === 9;
+    if (showBasmallah && !skipBasmallah && BASMALLAH_TEXT) {
+      const basmallahFontSize = verseFontSize * CARD_BASMALLAH_FONT_RATIO;
+      const basmBuilder = Skia.ParagraphBuilder.Make(
+        {textDirection: TextDirection.RTL, textAlign: TextAlign.Center},
+        fontMgr,
+      );
+      basmBuilder.pushStyle({
+        color: Skia.Color(colors.text),
+        fontFamilies: [fontFamily],
+        fontSize: basmallahFontSize,
+        fontFeatures: [{name: 'basm', value: 1}],
+      });
+      basmBuilder.addText(BASMALLAH_TEXT);
+      basmBuilder.pop();
+      basmallahParagraph = basmBuilder.build();
+      basmallahParagraph.layout(contentWidth);
+      basmallahHeight = basmallahParagraph.getHeight();
+    }
+
+    // Verse text paragraph
     const verseBuilder = Skia.ParagraphBuilder.Make(
       {textDirection: TextDirection.RTL, textAlign: TextAlign.Center},
       fontMgr,
     );
 
     const color = Skia.Color(colors.text);
-
-    // textStyle matches SkiaLine exactly: color + fontFamilies + fontSize.
-    // NO heightMultiplier here — inner pushes spread this object, and
-    // heightMultiplier must NOT be re-specified in inner pushes.
     const textStyle = {
       color,
       fontFamilies: [fontFamily],
@@ -231,16 +218,6 @@ export function buildShareCardParagraphs(
     const allVerseText = group.verseTexts.map(addVerseMarker).join(' ');
     const fontScale = verseFontSize / FONTSIZE;
     const ayaLetterSpacing = SPACEWIDTH * fontScale;
-
-    // Build combined tajweed map if enabled
-    const tajweedMap =
-      showTajweed && indexedTajweedData
-        ? buildCombinedTajweedMap(
-            group.verseKeys,
-            group.verseTexts,
-            indexedTajweedData,
-          )
-        : null;
 
     // Base push: includes heightMultiplier for line spacing (only here).
     verseBuilder.pushStyle({
@@ -259,7 +236,6 @@ export function buildShareCardParagraphs(
         const isAyaSpace =
           (prevCode >= 0x0660 && prevCode <= 0x0669) || nextCode === 0x06dd;
 
-        // Every space gets push/pop with full textStyle (matches SkiaLine)
         if (isAyaSpace) {
           verseBuilder.pushStyle({
             ...textStyle,
@@ -271,19 +247,7 @@ export function buildShareCardParagraphs(
         verseBuilder.addText(' ');
         verseBuilder.pop();
       } else {
-        // Check tajweed coloring
-        const tajweedRule = tajweedMap?.get(i);
-        const tajColor = tajweedRule ? tajweedColors[tajweedRule] : undefined;
-
-        if (tajColor) {
-          // Spread full textStyle + override color (matches SkiaLine pattern)
-          verseBuilder.pushStyle({...textStyle, color: Skia.Color(tajColor)});
-          verseBuilder.addText(char);
-          verseBuilder.pop();
-        } else {
-          // No custom style — stays in base run
-          verseBuilder.addText(char);
-        }
+        verseBuilder.addText(char);
       }
     }
 
@@ -298,6 +262,8 @@ export function buildShareCardParagraphs(
       dividerHeight,
       nameParagraph,
       nameHeight,
+      basmallahParagraph,
+      basmallahHeight,
       verseParagraph,
       verseHeight,
     };
@@ -333,6 +299,9 @@ export function buildShareCardParagraphs(
   sections.forEach((section, i) => {
     if (i > 0) totalHeight += surahGap;
     totalHeight += section.dividerHeight + headerBottomGap;
+    if (section.basmallahParagraph) {
+      totalHeight += section.basmallahHeight + basmallahBottomGap;
+    }
     totalHeight += section.verseHeight + verseBottomGap;
   });
   if (watermarkParagraph) totalHeight += watermarkHeight;
