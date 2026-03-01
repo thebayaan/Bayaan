@@ -7,7 +7,7 @@ import {createStyles} from './_styles';
 import {moderateScale} from 'react-native-size-matters';
 import RecitersView from '@/components/RecitersView';
 import SurahsView from '@/components/SurahsView';
-import AdhkarsView from '@/components/AdhkarsView';
+import AdhkarView from '@/components/AdhkarView';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {SuperCategory} from '@/types/adhkar';
@@ -24,7 +24,7 @@ import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {QuranIcon} from '@/components/Icons';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 
-type ViewOption = 'Reciters' | 'Surahs' | 'Adhkars';
+type ViewOption = 'Reciters' | 'Surahs' | 'Adhkar';
 
 interface HeaderProps {
   activeView: ViewOption;
@@ -99,7 +99,7 @@ const Header = React.memo(
           </Pressable>
           <View style={headerStyles.centerContainer}>
             <TabSelector
-              options={['Reciters', 'Surahs', 'Adhkars']}
+              options={['Reciters', 'Surahs', 'Adhkar']}
               selectedOption={activeView}
               onSelect={handleToggle}
             />
@@ -158,7 +158,7 @@ const Content = React.memo(
         setHasViewedReciters(true);
       } else if (activeView === 'Surahs' && !hasViewedSurahs) {
         setHasViewedSurahs(true);
-      } else if (activeView === 'Adhkars' && !hasViewedAdhkar) {
+      } else if (activeView === 'Adhkar' && !hasViewedAdhkar) {
         setHasViewedAdhkar(true);
       }
     }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedAdhkar]);
@@ -224,15 +224,15 @@ const Content = React.memo(
           </View>
         )}
 
-        {/* AdhkarsView - only render if it has been viewed once */}
+        {/* AdhkarView - only render if it has been viewed once */}
         {hasViewedAdhkar && (
           <View
             style={[
-              activeView === 'Adhkars'
+              activeView === 'Adhkar'
                 ? contentStyles.visibleView
                 : contentStyles.hiddenView,
             ]}>
-            <AdhkarsView
+            <AdhkarView
               onCategoryPress={handleCategoryPress}
               onSavedPress={handleSavedPress}
             />
