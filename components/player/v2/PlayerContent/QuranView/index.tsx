@@ -1,78 +1,30 @@
-import React, { useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
-import { moderateScale, verticalScale } from 'react-native-size-matters';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/hooks/useTheme';
-import { Surah, QuranData, Verse } from '@/types/quran';
-import { VerseItem } from './VerseItem';
+import React, {useCallback, useRef, useEffect, useState} from 'react';
+import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
+import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {Ionicons} from '@expo/vector-icons';
+import {useTheme} from '@/hooks/useTheme';
+import {Surah} from '@/types/quran';
+import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
-import SurahDivider, { computeDividerTotalHeight } from './SurahDivider';
-import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useBottomSheetScrollableCreator } from '@gorhom/bottom-sheet';
-import { useVerseAnnotationsStore } from '@/store/verseAnnotationsStore';
-import { useMushafSettingsStore } from '@/store/mushafSettingsStore';
-import { useTajweedStore } from '@/store/tajweedStore';
-import { mushafPreloadService } from '@/services/mushaf/MushafPreloadService';
-import { digitalKhattDataService } from '@/services/mushaf/DigitalKhattDataService';
-import type { SkTypefaceFontProvider } from '@shopify/react-native-skia';
-import type { IndexedTajweedData } from '@/utils/tajweedLoader';
-import { useTimestampStore } from '@/store/timestampStore';
+import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
+import {FlashList, type FlashListRef} from '@shopify/flash-list';
+import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useTajweedStore} from '@/store/tajweedStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
+import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {useTimestampStore} from '@/store/timestampStore';
+import {
+  enhancedVersesBySurah,
+  rebuildEnhancedVerses,
+  type EnhancedVerse,
+} from '@/utils/enhancedVerseData';
+import {getTranslationName} from '@/utils/translationLookup';
 
-// Import data with type safety - move outside component to load only once
-const quranData = require('@/data/quran.json') as QuranData;
 const surahData = require('@/data/surahData.json') as Surah[];
-
-// Define Saheeh International translation data entry
-interface SaheehEntry {
-  t: string;
-  f?: Record<string, string>;
-}
-// Load Saheeh translation and transliteration data
-const saheehDataCache =
-  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as Record<
-    string,
-    SaheehEntry
-  >;
-
-// Define transliteration data type
-interface TransliterationVerse {
-  t: string; // Transliteration text
-}
-
-interface TransliterationData {
-  [verseKey: string]: TransliterationVerse;
-}
-
-const transliterationDataCache =
-  require('@/data/transliteration.json') as TransliterationData;
-
-// Enhanced verse type including translations and transliterations
-export interface EnhancedVerse extends Verse {
-  translation?: string;
-  transliteration?: string;
-}
-
-// Pre-index verses by surah at module scope (one-time O(6236) cost, then O(1) per lookup)
-const versesBySurah: Record<number, Verse[]> = {};
-Object.values(quranData).forEach(verse => {
-  (versesBySurah[verse.surah_number] ??= []).push(verse);
-});
-Object.values(versesBySurah).forEach(arr =>
-  arr.sort((a, b) => a.ayah_number - b.ayah_number),
-);
-
-// Pre-build enhanced verse arrays with translations at module scope — zero computation per surah change
-const enhancedVersesBySurah: Record<number, EnhancedVerse[]> = {};
-for (const [surahStr, surahVerses] of Object.entries(versesBySurah)) {
-  enhancedVersesBySurah[Number(surahStr)] = surahVerses.map(verse => {
-    const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
-    return {
-      ...verse,
-      translation: saheehDataCache?.[verseKey]?.t || '',
-      transliteration: transliterationDataCache?.[verseKey]?.t || '',
-    };
-  });
-}
 
 // Module-scope header — stable component identity prevents FlashList unmount/remount
 interface QuranListHeaderProps {
@@ -84,7 +36,6 @@ interface QuranListHeaderProps {
   showTajweed: boolean;
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
-  arabicFontSize: number;
   indexedTajweedData: IndexedTajweedData | null;
 }
 
@@ -98,7 +49,6 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     showTajweed,
     fontMgr,
     dkFontFamily,
-    arabicFontSize,
     indexedTajweedData,
   }) => (
     <>
@@ -115,7 +65,6 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         showTajweed={showTajweed}
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
-        arabicFontSize={arabicFontSize}
         indexedTajweedData={indexedTajweedData}
       />
     </>
@@ -145,8 +94,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
   contentPaddingTop,
   contentPaddingBottom,
 }) => {
-  const { theme } = useTheme();
-  const { width: screenWidth } = useWindowDimensions();
+  const {theme} = useTheme();
+  const {width: screenWidth} = useWindowDimensions();
   const contentWidth = screenWidth - 2 * moderateScale(20);
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
@@ -160,14 +109,27 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const selectedTranslationId = useMushafSettingsStore(
+    s => s.selectedTranslationId,
+  );
+  const translationName = getTranslationName(selectedTranslationId);
+
+  // Counter to force re-render when enhanced verses are rebuilt (async)
+  const [, setRebuildCounter] = useState(0);
 
   // DK Skia rendering: derive font family and fontMgr from mushafRenderer
   const isDK =
-    (mushafRenderer === 'dk_v1' || mushafRenderer === 'dk_v2') &&
+    (mushafRenderer === 'dk_v1' ||
+      mushafRenderer === 'dk_v2' ||
+      mushafRenderer === 'dk_indopak') &&
     mushafPreloadService.initialized &&
     digitalKhattDataService.initialized;
   const dkFontFamily =
-    mushafRenderer === 'dk_v1' ? 'DigitalKhattV1' : 'DigitalKhattV2';
+    mushafRenderer === 'dk_indopak'
+      ? 'DigitalKhattIndoPak'
+      : mushafRenderer === 'dk_v1'
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
   const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
 
   // Tajweed data for DK Skia rendering (verse-level indexed)
@@ -183,13 +145,20 @@ export const QuranView: React.FC<QuranViewProps> = ({
     loadAnnotationsForSurah(currentSurah);
   }, [currentSurah, loadAnnotationsForSurah]);
 
+  // Rebuild enhanced verse data when translation changes
+  useEffect(() => {
+    rebuildEnhancedVerses(selectedTranslationId).then(rebuilt => {
+      if (rebuilt) setRebuildCounter(c => c + 1);
+    });
+  }, [selectedTranslationId]);
+
   // Direct lookup from module-scope pre-built arrays — zero computation per surah change
   const verses = enhancedVersesBySurah[currentSurah] ?? [];
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {
     if (listRef.current) {
-      listRef.current.scrollToOffset({ offset: 0, animated: false });
+      listRef.current.scrollToOffset({offset: 0, animated: false});
     }
     setIsLocked(true);
   }, [currentSurah, setIsLocked]);
@@ -202,16 +171,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
     if (index === -1) return;
 
     try {
-      listRef.current.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+      listRef.current.scrollToIndex({index, animated: true, viewPosition: 0.3});
     } catch {
       // Index may be out of range during recycling — ignore
     }
   }, [currentVerseKey, verses, isLocked]);
 
-
   // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
-    ({ item }: { item: EnhancedVerse }) => (
+    ({item}: {item: EnhancedVerse}) => (
       <VerseItem
         verse={item}
         onVersePress={onVersePress}
@@ -228,6 +196,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
         dkFontFamily={dkFontFamily}
         indexedTajweedData={indexedTajweedData}
         isActive={isLocked && item.verse_key === currentVerseKey}
+        translationName={translationName}
+        translationId={selectedTranslationId}
       />
     ),
     [
@@ -245,6 +215,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
       indexedTajweedData,
       currentVerseKey,
       isLocked,
+      translationName,
+      selectedTranslationId,
     ],
   );
 
@@ -257,7 +229,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   );
 
   const effectivePaddingBottom =
-    (contentPaddingBottom || 0) + verticalScale(20);
+    (contentPaddingBottom || 0) + verticalScale(60);
 
   if (!surah || !verses.length) {
     return null;
@@ -280,7 +252,6 @@ export const QuranView: React.FC<QuranViewProps> = ({
             showTajweed={showTajweed}
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
-            arabicFontSize={arabicFontSize}
             indexedTajweedData={indexedTajweedData}
           />
         }
@@ -301,7 +272,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       />
       {!isLocked && currentVerseKey && (
         <Pressable
-          style={[styles.recenterButton, { backgroundColor: theme.colors.card }]}
+          style={[styles.recenterButton, {backgroundColor: theme.colors.card}]}
           onPress={() => {
             setIsLocked(true);
             const index = verses.findIndex(
@@ -340,7 +311,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },

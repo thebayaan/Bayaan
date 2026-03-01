@@ -5,6 +5,8 @@ import {uploadsService} from '@/services/uploads/UploadsService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
+import {translationDbService} from '@/services/translation/TranslationDbService';
+import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {useTimestampStore} from '@/store/timestampStore';
@@ -356,6 +358,34 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await qulDataService.initialize();
+  },
+});
+
+/**
+ * Translation DB Service (Priority 10)
+ * Opens translations.db for downloaded remote translations.
+ * Non-critical — bundled translations work without it.
+ */
+appInitializer.registerService({
+  name: 'Translation DB',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await translationDbService.initialize();
+  },
+});
+
+/**
+ * Tafseer DB Service (Priority 10)
+ * Opens tafaseer.db for downloaded tafaseer.
+ * Non-critical — tafseer features degrade gracefully without it.
+ */
+appInitializer.registerService({
+  name: 'Tafseer DB',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await tafseerDbService.initialize();
   },
 });
 
