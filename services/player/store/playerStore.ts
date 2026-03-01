@@ -13,6 +13,7 @@ import {
 } from '../types/state';
 import {createDefaultUnifiedPlayerState} from './validation';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
+import {audioCoordinator} from '@/services/audio/AudioCoordinator';
 
 const STORAGE_KEY = 'player-store';
 
@@ -165,6 +166,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
             loading: {...state.loading, trackLoading: true},
           }));
 
+          audioCoordinator.mainWillPlay();
           await expoAudioService.play();
 
           set(state => ({
@@ -217,10 +219,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {repeatMode} = state.settings;
 
         try {
-          set(state => ({
-            loading: {...state.loading, trackLoading: true},
-          }));
-
           let nextIndex = currentIndex + 1;
 
           // Handle end of queue
@@ -231,7 +229,6 @@ export const usePlayerStore = create<PlayerStoreState>()(
               // End of queue, stay on last track
               if (__DEV__) console.log('[PlayerStore] End of queue reached');
               set(state => ({
-                loading: {...state.loading, trackLoading: false},
                 playback: {
                   ...state.playback,
                   state: 'ended' as StorePlaybackState,
@@ -241,11 +238,22 @@ export const usePlayerStore = create<PlayerStoreState>()(
             }
           }
 
+          // Optimistic update: set currentIndex immediately so UI updates instantly
+          set(state => ({
+            queue: {...state.queue, currentIndex: nextIndex},
+            loading: {...state.loading, trackLoading: true},
+            playback: {
+              ...state.playback,
+              state: 'loading' as StorePlaybackState,
+              position: 0,
+            },
+          }));
+
           // Load and play the next track
+          audioCoordinator.mainWillPlay();
           await loadTrackAtIndex(tracks, nextIndex, 0, true);
 
           set(state => ({
-            queue: {...state.queue, currentIndex: nextIndex},
             playback: {
               ...state.playback,
               state: 'playing' as StorePlaybackState,
@@ -271,12 +279,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const position = expoAudioService.getPosition();
 
         try {
-          set(state => ({
-            loading: {...state.loading, trackLoading: true},
-          }));
-
-          // If more than 3 seconds into the track, restart it
+          // If more than 3 seconds into the track, restart it (no index change needed)
           if (position > 3) {
+            set(state => ({
+              loading: {...state.loading, trackLoading: true},
+            }));
             await expoAudioService.seekTo(0);
             set(state => ({
               playback: {...state.playback, position: 0},
@@ -293,6 +300,9 @@ export const usePlayerStore = create<PlayerStoreState>()(
               prevIndex = tracks.length - 1; // Loop to end
             } else {
               // Start of queue, just restart current track
+              set(state => ({
+                loading: {...state.loading, trackLoading: true},
+              }));
               await expoAudioService.seekTo(0);
               set(state => ({
                 playback: {...state.playback, position: 0},
@@ -302,11 +312,22 @@ export const usePlayerStore = create<PlayerStoreState>()(
             }
           }
 
+          // Optimistic update: set currentIndex immediately so UI updates instantly
+          set(state => ({
+            queue: {...state.queue, currentIndex: prevIndex},
+            loading: {...state.loading, trackLoading: true},
+            playback: {
+              ...state.playback,
+              state: 'loading' as StorePlaybackState,
+              position: 0,
+            },
+          }));
+
           // Load and play the previous track
+          audioCoordinator.mainWillPlay();
           await loadTrackAtIndex(tracks, prevIndex, 0, true);
 
           set(state => ({
-            queue: {...state.queue, currentIndex: prevIndex},
             playback: {
               ...state.playback,
               state: 'playing' as StorePlaybackState,
@@ -372,23 +393,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
               targetTrack: tracks[currentIndex]?.title,
             });
 
-          set(state => ({
-            loading: {
-              ...state.loading,
-              queueLoading: true,
-              stateRestoring: false,
-            },
-          }));
-
-          // Load the track at the specified index and auto-play
-          if (
-            tracks.length > 0 &&
-            currentIndex >= 0 &&
-            currentIndex < tracks.length
-          ) {
-            await loadTrackAtIndex(tracks, currentIndex, startPosition, true);
-          }
-
+          // Optimistic update: set queue metadata immediately so UI updates instantly
           set(state => ({
             queue: {
               ...state.queue,
@@ -398,6 +403,30 @@ export const usePlayerStore = create<PlayerStoreState>()(
               loading: false,
               endReached: false,
             },
+            loading: {
+              ...state.loading,
+              queueLoading: true,
+              trackLoading: true,
+              stateRestoring: false,
+            },
+            playback: {
+              ...state.playback,
+              state: 'loading' as StorePlaybackState,
+              position: startPosition,
+            },
+          }));
+
+          // Load the track at the specified index and auto-play
+          if (
+            tracks.length > 0 &&
+            currentIndex >= 0 &&
+            currentIndex < tracks.length
+          ) {
+            audioCoordinator.mainWillPlay();
+            await loadTrackAtIndex(tracks, currentIndex, startPosition, true);
+          }
+
+          set(state => ({
             loading: {
               ...state.loading,
               queueLoading: false,
