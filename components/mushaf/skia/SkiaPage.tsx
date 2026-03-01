@@ -75,7 +75,12 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // on first render since AppInitializer runs before Mushaf tab mounts.
   const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
-    DigitalKhattV2: [require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf')],
+    DigitalKhattV2: [
+      require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
+    ],
+    DigitalKhattIndoPak: [
+      require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
+    ],
     QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
     SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
   });
@@ -106,8 +111,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-  const fontFamily = uthmaniFont === 'v1' ? 'DigitalKhattV1' : 'DigitalKhattV2';
+  const fontFamily =
+    mushafRenderer === 'dk_indopak'
+      ? 'DigitalKhattIndoPak'
+      : uthmaniFont === 'v1'
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
 
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,

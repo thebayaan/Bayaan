@@ -4,7 +4,7 @@ import {type JustResultByLine, replacer, reviver} from './JustificationService';
 
 // Bump this when font files change or layout computation logic changes.
 // Incrementing invalidates all cached layouts and forces recomputation.
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 6;
 
 function mmkvKey(fontFamily: string, pageNumber: number): string {
   return `dk:${fontFamily}:${pageNumber}`;
