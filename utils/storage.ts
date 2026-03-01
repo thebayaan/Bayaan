@@ -10,12 +10,3 @@ export const clearStorage = async () => {
     console.error('Error clearing storage:', error);
   }
 };
-
-export const clearRecentRecitersStorage = async () => {
-  try {
-    await AsyncStorage.removeItem('recent-reciters-storage');
-    console.log('Recent reciters storage cleared!');
-  } catch (error) {
-    console.error('Error clearing recent reciters storage:', error);
-  }
-};

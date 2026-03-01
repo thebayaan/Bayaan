@@ -171,7 +171,7 @@ export default function BrowseReciters({
 }: BrowseRecitersProps) {
   const router = useRouter();
   const {updateQueue, play} = usePlayerActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
   const {setReciterPreference} = useSettings();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -601,7 +601,7 @@ export default function BrowseReciters({
           await play();
 
           // Add to recently played list with the rewayatId
-          await addRecentTrack(reciter, surah, 0, 0, rewayatId);
+          await startNewChain(reciter, surah, 0, 0, rewayatId);
 
           // Navigate back
           router.back();
@@ -627,7 +627,7 @@ export default function BrowseReciters({
       }
       console.log('------------ END REWAYA SELECTION PROCESS ------------');
     },
-    [setReciterPreference, surahId, updateQueue, play, router, addRecentTrack],
+    [setReciterPreference, surahId, updateQueue, play, router, startNewChain],
   );
 
   // Handler for tapping outside search area

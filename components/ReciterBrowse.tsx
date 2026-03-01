@@ -33,7 +33,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
   const insets = useSafeAreaInsets();
   const [_surahName, setSurahName] = useState<string>('');
   const {updateQueue, play} = usePlayerActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
 
   const filteredReciters = useMemo(() => {
     let filtered = RECITERS;
@@ -127,19 +127,17 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
           rewayatId,
         );
 
-        // Update queue and start playing
+        startNewChain(reciter, surah, 0, 0, rewayatId);
+
         await updateQueue(tracks, 0);
         await play();
-
-        // Add to recently played list with the rewayatId
-        await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
         router.back();
       } catch (error) {
         console.error('Error playing surah:', error);
       }
     },
-    [surahId, updateQueue, play, router, addRecentTrack],
+    [surahId, updateQueue, play, router, startNewChain],
   );
 
   return (

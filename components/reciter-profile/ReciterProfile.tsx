@@ -224,7 +224,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const [stickyTitleHeight, setStickyTitleHeight] = useState(0);
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
   const {reciterPreferences, setReciterPreference} = useSettings();
 
   // Retrieve persisted reciter profile settings
@@ -367,12 +367,12 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
         }));
 
         await updateQueue(allTracks, 0);
-        addRecentTrack(reciter, surah, 0, 0, selectedRewayat.id);
+        startNewChain(reciter, surah, 0, 0, selectedRewayat.id);
       } catch (error) {
         console.error('Error playing surah:', error);
       }
     },
-    [reciter, filteredSurahs, selectedRewayat, addRecentTrack, updateQueue],
+    [reciter, filteredSurahs, selectedRewayat, startNewChain, updateQueue],
   );
 
   const handlePlayAll = useCallback(async () => {
@@ -399,11 +399,11 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       }));
 
       await updateQueue(allTracks, 0);
-      addRecentTrack(reciter, filteredSurahs[0], 0, 0, selectedRewayat.id);
+      startNewChain(reciter, filteredSurahs[0], 0, 0, selectedRewayat.id);
     } catch (error) {
       console.error('Error playing all surahs:', error);
     }
-  }, [reciter, filteredSurahs, selectedRewayat, addRecentTrack, updateQueue]);
+  }, [reciter, filteredSurahs, selectedRewayat, startNewChain, updateQueue]);
 
   const handleShuffleAll = useCallback(async () => {
     if (!reciter || !selectedRewayat) return;
@@ -435,7 +435,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       }));
 
       await updateQueue(allTracks, 0);
-      addRecentTrack(reciter, shuffledSurahs[0], 0, 0, selectedRewayat.id);
+      startNewChain(reciter, shuffledSurahs[0], 0, 0, selectedRewayat.id);
     } catch (error) {
       console.error('Error shuffling surahs:', error);
     }
@@ -443,7 +443,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     reciter,
     filteredSurahs,
     selectedRewayat,
-    addRecentTrack,
+    startNewChain,
     updateQueue,
     shuffleEnabled,
     toggleShuffleAction,

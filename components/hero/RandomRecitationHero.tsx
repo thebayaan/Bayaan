@@ -59,7 +59,7 @@ export function RandomRecitationHero({
 
   // Get the player hooks
   const {updateQueue, play} = usePlayerActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
 
   // Get gradient colors using the shared utility
   const baseColors = useMemo(() => getRandomColors(), []);
@@ -165,12 +165,12 @@ export function RandomRecitationHero({
           r.surah_list.includes(randomTracks[0].surah.id),
         )[0] || randomTracks[0].reciter.rewayat[0];
 
-      await addRecentTrack(reciter, surah, 0, 0, firstRewayah.id);
+      await startNewChain(reciter, surah, 0, 0, firstRewayah.id);
     } catch (error) {
       console.error('Error playing random recitation:', error);
       showToast('Failed to play random recitation. Please try again.');
     }
-  }, [updateQueue, play, addRecentTrack]);
+  }, [updateQueue, play, startNewChain]);
 
   // Dynamic height based on isCompact prop
   const containerHeight = useMemo(
