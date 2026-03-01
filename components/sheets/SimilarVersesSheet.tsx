@@ -68,11 +68,16 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontMgr = mushafPreloadService.fontMgr;
-  const fontFamily = uthmaniFont === 'v1' ? 'DigitalKhattV1' : 'DigitalKhattV2';
+  const fontFamily =
+    mushafRenderer === 'dk_indopak'
+      ? 'DigitalKhattIndoPak'
+      : mushafRenderer === 'dk_v1'
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
   const [contentWidth, setContentWidth] = useState(0);
 
   const handleContentLayout = useCallback((e: LayoutChangeEvent) => {
