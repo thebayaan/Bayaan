@@ -244,8 +244,7 @@ style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
 
 - Minimize `useEffect`, `useState`, and heavy computations inside render methods
 - Use `React.memo()` for components with static props to prevent unnecessary re-renders
-- Optimize FlatLists with props like `removeClippedSubviews`, `maxToRenderPerBatch`, and `windowSize`
-- Use `getItemLayout` for FlatLists when items have a consistent size
+- **Always use `FlashList` from `@shopify/flash-list` instead of `FlatList` or `SectionList`** — FlashList is significantly more performant. For sectioned data, flatten sections into a single array with header items and use `getItemType` to differentiate. See `components/SurahsView.tsx` and `app/(tabs)/(a.home)/settings/translations.tsx` for reference patterns.
 - Avoid anonymous functions in `renderItem` or event handlers to prevent re-renders
 - Minimize the use of useState and useEffect; prefer context and reducers for state management
 - Use Expo's AppLoading and SplashScreen for optimized app startup experience
