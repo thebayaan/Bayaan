@@ -6,18 +6,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
-
-// Build verse_key -> text lookup once at module scope
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const qpcTextByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
-}
+import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 
 interface BookmarkItemProps {
   surahName: string;
@@ -34,7 +23,6 @@ export const BookmarkItem = memo<BookmarkItemProps>(
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const surahGlyph = surahGlyphMap[surahNumber] ?? '';
-    const arabicText = qpcTextByKey[verseKey] ?? '';
 
     return (
       <Pressable
@@ -67,9 +55,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <Text style={[styles.arabicText, {fontFamily: 'Uthmani'}]}>
-            {arabicText}
-          </Text>
+          <SkiaVersePreview verseKey={verseKey} />
         </View>
       </Pressable>
     );
@@ -135,13 +121,6 @@ const createStyles = (theme: Theme) => {
     arabicContainer: {
       padding: moderateScale(16),
       paddingBottom: moderateScale(18),
-    },
-    arabicText: {
-      fontSize: moderateScale(20),
-      color: theme.colors.text,
-      textAlign: 'center',
-      writingDirection: 'rtl',
-      lineHeight: moderateScale(38),
     },
   });
 };
