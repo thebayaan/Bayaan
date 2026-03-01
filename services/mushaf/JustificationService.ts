@@ -137,6 +137,65 @@ const finalIsolAlternates = 'ىصضسشفقبتثنكيئ';
 const dualJoinLetters = quranTextService.dualJoinLetters;
 const rightNoJoinLetters = quranTextService.rightNoJoinLetters;
 
+// --- Simple justification helpers (used by IndoPak) ---
+
+const basesSet = new Set<number>();
+for (let i = 0; i < dualJoinLetters.length; i++) {
+  basesSet.add(dualJoinLetters.charCodeAt(i));
+}
+for (let i = 0; i < rightNoJoinLetters.length; i++) {
+  basesSet.add(rightNoJoinLetters.charCodeAt(i));
+}
+
+interface SimpleSubWordInfo {
+  baseText: string;
+  baseIndexes: number[];
+}
+
+const enum SimpleAppliedResult {
+  NoChange,
+  Positive,
+  Overflow,
+  Forbidden,
+}
+
+const rightCharsSimple = dualJoinLetters;
+const leftCharsSimple = dualJoinLetters + rightNoJoinLetters.replace('ء', '');
+const rightKashSimple = rightCharsSimple.replace(/[لك]/gu, '');
+const leftKashidaFinaSimple = leftCharsSimple.replace(/[وهصضطظ]/gu, '');
+const leftKashidaMediSimple = leftKashidaFinaSimple.replace('ه', '');
+const finalAscendantSimple = 'آادذٱأإكلهة';
+const jhkSimple = 'جحخ';
+
+const simpleAltFinPat = `^.*([بتثفكنصضسشقيئى])$`;
+const simpleAltFinReg = new RegExp(simpleAltFinPat, 'gdu');
+const simpleFinalKashidaEndWord = `^.*([${rightKashSimple}][آاٱأإملهة])$`;
+const simpleFinalKashida = `^.*([${rightKashSimple}][دذآاٱأإملهة])$`;
+const simpleHahKashida = `^.*([${jhkSimple}][${leftKashidaMediSimple}]).*$|^.*([${jhkSimple}][هة])$`;
+const simpleHahFinaAscenReg = new RegExp(
+  simpleHahKashida + '|' + simpleFinalKashidaEndWord,
+  'gdu',
+);
+const simpleBehBehPat = `^.+([بتثنيسشصض][بتثنيم]).+$`;
+const simpleRehPat = `.*([${rightKashSimple}][رز])`;
+const simpleOtherPat = `.*([${rightKashSimple}](?:[ل]|[${leftKashidaMediSimple}]))`;
+const simpleKafPat = `^.*([ك].).*$`;
+const simplePatternAll =
+  simpleAltFinPat +
+  '|' +
+  simpleHahKashida +
+  '|' +
+  simpleFinalKashida +
+  '|' +
+  simpleBehBehPat +
+  '|' +
+  simpleRehPat +
+  '|' +
+  simpleOtherPat +
+  '|' +
+  simpleKafPat;
+const simpleRegExprAll = new RegExp(simplePatternAll, 'gdu');
+
 export class JustService {
   private lineText: string;
   private textStyle: SkTextStyle;
@@ -145,6 +204,7 @@ export class JustService {
   private desiredWidth: number;
   private fontSize: number;
   private paraBuilder: SkParagraphBuilder;
+  private fontFamily: string;
 
   constructor(
     private pageNumber: number,
@@ -156,6 +216,7 @@ export class JustService {
     pParBuilder?: SkParagraphBuilder,
     fontFamily: string = 'DigitalKhatt',
   ) {
+    this.fontFamily = fontFamily;
     this.desiredWidth = lineWidthRatio * this.lineWidth;
     this.lineText = quranTextService.getLineText(pageNumber, lineIndex);
     this.parInfiniteWidth = 1.5 * this.desiredWidth;
@@ -245,8 +306,11 @@ export class JustService {
 
       currentLineWidth += stretch;
 
-      // Kashida stretching
-      if (desiredWidth > currentLineWidth) {
+      // Kashida stretching (skip for IndoPak — no cv01/cv02 font features)
+      if (
+        desiredWidth > currentLineWidth &&
+        this.fontFamily !== 'DigitalKhattIndoPak'
+      ) {
         justResults = this.stretchLine(
           layOutResult,
           currentLineWidth,
@@ -711,6 +775,497 @@ export class JustService {
     const paragraph = paragraphBuilder.pop().build();
     paragraph.layout(this.parInfiniteWidth);
     return paragraph;
+  }
+
+  // --- Simple justification (IndoPak) ---
+
+  private computeSubwords(wordText: string): {
+    baseText: string;
+    subwords: SimpleSubWordInfo[];
+  } {
+    const subwords: SimpleSubWordInfo[] = [{baseText: '', baseIndexes: []}];
+    let fullBaseText = '';
+
+    for (let i = 0; i < wordText.length; i++) {
+      const char = wordText.charAt(i);
+      if (!basesSet.has(char.charCodeAt(0))) continue;
+
+      fullBaseText += char;
+
+      let isHamza = false;
+      if (char === 'ء') {
+        subwords.push({baseText: '', baseIndexes: []});
+        isHamza = true;
+      }
+
+      const subWord = subwords[subwords.length - 1];
+      subWord.baseText += char;
+      subWord.baseIndexes.push(i);
+
+      if (
+        i < wordText.length - 1 &&
+        rightNoJoinLetters.includes(char) &&
+        !isHamza
+      ) {
+        subwords.push({baseText: '', baseIndexes: []});
+      }
+    }
+
+    return {baseText: fullBaseText, subwords};
+  }
+
+  private stretchLineSimple(
+    layoutResult: LayoutResult[],
+    initialLineWidth: number,
+    desiredWidth: number,
+  ): JustInfo {
+    const wordInfos = this.lineTextInfo.wordInfos;
+
+    const justInfo: JustInfo = {
+      textLineWidth: initialLineWidth,
+      fontFeatures: new Map(),
+      layoutResult,
+      desiredWidth,
+    };
+
+    // Pre-compute subwords for each word
+    const wordSubwords = wordInfos.map(wi => this.computeSubwords(wi.text));
+
+    // Phase 1: Match each word to a stretch type (priority 1 > 2 > 3)
+    interface SubWordMatch {
+      subWordIndex: number;
+      match: RegExpExecArray | null;
+      type: number;
+    }
+
+    const matchResult: SubWordMatch[] = [];
+
+    // IndoPak: firstWordIncluded = false → skip word 0
+    const firstWordIndex = 1;
+
+    for (let wordIndex = 0; wordIndex < wordInfos.length; wordIndex++) {
+      const result: SubWordMatch = {subWordIndex: -1, match: null, type: 0};
+      const wordInfo = wordInfos[wordIndex];
+
+      if (
+        !wordSubwords[wordIndex].baseText.length ||
+        wordIndex < firstWordIndex
+      ) {
+        matchResult[wordIndex] = result;
+        continue;
+      }
+
+      const lastIndex = wordSubwords[wordIndex].subwords.length - 1;
+      let subWord = wordSubwords[wordIndex].subwords[lastIndex];
+
+      // Priority 1: final/isolated alternates
+      simpleAltFinReg.lastIndex = 0;
+      let match = simpleAltFinReg.exec(subWord.baseText);
+      if (match) {
+        result.subWordIndex = lastIndex;
+        result.match = match;
+        result.type = 1;
+      } else if (
+        !'يئى'.includes(
+          wordSubwords[wordIndex].baseText[
+            wordSubwords[wordIndex].baseText.length - 1
+          ],
+        )
+      ) {
+        // Priority 2: hah/final-ascendant kashida
+        simpleHahFinaAscenReg.lastIndex = 0;
+        match = simpleHahFinaAscenReg.exec(subWord.baseText);
+        if (match) {
+          result.subWordIndex = lastIndex;
+          result.match = match;
+          result.type = 2;
+        } else {
+          // Priority 3: general pattern (search all subwords from end)
+          for (let subIndex = lastIndex; subIndex >= 0; subIndex--) {
+            subWord = wordSubwords[wordIndex].subwords[subIndex];
+            simpleRegExprAll.lastIndex = 0;
+            match = simpleRegExprAll.exec(subWord.baseText);
+            if (match) {
+              result.subWordIndex = subIndex;
+              result.match = match;
+              result.type = 3;
+              break;
+            }
+          }
+        }
+      }
+      matchResult[wordIndex] = result;
+    }
+
+    // Phase 2: Apply stretching
+    const stretchedWords = new Map<number, boolean>();
+    const nbLevelAlt = 2;
+    const nbLevelKashida = 2;
+
+    for (
+      let level = 1;
+      level <= Math.max(nbLevelAlt, nbLevelKashida);
+      level++
+    ) {
+      for (
+        let wordIndex = wordInfos.length - 1;
+        wordIndex >= firstWordIndex;
+        wordIndex--
+      ) {
+        // wordByWord = true → skip if neighbor was just stretched
+        if (stretchedWords.get(wordIndex + 1)) continue;
+
+        let appliedResult: SimpleAppliedResult | undefined;
+
+        const subWordsMatch = matchResult[wordIndex];
+        if (!subWordsMatch?.match) continue;
+
+        const subWordIndex = subWordsMatch.subWordIndex;
+        const subWordInfo = wordSubwords[wordIndex].subwords[subWordIndex];
+        const wordInfo = wordInfos[wordIndex];
+
+        const matchIndices = (subWordsMatch.match as any).indices;
+        let matchIndex: number | undefined;
+        for (let index = 1; index < matchIndices.length; index++) {
+          if (matchIndices[index]) {
+            matchIndex = index;
+          }
+        }
+        if (matchIndex === undefined) continue;
+        const matchRange = matchIndices[matchIndex];
+
+        if (
+          subWordsMatch.type === 1 ||
+          (subWordsMatch.type === 3 && matchIndex === 1)
+        ) {
+          // Alternates
+          if (level <= nbLevelAlt) {
+            const baseIndex = matchRange[0];
+            const indexInLine =
+              wordInfo.startIndex + subWordInfo.baseIndexes[baseIndex];
+            appliedResult = this.applyAlternateSimple(
+              justInfo,
+              wordIndex,
+              indexInLine,
+            );
+          }
+        } else if (level <= nbLevelKashida) {
+          const firstSubWordMatchIndex = matchRange[0];
+          const secondSubWordMatchIndex = firstSubWordMatchIndex + 1;
+
+          if (matchIndex === 8 && subWordsMatch.type === 3) {
+            // Kaf
+            appliedResult = this.applyKafSimple(
+              justInfo,
+              wordIndex,
+              subWordInfo,
+              firstSubWordMatchIndex,
+              secondSubWordMatchIndex,
+            );
+          } else {
+            // Kashidas
+            appliedResult = this.applyKashidaSimple(
+              justInfo,
+              wordIndex,
+              subWordInfo,
+              firstSubWordMatchIndex,
+              secondSubWordMatchIndex,
+            );
+          }
+        }
+
+        if (appliedResult === SimpleAppliedResult.Overflow) {
+          return justInfo;
+        } else if (appliedResult === SimpleAppliedResult.Positive) {
+          stretchedWords.set(wordIndex, true);
+        }
+      }
+    }
+    return justInfo;
+  }
+
+  private applyAlternateSimple(
+    justInfo: JustInfo,
+    wordIndex: number,
+    indexInLine: number,
+  ): SimpleAppliedResult {
+    const tempResult = new Map(justInfo.fontFeatures);
+    const prevFeatures = tempResult.get(indexInLine);
+
+    // If cv02 already applied, forbidden
+    const cv02Value = prevFeatures?.find(a => a.name === 'cv02')?.value || 0;
+    if (cv02Value > 0) return SimpleAppliedResult.Forbidden;
+
+    const newFeatures = this.mergeFeatures(prevFeatures, [
+      {
+        feature: {name: 'cv01', value: 1},
+        calcNewValue: (prev, curr) => Math.min((prev || 0) + curr, 12),
+      },
+    ])!;
+    tempResult.set(indexInLine, newFeatures);
+
+    // Adjust fatha if present
+    let fathaIndex: number | undefined;
+    if (this.lineText[indexInLine + 1] === '\u064E') {
+      fathaIndex = indexInLine + 1;
+    } else if (
+      this.lineText[indexInLine + 1] === '\u0651' &&
+      this.lineText[indexInLine + 2] === '\u064E'
+    ) {
+      fathaIndex = indexInLine + 2;
+    }
+
+    if (fathaIndex !== undefined) {
+      const cv01FathaValue =
+        newFeatures.find(a => a.name === 'cv01')?.value || 0;
+      tempResult.set(fathaIndex, [
+        {name: 'cv01', value: 1 + Math.floor(cv01FathaValue / 3)},
+      ]);
+    }
+
+    return this.tryApplyFeaturesSimple(wordIndex, justInfo, tempResult);
+  }
+
+  private applyKashidaSimple(
+    justInfo: JustInfo,
+    wordIndex: number,
+    subWordInfo: SimpleSubWordInfo,
+    first: number,
+    second: number,
+  ): SimpleAppliedResult {
+    const wordInfos = this.lineTextInfo.wordInfos;
+    const wordInfo = wordInfos[wordIndex];
+    const firstMatchIndex = subWordInfo.baseIndexes[first];
+    const secondMatchIndex = subWordInfo.baseIndexes[second];
+    const firstIndexInLine = wordInfo.startIndex + firstMatchIndex;
+    const secondIndexInLine = wordInfo.startIndex + secondMatchIndex;
+
+    const tempResult = new Map(justInfo.fontFeatures);
+
+    const firstPrevFeatures = tempResult.get(firstIndexInLine);
+    const secondPrevFeatures = tempResult.get(secondIndexInLine);
+
+    // If second char already has cv01, forbidden
+    if (secondPrevFeatures?.find(a => a.name === 'cv01'))
+      return SimpleAppliedResult.Forbidden;
+
+    const chark3 = this.lineText[firstIndexInLine];
+    const chark4 = this.lineText[secondIndexInLine];
+
+    // Forbidden pairs
+    if (
+      chark4 === 'ق' &&
+      subWordInfo.baseIndexes[subWordInfo.baseIndexes.length - 1] ===
+        secondMatchIndex
+    ) {
+      return SimpleAppliedResult.Forbidden;
+    } else if (
+      chark3 === 'ل' &&
+      (chark4 === 'ك' ||
+        chark4 === 'د' ||
+        chark4 === 'ذ' ||
+        chark4 === 'ة' ||
+        (chark4 === 'ه' &&
+          subWordInfo.baseIndexes[subWordInfo.baseIndexes.length - 1] ===
+            secondMatchIndex))
+    ) {
+      return SimpleAppliedResult.Forbidden;
+    } else if (
+      'ئبتثنيى'.includes(chark3) &&
+      subWordInfo.baseIndexes[0] !== firstMatchIndex &&
+      'رز'.includes(chark4)
+    ) {
+      return SimpleAppliedResult.Forbidden;
+    }
+
+    const secondNewFeatures: {name: string; value: number}[] = [];
+
+    let cv01Value = 0;
+
+    const firstAppliedFeatures: Appliedfeature[] = [
+      {
+        feature: {name: 'cv01', value: 1},
+        calcNewValue: (prev, curr) => {
+          cv01Value = Math.min((prev || 0) + curr, 6);
+          return cv01Value;
+        },
+      },
+    ];
+
+    if ('بتثنيئ'.includes(chark3)) {
+      firstAppliedFeatures.push({feature: {name: 'cv10', value: 1}});
+    }
+
+    const finalSubWordMatch =
+      subWordInfo.baseIndexes[subWordInfo.baseIndexes.length - 1] ===
+      secondMatchIndex;
+
+    // Decomposition features
+    if ('ه'.includes(chark3) && 'م'.includes(chark4) && finalSubWordMatch) {
+      firstAppliedFeatures.push({feature: {name: 'cv11', value: 1}});
+      secondNewFeatures.push({name: 'cv11', value: 1});
+    } else if (
+      'بتثنيئ'.includes(chark3) &&
+      subWordInfo.baseIndexes[0] === firstMatchIndex &&
+      'جحخ'.includes(chark4)
+    ) {
+      firstAppliedFeatures.push({feature: {name: 'cv12', value: 1}});
+      secondNewFeatures.push({name: 'cv12', value: 1});
+    } else if (
+      'م'.includes(chark3) &&
+      subWordInfo.baseIndexes[0] === firstMatchIndex &&
+      'جحخ'.includes(chark4)
+    ) {
+      firstAppliedFeatures.push({feature: {name: 'cv13', value: 1}});
+      secondNewFeatures.push({name: 'cv13', value: 1});
+    } else if (
+      'فق'.includes(chark3) &&
+      subWordInfo.baseIndexes[0] === firstMatchIndex &&
+      'جحخ'.includes(chark4)
+    ) {
+      firstAppliedFeatures.push({feature: {name: 'cv14', value: 1}});
+      secondNewFeatures.push({name: 'cv14', value: 1});
+    } else if (
+      'ل'.includes(chark3) &&
+      subWordInfo.baseIndexes[0] === firstMatchIndex &&
+      'جحخ'.includes(chark4)
+    ) {
+      firstAppliedFeatures.push({feature: {name: 'cv15', value: 1}});
+      secondNewFeatures.push({name: 'cv15', value: 1});
+    } else if (
+      'عغ'.includes(chark3) &&
+      subWordInfo.baseIndexes[0] === firstMatchIndex &&
+      ('آادذٱأإل'.includes(chark4) ||
+        ('بتثنيئ'.includes(chark4) && 'سش'.includes(subWordInfo.baseText?.[2])))
+    ) {
+      firstAppliedFeatures.push({feature: {name: 'cv16', value: 1}});
+      secondNewFeatures.push({name: 'cv16', value: 1});
+    } else if ('جحخ'.includes(chark3)) {
+      if (
+        'آادذٱأإل'.includes(chark4) ||
+        ('هة'.includes(chark4) && finalSubWordMatch) ||
+        ('بتثنيئ'.includes(chark4) &&
+          subWordInfo.baseIndexes[subWordInfo.baseIndexes.length - 2] ===
+            secondMatchIndex &&
+          'رزن'.includes(subWordInfo.baseText[subWordInfo.baseText.length - 1]))
+      ) {
+        firstAppliedFeatures.push({feature: {name: 'cv16', value: 1}});
+        secondNewFeatures.push({name: 'cv16', value: 1});
+      } else if (
+        subWordInfo.baseIndexes[0] === firstMatchIndex &&
+        'م'.includes(chark4)
+      ) {
+        firstAppliedFeatures.push({feature: {name: 'cv18', value: 1}});
+        secondNewFeatures.push({name: 'cv18', value: 1});
+      }
+    } else if ('سشصض'.includes(chark3) && 'رز'.includes(chark4)) {
+      firstAppliedFeatures.push({feature: {name: 'cv17', value: 1}});
+      secondNewFeatures.push({name: 'cv17', value: 1});
+    }
+
+    const firstNewFeatures = this.mergeFeatures(
+      firstPrevFeatures,
+      firstAppliedFeatures,
+    )!;
+
+    let cv02Value: number;
+    if (finalAscendantSimple.includes(chark4) && finalSubWordMatch) {
+      cv02Value = cv01Value;
+    } else {
+      cv02Value = 2 * cv01Value;
+    }
+
+    secondNewFeatures.push({name: 'cv02', value: cv02Value});
+
+    tempResult.set(firstIndexInLine, firstNewFeatures);
+    tempResult.set(secondIndexInLine, secondNewFeatures);
+
+    return this.tryApplyFeaturesSimple(wordIndex, justInfo, tempResult);
+  }
+
+  private applyKafSimple(
+    justInfo: JustInfo,
+    wordIndex: number,
+    subWordInfo: SimpleSubWordInfo,
+    first: number,
+    second: number,
+  ): SimpleAppliedResult {
+    const wordInfos = this.lineTextInfo.wordInfos;
+    const wordInfo = wordInfos[wordIndex];
+    const firstMatchIndex = subWordInfo.baseIndexes[first];
+    const secondMatchIndex = subWordInfo.baseIndexes[second];
+    const firstIndexInLine = wordInfo.startIndex + firstMatchIndex;
+    const secondIndexInLine = wordInfo.startIndex + secondMatchIndex;
+
+    const tempResult = new Map(justInfo.fontFeatures);
+
+    const firstPrevFeatures = tempResult.get(firstIndexInLine);
+    const secondPrevFeatures = tempResult.get(secondIndexInLine);
+
+    const firstAppliedFeatures: Appliedfeature[] = [
+      {feature: {name: 'cv03', value: 1}, calcNewValue: () => 1},
+    ];
+
+    tempResult.set(
+      firstIndexInLine,
+      this.mergeFeatures(firstPrevFeatures, firstAppliedFeatures)!,
+    );
+
+    const secondAppliedFeatures: Appliedfeature[] = [
+      {feature: {name: 'cv03', value: 1}, calcNewValue: () => 1},
+    ];
+
+    const secondMerged = this.mergeFeatures(
+      secondPrevFeatures,
+      secondAppliedFeatures,
+    )!;
+    tempResult.set(secondIndexInLine, secondMerged);
+
+    // Adjust fatha on kaf if present
+    let fathaIndex: number | undefined;
+    if (this.lineText[firstIndexInLine + 1] === '\u064E') {
+      fathaIndex = firstIndexInLine + 1;
+    } else if (
+      this.lineText[firstIndexInLine + 1] === '\u0651' &&
+      this.lineText[firstIndexInLine + 2] === '\u064E'
+    ) {
+      fathaIndex = firstIndexInLine + 2;
+    }
+
+    if (fathaIndex !== undefined) {
+      const cv01Value = secondMerged.find(a => a.name === 'cv01')?.value || 0;
+      tempResult.set(fathaIndex, [
+        {name: 'cv01', value: 1 + Math.floor(cv01Value / 3)},
+      ]);
+    }
+
+    return this.tryApplyFeaturesSimple(wordIndex, justInfo, tempResult);
+  }
+
+  private tryApplyFeaturesSimple(
+    wordIndex: number,
+    justInfo: JustInfo,
+    newFeatures: Map<number, SkTextFontFeatures[]>,
+  ): SimpleAppliedResult {
+    const layout = justInfo.layoutResult[wordIndex];
+
+    const paragraph = this.shapeWord(wordIndex, newFeatures);
+    const wordNewWidth = paragraph.getLongestLine();
+    const diff = wordNewWidth - layout.parWidth;
+
+    if (
+      wordNewWidth !== layout.parWidth &&
+      justInfo.textLineWidth + diff < justInfo.desiredWidth
+    ) {
+      justInfo.textLineWidth += diff;
+      layout.parWidth = wordNewWidth;
+      justInfo.fontFeatures = newFeatures;
+      return SimpleAppliedResult.Positive;
+    } else if (diff === 0) {
+      return SimpleAppliedResult.NoChange;
+    } else {
+      return SimpleAppliedResult.Overflow;
+    }
   }
 
   private matchingCondition(context: LookupContext): boolean {

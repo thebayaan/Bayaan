@@ -9,6 +9,7 @@ import {digitalKhattDataService} from './DigitalKhattDataService';
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
   DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
+  DigitalKhattIndoPak: require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
   QuranCommon: require('@/data/mushaf/quran-common.ttf'),
   SurahNameV4: require('@/data/mushaf/surah-name-v4.ttf'),
   SurahNameQCF: require('@/data/mushaf/surah-name-qcf.ttf'),
