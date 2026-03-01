@@ -20,6 +20,7 @@ import {
 } from '@/components/Icons';
 import {Ionicons} from '@expo/vector-icons';
 import {useAmbientStore} from '@/store/ambientStore';
+import Color from 'color';
 
 interface ControlButtonsProps {
   onSpeedPress: () => void;
@@ -36,22 +37,7 @@ interface ControlButtonsProps {
 interface Styles {
   wrapper: ViewStyle;
   button: ViewStyle;
-  speedButton: ViewStyle;
-  sleepButton: ViewStyle;
-  ambientButton: ViewStyle;
-  followAlongButton: ViewStyle;
-  middleButton: ViewStyle;
-  activeButton: ViewStyle;
   speedButtonText: TextStyle;
-  activeText: TextStyle;
-  speedX: TextStyle;
-  mediumButton: ViewStyle;
-  expandedButton: ViewStyle;
-  queueButton: ViewStyle;
-  mushafLayoutButton: ViewStyle;
-  sideButtonsContainer: ViewStyle;
-  controlsContainer: ViewStyle;
-  sideButton: ViewStyle;
 }
 
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
@@ -91,144 +77,116 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   const isTimerActive =
     settings.sleepTimerEnd !== null && settings.sleepTimerEnd > Date.now();
 
-  // Create subtle active background color with opacity
-  const activeBackgroundColor = `${theme.colors.text}20`; // 20% opacity
+  const activeBackgroundColor = Color(theme.colors.text).alpha(0.08).toString();
+  const defaultIconColor = Color(theme.colors.text).alpha(0.7).toString();
+  const activeIconColor = theme.colors.text;
 
   return (
     <View style={styles.wrapper}>
       {onMushafLayoutPress && (
-        <Pressable
-          onPress={handleMushafLayoutPress}
-          style={[styles.sideButton, styles.mushafLayoutButton]}>
+        <Pressable onPress={handleMushafLayoutPress} style={styles.button}>
           <Ionicons
             name="options-outline"
-            size={moderateScale(22)}
-            color={theme.colors.text}
+            size={moderateScale(20)}
+            color={defaultIconColor}
           />
         </Pressable>
       )}
 
-      <View
+      <Pressable
+        onPress={onSpeedPress}
         style={[
-          styles.controlsContainer,
-          {
-            backgroundColor: theme.colors.card,
-            shadowColor: theme.colors.shadow,
+          styles.button,
+          playbackRate !== 1 && {backgroundColor: activeBackgroundColor},
+        ]}>
+        <Text
+          style={[
+            styles.speedButtonText,
+            {
+              color: playbackRate !== 1 ? activeIconColor : defaultIconColor,
+            },
+          ]}>
+          {`${playbackRate}x`}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={handleRepeatPress}
+        style={[
+          styles.button,
+          settings.repeatMode !== 'none' && {
+            backgroundColor: activeBackgroundColor,
           },
         ]}>
-        <Pressable
-          onPress={onSpeedPress}
-          style={[
-            styles.button,
-            styles.speedButton,
-            playbackRate !== 1 && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-            (playbackRate === 0.5 || playbackRate === 1.5) &&
-              styles.mediumButton,
-            (playbackRate === 0.75 ||
-              playbackRate === 1.25 ||
-              playbackRate === 1.75) &&
-              styles.expandedButton,
-          ]}>
-          <Text
-            style={[
-              styles.speedButtonText,
-              {color: theme.colors.text},
-              playbackRate !== 1 && {fontWeight: '700'},
-            ]}>
-            {`${playbackRate}`}
-            <Text style={styles.speedX}>x</Text>
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleRepeatPress}
-          style={[
-            styles.button,
-            styles.middleButton,
-            settings.repeatMode !== 'none' && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-          ]}>
-          {settings.repeatMode === 'none' && (
-            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
-          )}
-          {settings.repeatMode === 'queue' && (
-            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
-          )}
-          {settings.repeatMode === 'track' && (
-            <RepeatOneIcon size={moderateScale(24)} color={theme.colors.text} />
-          )}
-        </Pressable>
-
-        <Pressable
-          onPress={onSleepTimerPress}
-          style={[
-            styles.button,
-            styles.sleepButton,
-            isTimerActive && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-          ]}>
-          <TimerIcon
-            color={theme.colors.text}
-            size={moderateScale(22)}
-            filled={!!isTimerActive}
-          />
-        </Pressable>
-
-        <Pressable
-          onPress={onAmbientPress}
-          style={[
-            styles.button,
-            styles.ambientButton,
-            ambientEnabled && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-          ]}>
-          <AmbientIcon
-            color={theme.colors.text}
-            size={moderateScale(22)}
-            filled={ambientEnabled}
-          />
-        </Pressable>
-
-        <Pressable
-          onPress={onFollowAlongPress}
-          style={[
-            styles.button,
-            styles.followAlongButton,
-            followAlongAvailable &&
-              followAlongActive && [
-                styles.activeButton,
-                {backgroundColor: activeBackgroundColor},
-              ],
-            !followAlongAvailable && {opacity: 0.35},
-          ]}>
-          <Ionicons
-            name="locate-outline"
+        {settings.repeatMode === 'track' ? (
+          <RepeatOneIcon size={moderateScale(20)} color={activeIconColor} />
+        ) : (
+          <RepeatIcon
             size={moderateScale(20)}
-            color={theme.colors.text}
+            color={
+              settings.repeatMode === 'queue'
+                ? activeIconColor
+                : defaultIconColor
+            }
           />
-        </Pressable>
-      </View>
+        )}
+      </Pressable>
+
+      <Pressable
+        onPress={onSleepTimerPress}
+        style={[
+          styles.button,
+          isTimerActive && {backgroundColor: activeBackgroundColor},
+        ]}>
+        <TimerIcon
+          color={isTimerActive ? activeIconColor : defaultIconColor}
+          size={moderateScale(20)}
+          filled={!!isTimerActive}
+        />
+      </Pressable>
+
+      <Pressable
+        onPress={onAmbientPress}
+        style={[
+          styles.button,
+          ambientEnabled && {backgroundColor: activeBackgroundColor},
+        ]}>
+        <AmbientIcon
+          color={ambientEnabled ? activeIconColor : defaultIconColor}
+          size={moderateScale(20)}
+          filled={ambientEnabled}
+        />
+      </Pressable>
+
+      <Pressable
+        onPress={onFollowAlongPress}
+        style={[
+          styles.button,
+          followAlongAvailable &&
+            followAlongActive && {backgroundColor: activeBackgroundColor},
+          !followAlongAvailable && {opacity: 0.35},
+        ]}>
+        <Ionicons
+          name="locate-outline"
+          size={moderateScale(20)}
+          color={
+            followAlongAvailable && followAlongActive
+              ? activeIconColor
+              : defaultIconColor
+          }
+        />
+      </Pressable>
 
       <Pressable
         onPress={onQueuePress}
         style={[
-          styles.sideButton,
-          styles.queueButton,
-          showQueue && [
-            styles.activeButton,
-            {backgroundColor: activeBackgroundColor},
-          ],
+          styles.button,
+          showQueue && {backgroundColor: activeBackgroundColor},
         ]}>
-        <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
+        <QueueIcon
+          size={moderateScale(20)}
+          color={showQueue ? activeIconColor : defaultIconColor}
+        />
       </Pressable>
     </View>
   );
@@ -237,104 +195,22 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 const styles = StyleSheet.create<Styles>({
   wrapper: {
     flexDirection: 'row',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(16),
     width: '100%',
-    position: 'relative',
-  },
-  controlsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(8),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(16),
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  mushafLayoutButton: {
-    position: 'absolute',
-    left: moderateScale(16),
-    paddingHorizontal: moderateScale(6),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(12),
-  },
-  queueButton: {
-    position: 'absolute',
-    right: moderateScale(16),
-    paddingHorizontal: moderateScale(6),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(12),
   },
   button: {
-    width: moderateScale(32),
-    height: moderateScale(32),
+    width: moderateScale(38),
+    height: moderateScale(38),
     borderRadius: moderateScale(12),
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  speedButton: {
-    borderRadius: moderateScale(12),
-  },
-  middleButton: {
-    borderRadius: moderateScale(12),
-    marginHorizontal: moderateScale(6),
-  },
-  activeButton: {
-    // No specific style needed here anymore, background applied inline
-  },
   speedButtonText: {
-    fontSize: moderateScale(16),
-    fontWeight: '600',
-  },
-  activeText: {
-    // No longer needed as we're not changing text color
-  },
-  speedX: {
-    fontSize: moderateScale(14),
-  },
-  mediumButton: {
-    width: moderateScale(42),
-    paddingHorizontal: moderateScale(3),
-  },
-  expandedButton: {
-    width: moderateScale(48),
-    paddingHorizontal: moderateScale(4),
-  },
-  sleepButton: {
-    marginLeft: 0,
-    borderRadius: moderateScale(12),
-  },
-  ambientButton: {
-    marginLeft: moderateScale(6),
-    borderRadius: moderateScale(12),
-  },
-  followAlongButton: {
-    marginLeft: moderateScale(6),
-    borderRadius: moderateScale(12),
-  },
-  sideButtonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideButton: {
-    position: 'absolute',
-    top: moderateScale(10),
-    bottom: moderateScale(10),
-    width: moderateScale(44),
-    height: moderateScale(44),
-    borderRadius: moderateScale(14),
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(128, 128, 128, 0.05)',
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-SemiBold',
   },
 });
