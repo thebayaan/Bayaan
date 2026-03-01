@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -21,6 +21,10 @@ export const CollectionOptionsSheet = (
   const subtitle = payload?.subtitle;
   const options = payload?.options ?? [];
 
+  // Separate destructive from non-destructive options
+  const normalOptions = options.filter(opt => !opt.destructive);
+  const destructiveOptions = options.filter(opt => opt.destructive);
+
   return (
     <ActionSheet
       id={props.sheetId}
@@ -32,16 +36,43 @@ export const CollectionOptionsSheet = (
           <Text style={styles.title}>{title}</Text>
           {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
         </View>
-        <View style={styles.optionsGrid}>
-          {options.map((opt, i) => (
+
+        {normalOptions.length > 0 && (
+          <View style={styles.card}>
+            {normalOptions.map((opt, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <View style={styles.divider} />}
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                    opt.disabled && styles.optionDisabled,
+                  ]}
+                  onPress={() => {
+                    SheetManager.hide('collection-options');
+                    opt.onPress();
+                  }}
+                  disabled={opt.disabled}>
+                  {opt.customIcon || (
+                    <Feather
+                      name={opt.icon as any}
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                  )}
+                  <Text style={styles.optionText}>{opt.label}</Text>
+                </Pressable>
+              </React.Fragment>
+            ))}
+          </View>
+        )}
+
+        {destructiveOptions.map((opt, i) => (
+          <View key={`destructive-${i}`} style={styles.destructiveCard}>
             <Pressable
-              key={i}
               style={({pressed}) => [
-                opt.destructive ? styles.optionDestructive : styles.option,
-                pressed &&
-                  (opt.destructive
-                    ? styles.optionDestructivePressed
-                    : styles.optionPressed),
+                styles.optionDestructive,
+                pressed && styles.optionDestructivePressed,
                 opt.disabled && styles.optionDisabled,
               ]}
               onPress={() => {
@@ -52,21 +83,14 @@ export const CollectionOptionsSheet = (
               {opt.customIcon || (
                 <Feather
                   name={opt.icon as any}
-                  size={moderateScale(20)}
-                  color={opt.destructive ? '#ff4444' : theme.colors.text}
+                  size={moderateScale(18)}
+                  color="#ff4444"
                 />
               )}
-              <Text
-                style={
-                  opt.destructive
-                    ? styles.optionTextDestructive
-                    : styles.optionText
-                }>
-                {opt.label}
-              </Text>
+              <Text style={styles.optionTextDestructive}>{opt.label}</Text>
             </Pressable>
-          ))}
-        </View>
+          </View>
+        ))}
       </View>
     </ActionSheet>
   );
@@ -78,11 +102,16 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
@@ -90,62 +119,74 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       alignItems: 'center',
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(20),
-      gap: moderateScale(4),
+      marginTop: moderateScale(4),
+      marginBottom: moderateScale(14),
+      gap: moderateScale(2),
     },
     title: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     subtitle: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
-    optionsGrid: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
+    },
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(14),
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionDisabled: {
       opacity: 0.5,
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    optionText: {
+      flex: 1,
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+      marginLeft: moderateScale(10),
+    },
+    destructiveCard: {
+      backgroundColor: 'rgba(255, 68, 68, 0.1)',
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
     },
     optionDestructive: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: 'rgba(255, 68, 68, 0.1)',
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionDestructivePressed: {
       backgroundColor: 'rgba(255, 68, 68, 0.18)',
     },
-    optionText: {
-      flex: 1,
-      fontSize: moderateScale(15),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginLeft: moderateScale(12),
-    },
     optionTextDestructive: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: '#ff4444',
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
   });

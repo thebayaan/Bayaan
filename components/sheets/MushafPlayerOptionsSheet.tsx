@@ -606,10 +606,15 @@ const createStyles = (theme: Theme) =>
       borderTopRightRadius: ms(20),
       paddingTop: ms(8),
       maxHeight: '85%',
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: ms(40),
+      height: 2.5,
     },
     scrollView: {
       flexGrow: 0,

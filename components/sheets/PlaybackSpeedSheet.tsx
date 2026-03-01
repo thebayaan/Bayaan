@@ -1,5 +1,5 @@
 import React from 'react';
-import {TouchableOpacity, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -38,14 +38,14 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
       <View style={styles.container}>
         <View style={styles.speedContainer}>
           {SPEEDS.map(speed => (
-            <TouchableOpacity
+            <Pressable
               key={speed}
-              style={[
+              style={({pressed}) => [
                 styles.speedButton,
                 currentSpeed === speed && styles.selectedSpeed,
+                pressed && !currentSpeed && styles.speedButtonPressed,
               ]}
-              onPress={() => handleSpeedSelect(speed)}
-              activeOpacity={0.7}>
+              onPress={() => handleSpeedSelect(speed)}>
               <Text
                 style={[
                   styles.speedText,
@@ -53,7 +53,7 @@ export const PlaybackSpeedSheet = (props: SheetProps<'playback-speed'>) => {
                 ]}>
                 {speed}x
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
       </View>
@@ -68,16 +68,21 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),
@@ -99,7 +104,10 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(10),
       paddingHorizontal: moderateScale(20),
       borderRadius: moderateScale(20),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    speedButtonPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
     },
     selectedSpeed: {
       backgroundColor: theme.colors.text,

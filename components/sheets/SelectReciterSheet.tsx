@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {View, Text, TouchableOpacity, Switch} from 'react-native';
+import {View, Text, Pressable, Switch, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useReciterStore} from '@/store/reciterStore';
@@ -21,7 +21,6 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
   const styles = createStyles(theme);
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const [, setSurahName] = useState<string>('');
-  const [pressedOption, setPressedOption] = useState<string | null>(null);
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
 
   const payload = props.payload;
@@ -115,58 +114,49 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
         </View>
 
         <View style={styles.optionsGrid}>
-          <TouchableOpacity
-            style={[
+          <Pressable
+            style={({pressed}) => [
               styles.option,
-              pressedOption === 'default' && styles.optionPressed,
+              pressed && styles.optionPressed,
             ]}
             onPress={() =>
               handleReciterSelection(handleUseDefaultReciter, 'useDefault')
-            }
-            onPressIn={() => setPressedOption('default')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            }>
             <Ionicons
               name="person-outline"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>Use Default Reciter</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
-            style={[
+          <Pressable
+            style={({pressed}) => [
               styles.option,
-              pressedOption === 'random' && styles.optionPressed,
+              pressed && styles.optionPressed,
             ]}
             onPress={() =>
               handleReciterSelection(handleUseRandomReciter, 'randomReciter')
-            }
-            onPressIn={() => setPressedOption('random')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            }>
             <DiscoverIcon size={moderateScale(20)} color={theme.colors.text} />
             <Text style={styles.optionText}>Random Reciter</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
-            style={[
+          <Pressable
+            style={({pressed}) => [
               styles.option,
-              pressedOption === 'browse' && styles.optionPressed,
+              pressed && styles.optionPressed,
             ]}
             onPress={() =>
               handleReciterSelection(handleBrowseAllReciters, 'browseAll')
-            }
-            onPressIn={() => setPressedOption('browse')}
-            onPressOut={() => setPressedOption(null)}
-            activeOpacity={1}>
+            }>
             <Ionicons
               name="people-outline"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
             <Text style={styles.optionText}>Browse All Reciters</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <View style={styles.askEveryTimeContainer}>
@@ -175,10 +165,10 @@ export const SelectReciterSheet = (props: SheetProps<'select-reciter'>) => {
             value={askEveryTime}
             onValueChange={handleAskEveryTimeToggle}
             trackColor={{
-              false: Color(theme.colors.border).alpha(0.3).toString(),
-              true: Color(theme.colors.text).alpha(0.3).toString(),
+              false: Color(theme.colors.text).alpha(0.1).toString(),
+              true: Color(theme.colors.text).alpha(0.65).toString(),
             }}
-            thumbColor={theme.colors.text}
+            thumbColor="#FFFFFF"
           />
         </View>
       </View>
@@ -193,10 +183,15 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
@@ -221,11 +216,13 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderRadius: moderateScale(12),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,
@@ -241,7 +238,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(16),
       marginTop: moderateScale(16),
       borderTopWidth: 1,
-      borderTopColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderTopColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     askEveryTimeText: {
       fontSize: moderateScale(15),

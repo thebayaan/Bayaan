@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   Pressable,
+  StyleSheet,
   Keyboard,
   Platform,
   Dimensions,
@@ -926,10 +927,15 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateScale(8),
       paddingBottom: 0,
       height: SCREEN_HEIGHT,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       flexDirection: 'row',
@@ -938,7 +944,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(20),
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerButton: {
       minWidth: moderateScale(60),
@@ -971,7 +977,7 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.08).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
       marginBottom: moderateScale(20),
     },
     fileIconContainer: {
@@ -1063,7 +1069,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(14),
       paddingVertical: moderateScale(10),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.06).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     resultNumber: {
       fontSize: moderateScale(13),

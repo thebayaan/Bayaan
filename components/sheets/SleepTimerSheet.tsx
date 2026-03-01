@@ -1,5 +1,5 @@
 import React from 'react';
-import {TouchableOpacity, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -66,11 +66,14 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
               timeToCompare > 0 && Math.abs(timeToCompare - minutes) <= 2;
 
             return (
-              <TouchableOpacity
+              <Pressable
                 key={minutes}
-                style={[styles.option, isSelected && styles.selectedTimer]}
-                onPress={() => handleTimerSelect(minutes)}
-                activeOpacity={0.7}>
+                style={({pressed}) => [
+                  styles.option,
+                  isSelected && styles.selectedTimer,
+                  pressed && !isSelected && styles.optionPressed,
+                ]}
+                onPress={() => handleTimerSelect(minutes)}>
                 <Text
                   style={[
                     styles.timerText,
@@ -78,17 +81,19 @@ export const SleepTimerSheet = (props: SheetProps<'sleep-timer'>) => {
                   ]}>
                   {minutes} min
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
         {(sleepTimer > 0 || remainingTime !== null) && (
-          <TouchableOpacity
-            style={styles.turnOffButton}
-            onPress={handleTurnOff}
-            activeOpacity={0.7}>
+          <Pressable
+            style={({pressed}) => [
+              styles.turnOffButton,
+              pressed && styles.optionPressed,
+            ]}
+            onPress={handleTurnOff}>
             <Text style={styles.turnOffText}>Turn Off Timer</Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
     </ActionSheet>
@@ -102,16 +107,21 @@ const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),
@@ -140,7 +150,10 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateScale(10),
       paddingHorizontal: moderateScale(20),
       borderRadius: moderateScale(20),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    optionPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
     },
     selectedTimer: {
       backgroundColor: theme.colors.text,
