@@ -1,5 +1,5 @@
-import React, {useMemo} from 'react';
-import {View, Text, StyleSheet, Switch, TouchableOpacity} from 'react-native';
+import React, {useMemo, useCallback, useState} from 'react';
+import {View, Text, StyleSheet, Switch, Pressable} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -9,12 +9,18 @@ import {useTajweedStore} from '@/store/tajweedStore';
 import {tajweedColors} from '@/constants/tajweedColors';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
+import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
+import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {
   useMushafSettingsStore,
   getActualFontSize,
   getDisplayValue,
   DISPLAY_MIN,
   DISPLAY_MAX,
+  type MushafRenderer,
 } from '@/store/mushafSettingsStore';
 
 // --- Pre-cache Translation/Transliteration Data --- //
@@ -58,17 +64,46 @@ interface TajweedSampleSegment {
   rule: string | null;
 }
 
+// --- Font option data ---
+interface FontOption {
+  value: MushafRenderer;
+  label: string;
+  description: string;
+}
+
+const FONT_OPTIONS: FontOption[] = [
+  {
+    value: 'dk_v1',
+    label: 'Madani 1405',
+    description: 'Classic King Fahd Complex',
+  },
+  {
+    value: 'dk_v2',
+    label: 'Madani 1421',
+    description: 'Modern King Fahd Complex',
+  },
+  {
+    value: 'dk_indopak',
+    label: 'IndoPak',
+    description: 'Subcontinent Nastaliq style',
+  },
+];
+
 // Internal reusable component for font size control
 interface FontSizeControlProps {
   label: string;
-  currentActualSize: number; // Actual size
-  onChange: (newActualSize: number) => void; // Pass actual size
+  currentActualSize: number;
+  onChange: (newActualSize: number) => void;
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
-  sampleText?: string; // Plain text for non-tajweed rendering
-  processedSampleSegments?: TajweedSampleSegment[]; // Segments for tajweed rendering
+  sampleText?: string;
+  processedSampleSegments?: TajweedSampleSegment[];
   sampleFontFamily?: string;
-  showTajweed?: boolean; // Add state to control rendering mode
+  showTajweed?: boolean;
+  skiaFontMgr?: SkTypefaceFontProvider | null;
+  skiaFontFamily?: string;
+  skiaVerseKey?: string;
+  skiaIndexedTajweedData?: IndexedTajweedData | null;
 }
 
 const FontSizeControl: React.FC<FontSizeControlProps> = ({
@@ -81,14 +116,25 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   processedSampleSegments,
   sampleFontFamily,
   showTajweed,
+  skiaFontMgr,
+  skiaFontFamily,
+  skiaVerseKey,
+  skiaIndexedTajweedData,
 }) => {
-  // Get the appropriate tajweed colors for the current theme
   const themedColors = useMemo(
     () => getThemedTajweedColors(theme.isDarkMode),
     [theme.isDarkMode],
   );
 
-  // Calculate current display value (1-10) from actual size
+  const useSkia = !!skiaFontMgr && !!skiaFontFamily;
+  const [sampleWidth, setSampleWidth] = useState(0);
+  const handleSampleLayout = useCallback(
+    (e: {nativeEvent: {layout: {width: number}}}) => {
+      setSampleWidth(e.nativeEvent.layout.width);
+    },
+    [],
+  );
+
   const currentDisplayValue = getDisplayValue(currentActualSize);
 
   const handleDecrement = () => {
@@ -103,35 +149,42 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     onChange(newActualSize);
   };
 
-  // Determine if this control is for Arabic text
   const isQPC = sampleFontFamily === 'Uthmani';
   const isArabic = isQPC;
 
-  // Memoize the rendered sample text JSX to avoid re-calculating on every render
   const memoizedSampleText = React.useMemo(() => {
-    // Create sampleBaseStyle inside useMemo
     const sampleBaseStyle = {
       fontSize: moderateScale(currentActualSize),
       color: theme.colors.text,
-      fontFamily: sampleFontFamily || 'Manrope-Regular', // Default font
+      fontFamily: sampleFontFamily || 'Manrope-Regular',
     };
 
-    // --- Refactor Arabic Rendering ---
-    if (isQPC && processedSampleSegments) {
-      // Always use processed segments for QPC
+    if (useSkia && skiaVerseKey && sampleWidth > 0) {
+      return (
+        <SkiaVerseText
+          verseKey={skiaVerseKey}
+          fontMgr={skiaFontMgr!}
+          fontFamily={skiaFontFamily!}
+          fontSize={moderateScale(currentActualSize)}
+          textColor={theme.colors.text}
+          showTajweed={showTajweed ?? false}
+          width={sampleWidth}
+          indexedTajweedData={skiaIndexedTajweedData ?? null}
+        />
+      );
+    } else if (isQPC && processedSampleSegments) {
       return (
         <Text
           style={[
             styles.sampleTextBase,
             styles.arabicSampleText,
-            sampleBaseStyle, // Apply base style here
+            sampleBaseStyle,
           ]}>
           {processedSampleSegments.map((segment, index) => {
-            // Apply tajweed color only if showTajweed is true and rule exists
             const color =
               showTajweed && segment.rule
-                ? themedColors[segment.rule] || theme.colors.text // Fallback to default if rule color missing
-                : theme.colors.text; // Default color if tajweed is off or no rule
+                ? themedColors[segment.rule] || theme.colors.text
+                : theme.colors.text;
             return (
               <Text key={`sample-${index}`} style={{color}}>
                 {segment.text}
@@ -141,18 +194,22 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
         </Text>
       );
     } else if (!isArabic && sampleText) {
-      // Render Translation/Transliteration with formatting (non-Arabic)
       return (
         <FormattedTextRenderer text={sampleText} baseStyle={sampleBaseStyle} />
       );
     } else {
-      // Optional: Add a loading or error state if needed
-      return <Text style={sampleBaseStyle}>Loading sample...</Text>; // Or null
+      return <Text style={sampleBaseStyle}>Loading sample...</Text>;
     }
   }, [
     currentActualSize,
     theme.colors.text,
     sampleFontFamily,
+    useSkia,
+    skiaVerseKey,
+    skiaFontMgr,
+    skiaFontFamily,
+    skiaIndexedTajweedData,
+    sampleWidth,
     isQPC,
     processedSampleSegments,
     sampleText,
@@ -168,41 +225,53 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
       <View style={styles.fontSizeControlRow}>
         <Text style={styles.optionLabel}>{label}</Text>
         <View style={styles.fontSizeAdjuster}>
-          <TouchableOpacity
+          <Pressable
             onPress={handleDecrement}
             hitSlop={10}
-            disabled={currentDisplayValue <= DISPLAY_MIN}>
+            disabled={currentDisplayValue <= DISPLAY_MIN}
+            style={({pressed}) => [
+              styles.fontSizeButton,
+              currentDisplayValue <= DISPLAY_MIN &&
+                styles.fontSizeButtonDisabled,
+              pressed && styles.fontSizeButtonPressed,
+            ]}>
             <Icon
               name="minus"
               type="feather"
-              size={moderateScale(18)}
+              size={moderateScale(16)}
               color={
                 currentDisplayValue <= DISPLAY_MIN
-                  ? theme.colors.textSecondary
+                  ? Color(theme.colors.textSecondary).alpha(0.3).toString()
                   : theme.colors.text
               }
             />
-          </TouchableOpacity>
+          </Pressable>
           <Text style={styles.fontSizeValue}>{currentDisplayValue}</Text>
-          <TouchableOpacity
+          <Pressable
             onPress={handleIncrement}
             hitSlop={10}
-            disabled={currentDisplayValue >= DISPLAY_MAX}>
+            disabled={currentDisplayValue >= DISPLAY_MAX}
+            style={({pressed}) => [
+              styles.fontSizeButton,
+              currentDisplayValue >= DISPLAY_MAX &&
+                styles.fontSizeButtonDisabled,
+              pressed && styles.fontSizeButtonPressed,
+            ]}>
             <Icon
               name="plus"
               type="feather"
-              size={moderateScale(18)}
+              size={moderateScale(16)}
               color={
                 currentDisplayValue >= DISPLAY_MAX
-                  ? theme.colors.textSecondary
+                  ? Color(theme.colors.textSecondary).alpha(0.3).toString()
                   : theme.colors.text
               }
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
-      {/* Sample Text Display - Use the memoized JSX */}
       <View
+        onLayout={useSkia ? handleSampleLayout : undefined}
         style={[
           styles.sampleTextContainer,
           isArabic && styles.arabicSampleTextContainer,
@@ -227,23 +296,21 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   theme,
   disabled = false,
 }) => {
-  // Get the appropriate tajweed colors for the current theme
   const themedColors = useMemo(
     () => getThemedTajweedColors(theme.isDarkMode),
     [theme.isDarkMode],
   );
 
-  // Use memoized static arrays to prevent recalculations on each render
   const coloredGradient = React.useMemo(
     () =>
       [
-        themedColors.madda_necessary, // Red
-        themedColors.madda_obligatory_mottasel, // Pink
-        themedColors.madda_permissible, // Orange
-        themedColors.madda_normal, // Gold
-        themedColors.ghunnah, // Green
-        themedColors.qalaqah, // Light Blue
-        themedColors.idgham_mutajanisayn, // Dark Blue
+        themedColors.madda_necessary,
+        themedColors.madda_obligatory_mottasel,
+        themedColors.madda_permissible,
+        themedColors.madda_normal,
+        themedColors.ghunnah,
+        themedColors.qalaqah,
+        themedColors.idgham_mutajanisayn,
       ] as const,
     [themedColors],
   );
@@ -257,17 +324,13 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
     [theme.colors.textSecondary],
   );
 
-  // Simply select which array to use rather than recreating on each render
   const gradientColors =
     !disabled && value ? coloredGradient : monochromeGradient;
 
-  // Create styles inline since we can't access the StyleSheet yet
   const toggleStyle = {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Color(theme.colors.backgroundSecondary)
-      .alpha(0.4)
-      .toString(),
+    backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
     borderRadius: moderateScale(16),
     padding: moderateScale(4),
     paddingHorizontal: moderateScale(8),
@@ -283,7 +346,7 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   } as const;
 
   const textContainerStyle = {
-    width: moderateScale(30), // Fixed width container
+    width: moderateScale(30),
     alignItems: 'center' as const,
   };
 
@@ -294,11 +357,7 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   } as const;
 
   return (
-    <TouchableOpacity
-      onPress={onValueChange}
-      style={toggleStyle}
-      disabled={disabled}>
-      {/* Color Bar - always visible but changes based on state */}
+    <Pressable onPress={onValueChange} style={toggleStyle} disabled={disabled}>
       <LinearGradient
         colors={
           gradientColors.length >= 2
@@ -309,12 +368,10 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
         end={{x: 1, y: 0}}
         style={barStyle}
       />
-
-      {/* Fixed-width text container */}
       <View style={textContainerStyle}>
         <Text style={textStyle}>{!disabled && value ? 'ON' : 'OFF'}</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -333,9 +390,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {indexedTajweedData, isLoading: isTajweedLoading} = useTajweedStore();
 
-  // Get the appropriate tajweed colors for the current theme
-
-  // Access settings from the store
   const {
     showTranslation,
     showTransliteration,
@@ -353,9 +407,22 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     setMushafRenderer,
     pageLayout,
     setPageLayout,
+    viewMode,
+    setViewMode,
   } = useMushafSettingsStore();
 
-  const verseKey = '3:138'; // Target verse for examples
+  const verseKey = '3:138';
+
+  const dkFontFamily =
+    mushafRenderer === 'dk_indopak'
+      ? 'DigitalKhattIndoPak'
+      : mushafRenderer === 'dk_v1'
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
+  const fontMgr =
+    mushafPreloadService.initialized && digitalKhattDataService.initialized
+      ? mushafPreloadService.fontMgr
+      : null;
 
   const actualTranslationText = useMemo(() => {
     try {
@@ -379,7 +446,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     [],
   );
 
-  // Create flat segments array for rendering inside a single Text
   const flatVerseSegments = useMemo(() => {
     if (isTajweedLoading || !indexedTajweedData?.[verseKey]) return undefined;
     const verseWords = indexedTajweedData[verseKey];
@@ -388,82 +454,38 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         text: segment.text,
         rule: segment.rule,
       }));
-      // Add space between words
       if (wordIndex < verseWords.length - 1) {
         segments.push({text: ' ', rule: null});
       }
       return segments;
     });
   }, [indexedTajweedData, verseKey, isTajweedLoading]);
-  // --- End Segment Preparation ---
 
   const trackColor = {
-    false: Color(theme.colors.textSecondary).alpha(0.3).toString(),
-    true: theme.colors.text,
+    false: Color(theme.colors.text).alpha(0.1).toString(),
+    true: Color(theme.colors.text).alpha(0.65).toString(),
   };
+
+  const handleFontSelect = useCallback(
+    (value: MushafRenderer) => {
+      setMushafRenderer(value);
+    },
+    [setMushafRenderer],
+  );
 
   return (
     <View style={[styles.container, containerStyle]}>
       {showTitle && <Text style={styles.title}>Mushaf Settings</Text>}
 
-      {/* Mushaf Tab Section — page layout (hidden from player context) */}
-      {context !== 'player' && (
-        <>
-          <Text style={styles.sectionHeader}>Mushaf Tab</Text>
-          <View style={styles.card}>
-            <View style={styles.fontFamilySelectorRow}>
-              <Text style={styles.optionLabel}>Page Layout</Text>
-              <View style={styles.fontFamilyButtonsContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.fontFamilyButton,
-                    pageLayout === 'book' && styles.fontFamilyButtonActive,
-                  ]}
-                  onPress={() => setPageLayout('book')}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.fontFamilyButtonText,
-                      pageLayout === 'book' &&
-                        styles.fontFamilyButtonTextActive,
-                    ]}>
-                    Book
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.fontFamilyButton,
-                    pageLayout === 'fullscreen' &&
-                      styles.fontFamilyButtonActive,
-                  ]}
-                  onPress={() => setPageLayout('fullscreen')}
-                  activeOpacity={0.7}>
-                  <Text
-                    style={[
-                      styles.fontFamilyButtonText,
-                      pageLayout === 'fullscreen' &&
-                        styles.fontFamilyButtonTextActive,
-                    ]}>
-                    Fullscreen
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </>
-      )}
-
-      {/* Arabic Text Section - Shared between Mushaf Tab and Player View */}
-      <Text style={styles.sectionHeader}>Arabic Text</Text>
-      <Text style={styles.sectionSubHeader}>
-        Applies to both Mushaf tab and Player view
-      </Text>
+      {/* DISPLAY Section — most frequently used */}
+      <Text style={styles.sectionHeader}>DISPLAY</Text>
       <View style={styles.card}>
+        {/* Tajweed Toggle */}
         <View style={styles.tajweedOptionRow}>
           <View style={styles.tajweedLabelContainer}>
             <Text style={styles.tajweedLabel}>Tajweed Coloring</Text>
             <Text style={styles.tajweedSubLabel}>
-              Highlight pronunciation rules with colors
+              Highlight rules with colors
             </Text>
           </View>
           <TajweedToggle
@@ -472,55 +494,140 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             theme={theme}
           />
         </View>
-        <View style={styles.divider} />
-        <View style={styles.fontFamilySelectorRow}>
-          <Text style={styles.optionLabel}>Script Style</Text>
-          <View style={styles.fontFamilyButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.fontFamilyButton,
-                mushafRenderer === 'dk_v1' && styles.fontFamilyButtonActive,
-              ]}
-              onPress={() => setMushafRenderer('dk_v1')}
-              activeOpacity={0.7}>
-              <Text
-                style={[
-                  styles.fontFamilyButtonText,
-                  mushafRenderer === 'dk_v1' &&
-                    styles.fontFamilyButtonTextActive,
-                ]}>
-                Madani 1405
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.fontFamilyButton,
-                mushafRenderer === 'dk_v2' && styles.fontFamilyButtonActive,
-              ]}
-              onPress={() => setMushafRenderer('dk_v2')}
-              activeOpacity={0.7}>
-              <Text
-                style={[
-                  styles.fontFamilyButtonText,
-                  mushafRenderer === 'dk_v2' &&
-                    styles.fontFamilyButtonTextActive,
-                ]}>
-                Madani 1421
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
+        {/* View Mode — icon pills (hidden from player context) */}
+        {context !== 'player' && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.pillSelectorRow}>
+              <Text style={styles.optionLabel}>View Mode</Text>
+              <View style={styles.pillContainer}>
+                <Pressable
+                  style={[
+                    styles.pill,
+                    viewMode === 'mushaf' && styles.pillActive,
+                  ]}
+                  onPress={() => setViewMode('mushaf')}>
+                  <Icon
+                    name="book-open"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={
+                      viewMode === 'mushaf'
+                        ? theme.colors.text
+                        : Color(theme.colors.textSecondary)
+                            .alpha(0.5)
+                            .toString()
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.pillText,
+                      viewMode === 'mushaf' && styles.pillTextActive,
+                    ]}>
+                    Mushaf
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.pill,
+                    viewMode === 'reading' && styles.pillActive,
+                  ]}
+                  onPress={() => setViewMode('reading')}>
+                  <Icon
+                    name="align-left"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={
+                      viewMode === 'reading'
+                        ? theme.colors.text
+                        : Color(theme.colors.textSecondary)
+                            .alpha(0.5)
+                            .toString()
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.pillText,
+                      viewMode === 'reading' && styles.pillTextActive,
+                    ]}>
+                    Scroll
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Page Layout — icon pills */}
+            <View style={styles.divider} />
+            <View style={styles.pillSelectorRow}>
+              <Text style={styles.optionLabel}>Page Layout</Text>
+              <View style={styles.pillContainer}>
+                <Pressable
+                  style={[
+                    styles.pill,
+                    pageLayout === 'book' && styles.pillActive,
+                  ]}
+                  onPress={() => setPageLayout('book')}>
+                  <Icon
+                    name="book"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={
+                      pageLayout === 'book'
+                        ? theme.colors.text
+                        : Color(theme.colors.textSecondary)
+                            .alpha(0.5)
+                            .toString()
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.pillText,
+                      pageLayout === 'book' && styles.pillTextActive,
+                    ]}>
+                    Book
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.pill,
+                    pageLayout === 'fullscreen' && styles.pillActive,
+                  ]}
+                  onPress={() => setPageLayout('fullscreen')}>
+                  <Icon
+                    name="maximize"
+                    type="feather"
+                    size={moderateScale(14)}
+                    color={
+                      pageLayout === 'fullscreen'
+                        ? theme.colors.text
+                        : Color(theme.colors.textSecondary)
+                            .alpha(0.5)
+                            .toString()
+                    }
+                  />
+                  <Text
+                    style={[
+                      styles.pillText,
+                      pageLayout === 'fullscreen' && styles.pillTextActive,
+                    ]}>
+                    Fullscreen
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </>
+        )}
       </View>
 
-      {/* Player View Section (hidden from mushaf context) */}
-      {context !== 'mushaf' && (
+      {/* Player View Section (shown in player context OR mushaf reading mode) */}
+      {(context !== 'mushaf' || viewMode === 'reading') && (
         <>
-          <Text style={styles.sectionHeader}>Player View</Text>
+          <Text style={styles.sectionHeader}>PLAYER VIEW</Text>
           <Text style={styles.sectionSubHeader}>
             Font sizes and display options during playback
           </Text>
 
-          {/* Arabic Font Size for Player View */}
           <View style={styles.card}>
             <FontSizeControl
               label="Arabic Font Size"
@@ -531,10 +638,13 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               processedSampleSegments={flatVerseSegments}
               sampleFontFamily={'Uthmani'}
               showTajweed={showTajweed}
+              skiaFontMgr={fontMgr}
+              skiaFontFamily={dkFontFamily}
+              skiaVerseKey={verseKey}
+              skiaIndexedTajweedData={indexedTajweedData}
             />
           </View>
 
-          {/* Transliteration Section */}
           <View style={styles.card}>
             <View style={styles.optionRow}>
               <Text style={styles.optionLabel}>Transliteration</Text>
@@ -563,7 +673,6 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             )}
           </View>
 
-          {/* Translation Section */}
           <View style={styles.card}>
             <View style={styles.optionRow}>
               <Text style={styles.optionLabel}>Translation</Text>
@@ -596,6 +705,45 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </View>
         </>
       )}
+
+      {/* FONT Section — least frequently changed, at bottom */}
+      <Text style={styles.sectionHeader}>FONT</Text>
+      <View style={styles.card}>
+        {FONT_OPTIONS.map((option, idx) => {
+          const isSelected = mushafRenderer === option.value;
+          return (
+            <React.Fragment key={option.value}>
+              {idx > 0 && <View style={styles.divider} />}
+              <Pressable
+                style={({pressed}) => [
+                  styles.radioRow,
+                  pressed && styles.radioRowPressed,
+                ]}
+                onPress={() => handleFontSelect(option.value)}>
+                <View
+                  style={[
+                    styles.radioCircle,
+                    isSelected && styles.radioCircleSelected,
+                  ]}>
+                  {isSelected && <View style={styles.radioCircleFill} />}
+                </View>
+                <View style={styles.radioTextContainer}>
+                  <Text
+                    style={[
+                      styles.radioLabel,
+                      isSelected && styles.radioLabelSelected,
+                    ]}>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.radioDescription}>
+                    {option.description}
+                  </Text>
+                </View>
+              </Pressable>
+            </React.Fragment>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -606,26 +754,29 @@ const createStyles = (theme: Theme) =>
       padding: moderateScale(16),
     },
     card: {
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(14),
       paddingHorizontal: moderateScale(14),
       paddingVertical: verticalScale(5),
       marginBottom: verticalScale(16),
     },
     sectionHeader: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
       marginBottom: verticalScale(4),
       marginLeft: moderateScale(4),
     },
     sectionSubHeader: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
-      opacity: 0.8,
     },
     optionRow: {
       flexDirection: 'row',
@@ -634,14 +785,14 @@ const createStyles = (theme: Theme) =>
       paddingVertical: verticalScale(8),
     },
     optionLabel: {
-      fontSize: moderateScale(13),
+      fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.text,
+      color: Color(theme.colors.text).alpha(0.85).toString(),
       marginRight: moderateScale(10),
     },
     divider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.colors.border,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       marginVertical: verticalScale(8),
     },
     switchStyle: {
@@ -656,12 +807,30 @@ const createStyles = (theme: Theme) =>
     fontSizeAdjuster: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: moderateScale(8),
+    },
+    fontSizeButton: {
+      width: moderateScale(32),
+      height: moderateScale(32),
+      borderRadius: moderateScale(16),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    fontSizeButtonDisabled: {
+      opacity: 0.4,
+    },
+    fontSizeButtonPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     fontSizeValue: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
-      marginHorizontal: moderateScale(10),
+      minWidth: moderateScale(24),
+      textAlign: 'center',
     },
     sampleTextContainer: {
       marginTop: verticalScale(5),
@@ -687,9 +856,9 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     helperText: {
-      fontSize: moderateScale(12),
+      fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
       marginTop: verticalScale(4),
       marginBottom: verticalScale(8),
       paddingHorizontal: moderateScale(16),
@@ -704,44 +873,97 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     tajweedLabel: {
-      fontSize: moderateScale(13),
+      fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
     },
     tajweedSubLabel: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
       marginTop: verticalScale(2),
     },
-    fontFamilySelectorRow: {
+
+    // --- Radio card styles ---
+    radioRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: verticalScale(10),
+      position: 'relative',
+    },
+    radioRowPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    radioCircle: {
+      width: moderateScale(20),
+      height: moderateScale(20),
+      borderRadius: moderateScale(10),
+      borderWidth: 1.5,
+      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: moderateScale(12),
+    },
+    radioCircleSelected: {
+      borderColor: theme.colors.text,
+    },
+    radioCircleFill: {
+      width: moderateScale(10),
+      height: moderateScale(10),
+      borderRadius: moderateScale(5),
+      backgroundColor: theme.colors.text,
+    },
+    radioTextContainer: {
+      flex: 1,
+    },
+    radioLabel: {
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
+    },
+    radioLabelSelected: {
+      color: theme.colors.text,
+    },
+    radioDescription: {
+      fontSize: moderateScale(11),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      marginTop: verticalScale(1),
+    },
+
+    // --- Icon pill selector styles ---
+    pillSelectorRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: verticalScale(10),
     },
-    fontFamilyButtonsContainer: {
+    pillContainer: {
       flexDirection: 'row',
       borderRadius: moderateScale(8),
       overflow: 'hidden',
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderWidth: 1,
-      borderColor: theme.colors.border,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      gap: moderateScale(2),
     },
-    fontFamilyButton: {
+    pill: {
+      flexDirection: 'row',
+      alignItems: 'center',
       paddingVertical: moderateScale(6),
-      paddingHorizontal: moderateScale(12),
-      backgroundColor: theme.colors.card,
+      paddingHorizontal: moderateScale(10),
+      gap: moderateScale(5),
     },
-    fontFamilyButtonActive: {
-      backgroundColor: theme.colors.text,
+    pillActive: {
+      backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),
     },
-    fontFamilyButtonText: {
+    pillText: {
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
     },
-    fontFamilyButtonTextActive: {
-      color: theme.colors.background,
+    pillTextActive: {
+      color: theme.colors.text,
       fontFamily: 'Manrope-SemiBold',
     },
   });
