@@ -1,5 +1,12 @@
-import React, {useMemo, useEffect, useRef} from 'react';
-import {View, Text, ScrollView, StyleSheet, FlatList} from 'react-native';
+import React, {useMemo, useEffect, useRef, useCallback} from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  FlatList,
+  Pressable,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Reciter, RECITERS} from '@/data/reciterData';
@@ -31,6 +38,7 @@ import {getAllRewayatTypes, RewayatInfo} from '@/data/rewayatCollections';
 import RewayatCard from '@/components/cards/RewayatCard';
 import {useSettings} from '@/hooks/useSettings';
 import {useRouter} from 'expo-router';
+import Color from 'color';
 import {useReciterFollowAlong} from '@/hooks/useFollowAlong';
 
 interface RecitersViewProps {
@@ -63,10 +71,11 @@ const MemoizedFlatList = React.memo(
   }) => (
     <FlatList
       data={data}
-      renderItem={({item}) => (
+      renderItem={({item, index}) => (
         <RenderSectionItem
           item={item}
           variant={variant}
+          index={index}
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
           onPlaylistPress={onPlaylistPress}
@@ -134,6 +143,7 @@ const RenderSectionItem = React.memo(
   ({
     item,
     variant,
+    index,
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
@@ -146,22 +156,12 @@ const RenderSectionItem = React.memo(
       | 'featured'
       | 'rewayat'
       | 'playlist';
+    index: number;
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
   }) => {
     const {theme} = useTheme();
-    const progress = useRecentlyPlayedStore(state =>
-      'timestamp' in item && item.reciter?.id && item.surah?.id
-        ? state.getProgress(item.reciter.id, item.surah.id)
-        : 0,
-    );
-
-    const duration = useRecentlyPlayedStore(state =>
-      'timestamp' in item && item.reciter?.id && item.surah?.id
-        ? state.getDuration(item.reciter.id, item.surah.id)
-        : 0,
-    );
 
     // Derive reciter ID for follow-along badge
     const reciterId =
@@ -185,9 +185,10 @@ const RenderSectionItem = React.memo(
           trackId={`${item.reciter.id}:${item.surah.id}`}
           reciterId={item.reciter.id}
           surahId={item.surah.id}
-          duration={duration}
-          progress={progress}
+          duration={item.duration}
+          progress={item.progress}
           rewayatId={item.rewayatId}
+          index={index}
         />
       );
     }
@@ -269,6 +270,7 @@ const Section = React.memo(
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
+    onClear,
     theme,
   }: {
     title: string;
@@ -283,15 +285,33 @@ const Section = React.memo(
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
+    onClear?: () => void;
     theme: Theme;
   }) => {
     if (!data.length) return null;
 
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-          {title}
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+            {title}
+          </Text>
+          {onClear && (
+            <Pressable onPress={onClear} hitSlop={8}>
+              <Text
+                style={[
+                  styles.clearButton,
+                  {
+                    color: Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString(),
+                  },
+                ]}>
+                Clear
+              </Text>
+            </Pressable>
+          )}
+        </View>
         <MemoizedFlatList
           data={data}
           variant={variant}
@@ -309,6 +329,7 @@ const Section = React.memo(
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
+    prevProps.onClear === nextProps.onClear &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -456,6 +477,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     });
   };
 
+  const handleClearRecentTracks = useCallback(() => {
+    useRecentlyPlayedStore.getState().clearRecentTracks();
+  }, []);
+
   const showNewToQuran = shouldShowNewToQuran();
 
   // Get random gradient colors from the utility
@@ -478,6 +503,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           data={validRecentTracks}
           variant="recent"
           onReciterPress={onReciterPress}
+          onClear={handleClearRecentTracks}
           theme={theme}
         />
       )}
@@ -603,11 +629,20 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: moderateScale(24),
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(16),
+    marginBottom: moderateScale(16),
+  },
   sectionTitle: {
     fontSize: moderateScale(18),
     fontFamily: 'Manrope-SemiBold',
-    marginBottom: moderateScale(16),
-    paddingHorizontal: moderateScale(16),
+  },
+  clearButton: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Medium',
   },
   sectionContent: {
     paddingHorizontal: moderateScale(16),

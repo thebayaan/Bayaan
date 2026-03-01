@@ -58,7 +58,7 @@ const LovedScreen = () => {
   const {lovedTracks, toggleLoved, unloveAll} = useLoved();
   const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
   const {
     isDownloaded,
     isDownloadedWithRewayat,
@@ -262,12 +262,12 @@ const LovedScreen = () => {
         await updateQueue(allTracks, 0);
 
         const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
-        addRecentTrack(reciter, surah, 0, 0, rewayatId);
+        startNewChain(reciter, surah, 0, 0, rewayatId);
       } catch (error) {
         console.error('Error playing track:', error);
       }
     },
-    [lovedData, addRecentTrack, updateQueue],
+    [lovedData, startNewChain, updateQueue],
   );
 
   // Play all tracks
@@ -313,12 +313,12 @@ const LovedScreen = () => {
       if (firstItem?.reciter && firstItem?.surah) {
         const rewayatId =
           firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
-        addRecentTrack(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
+        startNewChain(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
       }
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  }, [lovedData, addRecentTrack, updateQueue]);
+  }, [lovedData, startNewChain, updateQueue]);
 
   // Shuffle all tracks
   const handleShuffle = useCallback(async () => {
@@ -371,12 +371,12 @@ const LovedScreen = () => {
       if (firstItem.reciter && firstItem.surah) {
         const rewayatId =
           firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
-        addRecentTrack(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
+        startNewChain(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
       }
     } catch (error) {
       console.error('Error shuffling tracks:', error);
     }
-  }, [lovedData, addRecentTrack, updateQueue, shuffleEnabled, toggleShuffle]);
+  }, [lovedData, startNewChain, updateQueue, shuffleEnabled, toggleShuffle]);
 
   // Handle bulk download
   const handleBulkDownload = useCallback(async () => {

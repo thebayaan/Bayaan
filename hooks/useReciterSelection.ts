@@ -7,7 +7,7 @@ import {Reciter} from '@/data/reciterData';
 
 export function useReciterSelection() {
   const {updateQueue, play} = usePlayerActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
 
   const playWithReciter = useCallback(
     async (reciter: Reciter, surahId: string) => {
@@ -25,12 +25,12 @@ export function useReciterSelection() {
           rewayatId,
         );
 
-        // Update queue and start playing
+        // Update recently played immediately so UI reflects new track
+        startNewChain(reciter, surah, 0, 0, rewayatId);
+
+        // Then load audio and start playing
         await updateQueue(tracks, 0);
         await play();
-
-        // Add to recently played list with the rewayatId
-        await addRecentTrack(reciter, surah, 0, 0, rewayatId);
 
         return true;
       } catch (error) {
@@ -38,7 +38,7 @@ export function useReciterSelection() {
         return false;
       }
     },
-    [updateQueue, play, addRecentTrack],
+    [updateQueue, play, startNewChain],
   );
 
   const playWithRandomReciter = useCallback(
@@ -102,12 +102,10 @@ export function useReciterSelection() {
           rewayatId,
         );
 
-        // Update queue and start playing
+        startNewChain(selectedReciter, surah, 0, 0, rewayatId);
+
         await updateQueue(tracks, 0);
         await play();
-
-        // Add to recently played list with the rewayatId
-        await addRecentTrack(selectedReciter, surah, 0, 0, rewayatId);
 
         return true;
       } catch (error) {
@@ -115,7 +113,7 @@ export function useReciterSelection() {
         return false;
       }
     },
-    [updateQueue, play, addRecentTrack],
+    [updateQueue, play, startNewChain],
   );
 
   return {

@@ -40,6 +40,7 @@ interface RecentReciterCardProps {
   duration: number;
   isRecent?: boolean;
   rewayatId?: string;
+  index: number;
 }
 
 const AnimatedTouchableOpacity =
@@ -55,10 +56,10 @@ export const RecentReciterCard = ({
   duration,
   isRecent = false,
   rewayatId,
+  index,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {updateQueue} = usePlayerActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
   const hasFollowAlong = useRewayatFollowAlong(rewayatId);
 
   // Single consolidated subscription with shallow equality
@@ -211,13 +212,7 @@ export const RecentReciterCard = ({
           return;
         }
         await updateQueue(track, 0, startPosition);
-        await addRecentTrack(
-          reciter,
-          surah,
-          progress,
-          duration,
-          rewayatToUseId,
-        );
+        useRecentlyPlayedStore.getState().resumeChain(index);
         return;
       }
 
@@ -243,7 +238,7 @@ export const RecentReciterCard = ({
       }));
 
       await updateQueue(allTracks, 0, startPosition);
-      addRecentTrack(reciter, surah, progress, duration, rewayatToUseId);
+      useRecentlyPlayedStore.getState().resumeChain(index);
     } catch (error) {
       console.error('Error playing surah:', error);
     }
@@ -255,7 +250,7 @@ export const RecentReciterCard = ({
     progress,
     duration,
     updateQueue,
-    addRecentTrack,
+    index,
     rewayatId,
   ]);
 

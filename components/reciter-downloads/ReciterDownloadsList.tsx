@@ -38,7 +38,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   const {theme} = useTheme();
   const downloads = useDownloads();
   const {removeDownload} = useDownloadActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
   const {addToQueue, updateQueue, toggleShuffle} = usePlayerActions();
   const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
 
@@ -198,12 +198,12 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         if (allTracks.length === 0) return;
 
         await updateQueue(allTracks, 0);
-        addRecentTrack(loadedReciter, surah, 0, 0, download.rewayatId);
+        startNewChain(loadedReciter, surah, 0, 0, download.rewayatId);
       } catch (error) {
         console.error('Error playing track:', error);
       }
     },
-    [downloadData, addRecentTrack, updateQueue],
+    [downloadData, startNewChain, updateQueue],
   );
 
   // Play all tracks
@@ -233,7 +233,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 
       const firstItem = downloadData.find(item => item.reciter && item.surah);
       if (firstItem?.reciter && firstItem?.surah) {
-        addRecentTrack(
+        startNewChain(
           firstItem.reciter,
           firstItem.surah,
           0,
@@ -244,7 +244,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     } catch (error) {
       console.error('Error playing all tracks:', error);
     }
-  }, [downloadData, addRecentTrack, updateQueue]);
+  }, [downloadData, startNewChain, updateQueue]);
 
   // Shuffle all tracks
   const handleShuffle = useCallback(async () => {
@@ -275,7 +275,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
       await updateQueue(allTracks, 0);
 
       const firstItem = shuffledItems[0];
-      addRecentTrack(
+      startNewChain(
         firstItem.reciter,
         firstItem.surah,
         0,
@@ -285,13 +285,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     } catch (error) {
       console.error('Error shuffling tracks:', error);
     }
-  }, [
-    downloadData,
-    addRecentTrack,
-    updateQueue,
-    shuffleEnabled,
-    toggleShuffle,
-  ]);
+  }, [downloadData, startNewChain, updateQueue, shuffleEnabled, toggleShuffle]);
 
   // Handle remove download
   const handleRemoveDownload = useCallback(
