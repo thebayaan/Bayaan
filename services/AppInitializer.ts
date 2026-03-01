@@ -16,8 +16,6 @@ import {useAmbientStore} from '@/store/ambientStore';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useThemeStore} from '@/store/themeStore';
-import {useRecentRecitersStore} from '@/store/recentRecitersStore';
-import {useRecentSurahsStore} from '@/store/recentSurahStore';
 import {usePlayCountStore} from '@/store/playCountStore';
 import {useLovedStore} from '@/services/player/store/lovedStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
@@ -378,8 +376,6 @@ appInitializer.registerService({
     useAdhkarSettingsStore.getState();
     useMushafSettingsStore.getState();
     useThemeStore.getState();
-    useRecentRecitersStore.getState();
-    useRecentSurahsStore.getState();
     usePlayCountStore.getState();
     useLovedStore.getState();
     useRecentlyPlayedStore.getState();

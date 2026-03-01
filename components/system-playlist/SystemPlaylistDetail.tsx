@@ -119,7 +119,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
 }) => {
   const {theme} = useTheme();
   const {updateQueue, addToQueue, play} = usePlayerActions();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {startNewChain} = useRecentlyPlayedStore();
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
@@ -373,7 +373,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       // Add first track to recent history
       const firstSurah = playlistData[0]?.surah;
       if (firstSurah) {
-        await addRecentTrack(
+        await startNewChain(
           result.reciter,
           firstSurah,
           0,
@@ -392,7 +392,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     createTracksForFullyCuratedPlaylist,
     updateQueue,
     play,
-    addRecentTrack,
+    startNewChain,
   ]);
 
   const handleShufflePlay = useCallback(async () => {
@@ -426,7 +426,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       )?.surah;
 
       if (firstSurah) {
-        await addRecentTrack(
+        await startNewChain(
           result.reciter,
           firstSurah,
           0,
@@ -445,7 +445,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
     createTracksForFullyCuratedPlaylist,
     updateQueue,
     play,
-    addRecentTrack,
+    startNewChain,
   ]);
 
   const handleSurahPress = useCallback(
@@ -477,7 +477,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         // Add the selected track to recent history
         const selectedSurah = playlistData[index]?.surah;
         if (selectedSurah) {
-          await addRecentTrack(
+          await startNewChain(
             result.reciter,
             selectedSurah,
             0,
@@ -497,7 +497,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
       createTracksForFullyCuratedPlaylist,
       updateQueue,
       play,
-      addRecentTrack,
+      startNewChain,
     ],
   );
 
