@@ -23,6 +23,10 @@ export const CARD_BOTTOM_PADDING = 40;
 // Cross-surah gap (space before a second surah header)
 export const CARD_SURAH_GAP = 30;
 
+// Basmallah sizing
+export const CARD_BASMALLAH_FONT_RATIO = 0.85; // relative to verse font size
+export const CARD_BASMALLAH_BOTTOM_GAP = 12;
+
 export interface ShareCardColors {
   background: string;
   text: string;
