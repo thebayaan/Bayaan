@@ -819,6 +819,7 @@ export const OrganizeRecitationSheet = (
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
+                  nestedScrollEnabled={true}
                   style={styles.picklistScroll}
                   contentContainerStyle={styles.picklistContent}>
                   {REWAYAH_OPTIONS.map(opt => (
@@ -904,7 +905,11 @@ export const OrganizeRecitationSheet = (
 
         {/* Delete Button */}
         <Pressable style={styles.deleteButton} onPress={handleDelete}>
-          <Feather name="trash-2" size={moderateScale(16)} color="#EF4444" />
+          <Feather
+            name="minus-circle"
+            size={moderateScale(16)}
+            color="#EF4444"
+          />
           <Text style={styles.deleteText}>Delete Recitation</Text>
         </Pressable>
       </ScrollView>

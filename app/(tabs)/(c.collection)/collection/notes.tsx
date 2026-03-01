@@ -98,7 +98,7 @@ const NotesScreen = () => {
             },
             {
               label: 'Delete Note',
-              icon: 'trash-2',
+              icon: 'minus-circle',
               destructive: true,
               onPress: () => handleDeleteNote(item.note),
             },

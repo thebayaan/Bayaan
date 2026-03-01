@@ -377,7 +377,7 @@ export const PlaylistContextSheet = (props: SheetProps<'playlist-context'>) => {
     },
     {
       label: 'Delete Playlist',
-      icon: 'trash-2',
+      icon: 'minus-circle',
       onPress: handleDelete,
       destructive: true,
       disabled: false,

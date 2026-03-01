@@ -78,7 +78,7 @@ const BookmarksScreen = () => {
           options: [
             {
               label: 'Remove Bookmark',
-              icon: 'trash-2',
+              icon: 'minus-circle',
               destructive: true,
               onPress: () => handleRemoveBookmark(item.bookmark),
             },

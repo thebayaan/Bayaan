@@ -224,11 +224,7 @@ export default function SurahsView({
                   ? 'arrow-down'
                   : 'calendar';
               const label =
-                option === 'asc'
-                  ? 'Asc'
-                  : option === 'desc'
-                  ? 'Desc'
-                  : 'Rev';
+                option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
               return (
                 <Pressable
                   key={option}
@@ -245,9 +241,7 @@ export default function SurahsView({
                     name={iconName}
                     size={moderateScale(14)}
                     color={
-                      isActive
-                        ? theme.colors.text
-                        : theme.colors.textSecondary
+                      isActive ? theme.colors.text : theme.colors.textSecondary
                     }
                   />
                   <Text
