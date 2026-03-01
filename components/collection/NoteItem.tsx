@@ -6,18 +6,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
-
-// Build verse_key -> text lookup once at module scope
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const qpcTextByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
-}
+import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 
 interface NoteItemProps {
   surahName: string;
@@ -47,16 +36,6 @@ export const NoteItem = memo<NoteItemProps>(
     const surahGlyph = surahGlyphMap[surahNumber] ?? '';
 
     const isRange = verseKeys && verseKeys.length > 1;
-
-    const arabicText = useMemo(() => {
-      if (isRange) {
-        return verseKeys
-          .map(vk => qpcTextByKey[vk] ?? '')
-          .filter(Boolean)
-          .join(' ');
-      }
-      return qpcTextByKey[verseKey] ?? '';
-    }, [verseKey, verseKeys, isRange]);
 
     const verseRefText = useMemo(() => {
       if (!isRange) return `${surahNumber}:${ayahNumber}`;
@@ -99,11 +78,11 @@ export const NoteItem = memo<NoteItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <Text
-            style={[styles.arabicText, {fontFamily: 'Uthmani'}]}
-            numberOfLines={isRange ? 3 : undefined}>
-            {arabicText}
-          </Text>
+          <SkiaVersePreview
+            verseKey={verseKey}
+            verseKeys={verseKeys}
+            numberOfLines={isRange ? 3 : undefined}
+          />
         </View>
 
         {/* Note preview */}
@@ -177,13 +156,6 @@ const createStyles = (theme: Theme) => {
     arabicContainer: {
       padding: moderateScale(16),
       paddingBottom: moderateScale(14),
-    },
-    arabicText: {
-      fontSize: moderateScale(20),
-      color: theme.colors.text,
-      textAlign: 'center',
-      writingDirection: 'rtl',
-      lineHeight: moderateScale(38),
     },
     annotationContainer: {
       paddingHorizontal: moderateScale(16),

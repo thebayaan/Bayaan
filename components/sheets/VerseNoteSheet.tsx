@@ -10,23 +10,13 @@ import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-
-// Build verse_key -> text lookup once at module scope
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const qpcTextByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
-}
+import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 
 export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const {theme} = useTheme();
@@ -41,17 +31,6 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 
   const [noteText, setNoteText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
-
-  // For range: concatenate Arabic text from all verses; for single: just the one
-  const arabicText = useMemo(() => {
-    if (isRange) {
-      return verseKeys
-        .map(vk => qpcTextByKey[vk] ?? '')
-        .filter(Boolean)
-        .join(' ');
-    }
-    return qpcTextByKey[verseKey] ?? '';
-  }, [verseKey, verseKeys, isRange]);
 
   // Compute range-aware reference text
   const verseRefText = useMemo(() => {
@@ -130,20 +109,22 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
       gestureEnabled={true}>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>
           {isEditMode ? 'Edit Note' : 'Note'} for {verseRefText}
         </Text>
 
-        {arabicText ? (
-          <View style={styles.ayahContainer}>
-            <Text
-              style={[styles.ayahText, {fontFamily: 'Uthmani'}]}
-              numberOfLines={isRange ? 3 : 2}>
-              {arabicText}
-            </Text>
-          </View>
-        ) : null}
+        <View style={styles.ayahContainer}>
+          <SkiaVersePreview
+            verseKey={verseKey}
+            verseKeys={verseKeys}
+            numberOfLines={isRange ? 3 : 2}
+          />
+        </View>
 
         <TextInput
           style={styles.textInput}
@@ -176,11 +157,15 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 
         {isEditMode && noteId ? (
           <Pressable style={styles.deleteButton} onPress={handleDelete}>
-            <Feather name="trash-2" size={moderateScale(18)} color="#ff4444" />
+            <Feather
+              name="minus-circle"
+              size={moderateScale(18)}
+              color="#ff4444"
+            />
             <Text style={styles.deleteButtonText}>Delete Note</Text>
           </Pressable>
         ) : null}
-      </View>
+      </ScrollView>
     </ActionSheet>
   );
 };
@@ -199,6 +184,8 @@ const createStyles = (theme: Theme) =>
     },
     container: {
       padding: moderateScale(16),
+    },
+    scrollContent: {
       paddingBottom: moderateScale(40),
     },
     title: {
@@ -213,13 +200,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(12),
       padding: moderateScale(16),
       marginBottom: verticalScale(16),
-    },
-    ayahText: {
-      fontSize: moderateScale(18),
-      color: theme.colors.text,
-      textAlign: 'right',
-      writingDirection: 'rtl',
-      lineHeight: moderateScale(36),
     },
     textInput: {
       backgroundColor: theme.colors.card,

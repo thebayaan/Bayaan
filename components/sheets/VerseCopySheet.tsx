@@ -14,18 +14,7 @@ import ActionSheet, {
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-
-// Build verse_key -> text lookup once at module scope
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const qpcTextByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) qpcTextByKey[entry.verse_key] = entry.text;
-}
+import SkiaVersePreview from '@/components/share/SkiaVersePreview';
 
 interface CheckboxRowProps {
   label: string;
@@ -85,17 +74,6 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
   const isRange = verseKeys && verseKeys.length > 1;
   const arabicText = props.payload?.arabicText;
   const translation = props.payload?.translation;
-
-  // Get Arabic text for display — multi-verse when range
-  const displayArabicText = useMemo(() => {
-    if (isRange) {
-      return verseKeys
-        .map(vk => qpcTextByKey[vk] ?? '')
-        .filter(Boolean)
-        .join(' ');
-    }
-    return qpcTextByKey[verseKey] ?? arabicText ?? '';
-  }, [verseKey, verseKeys, isRange, arabicText]);
 
   // Compute range-aware reference text
   const verseRefText = useMemo(() => {
@@ -165,15 +143,13 @@ export const VerseCopySheet = (props: SheetProps<'verse-copy'>) => {
         <Text style={styles.title}>Copy Options</Text>
         <Text style={styles.subtitle}>Select what to copy</Text>
 
-        {displayArabicText ? (
-          <View style={styles.ayahContainer}>
-            <Text
-              style={[styles.ayahText, {fontFamily: 'Uthmani'}]}
-              numberOfLines={isRange ? 3 : 2}>
-              {displayArabicText}
-            </Text>
-          </View>
-        ) : null}
+        <View style={styles.ayahContainer}>
+          <SkiaVersePreview
+            verseKey={verseKey}
+            verseKeys={verseKeys}
+            numberOfLines={isRange ? 3 : 2}
+          />
+        </View>
 
         <View style={styles.optionsContainer}>
           <CheckboxRow
@@ -266,13 +242,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateScale(12),
       padding: moderateScale(16),
       marginBottom: verticalScale(16),
-    },
-    ayahText: {
-      fontSize: moderateScale(18),
-      color: theme.colors.text,
-      textAlign: 'right',
-      writingDirection: 'rtl',
-      lineHeight: moderateScale(36),
     },
     optionsContainer: {
       backgroundColor: theme.colors.card,
