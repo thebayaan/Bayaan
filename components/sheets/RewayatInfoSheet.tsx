@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {View, Text, TouchableOpacity, Platform, Dimensions} from 'react-native';
+import {View, Text, TouchableOpacity, Dimensions} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import ActionSheet, {
@@ -62,7 +62,6 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         bounces={true}
-        nestedScrollEnabled={Platform.OS === 'android'}
         scrollEventThrottle={16}>
         <View style={styles.content}>
           <View style={styles.iconContainer}>
