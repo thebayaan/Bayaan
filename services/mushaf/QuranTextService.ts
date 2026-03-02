@@ -5,11 +5,18 @@ export const enum SpaceType {
   Aya,
 }
 
+export interface SubWordInfo {
+  baseText: string;
+  baseIndexes: number[];
+}
+
 export interface WordInfo {
   startIndex: number;
   endIndex: number;
   text: string;
   baseText: string;
+  baseIndexes: number[];
+  subwords: SubWordInfo[];
 }
 
 export interface LineTextInfo {
@@ -155,6 +162,8 @@ class QuranTextService {
       startIndex: 0,
       endIndex: -1,
       baseText: '',
+      baseIndexes: [],
+      subwords: [{baseText: '', baseIndexes: []}],
     };
     lineTextInfo.wordInfos.push(currentWord);
 
@@ -178,12 +187,41 @@ class QuranTextService {
           lineTextInfo.spaces.set(i, SpaceType.Simple);
         }
 
-        currentWord = {text: '', startIndex: i + 1, endIndex: i, baseText: ''};
+        currentWord = {
+          text: '',
+          startIndex: i + 1,
+          endIndex: i,
+          baseText: '',
+          baseIndexes: [],
+          subwords: [{baseText: '', baseIndexes: []}],
+        };
         lineTextInfo.wordInfos.push(currentWord);
       } else {
         currentWord.text += char;
         if (this.bases.has(char.charCodeAt(0))) {
           currentWord.baseText += char;
+          const posInWord = i - currentWord.startIndex;
+          currentWord.baseIndexes.push(posInWord);
+
+          // Subword decomposition: hamza starts a new subword before itself
+          let isHamza = false;
+          if (char === 'ء') {
+            currentWord.subwords.push({baseText: '', baseIndexes: []});
+            isHamza = true;
+          }
+
+          const subWord = currentWord.subwords[currentWord.subwords.length - 1];
+          subWord.baseText += char;
+          subWord.baseIndexes.push(posInWord);
+
+          // Right-non-joining letters end the current subword
+          if (
+            i < lineText.length - 1 &&
+            rightNoJoinLetters.includes(char) &&
+            !isHamza
+          ) {
+            currentWord.subwords.push({baseText: '', baseIndexes: []});
+          }
         }
         currentWord.endIndex = i;
       }
