@@ -1,19 +1,12 @@
 // app/(tabs)/_layout.tsx
 
 import React from 'react';
-import {Tabs} from 'expo-router';
-import BottomTabBar from '@/components/BottomTabBar';
-import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
-// import {FloatingPlayer} from '@/components/FloatingPlayer';
 import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
-
-const tabBarComponent = (props: BottomTabBarProps) => (
-  <BottomTabBar {...props} />
-);
+import {NativeTabs} from 'expo-router/unstable-native-tabs';
 
 export default function TabsLayout() {
-  const {isDarkMode} = useTheme();
+  const {theme, isDarkMode} = useTheme();
 
   return (
     <>
@@ -22,22 +15,28 @@ export default function TabsLayout() {
         translucent
         backgroundColor="transparent"
       />
-      <Tabs
-        initialRouteName="(a.home)"
-        screenOptions={{
-          headerShown: false,
-          lazy: true,
-          freezeOnBlur: true,
-        }}
-        tabBar={tabBarComponent}>
-        <Tabs.Screen name="(a.home)" options={{title: 'Home'}} />
-        <Tabs.Screen name="(b.search)" options={{title: 'Search'}} />
-        <Tabs.Screen
-          name="(c.collection)"
-          options={{title: 'Your Collection'}}
-        />
-      </Tabs>
-      {/* <FloatingPlayer /> */}
+      <NativeTabs tintColor={theme.colors.text} minimizeBehavior="onScrollDown">
+        <NativeTabs.Trigger name="(a.home)">
+          <NativeTabs.Trigger.Icon
+            sf={{default: 'house', selected: 'house.fill'}}
+            md="home"
+          />
+          <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="(b.search)" role="search">
+          <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+          <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
+        <NativeTabs.Trigger name="(c.collection)">
+          <NativeTabs.Trigger.Icon
+            sf={{default: 'square.stack', selected: 'square.stack.fill'}}
+            md="library_music"
+          />
+          <NativeTabs.Trigger.Label>Collection</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+      </NativeTabs>
     </>
   );
 }

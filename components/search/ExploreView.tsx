@@ -2,11 +2,9 @@ import React, {useMemo, useCallback} from 'react';
 import {View, StyleSheet, Pressable, Text, ScrollView} from 'react-native';
 import {useRouter} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
-import {SearchInput} from '@/components/SearchInput';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {noop} from 'lodash';
 import {useWindowDimensions} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
@@ -84,9 +82,7 @@ function getAllTiles(): BentoTile[] {
   return [...BROWSE_TILES, ...systemPlaylistTiles];
 }
 
-interface ExploreViewProps {
-  onSearchPress: () => void;
-}
+interface ExploreViewProps {}
 
 interface ColumnLayout {
   leftColumn: BentoTile[];
@@ -243,9 +239,9 @@ const tileInnerStyles = StyleSheet.create({
   },
 });
 
-export const ExploreView = React.memo(function ExploreView({
-  onSearchPress,
-}: ExploreViewProps) {
+export const ExploreView = React.memo(function ExploreView(
+  _props: ExploreViewProps,
+) {
   const router = useRouter();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
@@ -320,32 +316,12 @@ export const ExploreView = React.memo(function ExploreView({
   return (
     <View
       style={[styles.content, {paddingTop: insets.top + moderateScale(16)}]}>
-      <Pressable
-        onPress={onSearchPress}
-        style={[styles.searchButton, {paddingHorizontal: horizontalPadding}]}>
-        <SearchInput
-          placeholder="Search surahs, reciters, or keywords"
-          value=""
-          onChangeText={noop}
-          iconColor={theme.colors.text}
-          iconOpacity={0.25}
-          placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
-          textColor={theme.colors.text}
-          backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
-          borderColor={Color(theme.colors.text).alpha(0.06).toString()}
-          pointerEvents="none"
-          containerStyle={styles.searchInputContainer}
-          style={styles.searchInput}
-          editable={false}
-        />
-      </Pressable>
-
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           {
             paddingHorizontal: horizontalPadding,
-            paddingBottom: insets.bottom + moderateScale(20),
+            paddingBottom: moderateScale(16),
           },
         ]}
         showsVerticalScrollIndicator={false}>
@@ -363,16 +339,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     content: {
       flex: 1,
       width: '100%',
-    },
-    searchButton: {
-      marginBottom: moderateScale(16),
-    },
-    searchInputContainer: {
-      paddingHorizontal: 0,
-    },
-    searchInput: {
-      height: moderateScale(50),
-      fontSize: moderateScale(16),
     },
     scrollContent: {
       flexGrow: 1,
