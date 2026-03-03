@@ -1,13 +1,13 @@
-internal import Expo
+public import Expo
 import React
 import ReactAppDependencyProvider
 
-@main
-class AppDelegate: ExpoAppDelegate {
+@UIApplicationMain
+public class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
-  var reactNativeFactory: RCTReactNativeFactory?
+  var reactNativeFactory: ExpoReactNativeFactory?
 
   public override func application(
     _ application: UIApplication,
