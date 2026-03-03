@@ -1,20 +1,37 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {View, StyleSheet} from 'react-native';
+import {Stack} from 'expo-router';
 import {SearchView} from '@/components/search/SearchView';
 import {useTheme} from '@/hooks/useTheme';
 
 export default function SearchScreen() {
   const {theme} = useTheme();
-
-  const handleClose = () => {
-    // Close functionality can be added here if needed in the future
-    console.log('Search closed');
-  };
+  const [query, setQuery] = useState('');
+  const [isSearchActive, setIsSearchActive] = useState(false);
 
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <SearchView visible={true} onClose={handleClose} />
+      <Stack.SearchBar
+        placement="automatic"
+        placeholder="Search surahs or reciters"
+        onChangeText={e => setQuery(e.nativeEvent.text)}
+        onFocus={_e => setIsSearchActive(true)}
+        onCancelButtonPress={() => {
+          setQuery('');
+          setIsSearchActive(false);
+        }}
+        hideNavigationBar
+      />
+      <SearchView
+        visible={true}
+        onClose={() => {
+          setQuery('');
+          setIsSearchActive(false);
+        }}
+        query={query}
+        isSearchActive={isSearchActive}
+      />
     </View>
   );
 }
