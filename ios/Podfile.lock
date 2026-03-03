@@ -37,15 +37,15 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - expo-dev-client (55.0.11):
+  - expo-dev-client (55.0.10):
     - EXManifests
     - expo-dev-launcher
     - expo-dev-menu
     - expo-dev-menu-interface
     - EXUpdatesInterface
-  - expo-dev-launcher (55.0.12):
+  - expo-dev-launcher (55.0.11):
     - EXManifests
-    - expo-dev-launcher/Main (= 55.0.12)
+    - expo-dev-launcher/Main (= 55.0.11)
     - expo-dev-menu
     - expo-dev-menu-interface
     - ExpoModulesCore
@@ -74,7 +74,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - expo-dev-launcher/Main (55.0.12):
+  - expo-dev-launcher/Main (55.0.11):
     - EXManifests
     - expo-dev-launcher/Unsafe
     - expo-dev-menu
@@ -105,7 +105,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - expo-dev-launcher/Unsafe (55.0.12):
+  - expo-dev-launcher/Unsafe (55.0.11):
     - EXManifests
     - expo-dev-menu
     - expo-dev-menu-interface
@@ -135,8 +135,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - expo-dev-menu (55.0.11):
-    - expo-dev-menu/Main (= 55.0.11)
+  - expo-dev-menu (55.0.10):
+    - expo-dev-menu/Main (= 55.0.10)
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -159,7 +159,7 @@ PODS:
     - ReactNativeDependencies
     - Yoga
   - expo-dev-menu-interface (55.0.1)
-  - expo-dev-menu/Main (55.0.11):
+  - expo-dev-menu/Main (55.0.10):
     - EXManifests
     - expo-dev-menu-interface
     - ExpoModulesCore
@@ -222,7 +222,7 @@ PODS:
     - ExpoModulesCore
   - ExpoLogBox (55.0.7):
     - React-Core
-  - ExpoMediaControl (1.0.12):
+  - ExpoMediaControl (1.0.10):
     - ExpoModulesCore
   - ExpoMediaLibrary (55.0.9):
     - ExpoModulesCore
@@ -330,10 +330,10 @@ PODS:
   - libwebp/sharpyuv (1.5.0)
   - libwebp/webp (1.5.0):
     - libwebp/sharpyuv
-  - MMKVCore (2.3.0)
-  - NitroMmkv (4.2.0):
+  - MMKVCore (2.2.4)
+  - NitroMmkv (4.1.2):
     - hermes-engine
-    - MMKVCore (= 2.3.0)
+    - MMKVCore (= 2.2.4)
     - NitroModules
     - RCTRequired
     - RCTTypeSafety
@@ -1866,7 +1866,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-skia (2.2.12):
+  - react-native-skia (2.4.18):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -3068,9 +3068,9 @@ SPEC CHECKSUMS:
   EXJSONUtils: 0080c14b673cfa9a6be5e3fe429768ffe3d42dfb
   EXManifests: 2b53302deb6d7275ae26005b8014f5a1aee42a0e
   Expo: d592aa311ef87e4176c61f851b127c4f2e38308e
-  expo-dev-client: 16e2d109cac65e0e8d9d6eb514b172f7daa6be49
-  expo-dev-launcher: 2bcdde863fb68d9be48f0615d032c05a5c7a4016
-  expo-dev-menu: 3eeda9b0d7a101c4164132e14a494f26740b0b52
+  expo-dev-client: 6b8f4ac3d78bec0f92681cb6ba5228744b83c634
+  expo-dev-launcher: 235942ad53a128c79d380eafab59eb236da330a9
+  expo-dev-menu: d6fe61ceb1700f131bc50192ba53a7ed0402eab2
   expo-dev-menu-interface: bf6f816d29b45bec038080790963c635e8d588c2
   ExpoAsset: bdc7bc21fe25d197c3aa7547e14c12c42087d9c9
   ExpoAudio: af1b3b6271e309bfc1ea4626284a47d3af49c7e1
@@ -3088,7 +3088,7 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: 499856f296f83c05279d18447bdb57ab0e06d294
   ExpoLinking: 88ba36a28c83525e564b8229e02d451347accb70
   ExpoLogBox: 89b634d5a8a64c4a6a7caad8f9985a28463c7002
-  ExpoMediaControl: b979625fd44b77537d0f98b878859319a38d9d0d
+  ExpoMediaControl: 4682e7ae0cb2b14eee299d526938debb3af12bfe
   ExpoMediaLibrary: f8e720ddfc229477f09ac94174b6e4a00b4a91ee
   ExpoModulesCore: 8934d83ba557344022eff47658dd43d197cb481e
   ExpoModulesJSI: 59a126dc51164e603242ee9a38c19339c5c79da0
@@ -3110,8 +3110,8 @@ SPEC CHECKSUMS:
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
-  MMKVCore: d078dce7d6586a888b2c2ef5343b6242678e3ee8
-  NitroMmkv: 38dfb2983c83e9bbbb64423ff48fbeaaa097cc38
+  MMKVCore: f2dd4c9befea04277a55e84e7812f930537993df
+  NitroMmkv: c9fd61d98afd00a6e4e1656a415c28f7be0fd74e
   NitroModules: 1cebf8f4ba098b9f950a3d18127bb741325d9849
   RCTDeprecation: a522c536d2c7be8f518dd834883cf6dce1d4f545
   RCTRequired: 44337def23abb244c025e9e7ab58f9cd3d63ec7d
@@ -3153,7 +3153,7 @@ SPEC CHECKSUMS:
   react-native-blur: 1b00ef07fe0efdc0c40b37139a5268ccad73c72d
   react-native-render-html: 5afc4751f1a98621b3009432ef84c47019dcb2bd
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
-  react-native-skia: 05327e7acee05e7c27b68a5da0bc80d65f5d790c
+  react-native-skia: b1ba694c208db8a184ea55fe086a76b4ef0b2493
   react-native-slider: 8b9a218d1a3e526146a170cb6133be9cda23e70e
   React-NativeModulesApple: f9fa097fc24cec967b77bfc05f72d2ea7db05b87
   React-networking: 29a9ae1a2e6ce8bb19174cc47110b36ae7ffcbcd
@@ -3195,7 +3195,7 @@ SPEC CHECKSUMS:
   RNGestureHandler: 5494787ce29288a8941fa825663f2b1fa0a5aaf1
   RNImageColors: 977420bca17290f111104bcfcbfb698982cbfbba
   RNReanimated: 86e5991396f1aa514db90d6c79d4c3e37a37bb10
-  RNScreens: 02e62f995ceb94ea465864b3bf4d4767b87f0362
+  RNScreens: 14243fa0d9842ffa7f8bb2d00b6c3cfd3ca817e8
   RNSVG: 0bd149b873018bc6e0e3321e2f6435bdba294460
   RNWorklets: 0e736f568c3c61cb3326cdcda767c4daee56a8a9
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
@@ -3206,6 +3206,6 @@ SPEC CHECKSUMS:
   SPIndicator: 93e0a4fb23de51294ac48e874c0f081a5e293e4f
   Yoga: dd994d8c85dca5cc9b10f5df8c01f9ef1d0da191
 
-PODFILE CHECKSUM: 61d9add2fc1bd17b129ab443ac0c639da62ddcac
+PODFILE CHECKSUM: b06de03cc567351177d167ace6a455f7162f0ed2
 
 COCOAPODS: 1.16.2
