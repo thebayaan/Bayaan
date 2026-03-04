@@ -16,7 +16,7 @@ import ActionSheet, {
   SheetManager,
   ScrollView,
 } from 'react-native-actions-sheet';
-import {Feather, Ionicons, MaterialCommunityIcons} from '@expo/vector-icons';
+import {Feather, MaterialCommunityIcons} from '@expo/vector-icons';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -25,7 +25,15 @@ import {qulDataService} from '@/services/mushaf/QulDataService';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {lightHaptics} from '@/utils/haptics';
-import {PlayIcon, RepeatIcon, TafseerIcon} from '@/components/Icons';
+import {
+  PlayIcon,
+  RepeatIcon,
+  StackedVolumesIcon,
+  PageQuillIcon,
+  MirrorWavesIcon,
+  HighlightIcon,
+  ChainLinksIcon,
+} from '@/components/Icons';
 import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -627,8 +635,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     color={theme.colors.text}
                   />
                 ) : (
-                  <Ionicons
-                    name="brush-outline"
+                  <HighlightIcon
                     size={moderateScale(18)}
                     color={theme.colors.text}
                   />
@@ -644,8 +651,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleNote}>
-                <Feather
-                  name="file-text"
+                <PageQuillIcon
                   size={moderateScale(18)}
                   color={theme.colors.text}
                 />
@@ -677,7 +683,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       pressed && styles.optionPressed,
                     ]}
                     onPress={handleTafseer}>
-                    <TafseerIcon
+                    <StackedVolumesIcon
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
@@ -694,8 +700,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       pressed && styles.optionPressed,
                     ]}
                     onPress={handleSimilarVerses}>
-                    <Feather
-                      name="layers"
+                    <MirrorWavesIcon
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
@@ -712,8 +717,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       pressed && styles.optionPressed,
                     ]}
                     onPress={handleSharedPhrases}>
-                    <Feather
-                      name="link"
+                    <ChainLinksIcon
                       size={moderateScale(18)}
                       color={theme.colors.text}
                     />
