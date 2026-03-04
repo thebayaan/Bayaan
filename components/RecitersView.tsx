@@ -453,17 +453,11 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
 
   // Handler for rewayat card press
   const handleRewayatPress = (rewayat: RewayatInfo) => {
-    // Parse the rewayat name to extract teacher and student
-    // Format is typically "Student A'n Teacher"
-    const parts = rewayat.name.split("A'n");
-    const student = parts.length > 1 ? parts[0].trim() : '';
-    const teacher = parts.length > 1 ? parts[1].trim() : rewayat.name;
-
     router.push({
       pathname: '/(tabs)/(a.home)/reciter/browse',
       params: {
-        teacher,
-        student,
+        teacher: rewayat.teacher,
+        student: rewayat.student,
         rewayatName: rewayat.displayName,
       },
     });

@@ -31,6 +31,7 @@ import {getSurahById} from '@/services/dataService';
 import {reciterImages} from '@/utils/reciterImages';
 import Header from '@/components/Header';
 import {useSettings} from '@/hooks/useSettings';
+import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
 
 interface BrowseRecitersProps {
   theme: Theme;
@@ -41,112 +42,47 @@ interface BrowseRecitersProps {
   initialStudent?: string; // Optional initial student filter
 }
 
-// Module-level cache for string normalizations
-const normalizationCache = new Map<string, string>();
+// Fallback: extract teacher from a rewayat name by splitting on "A'n"
+function fallbackTeacher(name: string): string | undefined {
+  const parts = name.split("A'n");
+  return parts.length > 1 ? parts[1].trim() : undefined;
+}
 
-// Helper to normalize names by removing " Men Tariq..." variations
-const normalizeNameDetail = (name: string): string => {
-  // Check cache first
-  const cached = normalizationCache.get(name);
-  if (cached !== undefined) {
-    return cached;
-  }
+// Fallback: extract student from a rewayat name by splitting on "A'n"
+function fallbackStudent(name: string): string | undefined {
+  const parts = name.split("A'n");
+  return parts.length > 1 ? parts[0].trim() : undefined;
+}
 
-  // Compute normalization
-  const menTariqIndex = name.indexOf(' Men Tariq');
-  const normalized =
-    menTariqIndex !== -1 ? name.substring(0, menTariqIndex).trim() : name;
+// Resolve teacher for a DB rewayat name using the registry, with fallback
+function resolveTeacher(dbName: string): string | undefined {
+  return resolveRewayatName(dbName)?.teacher ?? fallbackTeacher(dbName);
+}
 
-  // Cache the result
-  normalizationCache.set(name, normalized);
-  return normalized;
-};
+// Resolve student for a DB rewayat name using the registry, with fallback
+function resolveStudent(dbName: string): string | undefined {
+  return resolveRewayatName(dbName)?.student ?? fallbackStudent(dbName);
+}
 
-// Module-level cache for primary teachers computation
-let cachedPrimaryTeachers: string[] | null = null;
-
-// Helper to get unique primary teacher names, ordered
+// Get primary teachers — canonical order from registry
 const getPrimaryTeachers = (): string[] => {
-  // Return cached result if available
-  if (cachedPrimaryTeachers !== null) {
-    return cachedPrimaryTeachers;
-  }
-
-  const teachers = new Set<string>();
-  const qariOrderFromImage = [
-    "Nafi'",
-    'Ibn Katheer',
-    'Abi Amr',
-    'Ibn Amer',
-    'Assem',
-    'Hamzah',
-    "Al-Kisa'ai",
-    "Abi Ja'far",
-    'Yakoob',
-    'Khalaf',
-  ];
-
-  RECITERS.forEach(reciter => {
-    reciter.rewayat.forEach(rewaya => {
-      if (rewaya.name) {
-        const parts = rewaya.name.split("A'n");
-        if (parts.length > 1) {
-          teachers.add(normalizeNameDetail(parts[1].trim())); // Normalized
-        }
-      }
-    });
-  });
-
-  const allFoundTeachers = Array.from(teachers);
-  const orderedTeachers: string[] = [];
-  const remainingTeachersSet = new Set(allFoundTeachers);
-
-  qariOrderFromImage.forEach(qariKey => {
-    // Match against normalized teacher names if qariKey is simple
-    const normalizedQariKey = normalizeNameDetail(qariKey);
-    const matchedTeacher = allFoundTeachers.find(
-      t => normalizeNameDetail(t) === normalizedQariKey,
-    );
-    if (matchedTeacher && !orderedTeachers.includes(matchedTeacher)) {
-      orderedTeachers.push(matchedTeacher);
-      remainingTeachersSet.delete(matchedTeacher);
-    } else {
-      // Fallback for direct match if normalization changed things unexpectedly
-      const directMatch = allFoundTeachers.find(t => t === qariKey);
-      if (directMatch && !orderedTeachers.includes(directMatch)) {
-        orderedTeachers.push(directMatch);
-        remainingTeachersSet.delete(directMatch);
-      }
-    }
-  });
-
-  const remainingTeachersSorted = Array.from(remainingTeachersSet).sort();
-  const result = [...orderedTeachers, ...remainingTeachersSorted];
-
-  // Cache the result for future calls
-  cachedPrimaryTeachers = result;
-  return result;
+  return [...QIRAAT_TEACHERS];
 };
 
 // Helper to get students for a teacher
 const getStudentsForTeacher = (
-  teacherName: string, // This teacherName is already normalized
+  teacherName: string,
   recitersData: Reciter[],
 ): string[] => {
   const students = new Set<string>();
   recitersData.forEach(reciter => {
     reciter.rewayat.forEach(rewaya => {
       if (rewaya.name) {
-        const parts = rewaya.name.split("A'n");
-        if (parts.length > 1) {
-          const currentStudent = parts[0].trim(); // Student name is usually clean
-          const currentRawTeacher = parts[1].trim();
-          // Compare normalized teacher from rewaya with the (already normalized) teacherName param
-          if (normalizeNameDetail(currentRawTeacher) === teacherName) {
-            students.add(currentStudent);
-            console.log(
-              `Found student: ${currentStudent} for teacher: ${teacherName}`,
-            );
+        const teacher = resolveTeacher(rewaya.name);
+        if (teacher === teacherName) {
+          const student = resolveStudent(rewaya.name);
+          if (student) {
+            students.add(student);
           }
         }
       }
@@ -195,19 +131,16 @@ export default function BrowseReciters({
   // Get cached primary teachers (computed once at module level)
   const primaryTeachers = getPrimaryTeachers();
 
-  // Use refs to track actual values for debugging
+  // Use refs to track actual values for callbacks
   const teacherRef = useRef<string | null>(null);
   const studentRef = useRef<string | null>(null);
 
-  // Update refs when state changes
   useEffect(() => {
     teacherRef.current = selectedTeacher;
-    console.log(`Teacher state updated: ${selectedTeacher}`);
   }, [selectedTeacher]);
 
   useEffect(() => {
     studentRef.current = selectedStudent;
-    console.log(`Student state updated: ${selectedStudent}`);
   }, [selectedStudent]);
 
   const dynamicFilterChips = useMemo((): Chip[] => {
@@ -228,8 +161,6 @@ export default function BrowseReciters({
         selectedTeacher,
         RECITERS,
       );
-
-      console.log(`Students of ${selectedTeacher}:`, studentsOfSelectedTeacher);
 
       // Change ordering: Students, then A'n separator, then Teacher
       // This matches the natural reading order: "Student A'n Teacher"
@@ -299,28 +230,16 @@ export default function BrowseReciters({
 
     // Apply teacher/student filter
     if (selectedTeacher) {
-      // selectedTeacher is already normalized
       result = result.filter(reciter =>
         reciter.rewayat.some(rewaya => {
           if (!rewaya.name) return false;
-          const parts = rewaya.name.split("A'n");
-          if (parts.length > 1) {
-            const studentNameInRewaya = parts[0].trim();
-            const rawTeacherNameInRewaya = parts[1].trim();
-            // Normalize teacher name from rewaya for comparison
-            const normalizedTeacherNameInRewaya = normalizeNameDetail(
-              rawTeacherNameInRewaya,
-            );
-
-            if (normalizedTeacherNameInRewaya === selectedTeacher) {
-              if (selectedStudent) {
-                // selectedStudent is already clean
-                return studentNameInRewaya === selectedStudent;
-              }
-              return true; // Teacher matches, no student selected
-            }
+          const teacher = resolveTeacher(rewaya.name);
+          if (teacher !== selectedTeacher) return false;
+          if (selectedStudent) {
+            const student = resolveStudent(rewaya.name);
+            return student === selectedStudent;
           }
-          return false;
+          return true;
         }),
       );
     }
@@ -380,36 +299,21 @@ export default function BrowseReciters({
   };
 
   const handleChipPress = useCallback((chip: Chip) => {
-    console.log(`Chip pressed: ${chip.label} (type: ${chip.type})`);
-    console.log(
-      `Before - Teacher: ${teacherRef.current}, Student: ${studentRef.current}`,
-    );
-
     if (chip.type === 'all') {
       setSelectedTeacher(null);
       setSelectedStudent(null);
-      console.log('Reset all filters');
     } else if (chip.type === 'teacher') {
       if (chip.label === teacherRef.current) {
-        // Tapped selected teacher
-        console.log(`Deselecting teacher: ${chip.label}`);
         setSelectedTeacher(null);
         setSelectedStudent(null);
       } else {
-        // Tapped new teacher
-        console.log(`Selecting teacher: ${chip.label}`);
         setSelectedTeacher(chip.label);
         setSelectedStudent(null);
       }
     } else if (chip.type === 'student') {
-      console.log(`Student chip detected: ${chip.label}`);
       if (chip.label === studentRef.current) {
-        // Tapped selected student
-        console.log(`Deselecting student: ${chip.label}`);
         setSelectedStudent(null);
       } else {
-        // Tapped new student
-        console.log(`Selecting student: ${chip.label}`);
         setSelectedStudent(chip.label);
       }
     }
@@ -470,115 +374,32 @@ export default function BrowseReciters({
       // Find appropriate rewayat based on filter selection
       let selectedRewayatId: string | undefined;
 
-      // DEBUG LOGGING - Start
-      console.log('------------ REWAYA SELECTION PROCESS ------------');
-      console.log(`Reciter: ${reciter.name} (ID: ${reciter.id})`);
-      console.log(
-        `Active Filters - Teacher: ${currentTeacher || 'None'}, Student: ${
-          currentStudent || 'None'
-        }`,
-      );
-
-      console.log(
-        'Available Rewayat:',
-        reciter.rewayat.map(r => ({
-          id: r.id,
-          name: r.name,
-        })),
-      );
-
-      // Special Nafi'/Warsh debug
-      if (currentTeacher && currentStudent) {
-        console.log(
-          `DEBUG: Looking for Teacher=${currentTeacher}, Student=${currentStudent}`,
-        );
-
-        const matchingEntries = reciter.rewayat.filter(
-          r =>
-            r.name &&
-            r.name.includes(currentStudent) &&
-            normalizeNameDetail(r.name.split("A'n")[1]?.trim() || '') ===
-              currentTeacher,
-        );
-        console.log('Matching entries found:', matchingEntries);
-      }
-
-      // If filters are active, always try to find a matching rewayat and update preference
+      // If filters are active, find a matching rewayat and update preference
       if (currentTeacher || currentStudent) {
         let matchingRewayat: Rewayat | undefined;
 
         // Case 1: Both teacher and student selected (highest priority)
         if (currentTeacher && currentStudent) {
-          console.log(
-            `Attempting to match both teacher AND student: ${currentTeacher} + ${currentStudent}`,
-          );
-
-          // Find exact match for student AND teacher combination
           matchingRewayat = reciter.rewayat.find(rewaya => {
             if (!rewaya.name) return false;
-
-            const parts = rewaya.name.split("A'n");
-            if (parts.length <= 1) return false;
-
-            const student = parts[0].trim();
-            const rawTeacher = parts[1].trim();
-            const normalizedTeacher = normalizeNameDetail(rawTeacher);
-
-            const isMatch =
-              normalizedTeacher === currentTeacher &&
-              student === currentStudent;
-
-            if (isMatch) {
-              console.log(
-                `✅ MATCH FOUND - Student+Teacher: ${rewaya.name} (ID: ${rewaya.id})`,
-              );
-            }
-
-            return isMatch;
+            const teacher = resolveTeacher(rewaya.name);
+            const student = resolveStudent(rewaya.name);
+            return teacher === currentTeacher && student === currentStudent;
           });
         }
 
-        // Case 2: Only teacher selected, no specific student (lower priority)
+        // Case 2: Only teacher selected
         if (!matchingRewayat && currentTeacher) {
-          console.log(
-            'No student+teacher match found, attempting to match teacher only...',
-          );
-
           matchingRewayat = reciter.rewayat.find(rewaya => {
             if (!rewaya.name) return false;
-
-            const parts = rewaya.name.split("A'n");
-            if (parts.length <= 1) return false;
-
-            const rawTeacher = parts[1].trim();
-            const normalizedTeacher = normalizeNameDetail(rawTeacher);
-
-            const isMatch = normalizedTeacher === currentTeacher;
-
-            if (isMatch) {
-              console.log(
-                `✅ MATCH FOUND - Teacher only: ${rewaya.name} (ID: ${rewaya.id})`,
-              );
-            }
-
-            return isMatch;
+            return resolveTeacher(rewaya.name) === currentTeacher;
           });
         }
 
-        // If found, save the preference (this will override any previous preference)
         if (matchingRewayat?.id) {
           selectedRewayatId = matchingRewayat.id;
-          console.log(
-            `Setting preference for reciter ${reciter.id} to rewayat: ${matchingRewayat.name} (ID: ${matchingRewayat.id})`,
-          );
           setReciterPreference(reciter.id, matchingRewayat.id);
-        } else {
-          console.log('❌ No matching rewayat found for the selected filters');
         }
-      } else {
-        // No filters active - don't set any preference to allow the reciter profile
-        // to use its own default logic or previously manually selected preference
-        console.log('No filters active, not setting any rewayat preference');
       }
 
       if (surahId) {
@@ -588,7 +409,6 @@ export default function BrowseReciters({
 
           // If we found a matching rewayat, use that, otherwise use default
           const rewayatId = selectedRewayatId || reciter.rewayat[0]?.id;
-          console.log(`Final rewayat ID for playback: ${rewayatId}`);
 
           const tracks = await createTracksForReciter(
             reciter,
@@ -614,18 +434,11 @@ export default function BrowseReciters({
         // If filters are not active or no matching rewayat was found,
         // we don't set a preference, allowing the reciter profile to use its default logic
         // or the user's manually selected preference if they previously visited this reciter
-        console.log(
-          `Navigating to reciter profile: ${reciter.id}, preference ${
-            selectedRewayatId ? `set to ${selectedRewayatId}` : 'not set'
-          }`,
-        );
-
         router.push({
           pathname: '/(tabs)/(a.home)/reciter/[id]',
           params: {id: reciter.id},
         });
       }
-      console.log('------------ END REWAYA SELECTION PROCESS ------------');
     },
     [setReciterPreference, surahId, updateQueue, play, router, startNewChain],
   );
