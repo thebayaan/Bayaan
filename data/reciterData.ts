@@ -3,7 +3,7 @@ import recitersData from './reciters.json';
 export interface Reciter {
   id: string;
   name: string;
-  date: string;
+  date: string | null;
   image_url: string | null;
   rewayat: Rewayat[];
 }
