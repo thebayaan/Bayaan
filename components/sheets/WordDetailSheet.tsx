@@ -16,7 +16,6 @@ import {Theme} from '@/utils/themeUtils';
 import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
 import Color from 'color';
 import {wbwDataService, type WBWWord} from '@/services/wbw/WBWDataService';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {createAudioPlayer, AudioPlayer} from 'expo-audio';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 
@@ -28,7 +27,6 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
   const position = props.payload?.position ?? 0;
 
   const [wbwWord, setWbwWord] = useState<WBWWord | null>(null);
-  const [arabicText, setArabicText] = useState('');
   const [totalWords, setTotalWords] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -36,7 +34,7 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
 
   const playerRef = useRef<AudioPlayer | null>(null);
 
-  // Load word data from both services
+  // Load word data
   useEffect(() => {
     if (!verseKey || !position) return;
     let cancelled = false;
@@ -48,14 +46,6 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
       const word = words.find(w => w.position === position) ?? null;
       setWbwWord(word);
       setTotalWords(words.length);
-
-      // Get Arabic text from DigitalKhatt
-      const dkWords = digitalKhattDataService.getVerseWords(verseKey);
-      const dkWord = dkWords.find(w => w.wordPositionInVerse === position);
-      if (dkWord) {
-        setArabicText(dkWord.text);
-      }
-
       setLoading(false);
     })();
 
@@ -174,8 +164,8 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
         ) : (
           <>
             {/* Arabic text */}
-            {arabicText ? (
-              <Text style={styles.arabicText}>{arabicText}</Text>
+            {wbwWord?.textUthmani ? (
+              <Text style={styles.arabicText}>{wbwWord.textUthmani}</Text>
             ) : null}
 
             {/* Transliteration */}
@@ -192,37 +182,34 @@ export const WordDetailSheet = (props: SheetProps<'word-detail'>) => {
               </Text>
             ) : null}
 
-            {/* Play button — card style matching VerseActionsSheet */}
+            {/* Play pronunciation pill */}
             {audioUrl ? (
-              <View style={styles.card}>
-                <Pressable
-                  style={({pressed}) => [
-                    styles.option,
-                    pressed && styles.optionPressed,
-                  ]}
-                  onPress={handlePlayPress}>
-                  {audioLoading ? (
-                    <ActivityIndicator size="small" color={theme.colors.text} />
-                  ) : isPlaying ? (
-                    <PauseIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                  ) : (
-                    <PlayIcon
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                  )}
-                  <Text style={styles.optionText}>
-                    {audioLoading
-                      ? 'Loading...'
-                      : isPlaying
-                      ? 'Pause'
-                      : 'Play Pronunciation'}
-                  </Text>
-                </Pressable>
-              </View>
+              <Pressable
+                style={({pressed}) => [
+                  styles.playPill,
+                  pressed && styles.playPillPressed,
+                ]}
+                onPress={handlePlayPress}>
+                {audioLoading ? (
+                  <ActivityIndicator
+                    size={moderateScale(12)}
+                    color={theme.colors.text}
+                  />
+                ) : isPlaying ? (
+                  <PauseIcon
+                    size={moderateScale(13)}
+                    color={theme.colors.text}
+                  />
+                ) : (
+                  <PlayIcon
+                    size={moderateScale(13)}
+                    color={theme.colors.text}
+                  />
+                )}
+                <Text style={styles.playPillText}>
+                  {audioLoading ? 'Loading...' : isPlaying ? 'Pause' : 'Play'}
+                </Text>
+              </Pressable>
             ) : null}
 
             {/* Context footer */}
@@ -271,6 +258,25 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateScale(12),
       marginBottom: moderateScale(8),
     },
+    playPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'center',
+      gap: moderateScale(6),
+      paddingVertical: moderateScale(7),
+      paddingHorizontal: moderateScale(14),
+      borderRadius: moderateScale(20),
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      marginBottom: moderateScale(14),
+    },
+    playPillPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.14).toString(),
+    },
+    playPillText: {
+      fontSize: moderateScale(12.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
     transliteration: {
       fontSize: moderateScale(13),
       fontFamily: 'Manrope-Regular',
@@ -285,31 +291,6 @@ const createStyles = (theme: Theme) =>
       color: Color(theme.colors.text).alpha(0.85).toString(),
       textAlign: 'center',
       marginBottom: moderateScale(16),
-    },
-    card: {
-      width: '100%',
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      borderRadius: moderateScale(12),
-      overflow: 'hidden',
-      marginBottom: moderateScale(14),
-    },
-    option: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: moderateScale(11),
-      paddingHorizontal: moderateScale(14),
-    },
-    optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-    },
-    optionText: {
-      flex: 1,
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
-      marginLeft: moderateScale(10),
     },
     contextText: {
       fontSize: moderateScale(12),
