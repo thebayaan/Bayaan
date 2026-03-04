@@ -50,6 +50,7 @@ import {UploadsTabContent} from './components/UploadsTabContent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
 import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 
 interface ReciterProfileProps {
   id: string;
@@ -64,14 +65,14 @@ type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
 function sortRewayat(rewayat: Rewayat[]): Rewayat[] {
   return [...rewayat].sort((a, b) => {
     const aIsHafsMurattal =
-      a.name === "Hafs A'n Assem" && a.style === 'murattal';
+      a.name === HAFS_REWAYAT_NAME && a.style === 'murattal';
     const bIsHafsMurattal =
-      b.name === "Hafs A'n Assem" && b.style === 'murattal';
+      b.name === HAFS_REWAYAT_NAME && b.style === 'murattal';
     if (aIsHafsMurattal && !bIsHafsMurattal) return -1;
     if (!aIsHafsMurattal && bIsHafsMurattal) return 1;
 
-    const aIsHafs = a.name === "Hafs A'n Assem";
-    const bIsHafs = b.name === "Hafs A'n Assem";
+    const aIsHafs = a.name === HAFS_REWAYAT_NAME;
+    const bIsHafs = b.name === HAFS_REWAYAT_NAME;
     if (aIsHafs && !bIsHafs) return -1;
     if (!aIsHafs && bIsHafs) return 1;
 

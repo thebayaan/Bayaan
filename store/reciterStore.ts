@@ -3,10 +3,11 @@ import {persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Reciter} from '@/data/reciterData';
 import {RECITERS} from '@/data/reciterData';
+import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 
 // Helper function to get the Hafs A'n Assem rewayat from a reciter
 function getHafsRewayat(reciter: Reciter) {
-  return reciter.rewayat.find(r => r.name === "Hafs A'n Assem");
+  return reciter.rewayat.find(r => r.name === HAFS_REWAYAT_NAME);
 }
 
 // Lazy-computed default reciter — avoids .find() scans at module load time
@@ -17,16 +18,16 @@ function getDefaultReciter(): Reciter {
   const misharyAlafasi = RECITERS.find(
     reciter =>
       reciter.name === 'Mishary Alafasi' &&
-      reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
+      reciter.rewayat.some(r => r.name === HAFS_REWAYAT_NAME),
   );
 
   const anyHafsReciter = RECITERS.find(reciter =>
-    reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
+    reciter.rewayat.some(r => r.name === HAFS_REWAYAT_NAME),
   );
 
   const reciter = misharyAlafasi || anyHafsReciter || RECITERS[0];
 
-  // Ensure the default rewayat is Hafs A'n Assem if available
+  // Ensure the default rewayat is Hafs if available
   const hafsRewayat = getHafsRewayat(reciter);
   if (hafsRewayat) {
     _defaultReciter = {
@@ -53,7 +54,7 @@ export const useReciterStore = create<ReciterState>()(
     set => ({
       defaultReciter: getDefaultReciter(),
       setDefaultReciter: reciter => {
-        // When setting a new default reciter, ensure Hafs A'n Assem is the first rewayat if available
+        // When setting a new default reciter, ensure Hafs is the first rewayat if available
         const hafsRewayat = getHafsRewayat(reciter);
         if (hafsRewayat) {
           reciter = {
