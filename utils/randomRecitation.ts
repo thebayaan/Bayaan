@@ -10,7 +10,29 @@ function getRandomReciter(): Reciter {
 }
 
 /**
- * Gets a random surah that is available for the given reciter
+ * Picks a random index using weights that favor lower-numbered surahs (longer).
+ * Weight = 1 / surahId, so surah 1 is 114x more likely than surah 114,
+ * but every surah still has a non-zero chance.
+ */
+function weightedRandomIndex(surahs: Surah[]): number {
+  let totalWeight = 0;
+  const weights = surahs.map(s => {
+    const w = 1 / s.id;
+    totalWeight += w;
+    return w;
+  });
+
+  let roll = Math.random() * totalWeight;
+  for (let i = 0; i < weights.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return i;
+  }
+  return weights.length - 1;
+}
+
+/**
+ * Gets a random surah that is available for the given reciter.
+ * Biased toward lower-numbered (longer) surahs.
  */
 function getRandomAvailableSurah(reciter: Reciter): Surah {
   // Get the rewayat with the most surahs
@@ -31,9 +53,7 @@ function getRandomAvailableSurah(reciter: Reciter): Surah {
     return SURAHS[0];
   }
 
-  // Select a random surah from available ones
-  const randomIndex = Math.floor(Math.random() * availableSurahs.length);
-  return availableSurahs[randomIndex];
+  return availableSurahs[weightedRandomIndex(availableSurahs)];
 }
 
 /**
