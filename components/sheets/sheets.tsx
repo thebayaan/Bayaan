@@ -34,6 +34,7 @@ import {SimilarVersesSheet} from './SimilarVersesSheet';
 import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
+import {WordDetailSheet} from './WordDetailSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -64,6 +65,7 @@ registerSheet('similar-verses', SimilarVersesSheet);
 registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
+registerSheet('word-detail', WordDetailSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -271,6 +273,12 @@ declare module 'react-native-actions-sheet' {
       };
     }>;
     'follow-along': SheetDefinition;
+    'word-detail': SheetDefinition<{
+      payload: {
+        verseKey: string;
+        position: number;
+      };
+    }>;
   }
 }
 

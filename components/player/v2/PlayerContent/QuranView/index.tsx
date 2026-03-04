@@ -112,6 +112,11 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
+  const showWBW = useMushafSettingsStore(s => s.showWBW);
+  const wbwShowTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
+  const wbwShowTransliteration = useMushafSettingsStore(
+    s => s.wbwShowTransliteration,
+  );
   const translationName = getTranslationName(selectedTranslationId);
 
   // Counter to force re-render when enhanced verses are rebuilt (async)
@@ -198,6 +203,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
         isActive={isLocked && item.verse_key === currentVerseKey}
         translationName={translationName}
         translationId={selectedTranslationId}
+        showWBW={showWBW}
+        wbwShowTranslation={wbwShowTranslation}
+        wbwShowTransliteration={wbwShowTransliteration}
       />
     ),
     [
@@ -217,6 +225,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
       isLocked,
       translationName,
       selectedTranslationId,
+      showWBW,
+      wbwShowTranslation,
+      wbwShowTransliteration,
     ],
   );
 
@@ -241,6 +252,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         ref={listRef}
         data={verses}
         renderItem={renderItem}
+        extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${showTranslation}-${showTransliteration}`}
         keyExtractor={keyExtractor}
         ListHeaderComponent={
           <QuranListHeader
