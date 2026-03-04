@@ -66,6 +66,11 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     s => s.showTransliteration,
   );
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const showWBW = useMushafSettingsStore(s => s.showWBW);
+  const wbwShowTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
+  const wbwShowTransliteration = useMushafSettingsStore(
+    s => s.wbwShowTransliteration,
+  );
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
   const translationFontSize = useMushafSettingsStore(
     s => s.translationFontSize,
@@ -178,6 +183,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
           source="mushaf"
           translationName={translationName}
           translationId={selectedTranslationId}
+          showWBW={showWBW}
+          wbwShowTranslation={wbwShowTranslation}
+          wbwShowTransliteration={wbwShowTransliteration}
         />
       );
     },
@@ -198,6 +206,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       handleVersePress,
       translationName,
       selectedTranslationId,
+      showWBW,
+      wbwShowTranslation,
+      wbwShowTransliteration,
     ],
   );
 

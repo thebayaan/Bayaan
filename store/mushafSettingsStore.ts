@@ -36,6 +36,11 @@ interface MushafSettingsState {
   showTransliteration: boolean;
   showTajweed: boolean;
 
+  // Word-by-word settings
+  showWBW: boolean;
+  wbwShowTranslation: boolean;
+  wbwShowTransliteration: boolean;
+
   // Mushaf page layout
   pageLayout: MushafPageLayout;
 
@@ -64,6 +69,9 @@ interface MushafSettingsState {
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
   toggleTajweed: () => void;
+  toggleWBW: () => void;
+  toggleWBWTranslation: () => void;
+  toggleWBWTransliteration: () => void;
   setArabicFontSize: (size: number) => void;
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
@@ -86,6 +94,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTranslation: true,
       showTransliteration: false,
       showTajweed: false,
+      showWBW: false,
+      wbwShowTranslation: true,
+      wbwShowTransliteration: false,
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
       transliterationFontSize: getActualFontSize(3),
@@ -103,6 +114,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       toggleTransliteration: () =>
         set(state => ({showTransliteration: !state.showTransliteration})),
       toggleTajweed: () => set(state => ({showTajweed: !state.showTajweed})),
+      toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
+      toggleWBWTranslation: () =>
+        set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),
+      toggleWBWTransliteration: () =>
+        set(state => ({wbwShowTransliteration: !state.wbwShowTransliteration})),
       setArabicFontSize: (size: number) => set({arabicFontSize: size}),
       setTranslationFontSize: (size: number) =>
         set({translationFontSize: size}),
@@ -155,7 +171,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 7,
+      version: 8,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -192,6 +208,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         if (version < 7) {
           state.viewMode = 'mushaf';
+        }
+        if (version < 8) {
+          state.showWBW = false;
+          state.wbwShowTranslation = true;
+          state.wbwShowTransliteration = false;
         }
         return state as unknown as MushafSettingsState;
       },

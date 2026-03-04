@@ -7,6 +7,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {wbwDataService} from '@/services/wbw/WBWDataService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {timestampService} from '@/services/timestamps/TimestampService';
 import {useTimestampStore} from '@/store/timestampStore';
@@ -386,6 +387,20 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await tafseerDbService.initialize();
+  },
+});
+
+/**
+ * WBW Data Service (Priority 10)
+ * Opens wbw-en.db for word-by-word translations.
+ * Non-critical — WBW features degrade gracefully without it.
+ */
+appInitializer.registerService({
+  name: 'WBW Data',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await wbwDataService.initialize();
   },
 });
 

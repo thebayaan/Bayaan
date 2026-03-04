@@ -20,6 +20,7 @@ import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import SkiaVerseText from './SkiaVerseText';
+import {WBWVerseView} from './WBWVerseView';
 import {
   isBundledTranslation,
   getBundledFootnotes,
@@ -75,6 +76,9 @@ interface VerseItemProps {
   translationName?: string;
   translationId?: string;
   source?: 'player' | 'mushaf';
+  showWBW?: boolean;
+  wbwShowTranslation?: boolean;
+  wbwShowTransliteration?: boolean;
 }
 
 /**
@@ -106,6 +110,9 @@ export const VerseItem = memo<VerseItemProps>(
     translationName,
     translationId,
     source,
+    showWBW,
+    wbwShowTranslation,
+    wbwShowTransliteration,
   }) => {
     const verseKey = verse.verse_key;
 
@@ -141,9 +148,15 @@ export const VerseItem = memo<VerseItemProps>(
       setArabicContainerWidth(prev => (Math.abs(prev - w) > 1 ? w : prev));
     }, []);
 
-    // Reset footnote when cell is recycled by FlashList
+    // Track which WBW word is highlighted (cleared when sheet closes)
+    const [selectedWordPosition, setSelectedWordPosition] = useState<
+      number | null
+    >(null);
+
+    // Reset footnote and word highlight when cell is recycled by FlashList
     useEffect(() => {
       setActiveFootnote(null);
+      setSelectedWordPosition(null);
     }, [verseKey]);
 
     // Batch all Color() derivations — only recomputed on theme or highlight change
@@ -229,6 +242,18 @@ export const VerseItem = memo<VerseItemProps>(
         },
       });
     }, [verseKey, verse, selectVerse]);
+
+    const handleWordPress = useCallback(
+      (position: number) => {
+        setSelectedWordPosition(position);
+        SheetManager.show('word-detail', {
+          payload: {verseKey, position},
+        }).then(() => {
+          setSelectedWordPosition(null);
+        });
+      },
+      [verseKey],
+    );
 
     const handlePress = useCallback(() => {
       onVersePress(verseKey);
@@ -382,27 +407,43 @@ export const VerseItem = memo<VerseItemProps>(
           </View>
         </View>
         {/* ---> Arabic Text Rendering <-- */}
-        <View onLayout={handleArabicLayout}>
-          {fontMgr && arabicContainerWidth > 0 ? (
-            // DK Skia Rendering (Uthmani with Digital Khatt font)
-            <SkiaVerseText
-              verseKey={verseKey}
-              fontMgr={fontMgr}
-              fontFamily={dkFontFamily}
-              fontSize={moderateScale(arabicFontSize)}
-              textColor={textColor}
-              showTajweed={showTajweed}
-              width={arabicContainerWidth}
-              indexedTajweedData={indexedTajweedData}
-            />
-          ) : isQPCSelected && tajweedNodes ? (
-            // QPC Rendering: Always use generated tajweedNodes
-            <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
-          ) : (
-            // Fallback (e.g., data is loading/missing)
-            <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
-          )}
-        </View>
+        {showWBW ? (
+          <WBWVerseView
+            verseKey={verseKey}
+            textColor={textColor}
+            arabicFontSize={arabicFontSize}
+            dkFontFamily={dkFontFamily}
+            fontMgr={fontMgr}
+            showTranslation={wbwShowTranslation ?? true}
+            showTransliteration={wbwShowTransliteration ?? false}
+            onWordPress={handleWordPress}
+            selectedWordPosition={selectedWordPosition}
+            showTajweed={showTajweed}
+            indexedTajweedData={indexedTajweedData}
+          />
+        ) : (
+          <View onLayout={handleArabicLayout}>
+            {fontMgr && arabicContainerWidth > 0 ? (
+              // DK Skia Rendering (Uthmani with Digital Khatt font)
+              <SkiaVerseText
+                verseKey={verseKey}
+                fontMgr={fontMgr}
+                fontFamily={dkFontFamily}
+                fontSize={moderateScale(arabicFontSize)}
+                textColor={textColor}
+                showTajweed={showTajweed}
+                width={arabicContainerWidth}
+                indexedTajweedData={indexedTajweedData}
+              />
+            ) : isQPCSelected && tajweedNodes ? (
+              // QPC Rendering: Always use generated tajweedNodes
+              <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
+            ) : (
+              // Fallback (e.g., data is loading/missing)
+              <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
+            )}
+          </View>
+        )}
         {/* ---> End Conditional Rendering <--- */}
         {showTransliteration && verse.transliteration && (
           <FormattedTextRenderer
