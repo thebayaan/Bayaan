@@ -64,6 +64,8 @@ interface WBWVerseViewProps {
   selectedWordPosition: number | null;
   showTajweed: boolean;
   indexedTajweedData: IndexedTajweedData | null;
+  onTap?: () => void;
+  onLongPress?: () => void;
 }
 
 interface MatchedWord {
@@ -262,6 +264,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     selectedWordPosition,
     showTajweed,
     indexedTajweedData,
+    onTap,
+    onLongPress,
   }) => {
     const {theme} = useTheme();
     const [containerWidth, setContainerWidth] = useState(0);
@@ -492,8 +496,10 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
             return;
           }
         }
+        // No word hit — forward to parent long-press handler
+        onLongPress?.();
       },
-      [computedLayout, onWordPress],
+      [computedLayout, onWordPress, onLongPress],
     );
 
     if (!wbwWords) return null;
@@ -503,7 +509,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
       return (
         <Pressable
           onLayout={handleLayout}
-          onPress={handleWordPress}
+          onPress={onTap}
+          onLongPress={handleWordPress}
           style={[
             styles.singleCanvasContainer,
             {height: computedLayout.totalHeight + PADDING_VERTICAL * 2},
@@ -605,7 +612,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
                 borderRadius: HIGHLIGHT_RADIUS,
               },
             ]}
-            onPress={() => {
+            onPress={onTap}
+            onLongPress={() => {
               mediumHaptics();
               onWordPress(wbwWord.position);
             }}>
