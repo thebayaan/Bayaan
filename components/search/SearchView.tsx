@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   FlatList,
-  TextInput,
   Keyboard,
   Animated as RNAnimated,
 } from 'react-native';
@@ -23,7 +22,6 @@ import {moderateScale} from 'react-native-size-matters';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -49,22 +47,28 @@ interface SearchResult {
 interface SearchViewProps {
   onClose: () => void;
   visible: boolean;
+  /** Query text driven by the native Stack.SearchBar */
+  query: string;
+  /** True when the native search bar is focused / active */
+  isSearchActive: boolean;
 }
 
-export function SearchView({onClose, visible}: SearchViewProps) {
-  const [query, setQuery] = useState('');
+export function SearchView({
+  onClose,
+  visible,
+  query,
+  isSearchActive,
+}: SearchViewProps) {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
-  const [isSearchMode, setIsSearchMode] = useState(false);
-  const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
   const [reciterFuse, setReciterFuse] = useState<Fuse<Reciter> | null>(null);
   const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
 
-  // Fade animation refs (mushaf search pattern — both views always mounted)
+  // Fade animation — both views always mounted
   const browseOpacity = useRef(new RNAnimated.Value(1)).current;
   const searchOpacity = useRef(new RNAnimated.Value(0)).current;
 
@@ -73,66 +77,58 @@ export function SearchView({onClose, visible}: SearchViewProps) {
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
 
-  // Clear query and exit search mode when closing
+  // Drive the mode transition from external state
+  const isSearchMode = isSearchActive || query.length > 0;
+
+  useEffect(() => {
+    if (isSearchMode) {
+      RNAnimated.parallel([
+        RNAnimated.timing(browseOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(searchOpacity, {
+          toValue: 1,
+          duration: 200,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      RNAnimated.parallel([
+        RNAnimated.timing(searchOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(browseOpacity, {
+          toValue: 1,
+          duration: 200,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isSearchMode, browseOpacity, searchOpacity]);
+
+  // Reset when closed
   useEffect(() => {
     if (!visible) {
-      setQuery('');
-      setIsSearchMode(false);
       browseOpacity.setValue(1);
       searchOpacity.setValue(0);
     }
   }, [visible, browseOpacity, searchOpacity]);
 
-  // Debounce search query
+  // Debounce the incoming query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
     }, SEARCH_DEBOUNCE_MS);
-
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Mode transitions (mushaf search pattern)
-  const enterSearchMode = useCallback(() => {
-    setIsSearchMode(true);
-    setTimeout(() => searchInputRef.current?.focus(), 100);
-    RNAnimated.parallel([
-      RNAnimated.timing(browseOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(searchOpacity, {
-        toValue: 1,
-        duration: 200,
-        delay: 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [browseOpacity, searchOpacity]);
-
-  const exitSearchMode = useCallback(() => {
-    Keyboard.dismiss();
-    setQuery('');
-    setIsSearchMode(false);
-    searchInputRef.current?.blur();
-    RNAnimated.parallel([
-      RNAnimated.timing(searchOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      RNAnimated.timing(browseOpacity, {
-        toValue: 1,
-        duration: 200,
-        delay: 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    onClose();
-  }, [browseOpacity, searchOpacity, onClose]);
-
-  // Lazy-init Fuse.js — only when user activates search mode
+  // Lazy-init Fuse.js when user first activates search
   const fuseInitialized = useRef(false);
   useEffect(() => {
     if (!visible || !isSearchMode || fuseInitialized.current) return;
@@ -254,7 +250,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         timestamp: Date.now(),
       };
 
-      // Remove duplicate if exists (same type and id)
       const filteredSearches = recentSearches.filter(search => {
         if (search.type !== result.type) return true;
         if (search.type === 'surah') {
@@ -278,7 +273,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     [recentSearches],
   );
 
-  // Tap on surah → open mushaf at that surah's page
   const handleResultPress = useCallback(
     async (result: SearchResult) => {
       Keyboard.dismiss();
@@ -301,7 +295,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
     [router, addToRecentSearches],
   );
 
-  // Long-press on surah → audio playback flow
   const handleSurahLongPress = useCallback(
     async (result: SearchResult) => {
       Keyboard.dismiss();
@@ -416,7 +409,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       <RNAnimated.View
         style={[styles.modeContainer, {opacity: browseOpacity}]}
         pointerEvents={isSearchMode ? 'none' : 'auto'}>
-        <ExploreView onSearchPress={enterSearchMode} />
+        <ExploreView />
       </RNAnimated.View>
 
       {/* Search Mode — always mounted, hidden via opacity */}
@@ -431,24 +424,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           },
         ]}
         pointerEvents={isSearchMode ? 'auto' : 'none'}>
-        <SearchInput
-          ref={searchInputRef}
-          placeholder="Search surahs or reciters"
-          value={query}
-          onChangeText={setQuery}
-          onCancel={exitSearchMode}
-          iconColor={theme.colors.text}
-          iconOpacity={0.25}
-          placeholderTextColor={Color(theme.colors.text).alpha(0.35).toString()}
-          textColor={theme.colors.text}
-          backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
-          borderColor={Color(theme.colors.text).alpha(0.06).toString()}
-          keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-          autoCorrect={false}
-          autoComplete="off"
-          autoCapitalize="none"
-        />
-
         {query.length === 0 ? (
           <ScrollView
             style={styles.flexFill}
