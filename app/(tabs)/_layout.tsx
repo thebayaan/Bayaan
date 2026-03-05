@@ -4,6 +4,7 @@ import React from 'react';
 import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
 import {NativeTabs} from 'expo-router/unstable-native-tabs';
+import {MiniPlayer} from '@/components/player/v2/MiniPlayer';
 
 export default function TabsLayout() {
   const {theme, isDarkMode} = useTheme();
@@ -16,6 +17,9 @@ export default function TabsLayout() {
         backgroundColor="transparent"
       />
       <NativeTabs tintColor={theme.colors.text} minimizeBehavior="onScrollDown">
+        <NativeTabs.BottomAccessory>
+          <MiniPlayer />
+        </NativeTabs.BottomAccessory>
         <NativeTabs.Trigger name="(a.home)">
           <NativeTabs.Trigger.Icon
             sf={{default: 'house', selected: 'house.fill'}}

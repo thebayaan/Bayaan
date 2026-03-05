@@ -19,7 +19,6 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {ThemeProvider} from '@react-navigation/native';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
-import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
@@ -399,7 +398,6 @@ export default function RootLayout() {
                     }}
                   />
                 </Stack>
-                <FloatingPlayer />
                 <PlayerSheet />
                 <WhatsNewModal ref={whatsNewModalRef} />
                 <DevMenu whatsNewModalRef={whatsNewModalRef} />
