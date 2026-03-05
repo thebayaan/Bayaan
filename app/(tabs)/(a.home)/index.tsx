@@ -199,6 +199,7 @@ const Content = React.memo(
             ]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
+              contentInsetAdjustmentBehavior="automatic"
               contentContainerStyle={{
                 paddingBottom: TOTAL_BOTTOM_PADDING,
               }}>

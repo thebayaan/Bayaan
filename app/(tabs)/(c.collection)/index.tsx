@@ -155,6 +155,7 @@ export default function CollectionScreen() {
         style={styles.content}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled">
         <View style={{paddingTop: insets.top}} />
 
