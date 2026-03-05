@@ -491,6 +491,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       contentContainerStyle={{
         paddingBottom: verticalScale(32),
       }}
+      contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
       {/* Use the unified RecitersHero component */}

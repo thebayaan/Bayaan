@@ -296,6 +296,7 @@ export default function SurahsView({
         getItemType={getItemType}
         stickyHeaderIndices={stickyIndices}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.contentContainer}
         drawDistance={moderateScale(300)}
       />
