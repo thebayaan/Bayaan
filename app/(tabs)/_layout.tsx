@@ -5,9 +5,15 @@ import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
 import {NativeTabs} from 'expo-router/unstable-native-tabs';
 import {MiniPlayer} from '@/components/player/v2/MiniPlayer';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 
 export default function TabsLayout() {
   const {theme, isDarkMode} = useTheme();
+  const hasTrack = usePlayerStore(state => {
+    const tracks = state.queue.tracks;
+    const index = state.queue.currentIndex;
+    return tracks.length > 0 && tracks[index] != null;
+  });
 
   return (
     <>
@@ -17,9 +23,11 @@ export default function TabsLayout() {
         backgroundColor="transparent"
       />
       <NativeTabs tintColor={theme.colors.text} minimizeBehavior="onScrollDown">
-        <NativeTabs.BottomAccessory>
-          <MiniPlayer />
-        </NativeTabs.BottomAccessory>
+        {hasTrack && (
+          <NativeTabs.BottomAccessory>
+            <MiniPlayer />
+          </NativeTabs.BottomAccessory>
+        )}
         <NativeTabs.Trigger name="(a.home)">
           <NativeTabs.Trigger.Icon
             sf={{default: 'house', selected: 'house.fill'}}
