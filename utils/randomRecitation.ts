@@ -11,13 +11,14 @@ function getRandomReciter(): Reciter {
 
 /**
  * Picks a random index using weights that favor lower-numbered surahs (longer).
- * Weight = 1 / surahId, so surah 1 is 114x more likely than surah 114,
- * but every surah still has a non-zero chance.
+ * Weight = 1 / sqrt(surahId) for a moderate bias (~7.5x ratio between surah 2 and 114).
+ * Al-Fatihah (id 1) is de-weighted to match a mid-range surah since it's very short.
  */
 function weightedRandomIndex(surahs: Surah[]): number {
+  const MID_SURAH_WEIGHT = 1 / Math.sqrt(50);
   let totalWeight = 0;
   const weights = surahs.map(s => {
-    const w = 1 / s.id;
+    const w = s.id === 1 ? MID_SURAH_WEIGHT : 1 / Math.sqrt(s.id);
     totalWeight += w;
     return w;
   });
