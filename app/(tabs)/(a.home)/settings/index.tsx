@@ -11,7 +11,21 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
 import Header from '@/components/Header';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
-import {QuranIcon} from '@/components/Icons';
+import {
+  QuranIcon,
+  DualPagesIcon,
+  PersonAudioIcon,
+  SelectionListIcon,
+  DatabaseIcon,
+  StarIcon,
+  LightbulbIcon,
+  ChatBubbleIcon,
+  GiftBoxIcon,
+  InfoRoundedIcon,
+  MedalIcon,
+  DocCheckIcon,
+  ShieldLockIcon,
+} from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 
 const formatColorName = (colorName: string): string => {
@@ -57,8 +71,8 @@ const settingsItems = [
         title: 'Translations & Tafaseer',
         type: 'translations',
         description: 'Manage Quran translations and commentary',
-        icon: 'globe',
-        iconType: 'feather',
+        icon: 'dualPages',
+        iconType: 'custom',
       },
     ],
   },
@@ -69,15 +83,15 @@ const settingsItems = [
         title: 'Default Reciter',
         type: 'defaultReciter',
         description: 'Choose your preferred reciter',
-        icon: 'user',
-        iconType: 'feather',
+        icon: 'personAudio',
+        iconType: 'custom',
       },
       {
         title: 'Reciter Choice',
         type: 'reciterChoice',
         description: 'Customize reciter selection',
-        icon: 'users',
-        iconType: 'feather',
+        icon: 'selectionList',
+        iconType: 'custom',
       },
     ],
   },
@@ -88,8 +102,8 @@ const settingsItems = [
         title: 'Storage',
         type: 'storage',
         description: 'View and manage storage usage',
-        icon: 'hard-drive',
-        iconType: 'feather',
+        icon: 'database',
+        iconType: 'custom',
       },
     ],
   },
@@ -101,21 +115,21 @@ const settingsItems = [
         type: 'rateApp',
         description: 'Share your experience with others',
         icon: 'star',
-        iconType: 'feather',
+        iconType: 'custom',
       },
       {
         title: 'Feature Requests',
         type: 'featureRequest',
         description: 'Suggest improvements and new features',
-        icon: 'lightbulb-outline',
-        iconType: 'material',
+        icon: 'lightbulb',
+        iconType: 'custom',
       },
       {
         title: 'Help & Support',
         type: 'support',
         description: 'Get assistance with using Bayaan',
-        icon: 'help-circle',
-        iconType: 'feather',
+        icon: 'chatBubble',
+        iconType: 'custom',
       },
     ],
   },
@@ -126,47 +140,66 @@ const settingsItems = [
         title: "What's New",
         type: 'whatsNew',
         description: "See what's new in this version",
-        icon: 'gift',
-        iconType: 'feather',
+        icon: 'giftBox',
+        iconType: 'custom',
       },
       {
         title: 'About Bayaan',
         type: 'about',
         description: 'Learn more about our mission',
-        icon: 'info',
-        iconType: 'feather',
+        icon: 'infoRounded',
+        iconType: 'custom',
       },
       {
         title: 'Credits',
         type: 'credits',
         description: 'View contributors and acknowledgments',
-        icon: 'award',
-        iconType: 'feather',
+        icon: 'medal',
+        iconType: 'custom',
       },
       {
         title: 'Terms of Service',
         type: 'terms',
         description: 'Read our terms of service',
-        icon: 'file-text',
-        iconType: 'feather',
+        icon: 'docCheck',
+        iconType: 'custom',
       },
       {
         title: 'Privacy Policy',
         type: 'privacy',
         description: 'View our privacy policy',
-        icon: 'shield',
-        iconType: 'feather',
+        icon: 'shieldLock',
+        iconType: 'custom',
       },
     ],
   },
 ];
 
+const customIconMap: Record<string, React.FC<{size: number; color: string}>> = {
+  quran: QuranIcon,
+  dualPages: DualPagesIcon,
+  personAudio: PersonAudioIcon,
+  selectionList: SelectionListIcon,
+  database: DatabaseIcon,
+  star: StarIcon,
+  lightbulb: LightbulbIcon,
+  chatBubble: ChatBubbleIcon,
+  giftBox: GiftBoxIcon,
+  infoRounded: InfoRoundedIcon,
+  medal: MedalIcon,
+  docCheck: DocCheckIcon,
+  shieldLock: ShieldLockIcon,
+};
+
 const renderIcon = (
   item: {icon: string; iconType: string},
   iconColor: string,
 ) => {
-  if (item.iconType === 'custom' && item.icon === 'quran') {
-    return <QuranIcon size={moderateScale(24)} color={iconColor} />;
+  if (item.iconType === 'custom') {
+    const IconComponent = customIconMap[item.icon];
+    if (IconComponent) {
+      return <IconComponent size={moderateScale(22)} color={iconColor} />;
+    }
   }
   if (item.iconType === 'material') {
     return (
