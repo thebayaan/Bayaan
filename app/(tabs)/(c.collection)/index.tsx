@@ -141,16 +141,7 @@ export default function CollectionScreen() {
   ];
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, {paddingTop: 0}]}>
-        <View
-          style={[
-            styles.blurContainer,
-            {backgroundColor: theme.colors.background},
-          ]}
-        />
-      </View>
-
+    <View style={styles.container} collapsable={false}>
       <ScrollView
         style={styles.content}
         scrollEventThrottle={16}

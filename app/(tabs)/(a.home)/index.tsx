@@ -1,5 +1,5 @@
 import React, {useState, useCallback} from 'react';
-import {View, Pressable, ScrollView, StyleSheet} from 'react-native';
+import {View, Pressable, StyleSheet} from 'react-native';
 import {AntDesign} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
@@ -15,7 +15,6 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import TabSelector from '@/components/TabSelector';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
 import Animated from 'react-native-reanimated';
 import {Theme} from '@/utils/themeUtils';
 import {EdgeInsets} from 'react-native-safe-area-context';
@@ -35,7 +34,6 @@ interface HeaderProps {
   insets: EdgeInsets;
 }
 
-// Memoize the header component
 const Header = React.memo(
   ({
     activeView,
@@ -45,41 +43,6 @@ const Header = React.memo(
     theme,
     insets,
   }: HeaderProps) => {
-    const headerStyles = StyleSheet.create({
-      container: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-      },
-      header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: moderateScale(16),
-        height: moderateScale(56),
-      },
-      leftPlaceholder: {
-        width: moderateScale(40),
-        height: moderateScale(40),
-        justifyContent: 'center',
-        alignItems: 'center',
-      },
-      centerContainer: {
-        flex: 1,
-        alignItems: 'center',
-      },
-      settingsButton: {
-        width: moderateScale(40),
-        height: moderateScale(40),
-        borderRadius: moderateScale(20),
-        backgroundColor: 'transparent',
-        justifyContent: 'center',
-        alignItems: 'center',
-      },
-    });
-
     return (
       <Animated.View style={[headerStyles.container, {paddingTop: insets.top}]}>
         <View
@@ -126,133 +89,41 @@ const Header = React.memo(
 
 Header.displayName = 'Header';
 
-interface ContentProps {
-  activeView: ViewOption;
-  handleReciterPress: (reciter: Reciter) => void;
-  handleSurahPress: (surah: Surah) => void;
-  handleSurahLongPress: (surah: Surah) => void;
-  handleCategoryPress: (category: SuperCategory) => void;
-  handleSavedPress: () => void;
-  insets: EdgeInsets;
-}
-
-// Memoize the content views
-const Content = React.memo(
-  ({
-    activeView,
-    handleReciterPress,
-    handleSurahPress,
-    handleSurahLongPress,
-    handleCategoryPress,
-    handleSavedPress,
-    insets,
-  }: ContentProps) => {
-    // Track if each view has been rendered at least once
-    const [hasViewedReciters, setHasViewedReciters] = React.useState(true); // Start with true as it's the default
-    const [hasViewedSurahs, setHasViewedSurahs] = React.useState(true); // Pre-mounted: data ready from AppInitializer
-    const [hasViewedAdhkar, setHasViewedAdhkar] = React.useState(true); // Pre-mounted: data ready from AppInitializer
-
-    // Update the viewed state when active view changes
-    React.useEffect(() => {
-      if (activeView === 'Reciters' && !hasViewedReciters) {
-        setHasViewedReciters(true);
-      } else if (activeView === 'Surahs' && !hasViewedSurahs) {
-        setHasViewedSurahs(true);
-      } else if (activeView === 'Adhkar' && !hasViewedAdhkar) {
-        setHasViewedAdhkar(true);
-      }
-    }, [activeView, hasViewedReciters, hasViewedSurahs, hasViewedAdhkar]);
-
-    const contentStyles = StyleSheet.create({
-      container: {
-        flex: 1,
-        paddingTop: moderateScale(56) + insets.top,
-      },
-      contentContainer: {
-        flex: 1,
-        marginBottom: moderateScale(16),
-      },
-      hiddenView: {
-        display: 'none',
-        position: 'absolute',
-        width: '100%',
-        height: 0,
-        overflow: 'hidden',
-        opacity: 0,
-      },
-      visibleView: {
-        flex: 1,
-        width: '100%',
-        opacity: 1,
-      },
-    });
-
-    return (
-      <View style={contentStyles.container}>
-        {/* RecitersView - only render if it has been viewed once */}
-        {hasViewedReciters && (
-          <View
-            style={[
-              activeView === 'Reciters'
-                ? contentStyles.visibleView
-                : contentStyles.hiddenView,
-            ]}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentInsetAdjustmentBehavior="automatic"
-              contentContainerStyle={{
-                paddingBottom: TOTAL_BOTTOM_PADDING,
-              }}>
-              <View style={contentStyles.contentContainer}>
-                <RecitersView onReciterPress={handleReciterPress} />
-              </View>
-            </ScrollView>
-          </View>
-        )}
-
-        {/* SurahsView - only render if it has been viewed once */}
-        {hasViewedSurahs && (
-          <View
-            style={[
-              activeView === 'Surahs'
-                ? contentStyles.visibleView
-                : contentStyles.hiddenView,
-            ]}>
-            <SurahsView
-              onSurahPress={handleSurahPress}
-              onSurahLongPress={handleSurahLongPress}
-            />
-          </View>
-        )}
-
-        {/* AdhkarView - only render if it has been viewed once */}
-        {hasViewedAdhkar && (
-          <View
-            style={[
-              activeView === 'Adhkar'
-                ? contentStyles.visibleView
-                : contentStyles.hiddenView,
-            ]}>
-            <AdhkarView
-              onCategoryPress={handleCategoryPress}
-              onSavedPress={handleSavedPress}
-            />
-          </View>
-        )}
-      </View>
-    );
+const headerStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
   },
-  (prevProps, nextProps) =>
-    prevProps.activeView === nextProps.activeView &&
-    prevProps.handleReciterPress === nextProps.handleReciterPress &&
-    prevProps.handleSurahPress === nextProps.handleSurahPress &&
-    prevProps.handleSurahLongPress === nextProps.handleSurahLongPress &&
-    prevProps.handleCategoryPress === nextProps.handleCategoryPress &&
-    prevProps.handleSavedPress === nextProps.handleSavedPress &&
-    prevProps.insets === nextProps.insets,
-);
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: moderateScale(16),
+    height: moderateScale(56),
+  },
+  leftPlaceholder: {
+    width: moderateScale(40),
+    height: moderateScale(40),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  settingsButton: {
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: moderateScale(20),
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
-Content.displayName = 'Content';
 
 function HomeScreen() {
   const router = useRouter();
@@ -379,8 +250,10 @@ function HomeScreen() {
     router.push('/(tabs)/(a.home)/adhkar/saved');
   }, [router]);
 
+  const headerHeight = moderateScale(56) + insets.top;
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} collapsable={false}>
       <Header
         activeView={activeView}
         handleToggle={handleToggle}
@@ -389,15 +262,23 @@ function HomeScreen() {
         theme={theme}
         insets={insets}
       />
-      <Content
-        activeView={activeView}
-        handleReciterPress={handleReciterPress}
-        handleSurahPress={handleSurahPress}
-        handleSurahLongPress={handleSurahLongPress}
-        handleCategoryPress={handleCategoryPress}
-        handleSavedPress={handleSavedPress}
-        insets={insets}
-      />
+      <View style={{flex: 1, marginTop: headerHeight}} collapsable={false}>
+        {activeView === 'Reciters' && (
+          <RecitersView onReciterPress={handleReciterPress} />
+        )}
+        {activeView === 'Surahs' && (
+          <SurahsView
+            onSurahPress={handleSurahPress}
+            onSurahLongPress={handleSurahLongPress}
+          />
+        )}
+        {activeView === 'Adhkar' && (
+          <AdhkarView
+            onCategoryPress={handleCategoryPress}
+            onSavedPress={handleSavedPress}
+          />
+        )}
+      </View>
     </View>
   );
 }

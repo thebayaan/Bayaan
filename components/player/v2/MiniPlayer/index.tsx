@@ -1,6 +1,5 @@
 import React, {useCallback, useMemo, useRef} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {NativeTabs} from 'expo-router/unstable-native-tabs';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -10,7 +9,6 @@ import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
 
 function MiniPlayerInner() {
-  const placement = NativeTabs.BottomAccessory.usePlacement();
   const {theme} = useTheme();
   const {play, pause, setSheetMode} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
@@ -48,20 +46,6 @@ function MiniPlayerInner() {
   if (stateRestoring || !currentTrack) return null;
 
   const textColor = theme.colors.text;
-
-  if (placement === 'inline') {
-    return (
-      <Pressable onPress={handlePlayPause} style={styles.inline}>
-        {isLoadingNewTrack ? (
-          <LoadingIndicator color={textColor} />
-        ) : playbackState === 'playing' ? (
-          <PauseIcon color={textColor} size={16} />
-        ) : (
-          <PlayIcon color={textColor} size={16} />
-        )}
-      </Pressable>
-    );
-  }
 
   return (
     <Pressable onPress={handlePress} style={styles.row}>
@@ -103,12 +87,6 @@ function MiniPlayerInner() {
 export const MiniPlayer: React.FC = React.memo(MiniPlayerInner);
 
 const styles = StyleSheet.create({
-  inline: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
