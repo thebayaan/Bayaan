@@ -8,7 +8,7 @@ import {
 } from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import SearchBar from '@/components/SearchBar';
+import {SearchInput} from '@/components/SearchInput';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterStore} from '@/store/reciterStore';
@@ -103,13 +103,21 @@ export default function DefaultReciterScreen() {
 
         <View style={styles.searchSection}>
           <Text style={styles.searchLabel}>CHANGE DEFAULT RECITER</Text>
-          <View style={styles.searchContainer}>
-            <SearchBar
-              placeholder="Search reciters..."
-              value={searchQuery}
-              onChangeText={handleSearch}
-            />
-          </View>
+          <SearchInput
+            placeholder="Search reciters..."
+            value={searchQuery}
+            onChangeText={handleSearch}
+            showCancelButton={false}
+            iconColor={theme.colors.text}
+            iconOpacity={0.25}
+            placeholderTextColor={Color(theme.colors.text)
+              .alpha(0.35)
+              .toString()}
+            textColor={theme.colors.text}
+            backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+            borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+            containerStyle={{paddingHorizontal: 0}}
+          />
         </View>
 
         <FlatList
@@ -185,9 +193,6 @@ const createStyles = (theme: Theme) =>
       textTransform: 'uppercase',
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(2),
-    },
-    searchContainer: {
-      marginBottom: verticalScale(15),
     },
     reciterList: {
       flex: 1,

@@ -15,10 +15,10 @@ import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import {ProfileIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
-import SearchBar from '@/components/SearchBar';
+import {SearchInput} from '@/components/SearchInput';
+import Color from 'color';
 import {Reciter} from '@/data/reciterData';
 import {SheetManager} from 'react-native-actions-sheet';
-import Color from 'color';
 
 export default function FavoriteRecitersScreen() {
   const {theme} = useTheme();
@@ -319,10 +319,20 @@ export default function FavoriteRecitersScreen() {
 
         {showSearch && (
           <View style={styles.searchBarContainer}>
-            <SearchBar
+            <SearchInput
               placeholder="Search favorite reciters"
               value={searchQuery}
               onChangeText={setSearchQuery}
+              showCancelButton={false}
+              iconColor={theme.colors.text}
+              iconOpacity={0.25}
+              placeholderTextColor={Color(theme.colors.text)
+                .alpha(0.35)
+                .toString()}
+              textColor={theme.colors.text}
+              backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+              borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+              containerStyle={{paddingHorizontal: 0}}
             />
           </View>
         )}
