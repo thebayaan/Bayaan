@@ -8,12 +8,14 @@ interface PlayButtonProps {
   isPlaying: boolean;
   onPlayPause: () => Promise<void>;
   disabled?: boolean;
+  iconSize?: number;
 }
 
 export const PlayButton: React.FC<PlayButtonProps> = ({
   isPlaying,
   onPlayPause,
   disabled,
+  iconSize,
 }) => {
   const {theme} = useTheme();
   const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(isPlaying);
@@ -41,9 +43,15 @@ export const PlayButton: React.FC<PlayButtonProps> = ({
   return (
     <Pressable onPress={handlePress} disabled={disabled} style={styles.button}>
       {optimisticIsPlaying ? (
-        <PauseIcon color={theme.colors.text} size={moderateScale(24)} />
+        <PauseIcon
+          color={theme.colors.text}
+          size={iconSize ?? moderateScale(24)}
+        />
       ) : (
-        <PlayIcon color={theme.colors.text} size={moderateScale(24)} />
+        <PlayIcon
+          color={theme.colors.text}
+          size={iconSize ?? moderateScale(24)}
+        />
       )}
     </Pressable>
   );
