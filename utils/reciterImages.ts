@@ -188,6 +188,7 @@ export const reciterImages: {[key: string]: ImageSourcePropType} = {
   'slaah-bukhatir': require('@/assets/reciter-images/Slaah-Bukhatir.jpeg'),
   'tawfeeq-as-sayegh': require('@/assets/reciter-images/Tawfeeq-As-Sayegh.jpeg'),
   'ustaz-zamri': require('@/assets/reciter-images/Ustaz-Zamri.png'),
+  'umar-muhammad-al-qasim': require('@/assets/reciter-images/Umar-Muhammad-Al-Qasim.jpg'),
   'wadeea-al-yamani': require('@/assets/reciter-images/Wadeea-Al-Yamani.jpeg'),
   'waheed-zafar-qasmi': require('@/assets/reciter-images/Waheed-Zafar-Qasmi.jpg'),
   'walid-al-dulaimi': require('@/assets/reciter-images/Walid-Al-Dulaimi.jpeg'),
