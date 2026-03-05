@@ -420,6 +420,8 @@ export const VerseItem = memo<VerseItemProps>(
             selectedWordPosition={selectedWordPosition}
             showTajweed={showTajweed}
             indexedTajweedData={indexedTajweedData}
+            onTap={handlePress}
+            onLongPress={handleLongPress}
           />
         ) : (
           <View onLayout={handleArabicLayout}>
