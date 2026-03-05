@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, {Path, G, Circle, Rect} from 'react-native-svg';
+import Svg, {Path, G, Circle, Rect, Line} from 'react-native-svg';
 
 export interface IconProps {
   color: string;
@@ -775,5 +775,695 @@ export const AmbientIcon: React.FC<IconProps> = ({color, size, filled}) => (
         fill="none"
       />
     )}
+  </Svg>
+);
+
+// Tafseer — Stacked Volumes
+export const StackedVolumesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="4"
+      width="13"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.35}
+    />
+    <Rect
+      x="5"
+      y="2.5"
+      width="13"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.6}
+    />
+    <Rect
+      x="8"
+      y="1"
+      width="13"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+  </Svg>
+);
+
+// Notes — Page + Quill
+export const PageQuillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="2"
+      width="14"
+      height="20"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="6"
+      y1="6"
+      x2="14"
+      y2="6"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1="6"
+      y1="8.5"
+      x2="14"
+      y2="8.5"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1="6"
+      y1="11"
+      x2="12"
+      y2="11"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Path
+      d="M21 2C21 2 18 5 16 9C15 11 14.5 13 14 15L15 15.5C16.5 13.5 18 11 19.5 8C21 5 22 3 21 2Z"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinejoin="round"
+      fill={color}
+      opacity={0.15}
+    />
+    <Path
+      d="M14 15L13 19L15 15.5"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Similar Verses — Mirror Waves
+export const MirrorWavesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M10 4L4 8L10 12L4 16L10 20"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M14 4L20 8L14 12L20 16L14 20"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Highlight — Text Highlight Bar
+export const HighlightIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="4"
+      y="8"
+      width="16"
+      height="6"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.5}
+      opacity={0.35}
+      fill={color}
+    />
+    <Path d="M6 8V5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path d="M10 8V6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path
+      d="M14 8V5.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 8V6.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path d="M6 14V18" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path
+      d="M10 14V17"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M14 14V18"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 14V16.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+// Mushaf Mode — Mushaf Page (pill icon)
+export const MushafPagePillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="1.5"
+      width="18"
+      height="21"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Rect
+      x="5.5"
+      y="4"
+      width="13"
+      height="16"
+      rx={1}
+      stroke={color}
+      strokeWidth={0.8}
+      opacity={0.4}
+    />
+    <Line
+      x1="7.5"
+      y1="7.5"
+      x2="16.5"
+      y2="7.5"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.6}
+    />
+    <Line
+      x1="8"
+      y1="10"
+      x2="16"
+      y2="10"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.6}
+    />
+    <Line
+      x1="7.5"
+      y1="12.5"
+      x2="16.5"
+      y2="12.5"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.6}
+    />
+    <Line
+      x1="8"
+      y1="15"
+      x2="16"
+      y2="15"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.6}
+    />
+  </Svg>
+);
+
+// Scroll Mode — Page + Arrow (pill icon)
+export const ScrollModePillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="4"
+      y="2"
+      width="16"
+      height="20"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="8"
+      y1="6"
+      x2="16"
+      y2="6"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="9"
+      x2="16"
+      y2="9"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="12"
+      x2="16"
+      y2="12"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="15"
+      x2="14"
+      y2="15"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M12 18V22M10 20L12 22L14 20"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Book Layout — Landscape Book (pill icon)
+export const BookLayoutPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="3"
+      width="20"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="12"
+      y1="3"
+      x2="12"
+      y2="20"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeDasharray="2 2"
+      opacity={0.4}
+    />
+    <Path
+      d="M8 21L12 20L16 21"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Fullscreen Layout — Expand Arrows (pill icon)
+export const FullscreenPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="3"
+      width="18"
+      height="18"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Path
+      d="M3 3L9 9M21 3L15 9M3 21L9 15M21 21L15 15"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+  </Svg>
+);
+
+// Shared Phrases — Chain Links
+export const ChainLinksIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M9 12H15" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Rect
+      x="3"
+      y="8"
+      width="8"
+      height="8"
+      rx={4}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Rect
+      x="13"
+      y="8"
+      width="8"
+      height="8"
+      rx={4}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+// --- Settings Screen Icons ---
+
+export const DualPagesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="4"
+      width="9"
+      height="16"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Rect
+      x="13"
+      y="4"
+      width="9"
+      height="16"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Line
+      x1="5"
+      y1="8"
+      x2="8"
+      y2="8"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="5"
+      y1="10.5"
+      x2="8"
+      y2="10.5"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="5"
+      y1="13"
+      x2="7"
+      y2="13"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="16"
+      y1="8"
+      x2="19"
+      y2="8"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="16"
+      y1="10.5"
+      x2="19"
+      y2="10.5"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="16"
+      y1="13"
+      x2="18"
+      y2="13"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const PersonAudioIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="9" cy="7" r="4" stroke={color} strokeWidth={1.5} />
+    <Path
+      d="M2 21C2 17.134 5.13401 14 9 14C10.074 14 11.089 14.247 12 14.69"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 14V20"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M15.5 16C15.5 14.619 16.619 13.5 18 13.5C19.381 13.5 20.5 14.619 20.5 16V16.5C20.5 17.052 20.052 17.5 19.5 17.5H16.5C15.948 17.5 15.5 17.052 15.5 16.5V16Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M15.5 20C15.5 20.552 15.948 21 16.5 21H19.5C20.052 21 20.5 20.552 20.5 20V19.5C20.5 18.119 19.381 17 18 17C16.619 17 15.5 18.119 15.5 19.5V20Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+export const SelectionListIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="4"
+      width="18"
+      height="4.5"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Rect
+      x="3"
+      y="10"
+      width="18"
+      height="4.5"
+      rx={1.5}
+      fill={color}
+      fillOpacity={0.15}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M17 11.5L18.5 13L20.5 10.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Rect
+      x="3"
+      y="16"
+      width="18"
+      height="4.5"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+export const DatabaseIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3C7.582 3 4 4.343 4 6C4 7.657 7.582 9 12 9C16.418 9 20 7.657 20 6C20 4.343 16.418 3 12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M4 6V12C4 13.657 7.582 15 12 15C16.418 15 20 13.657 20 12V6"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M4 12V18C4 19.657 7.582 21 12 21C16.418 21 20 19.657 20 18V12"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+export const LightbulbIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M9 21H15" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path
+      d="M12 3C8.134 3 5 6.134 5 10C5 12.386 6.21 14.478 8.062 15.68C8.621 16.042 9 16.669 9 17.333V18H15V17.333C15 16.669 15.379 16.042 15.938 15.68C17.79 14.478 19 12.386 19 10C19 6.134 15.866 3 12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Line
+      x1="9"
+      y1="18"
+      x2="15"
+      y2="18"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const ChatBubbleIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3C7.029 3 3 6.582 3 11C3 13.245 4.093 15.266 5.858 16.677C5.965 17.549 5.558 18.656 4.858 19.564C6.487 19.415 8.108 18.837 9.177 18.147C10.065 18.37 11.015 18.5 12 18.5C16.971 18.5 21 14.918 21 10.75C21 6.582 16.971 3 12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="8.5" cy="11" r={1} fill={color} />
+    <Circle cx="12" cy="11" r={1} fill={color} />
+    <Circle cx="15.5" cy="11" r={1} fill={color} />
+  </Svg>
+);
+
+export const GiftBoxIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="8"
+      width="18"
+      height="4"
+      rx={1}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M5 12V20C5 20.552 5.448 21 6 21H18C18.552 21 19 20.552 19 20V12"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Line x1="12" y1="8" x2="12" y2="21" stroke={color} strokeWidth={1.5} />
+    <Path
+      d="M12 8C12 8 12 5 9.5 4C7 3 7 5.5 8.5 6.5C10 7.5 12 8 12 8Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 8C12 8 12 5 14.5 4C17 3 17 5.5 15.5 6.5C14 7.5 12 8 12 8Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const InfoRoundedIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.5} />
+    <Line
+      x1="12"
+      y1="11"
+      x2="12"
+      y2="17"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Circle cx="12" cy="8" r={1} fill={color} />
+  </Svg>
+);
+
+export const MedalIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="9" r="6" stroke={color} strokeWidth={1.5} />
+    <Circle cx="12" cy="9" r="3" stroke={color} strokeWidth={1.5} />
+    <Path
+      d="M7.5 13.5L5 21L8.5 19L12 21L15.5 19L19 21L16.5 13.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const DocCheckIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M6 2C4.895 2 4 2.895 4 4V20C4 21.105 4.895 22 6 22H18C19.105 22 20 21.105 20 20V8L14 2H6Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M14 2V8H20"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M9 14L11 16L15 12"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const ShieldLockIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3L4 7V12C4 16.418 7.582 20.5 12 21.5C16.418 20.5 20 16.418 20 12V7L12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+    <Rect
+      x="9.5"
+      y="11"
+      width="5"
+      height="4"
+      rx={1}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M10.5 11V9.5C10.5 8.672 11.172 8 12 8C12.828 8 13.5 8.672 13.5 9.5V11"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
   </Svg>
 );

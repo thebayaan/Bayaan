@@ -5,6 +5,13 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
+import {
+  MushafPagePillIcon,
+  ScrollModePillIcon,
+  BookLayoutPillIcon,
+  FullscreenPillIcon,
+} from '@/components/Icons';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {tajweedColors} from '@/constants/tajweedColors';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
@@ -409,6 +416,12 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     setPageLayout,
     viewMode,
     setViewMode,
+    showWBW,
+    wbwShowTranslation,
+    wbwShowTransliteration,
+    toggleWBW,
+    toggleWBWTranslation,
+    toggleWBWTransliteration,
   } = useMushafSettingsStore();
 
   const verseKey = '3:138';
@@ -477,157 +490,156 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     <View style={[styles.container, containerStyle]}>
       {showTitle && <Text style={styles.title}>Mushaf Settings</Text>}
 
-      {/* DISPLAY Section — most frequently used */}
-      <Text style={styles.sectionHeader}>DISPLAY</Text>
-      <View style={styles.card}>
-        {/* Tajweed Toggle */}
-        <View style={styles.tajweedOptionRow}>
-          <View style={styles.tajweedLabelContainer}>
-            <Text style={styles.tajweedLabel}>Tajweed Coloring</Text>
-            <Text style={styles.tajweedSubLabel}>
-              Highlight rules with colors
-            </Text>
+      {/* SCROLL DIRECTION Section (hidden from player context) */}
+      {context !== 'player' && (
+        <>
+          <Text style={styles.sectionHeader}>SCROLL DIRECTION</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={({pressed}) => [
+                styles.settingRow,
+                pressed && styles.settingRowPressed,
+              ]}
+              onPress={() => setViewMode('mushaf')}>
+              <MushafPagePillIcon
+                size={moderateScale(20)}
+                color={Color(theme.colors.text).alpha(0.7).toString()}
+              />
+              <Text style={styles.settingRowLabel}>Horizontal</Text>
+              {viewMode === 'mushaf' && (
+                <Feather
+                  name="check"
+                  size={moderateScale(18)}
+                  color={Color(theme.colors.text).alpha(0.7).toString()}
+                />
+              )}
+            </Pressable>
+            <View style={styles.divider} />
+            <Pressable
+              style={({pressed}) => [
+                styles.settingRow,
+                pressed && styles.settingRowPressed,
+              ]}
+              onPress={() => setViewMode('reading')}>
+              <ScrollModePillIcon
+                size={moderateScale(20)}
+                color={Color(theme.colors.text).alpha(0.7).toString()}
+              />
+              <Text style={styles.settingRowLabel}>Vertical</Text>
+              {viewMode === 'reading' && (
+                <Feather
+                  name="check"
+                  size={moderateScale(18)}
+                  color={Color(theme.colors.text).alpha(0.7).toString()}
+                />
+              )}
+            </Pressable>
           </View>
-          <TajweedToggle
-            value={showTajweed}
-            onValueChange={toggleTajweed}
-            theme={theme}
-          />
-        </View>
 
-        {/* View Mode — icon pills (hidden from player context) */}
-        {context !== 'player' && (
-          <>
+          <Text style={styles.sectionHeader}>PAGE DESIGN</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={({pressed}) => [
+                styles.settingRow,
+                pressed && styles.settingRowPressed,
+              ]}
+              onPress={() => setPageLayout('fullscreen')}>
+              <FullscreenPillIcon
+                size={moderateScale(20)}
+                color={Color(theme.colors.text).alpha(0.7).toString()}
+              />
+              <Text style={styles.settingRowLabel}>Fullscreen</Text>
+              {pageLayout === 'fullscreen' && (
+                <Feather
+                  name="check"
+                  size={moderateScale(18)}
+                  color={Color(theme.colors.text).alpha(0.7).toString()}
+                />
+              )}
+            </Pressable>
             <View style={styles.divider} />
-            <View style={styles.pillSelectorRow}>
-              <Text style={styles.optionLabel}>View Mode</Text>
-              <View style={styles.pillContainer}>
-                <Pressable
-                  style={[
-                    styles.pill,
-                    viewMode === 'mushaf' && styles.pillActive,
-                  ]}
-                  onPress={() => setViewMode('mushaf')}>
-                  <Icon
-                    name="book-open"
-                    type="feather"
-                    size={moderateScale(14)}
-                    color={
-                      viewMode === 'mushaf'
-                        ? theme.colors.text
-                        : Color(theme.colors.textSecondary)
-                            .alpha(0.5)
-                            .toString()
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.pillText,
-                      viewMode === 'mushaf' && styles.pillTextActive,
-                    ]}>
-                    Mushaf
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.pill,
-                    viewMode === 'reading' && styles.pillActive,
-                  ]}
-                  onPress={() => setViewMode('reading')}>
-                  <Icon
-                    name="align-left"
-                    type="feather"
-                    size={moderateScale(14)}
-                    color={
-                      viewMode === 'reading'
-                        ? theme.colors.text
-                        : Color(theme.colors.textSecondary)
-                            .alpha(0.5)
-                            .toString()
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.pillText,
-                      viewMode === 'reading' && styles.pillTextActive,
-                    ]}>
-                    Scroll
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+            <Pressable
+              style={({pressed}) => [
+                styles.settingRow,
+                pressed && styles.settingRowPressed,
+              ]}
+              onPress={() => setPageLayout('book')}>
+              <BookLayoutPillIcon
+                size={moderateScale(20)}
+                color={Color(theme.colors.text).alpha(0.7).toString()}
+              />
+              <Text style={styles.settingRowLabel}>Book</Text>
+              {pageLayout === 'book' && (
+                <Feather
+                  name="check"
+                  size={moderateScale(18)}
+                  color={Color(theme.colors.text).alpha(0.7).toString()}
+                />
+              )}
+            </Pressable>
+          </View>
+        </>
+      )}
 
-            {/* Page Layout — icon pills */}
-            <View style={styles.divider} />
-            <View style={styles.pillSelectorRow}>
-              <Text style={styles.optionLabel}>Page Layout</Text>
-              <View style={styles.pillContainer}>
-                <Pressable
-                  style={[
-                    styles.pill,
-                    pageLayout === 'book' && styles.pillActive,
-                  ]}
-                  onPress={() => setPageLayout('book')}>
-                  <Icon
-                    name="book"
-                    type="feather"
-                    size={moderateScale(14)}
-                    color={
-                      pageLayout === 'book'
-                        ? theme.colors.text
-                        : Color(theme.colors.textSecondary)
-                            .alpha(0.5)
-                            .toString()
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.pillText,
-                      pageLayout === 'book' && styles.pillTextActive,
-                    ]}>
-                    Book
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.pill,
-                    pageLayout === 'fullscreen' && styles.pillActive,
-                  ]}
-                  onPress={() => setPageLayout('fullscreen')}>
-                  <Icon
-                    name="maximize"
-                    type="feather"
-                    size={moderateScale(14)}
-                    color={
-                      pageLayout === 'fullscreen'
-                        ? theme.colors.text
-                        : Color(theme.colors.textSecondary)
-                            .alpha(0.5)
-                            .toString()
-                    }
-                  />
-                  <Text
-                    style={[
-                      styles.pillText,
-                      pageLayout === 'fullscreen' && styles.pillTextActive,
-                    ]}>
-                    Fullscreen
-                  </Text>
-                </Pressable>
-              </View>
+      {/* Word by Word Section */}
+      {context !== 'player' && (
+        <>
+          <Text style={styles.sectionHeader}>WORD BY WORD</Text>
+          <View style={styles.card}>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>Word by Word</Text>
+              <Switch
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                onValueChange={toggleWBW}
+                value={showWBW}
+                style={styles.switchStyle}
+              />
             </View>
-          </>
-        )}
-      </View>
+            {showWBW && (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.settingRow,
+                    pressed && styles.settingRowPressed,
+                  ]}
+                  onPress={toggleWBWTranslation}>
+                  <Text style={styles.settingRowLabel}>Translation</Text>
+                  {wbwShowTranslation && (
+                    <Feather
+                      name="check"
+                      size={moderateScale(18)}
+                      color={Color(theme.colors.text).alpha(0.7).toString()}
+                    />
+                  )}
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.settingRow,
+                    pressed && styles.settingRowPressed,
+                  ]}
+                  onPress={toggleWBWTransliteration}>
+                  <Text style={styles.settingRowLabel}>Transliteration</Text>
+                  {wbwShowTransliteration && (
+                    <Feather
+                      name="check"
+                      size={moderateScale(18)}
+                      color={Color(theme.colors.text).alpha(0.7).toString()}
+                    />
+                  )}
+                </Pressable>
+              </>
+            )}
+          </View>
+        </>
+      )}
 
       {/* Player View Section (shown in player context OR mushaf reading mode) */}
       {(context !== 'mushaf' || viewMode === 'reading') && (
         <>
-          <Text style={styles.sectionHeader}>PLAYER VIEW</Text>
-          <Text style={styles.sectionSubHeader}>
-            Font sizes and display options during playback
-          </Text>
-
           <View style={styles.card}>
             <FontSizeControl
               label="Arabic Font Size"
@@ -706,8 +718,25 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         </>
       )}
 
-      {/* FONT Section — least frequently changed, at bottom */}
+      {/* FONT Section */}
       <Text style={styles.sectionHeader}>FONT</Text>
+      <View style={styles.card}>
+        {/* Tajweed Toggle */}
+        <View style={styles.tajweedOptionRow}>
+          <View style={styles.tajweedLabelContainer}>
+            <Text style={styles.tajweedLabel}>Tajweed Coloring</Text>
+            <Text style={styles.tajweedSubLabel}>
+              Highlight rules with colors
+            </Text>
+          </View>
+          <TajweedToggle
+            value={showTajweed}
+            onValueChange={toggleTajweed}
+            theme={theme}
+          />
+        </View>
+        <View style={styles.divider} />
+      </View>
       <View style={styles.card}>
         {FONT_OPTIONS.map((option, idx) => {
           const isSelected = mushafRenderer === option.value;
@@ -759,7 +788,7 @@ const createStyles = (theme: Theme) =>
       borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       borderRadius: moderateScale(14),
       paddingHorizontal: moderateScale(14),
-      paddingVertical: verticalScale(5),
+      overflow: 'hidden',
       marginBottom: verticalScale(16),
     },
     sectionHeader: {
@@ -793,7 +822,6 @@ const createStyles = (theme: Theme) =>
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
-      marginVertical: verticalScale(8),
     },
     switchStyle: {
       transform: [{scaleX: 0.8}, {scaleY: 0.8}],
@@ -888,8 +916,9 @@ const createStyles = (theme: Theme) =>
     radioRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: verticalScale(10),
-      position: 'relative',
+      paddingVertical: verticalScale(12),
+      paddingHorizontal: moderateScale(14),
+      marginHorizontal: -moderateScale(14),
     },
     radioRowPressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
@@ -931,39 +960,22 @@ const createStyles = (theme: Theme) =>
       marginTop: verticalScale(1),
     },
 
-    // --- Icon pill selector styles ---
-    pillSelectorRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: verticalScale(10),
-    },
-    pillContainer: {
-      flexDirection: 'row',
-      borderRadius: moderateScale(8),
-      overflow: 'hidden',
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
-      gap: moderateScale(2),
-    },
-    pill: {
+    // --- Setting row styles (card list with checkmarks) ---
+    settingRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(6),
-      paddingHorizontal: moderateScale(10),
-      gap: moderateScale(5),
+      paddingVertical: verticalScale(12),
+      paddingHorizontal: moderateScale(14),
+      marginHorizontal: -moderateScale(14),
+      gap: moderateScale(12),
     },
-    pillActive: {
-      backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),
+    settingRowPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
-    pillText: {
-      fontSize: moderateScale(12),
+    settingRowLabel: {
+      flex: 1,
+      fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
-    },
-    pillTextActive: {
-      color: theme.colors.text,
-      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
     },
   });
