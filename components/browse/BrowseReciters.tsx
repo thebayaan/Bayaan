@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  TextInput,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
@@ -17,6 +16,7 @@ import Animated, {
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
+import {SearchInput} from '@/components/SearchInput';
 import {RECITERS, Reciter, Rewayat} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import BrowseGrid from './BrowseGrid';
@@ -463,55 +463,26 @@ export default function BrowseReciters({
 
         {/* Search and Filter Bar */}
         <View style={styles.searchFilterContainer}>
-          <View
-            style={[
-              styles.searchButton,
-              isSearchFocused && styles.searchButtonFocused,
-            ]}>
-            <Feather
-              name="search"
-              size={moderateScale(18)}
-              color={theme.colors.textSecondary}
-            />
-            <TextInput
-              style={[styles.searchInput, {color: theme.colors.text}]}
-              placeholder="Search reciters..."
-              placeholderTextColor={theme.colors.textSecondary}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-              onFocus={handleSearchFocus}
-              onBlur={handleSearchBlur}
-              keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-              autoCorrect={false}
-              autoComplete="off"
-              autoCapitalize="none"
-              onSubmitEditing={Keyboard.dismiss}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={handleClearSearch}
-                style={styles.clearSearchButton}
-                activeOpacity={0.7}>
-                <Feather
-                  name="x"
-                  size={moderateScale(16)}
-                  color={theme.colors.textSecondary}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-          {isSearchFocused ? (
-            <TouchableOpacity
-              style={styles.cancelButton}
-              activeOpacity={0.7}
-              onPress={handleSearchCancel}>
-              <Text
-                style={[styles.cancelButtonText, {color: theme.colors.text}]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          ) : (
+          <SearchInput
+            placeholder="Search reciters..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onCancel={handleSearchCancel}
+            showCancelButton={isSearchFocused}
+            iconColor={theme.colors.text}
+            iconOpacity={0.25}
+            placeholderTextColor={Color(theme.colors.text)
+              .alpha(0.35)
+              .toString()}
+            textColor={theme.colors.text}
+            backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
+            borderColor={Color(theme.colors.text).alpha(0.06).toString()}
+            onFocus={handleSearchFocus}
+            onBlur={handleSearchBlur}
+            onSubmitEditing={Keyboard.dismiss}
+            containerStyle={{paddingHorizontal: 0, flex: 1}}
+          />
+          {!isSearchFocused && (
             <TouchableOpacity
               style={styles.filterButton}
               activeOpacity={0.7}
@@ -627,42 +598,6 @@ const createStyles = (theme: Theme) =>
       gap: moderateScale(8),
       marginTop: moderateScale(110), // Add top margin to account for header
       zIndex: 1,
-    },
-    searchButton: {
-      flex: 1,
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
-      paddingVertical: moderateScale(10),
-      paddingHorizontal: moderateScale(12),
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-      height: moderateScale(44), // Fixed height to prevent UI shifting
-    },
-    searchButtonFocused: {
-      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
-      backgroundColor: Color(theme.colors.card).alpha(0.7).toString(),
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.regular,
-      marginLeft: moderateScale(8),
-      padding: 0,
-      height: '100%', // Fill the parent height
-    },
-    clearSearchButton: {
-      padding: moderateScale(4),
-    },
-    cancelButton: {
-      paddingHorizontal: moderateScale(12),
-      justifyContent: 'center',
-      height: moderateScale(44), // Match search button height
-    },
-    cancelButtonText: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.medium,
     },
     filterButton: {
       backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
