@@ -40,37 +40,7 @@ export function parseDeepLink(url: string): DeepLinkRoute | null {
         if (segments.length >= 2) {
           const reciterId = segments[1];
           
-          // Check for rewayat: /reciter/{id}/rewayat/{rewayatId}/surah/{num}
-          if (segments.length >= 4 && segments[2] === 'rewayat') {
-            const rewayatId = segments[3];
-            
-            // Check if it's a specific surah: /reciter/{id}/rewayat/{rewayatId}/surah/{num}
-            if (segments.length >= 6 && segments[4] === 'surah') {
-              const surahNum = segments[5];
-              return {
-                screen: '/(tabs)/(a.home)/reciter/[id]',
-                params: {
-                  id: reciterId,
-                  rewayatId,
-                  surah: surahNum,
-                  autoplay: queryParams?.autoplay === 'true' ? true : undefined,
-                  ...queryParams,
-                },
-              };
-            }
-            
-            // Just reciter with rewayat: /reciter/{id}/rewayat/{rewayatId}
-            return {
-              screen: '/(tabs)/(a.home)/reciter/[id]',
-              params: { 
-                id: reciterId, 
-                rewayatId,
-                ...queryParams 
-              },
-            };
-          }
-          
-          // Legacy support: /reciter/{id}/surah/{num} (without rewayat)
+          // Check if it's a specific surah: /reciter/{id}/surah/{num}
           if (segments.length >= 4 && segments[2] === 'surah') {
             const surahNum = segments[3];
             return {
@@ -78,7 +48,6 @@ export function parseDeepLink(url: string): DeepLinkRoute | null {
               params: {
                 id: reciterId,
                 surah: surahNum,
-                rewayatId: queryParams?.rewayat || queryParams?.rewayatId,
                 autoplay: queryParams?.autoplay === 'true' ? true : undefined,
                 ...queryParams,
               },
@@ -88,11 +57,7 @@ export function parseDeepLink(url: string): DeepLinkRoute | null {
           // Just reciter profile: /reciter/{id}
           return {
             screen: '/(tabs)/(a.home)/reciter/[id]',
-            params: { 
-              id: reciterId, 
-              rewayatId: queryParams?.rewayat || queryParams?.rewayatId,
-              ...queryParams 
-            },
+            params: { id: reciterId, ...queryParams },
           };
         }
         break;
@@ -117,7 +82,6 @@ export function parseDeepLink(url: string): DeepLinkRoute | null {
             params: {
               surah: surahNum,
               reciter: queryParams?.reciter,
-              rewayatId: queryParams?.rewayat || queryParams?.rewayatId,
               autoplay: queryParams?.autoplay === 'true' ? true : undefined,
               ...queryParams,
             },
@@ -204,23 +168,11 @@ export function generateShareableLink(type: string, params: Record<string, any>)
   
   switch (type) {
     case 'reciter': {
-      const { id, rewayatId, surah } = params;
-      
-      if (rewayatId && surah) {
-        // Full path: /reciter/{id}/rewayat/{rewayatId}/surah/{surah}
-        return `${baseUrl}/reciter/${id}/rewayat/${rewayatId}/surah/${surah}`;
-      } else if (rewayatId) {
-        // Reciter with specific rewayat: /reciter/{id}/rewayat/{rewayatId}
-        return `${baseUrl}/reciter/${id}/rewayat/${rewayatId}`;
-      } else if (surah) {
-        // Legacy support: /reciter/{id}/surah/{surah} with rewayatId as query param
-        const query = rewayatId ? `?rewayat=${rewayatId}` : '';
-        return `${baseUrl}/reciter/${id}/surah/${surah}${query}`;
+      const { id, surah } = params;
+      if (surah) {
+        return `${baseUrl}/reciter/${id}/surah/${surah}`;
       }
-      
-      // Just reciter: /reciter/{id} with optional rewayatId as query param
-      const query = rewayatId ? `?rewayat=${rewayatId}` : '';
-      return `${baseUrl}/reciter/${id}${query}`;
+      return `${baseUrl}/reciter/${id}`;
     }
     
     case 'playlist': {
@@ -229,13 +181,8 @@ export function generateShareableLink(type: string, params: Record<string, any>)
     }
     
     case 'surah': {
-      const { num, reciter, rewayatId } = params;
-      const queryParts: string[] = [];
-      
-      if (reciter) queryParts.push(`reciter=${reciter}`);
-      if (rewayatId) queryParts.push(`rewayat=${rewayatId}`);
-      
-      const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+      const { num, reciter } = params;
+      const queryString = reciter ? `?reciter=${reciter}` : '';
       return `${baseUrl}/surah/${num}${queryString}`;
     }
     

@@ -17,6 +17,7 @@ export type ShareableContentType = 'reciter' | 'playlist' | 'surah' | 'adhkar';
 export interface ShareableContentParams {
   reciter: {
     id: string;
+    rewayatId?: string;
     surah?: string;
     [key: string]: any;
   };
@@ -27,6 +28,7 @@ export interface ShareableContentParams {
   surah: {
     num: string;
     reciter?: string;
+    rewayatId?: string;
     [key: string]: any;
   };
   adhkar: {

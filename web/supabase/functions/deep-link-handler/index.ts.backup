@@ -6,13 +6,6 @@ interface ReciterData {
   name: string;
   description?: string;
   image?: string;
-  rewayat: RewayatData[];
-}
-
-interface RewayatData {
-  id: string;
-  name: string;
-  style: string;
 }
 
 interface SurahData {
@@ -36,11 +29,7 @@ const mockReciters: Record<string, ReciterData> = {
     id: 'al-husary',
     name: 'Mahmoud Khalil Al-Husary',
     description: 'One of the most renowned Quran reciters',
-    image: 'https://example.com/al-husary.jpg',
-    rewayat: [
-      { id: 'hafs', name: 'Hafs A\'n Assem', style: 'murattal' },
-      { id: 'warsh', name: 'Warsh A\'n Nafi', style: 'murattal' }
-    ]
+    image: 'https://example.com/al-husary.jpg'
   },
   // Add more reciters as needed
 };
@@ -48,7 +37,6 @@ const mockReciters: Record<string, ReciterData> = {
 const mockSurahs: Record<number, SurahData> = {
   1: { number: 1, name: 'Al-Fatihah', arabicName: 'الفاتحة', englishName: 'The Opening', verses: 7 },
   2: { number: 2, name: 'Al-Baqarah', arabicName: 'البقرة', englishName: 'The Cow', verses: 286 },
-  112: { number: 112, name: 'Al-Ikhlas', arabicName: 'الإخلاص', englishName: 'The Sincerity', verses: 4 },
   // Add more surahs as needed
 };
 
@@ -77,71 +65,24 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
         const reciterId = segments[1];
         const reciter = mockReciters[reciterId];
         
-        if (segments.length >= 6 && segments[2] === 'rewayat' && segments[4] === 'surah') {
-          // /reciter/{id}/rewayat/{rewayatId}/surah/{num}
-          const rewayatId = segments[3];
-          const surahNum = parseInt(segments[5]);
-          const surah = mockSurahs[surahNum];
-          
-          if (reciter && surah) {
-            const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
-            const rewayatText = rewayat ? ` (${rewayat.name})` : '';
-            
-            return {
-              title: `${surah.name} (${surah.arabicName}) - ${reciter.name}${rewayatText}`,
-              description: `Listen to ${surah.name} recited by ${reciter.name}${rewayatText} on Bayaan`,
-              image: reciter.image,
-              type: 'reciter'
-            };
-          }
-        } else if (segments.length >= 4 && segments[2] === 'rewayat') {
-          // /reciter/{id}/rewayat/{rewayatId}
-          const rewayatId = segments[3];
-          
-          if (reciter) {
-            const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
-            const rewayatText = rewayat ? ` - ${rewayat.name}` : '';
-            
-            return {
-              title: `${reciter.name}${rewayatText} - Bayaan`,
-              description: `Listen to beautiful Quran recitations by ${reciter.name}${rewayatText}`,
-              image: reciter.image,
-              type: 'reciter'
-            };
-          }
-        } else if (segments.length >= 4 && segments[2] === 'surah') {
-          // Legacy: /reciter/{id}/surah/{num}
+        if (segments.length >= 4 && segments[2] === 'surah') {
+          // /reciter/{id}/surah/{num}
           const surahNum = parseInt(segments[3]);
           const surah = mockSurahs[surahNum];
-          const rewayatId = params.get('rewayat');
           
           if (reciter && surah) {
-            let rewayatText = '';
-            if (rewayatId) {
-              const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
-              rewayatText = rewayat ? ` (${rewayat.name})` : '';
-            }
-            
             return {
-              title: `${surah.name} (${surah.arabicName}) - ${reciter.name}${rewayatText}`,
-              description: `Listen to ${surah.name} recited by ${reciter.name}${rewayatText} on Bayaan`,
+              title: `${surah.name} (${surah.arabicName}) - ${reciter.name}`,
+              description: `Listen to ${surah.name} recited by ${reciter.name} on Bayaan`,
               image: reciter.image,
               type: 'reciter'
             };
           }
         } else if (reciter) {
           // /reciter/{id}
-          const rewayatId = params.get('rewayat');
-          let rewayatText = '';
-          
-          if (rewayatId) {
-            const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
-            rewayatText = rewayat ? ` - ${rewayat.name}` : '';
-          }
-          
           return {
-            title: `${reciter.name}${rewayatText} - Bayaan`,
-            description: reciter.description || `Listen to beautiful Quran recitations by ${reciter.name}${rewayatText}`,
+            title: `${reciter.name} - Bayaan`,
+            description: reciter.description || `Listen to beautiful Quran recitations by ${reciter.name}`,
             image: reciter.image,
             type: 'reciter'
           };
@@ -155,21 +96,10 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
         const surahNum = parseInt(segments[1]);
         const surah = mockSurahs[surahNum];
         const reciterParam = params.get('reciter');
-        const rewayatParam = params.get('rewayat');
         
         if (surah) {
           const reciter = reciterParam ? mockReciters[reciterParam] : null;
-          let reciterText = '';
-          
-          if (reciter) {
-            reciterText = ` - ${reciter.name}`;
-            if (rewayatParam) {
-              const rewayat = reciter.rewayat.find(r => r.id === rewayatParam);
-              if (rewayat) {
-                reciterText += ` (${rewayat.name})`;
-              }
-            }
-          }
+          const reciterText = reciter ? ` - ${reciter.name}` : '';
           
           return {
             title: `${surah.name} (${surah.arabicName})${reciterText}`,
