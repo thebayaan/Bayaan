@@ -1,0 +1,59 @@
+--- a/components/reciter-profile/ReciterProfile.tsx
++++ b/components/reciter-profile/ReciterProfile.tsx
+@@ -1,3 +1,4 @@
++import { findRewayatBySlug } from "@/utils/deepLink/rewayatSlugs";
+ import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
+ import {
+   View,
+@@ -32,6 +33,9 @@ import {reciterProfileCache} from '@/components/reciter-profile/cache/ReciterPr
+ interface ReciterProfileProps {
+   id: string;
+   showLoved?: boolean;
++  initialRewayatSlug?: string;
++  initialSurah?: number;
++  autoplay?: boolean;
+ }
+ 
+ // Define types matching useSettings
+@@ -42,8 +46,11 @@ type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation';
+ const MemoizedSurahList = React.memo(SurahList);
+ 
+ const ReciterProfile: React.FC<ReciterProfileProps> = ({
+   id: currentReciterId,
+   showLoved = false,
++  initialRewayatSlug,
++  initialSurah,
++  autoplay = false,
+ }) => {
+   const {theme} = useTheme();
+   const styles = createSharedStyles(theme);
+@@ -123,6 +130,18 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
+           if (validRewayat) {
+             setSelectedRewayatId(validRewayat.id);
+           } else if (reciterData.rewayat.length > 0) {
++            // Check if there's an initial rewayat slug from deep link
++            if (initialRewayatSlug) {
++              const foundRewayat = findRewayatBySlug(reciterData.rewayat, initialRewayatSlug);
++              if (foundRewayat) {
++                setSelectedRewayatId(foundRewayat.id);
++                // Save this preference
++                setReciterPreference(currentReciterId, foundRewayat.id);
++              } else {
++                setSelectedRewayatId(reciterData.rewayat[0].id);
++              }
++            } else {
+             setSelectedRewayatId(reciterData.rewayat[0].id);
++            }
+           }
+         }
+         const surahsData = await getAllSurahs();
+@@ -131,7 +150,7 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
+         console.error('Error fetching data:', error);
+       }
+     };
+     fetchData();
+-  }, [currentReciterId, reciterPreferences]);
++  }, [currentReciterId, reciterPreferences, initialRewayatSlug, setReciterPreference]);
+ 
+   // Add useEffect to handle scrolling to specific surah
+   useEffect(() => {

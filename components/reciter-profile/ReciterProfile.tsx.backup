@@ -1,4 +1,3 @@
-import { findRewayatBySlug } from "@/utils/deepLink/rewayatSlugs";
 import React, {useState, useEffect, useRef, useCallback, useMemo} from 'react';
 import {
   View,
@@ -56,9 +55,6 @@ import {moderateScale} from 'react-native-size-matters';
 interface ReciterProfileProps {
   id: string;
   showLoved?: boolean;
-  initialRewayatSlug?: string;
-  initialSurah?: number;
-  autoplay?: boolean;
 }
 
 // Define types matching useSettings
@@ -71,9 +67,6 @@ const MemoizedSurahList = React.memo(SurahList);
 const ReciterProfile: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
-  initialRewayatSlug,
-  initialSurah,
-  autoplay = false,
 }) => {
   const {theme} = useTheme();
   const styles = createSharedStyles(theme);
@@ -192,37 +185,16 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
           reciterData.rewayat = sortRewayat(reciterData.rewayat);
           setReciter(reciterData);
 
-          // Handle rewayat selection priority:
-          // 1. Initial rewayat slug from deep link (highest priority)
-          // 2. Saved user preference
-          // 3. Default to first rewayat (usually Hafs)
-          let selectedRewayat: Rewayat | null = null;
-          
-          // Check for initial rewayat slug from deep link
-          if (initialRewayatSlug) {
-            selectedRewayat = findRewayatBySlug(reciterData.rewayat, initialRewayatSlug);
-            if (selectedRewayat) {
-              console.log(`[ReciterProfile] Found rewayat from slug: ${initialRewayatSlug} -> ${selectedRewayat.name}`);
-            }
-          }
-          
-          // Fall back to saved preference if no slug match
-          if (!selectedRewayat) {
-            const savedRewayatId = reciterPreferences[currentReciterId];
-            selectedRewayat = savedRewayatId ? reciterData.rewayat.find(r => r.id === savedRewayatId) || null : null;
-          }
-          
-          // Final fallback to first rewayat
-          if (!selectedRewayat && reciterData.rewayat.length > 0) {
-            selectedRewayat = reciterData.rewayat[0];
-          }
-          
-          if (selectedRewayat) {
-            setSelectedRewayatId(selectedRewayat.id);
-            // Save preference if this came from a deep link
-            if (initialRewayatSlug) {
-              setReciterPreference(currentReciterId, selectedRewayat.id);
-            }
+          // Use saved preference or default to first rewayat
+          const savedRewayatId = reciterPreferences[currentReciterId];
+          const validRewayat =
+            savedRewayatId &&
+            reciterData.rewayat.find(r => r.id === savedRewayatId);
+
+          if (validRewayat) {
+            setSelectedRewayatId(validRewayat.id);
+          } else if (reciterData.rewayat.length > 0) {
+            setSelectedRewayatId(reciterData.rewayat[0].id);
           }
         }
         const surahsData = await getAllSurahs();
@@ -232,38 +204,8 @@ const ReciterProfile: React.FC<ReciterProfileProps> = ({
       }
     };
     fetchData();
-  }, [currentReciterId, reciterPreferences, initialRewayatSlug, setReciterPreference]);
+  }, [currentReciterId, reciterPreferences]);
 
-
-  // Handle initial surah selection and autoplay from deep links
-  useEffect(() => {
-    if (!reciter || !selectedRewayatId || !initialSurah) return;
-    
-    // Find the surah in the available surahs for the selected rewayat
-    const selectedRewayat = reciter.rewayat.find(r => r.id === selectedRewayatId);
-    if (!selectedRewayat) return;
-    
-    const validSurahs = selectedRewayat.surah_list.filter(
-      (id): id is number => id !== null,
-    );
-    
-    if (validSurahs.includes(initialSurah)) {
-      console.log(`[ReciterProfile] Initial surah ${initialSurah} found, autoplay: ${autoplay}`);
-      
-      // If autoplay is enabled, play the surah
-      if (autoplay) {
-        // Find the surah object
-        const surahToPlay = surahs.find(s => s.id === initialSurah);
-        if (surahToPlay) {
-          console.log(`[ReciterProfile] Auto-playing surah: ${surahToPlay.name}`);
-          // Use a slight delay to ensure everything is loaded
-          setTimeout(() => {
-            handleSurahPress(surahToPlay);
-          }, 100);
-        }
-      }
-    }
-  }, [reciter, selectedRewayatId, initialSurah, autoplay, surahs, handleSurahPress]);
   useEffect(() => {
     const listener = headerOpacity.addListener(({value}) => {
       if (value === 1 && !isHeaderVisible) {

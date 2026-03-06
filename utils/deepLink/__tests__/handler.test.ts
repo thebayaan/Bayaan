@@ -10,35 +10,35 @@ describe('Deep Link Handler', () => {
       });
     });
 
-    test('parses reciter with rewayat URL', () => {
-      const result = parseDeepLink('https://thebayaan.com/reciter/al-husary/rewayat/hafs');
+    test('parses reciter with rewayat slug URL', () => {
+      const result = parseDeepLink('https://thebayaan.com/reciter/al-husary/rewayat/hafs-an-assem');
       expect(result).toEqual({
         screen: '/(tabs)/(a.home)/reciter/[id]',
-        params: { id: 'al-husary', rewayatId: 'hafs' },
+        params: { id: 'al-husary', rewayatSlug: 'hafs-an-assem' },
       });
     });
 
-    test('parses reciter with rewayat and surah URL', () => {
-      const result = parseDeepLink('https://thebayaan.com/reciter/al-husary/rewayat/hafs/surah/2?autoplay=true');
+    test('parses reciter with rewayat slug and surah URL', () => {
+      const result = parseDeepLink('https://thebayaan.com/reciter/al-husary/rewayat/hafs-an-assem/surah/2?autoplay=true');
       expect(result).toEqual({
         screen: '/(tabs)/(a.home)/reciter/[id]',
-        params: { id: 'al-husary', rewayatId: 'hafs', surah: '2', autoplay: true },
+        params: { id: 'al-husary', rewayatSlug: 'hafs-an-assem', surah: '2', autoplay: true },
       });
     });
 
     test('parses legacy reciter with surah URL', () => {
-      const result = parseDeepLink('https://thebayaan.com/reciter/al-husary/surah/2?rewayat=hafs');
+      const result = parseDeepLink('https://thebayaan.com/reciter/al-husary/surah/2?rewayat=hafs-an-assem');
       expect(result).toEqual({
         screen: '/(tabs)/(a.home)/reciter/[id]',
-        params: { id: 'al-husary', surah: '2', rewayatId: 'hafs' },
+        params: { id: 'al-husary', surah: '2', rewayatSlug: 'hafs-an-assem' },
       });
     });
 
-    test('parses surah URL with reciter and rewayat', () => {
-      const result = parseDeepLink('https://thebayaan.com/surah/112?reciter=al-husary&rewayat=hafs');
+    test('parses surah URL with reciter and rewayat slug', () => {
+      const result = parseDeepLink('https://thebayaan.com/surah/112?reciter=al-husary&rewayat=hafs-an-assem');
       expect(result).toEqual({
         screen: '/(tabs)/(a.home)/',
-        params: { surah: '112', reciter: 'al-husary', rewayatId: 'hafs' },
+        params: { surah: '112', reciter: 'al-husary', rewayatSlug: 'hafs-an-assem' },
       });
     });
 
@@ -65,11 +65,11 @@ describe('Deep Link Handler', () => {
       });
     });
 
-    test('handles custom scheme with rewayat', () => {
-      const result = parseDeepLink('bayaan://reciter/al-husary/rewayat/hafs');
+    test('handles custom scheme with rewayat slug', () => {
+      const result = parseDeepLink('bayaan://reciter/al-husary/rewayat/hafs-an-assem');
       expect(result).toEqual({
         screen: '/(tabs)/(a.home)/reciter/[id]',
-        params: { id: 'al-husary', rewayatId: 'hafs' },
+        params: { id: 'al-husary', rewayatSlug: 'hafs-an-assem' },
       });
     });
   });
@@ -80,32 +80,32 @@ describe('Deep Link Handler', () => {
       expect(link).toBe('https://thebayaan.com/reciter/al-husary');
     });
 
-    test('generates reciter with rewayat link', () => {
-      const link = generateShareableLink('reciter', { id: 'al-husary', rewayatId: 'hafs' });
-      expect(link).toBe('https://thebayaan.com/reciter/al-husary/rewayat/hafs');
+    test('generates reciter with rewayat slug link', () => {
+      const link = generateShareableLink('reciter', { id: 'al-husary', rewayatSlug: 'hafs-an-assem' });
+      expect(link).toBe('https://thebayaan.com/reciter/al-husary/rewayat/hafs-an-assem');
     });
 
-    test('generates reciter with rewayat and surah link', () => {
+    test('generates reciter with rewayat slug and surah link', () => {
       const link = generateShareableLink('reciter', { 
         id: 'al-husary', 
-        rewayatId: 'hafs', 
+        rewayatSlug: 'hafs-an-assem', 
         surah: '2' 
       });
-      expect(link).toBe('https://thebayaan.com/reciter/al-husary/rewayat/hafs/surah/2');
+      expect(link).toBe('https://thebayaan.com/reciter/al-husary/rewayat/hafs-an-assem/surah/2');
     });
 
-    test('generates legacy reciter with surah link (no rewayat)', () => {
+    test('generates legacy reciter with surah link (no rewayat slug)', () => {
       const link = generateShareableLink('reciter', { id: 'al-husary', surah: '2' });
       expect(link).toBe('https://thebayaan.com/reciter/al-husary/surah/2');
     });
 
-    test('generates legacy reciter with surah and rewayat as query param', () => {
+    test('generates legacy reciter with surah and rewayat slug as query param', () => {
       const link = generateShareableLink('reciter', { 
         id: 'al-husary', 
         surah: '2', 
-        rewayatId: 'hafs' 
+        rewayatSlug: 'hafs-an-assem' 
       });
-      expect(link).toBe('https://thebayaan.com/reciter/al-husary/surah/2?rewayat=hafs');
+      expect(link).toBe('https://thebayaan.com/reciter/al-husary/surah/2?rewayat=hafs-an-assem');
     });
 
     test('generates surah link', () => {
@@ -113,13 +113,13 @@ describe('Deep Link Handler', () => {
       expect(link).toBe('https://thebayaan.com/surah/112');
     });
 
-    test('generates surah link with reciter and rewayat', () => {
+    test('generates surah link with reciter and rewayat slug', () => {
       const link = generateShareableLink('surah', { 
         num: '112', 
         reciter: 'al-husary',
-        rewayatId: 'hafs'
+        rewayatSlug: 'hafs-an-assem'
       });
-      expect(link).toBe('https://thebayaan.com/surah/112?reciter=al-husary&rewayat=hafs');
+      expect(link).toBe('https://thebayaan.com/surah/112?reciter=al-husary&rewayat=hafs-an-assem');
     });
 
     test('generates playlist link', () => {

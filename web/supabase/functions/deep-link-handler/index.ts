@@ -13,6 +13,7 @@ interface RewayatData {
   id: string;
   name: string;
   style: string;
+  slug: string; // User-friendly slug
 }
 
 interface SurahData {
@@ -30,6 +31,44 @@ interface ContentMetadata {
   type: 'reciter' | 'surah' | 'playlist' | 'adhkar';
 }
 
+/**
+ * Convert rewayat name to URL-friendly slug (same logic as mobile app)
+ */
+function rewayatNameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/['\u2019]/g, '') // Remove apostrophes
+    .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '') // Remove leading/trailing hyphens
+    .replace(/-+/g, '-'); // Collapse multiple hyphens
+}
+
+/**
+ * Find rewayat by slug
+ */
+function findRewayatBySlug(rewayat: RewayatData[], slug: string): RewayatData | null {
+  // First try exact slug match
+  const bySlug = rewayat.find(r => r.slug === slug);
+  if (bySlug) return bySlug;
+  
+  // Try partial matches for common variations
+  const normalized = slug.toLowerCase();
+  
+  if (normalized === 'hafs' || normalized.includes('hafs')) {
+    return rewayat.find(r => r.name.includes('Hafs')) || null;
+  }
+  
+  if (normalized === 'warsh' || normalized.includes('warsh')) {
+    return rewayat.find(r => r.name.includes('Warsh')) || null;
+  }
+  
+  if (normalized === 'qalun' || normalized.includes('qalun')) {
+    return rewayat.find(r => r.name.includes('Qalun')) || null;
+  }
+  
+  return null;
+}
+
 // Mock data - in production, this would come from your database
 const mockReciters: Record<string, ReciterData> = {
   'al-husary': {
@@ -38,8 +77,18 @@ const mockReciters: Record<string, ReciterData> = {
     description: 'One of the most renowned Quran reciters',
     image: 'https://example.com/al-husary.jpg',
     rewayat: [
-      { id: 'hafs', name: 'Hafs A\'n Assem', style: 'murattal' },
-      { id: 'warsh', name: 'Warsh A\'n Nafi', style: 'murattal' }
+      { id: 'hafs-uuid', name: 'Hafs A\'n Assem', style: 'murattal', slug: 'hafs-an-assem' },
+      { id: 'warsh-uuid', name: 'Warsh A\'n Nafi\'', style: 'murattal', slug: 'warsh-an-nafi' }
+    ]
+  },
+  'abdul-basit': {
+    id: 'abdul-basit', 
+    name: 'Abdul Basit Abdul Samad',
+    description: 'Egyptian Quran reciter known for his beautiful voice',
+    image: 'https://example.com/abdul-basit.jpg',
+    rewayat: [
+      { id: 'hafs-uuid-2', name: 'Hafs A\'n Assem', style: 'murattal', slug: 'hafs-an-assem' },
+      { id: 'hafs-uuid-3', name: 'Hafs A\'n Assem', style: 'mojawwad', slug: 'hafs-an-assem-mojawwad' }
     ]
   },
   // Add more reciters as needed
@@ -78,13 +127,13 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
         const reciter = mockReciters[reciterId];
         
         if (segments.length >= 6 && segments[2] === 'rewayat' && segments[4] === 'surah') {
-          // /reciter/{id}/rewayat/{rewayatId}/surah/{num}
-          const rewayatId = segments[3];
+          // /reciter/{id}/rewayat/{slug}/surah/{num}
+          const rewayatSlug = segments[3];
           const surahNum = parseInt(segments[5]);
           const surah = mockSurahs[surahNum];
           
           if (reciter && surah) {
-            const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
+            const rewayat = findRewayatBySlug(reciter.rewayat, rewayatSlug);
             const rewayatText = rewayat ? ` (${rewayat.name})` : '';
             
             return {
@@ -95,11 +144,11 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
             };
           }
         } else if (segments.length >= 4 && segments[2] === 'rewayat') {
-          // /reciter/{id}/rewayat/{rewayatId}
-          const rewayatId = segments[3];
+          // /reciter/{id}/rewayat/{slug}
+          const rewayatSlug = segments[3];
           
           if (reciter) {
-            const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
+            const rewayat = findRewayatBySlug(reciter.rewayat, rewayatSlug);
             const rewayatText = rewayat ? ` - ${rewayat.name}` : '';
             
             return {
@@ -113,12 +162,12 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
           // Legacy: /reciter/{id}/surah/{num}
           const surahNum = parseInt(segments[3]);
           const surah = mockSurahs[surahNum];
-          const rewayatId = params.get('rewayat');
+          const rewayatSlug = params.get('rewayat');
           
           if (reciter && surah) {
             let rewayatText = '';
-            if (rewayatId) {
-              const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
+            if (rewayatSlug) {
+              const rewayat = findRewayatBySlug(reciter.rewayat, rewayatSlug);
               rewayatText = rewayat ? ` (${rewayat.name})` : '';
             }
             
@@ -131,11 +180,11 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
           }
         } else if (reciter) {
           // /reciter/{id}
-          const rewayatId = params.get('rewayat');
+          const rewayatSlug = params.get('rewayat');
           let rewayatText = '';
           
-          if (rewayatId) {
-            const rewayat = reciter.rewayat.find(r => r.id === rewayatId);
+          if (rewayatSlug) {
+            const rewayat = findRewayatBySlug(reciter.rewayat, rewayatSlug);
             rewayatText = rewayat ? ` - ${rewayat.name}` : '';
           }
           
@@ -164,7 +213,7 @@ async function getContentMetadata(path: string, params: URLSearchParams): Promis
           if (reciter) {
             reciterText = ` - ${reciter.name}`;
             if (rewayatParam) {
-              const rewayat = reciter.rewayat.find(r => r.id === rewayatParam);
+              const rewayat = findRewayatBySlug(reciter.rewayat, rewayatParam);
               if (rewayat) {
                 reciterText += ` (${rewayat.name})`;
               }

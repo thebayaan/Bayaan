@@ -1,3 +1,4 @@
+import { generateRewayatSlug } from "@/utils/deepLink/rewayatSlugs";
 import React from 'react';
 import { Share, Alert, Platform } from 'react-native';
 import { Button } from '@rneui/themed';
