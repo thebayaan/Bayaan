@@ -1,7 +1,6 @@
 import React, {useCallback, useState} from 'react';
 import {View, ScrollView, Text, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale, ScaledSheet} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
@@ -38,7 +37,6 @@ interface CategoryItem {
 export default function CollectionScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {lovedTracks} = useLoved();
   const {favoriteReciters} = useFavoriteReciters();
@@ -148,8 +146,6 @@ export default function CollectionScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled">
-        <View style={{paddingTop: insets.top}} />
-
         {/* Header */}
         <CollectionHeader title="Your Collection" theme={theme} />
 
