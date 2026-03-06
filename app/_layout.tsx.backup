@@ -1,5 +1,4 @@
 import React, {useEffect, useState, useRef, useCallback} from 'react';
-import {useDeepLink} from "@/utils/deepLink/useDeepLink";
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
@@ -59,9 +58,6 @@ export default function RootLayout() {
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
-  
-  // Handle deep linking
-  useDeepLink();
 
   const [fontsLoaded, fontError] = useFonts({
     'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
