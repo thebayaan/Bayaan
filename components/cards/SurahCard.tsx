@@ -3,10 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   StyleProp,
   ViewStyle,
   GestureResponderEvent,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -22,6 +24,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {Link} from 'expo-router';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+
+const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -48,6 +54,7 @@ interface SurahCardProps {
   enableAnimation?: boolean;
   reciterId?: string;
   rewayatId?: string;
+  mushafLink?: boolean;
 }
 
 const AnimatedTouchableOpacity =
@@ -69,6 +76,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   enableAnimation = false,
   reciterId,
   rewayatId,
+  mushafLink = false,
 }) => {
   const {theme} = useTheme();
 
@@ -168,6 +176,14 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: Color(color).alpha(0.15).toString(),
+    },
+    glassWrapper: {
+      height: moderateScale(120),
+    },
+    glassInner: {
+      flex: 1,
+      borderRadius: moderateScale(20),
+      overflow: 'hidden',
     },
     content: {
       flex: 1,
@@ -312,23 +328,8 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     ? AnimatedTouchableOpacity
     : TouchableOpacity;
 
-  return (
-    <TouchableComponent
-      activeOpacity={1}
-      // Apply animated style only if animation enabled
-      style={
-        enableAnimation
-          ? [styles.container, animatedStyle, style]
-          : [styles.container, style]
-      }
-      onPress={handleCardPress}
-      onLongPress={
-        onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
-      }
-      delayLongPress={500}
-      // Conditionally add animation handlers
-      onPressIn={enableAnimation ? handlePressIn : undefined}
-      onPressOut={enableAnimation ? handlePressOut : undefined}>
+  const cardContent = (
+    <>
       <LinearGradient
         colors={gradientColors as [string, string]}
         start={{x: 0, y: 0}}
@@ -421,6 +422,89 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           </TouchableOpacity>
         )
       )}
+    </>
+  );
+
+  if (mushafLink && USE_GLASS) {
+    return (
+      <Link
+        href={{
+          pathname: '/mushaf',
+          params: {surah: id.toString()},
+        }}
+        asChild>
+        <Pressable
+          onLongPress={
+            onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+          }
+          delayLongPress={500}
+          style={StyleSheet.flatten([styles.glassWrapper, style])}>
+          <Link.AppleZoom>
+            <GlassView
+              style={styles.glassInner}
+              glassEffectStyle="regular">
+              {cardContent}
+            </GlassView>
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
+    );
+  }
+
+  if (mushafLink) {
+    return (
+      <Link
+        href={{
+          pathname: '/mushaf',
+          params: {surah: id.toString()},
+        }}
+        asChild>
+        <Pressable
+          onLongPress={
+            onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+          }
+          delayLongPress={500}
+          style={StyleSheet.flatten([styles.container, style])}>
+          {cardContent}
+        </Pressable>
+      </Link>
+    );
+  }
+
+  if (USE_GLASS) {
+    return (
+      <Pressable
+        onPress={handleCardPress}
+        onLongPress={
+          onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+        }
+        delayLongPress={500}
+        style={StyleSheet.flatten([styles.glassWrapper, style])}>
+        <GlassView
+          style={styles.glassInner}
+          glassEffectStyle="regular">
+          {cardContent}
+        </GlassView>
+      </Pressable>
+    );
+  }
+
+  return (
+    <TouchableComponent
+      activeOpacity={1}
+      style={
+        enableAnimation
+          ? [styles.container, animatedStyle, style]
+          : [styles.container, style]
+      }
+      onPress={handleCardPress}
+      onLongPress={
+        onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+      }
+      delayLongPress={500}
+      onPressIn={enableAnimation ? handlePressIn : undefined}
+      onPressOut={enableAnimation ? handlePressOut : undefined}>
+      {cardContent}
     </TouchableComponent>
   );
 };

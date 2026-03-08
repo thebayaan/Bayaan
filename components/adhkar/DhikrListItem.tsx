@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, StyleProp, ViewStyle} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -17,11 +17,11 @@ import Color from 'color';
 interface DhikrListItemProps {
   dhikr: Dhikr;
   index: number;
-  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
-  ({dhikr, index, onPress}) => {
+  ({dhikr, index, style}) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
 
@@ -29,9 +29,8 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
     const hasAudio = !!dhikr.audioFile;
 
     return (
-      <Pressable
-        style={styles.container}
-        onPress={onPress}
+      <View
+        style={[styles.container, style]}
         accessibilityRole="button"
         accessibilityLabel={dhikr.translation || dhikr.arabic}>
         {/* Ornate top border pattern */}
@@ -64,7 +63,7 @@ export const DhikrListItem: React.FC<DhikrListItemProps> = React.memo(
             <View style={styles.audioIndicator} />
           )}
         </View>
-      </Pressable>
+      </View>
     );
   },
 );

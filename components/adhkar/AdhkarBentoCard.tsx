@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, Pressable, Platform, StyleSheet} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Image} from 'expo-image';
 import {moderateScale} from 'react-native-size-matters';
@@ -7,18 +7,14 @@ import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {SuperCategory} from '@/types/adhkar';
 import {ADHKAR_CATEGORY_IMAGES} from '@/constants/adhkarImages';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-  useSharedValue,
-} from 'react-native-reanimated';
+import {Link} from 'expo-router';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
   // Main adhkar
-  'morning-adhkar': 'top',
+  'morning-adhkar': 'bottom',
   'evening-adhkar': 'bottom',
   salah: 'top',
   'before-sleep': 'top',
@@ -28,11 +24,11 @@ const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
   'praises-of-allah': 'top',
   istighfar: 'top',
   nightmares: 'top',
-  'protection-of-iman': 'center',
+  'protection-of-iman': 'bottom',
   'difficulties-happiness': 'top',
   'quranic-duas': 'top',
   // Other adhkar
-  'names-of-allah': 'top',
+  'names-of-allah': 'bottom',
   clothes: 'center',
   'lavatory-wudu': 'bottom',
   'adhan-masjid': 'top',
@@ -42,7 +38,7 @@ const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
   'food-drink': 'top',
   travel: 'top',
   nature: 'top',
-  'social-interactions': 'top',
+  'social-interactions': 'bottom',
   'hajj-umrah': 'top',
   'marriage-children': 'top',
   death: 'bottom',
@@ -52,7 +48,7 @@ const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
 
 interface AdhkarBentoCardProps {
   category: SuperCategory;
-  onPress: () => void;
+  onPress?: () => void;
   width: number;
   height: number;
 }
@@ -65,29 +61,6 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
 }: AdhkarBentoCardProps) {
   const {theme} = useTheme();
   const isDarkMode = theme.isDarkMode;
-
-  // Bouncy scale animation
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: scale.value}],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
-  };
 
   // Subtle gradient incorporating the category's color (same pattern as ExploreView)
   const baseColor = Color(category.color);
@@ -103,72 +76,89 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
 
   const imageSet = ADHKAR_CATEGORY_IMAGES[category.id];
 
-  return (
-    <AnimatedTouchableOpacity
-      activeOpacity={1}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={[styles.container, animatedStyle]}>
-      {imageSet ? (
-        <View style={styles.gradient}>
-          <Image
-            source={isDarkMode ? imageSet.dark : imageSet.light}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-          />
-          {isDarkMode && (
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.5)']}
-              start={{x: 0, y: 0.3}}
-              end={{x: 0, y: 1}}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          <View style={styles.content}>
-            <View
-              style={[
-                styles.textContainer,
-                textPosition === 'top'
-                  ? styles.topLeftContainer
-                  : textPosition === 'bottom'
-                    ? styles.bottomLeftContainer
-                    : styles.centerLeftContainer,
-              ]}>
-              <Text
-                style={[styles.title, {fontSize: titleSize}]}
-                numberOfLines={2}>
-                {category.title}
-              </Text>
-            </View>
-          </View>
-        </View>
-      ) : (
+  const cardContent = imageSet ? (
+    <View style={styles.gradient}>
+      <Image
+        source={isDarkMode ? imageSet.dark : imageSet.light}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+      />
+      {isDarkMode && (
         <LinearGradient
-          colors={gradientColors}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={styles.gradient}>
-          <View style={styles.content}>
-            <View
-              style={[
-                styles.textContainer,
-                textPosition === 'top'
-                  ? styles.topLeftContainer
-                  : textPosition === 'bottom'
-                    ? styles.bottomLeftContainer
-                    : styles.centerLeftContainer,
-              ]}>
-              <Text
-                style={[styles.title, {fontSize: titleSize}]}
-                numberOfLines={2}>
-                {category.title}
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
+          colors={['transparent', 'rgba(0,0,0,0.5)']}
+          start={{x: 0, y: 0.3}}
+          end={{x: 0, y: 1}}
+          style={StyleSheet.absoluteFill}
+        />
       )}
-    </AnimatedTouchableOpacity>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.textContainer,
+            textPosition === 'top'
+              ? styles.topLeftContainer
+              : textPosition === 'bottom'
+                ? styles.bottomLeftContainer
+                : styles.centerLeftContainer,
+          ]}>
+          <Text style={[styles.title, {fontSize: titleSize}]} numberOfLines={2}>
+            {category.title}
+          </Text>
+        </View>
+      </View>
+    </View>
+  ) : (
+    <LinearGradient
+      colors={gradientColors}
+      start={{x: 0, y: 0}}
+      end={{x: 1, y: 1}}
+      style={styles.gradient}>
+      <View style={styles.content}>
+        <View
+          style={[
+            styles.textContainer,
+            textPosition === 'top'
+              ? styles.topLeftContainer
+              : textPosition === 'bottom'
+                ? styles.bottomLeftContainer
+                : styles.centerLeftContainer,
+          ]}>
+          <Text style={[styles.title, {fontSize: titleSize}]} numberOfLines={2}>
+            {category.title}
+          </Text>
+        </View>
+      </View>
+    </LinearGradient>
+  );
+
+  const linkProps = {
+    href: {
+      pathname: '/(tabs)/(a.home)/adhkar/[superId]' as const,
+      params: {superId: category.id},
+    },
+    asChild: true as const,
+  };
+
+  if (USE_GLASS) {
+    return (
+      <Link {...linkProps}>
+        <Pressable style={StyleSheet.flatten([styles.glassWrapper])}>
+          <Link.AppleZoom>
+            <GlassView style={styles.glassInner} glassEffectStyle="regular">
+              {cardContent}
+            </GlassView>
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
+    );
+  }
+
+  return (
+    <Link {...linkProps}>
+      <Pressable style={StyleSheet.flatten([styles.container])}>
+        {cardContent}
+      </Pressable>
+    </Link>
   );
 });
 
@@ -183,6 +173,15 @@ const createStyles = (
       height,
       borderRadius: moderateScale(20),
       overflow: 'hidden',
+    },
+    glassWrapper: {
+      width,
+      height,
+    },
+    glassInner: {
+      flex: 1,
+      borderRadius: moderateScale(20),
+      overflow: 'hidden' as const,
     },
     gradient: {
       flex: 1,

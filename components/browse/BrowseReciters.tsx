@@ -2,11 +2,12 @@ import React, {useState, useMemo, useCallback, useRef, useEffect} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import Animated, {
   FadeIn,
@@ -32,14 +33,16 @@ import {reciterImages} from '@/utils/reciterImages';
 import Header from '@/components/Header';
 import {useSettings} from '@/hooks/useSettings';
 import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useHeaderHeight} from '@react-navigation/elements';
 
 interface BrowseRecitersProps {
   theme: Theme;
   onBack: () => void;
-  surahId?: number; // Optional surah ID for filtering
-  title?: string; // Optional custom title, defaults to "Browse All"
-  initialTeacher?: string; // Optional initial teacher filter
-  initialStudent?: string; // Optional initial student filter
+  surahId?: number;
+  title?: string;
+  initialTeacher?: string;
+  initialStudent?: string;
 }
 
 // Fallback: extract teacher from a rewayat name by splitting on "A'n"
@@ -109,7 +112,12 @@ export default function BrowseReciters({
   const {updateQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
   const {setReciterPreference} = useSettings();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
+
+  // On iOS, the native Stack header handles the top area; on Android, use custom Header
+  const useNativeHeader = Platform.OS === 'ios';
+  const iosHeaderHeight = useNativeHeader ? useHeaderHeight() : 0;
 
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(
     initialTeacher || null,
@@ -147,55 +155,40 @@ export default function BrowseReciters({
     const chips: Chip[] = [];
     const isAllSelected = !selectedTeacher && !selectedStudent;
 
-    // Always add the 'All' chip first
     chips.push({label: 'All', type: 'all', isSelected: isAllSelected});
 
     if (!selectedTeacher) {
-      // Initial state: Show all primary teachers
       primaryTeachers.forEach(teacher => {
         chips.push({label: teacher, type: 'teacher', isSelected: false});
       });
     } else {
-      // Teacher is selected - get its students
       const studentsOfSelectedTeacher = getStudentsForTeacher(
         selectedTeacher,
         RECITERS,
       );
 
-      // Change ordering: Students, then A'n separator, then Teacher
-      // This matches the natural reading order: "Student A'n Teacher"
-
       if (!selectedStudent) {
-        // Teacher selected, no student selected: Show all students of this teacher to the left
         studentsOfSelectedTeacher.forEach(student => {
           chips.push({label: student, type: 'student', isSelected: false});
         });
 
-        // Add the A'n separator between students and teacher
         if (studentsOfSelectedTeacher.length > 0) {
           chips.push({label: "A'n", type: 'separator', isSelected: false});
         }
 
-        // Then add the selected teacher to the right
         chips.push({
           label: selectedTeacher,
           type: 'teacher',
           isSelected: true,
         });
       } else {
-        // Teacher and Student selected: Show selected student, then A'n, then selected teacher
         if (studentsOfSelectedTeacher.includes(selectedStudent)) {
-          // Student chip first
           chips.push({
             label: selectedStudent,
             type: 'student',
             isSelected: true,
           });
-
-          // A'n separator in the middle
           chips.push({label: "A'n", type: 'separator', isSelected: false});
-
-          // Teacher chip last
           chips.push({
             label: selectedTeacher,
             type: 'teacher',
@@ -228,7 +221,6 @@ export default function BrowseReciters({
       });
     }
 
-    // Apply teacher/student filter
     if (selectedTeacher) {
       result = result.filter(reciter =>
         reciter.rewayat.some(rewaya => {
@@ -323,10 +315,6 @@ export default function BrowseReciters({
     setAdvancedFilters(filters);
   };
 
-  const handleClearSearch = () => {
-    setSearchQuery('');
-  };
-
   const handleClearFilters = () => {
     setSelectedTeacher(null);
     setSelectedStudent(null);
@@ -367,18 +355,14 @@ export default function BrowseReciters({
     async (reciter: Reciter) => {
       Keyboard.dismiss();
 
-      // Use refs for most accurate state values
       const currentTeacher = teacherRef.current;
       const currentStudent = studentRef.current;
 
-      // Find appropriate rewayat based on filter selection
       let selectedRewayatId: string | undefined;
 
-      // If filters are active, find a matching rewayat and update preference
       if (currentTeacher || currentStudent) {
         let matchingRewayat: Rewayat | undefined;
 
-        // Case 1: Both teacher and student selected (highest priority)
         if (currentTeacher && currentStudent) {
           matchingRewayat = reciter.rewayat.find(rewaya => {
             if (!rewaya.name) return false;
@@ -388,7 +372,6 @@ export default function BrowseReciters({
           });
         }
 
-        // Case 2: Only teacher selected
         if (!matchingRewayat && currentTeacher) {
           matchingRewayat = reciter.rewayat.find(rewaya => {
             if (!rewaya.name) return false;
@@ -407,7 +390,6 @@ export default function BrowseReciters({
           const surah = await getSurahById(surahId);
           if (!surah) return;
 
-          // If we found a matching rewayat, use that, otherwise use default
           const rewayatId = selectedRewayatId || reciter.rewayat[0]?.id;
 
           const tracks = await createTracksForReciter(
@@ -416,24 +398,16 @@ export default function BrowseReciters({
             rewayatId,
           );
 
-          // Update queue and start playing
           await updateQueue(tracks, 0);
           await play();
 
-          // Add to recently played list with the rewayatId
           await startNewChain(reciter, surah, 0, 0, rewayatId);
 
-          // Navigate back
           router.back();
         } catch (error) {
           console.error('Error playing surah:', error);
         }
       } else {
-        // Case 2: Browse all mode - navigate to reciter profile
-
-        // If filters are not active or no matching rewayat was found,
-        // we don't set a preference, allowing the reciter profile to use its default logic
-        // or the user's manually selected preference if they previously visited this reciter
         router.push({
           pathname: '/(tabs)/(a.home)/reciter/[id]',
           params: {id: reciter.id},
@@ -443,7 +417,6 @@ export default function BrowseReciters({
     [setReciterPreference, surahId, updateQueue, play, router, startNewChain],
   );
 
-  // Handler for tapping outside search area
   const handleOutsidePress = useCallback(() => {
     if (isSearchFocused) {
       Keyboard.dismiss();
@@ -451,18 +424,28 @@ export default function BrowseReciters({
     }
   }, [isSearchFocused, handleSearchBlur]);
 
+  // Top offset: native header height on iOS, 0 on Android (custom Header handles it)
+  const topOffset = useNativeHeader ? iosHeaderHeight : 0;
+
   return (
     <TouchableWithoutFeedback onPress={handleOutsidePress}>
       <View style={styles.container}>
-        <Header
-          title={title}
-          onBack={onBack}
-          showBlur={true}
-          containerStyle={{zIndex: 2}}
-        />
+        {/* Android: custom Header; iOS: native Stack header handles this */}
+        {!useNativeHeader && (
+          <Header
+            title={title}
+            onBack={onBack}
+            showBlur={true}
+            containerStyle={{zIndex: 2}}
+          />
+        )}
 
         {/* Search and Filter Bar */}
-        <View style={styles.searchFilterContainer}>
+        <View
+          style={[
+            styles.searchFilterContainer,
+            {marginTop: useNativeHeader ? topOffset : insets.top + moderateScale(56)},
+          ]}>
           <SearchInput
             placeholder="Search reciters..."
             value={searchQuery}
@@ -483,16 +466,18 @@ export default function BrowseReciters({
             containerStyle={{paddingHorizontal: 0, flex: 1}}
           />
           {!isSearchFocused && (
-            <TouchableOpacity
-              style={styles.filterButton}
-              activeOpacity={0.7}
+            <Pressable
+              style={({pressed}) => [
+                styles.filterButton,
+                pressed && styles.filterButtonPressed,
+              ]}
               onPress={handleFilterModalPress}>
               <Feather
                 name="sliders"
                 size={moderateScale(18)}
-                color={theme.colors.textSecondary}
+                color={Color(theme.colors.text).alpha(0.7).toString()}
               />
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
 
@@ -510,18 +495,16 @@ export default function BrowseReciters({
                 exiting={FadeOut.duration(200)}
                 layout={LinearTransition.duration(300)}>
                 {chip.type === 'separator' ? (
-                  // Render the A'n separator with different styling
                   <View style={styles.separatorChip}>
                     <Text style={styles.separatorChipText}>{chip.label}</Text>
                   </View>
                 ) : (
-                  // Regular filter chips
-                  <TouchableOpacity
-                    style={[
+                  <Pressable
+                    style={({pressed}) => [
                       styles.filterChip,
                       chip.isSelected && styles.filterChipActive,
+                      pressed && styles.filterChipPressed,
                     ]}
-                    activeOpacity={0.7}
                     onPress={() => {
                       Keyboard.dismiss();
                       handleChipPress(chip);
@@ -533,7 +516,7 @@ export default function BrowseReciters({
                       ]}>
                       {chip.label}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 )}
               </Animated.View>
             ))}
@@ -546,15 +529,17 @@ export default function BrowseReciters({
             <Text style={styles.activeFiltersText}>
               {filteredReciters.length} reciters found with current filters
             </Text>
-            <TouchableOpacity
-              style={styles.clearFiltersButton}
+            <Pressable
+              style={({pressed}) => [
+                styles.clearFiltersButton,
+                pressed && {opacity: 0.6},
+              ]}
               onPress={() => {
-                Keyboard.dismiss(); // Dismiss keyboard when clearing filters
+                Keyboard.dismiss();
                 handleClearFilters();
-              }}
-              activeOpacity={0.7}>
+              }}>
               <Text style={styles.clearFiltersText}>Clear All</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         )}
 
@@ -565,7 +550,7 @@ export default function BrowseReciters({
             onReciterPress={handleReciterPress}
             theme={theme}
             keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => Keyboard.dismiss()} // Dismiss keyboard on scroll
+            onScrollBeginDrag={() => Keyboard.dismiss()}
           />
         </View>
 
@@ -574,7 +559,7 @@ export default function BrowseReciters({
           visible={isFilterModalVisible}
           onClose={() => {
             setIsFilterModalVisible(false);
-            Keyboard.dismiss(); // Dismiss keyboard when closing modal
+            Keyboard.dismiss();
           }}
           onApplyFilters={handleApplyAdvancedFilters}
           theme={theme}
@@ -596,57 +581,58 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateScale(16),
       paddingVertical: moderateScale(6),
       gap: moderateScale(8),
-      marginTop: moderateScale(110), // Add top margin to account for header
       zIndex: 1,
     },
     filterButton: {
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderRadius: moderateScale(12),
       padding: moderateScale(10),
       borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-      height: moderateScale(44), // Match search button height
-      width: moderateScale(44), // Fixed width for consistent layout
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      height: moderateScale(44),
+      width: moderateScale(44),
       justifyContent: 'center',
       alignItems: 'center',
     },
+    filterButtonPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    },
     contentContainer: {
       flex: 1,
-      marginTop: moderateScale(20),
-      paddingTop: 0,
+      marginTop: moderateScale(8),
       zIndex: 1,
     },
-    filterSectionsContainer: {
-      // marginTop: moderateScale(10),
-      // marginBottom: moderateScale(8),
-    },
+    filterSectionsContainer: {},
     filterBarContainer: {
       flexDirection: 'row',
       gap: moderateScale(8),
       paddingHorizontal: moderateScale(16),
-      paddingVertical: moderateScale(6), // Add some vertical padding for better animation visibility
+      paddingVertical: moderateScale(6),
     },
     filterChip: {
       paddingHorizontal: moderateScale(12),
       paddingVertical: moderateScale(6),
       borderRadius: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
       borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
-      marginHorizontal: moderateScale(2), // Add small horizontal margin for nicer spacing during animations
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(2),
     },
     filterChipActive: {
       backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       borderColor: Color(theme.colors.text).alpha(0.2).toString(),
     },
+    filterChipPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
     filterChipText: {
       fontSize: moderateScale(12),
-      fontFamily: theme.fonts.medium,
-      color: theme.colors.textSecondary,
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
     },
     filterChipTextActive: {
       color: theme.colors.text,
-      fontFamily: theme.fonts.semiBold,
+      fontFamily: 'Manrope-SemiBold',
     },
     activeFiltersContainer: {
       flexDirection: 'row',
@@ -657,8 +643,8 @@ const createStyles = (theme: Theme) =>
     },
     activeFiltersText: {
       fontSize: moderateScale(12),
-      fontFamily: theme.fonts.medium,
-      color: theme.colors.textSecondary,
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
     },
     clearFiltersButton: {
       paddingHorizontal: moderateScale(8),
@@ -666,7 +652,7 @@ const createStyles = (theme: Theme) =>
     },
     clearFiltersText: {
       fontSize: moderateScale(12),
-      fontFamily: theme.fonts.medium,
+      fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
     },
     separatorChip: {
@@ -680,8 +666,8 @@ const createStyles = (theme: Theme) =>
     },
     separatorChipText: {
       fontSize: moderateScale(14),
-      fontFamily: 'Amiri-Regular', // Using Arabic-friendly font if available
-      color: theme.colors.textSecondary,
+      fontFamily: 'Amiri-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       fontStyle: 'italic',
     },
   });
