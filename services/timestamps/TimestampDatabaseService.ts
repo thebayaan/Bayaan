@@ -1,14 +1,12 @@
 import * as SQLite from 'expo-sqlite';
 import type {
   AyahTimestamp,
-  TimestampMeta,
   AyahTimestampRow,
-  TimestampMetaRow,
+  TimestampSource,
 } from '@/types/timestamps';
-import {mapAyahTimestampRow, mapTimestampMetaRow} from '@/types/timestamps';
+import {mapAyahTimestampRow} from '@/types/timestamps';
 
-const DB_NAME = 'timestamps.db';
-const SCHEMA_VERSION = 2; // v1 = original with segments, v2 = stripped
+const DB_NAME = 'timestamps_v3.db';
 
 class TimestampDatabaseService {
   private db: SQLite.SQLiteDatabase | null = null;
@@ -20,34 +18,27 @@ class TimestampDatabaseService {
 
     this.initPromise = (async () => {
       try {
-        let db = await SQLite.openDatabaseAsync(DB_NAME);
+        const db = await SQLite.openDatabaseAsync(DB_NAME);
 
-        // Check if DB has expected table and correct schema version
-        const tableCheck = await db
-          .getFirstAsync<{name: string}>(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='ayah_timestamps'",
-          )
-          .catch(() => null);
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS ayah_timestamps (
+            rewayat_id TEXT NOT NULL,
+            surah_number INTEGER NOT NULL,
+            ayah_number INTEGER NOT NULL,
+            timestamp_from INTEGER NOT NULL,
+            timestamp_to INTEGER NOT NULL,
+            duration_ms INTEGER NOT NULL,
+            PRIMARY KEY (rewayat_id, surah_number, ayah_number)
+          );
 
-        const versionResult = tableCheck
-          ? await db.getFirstAsync<{user_version: number}>(
-              'PRAGMA user_version',
-            )
-          : null;
-
-        if (
-          !tableCheck ||
-          (versionResult?.user_version ?? 0) < SCHEMA_VERSION
-        ) {
-          await db.closeAsync();
-          await SQLite.deleteDatabaseAsync(DB_NAME);
-          await SQLite.importDatabaseFromAssetAsync(DB_NAME, {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            assetId: require('@/assets/data/timestamps.db'),
-          });
-          db = await SQLite.openDatabaseAsync(DB_NAME);
-          await db.execAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-        }
+          CREATE TABLE IF NOT EXISTS cached_surahs (
+            rewayat_id TEXT NOT NULL,
+            surah_number INTEGER NOT NULL,
+            source TEXT NOT NULL,
+            fetched_at INTEGER NOT NULL,
+            PRIMARY KEY (rewayat_id, surah_number)
+          );
+        `);
 
         this.db = db;
       } catch (error) {
@@ -77,36 +68,58 @@ class TimestampDatabaseService {
     return rows.map(mapAyahTimestampRow);
   }
 
-  async hasTimestamps(rewayatId: string): Promise<boolean> {
+  async isSurahCached(
+    rewayatId: string,
+    surahNumber: number,
+  ): Promise<boolean> {
     if (!this.db) throw new Error('Timestamps database not initialized');
 
-    const result = (await this.db.getFirstAsync(
-      `SELECT 1 FROM timestamp_meta WHERE rewayat_id = ? LIMIT 1`,
-      [rewayatId],
-    )) as Record<string, number> | null;
+    const result = await this.db.getFirstAsync(
+      `SELECT 1 FROM cached_surahs WHERE rewayat_id = ? AND surah_number = ? LIMIT 1`,
+      [rewayatId, surahNumber],
+    );
 
     return result !== null;
   }
 
-  async getMeta(rewayatId: string): Promise<TimestampMeta | null> {
+  async writeTimestamps(
+    rewayatId: string,
+    surahNumber: number,
+    timestamps: AyahTimestamp[],
+    source: TimestampSource,
+  ): Promise<void> {
     if (!this.db) throw new Error('Timestamps database not initialized');
 
-    const row = (await this.db.getFirstAsync(
-      `SELECT * FROM timestamp_meta WHERE rewayat_id = ?`,
-      [rewayatId],
-    )) as TimestampMetaRow | null;
+    await this.db.withTransactionAsync(async () => {
+      // Delete any existing data for this surah (in case of re-fetch)
+      await this.db!.runAsync(
+        `DELETE FROM ayah_timestamps WHERE rewayat_id = ? AND surah_number = ?`,
+        [rewayatId, surahNumber],
+      );
 
-    return row ? mapTimestampMetaRow(row) : null;
-  }
+      // Insert all ayah timestamps
+      for (const t of timestamps) {
+        await this.db!.runAsync(
+          `INSERT INTO ayah_timestamps (rewayat_id, surah_number, ayah_number, timestamp_from, timestamp_to, duration_ms)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            rewayatId,
+            surahNumber,
+            t.ayahNumber,
+            t.timestampFrom,
+            t.timestampTo,
+            t.durationMs,
+          ],
+        );
+      }
 
-  async getAllMeta(): Promise<TimestampMeta[]> {
-    if (!this.db) throw new Error('Timestamps database not initialized');
-
-    const rows = (await this.db.getAllAsync(
-      `SELECT * FROM timestamp_meta`,
-    )) as TimestampMetaRow[];
-
-    return rows.map(mapTimestampMetaRow);
+      // Mark surah as cached
+      await this.db!.runAsync(
+        `INSERT OR REPLACE INTO cached_surahs (rewayat_id, surah_number, source, fetched_at)
+         VALUES (?, ?, ?, ?)`,
+        [rewayatId, surahNumber, source, Date.now()],
+      );
+    });
   }
 
   async close(): Promise<void> {

@@ -310,7 +310,7 @@ appInitializer.registerService({
 
 /**
  * Timestamp Service (Priority 9)
- * Copies bundled timestamps.db to writable directory and opens it
+ * Opens/creates local timestamp cache DB
  * Non-critical - app can function without ayah timestamps
  */
 appInitializer.registerService({
@@ -319,7 +319,7 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await timestampService.initialize();
-    await useTimestampStore.getState().loadFollowAlongRegistry();
+    useTimestampStore.getState().loadFollowAlongRegistry();
   },
 });
 
