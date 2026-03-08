@@ -1002,61 +1002,237 @@ export const MushafPagePillIcon: React.FC<IconProps> = ({color, size}) => (
       stroke={color}
       strokeWidth={1.3}
     />
-    <Rect
-      x="5.5"
-      y="4"
-      width="13"
-      height="16"
-      rx={1}
-      stroke={color}
-      strokeWidth={0.8}
-      opacity={0.4}
-    />
-    <Line
-      x1="7.5"
-      y1="7.5"
-      x2="16.5"
-      y2="7.5"
-      stroke={color}
-      strokeWidth={1}
-      strokeLinecap="round"
-      opacity={0.6}
-    />
-    <Line
-      x1="8"
-      y1="10"
-      x2="16"
-      y2="10"
-      stroke={color}
-      strokeWidth={1}
-      strokeLinecap="round"
-      opacity={0.6}
-    />
-    <Line
-      x1="7.5"
-      y1="12.5"
-      x2="16.5"
-      y2="12.5"
-      stroke={color}
-      strokeWidth={1}
-      strokeLinecap="round"
-      opacity={0.6}
-    />
-    <Line
-      x1="8"
-      y1="15"
-      x2="16"
-      y2="15"
-      stroke={color}
-      strokeWidth={1}
-      strokeLinecap="round"
-      opacity={0.6}
-    />
+    {/* Divider 1 */}
+    <Line x1="6" y1="4" x2="18" y2="4" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+    {/* Surah 1 */}
+    <Line x1="7" y1="5.8" x2="17" y2="5.8" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line x1="8" y1="7.2" x2="16" y2="7.2" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    {/* Divider 2 */}
+    <Line x1="6" y1="9" x2="18" y2="9" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+    {/* Surah 2 */}
+    <Line x1="7" y1="10.8" x2="17" y2="10.8" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line x1="7.5" y1="12.2" x2="16.5" y2="12.2" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line x1="9" y1="13.6" x2="15" y2="13.6" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    {/* Divider 3 */}
+    <Line x1="6" y1="15.4" x2="18" y2="15.4" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+    {/* Surah 3 */}
+    <Line x1="7" y1="17.2" x2="17" y2="17.2" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line x1="8" y1="18.6" x2="16" y2="18.6" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line x1="9" y1="20" x2="15" y2="20" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
   </Svg>
 );
 
 // Scroll Mode — Page + Arrow (pill icon)
 export const ScrollModePillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="4"
+      y="2"
+      width="16"
+      height="20"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="8"
+      y1="6"
+      x2="16"
+      y2="6"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="9"
+      x2="16"
+      y2="9"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="12"
+      x2="16"
+      y2="12"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="15"
+      x2="14"
+      y2="15"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M12 18V22M10 20L12 22L14 20"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// List View — Flowing text lines (no page border)
+export const ListViewPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Line
+      x1="3"
+      y1="4.5"
+      x2="21"
+      y2="4.5"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="3"
+      y1="8"
+      x2="19"
+      y2="8"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      opacity={0.7}
+    />
+    <Line
+      x1="3"
+      y1="11.5"
+      x2="21"
+      y2="11.5"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="3"
+      y1="15"
+      x2="17"
+      y2="15"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      opacity={0.7}
+    />
+    <Line
+      x1="3"
+      y1="18.5"
+      x2="21"
+      y2="18.5"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+// Horizontal Scroll — Two pages with horizontal arrow
+export const HorizontalScrollPillIcon: React.FC<IconProps> = ({
+  color,
+  size,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="4"
+      width="8"
+      height="12"
+      rx={1.2}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Line
+      x1="4"
+      y1="7"
+      x2="8"
+      y2="7"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="4"
+      y1="9.5"
+      x2="8"
+      y2="9.5"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="4"
+      y1="12"
+      x2="7"
+      y2="12"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Rect
+      x="14"
+      y="4"
+      width="8"
+      height="12"
+      rx={1.2}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Line
+      x1="16"
+      y1="7"
+      x2="20"
+      y2="7"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="16"
+      y1="9.5"
+      x2="20"
+      y2="9.5"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="16"
+      y1="12"
+      x2="19"
+      y2="12"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M10.5 20H13.5M12 18.5L13.5 20L12 21.5"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Vertical Scroll — Page with downward arrow
+export const VerticalScrollPillIcon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Rect
       x="4"

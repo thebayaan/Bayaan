@@ -47,6 +47,10 @@ import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
 import ReadingPageView from './reading/ReadingPageView';
+import ContinuousListView, {
+  type ContinuousListViewHandle,
+} from './reading/ContinuousListView';
+import ContinuousMushafView from './skia/ContinuousMushafView';
 import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
@@ -244,15 +248,16 @@ export default function MushafViewer({
   const [autoFocusSearch, setAutoFocusSearch] = useState(false);
   const setIsSearchMode = useCallback(
     (value: boolean | ((prev: boolean) => boolean), autoFocus?: boolean) => {
-      setIsSearchModeRaw(prev => {
-        const next = typeof value === 'function' ? value(prev) : value;
+      const next = typeof value === 'function' ? value(isSearchMode) : value;
+      setIsSearchModeRaw(next);
+      // Defer store update to avoid setState-during-render
+      queueMicrotask(() => {
         useMushafPlayerStore.setState({isSearchMode: next});
-        if (!next) setAutoFocusSearch(false);
-        else if (autoFocus) setAutoFocusSearch(true);
-        return next;
       });
+      if (!next) setAutoFocusSearch(false);
+      else if (autoFocus) setAutoFocusSearch(true);
     },
-    [],
+    [isSearchMode],
   );
   // iOS: sync search mode from store (toolbar search button sets store directly)
   const storeSearchMode = useMushafPlayerStore(s => s.isSearchMode);
@@ -268,6 +273,8 @@ export default function MushafViewer({
   const {theme, isDarkMode} = useTheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
+  const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
+  const isVertical = scrollDirection === 'vertical';
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : theme.colors.card;
   const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
@@ -277,6 +284,7 @@ export default function MushafViewer({
   const router = useRouter();
   const navigation = useNavigation();
   const flatListRef = useRef<FlatList>(null);
+  const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
 
   // Reanimated overlay animation (same pattern as PlayerContent)
@@ -321,7 +329,10 @@ export default function MushafViewer({
 
     if (isImmersive || isSearchMode) {
       // Hide native header — search overlay renders its own UI
-      navigation.setOptions({headerShown: false, headerSearchBarOptions: undefined});
+      navigation.setOptions({
+        headerShown: false,
+        headerSearchBarOptions: undefined,
+      });
       return;
     }
 
@@ -431,37 +442,56 @@ export default function MushafViewer({
     [],
   );
 
-  const navigateToPage = useCallback((targetPage: number) => {
-    setIsSearchMode(false);
-    // Explicit navigation = start a new chain (preserves old position)
-    const surahId = digitalKhattDataService.initialized
-      ? digitalKhattDataService.getPageToSurah()[targetPage]
-      : undefined;
-    if (surahId) {
-      useMushafSettingsStore.getState().startNewChain(surahId, targetPage);
-    }
-    flatListRef.current?.scrollToIndex({
-      index: targetPage - 1,
-      animated: false,
-    });
-  }, []);
+  const navigateToPage = useCallback(
+    (targetPage: number) => {
+      setIsSearchMode(false);
+      // Explicit navigation = start a new chain (preserves old position)
+      const surahId = digitalKhattDataService.initialized
+        ? digitalKhattDataService.getPageToSurah()[targetPage]
+        : undefined;
+      if (surahId) {
+        useMushafSettingsStore.getState().startNewChain(surahId, targetPage);
+      }
+      if (isVertical) {
+        continuousListRef.current?.scrollToPage(targetPage);
+      } else {
+        flatListRef.current?.scrollToIndex({
+          index: targetPage - 1,
+          animated: false,
+        });
+      }
+    },
+    [isVertical],
+  );
 
-  const navigateToPageAnimated = useCallback((targetPage: number) => {
-    flatListRef.current?.scrollToIndex({
-      index: targetPage - 1,
-      animated: true,
-    });
-  }, []);
+  const navigateToPageAnimated = useCallback(
+    (targetPage: number) => {
+      if (isVertical) {
+        continuousListRef.current?.scrollToPage(targetPage, true);
+      } else {
+        flatListRef.current?.scrollToIndex({
+          index: targetPage - 1,
+          animated: true,
+        });
+      }
+    },
+    [isVertical],
+  );
 
   // Auto-page-turn during mushaf playback
   useMushafAutoPageTurn(currentPage, navigateToPageAnimated);
 
   const navigateToSurah = useCallback(
     (surahId: number) => {
-      const targetPage = surahStartPages[surahId];
-      if (targetPage) navigateToPage(targetPage);
+      setIsSearchMode(false);
+      if (isVertical) {
+        continuousListRef.current?.scrollToSurah(surahId);
+      } else {
+        const targetPage = surahStartPages[surahId];
+        if (targetPage) navigateToPage(targetPage);
+      }
     },
-    [surahStartPages, navigateToPage],
+    [isVertical, surahStartPages, navigateToPage],
   );
 
   // Subscribe to external navigation requests (e.g. from SimilarVersesSheet)
@@ -490,27 +520,58 @@ export default function MushafViewer({
 
   const navigateToVerse = useCallback(
     (verseKey: string, page: number) => {
-      navigateToPage(page);
+      if (isVertical) {
+        setIsSearchMode(false);
+        continuousListRef.current?.scrollToVerse(verseKey);
+      } else {
+        navigateToPage(page);
+      }
       useMushafVerseSelectionStore.getState().selectVerse(verseKey, page);
       const timer = setTimeout(() => {
         useMushafVerseSelectionStore.getState().clearSelection();
       }, 3000);
       return () => clearTimeout(timer);
     },
-    [navigateToPage],
+    [isVertical, navigateToPage],
   );
 
-  const resumeChain = useCallback((index: number, page: number) => {
-    setIsSearchMode(false);
-    useMushafSettingsStore.getState().resumeChain(index);
-    flatListRef.current?.scrollToIndex({
-      index: page - 1,
-      animated: false,
-    });
-  }, []);
+  const resumeChain = useCallback(
+    (index: number, page: number) => {
+      setIsSearchMode(false);
+      useMushafSettingsStore.getState().resumeChain(index);
+      if (isVertical) {
+        continuousListRef.current?.scrollToPage(page);
+      } else {
+        flatListRef.current?.scrollToIndex({
+          index: page - 1,
+          animated: false,
+        });
+      }
+    },
+    [isVertical],
+  );
 
   const openSearchMode = useCallback(() => setIsSearchMode(true, false), []);
-  const openSearchWithFocus = useCallback(() => setIsSearchMode(true, true), []);
+  const openSearchWithFocus = useCallback(
+    () => setIsSearchMode(true, true),
+    [],
+  );
+
+  // Vertical mode callbacks — update the same state as horizontal FlatList
+  const handleContinuousPageChange = useCallback(
+    (page: number) => {
+      if (page !== currentPage) {
+        setCurrentPage(page);
+        useMushafPlayerStore.setState({currentPage: page});
+        mushafSessionStore.setLastReadPage(page);
+        const surahId = pageToSurah[page];
+        if (surahId) {
+          useMushafSettingsStore.getState().updateActiveChain(surahId, page);
+        }
+      }
+    },
+    [currentPage, pageToSurah],
+  );
 
   // Mushaf player state
   const mushafPlaybackState = useMushafPlayerStore(s => s.playbackState);
@@ -537,50 +598,77 @@ export default function MushafViewer({
     <View
       style={[
         styles.container,
-        {backgroundColor: isBookLayout ? edgeBg : theme.colors.card},
+        {
+          backgroundColor: isVertical
+            ? theme.colors.background
+            : isBookLayout
+              ? edgeBg
+              : theme.colors.card,
+        },
       ]}>
-      {/* FlatList fills the entire screen */}
-      <FlatList
-        ref={flatListRef}
-        data={pages}
-        renderItem={({item}) => {
-          const commonProps = {
-            pageNumber: item,
-            textColor: theme.colors.text,
-            surahLabel: getSurahNamesForPage(item),
-            juzLabel: `Juz ${getJuzForPage(item)}`,
-            pageLabel: String(item),
-            labelColor: theme.colors.textSecondary,
-            borderColor: edgeBorderColor,
-            cardColor: pageBg,
-            bgColor: edgeBg,
-            isBookLayout,
-            onTap: toggleImmersive,
-          };
-          return viewMode === 'reading' ? (
-            <ReadingPageView {...commonProps} />
-          ) : (
-            <DKPageView {...commonProps} />
-          );
-        }}
-        keyExtractor={item => item.toString()}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        initialScrollIndex={Math.min(initialPage - 1, TOTAL_PAGES - 1)}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_WIDTH,
-          offset: SCREEN_WIDTH * index,
-          index,
-        })}
-        inverted
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        windowSize={7}
-        maxToRenderPerBatch={3}
-        initialNumToRender={1}
-        decelerationRate="fast"
-      />
+      {/* Content area: horizontal FlatList or vertical continuous view */}
+      {isVertical && viewMode === 'mushaf' ? (
+        <ContinuousMushafView
+          ref={continuousListRef}
+          textColor={theme.colors.text}
+          dividerColor={theme.colors.textSecondary}
+          onTap={toggleImmersive}
+          initialPage={currentPage}
+          onCurrentPageChange={handleContinuousPageChange}
+        />
+      ) : isVertical && viewMode === 'list' ? (
+        <ContinuousListView
+          ref={continuousListRef}
+          textColor={theme.colors.text}
+          labelColor={theme.colors.textSecondary}
+          borderColor={edgeBorderColor}
+          onTap={toggleImmersive}
+          initialPage={currentPage}
+          onCurrentPageChange={handleContinuousPageChange}
+        />
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={pages}
+          renderItem={({item}) => {
+            const commonProps = {
+              pageNumber: item,
+              textColor: theme.colors.text,
+              surahLabel: getSurahNamesForPage(item),
+              juzLabel: `Juz ${getJuzForPage(item)}`,
+              pageLabel: String(item),
+              labelColor: theme.colors.textSecondary,
+              borderColor: edgeBorderColor,
+              cardColor: pageBg,
+              bgColor: edgeBg,
+              isBookLayout,
+              onTap: toggleImmersive,
+            };
+            return viewMode === 'list' ? (
+              <ReadingPageView {...commonProps} />
+            ) : (
+              <DKPageView {...commonProps} />
+            );
+          }}
+          keyExtractor={item => item.toString()}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+          inverted
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          windowSize={7}
+          maxToRenderPerBatch={3}
+          initialNumToRender={1}
+          decelerationRate="fast"
+        />
+      )}
 
       {/* ================================================================ */}
       {/* Normal mode header — fades out when immersive                    */}
@@ -687,7 +775,10 @@ export default function MushafViewer({
                 },
               ]}
               pointerEvents={isImmersive ? 'none' : 'auto'}>
-              <MushafPlayerBar currentPage={currentPage} onSearch={openSearchWithFocus} />
+              <MushafPlayerBar
+                currentPage={currentPage}
+                onSearch={openSearchWithFocus}
+              />
             </Animated.View>
           )}
         </>
