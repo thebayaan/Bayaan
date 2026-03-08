@@ -1,16 +1,13 @@
 import React, {useMemo} from 'react';
-import {TouchableOpacity, Text, View, StyleSheet} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {Pressable, Text, View, StyleSheet, Platform} from 'react-native';
+import {moderateScale} from 'react-native-size-matters';
 import {RewayatInfo} from '@/data/rewayatCollections';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
-import {LinearGradient} from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
-import {Feather} from '@expo/vector-icons';
+import {Link} from 'expo-router';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+
+const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 interface RewayatCardProps {
   rewayat: RewayatInfo;
@@ -19,135 +16,131 @@ interface RewayatCardProps {
   height?: number;
 }
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
-
 function RewayatCard({
   rewayat,
   onPress,
-  width = moderateScale(130),
-  height = moderateScale(110),
+  width = moderateScale(110),
+  height = moderateScale(92),
 }: RewayatCardProps) {
   const {theme} = useTheme();
-  const scale = useSharedValue(1);
+  const styles = useMemo(
+    () => createStyles(theme, width, height),
+    [theme, width, height],
+  );
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: scale.value}],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, {damping: 20, stiffness: 400, mass: 0.5});
+  const linkHref = {
+    pathname: '/(tabs)/(a.home)/reciter/browse' as const,
+    params: {
+      teacher: rewayat.teacher,
+      student: rewayat.student,
+      rewayatName: rewayat.displayName,
+    },
   };
 
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {damping: 20, stiffness: 400, mass: 0.5});
-  };
+  const content = (
+    <View style={styles.content}>
+      <Text style={styles.teacherLabel} numberOfLines={1}>
+        {rewayat.teacher}
+      </Text>
+      <View style={styles.textContainer}>
+        <Text style={styles.displayName} numberOfLines={2}>
+          {rewayat.displayName}
+        </Text>
+        <Text style={styles.subtitle}>
+          {rewayat.reciterCount} reciter{rewayat.reciterCount !== 1 && 's'}
+        </Text>
+      </View>
+    </View>
+  );
 
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  if (USE_GLASS) {
+    return (
+      <Link href={linkHref} asChild>
+        <Pressable>
+          <Link.AppleZoom>
+            <GlassView
+              style={StyleSheet.flatten([
+                styles.container,
+                styles.glassContainer,
+              ])}
+              glassEffectStyle="regular">
+              {content}
+            </GlassView>
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
+    );
+  }
 
   return (
-    <AnimatedTouchable
-      activeOpacity={1}
-      style={[styles.container, {width, height}, animatedStyle]}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
-      {/* Background gradient */}
-      <LinearGradient
-        colors={
-          theme.isDarkMode
-            ? [
-                Color(theme.colors.card).lighten(0.15).hex(),
-                Color(theme.colors.card).lighten(0.05).hex(),
-              ]
-            : [
-                Color(theme.colors.background).hex(),
-                Color(theme.colors.card).hex(),
-              ]
-        }
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Content */}
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.iconWrapper}>
-            <Feather
-              name="chevron-right"
-              size={moderateScale(14)}
-              color={theme.colors.textSecondary}
-            />
-          </View>
-        </View>
-
-        <View style={styles.textContainer}>
-          <Text style={styles.displayName} numberOfLines={2}>
-            {rewayat.displayName}
-          </Text>
-          <Text style={styles.subtitle}>
-            {rewayat.reciterCount} reciter{rewayat.reciterCount !== 1 && 's'}
-          </Text>
-        </View>
-      </View>
-    </AnimatedTouchable>
+    <Link href={linkHref} asChild>
+      <Pressable style={styles.container}>
+        <Link.AppleZoom>
+          <View style={{flex: 1}}>{content}</View>
+        </Link.AppleZoom>
+      </Pressable>
+    </Link>
   );
 }
 
-function createStyles(theme: {
-  colors: {
-    text: string;
-    textSecondary: string;
-    card: string;
-    border: string;
-    background: string;
-  };
-  fonts: {semiBold: string; regular: string; medium: string};
-  isDarkMode: boolean;
-}) {
+function createStyles(
+  theme: {
+    colors: {
+      text: string;
+      textSecondary: string;
+      card: string;
+      border: string;
+      background: string;
+    };
+    fonts: {semiBold: string; regular: string; medium: string};
+    isDarkMode: boolean;
+  },
+  width: number,
+  height: number,
+) {
   return StyleSheet.create({
     container: {
+      width,
+      height,
       borderRadius: moderateScale(14),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: theme.isDarkMode
-        ? Color(theme.colors.border).alpha(0.1).toString()
-        : Color(theme.colors.border).alpha(0.15).toString(),
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
+    glassContainer: {
+      borderWidth: 0,
+      backgroundColor: 'transparent',
     },
     content: {
       flex: 1,
-      padding: moderateScale(14),
+      padding: moderateScale(10),
       justifyContent: 'space-between',
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-    },
-    iconWrapper: {
-      width: moderateScale(24),
-      height: moderateScale(24),
-      borderRadius: moderateScale(12),
-      backgroundColor: theme.isDarkMode
-        ? Color(theme.colors.text).alpha(0.06).toString()
-        : Color(theme.colors.text).alpha(0.04).toString(),
-      alignItems: 'center',
-      justifyContent: 'center',
+    teacherLabel: {
+      fontSize: moderateScale(9),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
     },
     textContainer: {
-      gap: verticalScale(4),
+      gap: moderateScale(2),
     },
     displayName: {
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: theme.fonts.semiBold,
       color: theme.colors.text,
       letterSpacing: -0.3,
-      lineHeight: moderateScale(19),
+      lineHeight: moderateScale(18),
     },
     subtitle: {
-      fontSize: moderateScale(11),
+      fontSize: moderateScale(10),
       fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      letterSpacing: 0.1,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+    },
+    pressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
   });
 }

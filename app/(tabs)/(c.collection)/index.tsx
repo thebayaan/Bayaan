@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {View, ScrollView, Text, Pressable} from 'react-native';
+import {View, ScrollView, Text, Pressable, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -10,7 +10,6 @@ import {useLoved} from '@/hooks/useLoved';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 
-import {CollectionHeader} from '@/components/collection/CollectionHeader';
 import {useDownloads} from '@/services/player/store/downloadSelectors';
 import {usePlaylists} from '@/hooks/usePlaylists';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -24,6 +23,7 @@ import {
 import {useUploadsStore} from '@/store/uploadsStore';
 import {useFocusEffect} from '@react-navigation/native';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {useBottomInset} from '@/hooks/useBottomInset';
 
 interface CategoryItem {
   id: string;
@@ -39,6 +39,7 @@ export default function CollectionScreen() {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const router = useRouter();
   const {lovedTracks} = useLoved();
   const {favoriteReciters} = useFavoriteReciters();
@@ -141,26 +142,21 @@ export default function CollectionScreen() {
   ];
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, {paddingTop: 0}]}>
-        <View
-          style={[
-            styles.blurContainer,
-            {backgroundColor: theme.colors.background},
-          ]}
-        />
-      </View>
-
+    <View style={styles.container} collapsable={false}>
       <ScrollView
         style={styles.content}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        <View style={{paddingTop: insets.top}} />
-
-        {/* Header */}
-        <CollectionHeader title="Your Collection" theme={theme} />
-
+        contentInsetAdjustmentBehavior={
+          Platform.OS === 'ios' ? 'automatic' : 'never'
+        }
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          paddingTop:
+            Platform.OS === 'ios'
+              ? moderateScale(16)
+              : insets.top + moderateScale(16),
+        }}>
         {/* Add to Collection Bar */}
         <Pressable style={styles.addBar} onPress={handleAddPress}>
           <Feather
@@ -219,7 +215,7 @@ export default function CollectionScreen() {
           ))}
         </View>
 
-        <View style={{height: moderateScale(100)}} />
+        <View style={{height: bottomInset}} />
       </ScrollView>
     </View>
   );

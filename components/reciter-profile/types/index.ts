@@ -32,6 +32,7 @@ export interface ReciterHeaderProps {
     bottom: number;
     left: number;
     right: number;
+    iosHeaderHeight?: number;
   };
 }
 

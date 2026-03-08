@@ -51,6 +51,10 @@ class MushafAudioService {
     return MushafAudioService.instance;
   }
 
+  getPlayer(): AudioPlayer | null {
+    return this.player;
+  }
+
   // ========== CALLBACKS ==========
 
   setOnAyahChange(callback: AyahChangeCallback): void {

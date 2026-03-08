@@ -47,6 +47,10 @@ export interface MushafPlayerStoreState {
   _versePlayCount: number;
   _rangePlayCount: number;
 
+  // UI state (synced from MushafViewer, not persisted)
+  isImmersive: boolean;
+  isSearchMode: boolean;
+
   // Persisted preferences
   rewayatId: string | null;
   reciterName: string | null;
@@ -84,6 +88,8 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
       pendingStartVerseKey: null,
       _versePlayCount: 1,
       _rangePlayCount: 1,
+      isImmersive: false,
+      isSearchMode: false,
 
       // Persisted preferences defaults
       rewayatId: null,

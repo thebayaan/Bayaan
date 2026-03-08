@@ -1,9 +1,8 @@
-import React, {useEffect, useState, useCallback, useMemo} from 'react';
-import {View, Text, FlatList, TouchableOpacity} from 'react-native';
-import {useRouter} from 'expo-router';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import React, {useEffect, useState, useCallback, useMemo, useLayoutEffect} from 'react';
+import {View, Text, FlatList, Platform, Pressable, StyleSheet} from 'react-native';
+import {useRouter, useNavigation, Link} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Feather, Ionicons} from '@expo/vector-icons';
+import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -13,12 +12,16 @@ import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {useBottomInset} from '@/hooks/useBottomInset';
+import {useHeaderHeight} from '@react-navigation/elements';
 
 const SavedAdhkarScreen: React.FC = () => {
   const router = useRouter();
+  const navigation = useNavigation();
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const headerHeight = useHeaderHeight();
+  const bottomInset = useBottomInset();
   const {savedIds} = useAdhkar();
 
   // Play All store
@@ -59,23 +62,6 @@ const SavedAdhkarScreen: React.FC = () => {
     loadSavedAdhkar();
   }, [savedIds.size]); // Reload when saved count changes
 
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
-
-  const handleDhikrPress = useCallback(
-    (dhikr: Dhikr, index: number) => {
-      router.push({
-        pathname: '/(tabs)/(a.home)/adhkar/saved/[dhikrId]',
-        params: {
-          dhikrId: dhikr.id,
-          globalIndex: index.toString(),
-        },
-      });
-    },
-    [router],
-  );
-
   // Play All handler
   const handlePlayAll = useCallback(() => {
     if (isSavedPlaying) {
@@ -100,51 +86,78 @@ const SavedAdhkarScreen: React.FC = () => {
     });
   }, [isSavedPlaying, adhkarList, startPlayAll, stopPlayAll, router]);
 
+  // Set native header options dynamically
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      headerTransparent: true,
+      headerStyle: {backgroundColor: 'transparent'},
+      headerTintColor: theme.colors.text,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      ...(Platform.OS === 'ios'
+        ? {headerBackButtonDisplayMode: 'minimal', headerBackTitle: ' '}
+        : {}),
+      headerTitle: () => (
+        <View style={{alignItems: 'center'}}>
+          <Text
+            style={{
+              fontSize: moderateScale(16),
+              fontFamily: theme.fonts.semiBold,
+              color: theme.colors.text,
+            }}>
+            Saved
+          </Text>
+          <Text
+            style={{
+              fontSize: moderateScale(12),
+              fontFamily: theme.fonts.regular,
+              color: theme.colors.textSecondary,
+              marginTop: moderateScale(2),
+            }}>
+            {adhkarList.length} adhkar
+          </Text>
+        </View>
+      ),
+      headerRight: () => (
+        <View style={{paddingHorizontal: moderateScale(4)}}>
+          <PlayAllButton
+            onPress={handlePlayAll}
+            isPlaying={isSavedPlaying}
+            disabled={isLoading || adhkarList.length === 0}
+          />
+        </View>
+      ),
+    });
+  }, [navigation, adhkarList.length, handlePlayAll, isSavedPlaying, isLoading, theme]);
+
   const renderItem = useCallback(
     ({item, index}: {item: Dhikr; index: number}) => (
-      <DhikrListItem
-        dhikr={item}
-        index={index}
-        onPress={() => handleDhikrPress(item, index)}
-      />
+      <Link
+        href={{
+          pathname: '/(tabs)/(a.home)/adhkar/saved/[dhikrId]',
+          params: {
+            dhikrId: item.id,
+            globalIndex: index.toString(),
+          },
+        }}
+        asChild>
+        <Pressable style={StyleSheet.flatten([{flex: 1}])}>
+          <Link.AppleZoom>
+            <DhikrListItem dhikr={item} index={index} />
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
     ),
-    [handleDhikrPress],
+    [],
   );
 
   const keyExtractor = useCallback((item: Dhikr) => item.id, []);
 
-  const Header = (
-    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={1}
-          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
-        <View style={styles.titleContainer}>
-          <Text style={styles.headerTitle}>Saved</Text>
-          <Text style={styles.countText}>{adhkarList.length} adhkar</Text>
-        </View>
-        <PlayAllButton
-          onPress={handlePlayAll}
-          isPlaying={isSavedPlaying}
-          disabled={isLoading || adhkarList.length === 0}
-        />
-      </View>
-    </SafeAreaView>
-  );
-
   if (isLoading) {
     return (
       <View style={styles.container}>
-        {Header}
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
           <LoadingIndicator />
         </View>
       </View>
@@ -154,8 +167,7 @@ const SavedAdhkarScreen: React.FC = () => {
   if (adhkarList.length === 0) {
     return (
       <View style={styles.container}>
-        {Header}
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, {paddingTop: headerHeight}]}>
           <Ionicons
             name="bookmark-outline"
             size={moderateScale(48)}
@@ -172,12 +184,15 @@ const SavedAdhkarScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {Header}
       <FlatList
         data={adhkarList}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, {paddingBottom: bottomInset}]}
+        contentInset={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
+        contentOffset={Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined}
+        scrollIndicatorInsets={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
+        style={Platform.OS === 'android' ? {marginTop: headerHeight} : undefined}
         showsVerticalScrollIndicator={false}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
@@ -192,36 +207,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-    },
-    headerSafeArea: {
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-    },
-    backButton: {
-      padding: moderateScale(8),
-    },
-    titleContainer: {
-      flex: 1,
-      alignItems: 'center',
-    },
-    headerTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.semiBold,
-      color: theme.colors.text,
-    },
-    countText: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      marginTop: moderateScale(2),
-    },
-    headerPlaceholder: {
-      width: moderateScale(40),
     },
     loadingContainer: {
       flex: 1,
@@ -249,7 +234,6 @@ const createStyles = (theme: Theme) =>
     },
     listContent: {
       paddingTop: moderateScale(8),
-      paddingBottom: TOTAL_BOTTOM_PADDING,
     },
   });
 

@@ -1,8 +1,10 @@
 import React, {useEffect, useRef} from 'react';
-import {View, Text, TouchableOpacity, Animated, StyleSheet} from 'react-native';
+import {View, Text, Pressable, Animated, StyleSheet, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+import Color from 'color';
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
 
 interface TabSelectorProps<T extends string> {
   options: T[];
@@ -16,14 +18,29 @@ function TabSelector<T extends string>({
   onSelect,
 }: TabSelectorProps<T>) {
   const {theme} = useTheme();
+  const selectedIndex = options.indexOf(selectedOption);
+
+  if (Platform.OS === 'ios') {
+    return (
+      <SegmentedControl
+        values={options}
+        selectedIndex={selectedIndex}
+        onChange={event => {
+          const index = event.nativeEvent.selectedSegmentIndex;
+          onSelect(options[index]);
+        }}
+        style={{width: moderateScale(80 * options.length), height: moderateScale(40), alignSelf: 'center'}}
+      />
+    );
+  }
+
+  // Android: original tab selector with sliding indicator
   const styles = createStyles(theme, options.length);
 
-  // Animation for the sliding indicator
   const indicatorPosition = useRef(
     new Animated.Value(options.indexOf(selectedOption)),
   ).current;
 
-  // Update indicator position when selected option changes
   useEffect(() => {
     Animated.spring(indicatorPosition, {
       toValue: options.indexOf(selectedOption),
@@ -35,13 +52,11 @@ function TabSelector<T extends string>({
 
   return (
     <View style={styles.container}>
-      {/* Tab buttons */}
       <View style={styles.tabsContainer}>
         {options.map((option, index) => (
           <React.Fragment key={option}>
-            <TouchableOpacity
+            <Pressable
               style={styles.tabButton}
-              activeOpacity={1}
               onPress={() => onSelect(option)}>
               <Text
                 style={[
@@ -51,12 +66,9 @@ function TabSelector<T extends string>({
                 {option}
               </Text>
               {selectedOption === option && (
-                <>
-                  <View />
-                  <Animated.View style={styles.activeIndicator} />
-                </>
+                <Animated.View style={styles.activeIndicator} />
               )}
-            </TouchableOpacity>
+            </Pressable>
             {index < options.length - 1 && <View style={styles.separator} />}
           </React.Fragment>
         ))}
@@ -87,19 +99,17 @@ const createStyles = (theme: Theme, optionCount: number) =>
     tabText: {
       fontSize: moderateScale(15),
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
     activeTabText: {
-      color: theme.isDarkMode ? '#FFFFFF' : '#000000',
+      color: theme.colors.text,
       fontFamily: 'Manrope-Bold',
     },
     separator: {
       width: moderateScale(1),
       height: moderateScale(20),
-      backgroundColor: theme.isDarkMode
-        ? 'rgba(255, 255, 255, 0.2)'
-        : 'rgba(0, 0, 0, 0.1)',
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       alignSelf: 'center',
     },
     activeIndicator: {
@@ -107,7 +117,7 @@ const createStyles = (theme: Theme, optionCount: number) =>
       bottom: 0,
       width: moderateScale(25),
       height: moderateScale(3),
-      backgroundColor: theme.isDarkMode ? '#FFFFFF' : '#000000',
+      backgroundColor: theme.colors.text,
       borderRadius: moderateScale(1.5),
     },
   });

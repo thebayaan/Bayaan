@@ -1,20 +1,15 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, Switch, ScrollView} from 'react-native';
-import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {AntDesign, Feather} from '@expo/vector-icons';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Header from '@/components/Header';
 import Color from 'color';
 import {useSettings} from '@/hooks/useSettings';
 
 export default function ReciterChoiceScreen() {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const {
     askEveryTime,
     setAskEveryTime,
@@ -49,13 +44,9 @@ export default function ReciterChoiceScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Reciter Choice" onBack={() => router.back()} />
-
       <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          {paddingTop: insets.top + moderateScale(56)},
-        ]}
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         <Text style={styles.subtitle}>
           Choose how you want to select reciters when playing Surahs

@@ -1,6 +1,12 @@
-import React, {useState, useMemo, useCallback} from 'react';
-import {View, FlatList, TouchableOpacity, Text} from 'react-native';
-import {useRouter} from 'expo-router';
+import React, {useState, useMemo, useCallback, useLayoutEffect} from 'react';
+import {
+  View,
+  FlatList,
+  Text,
+  Platform,
+  Pressable,
+} from 'react-native';
+import {useRouter, useNavigation} from 'expo-router';
 import {
   moderateScale,
   verticalScale,
@@ -20,8 +26,12 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {Theme} from '@/utils/themeUtils';
-import {LinearGradient} from 'expo-linear-gradient';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
+import {useHeaderHeight} from '@react-navigation/elements';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+
+const isIOS = Platform.OS === 'ios';
+const USE_GLASS = isIOS && isLiquidGlassAvailable();
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
@@ -53,6 +63,13 @@ const useStyles = () => {
     scrollContent: {
       paddingBottom: verticalScale(100),
     },
+    stickyBarContainer: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    },
     optionsRow: {
       height: moderateScale(40),
       flexDirection: 'row',
@@ -61,7 +78,20 @@ const useStyles = () => {
       paddingHorizontal: moderateScale(16),
       marginHorizontal: moderateScale(16),
       borderRadius: moderateScale(8),
-      marginBottom: moderateScale(2), // Reduced from 5 to 2
+      marginBottom: moderateScale(2),
+    },
+    optionsRowGlass: {
+      marginHorizontal: 0,
+      backgroundColor: 'transparent',
+    },
+    glassWrapper: {
+      marginHorizontal: moderateScale(10),
+      marginVertical: moderateScale(4),
+    },
+    glassInner: {
+      borderRadius: moderateScale(16),
+      overflow: 'hidden',
+      paddingVertical: moderateScale(4),
     },
     surahsContainer: {
       flex: 1,
@@ -113,24 +143,12 @@ const useStyles = () => {
       display: 'none',
     },
     juzHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
       paddingHorizontal: moderateScale(16),
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(4),
-    },
-    juzHeaderLine: {
-      flex: 1,
-      height: 1,
-    },
-    juzHeaderPill: {
-      paddingHorizontal: moderateScale(12),
-      paddingVertical: moderateScale(5),
-      borderRadius: moderateScale(12),
-      marginHorizontal: moderateScale(8),
+      paddingTop: moderateScale(14),
+      paddingBottom: moderateScale(6),
     },
     juzHeaderText: {
-      fontSize: moderateScale(10),
+      fontSize: moderateScale(12),
       fontFamily: 'Manrope-SemiBold',
       textTransform: 'uppercase',
       letterSpacing: 0.8,
@@ -145,7 +163,9 @@ interface BrowseSurahsProps {
 
 export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
@@ -158,6 +178,14 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const setBrowseSortOptionSetting = useSettings(
     state => state.setBrowseSortOption,
   );
+
+  // iOS: set native header title
+  useLayoutEffect(() => {
+    if (!isIOS) return;
+    navigation.setOptions({
+      headerTitle: 'All Surahs',
+    });
+  }, [navigation]);
 
   // Define styles *before* callbacks that use them
   const styles = useStyles();
@@ -332,38 +360,18 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     ({item}: {item: ListItem}) => {
       if (item.type === 'juz-header') {
         return (
-          <View style={styles.juzHeader}>
-            <LinearGradient
-              colors={['transparent', theme.colors.border]}
-              locations={[0, 0.5]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
-            <View
+          <View
+            style={[
+              styles.juzHeader,
+              {backgroundColor: theme.colors.background},
+            ]}>
+            <Text
               style={[
-                styles.juzHeaderPill,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.05)
-                    .toString(),
-                },
+                styles.juzHeaderText,
+                {color: theme.colors.textSecondary},
               ]}>
-              <Text
-                style={[
-                  styles.juzHeaderText,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                {item.juzName}
-              </Text>
-            </View>
-            <LinearGradient
-              colors={[theme.colors.border, 'transparent']}
-              locations={[0.5, 1]}
-              start={{x: 0, y: 0.5}}
-              end={{x: 1, y: 0.5}}
-              style={styles.juzHeaderLine}
-            />
+              {item.juzName}
+            </Text>
           </View>
         );
       }
@@ -372,136 +380,114 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     [handleSurahPress, styles, theme.colors],
   );
 
-  // Sort and view options row
-  const renderOptionsRow = () => (
-    <Animated.View entering={FadeIn.delay(100)} style={styles.optionsRow}>
+  // Inner controls content (shared between glass and non-glass)
+  const controlsContent = (
+    <View style={[styles.optionsRow, USE_GLASS && styles.optionsRowGlass]}>
       {/* Sort options */}
       <View style={styles.sortOptions}>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortOption === 'asc' && {
-              backgroundColor: Color(theme.colors.primary)
-                .alpha(0.1)
-                .toString(),
-            },
-          ]}
-          activeOpacity={1}
-          onPress={() => changeSortOption('asc')}>
-          <Feather
-            name="arrow-up"
-            size={moderateScale(14)}
-            color={
-              sortOption === 'asc'
-                ? theme.colors.primary
-                : theme.colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.sortButtonText,
-              {
-                color:
-                  sortOption === 'asc'
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary,
-              },
-            ]}>
-            Asc
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortOption === 'desc' && {
-              backgroundColor: Color(theme.colors.primary)
-                .alpha(0.1)
-                .toString(),
-            },
-          ]}
-          activeOpacity={1}
-          onPress={() => changeSortOption('desc')}>
-          <Feather
-            name="arrow-down"
-            size={moderateScale(14)}
-            color={
-              sortOption === 'desc'
-                ? theme.colors.primary
-                : theme.colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.sortButtonText,
-              {
-                color:
-                  sortOption === 'desc'
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary,
-              },
-            ]}>
-            Desc
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortOption === 'revelation' && {
-              backgroundColor: Color(theme.colors.primary)
-                .alpha(0.1)
-                .toString(),
-            },
-          ]}
-          activeOpacity={1}
-          onPress={() => changeSortOption('revelation')}>
-          <Feather
-            name="calendar"
-            size={moderateScale(14)}
-            color={
-              sortOption === 'revelation'
-                ? theme.colors.primary
-                : theme.colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.sortButtonText,
-              {
-                color:
-                  sortOption === 'revelation'
-                    ? theme.colors.primary
-                    : theme.colors.textSecondary,
-              },
-            ]}>
-            Rev
-          </Text>
-        </TouchableOpacity>
+        {(['asc', 'desc', 'revelation'] as SortOption[]).map(option => {
+          const isActive = sortOption === option;
+          const iconName =
+            option === 'asc'
+              ? 'arrow-up'
+              : option === 'desc'
+                ? 'arrow-down'
+                : 'calendar';
+          const label =
+            option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
+          return (
+            <Pressable
+              key={option}
+              style={[
+                styles.sortButton,
+                isActive && {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.08)
+                    .toString(),
+                },
+              ]}
+              onPress={() => changeSortOption(option)}>
+              <Feather
+                name={iconName}
+                size={moderateScale(14)}
+                color={
+                  isActive ? theme.colors.text : theme.colors.textSecondary
+                }
+              />
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  {
+                    color: isActive
+                      ? theme.colors.text
+                      : theme.colors.textSecondary,
+                  },
+                ]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* View mode toggle */}
-      <TouchableOpacity
-        style={styles.viewModeButton}
-        onPress={toggleViewMode}
-        activeOpacity={1}>
+      <Pressable style={styles.viewModeButton} onPress={toggleViewMode}>
         <Feather
           name={viewMode === 'card' ? 'list' : 'grid'}
           size={moderateScale(16)}
           color={theme.colors.text}
         />
-      </TouchableOpacity>
-    </Animated.View>
+      </Pressable>
+    </View>
   );
+
+  // Options row: wrapped in GlassView on iOS, plain on Android
+  const renderOptionsRow = () => {
+    if (USE_GLASS) {
+      return (
+        <View style={styles.glassWrapper}>
+          <GlassView style={styles.glassInner}>{controlsContent}</GlassView>
+        </View>
+      );
+    }
+    return controlsContent;
+  };
+
+  // Sticky bar height for iOS content offset
+  const stickyBarTotalHeight = USE_GLASS
+    ? moderateScale(40 + 4 + 8 + 8) // optionsRow + glassInner padding + glassWrapper margin
+    : moderateScale(40 + 4); // optionsRow + margin
+
+  const flatListProps = {
+    showsVerticalScrollIndicator: false,
+    scrollEnabled: true,
+    initialNumToRender: 25,
+    maxToRenderPerBatch: 10,
+    windowSize: 5,
+    removeClippedSubviews: true,
+    ItemSeparatorComponent: ItemSeparator,
+  };
 
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <Header title="All Surahs" onBack={onBack} showBlur={true} />
+      {/* Android: custom header | iOS: native header via layout */}
+      {!isIOS && <Header title="All Surahs" onBack={onBack} showBlur={true} />}
 
       <View
-        style={[styles.content, {marginTop: insets.top + moderateScale(56)}]}>
-        {renderOptionsRow()}
+        style={[
+          styles.content,
+          !isIOS && {marginTop: insets.top + moderateScale(56)},
+        ]}>
+        {/* Android: inline options row (normal flow) */}
+        {!isIOS && renderOptionsRow()}
+
+        {/* iOS: floating sticky options bar below native header */}
+        {isIOS && (
+          <View style={[styles.stickyBarContainer, {top: iosHeaderHeight}]}>
+            {renderOptionsRow()}
+          </View>
+        )}
 
         <Animated.View
           entering={FadeIn.delay(200)}
@@ -516,16 +502,15 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
               data={displaySurahs}
               renderItem={renderCardItem}
               keyExtractor={item => `card-${item.id}`}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={true}
-              contentContainerStyle={[styles.listContent, styles.scrollContent]}
+              contentInsetAdjustmentBehavior={isIOS ? 'automatic' : 'never'}
+              contentContainerStyle={[
+                styles.listContent,
+                styles.scrollContent,
+                isIOS && {paddingTop: stickyBarTotalHeight},
+              ]}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
-              initialNumToRender={25}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
-              ItemSeparatorComponent={ItemSeparator}
+              {...flatListProps}
             />
           </View>
 
@@ -543,19 +528,15 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
                   ? `juz-${item.juzNumber}`
                   : `list-${item.surah.id}-${index}`
               }
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={true}
+              contentInsetAdjustmentBehavior={isIOS ? 'automatic' : 'never'}
               contentContainerStyle={[
                 styles.listContent,
                 styles.listViewContent,
                 styles.scrollContent,
+                isIOS && {paddingTop: stickyBarTotalHeight},
               ]}
               numColumns={1}
-              initialNumToRender={25}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              removeClippedSubviews={true}
-              ItemSeparatorComponent={ItemSeparator}
+              {...flatListProps}
             />
           </View>
         </Animated.View>

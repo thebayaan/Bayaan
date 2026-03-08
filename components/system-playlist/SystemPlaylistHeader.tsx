@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const isIOS = Platform.OS === 'ios';
 
 interface SystemPlaylistHeaderProps {
   title: string;
@@ -77,18 +78,20 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
 
   return (
     <View style={styles.headerContainer}>
-      <View style={styles.contentArea}>
-        {/* Back Button */}
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-          hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+      <View style={[styles.contentArea, isIOS && styles.contentAreaIOS]}>
+        {/* Back Button — Android only, iOS uses native header */}
+        {!isIOS && (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
@@ -160,6 +163,9 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       paddingBottom: moderateScale(30),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,
+    },
+    contentAreaIOS: {
+      paddingTop: moderateScale(16),
     },
     backButton: {
       position: 'absolute',

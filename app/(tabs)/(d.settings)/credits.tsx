@@ -1,13 +1,10 @@
 import React, {useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Linking} from 'react-native';
-import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Header from '@/components/Header';
 
 interface Credit {
   title: string;
@@ -121,8 +118,6 @@ const CREDITS: {
 
 export default function CreditsScreen() {
   const {theme} = useTheme();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const linkIconColor = Color(theme.colors.text).alpha(0.35).toString();
@@ -136,10 +131,10 @@ export default function CreditsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Credits" onBack={() => router.back()} />
       <ScrollView
-        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
+        style={styles.content}
         contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         <View>
           <Text style={styles.introText}>

@@ -11,7 +11,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
 
@@ -21,6 +21,7 @@ const CARD_GAP = moderateScale(8);
 interface AdhkarViewProps {
   onCategoryPress: (superCategory: SuperCategory) => void;
   onSavedPress: () => void;
+  headerHeight: number;
 }
 
 // Memoized section header
@@ -86,8 +87,10 @@ const CategoryGrid = React.memo(function CategoryGrid({
 export const AdhkarView: React.FC<AdhkarViewProps> = ({
   onCategoryPress,
   onSavedPress,
+  headerHeight,
 }) => {
   const {theme} = useTheme();
+  const bottomInset = useBottomInset();
   const {
     error,
     mainSuperCategories,
@@ -149,12 +152,14 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
       contentContainerStyle={[
         styles.scrollContent,
         {
-          paddingBottom: TOTAL_BOTTOM_PADDING,
+          paddingTop: headerHeight,
+          paddingBottom: bottomInset,
         },
       ]}
+      contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}>
       {/* Saved Hero Section - only shows when there are saved adhkar */}
-      <SavedAdhkarHero savedCount={savedIds.size} onPress={onSavedPress} />
+      <SavedAdhkarHero savedCount={savedIds.size} />
 
       {/* Main Section */}
       <View

@@ -40,9 +40,11 @@ import {useSettings} from '@/hooks/useSettings';
 import {useRouter} from 'expo-router';
 import Color from 'color';
 import {useReciterFollowAlong} from '@/hooks/useFollowAlong';
+import {useBottomInset} from '@/hooks/useBottomInset';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
+  headerHeight: number;
 }
 
 type SectionItem = Reciter | RecentlyPlayedTrack | RewayatInfo | UserPlaylist;
@@ -238,6 +240,7 @@ const RenderSectionItem = React.memo(
           name={playlist.name}
           itemCount={playlist.itemCount}
           color={playlist.color}
+          playlistId={playlist.id}
           onPress={() => onPlaylistPress?.(playlist)}
           width={moderateScale(110)}
           height={moderateScale(110)}
@@ -353,8 +356,9 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
   return shuffled;
 }
 
-function RecitersView({onReciterPress}: RecitersViewProps) {
+function RecitersView({onReciterPress, headerHeight}: RecitersViewProps) {
   const {theme} = useTheme();
+  const bottomInset = useBottomInset();
   const router = useRouter();
   const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
@@ -483,8 +487,12 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     <ScrollView
       style={styles.container}
       contentContainerStyle={{
-        paddingBottom: verticalScale(32),
+        paddingTop: headerHeight,
+        paddingBottom: bottomInset,
       }}
+      contentInsetAdjustmentBehavior="never"
+      automaticallyAdjustContentInsets={false}
+      automaticallyAdjustsScrollIndicatorInsets={false}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
       {/* Use the unified RecitersHero component */}
@@ -645,5 +653,8 @@ const styles = StyleSheet.create({
 });
 
 export default React.memo(RecitersView, (prevProps, nextProps) => {
-  return prevProps.onReciterPress === nextProps.onReciterPress;
+  return (
+    prevProps.onReciterPress === nextProps.onReciterPress &&
+    prevProps.headerHeight === nextProps.headerHeight
+  );
 });

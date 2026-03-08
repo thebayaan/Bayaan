@@ -1,7 +1,7 @@
 /**
  * MushafPlayerBar - Dual-mode bottom bar for mushaf audio playback
  *
- * Idle state:  [Play]  ----  Reciter Name  ----  [...]
+ * Idle state:   [Search] ---- [Play] ---- [...]
  * Active state: [Stop]  ---- [Prev] [Play/Pause] [Next] ---- [...]
  *                           Surah Name S:A (centered below)
  */
@@ -26,18 +26,18 @@ import {PlayIcon, PauseIcon} from '@/components/Icons';
 
 interface MushafPlayerBarProps {
   currentPage: number;
+  onSearch?: () => void;
 }
 
 export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   currentPage,
+  onSearch,
 }) => {
   const {theme} = useTheme();
 
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   const currentAyah = useMushafPlayerStore(s => s.currentAyah);
-  const reciterName = useMushafPlayerStore(s => s.reciterName);
-
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
   const isPlaying = playbackState === 'playing';
@@ -92,26 +92,34 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     });
   }, [currentPage]);
 
-  // ── Idle state ──────────────────────────────────────────────────────
+  // ── Idle state: [Search] — spacer — [Play] — spacer — [Options] ────
   if (isIdle) {
     return (
-      <View style={styles.content}>
+      <View style={styles.idleRow}>
         <Pressable
-          style={[styles.playButtonRect, {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()}]}
-          onPress={handlePlayPress}
+          style={styles.edgeButton}
+          onPress={onSearch}
           accessibilityRole="button"
-          accessibilityLabel="Play">
-          <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
+          accessibilityLabel="Search">
+          <Feather
+            name="search"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
         </Pressable>
 
-        <Text
-          style={[styles.reciterText, {color: theme.colors.textSecondary}]}
-          numberOfLines={1}>
-          {reciterName || ''}
-        </Text>
+        <View style={styles.controlsCenter}>
+          <Pressable
+            style={[styles.playButtonRect, {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()}]}
+            onPress={handlePlayPress}
+            accessibilityRole="button"
+            accessibilityLabel="Play">
+            <PlayIcon color={theme.colors.text} size={moderateScale(16)} />
+          </Pressable>
+        </View>
 
         <Pressable
-          style={styles.iconButton}
+          style={styles.edgeButton}
           onPress={handleOptions}
           accessibilityRole="button"
           accessibilityLabel="Playback options">
@@ -211,12 +219,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 };
 
 const styles = StyleSheet.create({
-  content: {
+  idleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     height: moderateScale(52),
     paddingHorizontal: moderateScale(8),
-    gap: moderateScale(4),
   },
   playButtonRect: {
     width: moderateScale(42),
@@ -225,16 +232,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: moderateScale(12),
     paddingLeft: moderateScale(3),
-  },
-  reciterText: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: moderateScale(13),
-    fontFamily: 'Manrope-Medium',
-    marginHorizontal: moderateScale(4),
-  },
-  iconButton: {
-    padding: moderateScale(8),
   },
   edgeButton: {
     width: moderateScale(36),
