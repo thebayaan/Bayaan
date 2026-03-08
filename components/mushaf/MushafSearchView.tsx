@@ -40,6 +40,8 @@ interface MushafSearchViewProps {
   onClose: () => void;
   surahStartPages: Record<number, number>;
   pageToSurah: Record<number, number>;
+  /** Start directly in search mode with keyboard active (skip browse) */
+  autoFocusSearch?: boolean;
 }
 
 type SortOption = 'asc' | 'desc' | 'revelation';
@@ -401,10 +403,11 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   onClose,
   surahStartPages,
   pageToSurah,
+  autoFocusSearch,
 }) => {
   const {theme, isDarkMode} = useTheme();
   const insets = useSafeAreaInsets();
-  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(autoFocusSearch ?? false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
 
@@ -415,13 +418,25 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const recentPages = useMushafSettingsStore(s => s.recentPages);
   const searchInputRef = useRef<TextInput>(null);
 
-  // Fade animation refs
-  const browseOpacity = useRef(new RNAnimated.Value(1)).current;
-  const searchOpacity = useRef(new RNAnimated.Value(0)).current;
+  // Fade animation refs — if autoFocusSearch, start in search mode immediately
+  const browseOpacity = useRef(new RNAnimated.Value(autoFocusSearch ? 0 : 1)).current;
+  const searchOpacity = useRef(new RNAnimated.Value(autoFocusSearch ? 1 : 0)).current;
+
+  // Auto-focus search input on mount when autoFocusSearch is true
+  useEffect(() => {
+    if (autoFocusSearch) {
+      // Use InteractionManager-style delay to ensure the view is fully laid out
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Load search history when entering search mode
+  const shouldLoadHistory = isSearchMode;
   useEffect(() => {
-    if (!isSearchMode) return;
+    if (!shouldLoadHistory) return;
     AsyncStorage.getItem(SEARCH_HISTORY_KEY).then(raw => {
       if (raw) {
         try {
@@ -431,20 +446,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         }
       }
     });
-  }, [isSearchMode]);
-
-  // Android back handler — exit search mode instead of closing overlay
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isSearchMode) {
-        exitSearchMode();
-        return true;
-      }
-      onClose();
-      return true;
-    });
-    return () => sub.remove();
-  }, [isSearchMode, onClose]);
+  }, [shouldLoadHistory]);
 
   const changeSortOption = useCallback(
     (option: SortOption) => {
@@ -477,6 +479,11 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   const exitSearchMode = useCallback(() => {
     Keyboard.dismiss();
+    if (autoFocusSearch) {
+      // Came directly from search icon — go back to mushaf
+      onClose();
+      return;
+    }
     setSearchQuery('');
     setIsSearchMode(false);
     RNAnimated.parallel([
@@ -492,7 +499,20 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [browseOpacity, searchOpacity]);
+  }, [browseOpacity, searchOpacity, autoFocusSearch, onClose]);
+
+  // Back handler — exit search or close overlay
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isSearchMode) {
+        exitSearchMode();
+        return true;
+      }
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [isSearchMode, exitSearchMode, onClose]);
 
   // ──────────────────────────────────────────────────────────
   // Search history management
@@ -701,6 +721,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   const getItemType = useCallback((item: BrowseItem) => item.type, []);
 
+
   const SortBar = useMemo(
     () => (
       <View style={styles.sortBar}>
@@ -810,6 +831,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // ──────────────────────────────────────────────────────────
   // Render
   // ──────────────────────────────────────────────────────────
+
+  // Unified two-layer layout with animated browse/search transitions
   return (
     <View
       style={[
@@ -900,6 +923,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
           onCancel={exitSearchMode}
           placeholder="Search surahs, pages, or juz..."
           showCancelButton={true}
+          autoFocus={autoFocusSearch}
           iconColor={theme.colors.textSecondary}
           textColor={theme.colors.text}
           backgroundColor={Color(theme.colors.text).alpha(0.04).toString()}
