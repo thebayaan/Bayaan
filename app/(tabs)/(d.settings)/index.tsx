@@ -1,15 +1,14 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View, Linking, Switch} from 'react-native';
+import {Text, Pressable, ScrollView, View, Linking, Switch, Platform} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Theme, ThemeMode, PrimaryColor} from '@/utils/themeUtils';
+import {Theme, ThemeMode} from '@/utils/themeUtils';
 import {Feather, Ionicons, MaterialIcons} from '@expo/vector-icons';
-import {primaryColors} from '@/styles/colorSchemes';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
-import Header from '@/components/Header';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
 import {
   QuranIcon,
@@ -27,15 +26,6 @@ import {
   ShieldLockIcon,
 } from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
-
-const formatColorName = (colorName: string): string => {
-  return colorName
-    .replace(/([A-Z])/g, ' $1')
-    .trim()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
 
 const isExternalLink = (type: string): boolean => {
   return ['support', 'featureRequest', 'terms', 'privacy', 'rateApp'].includes(
@@ -221,9 +211,9 @@ const renderIcon = (
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const {theme, themeMode, setThemeMode, primaryColor, setPrimaryColor} =
-    useTheme();
+  const {theme, themeMode, setThemeMode} = useTheme();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
 
@@ -241,19 +231,19 @@ export default function SettingsScreen() {
   const handleSettingPress = async (type: string) => {
     switch (type) {
       case 'mushafSettings':
-        router.push('/settings/mushaf-settings');
+        router.push('/(d.settings)/mushaf-settings');
         break;
       case 'translations':
-        router.push('/settings/translations');
+        router.push('/(d.settings)/translations');
         break;
       case 'defaultReciter':
-        router.push('/settings/default-reciter');
+        router.push('/(d.settings)/default-reciter');
         break;
       case 'reciterChoice':
-        router.push('/settings/reciter-choice');
+        router.push('/(d.settings)/reciter-choice');
         break;
       case 'storage':
-        router.push('/settings/storage');
+        router.push('/(d.settings)/storage');
         break;
       case 'clearCache':
         await clearPlayerCache();
@@ -263,7 +253,7 @@ export default function SettingsScreen() {
         await openAppStoreForReview();
         break;
       case 'whatsNew':
-        router.push('/settings/whats-new');
+        router.push('/(d.settings)/whats-new');
         break;
       case 'support':
         await Linking.openURL('https://thebayaan.com/support');
@@ -278,10 +268,10 @@ export default function SettingsScreen() {
         await Linking.openURL('https://thebayaan.com/privacy');
         break;
       case 'about':
-        router.push('/settings/about');
+        router.push('/(d.settings)/about');
         break;
       case 'credits':
-        router.push('/settings/credits');
+        router.push('/(d.settings)/credits');
         break;
       default:
         break;
@@ -290,120 +280,73 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Settings" onBack={() => router.back()} />
-
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          {paddingTop: insets.top + moderateScale(56)},
+          {paddingTop: insets.top + moderateScale(16), paddingBottom: bottomInset},
         ]}
         showsVerticalScrollIndicator={false}>
-        {/* Theme Selector */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>THEME</Text>
-          <View style={styles.segmentedTrack}>
-            {themeOptions.map(option => {
-              const isActive = themeMode === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  style={[styles.segment, isActive && styles.segmentActive]}
-                  onPress={() => setThemeMode(option.value)}>
-                  <View style={styles.segmentIconWrap}>
-                    {option.iconType === 'ionicon' ? (
-                      <Ionicons
-                        name={option.icon as any}
-                        size={moderateScale(16)}
-                        color={
-                          isActive
+        {/* Theme Selector — hidden on iOS where system theme is required for liquid glass */}
+        {Platform.OS !== 'ios' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>THEME</Text>
+            <View style={styles.segmentedTrack}>
+              {themeOptions.map(option => {
+                const isActive = themeMode === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    style={[styles.segment, isActive && styles.segmentActive]}
+                    onPress={() => setThemeMode(option.value)}>
+                    <View style={styles.segmentIconWrap}>
+                      {option.iconType === 'ionicon' ? (
+                        <Ionicons
+                          name={option.icon as any}
+                          size={moderateScale(16)}
+                          color={
+                            isActive
+                              ? theme.colors.text
+                              : Color(theme.colors.textSecondary)
+                                  .alpha(0.6)
+                                  .toString()
+                          }
+                        />
+                      ) : (
+                        <Feather
+                          name={option.icon as any}
+                          size={moderateScale(16)}
+                          color={
+                            isActive
+                              ? theme.colors.text
+                              : Color(theme.colors.textSecondary)
+                                  .alpha(0.6)
+                                  .toString()
+                          }
+                        />
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        {
+                          color: isActive
                             ? theme.colors.text
                             : Color(theme.colors.textSecondary)
                                 .alpha(0.6)
-                                .toString()
-                        }
-                      />
-                    ) : (
-                      <Feather
-                        name={option.icon as any}
-                        size={moderateScale(16)}
-                        color={
-                          isActive
-                            ? theme.colors.text
-                            : Color(theme.colors.textSecondary)
-                                .alpha(0.6)
-                                .toString()
-                        }
-                      />
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.segmentText,
-                      {
-                        color: isActive
-                          ? theme.colors.text
-                          : Color(theme.colors.textSecondary)
-                              .alpha(0.6)
-                              .toString(),
-                        fontFamily: isActive
-                          ? 'Manrope-SemiBold'
-                          : 'Manrope-Medium',
-                      },
-                    ]}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
+                                .toString(),
+                          fontFamily: isActive
+                            ? 'Manrope-SemiBold'
+                            : 'Manrope-Medium',
+                        },
+                      ]}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        </View>
-
-        {/* Accent Color */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>ACCENT COLOR</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.colorScrollContent}>
-            {Object.entries(primaryColors).map(([color, value]) => {
-              const isSelected = primaryColor === color;
-              return (
-                <Pressable
-                  key={color}
-                  style={styles.colorOptionContainer}
-                  onPress={() => setPrimaryColor(color as PrimaryColor)}>
-                  <View
-                    style={[
-                      styles.colorOption,
-                      {
-                        backgroundColor: value,
-                        borderColor: isSelected
-                          ? Color(theme.colors.text).alpha(0.4).toString()
-                          : Color(theme.colors.text).alpha(0.08).toString(),
-                      },
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.colorLabel,
-                      {
-                        color: isSelected
-                          ? Color(theme.colors.text).alpha(0.85).toString()
-                          : Color(theme.colors.textSecondary)
-                              .alpha(0.45)
-                              .toString(),
-                        fontFamily: isSelected
-                          ? 'Manrope-Medium'
-                          : 'Manrope-Regular',
-                      },
-                    ]}>
-                    {formatColorName(color)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
+        )}
 
         {/* Settings Sections */}
         {settingsItems.map(section => (
@@ -490,10 +433,9 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(40),
     },
     section: {
-      marginBottom: moderateScale(20),
+      marginBottom: moderateScale(14),
     },
     sectionHeader: {
       fontSize: moderateScale(10.5),
@@ -534,28 +476,6 @@ const createStyles = (theme: Theme) =>
     },
     segmentText: {
       fontSize: moderateScale(11),
-    },
-
-    // --- Accent Color ---
-    colorScrollContent: {
-      paddingHorizontal: moderateScale(4),
-      gap: moderateScale(16),
-      flexDirection: 'row',
-    },
-    colorOptionContainer: {
-      alignItems: 'center',
-      width: moderateScale(48),
-    },
-    colorOption: {
-      width: moderateScale(32),
-      height: moderateScale(32),
-      borderRadius: moderateScale(16),
-      borderWidth: 2,
-      marginBottom: moderateScale(4),
-    },
-    colorLabel: {
-      fontSize: moderateScale(10),
-      textAlign: 'center',
     },
 
     // --- Cards ---

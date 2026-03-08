@@ -2,42 +2,24 @@ import React, {useCallback, useMemo} from 'react';
 import {View, Pressable, Text, StyleSheet, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
-import {HomeIcon, SearchIcon, CollectionIcon} from '@/components/Icons';
+import {
+  HomeIcon,
+  SearchIcon,
+  CollectionIcon,
+  SettingsIcon,
+} from '@/components/Icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CommonActions} from '@react-navigation/native';
 import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
 import {Theme} from '@/utils/themeUtils';
+import Color from 'color';
+import {
+  FLOATING_UI_HORIZONTAL_MARGIN,
+  FLOATING_TAB_BAR_BOTTOM_MARGIN,
+} from '@/utils/constants';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
 
-function createStyles(
-  backgroundColor: string,
-  textColor: string,
-  bottomPadding: number,
-) {
-  return StyleSheet.create({
-    container: {
-      flexDirection: 'row',
-      backgroundColor,
-      paddingBottom: bottomPadding,
-    },
-    content: {
-      flexDirection: 'row',
-      flex: 1,
-    },
-    tabButton: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: moderateScale(10),
-      paddingBottom:
-        Platform.OS === 'android' ? moderateScale(10) : moderateScale(5),
-    },
-    tabText: {
-      fontSize: moderateScale(10, 0.2),
-      marginTop: moderateScale(4),
-      color: textColor,
-    },
-  });
-}
+const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 function getIcon(
   routeName: string,
@@ -45,31 +27,21 @@ function getIcon(
   theme: Theme,
   iconSize: number,
 ) {
+  const color = isFocused
+    ? theme.colors.text
+    : Color(theme.colors.text).alpha(0.5).toString();
+
   switch (routeName) {
     case '(a.home)':
-      return (
-        <HomeIcon
-          filled={isFocused}
-          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-          size={iconSize}
-        />
-      );
+      return <HomeIcon filled={isFocused} color={color} size={iconSize} />;
     case '(b.search)':
-      return (
-        <SearchIcon
-          filled={isFocused}
-          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-          size={iconSize}
-        />
-      );
+      return <SearchIcon filled={isFocused} color={color} size={iconSize} />;
     case '(c.collection)':
       return (
-        <CollectionIcon
-          filled={isFocused}
-          color={isFocused ? theme.colors.text : theme.colors.textSecondary}
-          size={iconSize}
-        />
+        <CollectionIcon filled={isFocused} color={color} size={iconSize} />
       );
+    case '(d.settings)':
+      return <SettingsIcon filled={isFocused} color={color} size={iconSize} />;
     default:
       return null;
   }
@@ -83,8 +55,6 @@ interface TabItemProps {
   onPress: () => void;
   theme: Theme;
   iconSize: number;
-  tabButtonStyle: object;
-  tabTextStyle: object;
 }
 
 const TabItem = React.memo(function TabItem({
@@ -94,13 +64,24 @@ const TabItem = React.memo(function TabItem({
   onPress,
   theme,
   iconSize,
-  tabButtonStyle,
-  tabTextStyle,
 }: TabItemProps) {
+  const labelColor = isFocused
+    ? Color(theme.colors.text).alpha(0.85).toString()
+    : Color(theme.colors.text).alpha(0.5).toString();
+
   return (
-    <Pressable onPress={onPress} style={tabButtonStyle}>
+    <Pressable onPress={onPress} style={styles.tabButton}>
       {getIcon(routeName, isFocused, theme, iconSize)}
-      <Text style={tabTextStyle}>{label}</Text>
+      <Text
+        style={[
+          styles.tabText,
+          {
+            color: labelColor,
+            fontFamily: isFocused ? 'Manrope-SemiBold' : 'Manrope-Medium',
+          },
+        ]}>
+        {label}
+      </Text>
     </Pressable>
   );
 });
@@ -112,14 +93,29 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
-  const iconSize = moderateScale(26, 0.2);
+  const iconSize = moderateScale(24, 0.2);
 
-  const bottomPadding = insets.bottom;
-
-  const styles = useMemo(
-    () =>
-      createStyles(theme.colors.background, theme.colors.text, bottomPadding),
-    [theme.colors.background, theme.colors.text, bottomPadding],
+  const containerStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      bottom: insets.bottom + FLOATING_TAB_BAR_BOTTOM_MARGIN,
+      left: FLOATING_UI_HORIZONTAL_MARGIN,
+      right: FLOATING_UI_HORIZONTAL_MARGIN,
+      backgroundColor: USE_GLASS
+        ? 'transparent'
+        : Color(theme.colors.background).mix(Color(theme.colors.text), 0.08).alpha(0.92).toString(),
+      borderRadius: moderateScale(24),
+      borderWidth: USE_GLASS ? 0 : 1,
+      borderColor: USE_GLASS
+        ? undefined
+        : Color(theme.colors.text).alpha(0.1).toString(),
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 8,
+    }),
+    [theme.colors.text, insets.bottom],
   );
 
   const handleTabPress = useCallback(
@@ -136,16 +132,18 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
           CommonActions.navigate({name: route.name, merge: true}),
         );
       }
-
-      if (route.name === 'search') {
-        navigation.setParams({focusSearchBar: true});
-      }
     },
     [state.index, navigation],
   );
 
+  const Container = USE_GLASS ? GlassView : View;
+
   return (
-    <View style={styles.container}>
+    <Container
+      style={containerStyle}
+      {...(USE_GLASS
+        ? {glassEffectStyle: 'regular' as const}
+        : {})}>
       <View style={styles.content}>
         {state.routes.map((route, index) => {
           const {options} = descriptors[route.key];
@@ -153,8 +151,8 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
             options.tabBarLabel !== undefined
               ? options.tabBarLabel
               : options.title !== undefined
-              ? options.title
-              : route.name;
+                ? options.title
+                : route.name;
 
           const isFocused = state.index === index;
 
@@ -168,14 +166,28 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
               onPress={() => handleTabPress(route, index)}
               theme={theme}
               iconSize={iconSize}
-              tabButtonStyle={styles.tabButton}
-              tabTextStyle={styles.tabText}
             />
           );
         })}
       </View>
-    </View>
+    </Container>
   );
 };
+
+const styles = StyleSheet.create({
+  content: {
+    flexDirection: 'row',
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: moderateScale(10),
+  },
+  tabText: {
+    fontSize: moderateScale(10, 0.2),
+    marginTop: moderateScale(3),
+  },
+});
 
 export default BottomTabBar;

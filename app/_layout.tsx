@@ -19,7 +19,6 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {ThemeProvider} from '@react-navigation/native';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
-import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
@@ -379,6 +378,8 @@ export default function RootLayout() {
           <ExpoAudioProvider>
             <GestureHandlerRootView
               style={{flex: 1, backgroundColor: theme.colors.background}}
+              // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
+              overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
               onLayout={onLayoutRootView}>
               <SheetProvider>
                 <Stack
@@ -394,12 +395,18 @@ export default function RootLayout() {
                   <Stack.Screen
                     name="mushaf"
                     options={{
-                      headerShown: false,
+                      headerShown: Platform.OS === 'ios',
+                      headerTransparent: true,
+                      headerStyle: {backgroundColor: 'transparent'},
+                      headerShadowVisible: false,
+                      headerTitle: '',
+                      headerTitleAlign: 'center',
+                      headerBackButtonDisplayMode: 'minimal',
                       animation: 'slide_from_right',
+                      fullScreenGestureEnabled: false,
                     }}
                   />
                 </Stack>
-                <FloatingPlayer />
                 <PlayerSheet />
                 <WhatsNewModal ref={whatsNewModalRef} />
                 <DevMenu whatsNewModalRef={whatsNewModalRef} />
