@@ -107,7 +107,7 @@ module.exports = {
     plugins: [
       'expo-router',
       ['expo-asset', {assets: ['./assets/data/timestamps.db']}],
-      'expo-audio',
+      ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
       'expo-media-library',
       [
@@ -147,14 +147,6 @@ module.exports = {
           },
           androidIntentFilters: ['audio/*'],
           androidMultiIntentFilters: ['audio/*'],
-        },
-      ],
-      [
-        'expo-media-control',
-        {
-          enableBackgroundAudio: true,
-          audioSessionCategory: 'playback',
-          notificationIcon: './assets/images/notification_icon.png',
         },
       ],
       './withAndroidSigning.js',
