@@ -36,6 +36,7 @@ interface MushafSettingsState {
   showTranslation: boolean;
   showTransliteration: boolean;
   showTajweed: boolean;
+  showThemes: boolean;
 
   // Word-by-word settings
   showWBW: boolean;
@@ -73,6 +74,7 @@ interface MushafSettingsState {
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
   toggleTajweed: () => void;
+  toggleThemes: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
@@ -99,6 +101,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTranslation: true,
       showTransliteration: false,
       showTajweed: false,
+      showThemes: false,
       showWBW: false,
       wbwShowTranslation: true,
       wbwShowTransliteration: false,
@@ -120,6 +123,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       toggleTransliteration: () =>
         set(state => ({showTransliteration: !state.showTransliteration})),
       toggleTajweed: () => set(state => ({showTajweed: !state.showTajweed})),
+      toggleThemes: () => set(state => ({showThemes: !state.showThemes})),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),
@@ -179,7 +183,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 9,
+      version: 10,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -228,6 +232,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             state.viewMode = 'list';
           }
           state.scrollDirection = 'horizontal';
+        }
+        if (version < 10) {
+          state.showThemes = false;
         }
         return state as unknown as MushafSettingsState;
       },
