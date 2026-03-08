@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   StatusBar,
+  Platform,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -37,6 +38,7 @@ import {downloadSurah} from '@/services/downloadService';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 interface LovedTrack {
   reciterId: string;
@@ -553,6 +555,26 @@ const LovedScreen = () => {
     theme.colors.text,
   ]);
 
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleOptionsMenu, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: 'Loved',
+    scrollY,
+    hasContent: lovedData.length > 0 && !loading,
+    headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
+  });
+
   // Handle show options for a track
   const handleShowOptions = useCallback(
     (track: LovedTrack, reciter: Reciter, surah: Surah) => {
@@ -601,7 +623,7 @@ const LovedScreen = () => {
         }`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onOptionsPress={handleOptionsMenu}
+        onOptionsPress={Platform.OS === 'ios' ? undefined : handleOptionsMenu}
         theme={theme}
       />
     );
@@ -644,20 +666,22 @@ const LovedScreen = () => {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Loved</Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Loved</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
@@ -668,20 +692,22 @@ const LovedScreen = () => {
   if (lovedData.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Loved</Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Loved</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <HeartIcon
@@ -701,25 +727,27 @@ const LovedScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="default" />
 
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={lovedData}
@@ -727,6 +755,7 @@ const LovedScreen = () => {
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
+        contentInsetAdjustmentBehavior="automatic"
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
           {useNativeDriver: true},
@@ -734,7 +763,9 @@ const LovedScreen = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      <CollectionStickyHeader title="Loved" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Loved" scrollY={scrollY} />
+      )}
     </View>
   );
 };

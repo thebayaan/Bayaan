@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import {PlaylistIcon} from '@/components/Icons';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 export default function PlaylistsScreen() {
   const {theme} = useTheme();
@@ -26,6 +28,12 @@ export default function PlaylistsScreen() {
     usePlaylists();
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+
+  useCollectionNativeHeader({
+    title: 'Playlists',
+    scrollY,
+    hasContent: playlists.length > 0,
+  });
 
   const existingColors = useMemo(
     () => playlists.map(p => p.color),
@@ -46,7 +54,7 @@ export default function PlaylistsScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: insets.top + moderateScale(40),
+          paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
           paddingBottom: moderateScale(30),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,
@@ -250,20 +258,22 @@ export default function PlaylistsScreen() {
   if (playlists.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Playlists</Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Playlists</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <PlaylistIcon
@@ -325,25 +335,27 @@ export default function PlaylistsScreen() {
 
   return (
     <View style={styles.container}>
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={playlists}
@@ -357,8 +369,11 @@ export default function PlaylistsScreen() {
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       />
-      <CollectionStickyHeader title="Playlists" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Playlists" scrollY={scrollY} />
+      )}
     </View>
   );
 }

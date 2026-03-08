@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ import {SearchInput} from '@/components/SearchInput';
 import Color from 'color';
 import {Reciter} from '@/data/reciterData';
 import {SheetManager} from 'react-native-actions-sheet';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 export default function FavoriteRecitersScreen() {
   const {theme} = useTheme();
@@ -29,6 +31,31 @@ export default function FavoriteRecitersScreen() {
   const scrollY = useRef(new RNAnimated.Value(0)).current;
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable
+        onPress={() => {
+          setShowSearch(prev => !prev);
+          if (showSearch) setSearchQuery('');
+        }}
+        hitSlop={8}>
+        <Feather
+          name="search"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [showSearch, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: 'Favorite Reciters',
+    scrollY,
+    hasContent: favoriteReciters.length > 0,
+    headerRight: favoriteReciters.length > 0 ? renderHeaderRight : undefined,
+  });
 
   const filteredReciters = useMemo(
     () =>
@@ -52,7 +79,7 @@ export default function FavoriteRecitersScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: insets.top + moderateScale(40),
+          paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
           paddingBottom: moderateScale(30),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,
@@ -245,20 +272,22 @@ export default function FavoriteRecitersScreen() {
   if (favoriteReciters.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Favorite Reciters</Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Favorite Reciters</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <ProfileIcon
@@ -342,50 +371,54 @@ export default function FavoriteRecitersScreen() {
 
   return (
     <View style={styles.container}>
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
-      <RNAnimated.View
-        style={[
-          styles.fixedSearchToggle,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable
-          onPress={() => {
-            setShowSearch(prev => !prev);
-            if (showSearch) setSearchQuery('');
-          }}
-          hitSlop={8}>
-          <Feather
-            name="search"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedSearchToggle,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable
+            onPress={() => {
+              setShowSearch(prev => !prev);
+              if (showSearch) setSearchQuery('');
+            }}
+            hitSlop={8}>
+            <Feather
+              name="search"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={filteredReciters}
@@ -399,8 +432,11 @@ export default function FavoriteRecitersScreen() {
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       />
-      <CollectionStickyHeader title="Favorite Reciters" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Favorite Reciters" scrollY={scrollY} />
+      )}
     </View>
   );
 }
