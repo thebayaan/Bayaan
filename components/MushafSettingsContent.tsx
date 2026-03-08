@@ -424,9 +424,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     showWBW,
     wbwShowTranslation,
     wbwShowTransliteration,
+    showThemes,
     toggleWBW,
     toggleWBWTranslation,
     toggleWBWTransliteration,
+    toggleThemes,
   } = useMushafSettingsStore();
 
   const verseKey = '3:138';
@@ -770,6 +772,24 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </View>
         </>
       )}
+
+      {/* THEMES Section */}
+      <View style={styles.card}>
+        <View style={styles.optionRow}>
+          <Text style={styles.optionLabel}>Thematic Highlighting</Text>
+          <Switch
+            trackColor={trackColor}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={trackColor.false}
+            onValueChange={toggleThemes}
+            value={showThemes}
+            style={styles.switchStyle}
+          />
+        </View>
+        <Text style={styles.helperText}>
+          Alternating highlights by thematic passage
+        </Text>
+      </View>
 
       {/* FONT Section */}
       <Text style={styles.sectionHeader}>FONT</Text>
