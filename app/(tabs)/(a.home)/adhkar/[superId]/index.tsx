@@ -1,6 +1,27 @@
-import React, {useMemo, useCallback, useEffect, useState, useLayoutEffect, useRef} from 'react';
-import {View, SectionList, FlatList, Text, Platform, ViewToken, Pressable, StyleSheet} from 'react-native';
-import {useLocalSearchParams, useRouter, useNavigation, Link} from 'expo-router';
+import React, {
+  useMemo,
+  useCallback,
+  useEffect,
+  useState,
+  useLayoutEffect,
+  useRef,
+} from 'react';
+import {
+  View,
+  SectionList,
+  FlatList,
+  Text,
+  Platform,
+  ViewToken,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
+import {
+  useLocalSearchParams,
+  useRouter,
+  useNavigation,
+  Link,
+} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
@@ -59,7 +80,9 @@ const SuperCategoryListScreen: React.FC = () => {
   );
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentSectionTitle, setCurrentSectionTitle] = useState<string | null>(null);
+  const [currentSectionTitle, setCurrentSectionTitle] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     async function loadData() {
@@ -238,7 +261,17 @@ const SuperCategoryListScreen: React.FC = () => {
         </View>
       ),
     });
-  }, [navigation, displayTitle, currentSectionTitle, isSingleCategory, handlePlayAll, isThisCategoryPlaying, loading, allAdhkarForPlayAll.length, theme]);
+  }, [
+    navigation,
+    displayTitle,
+    currentSectionTitle,
+    isSingleCategory,
+    handlePlayAll,
+    isThisCategoryPlaying,
+    loading,
+    allAdhkarForPlayAll.length,
+    theme,
+  ]);
 
   const renderItem = useCallback(
     ({item}: {item: DhikrItem}) => (
@@ -322,9 +355,15 @@ const SuperCategoryListScreen: React.FC = () => {
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           contentInset={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
-          contentOffset={Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined}
-          scrollIndicatorInsets={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
-          style={Platform.OS === 'android' ? {marginTop: headerHeight} : undefined}
+          contentOffset={
+            Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined
+          }
+          scrollIndicatorInsets={
+            Platform.OS === 'ios' ? {top: headerHeight} : undefined
+          }
+          style={
+            Platform.OS === 'android' ? {marginTop: headerHeight} : undefined
+          }
           showsVerticalScrollIndicator={false}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
@@ -341,9 +380,15 @@ const SuperCategoryListScreen: React.FC = () => {
           stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
           contentInset={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
-          contentOffset={Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined}
-          scrollIndicatorInsets={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
-          style={Platform.OS === 'android' ? {marginTop: headerHeight} : undefined}
+          contentOffset={
+            Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined
+          }
+          scrollIndicatorInsets={
+            Platform.OS === 'ios' ? {top: headerHeight} : undefined
+          }
+          style={
+            Platform.OS === 'android' ? {marginTop: headerHeight} : undefined
+          }
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
           maxToRenderPerBatch={15}
