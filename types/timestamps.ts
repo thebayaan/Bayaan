@@ -43,15 +43,11 @@ export function mapAyahTimestampRow(row: AyahTimestampRow): AyahTimestamp {
 
 export type TimestampSource = 'mp3quran' | 'qdc' | 'local';
 
-/** MP3Quran /api/v3/ayat_timing response shape */
-export interface Mp3QuranTimingResponse {
-  ayat_timing: Mp3QuranAyahTiming[];
-}
-
+/** MP3Quran /api/v3/ayat_timing response — bare array */
 export interface Mp3QuranAyahTiming {
   ayah: number;
-  start_time: number; // seconds (float)
-  end_time: number; // seconds (float)
+  start_time: number; // milliseconds
+  end_time: number; // milliseconds
 }
 
 /** QDC /api/qdc/audio/reciters/{id}/audio_files response shape */

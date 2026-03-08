@@ -2,7 +2,7 @@ import {RECITERS, type Rewayat} from '@/data/reciterData';
 import {timestampDatabaseService} from './TimestampDatabaseService';
 import type {
   AyahTimestamp,
-  Mp3QuranTimingResponse,
+  Mp3QuranAyahTiming,
   QdcAudioFileResponse,
   TimestampSource,
 } from '@/types/timestamps';
@@ -77,7 +77,7 @@ class TimestampFetchService {
   /**
    * Fetch from MP3Quran API and normalize to AyahTimestamp[].
    * API: GET /api/v3/ayat_timing?surah={N}&read={readId}
-   * Returns times in seconds (float) — we convert to milliseconds.
+   * Returns a bare array with times in milliseconds.
    */
   private async fetchFromMp3Quran(
     readId: number,
@@ -90,23 +90,19 @@ class TimestampFetchService {
       throw new Error(`MP3Quran API error: ${response.status}`);
     }
 
-    const data: Mp3QuranTimingResponse = await response.json();
+    const data: Mp3QuranAyahTiming[] = await response.json();
 
-    if (!data.ayat_timing || data.ayat_timing.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
       return [];
     }
 
-    return data.ayat_timing.map(t => {
-      const from = Math.round(t.start_time * 1000);
-      const to = Math.round(t.end_time * 1000);
-      return {
-        surahNumber,
-        ayahNumber: t.ayah,
-        timestampFrom: from,
-        timestampTo: to,
-        durationMs: to - from,
-      };
-    });
+    return data.map(t => ({
+      surahNumber,
+      ayahNumber: t.ayah,
+      timestampFrom: t.start_time,
+      timestampTo: t.end_time,
+      durationMs: t.end_time - t.start_time,
+    }));
   }
 
   /**
