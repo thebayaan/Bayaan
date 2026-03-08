@@ -1,7 +1,7 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import {
   Text,
-  TouchableOpacity,
+  Pressable,
   View,
   StyleSheet,
   StyleProp,
@@ -11,17 +11,15 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
-import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Color from 'color';
+import {Link} from 'expo-router';
 
 interface CircularReciterCardProps {
   imageUrl?: string;
   name: string;
+  reciterId?: string;
   onPress: () => void;
+  onLongPress?: () => void;
   size?: 'small' | 'medium' | 'large';
   isSelected?: boolean;
   variant?: 'default' | 'add';
@@ -31,116 +29,104 @@ interface CircularReciterCardProps {
   showFollowAlong?: boolean;
 }
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
-
 export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   imageUrl,
   name,
+  reciterId,
   onPress,
+  onLongPress,
   size = 'medium',
   isSelected = false,
   variant = 'default',
   addTextStyle,
   width,
   height,
-  showFollowAlong,
 }) => {
   const {theme} = useTheme();
 
-  // Animation values
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{scale: scale.value}],
-    };
-  });
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.92, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
-  };
-
-  // Size mapping for backward compatibility
   const sizeMap = {
-    small: 60,
-    medium: 75,
-    large: 90,
+    small: 50,
+    medium: 64,
+    large: 78,
   };
 
-  // Use custom dimensions if provided, otherwise fall back to size prop
   const imageSize = width || sizeMap[size];
   const calculatedHeight = height || imageSize;
 
-  const styles = StyleSheet.create({
-    container: {
-      alignItems: 'center',
-      width: imageSize,
-    },
-    imageContainer: {
-      width: imageSize,
-      height: calculatedHeight,
-      borderRadius: calculatedHeight / 2, // Keep it circular even if custom dimensions
-      overflow: 'hidden',
-      marginBottom: verticalScale(5),
-      alignItems: 'center', // For the plus icon
-      justifyContent: 'center', // For the plus icon
-    },
-    reciterImage: {
-      width: '100%',
-      height: '100%',
-    },
-    selectedOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0, 0, 0, 0.3)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    name: {
-      color: theme.colors.text,
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
-      textAlign: 'center',
-      width: imageSize,
-      marginBottom: verticalScale(2),
-    },
-    subtitle: {
-      fontSize: moderateScale(10),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-      width: imageSize,
-    },
-    addText: {
-      fontSize: moderateScale(12),
-      fontWeight: 'bold',
-      color: theme.colors.text,
-      textAlign: 'center',
-      width: imageSize,
-      marginTop: verticalScale(4),
-    },
-  });
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          alignItems: 'center',
+          width: imageSize + moderateScale(6),
+        },
+        imageContainer: {
+          width: imageSize,
+          height: calculatedHeight,
+          borderRadius: calculatedHeight / 2,
+          overflow: 'hidden',
+          marginBottom: verticalScale(5),
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1.5,
+          borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+        },
+        reciterImage: {
+          width: '100%',
+          height: '100%',
+        },
+        selectedOverlay: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: Color(theme.colors.text).alpha(0.25).toString(),
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        name: {
+          color: theme.colors.text,
+          fontSize: moderateScale(10.5),
+          fontFamily: 'Manrope-Medium',
+          textAlign: 'center',
+          width: imageSize + moderateScale(6),
+        },
+        subtitle: {
+          fontSize: moderateScale(8.5),
+          fontFamily: 'Manrope-Regular',
+          color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+          textAlign: 'center',
+          width: imageSize,
+          marginTop: moderateScale(1),
+        },
+        addContainer: {
+          width: imageSize,
+          height: calculatedHeight,
+          borderRadius: calculatedHeight / 2,
+          overflow: 'hidden',
+          marginBottom: verticalScale(5),
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+          borderWidth: 1.5,
+          borderColor: Color(theme.colors.text).alpha(0.08).toString(),
+          borderStyle: 'dashed',
+        },
+        addText: {
+          fontSize: moderateScale(10.5),
+          fontFamily: 'Manrope-SemiBold',
+          color: Color(theme.colors.text).alpha(0.7).toString(),
+          textAlign: 'center',
+          width: imageSize,
+          marginTop: verticalScale(2),
+        },
+      }),
+    [theme, imageSize, calculatedHeight],
+  );
 
-  return (
-    <AnimatedTouchableOpacity
-      activeOpacity={0.99}
-      style={[styles.container, animatedStyle]}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
-      <View style={styles.imageContainer}>
+  const useZoom = variant === 'default' && !!reciterId;
+
+  const content = (
+    <>
+      <View
+        style={variant === 'add' ? styles.addContainer : styles.imageContainer}>
         {variant === 'default' ? (
           <>
             <ReciterImage
@@ -149,17 +135,12 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
               style={styles.reciterImage}
             />
             {isSelected && <View style={styles.selectedOverlay} />}
-            {showFollowAlong && (
-              <View style={{position: 'absolute', bottom: 0, right: 0}}>
-                <FollowAlongBadge size="small" />
-              </View>
-            )}
           </>
         ) : (
           <Feather
             name="plus"
             size={moderateScale(imageSize * 0.3)}
-            color={theme.colors.textSecondary}
+            color={Color(theme.colors.text).alpha(0.3).toString()}
           />
         )}
       </View>
@@ -177,6 +158,32 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           </Text>
         </>
       )}
-    </AnimatedTouchableOpacity>
+    </>
+  );
+
+  if (useZoom) {
+    return (
+      <Link
+        href={{
+          pathname: '/(tabs)/(a.home)/reciter/[id]',
+          params: {id: reciterId},
+        }}
+        asChild>
+        <Pressable onLongPress={onLongPress} style={styles.container}>
+          <Link.AppleZoom>
+            <View style={{flex: 1}}>{content}</View>
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={styles.container}>
+      {content}
+    </Pressable>
   );
 };

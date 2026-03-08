@@ -27,6 +27,7 @@ import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
+import {useBottomInset} from '@/hooks/useBottomInset';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -51,6 +52,8 @@ interface SearchViewProps {
   query: string;
   /** True when the native search bar is focused / active */
   isSearchActive: boolean;
+  /** Skip the built-in safe-area top padding (when the parent already handles it) */
+  skipTopInset?: boolean;
 }
 
 export function SearchView({
@@ -58,7 +61,9 @@ export function SearchView({
   visible,
   query,
   isSearchActive,
+  skipTopInset,
 }: SearchViewProps) {
+  const bottomInset = useBottomInset();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [, setLoading] = useState(true);
@@ -409,7 +414,7 @@ export function SearchView({
       <RNAnimated.View
         style={[styles.modeContainer, {opacity: browseOpacity}]}
         pointerEvents={isSearchMode ? 'none' : 'auto'}>
-        <ExploreView />
+        <ExploreView skipTopInset={skipTopInset} />
       </RNAnimated.View>
 
       {/* Search Mode — always mounted, hidden via opacity */}
@@ -420,7 +425,7 @@ export function SearchView({
           {
             opacity: searchOpacity,
             backgroundColor: theme.colors.background,
-            paddingTop: insets.top,
+            paddingTop: skipTopInset ? 0 : insets.top,
           },
         ]}
         pointerEvents={isSearchMode ? 'auto' : 'none'}>
@@ -428,7 +433,7 @@ export function SearchView({
           <ScrollView
             style={styles.flexFill}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContent, {paddingBottom: bottomInset}]}
             keyboardShouldPersistTaps="handled">
             {recentSearches.length > 0 ? (
               <View>
@@ -578,9 +583,7 @@ const styles = StyleSheet.create({
   flexFill: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: moderateScale(20),
-  },
+  scrollContent: {},
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

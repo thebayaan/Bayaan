@@ -1,14 +1,13 @@
 import React, {useState, useCallback, useMemo, useEffect} from 'react';
 import {View, Text, Pressable, ActivityIndicator, Alert} from 'react-native';
-import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
-import Header from '@/components/Header';
+import {Platform} from 'react-native';
+import {useHeaderHeight} from '@react-navigation/elements';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTranslationStore} from '@/store/translationStore';
 import {useTafseerStore} from '@/store/tafseerStore';
@@ -24,7 +23,7 @@ import {
 } from '@/types/translation';
 import type {DownloadedTafseerMeta} from '@/types/tafseer';
 import {lightHaptics} from '@/utils/haptics';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {AVAILABLE_TRANSLATIONS} from '@/data/availableTranslations';
 import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
 
@@ -110,10 +109,11 @@ interface RowItem {
 type FlatItem = MetaHeaderItem | LangHeaderItem | RowItem;
 
 export default function TranslationsScreen() {
-  const router = useRouter();
   const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const rawHeaderHeight = useHeaderHeight();
+  const headerHeight = Platform.OS === 'ios' ? rawHeaderHeight : 0;
+  const bottomInset = useBottomInset();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('translations');
 
@@ -728,10 +728,7 @@ export default function TranslationsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Translations & Tafaseer" onBack={() => router.back()} />
-
-      <View
-        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
+      <View style={[styles.content, {paddingTop: headerHeight}]}>
         {/* Tab Selector */}
         <View style={styles.tabContainer}>
           <View style={styles.tabTrack}>
@@ -794,7 +791,7 @@ export default function TranslationsScreen() {
           ListHeaderComponent={listHeader}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            paddingBottom: TOTAL_BOTTOM_PADDING + moderateScale(20),
+            paddingBottom: bottomInset + moderateScale(20),
           }}
           ListEmptyComponent={emptyComponent}
         />

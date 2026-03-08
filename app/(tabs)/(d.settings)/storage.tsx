@@ -1,12 +1,9 @@
 import React, {useState, useMemo} from 'react';
 import {View, Text, ScrollView, Pressable, Alert} from 'react-native';
-import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Header from '@/components/Header';
 import {useStorageBreakdown} from '@/hooks/useStorageBreakdown';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {clearPlayerCache} from '@/services/player/utils/storage';
@@ -68,8 +65,6 @@ const ActionSection = ({
 
 export default function StorageScreen() {
   const {theme} = useTheme();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [, setIsClearing] = useState(false);
 
@@ -171,11 +166,10 @@ export default function StorageScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Storage" onBack={() => router.back()} />
-
       <ScrollView
-        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
+        style={styles.content}
         contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.loadingContainer}>

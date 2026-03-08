@@ -8,6 +8,7 @@ import {
   ViewToken,
   StatusBar,
   BackHandler,
+  Platform,
 } from 'react-native';
 import {FlatList} from 'react-native-gesture-handler';
 import Animated, {
@@ -15,10 +16,11 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import {useRouter} from 'expo-router';
+import {useRouter, useNavigation} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
+import {GlassView} from 'expo-glass-effect';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
 import {moderateScale} from 'react-native-size-matters';
@@ -238,7 +240,31 @@ export default function MushafViewer({
   useKeepAwake();
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [isImmersive, setIsImmersive] = useState(false);
-  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [isSearchMode, setIsSearchModeRaw] = useState(false);
+  const [autoFocusSearch, setAutoFocusSearch] = useState(false);
+  const setIsSearchMode = useCallback(
+    (value: boolean | ((prev: boolean) => boolean), autoFocus?: boolean) => {
+      setIsSearchModeRaw(prev => {
+        const next = typeof value === 'function' ? value(prev) : value;
+        useMushafPlayerStore.setState({isSearchMode: next});
+        if (!next) setAutoFocusSearch(false);
+        else if (autoFocus) setAutoFocusSearch(true);
+        return next;
+      });
+    },
+    [],
+  );
+  // iOS: sync search mode from store (toolbar search button sets store directly)
+  const storeSearchMode = useMushafPlayerStore(s => s.isSearchMode);
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    if (storeSearchMode !== isSearchMode) {
+      setIsSearchModeRaw(storeSearchMode);
+      // Toolbar search button always means "search with focus"
+      if (storeSearchMode) setAutoFocusSearch(true);
+    }
+  }, [storeSearchMode]);
+
   const {theme, isDarkMode} = useTheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
@@ -249,6 +275,7 @@ export default function MushafViewer({
     ? Color(theme.colors.border).darken(0.3).toString()
     : Color(theme.colors.border).lighten(0.3).toString();
   const router = useRouter();
+  const navigation = useNavigation();
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
 
@@ -266,7 +293,10 @@ export default function MushafViewer({
   }));
 
   const toggleImmersive = useCallback(() => {
-    setIsImmersive(prev => !prev);
+    setIsImmersive(prev => {
+      useMushafPlayerStore.setState({isImmersive: !prev});
+      return !prev;
+    });
   }, []);
 
   const pages = useMemo(
@@ -285,11 +315,102 @@ export default function MushafViewer({
 
   const currentSurahId = pageToSurah[currentPage] || 1;
 
+  // iOS: configure Stack navigator header based on current mode
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+
+    if (isImmersive || isSearchMode) {
+      // Hide native header — search overlay renders its own UI
+      navigation.setOptions({headerShown: false, headerSearchBarOptions: undefined});
+      return;
+    }
+
+    // Normal mode: GlassView title + options button
+    navigation.setOptions({
+      headerShown: true,
+      headerBackVisible: true,
+      headerSearchBarOptions: undefined,
+      headerTitle: () => (
+        <GlassView
+          glassEffectStyle="regular"
+          colorScheme={isDarkMode ? 'dark' : 'light'}
+          tintColor={isDarkMode ? 'rgba(0,0,0,0.5)' : undefined}
+          style={{
+            borderRadius: moderateScale(14),
+            paddingHorizontal: moderateScale(14),
+            paddingVertical: moderateScale(6),
+          }}>
+          <Pressable
+            onPress={() => setIsSearchMode(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Search surahs"
+            style={{alignItems: 'center'}}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: moderateScale(4),
+              }}>
+              <Text
+                style={{
+                  fontSize: moderateScale(16),
+                  fontFamily: 'Manrope-SemiBold',
+                  color: theme.colors.text,
+                }}
+                numberOfLines={1}>
+                {SURAHS[currentSurahId - 1].name}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={moderateScale(14)}
+                color={theme.colors.textSecondary}
+              />
+            </View>
+            <Text
+              style={{
+                fontSize: moderateScale(12),
+                fontFamily: 'Manrope-Regular',
+                color: theme.colors.textSecondary,
+              }}>
+              Page {currentPage} · Juz {getJuzForPage(currentPage)}
+            </Text>
+          </Pressable>
+        </GlassView>
+      ),
+      headerLeft: undefined,
+      headerRight: () => (
+        <Pressable
+          onPress={() =>
+            SheetManager.show('mushaf-layout', {
+              payload: {context: 'mushaf'},
+            })
+          }
+          hitSlop={10}
+          style={{padding: moderateScale(6)}}>
+          <Ionicons
+            name="options-outline"
+            size={moderateScale(22)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ),
+    });
+  }, [
+    isImmersive,
+    isSearchMode,
+    currentPage,
+    currentSurahId,
+    theme,
+    isDarkMode,
+    navigation,
+  ]);
+
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
       if (viewableItems.length > 0 && viewableItems[0].item) {
         const page = viewableItems[0].item as number;
         setCurrentPage(page);
+        useMushafPlayerStore.setState({currentPage: page});
         mushafSessionStore.setLastReadPage(page);
         // Update the active reading chain (swipe = same chain, even across surah boundaries)
         const surahId = digitalKhattDataService.initialized
@@ -388,7 +509,8 @@ export default function MushafViewer({
     });
   }, []);
 
-  const openSearchMode = useCallback(() => setIsSearchMode(true), []);
+  const openSearchMode = useCallback(() => setIsSearchMode(true, false), []);
+  const openSearchWithFocus = useCallback(() => setIsSearchMode(true, true), []);
 
   // Mushaf player state
   const mushafPlaybackState = useMushafPlayerStore(s => s.playbackState);
@@ -467,102 +589,107 @@ export default function MushafViewer({
 
       {!isSearchMode && (
         <>
-          <Animated.View
-            style={[
-              styles.header,
-              overlayAnimatedStyle,
-              {
-                paddingTop: insets.top + moderateScale(8),
-                backgroundColor: theme.colors.background,
-                borderBottomWidth: StyleSheet.hairlineWidth,
-                borderBottomColor: theme.colors.border,
-              },
-            ]}
-            pointerEvents={isImmersive ? 'none' : 'auto'}>
-            <View style={styles.headerRow}>
-              {/* Left: back button */}
-              <View style={styles.headerSide}>
-                <BackButton onPress={() => router.back()} />
-              </View>
+          {/* Android: custom header (iOS uses Stack navigator header from _layout) */}
+          {Platform.OS === 'android' && (
+            <Animated.View
+              style={[
+                styles.header,
+                overlayAnimatedStyle,
+                {
+                  paddingTop: insets.top + moderateScale(8),
+                  backgroundColor: theme.colors.background,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: theme.colors.border,
+                },
+              ]}
+              pointerEvents={isImmersive ? 'none' : 'auto'}>
+              <View style={styles.headerRow}>
+                {/* Left: back button */}
+                <View style={styles.headerSide}>
+                  <BackButton onPress={() => router.back()} />
+                </View>
 
-              {/* Center: tappable surah name + page/juz info */}
-              <Pressable
-                style={styles.headerCenter}
-                onPress={openSearchMode}
-                accessibilityRole="button"
-                accessibilityLabel="Search surahs">
-                <View
-                  style={[
-                    styles.headerBox,
-                    {
-                      backgroundColor: Color(theme.colors.text)
-                        .alpha(0.06)
-                        .toString(),
-                    },
-                  ]}>
-                  <View style={styles.headerBoxFirstRow}>
+                {/* Center: tappable surah name + page/juz info */}
+                <Pressable
+                  style={styles.headerCenter}
+                  onPress={openSearchMode}
+                  accessibilityRole="button"
+                  accessibilityLabel="Search surahs">
+                  <View
+                    style={[
+                      styles.headerBox,
+                      {
+                        backgroundColor: Color(theme.colors.text)
+                          .alpha(0.06)
+                          .toString(),
+                      },
+                    ]}>
+                    <View style={styles.headerBoxFirstRow}>
+                      <Text
+                        style={[
+                          styles.headerSurahName,
+                          {color: theme.colors.text},
+                        ]}
+                        numberOfLines={1}>
+                        {SURAHS[currentSurahId - 1].name}
+                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={moderateScale(14)}
+                        color={theme.colors.textSecondary}
+                      />
+                    </View>
                     <Text
                       style={[
-                        styles.headerSurahName,
-                        {color: theme.colors.text},
-                      ]}
-                      numberOfLines={1}>
-                      {SURAHS[currentSurahId - 1].name}
+                        styles.headerMeta,
+                        {color: theme.colors.textSecondary},
+                      ]}>
+                      Page {currentPage} · Juz {getJuzForPage(currentPage)}
                     </Text>
-                    <Ionicons
-                      name="chevron-down"
-                      size={moderateScale(14)}
-                      color={theme.colors.textSecondary}
-                    />
                   </View>
-                  <Text
-                    style={[
-                      styles.headerMeta,
-                      {color: theme.colors.textSecondary},
-                    ]}>
-                    Page {currentPage} · Juz {getJuzForPage(currentPage)}
-                  </Text>
-                </View>
-              </Pressable>
-
-              {/* Right: settings */}
-              <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
-                <Pressable
-                  style={styles.headerIcon}
-                  onPress={() =>
-                    SheetManager.show('mushaf-layout', {
-                      payload: {context: 'mushaf'},
-                    })
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel="Mushaf settings">
-                  <Ionicons
-                    name="options-outline"
-                    size={moderateScale(22)}
-                    color={theme.colors.text}
-                  />
                 </Pressable>
+
+                {/* Right: settings */}
+                <View style={[styles.headerSide, {alignItems: 'flex-end'}]}>
+                  <Pressable
+                    style={styles.headerIcon}
+                    onPress={() =>
+                      SheetManager.show('mushaf-layout', {
+                        payload: {context: 'mushaf'},
+                      })
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel="Mushaf settings">
+                    <Ionicons
+                      name="options-outline"
+                      size={moderateScale(22)}
+                      color={theme.colors.text}
+                    />
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          </Animated.View>
+            </Animated.View>
+          )}
 
           {/* ================================================================ */}
-          {/* Normal mode bottom bar — fades out when immersive                */}
+          {/* Normal mode bottom bar — Android only (iOS uses Stack.Toolbar)  */}
           {/* ================================================================ */}
-          <Animated.View
-            style={[
-              styles.bottomBar,
-              overlayAnimatedStyle,
-              {
-                paddingBottom: insets.bottom + 8,
-                backgroundColor: theme.colors.background,
-                borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: theme.colors.border,
-              },
-            ]}
-            pointerEvents={isImmersive ? 'none' : 'auto'}>
-            <MushafPlayerBar currentPage={currentPage} />
-          </Animated.View>
+          {Platform.OS === 'android' && (
+            <Animated.View
+              style={[
+                styles.bottomBar,
+                overlayAnimatedStyle,
+                {
+                  paddingBottom: insets.bottom + 8,
+                  backgroundColor: theme.colors.background,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: theme.colors.border,
+                },
+              ]}
+              pointerEvents={isImmersive ? 'none' : 'auto'}>
+              <MushafPlayerBar currentPage={currentPage} onSearch={openSearchWithFocus} />
+            </Animated.View>
+          )}
         </>
       )}
 
@@ -578,6 +705,7 @@ export default function MushafViewer({
           onClose={() => setIsSearchMode(false)}
           surahStartPages={surahStartPages}
           pageToSurah={pageToSurah}
+          autoFocusSearch={autoFocusSearch}
         />
       )}
     </View>

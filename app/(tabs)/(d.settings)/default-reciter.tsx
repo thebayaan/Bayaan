@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useMemo} from 'react';
-import {View, Text, FlatList} from 'react-native';
+import {View, Text, FlatList, Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {
   ScaledSheet,
@@ -14,8 +14,7 @@ import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterStore} from '@/store/reciterStore';
 import {useRouter} from 'expo-router';
 import {ReciterImage} from '@/components/ReciterImage';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Header from '@/components/Header';
+import {useHeaderHeight} from '@react-navigation/elements';
 
 export default function DefaultReciterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +24,8 @@ export default function DefaultReciterScreen() {
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const rawHeaderHeight = useHeaderHeight();
+  const headerHeight = Platform.OS === 'ios' ? rawHeaderHeight : 0;
 
   const hasCompleteQuran = useCallback((reciter: Reciter) => {
     return reciter.rewayat.some(
@@ -77,10 +77,7 @@ export default function DefaultReciterScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Default Reciter" onBack={() => router.back()} />
-
-      <View
-        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}>
+      <View style={[styles.content, {paddingTop: headerHeight}]}>
         {defaultReciter && (
           <View style={styles.currentReciterContainer}>
             <View style={styles.currentReciterContent}>

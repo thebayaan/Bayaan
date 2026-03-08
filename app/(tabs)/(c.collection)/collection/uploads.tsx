@@ -7,6 +7,7 @@ import {
   ListRenderItemInfo,
   ActivityIndicator,
   Animated as RNAnimated,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -28,6 +29,7 @@ import {usePlayerStore} from '@/services/player/store/playerStore';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {ReciterImage} from '@/components/ReciterImage';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 function stripExtension(filename: string): string {
   return filename.replace(/\.[^/.]+$/, '');
@@ -260,6 +262,26 @@ export default function UploadsScreen() {
     });
   }, [totalCount, deleteAllRecitations]);
 
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleOptionsMenu, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: 'Uploads',
+    scrollY,
+    hasContent: recitations.length > 0,
+    headerRight: recitations.length > 0 ? renderHeaderRight : undefined,
+  });
+
   const handleOrganize = useCallback((item: UploadedRecitation) => {
     SheetManager.show('organize-recitation', {
       payload: {recitation: item},
@@ -354,20 +376,22 @@ export default function UploadsScreen() {
   if (!hasRecitations) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Uploads</Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Uploads</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <MicrophoneIcon
@@ -410,7 +434,7 @@ export default function UploadsScreen() {
         <View
           style={[
             styles.contentArea,
-            {paddingTop: insets.top + moderateScale(40)},
+            {paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40)},
           ]}>
           {/* Hero Icon */}
           <View style={styles.contentCenter}>
@@ -431,19 +455,21 @@ export default function UploadsScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <Pressable
-            style={[
-              styles.circleButton,
-              !hasRecitations && styles.disabledButton,
-            ]}
-            onPress={hasRecitations ? handleOptionsMenu : undefined}
-            disabled={!hasRecitations}>
-            <Feather
-              name="more-horizontal"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Pressable>
+          {Platform.OS !== 'ios' && (
+            <Pressable
+              style={[
+                styles.circleButton,
+                !hasRecitations && styles.disabledButton,
+              ]}
+              onPress={hasRecitations ? handleOptionsMenu : undefined}
+              disabled={!hasRecitations}>
+              <Feather
+                name="more-horizontal"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+          )}
           <Pressable
             style={[
               styles.circleButton,
@@ -497,28 +523,30 @@ export default function UploadsScreen() {
 
   return (
     <View style={styles.container}>
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            top: insets.top + moderateScale(10),
-          },
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              top: insets.top + moderateScale(10),
+            },
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={recitations}
@@ -532,8 +560,11 @@ export default function UploadsScreen() {
           {useNativeDriver: true},
         )}
         scrollEventThrottle={16}
+        contentInsetAdjustmentBehavior="automatic"
       />
-      <CollectionStickyHeader title="Uploads" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Uploads" scrollY={scrollY} />
+      )}
     </View>
   );
 }

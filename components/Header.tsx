@@ -8,7 +8,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface HeaderProps {
   title: string;
-  onBack: () => void;
+  onBack?: () => void;
   showBlur?: boolean;
   containerStyle?: ViewStyle;
   titleStyle?: ViewStyle;
@@ -38,15 +38,17 @@ export const Header: React.FC<HeaderProps> = ({
         />
       )}
       <View style={styles.headerContent}>
-        <Pressable
-          style={[styles.backButton, backButtonStyle]}
-          onPress={onBack}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+        {onBack && (
+          <Pressable
+            style={[styles.backButton, backButtonStyle]}
+            onPress={onBack}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
         <Text style={[styles.headerTitle, titleStyle]}>{title}</Text>
       </View>
     </View>

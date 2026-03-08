@@ -1,11 +1,12 @@
 import React, {useCallback, useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
+import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {PlayIcon} from '@/components/Icons';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
 import {Slider} from '@miblanchard/react-native-slider';
 import {
   getReciterById,
@@ -17,17 +18,12 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import {Surah} from '@/data/surahData';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
-import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
-import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
+import {useRouter, Link} from 'expo-router';
+import {SheetManager} from 'react-native-actions-sheet';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -43,9 +39,6 @@ interface RecentReciterCardProps {
   index: number;
 }
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
-
 export const RecentReciterCard = ({
   imageUrl,
   reciterName,
@@ -60,8 +53,7 @@ export const RecentReciterCard = ({
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {updateQueue} = usePlayerActions();
-  const hasFollowAlong = useRewayatFollowAlong(rewayatId);
-
+  const router = useRouter();
   // Single consolidated subscription with shallow equality
   const {playbackStatus, currentIndex, tracks, storePosition, storeDuration} =
     usePlayerStore(
@@ -87,7 +79,7 @@ export const RecentReciterCard = ({
     const rewayatMatches =
       rewayatId && currentTrack.rewayatId
         ? rewayatId === currentTrack.rewayatId
-        : !rewayatId && !currentTrack.rewayatId; // Match if both are undefined/null
+        : !rewayatId && !currentTrack.rewayatId;
 
     return (
       currentTrack.reciterId === reciterId &&
@@ -95,31 +87,6 @@ export const RecentReciterCard = ({
       rewayatMatches
     );
   }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
-
-  // Animation values
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{scale: scale.value}],
-    };
-  });
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 20,
-      stiffness: 400,
-      mass: 0.5,
-    });
-  };
 
   // Calculate time remaining
   const timeRemaining = useMemo(() => {
@@ -151,8 +118,8 @@ export const RecentReciterCard = ({
       ? storePosition / storeDuration
       : progress;
 
-  // Handle press
-  const handlePress = useCallback(async () => {
+  // Resume playback
+  const handlePlayPress = useCallback(async () => {
     try {
       const [reciter, surah] = await Promise.all([
         getReciterById(reciterId),
@@ -170,9 +137,8 @@ export const RecentReciterCard = ({
         return;
       }
 
-      const availableSurahIds = await getAvailableSurahsForRewayat(
-        rewayatToUseId,
-      );
+      const availableSurahIds =
+        await getAvailableSurahsForRewayat(rewayatToUseId);
 
       const allSurahsForRewayat = availableSurahIds
         .map(id => getSurahById(id))
@@ -185,7 +151,6 @@ export const RecentReciterCard = ({
 
       const startIndex = allSurahsForRewayat.findIndex(s => s.id === surahId);
 
-      // Calculate start position for resuming
       const startPosition =
         isCurrentlyPlaying && storePosition >= 0
           ? storePosition
@@ -201,7 +166,6 @@ export const RecentReciterCard = ({
         });
 
       if (startIndex === -1) {
-        // Fallback: just play the selected surah
         const track = await createTracksForReciter(
           reciter,
           [surah],
@@ -218,7 +182,6 @@ export const RecentReciterCard = ({
 
       const artwork = getReciterArtwork(reciter);
 
-      // Build all tracks with selected surah first
       const reorderedSurahs = [
         allSurahsForRewayat[startIndex],
         ...allSurahsForRewayat.slice(startIndex + 1),
@@ -254,107 +217,144 @@ export const RecentReciterCard = ({
     rewayatId,
   ]);
 
+  // Long press options
+  const handleLongPress = useCallback(() => {
+    SheetManager.show('home-card-options', {
+      payload: {
+        reciterId,
+        reciterName,
+        surahId,
+        surahName,
+        rewayatId,
+        recentIndex: index,
+        variant: 'recent',
+        onContinuePlaying: handlePlayPress,
+      },
+    });
+  }, [
+    reciterId,
+    reciterName,
+    surahId,
+    surahName,
+    rewayatId,
+    index,
+    handlePlayPress,
+  ]);
+
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const useGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
+  const CardWrapper = useGlass ? GlassView : View;
+
   return (
-    <AnimatedTouchableOpacity
-      activeOpacity={0.99}
-      style={[styles.container, animatedStyle]}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: theme.colors.card,
-            opacity: 0.9,
-          },
-        ]}
-      />
-      <LinearGradient
-        colors={[
-          Color(theme.colors.textSecondary).alpha(0.03).toString(),
-          Color(theme.colors.background).alpha(0.01).toString(),
-          Color(theme.colors.textSecondary).alpha(0.05).toString(),
-        ]}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={styles.gradient}
-      />
-      <View style={styles.content}>
-        {/* Reciter Image */}
-        <View style={styles.imageContainer}>
-          <ReciterImage
-            imageUrl={imageUrl}
-            reciterName={reciterName}
-            style={styles.image}
-            profileIconSize={moderateScale(40)}
-          />
-        </View>
-
-        <View style={styles.textContainer}>
-          <Text style={styles.reciterName} numberOfLines={1}>
-            {reciterName}
-          </Text>
+    <CardWrapper
+      style={[styles.container, useGlass && styles.glassContainer]}
+      {...(useGlass ? {glassEffectStyle: 'regular'} : {})}>
+      {/* Background layers (fallback for non-glass) */}
+      {!useGlass && (
+        <>
           <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: moderateScale(4),
-            }}>
-            <Text style={styles.surahName} numberOfLines={1}>
-              {surahName}
-            </Text>
-            {hasFollowAlong && <FollowAlongBadge size="small" />}
-          </View>
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: Color(theme.colors.text)
+                  .alpha(0.04)
+                  .toString(),
+              },
+            ]}
+          />
+          <LinearGradient
+            colors={[
+              Color(theme.colors.text).alpha(0.02).toString(),
+              'transparent',
+              Color(theme.colors.text).alpha(0.03).toString(),
+            ]}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </>
+      )}
 
-          {/* Progress Section */}
-          <View style={styles.progressSection}>
-            <TouchableOpacity
-              activeOpacity={0.99}
-              style={styles.playButtonContainer}
-              onPress={handlePress}>
-              {isCurrentlyPlaying ? (
-                <NowPlayingIndicator
-                  isPlaying={
-                    playbackStatus === 'playing' ||
-                    playbackStatus === 'buffering'
-                  }
-                  surahId={surahId}
-                  barCount={3}
-                  barWidth={moderateScale(2.5)}
-                  gap={moderateScale(1.5)}
-                />
-              ) : (
-                <PlayIcon
-                  color={theme.colors.text}
-                  size={moderateScale(12)}
-                  filled={false}
-                />
-              )}
-            </TouchableOpacity>
-            <Slider
-              value={currentSliderProgress}
-              disabled={true}
-              minimumTrackTintColor={Color(theme.colors.textSecondary)
-                .alpha(0.45)
-                .toString()}
-              maximumTrackTintColor={Color(theme.colors.border)
-                .alpha(0.2)
-                .toString()}
-              trackStyle={{
-                height: moderateScale(3.5),
-                borderRadius: moderateScale(2),
-              }}
-              thumbStyle={{height: 0, width: 0}}
-              containerStyle={styles.sliderContainer}
-            />
-            <Text style={styles.timeRemaining}>{timeRemaining}</Text>
-          </View>
-        </View>
+      {/* Image box — matches playback zone spacing */}
+      <View style={styles.imageContainer}>
+        <Link
+          href={{
+            pathname: '/(tabs)/(a.home)/reciter/[id]',
+            params: {id: reciterId},
+          }}
+          asChild>
+          <Pressable onLongPress={handleLongPress}>
+            <Link.AppleZoom>
+              <ReciterImage
+                imageUrl={imageUrl}
+                reciterName={reciterName}
+                style={styles.image}
+                profileIconSize={moderateScale(40)}
+              />
+            </Link.AppleZoom>
+          </Pressable>
+        </Link>
       </View>
-    </AnimatedTouchableOpacity>
+
+      {/* Reciter name */}
+      <Text style={styles.reciterName} numberOfLines={1}>
+        {reciterName}
+      </Text>
+
+
+      {/* Bottom zone: Playback controls — resumes audio */}
+      <Pressable
+        onPress={handlePlayPress}
+        onLongPress={handleLongPress}
+        style={({pressed}) => [
+          styles.playbackZone,
+          pressed && styles.playbackZonePressed,
+        ]}>
+        <View style={styles.playbackRow}>
+          <Text style={styles.surahName} numberOfLines={1}>
+            {surahName}
+          </Text>
+        </View>
+        <View style={styles.progressRow}>
+          <View style={styles.playButtonContainer}>
+            {isCurrentlyPlaying &&
+            (playbackStatus === 'playing' || playbackStatus === 'buffering') ? (
+              <NowPlayingIndicator
+                isPlaying={true}
+                surahId={surahId}
+                barCount={3}
+                barWidth={moderateScale(2)}
+                gap={moderateScale(1.5)}
+              />
+            ) : (
+              <PlayIcon
+                color={theme.colors.text}
+                size={moderateScale(10)}
+                filled={true}
+              />
+            )}
+          </View>
+          <Slider
+            value={currentSliderProgress}
+            disabled={true}
+            minimumTrackTintColor={Color(theme.colors.text)
+              .alpha(0.35)
+              .toString()}
+            maximumTrackTintColor={Color(theme.colors.text)
+              .alpha(0.08)
+              .toString()}
+            trackStyle={{
+              height: moderateScale(3),
+              borderRadius: moderateScale(2),
+            }}
+            thumbStyle={{height: 0, width: 0}}
+            containerStyle={styles.sliderContainer}
+          />
+          <Text style={styles.timeRemaining}>{timeRemaining}</Text>
+        </View>
+      </Pressable>
+    </CardWrapper>
   );
 };
 
@@ -365,105 +365,80 @@ function createStyles(theme: {
     shadow: string;
     text: string;
     textSecondary: string;
+    background: string;
   };
 }) {
   return StyleSheet.create({
     container: {
-      width: moderateScale(130),
-      height: moderateScale(180),
-      borderRadius: moderateScale(16),
-      shadowColor: '#0D2750',
-      shadowOffset: {
-        width: 28,
-        height: 28,
-      },
-      shadowOpacity: 0.16,
-      shadowRadius: 50,
+      width: moderateScale(120),
+      borderRadius: moderateScale(14),
       overflow: 'hidden',
-      borderWidth: 0.5,
-      borderColor: Color(theme.colors.border).alpha(0.15).toString(),
-    },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-      opacity: 0.75,
-    },
-    gradient: {
-      ...StyleSheet.absoluteFillObject,
-      opacity: 0.8,
-    },
-    content: {
-      flex: 1,
-      padding: moderateScale(8),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      padding: moderateScale(6),
       gap: moderateScale(4),
     },
+    glassContainer: {
+      borderWidth: 0,
+    },
     imageContainer: {
-      width: '100%',
-      height: moderateScale(90),
-      borderRadius: moderateScale(12),
-      marginBottom: verticalScale(4),
+      aspectRatio: 1,
+      borderRadius: moderateScale(8),
       overflow: 'hidden',
-      shadowColor: theme.colors.shadow,
-      shadowOffset: {width: 0, height: moderateScale(4)},
-      shadowOpacity: 0.2,
-      shadowRadius: moderateScale(8),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.1).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     image: {
       width: '100%',
       height: '100%',
-      borderRadius: moderateScale(12),
-    },
-    textContainer: {
-      flex: 1,
-      gap: moderateScale(2),
     },
     reciterName: {
-      fontSize: moderateScale(13),
+      fontSize: moderateScale(11.5),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
       letterSpacing: -0.3,
     },
-    surahName: {
-      fontSize: moderateScale(10),
-      fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.textSecondary).alpha(0.8).toString(),
-      letterSpacing: -0.2,
+    // Bottom zone: surah + playback controls
+    playbackZone: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(8),
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(5),
+      gap: moderateScale(4),
     },
-    progressSection: {
+    playbackZonePressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
+    },
+    playbackRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: 'auto',
-      paddingTop: moderateScale(4),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.06).toString(),
-      borderRadius: moderateScale(8),
-      paddingVertical: moderateScale(3),
-      paddingHorizontal: moderateScale(6),
-      gap: moderateScale(6),
-      width: moderateScale(75),
-      alignSelf: 'flex-start',
-      borderWidth: 1,
-      borderColor: Color(theme.colors.border).alpha(0.12).toString(),
     },
-    sliderContainer: {
-      height: moderateScale(5),
-      flex: 1,
-      marginHorizontal: moderateScale(2),
+    surahName: {
+      fontSize: moderateScale(9.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.7).toString(),
+      letterSpacing: -0.2,
     },
-    timeRemaining: {
-      fontSize: moderateScale(8),
-      fontFamily: 'Manrope-Bold',
-      color: Color(theme.colors.text).alpha(0.9).toString(),
-      minWidth: moderateScale(4),
-      textAlign: 'right',
+    progressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
     },
     playButtonContainer: {
-      width: moderateScale(14),
-      height: moderateScale(14),
+      width: moderateScale(12),
+      height: moderateScale(12),
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: 2,
+    },
+    sliderContainer: {
+      height: moderateScale(4),
+      flex: 1,
+    },
+    timeRemaining: {
+      fontSize: moderateScale(7.5),
+      fontFamily: 'Manrope-Bold',
+      color: Color(theme.colors.text).alpha(0.5).toString(),
+      minWidth: moderateScale(12),
+      textAlign: 'right',
     },
   });
 }

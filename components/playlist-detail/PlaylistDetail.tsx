@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ListRenderItem,
   Animated as RNAnimated,
+  Platform,
+  Pressable,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
@@ -16,12 +18,14 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTrack, createUserUploadTrack} from '@/utils/track';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
+import {Feather} from '@expo/vector-icons';
 import {PlaylistHeader} from './PlaylistHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useRouter} from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {UserPlaylist} from '@/services/database/DatabaseService';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 interface PlaylistTrack {
   id: string;
@@ -319,6 +323,26 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
     loadPlaylistData,
   ]);
 
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleOptionsPress} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleOptionsPress, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: playlist?.name || 'Playlist',
+    scrollY,
+    hasContent: !loading && playlistData.length > 0,
+    headerRight: !loading && playlist ? renderHeaderRight : undefined,
+  });
+
   const handleShowTrackOptions = useCallback(
     async (track: PlaylistTrack, reciter: Reciter, surah: Surah) => {
       let audioTrack;
@@ -360,7 +384,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         }`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onOptionsPress={handleOptionsPress}
+        onOptionsPress={Platform.OS === 'ios' ? undefined : handleOptionsPress}
         theme={theme}
       />
     );
@@ -410,6 +434,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         keyExtractor={item => item.track.id}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
+        contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
           <Text style={styles.emptyText}>No surahs in this playlist</Text>
         }
@@ -420,7 +445,9 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      <CollectionStickyHeader title={playlist.name} scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title={playlist.name} scrollY={scrollY} />
+      )}
     </View>
   );
 };

@@ -35,6 +35,7 @@ import {MushafPlayerOptionsSheet} from './MushafPlayerOptionsSheet';
 import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
+import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -66,6 +67,7 @@ registerSheet('mushaf-player-options', MushafPlayerOptionsSheet);
 registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
+registerSheet('home-card-options', HomeCardOptionsSheet);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -277,6 +279,18 @@ declare module 'react-native-actions-sheet' {
       payload: {
         verseKey: string;
         position: number;
+      };
+    }>;
+    'home-card-options': SheetDefinition<{
+      payload: {
+        reciterId: string;
+        reciterName: string;
+        surahId?: number;
+        surahName?: string;
+        rewayatId?: string;
+        recentIndex?: number;
+        variant: 'recent' | 'reciter';
+        onContinuePlaying?: () => void;
       };
     }>;
   }

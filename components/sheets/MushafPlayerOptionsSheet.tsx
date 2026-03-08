@@ -574,11 +574,11 @@ export const MushafPlayerOptionsSheet = (
           disabled={!canPlay}>
           <Ionicons
             name="play"
-            size={ms(18)}
+            size={ms(16)}
             color={
               canPlay
-                ? theme.colors.background
-                : Color(theme.colors.text).alpha(0.3).toString()
+                ? theme.colors.text
+                : Color(theme.colors.text).alpha(0.25).toString()
             }
           />
           <Text
@@ -779,15 +779,15 @@ const createStyles = (theme: Theme) =>
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     chipActive: {
-      backgroundColor: theme.colors.text,
+      backgroundColor: Color(theme.colors.text).alpha(0.15).toString(),
     },
     chipText: {
       fontSize: ms(13),
       fontFamily: 'Manrope-SemiBold',
-      color: theme.colors.text,
+      color: Color(theme.colors.text).alpha(0.5).toString(),
     },
     chipTextActive: {
-      color: theme.colors.background,
+      color: theme.colors.text,
     },
 
     // Chips (flex: 1 row)
@@ -816,20 +816,22 @@ const createStyles = (theme: Theme) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      height: ms(52),
+      alignSelf: 'center',
+      height: ms(42),
+      paddingHorizontal: ms(40),
       borderRadius: ms(14),
-      backgroundColor: theme.colors.text,
+      backgroundColor: Color(theme.colors.text).alpha(0.1).toString(),
       gap: ms(8),
     },
     playButtonDisabled: {
-      backgroundColor: Color(theme.colors.text).alpha(0.15).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.05).toString(),
     },
     playButtonText: {
-      fontSize: ms(16),
-      fontFamily: 'Manrope-Bold',
-      color: theme.colors.background,
+      fontSize: ms(15),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
     },
     playButtonTextDisabled: {
-      color: Color(theme.colors.text).alpha(0.3).toString(),
+      color: Color(theme.colors.text).alpha(0.25).toString(),
     },
   });

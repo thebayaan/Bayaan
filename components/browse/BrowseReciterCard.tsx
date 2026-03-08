@@ -1,83 +1,71 @@
 import React, {useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
-import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
-import Animated, {
-  useAnimatedStyle,
-  withSpring,
-  useSharedValue,
-} from 'react-native-reanimated';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+import {Link} from 'expo-router';
+
+const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 interface BrowseReciterCardProps {
   reciter: Reciter;
   onPress: () => void;
+  onLongPress?: () => void;
   width: number;
   height: number;
   theme: Theme;
   showFollowAlong?: boolean;
 }
 
-// Remove or comment out the unused type
-// type StylesType = ReturnType<typeof createStyles>;
-
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
-
 function createStyles(theme: Theme, width: number, height: number) {
   return StyleSheet.create({
     container: {
       width,
       height,
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(14),
       overflow: 'hidden',
-      // borderWidth: 0.5,
-      borderColor: Color(theme.colors.border).alpha(0.15).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
     },
-    foregroundImageContainer: {
+    imageContainer: {
       width: '100%',
-      height: '65%', // Reduced from 70% to give more space to the text
-      justifyContent: 'flex-start',
-      alignItems: 'center',
+      flex: 1,
       overflow: 'hidden',
     },
-    foregroundImage: {
+    image: {
       width: '100%',
       height: '100%',
     },
     contentContainer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: '35%', // Increased from 30% to give more space to the text
-      paddingHorizontal: moderateScale(12),
-      paddingVertical: moderateScale(10),
-      justifyContent: 'center',
-    },
-    blurContainer: {
-      ...StyleSheet.absoluteFillObject,
-      overflow: 'hidden',
+      paddingHorizontal: moderateScale(8),
+      paddingVertical: moderateScale(6),
+      gap: moderateScale(1),
     },
     reciterName: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: moderateScale(11),
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginBottom: moderateScale(4),
-      lineHeight: moderateScale(16), // Added line height to ensure text isn't cut off
-      includeFontPadding: false, // Added to fix Android text clipping issues
-      textAlignVertical: 'center', // Helps with vertical alignment on Android
+      letterSpacing: -0.2,
+      lineHeight: moderateScale(14),
+      includeFontPadding: false,
     },
     reciterInfo: {
-      fontSize: moderateScale(10),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      lineHeight: moderateScale(14), // Added line height to ensure text isn't cut off
-      includeFontPadding: false, // Added to fix Android text clipping issues
-      textAlignVertical: 'center', // Helps with vertical alignment on Android
+      fontSize: moderateScale(9),
+      fontFamily: 'Manrope-Regular',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      lineHeight: moderateScale(12),
+      includeFontPadding: false,
+    },
+    glassContainer: {
+      borderWidth: 0,
+      backgroundColor: 'transparent',
+    },
+    pressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
   });
 }
@@ -86,88 +74,77 @@ const BrowseReciterCard = React.memo(
   ({
     reciter,
     onPress,
+    onLongPress,
     width,
     height,
     theme,
-    showFollowAlong,
   }: BrowseReciterCardProps) => {
     const styles = useMemo(
       () => createStyles(theme, width, height),
       [theme, width, height],
     );
 
-    // Get unique rewayat names to properly display info
     const uniqueRewayatNames = useMemo(() => {
       const names = new Set(reciter.rewayat.map(r => r.name));
       return Array.from(names);
     }, [reciter.rewayat]);
 
-    // Animation values
-    const scale = useSharedValue(1);
-
-    const animatedStyle = useAnimatedStyle(() => {
-      return {
-        transform: [{scale: scale.value}],
-      };
-    });
-
-    const handlePressIn = () => {
-      scale.value = withSpring(0.95, {
-        damping: 20,
-        stiffness: 400,
-        mass: 0.5,
-      });
-    };
-
-    const handlePressOut = () => {
-      scale.value = withSpring(1, {
-        damping: 20,
-        stiffness: 400,
-        mass: 0.5,
-      });
-    };
-
-    return (
-      <AnimatedTouchableOpacity
-        activeOpacity={1}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[styles.container, animatedStyle]}>
-        {/* Foreground clear image */}
-        <View style={styles.foregroundImageContainer}>
+    const content = (
+      <>
+        <View style={styles.imageContainer}>
           <ReciterImage
             imageUrl={reciter.image_url || undefined}
             reciterName={reciter.name}
-            style={styles.foregroundImage}
+            style={styles.image}
             profileIconSize={moderateScale(40)}
           />
         </View>
 
-        {/* Content Overlay */}
         <View style={styles.contentContainer}>
-          <View
-            style={[
-              styles.blurContainer,
-              {
-                backgroundColor: theme.colors.card,
-                opacity: 0.92,
-              },
-            ]}
-          />
-          <View>
-            <Text style={styles.reciterName} numberOfLines={1}>
-              {reciter.name}
-            </Text>
-            <Text style={styles.reciterInfo} numberOfLines={1}>
-              {uniqueRewayatNames.length > 1
-                ? `${uniqueRewayatNames.length} rewayat available`
-                : reciter.rewayat[0]?.name || ''}
-            </Text>
-            {showFollowAlong && <FollowAlongBadge />}
-          </View>
+          <Text style={styles.reciterName} numberOfLines={1}>
+            {reciter.name}
+          </Text>
+          <Text style={styles.reciterInfo} numberOfLines={1}>
+            {uniqueRewayatNames.length > 1
+              ? `${uniqueRewayatNames.length} rewayat available`
+              : reciter.rewayat[0]?.name || ''}
+          </Text>
         </View>
-      </AnimatedTouchableOpacity>
+      </>
+    );
+
+    const linkHref = {
+      pathname: '/(tabs)/(a.home)/reciter/[id]' as const,
+      params: {id: reciter.id},
+    };
+
+    if (USE_GLASS) {
+      return (
+        <Link href={linkHref} asChild>
+          <Pressable onLongPress={onLongPress}>
+            <Link.AppleZoom>
+              <GlassView
+                style={StyleSheet.flatten([
+                  styles.container,
+                  styles.glassContainer,
+                ])}
+                glassEffectStyle="regular">
+                {content}
+              </GlassView>
+            </Link.AppleZoom>
+          </Pressable>
+        </Link>
+      );
+    }
+
+    return (
+      <Link href={linkHref} asChild>
+        <Pressable onLongPress={onLongPress} style={styles.container}>
+          <Link.AppleZoom>
+            <View style={{flex: 1}}>{content}</View>
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
     );
   },
   (prevProps, nextProps) =>
@@ -175,7 +152,7 @@ const BrowseReciterCard = React.memo(
     prevProps.width === nextProps.width &&
     prevProps.height === nextProps.height &&
     prevProps.theme === nextProps.theme &&
-    prevProps.showFollowAlong === nextProps.showFollowAlong,
+    prevProps.onLongPress === nextProps.onLongPress,
 );
 
 BrowseReciterCard.displayName = 'BrowseReciterCard';

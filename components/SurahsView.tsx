@@ -11,12 +11,13 @@ import {SurahsHero} from '@/components/hero/SurahsHero';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {Feather} from '@expo/vector-icons';
 import {useSettings} from '@/hooks/useSettings';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
   onSurahLongPress?: (surah: Surah) => void;
+  headerHeight: number;
 }
 
 type ViewMode = 'card' | 'list';
@@ -51,8 +52,10 @@ function groupSurahsIntoPairs(surahs: Surah[]): Surah[][] {
 export default function SurahsView({
   onSurahPress,
   onSurahLongPress,
+  headerHeight,
 }: SurahsViewProps) {
   const {theme} = useTheme();
+  const bottomInset = useBottomInset();
 
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
 
@@ -208,7 +211,6 @@ export default function SurahsView({
         <View style={styles.heroContainer}>
           <SurahsHero
             surahOfTheDay={surahOfTheDay}
-            onSurahPress={onSurahPress}
             onSurahLongPress={onSurahLongPress}
           />
         </View>
@@ -221,8 +223,8 @@ export default function SurahsView({
                 option === 'asc'
                   ? 'arrow-up'
                   : option === 'desc'
-                  ? 'arrow-down'
-                  : 'calendar';
+                    ? 'arrow-down'
+                    : 'calendar';
               const label =
                 option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
               return (
@@ -296,7 +298,11 @@ export default function SurahsView({
         getItemType={getItemType}
         stickyHeaderIndices={stickyIndices}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={{
+          paddingBottom: bottomInset,
+          paddingTop: headerHeight,
+        }}
+        contentInsetAdjustmentBehavior="never"
         drawDistance={moderateScale(300)}
       />
     </View>
@@ -306,9 +312,6 @@ export default function SurahsView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: TOTAL_BOTTOM_PADDING,
   },
   heroContainer: {
     marginBottom: 0,

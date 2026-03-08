@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ListRenderItem,
   Animated as RNAnimated,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -29,6 +30,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 interface DownloadDataItem {
   download: DownloadedSurah;
@@ -74,6 +76,26 @@ export default function DownloadsScreen() {
     });
   }, [downloads.length, clearAllDownloads]);
 
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleOptionsMenu, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: 'Downloads',
+    scrollY,
+    hasContent: downloads.length > 0,
+    headerRight: downloads.length > 0 ? renderHeaderRight : undefined,
+  });
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -88,7 +110,7 @@ export default function DownloadsScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: insets.top + moderateScale(40),
+          paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
           paddingBottom: moderateScale(10),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,
@@ -449,20 +471,22 @@ export default function DownloadsScreen() {
   if (downloads.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Downloads</Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Downloads</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <DownloadIcon
@@ -503,19 +527,21 @@ export default function DownloadsScreen() {
         </View>
 
         <View style={styles.actionButtons}>
-          <Pressable
-            style={[
-              styles.circleButton,
-              !hasDownloads && styles.disabledButton,
-            ]}
-            onPress={hasDownloads ? handleOptionsMenu : undefined}
-            disabled={!hasDownloads}>
-            <Feather
-              name="more-horizontal"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Pressable>
+          {Platform.OS !== 'ios' && (
+            <Pressable
+              style={[
+                styles.circleButton,
+                !hasDownloads && styles.disabledButton,
+              ]}
+              onPress={hasDownloads ? handleOptionsMenu : undefined}
+              disabled={!hasDownloads}>
+              <Feather
+                name="more-horizontal"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+          )}
           <Pressable
             style={[
               styles.circleButton,
@@ -581,25 +607,27 @@ export default function DownloadsScreen() {
 
   return (
     <View style={styles.container}>
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={groupedItems}
@@ -617,8 +645,11 @@ export default function DownloadsScreen() {
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       />
-      <CollectionStickyHeader title="Downloads" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Downloads" scrollY={scrollY} />
+      )}
     </View>
   );
 }

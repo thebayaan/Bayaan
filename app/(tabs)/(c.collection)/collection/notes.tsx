@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   StatusBar,
+  Platform,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -21,6 +22,7 @@ import {NoteItem} from '@/components/collection/NoteItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
 
 interface NoteData {
@@ -36,6 +38,12 @@ const NotesScreen = () => {
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+
+  useCollectionNativeHeader({
+    title: 'Notes',
+    scrollY,
+    hasContent: notes.length > 0 && !loading,
+  });
 
   const loadNotes = useCallback(async () => {
     try {
@@ -115,7 +123,7 @@ const NotesScreen = () => {
   const ListHeaderComponent = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
-        <View style={{paddingTop: insets.top}} />
+        <View style={{paddingTop: Platform.OS === 'ios' ? 0 : insets.top}} />
         <View style={styles.headerContent}>
           <View
             style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
@@ -162,22 +170,24 @@ const NotesScreen = () => {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-            Notes
-          </Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
+              Notes
+            </Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <Text
             style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
@@ -192,22 +202,24 @@ const NotesScreen = () => {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-            Notes
-          </Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
+              Notes
+            </Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <Feather
@@ -233,26 +245,28 @@ const NotesScreen = () => {
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <StatusBar barStyle="default" />
 
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            top: insets.top + moderateScale(10),
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              top: insets.top + moderateScale(10),
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={notes}
@@ -266,8 +280,11 @@ const NotesScreen = () => {
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       />
-      <CollectionStickyHeader title="Notes" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Notes" scrollY={scrollY} />
+      )}
     </View>
   );
 };

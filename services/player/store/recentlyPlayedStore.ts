@@ -48,6 +48,9 @@ interface RecentlyPlayedState {
     duration: number,
   ) => void;
 
+  /** Removes a single track by index. */
+  removeTrack: (index: number) => void;
+
   /** Clears all recent tracks. */
   clearRecentTracks: () => void;
 
@@ -137,7 +140,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             const surah =
               head.surah.id === surahId
                 ? head.surah
-                : SURAHS.find(s => s.id === surahId) ?? head.surah;
+                : (SURAHS.find(s => s.id === surahId) ?? head.surah);
             return {
               recentTracks: [
                 {...head, surah, progress, duration},
@@ -197,6 +200,14 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
           };
         }),
 
+      removeTrack: (index: number) =>
+        set(state => {
+          if (index < 0 || index >= state.recentTracks.length) return state;
+          const updated = [...state.recentTracks];
+          updated.splice(index, 1);
+          return {recentTracks: updated};
+        }),
+
       clearRecentTracks: () =>
         set({recentTracks: [], progressMap: {}, durationMap: {}}),
 
@@ -225,7 +236,7 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
       partialize: state =>
         ({
           recentTracks: state.recentTracks,
-        } as unknown as RecentlyPlayedState),
+        }) as unknown as RecentlyPlayedState,
     },
   ),
 );
