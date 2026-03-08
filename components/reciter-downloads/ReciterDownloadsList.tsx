@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
-import {View, Text, StyleSheet, Animated as RNAnimated} from 'react-native';
+import {View, Text, StyleSheet, Animated as RNAnimated, Platform, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {SurahItem} from '@/components/SurahItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
@@ -20,6 +20,8 @@ import {createDownloadedTrack} from '@/utils/track';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+import {Feather} from '@expo/vector-icons';
 
 interface DownloadTrackData {
   download: DownloadedSurah;
@@ -357,6 +359,26 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     });
   }, [reciterDownloads, reciter?.name, removeDownload]);
 
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleRemoveAllDownloads} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleRemoveAllDownloads, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: reciter?.name || 'Downloads',
+    scrollY,
+    hasContent: downloadData.length > 0 && !loading,
+    headerRight: downloadData.length > 0 ? renderHeaderRight : undefined,
+  });
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <ReciterDownloadsHeader
@@ -368,7 +390,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         } downloaded`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onOptionsPress={handleRemoveAllDownloads}
+        onOptionsPress={Platform.OS === 'ios' ? undefined : handleRemoveAllDownloads}
         theme={theme}
       />
     );
@@ -424,6 +446,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
+        contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
           <Text style={styles.emptyText}>No downloads for this reciter</Text>
         }
@@ -434,10 +457,12 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      <CollectionStickyHeader
-        title={reciter?.name || 'Downloads'}
-        scrollY={scrollY}
-      />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader
+          title={reciter?.name || 'Downloads'}
+          scrollY={scrollY}
+        />
+      )}
     </View>
   );
 };

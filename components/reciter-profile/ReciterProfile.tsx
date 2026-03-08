@@ -1,4 +1,11 @@
-import React, {useState, useRef, useCallback, useMemo, useEffect} from 'react';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+} from 'react';
 import {
   View,
   Text,
@@ -9,6 +16,7 @@ import {
   NativeSyntheticEvent,
   useWindowDimensions,
   InteractionManager,
+  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -49,8 +57,11 @@ import {RewayatTabBar} from './components/RewayatTabBar';
 import {UploadsTabContent} from './components/UploadsTabContent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {moderateScale} from 'react-native-size-matters';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
+import {useNavigation} from 'expo-router';
+import {useHeaderHeight} from '@react-navigation/elements';
+import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
 
 interface ReciterProfileProps {
   id: string;
@@ -166,6 +177,9 @@ const SurahListSkeleton: React.FC<{theme: any}> = React.memo(({theme}) => {
   );
 });
 
+const isIOS = Platform.OS === 'ios';
+const USE_GLASS = isIOS && isLiquidGlassAvailable();
+
 const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
@@ -173,7 +187,10 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const {theme} = useTheme();
   const styles = createSharedStyles(theme);
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const {height: screenHeight, width: screenWidth} = useWindowDimensions();
+  const navigation = useNavigation();
+  const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
 
   // Synchronous reciter init — data available on first render, no deferred loading delay
   const initialReciter = useMemo(
@@ -201,6 +218,28 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     ),
   ).current;
   const [showSearch, setShowSearch] = useState(false);
+
+  // iOS native header: search icon in headerRight
+  const headerTitleShownRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!isIOS) return;
+    headerTitleShownRef.current = false;
+    navigation.setOptions({
+      headerTitle: '',
+      headerBackTitle: ' ',
+      headerBackButtonDisplayMode: 'minimal',
+      headerRight: () => (
+        <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
+          <Feather
+            name="search"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ),
+    });
+  }, [navigation, theme]);
+
   const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
     useSettings(state => state.reciterProfileViewMode),
   );
@@ -223,6 +262,10 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const [collapsibleHeight, setCollapsibleHeight] = useState(0);
   const [stickyHeight, setStickyHeight] = useState(0);
   const [stickyTitleHeight, setStickyTitleHeight] = useState(0);
+
+  // iOS: sticky section must offset below the native navigation header
+  // Android: offset below the custom sticky title bar overlay
+  const stickyPinOffset = isIOS ? iosHeaderHeight : stickyTitleHeight;
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
   const {startNewChain} = useRecentlyPlayedStore();
@@ -605,18 +648,17 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
           animated: true,
         });
       }
-      // When changing tabs: if sticky, stay at collapse point.
-      // If not sticky, scroll to top so header is visible.
-      const actualCollapsePoint = collapsibleHeight - stickyTitleHeight;
-      const isCollapsed = currentScrollYRef.current >= actualCollapsePoint - 1;
-      outerScrollRef.current?.scrollTo({
-        y: isCollapsed ? actualCollapsePoint : 0,
-        animated: false,
-      });
+      // If scrolled past the collapse point, snap back to it so the tab bar
+      // stays pinned and content starts cleanly. Otherwise don't touch scroll
+      // — let the header stay visible at its current position.
+      const snapPoint = Math.max(0, collapsibleHeight - stickyPinOffset);
+      if (currentScrollYRef.current > snapPoint) {
+        outerScrollRef.current?.scrollTo({y: snapPoint, animated: false});
+      }
     },
     [
       collapsibleHeight,
-      stickyTitleHeight,
+      stickyPinOffset,
       handleRewayatChange,
       tabs,
       screenWidth,
@@ -653,12 +695,11 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
         if (tab.id !== 'uploads') {
           handleRewayatChange(tab.id);
         }
-        const maxScroll = Math.max(0, collapsibleHeight - stickyTitleHeight);
-        const isCollapsed = currentScrollYRef.current >= maxScroll - 1;
-        outerScrollRef.current?.scrollTo({
-          y: isCollapsed ? maxScroll : 0,
-          animated: false,
-        });
+        // Only snap if scrolled past collapse point
+        const snapPoint = Math.max(0, collapsibleHeight - stickyPinOffset);
+        if (currentScrollYRef.current > snapPoint) {
+          outerScrollRef.current?.scrollTo({y: snapPoint, animated: false});
+        }
       }
     },
     [
@@ -666,7 +707,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       screenWidth,
       handleRewayatChange,
       collapsibleHeight,
-      stickyTitleHeight,
+      stickyPinOffset,
     ],
   );
 
@@ -692,7 +733,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   // Sticky title bar opacity — fades in as the outer scroll collapses the header
   // With negative margin on header, the actual collapse point is reduced
-  const collapsePoint = Math.max(1, collapsibleHeight - stickyTitleHeight);
+  const collapsePoint = Math.max(1, collapsibleHeight - stickyPinOffset);
   const stickyTitleOpacity = useMemo(
     () =>
       scrollY.interpolate({
@@ -776,12 +817,25 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
           <RNAnimated.ScrollView
             ref={outerScrollRef}
             stickyHeaderIndices={[1]}
+            contentInsetAdjustmentBehavior={isIOS ? 'automatic' : 'never'}
             onScroll={RNAnimated.event(
               [{nativeEvent: {contentOffset: {y: scrollY}}}],
               {
                 useNativeDriver: true,
                 listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                  currentScrollYRef.current = e.nativeEvent.contentOffset.y;
+                  const y = e.nativeEvent.contentOffset.y;
+                  currentScrollYRef.current = y;
+                  // iOS: show reciter name in native header when scrolled past header
+                  if (isIOS && reciter) {
+                    const threshold = collapsePoint * 0.6;
+                    const shouldShow = y >= threshold;
+                    if (shouldShow !== headerTitleShownRef.current) {
+                      headerTitleShownRef.current = shouldShow;
+                      navigation.setOptions({
+                        headerTitle: shouldShow ? reciter.name : '',
+                      });
+                    }
+                  }
                 },
               },
             )}
@@ -793,7 +847,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             {/* between action buttons and tab bar when the header is not collapsed */}
             <View
               onLayout={e => setCollapsibleHeight(e.nativeEvent.layout.height)}
-              style={{marginBottom: -stickyTitleHeight, zIndex: 11}}
+              style={{marginBottom: -stickyPinOffset, zIndex: 11}}
               pointerEvents="box-none">
               <ReciterHeader
                 reciter={reciter}
@@ -811,106 +865,211 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             </View>
 
             {/* Child 1: Sticky section — sticks at top when header collapses */}
-            {/* Outer View has transparent paddingTop so action buttons show through the overlap */}
-            {/* Inner View has opaque background for the actual tab bar + controls */}
+            {/* paddingTop offsets below native header (iOS) or sticky title (Android) */}
             <View
               onLayout={e => setStickyHeight(e.nativeEvent.layout.height)}
-              style={{paddingTop: stickyTitleHeight}}
+              style={{paddingTop: stickyPinOffset}}
               pointerEvents="box-none">
-              <View style={{backgroundColor: theme.colors.background}}>
-                {tabs.length > 0 && (
-                  <RewayatTabBar
-                    tabs={tabs}
-                    activeTabId={activeTab}
-                    onTabChange={handleTabChange}
-                    theme={theme}
-                    scrollX={scrollX}
-                    screenWidth={screenWidth}
-                  />
-                )}
-                <View style={styles.controlsRow}>
-                  {activeTab !== 'uploads' && (
-                    <View style={styles.sortOptionsContainer}>
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'asc' && styles.activeOptionButton,
-                        ]}
-                        onPress={() => changeSortOption('asc')}>
-                        <Text
+              {USE_GLASS ? (
+                <View style={{
+                  marginHorizontal: moderateScale(10),
+                  marginBottom: moderateScale(4),
+                }}>
+                  <GlassView style={{
+                    borderRadius: moderateScale(16),
+                    overflow: 'hidden',
+                    paddingVertical: moderateScale(4),
+                  }}>
+                    {tabs.length > 0 && (
+                      <RewayatTabBar
+                        tabs={tabs}
+                        activeTabId={activeTab}
+                        onTabChange={handleTabChange}
+                        theme={theme}
+                        scrollX={scrollX}
+                        screenWidth={screenWidth}
+                      />
+                    )}
+                    <View style={[styles.controlsRow, {backgroundColor: 'transparent'}]}>
+                      {activeTab !== 'uploads' && (
+                        <View style={styles.sortOptionsContainer}>
+                          <Pressable
+                            style={[
+                              styles.optionButton,
+                              sortOption === 'asc' && styles.activeOptionButton,
+                            ]}
+                            onPress={() => changeSortOption('asc')}>
+                            <Text
+                              style={[
+                                styles.optionButtonText,
+                                sortOption === 'asc' && styles.activeOptionText,
+                              ]}>
+                              Asc
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={[
+                              styles.optionButton,
+                              sortOption === 'desc' && styles.activeOptionButton,
+                            ]}
+                            onPress={() => changeSortOption('desc')}>
+                            <Text
+                              style={[
+                                styles.optionButtonText,
+                                sortOption === 'desc' && styles.activeOptionText,
+                              ]}>
+                              Desc
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            style={[
+                              styles.optionButton,
+                              sortOption === 'revelation' &&
+                                styles.activeOptionButton,
+                            ]}
+                            onPress={() => changeSortOption('revelation')}>
+                            <Text
+                              style={[
+                                styles.optionButtonText,
+                                sortOption === 'revelation' &&
+                                  styles.activeOptionText,
+                              ]}>
+                              Rev
+                            </Text>
+                          </Pressable>
+                        </View>
+                      )}
+                      <View style={styles.rightControlsContainer}>
+                        <Pressable
                           style={[
-                            styles.optionButtonText,
-                            sortOption === 'asc' && styles.activeOptionText,
-                          ]}>
-                          Asc
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'desc' && styles.activeOptionButton,
-                        ]}
-                        onPress={() => changeSortOption('desc')}>
-                        <Text
+                            styles.optionButton,
+                            {
+                              marginRight: moderateScale(15),
+                              marginTop: moderateScale(4),
+                            },
+                          ]}
+                          onPress={toggleShowLovedOnly}>
+                          <Animated.View style={heartAnimatedStyle}>
+                            <HeartIcon
+                              size={moderateScale(22)}
+                              color={
+                                showLovedOnly
+                                  ? theme.colors.error
+                                  : theme.colors.textSecondary
+                              }
+                              filled={true}
+                            />
+                          </Animated.View>
+                        </Pressable>
+                        <Pressable
+                          style={styles.viewModeButton}
+                          onPress={toggleViewMode}>
+                          <Feather
+                            name={viewMode === 'card' ? 'list' : 'grid'}
+                            size={moderateScale(16)}
+                            color={theme.colors.text}
+                          />
+                        </Pressable>
+                      </View>
+                    </View>
+                  </GlassView>
+                </View>
+              ) : (
+                <View style={{backgroundColor: theme.colors.background}}>
+                  {tabs.length > 0 && (
+                    <RewayatTabBar
+                      tabs={tabs}
+                      activeTabId={activeTab}
+                      onTabChange={handleTabChange}
+                      theme={theme}
+                      scrollX={scrollX}
+                      screenWidth={screenWidth}
+                    />
+                  )}
+                  <View style={styles.controlsRow}>
+                    {activeTab !== 'uploads' && (
+                      <View style={styles.sortOptionsContainer}>
+                        <Pressable
                           style={[
-                            styles.optionButtonText,
-                            sortOption === 'desc' && styles.activeOptionText,
-                          ]}>
-                          Desc
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        style={[
-                          styles.optionButton,
-                          sortOption === 'revelation' &&
-                            styles.activeOptionButton,
-                        ]}
-                        onPress={() => changeSortOption('revelation')}>
-                        <Text
+                            styles.optionButton,
+                            sortOption === 'asc' && styles.activeOptionButton,
+                          ]}
+                          onPress={() => changeSortOption('asc')}>
+                          <Text
+                            style={[
+                              styles.optionButtonText,
+                              sortOption === 'asc' && styles.activeOptionText,
+                            ]}>
+                            Asc
+                          </Text>
+                        </Pressable>
+                        <Pressable
                           style={[
-                            styles.optionButtonText,
+                            styles.optionButton,
+                            sortOption === 'desc' && styles.activeOptionButton,
+                          ]}
+                          onPress={() => changeSortOption('desc')}>
+                          <Text
+                            style={[
+                              styles.optionButtonText,
+                              sortOption === 'desc' && styles.activeOptionText,
+                            ]}>
+                            Desc
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          style={[
+                            styles.optionButton,
                             sortOption === 'revelation' &&
-                              styles.activeOptionText,
-                          ]}>
-                          Rev
-                        </Text>
+                              styles.activeOptionButton,
+                          ]}
+                          onPress={() => changeSortOption('revelation')}>
+                          <Text
+                            style={[
+                              styles.optionButtonText,
+                              sortOption === 'revelation' &&
+                                styles.activeOptionText,
+                            ]}>
+                            Rev
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                    <View style={styles.rightControlsContainer}>
+                      <Pressable
+                        style={[
+                          styles.optionButton,
+                          {
+                            marginRight: moderateScale(15),
+                            marginTop: moderateScale(4),
+                          },
+                        ]}
+                        onPress={toggleShowLovedOnly}>
+                        <Animated.View style={heartAnimatedStyle}>
+                          <HeartIcon
+                            size={moderateScale(22)}
+                            color={
+                              showLovedOnly
+                                ? theme.colors.error
+                                : theme.colors.textSecondary
+                            }
+                            filled={true}
+                          />
+                        </Animated.View>
+                      </Pressable>
+                      <Pressable
+                        style={styles.viewModeButton}
+                        onPress={toggleViewMode}>
+                        <Feather
+                          name={viewMode === 'card' ? 'list' : 'grid'}
+                          size={moderateScale(16)}
+                          color={theme.colors.text}
+                        />
                       </Pressable>
                     </View>
-                  )}
-                  <View style={styles.rightControlsContainer}>
-                    <Pressable
-                      style={[
-                        styles.optionButton,
-                        {
-                          marginRight: moderateScale(15),
-                          marginTop: moderateScale(4),
-                        },
-                      ]}
-                      onPress={toggleShowLovedOnly}>
-                      <Animated.View style={heartAnimatedStyle}>
-                        <HeartIcon
-                          size={moderateScale(22)}
-                          color={
-                            showLovedOnly
-                              ? theme.colors.error
-                              : theme.colors.textSecondary
-                          }
-                          filled={true}
-                        />
-                      </Animated.View>
-                    </Pressable>
-                    <Pressable
-                      style={styles.viewModeButton}
-                      onPress={toggleViewMode}>
-                      <Feather
-                        name={viewMode === 'card' ? 'list' : 'grid'}
-                        size={moderateScale(16)}
-                        color={theme.colors.text}
-                      />
-                    </Pressable>
                   </View>
                 </View>
-              </View>
+              )}
             </View>
 
             {/* Child 2: Horizontal pager — lazy-rendered, swipeable */}
@@ -947,7 +1106,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                     style={{
                       width: screenWidth,
                       minHeight: contentMinHeight,
-                      paddingBottom: TOTAL_BOTTOM_PADDING,
+                      paddingBottom: bottomInset,
                     }}>
                     {renderedTabsRef.current.has(tab.id) ? (
                       tab.id === 'uploads' ? (
@@ -1010,41 +1169,45 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             </View>
           </RNAnimated.ScrollView>
 
-          {/* Sticky title bar — fades in as outer scroll collapses header */}
-          <RNAnimated.View
-            pointerEvents="none"
-            onLayout={e => setStickyTitleHeight(e.nativeEvent.layout.height)}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              zIndex: 15,
-              paddingTop: insets.top,
-              paddingBottom: moderateScale(10),
-              backgroundColor: theme.colors.background,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: stickyTitleOpacity,
-            }}>
-            <Text
+          {/* Sticky title bar — fades in as outer scroll collapses header (Android only) */}
+          {!isIOS && (
+            <RNAnimated.View
+              pointerEvents="none"
+              onLayout={e => setStickyTitleHeight(e.nativeEvent.layout.height)}
               style={{
-                fontSize: moderateScale(16),
-                fontFamily: 'Manrope-Bold',
-                color: theme.colors.text,
-                textAlign: 'center',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 15,
+                paddingTop: insets.top,
+                paddingBottom: moderateScale(10),
+                backgroundColor: theme.colors.background,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: stickyTitleOpacity,
               }}>
-              {reciter.name}
-            </Text>
-          </RNAnimated.View>
-          <NavigationButtons
-            insets={insets}
-            iconsOpacity={iconsOpacity}
-            iconsZIndex={iconsZIndex}
-            onSearchPress={() => {
-              setShowSearch(true);
-            }}
-          />
+              <Text
+                style={{
+                  fontSize: moderateScale(16),
+                  fontFamily: 'Manrope-Bold',
+                  color: theme.colors.text,
+                  textAlign: 'center',
+                }}>
+                {reciter.name}
+              </Text>
+            </RNAnimated.View>
+          )}
+          {!isIOS && (
+            <NavigationButtons
+              insets={insets}
+              iconsOpacity={iconsOpacity}
+              iconsZIndex={iconsZIndex}
+              onSearchPress={() => {
+                setShowSearch(true);
+              }}
+            />
+          )}
         </>
       )}
     </View>

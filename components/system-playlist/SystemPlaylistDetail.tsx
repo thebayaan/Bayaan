@@ -1,4 +1,11 @@
-import React, {useState, useEffect, useCallback, useMemo, useRef} from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+} from 'react';
 import {
   View,
   Text,
@@ -6,6 +13,9 @@ import {
   StyleSheet,
   Animated as RNAnimated,
   Alert,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {TrackItem} from '@/components/TrackItem';
@@ -29,6 +39,8 @@ import Color from 'color';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {getFeaturedReciters} from '@/data/featuredReciters';
 import {SheetManager} from 'react-native-actions-sheet';
+import {useNavigation} from 'expo-router';
+import {useHeaderHeight} from '@react-navigation/elements';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 
 interface PlaylistTrack {
@@ -114,14 +126,27 @@ function findBestRewayat(
   return reciter.rewayat[0]?.id;
 }
 
+const isIOS = Platform.OS === 'ios';
+
 const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   playlist,
 }) => {
   const {theme} = useTheme();
   const {updateQueue, addToQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
+  const navigation = useNavigation();
+  const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+
+  // iOS: reveal playlist title in native header on scroll
+  const headerTitleShownRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!isIOS) return;
+    navigation.setOptions({
+      headerTitle: '',
+    });
+  }, [navigation]);
 
   const [playlistData, setPlaylistData] = useState<PlaylistDataItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -642,16 +667,36 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         ListHeaderComponent={listHeaderComponent}
-        contentContainerStyle={styles.listContentContainer}
+        contentContainerStyle={[
+          styles.listContentContainer,
+          isIOS && {paddingTop: iosHeaderHeight},
+        ]}
         ListEmptyComponent={listEmptyComponent}
         onScroll={RNAnimated.event(
           [{nativeEvent: {contentOffset: {y: scrollY}}}],
-          {useNativeDriver: true},
+          {
+            useNativeDriver: true,
+            listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+              if (!isIOS) return;
+              const y = e.nativeEvent.contentOffset.y;
+              // Show title after scrolling past the header area
+              const threshold = moderateScale(120);
+              const shouldShow = y >= threshold;
+              if (shouldShow !== headerTitleShownRef.current) {
+                headerTitleShownRef.current = shouldShow;
+                navigation.setOptions({
+                  headerTitle: shouldShow ? playlist.title : '',
+                });
+              }
+            },
+          },
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      <CollectionStickyHeader title={playlist.title} scrollY={scrollY} />
+      {!isIOS && (
+        <CollectionStickyHeader title={playlist.title} scrollY={scrollY} />
+      )}
     </View>
   );
 };
