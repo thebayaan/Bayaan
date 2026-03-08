@@ -6,6 +6,10 @@ import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {WhatsNewModalRef} from '@/components/modals/WhatsNewOnboarding';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {
+  ALL_VARIANTS,
+  COPY_VARIANTS,
+} from '@/components/hero/random-recitation/types';
 import Color from 'color';
 
 interface DevMenuProps {
@@ -17,6 +21,20 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
   const [visible, setVisible] = useState(false);
   const [pressedItem, setPressedItem] = useState<string | null>(null);
   const showFloatingDevMenu = useDevSettingsStore(s => s.showFloatingDevMenu);
+  const randomCardVariantIndex = useDevSettingsStore(
+    s => s.randomCardVariantIndex,
+  );
+  const cycleRandomCardVariant = useDevSettingsStore(
+    s => s.cycleRandomCardVariant,
+  );
+
+  function getRandomCardLabel() {
+    if (randomCardVariantIndex < 0) return 'Auto (session seed)';
+    const variant = ALL_VARIANTS[randomCardVariantIndex];
+    if (!variant) return `#${randomCardVariantIndex}`;
+    if (variant.type === 'icon') return `${variant.design} / ${variant.icon}`;
+    return variant.design;
+  }
 
   if (!__DEV__ || !showFloatingDevMenu) return null;
 
@@ -151,6 +169,25 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
             onPressOut={() => setPressedItem(null)}>
             <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
               🗑️ Clear Layout Cache
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[
+              styles.devMenuItem,
+              {
+                backgroundColor:
+                  pressedItem === 'randomCard'
+                    ? Color(theme.colors.text).alpha(0.08).toString()
+                    : 'transparent',
+              },
+            ]}
+            onPress={() => cycleRandomCardVariant(ALL_VARIANTS.length)}
+            onPressIn={() => setPressedItem('randomCard')}
+            onPressOut={() => setPressedItem(null)}>
+            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
+              🎨 Random Card: {getRandomCardLabel()}
             </Text>
           </TouchableOpacity>
 

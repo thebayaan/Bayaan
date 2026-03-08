@@ -6,6 +6,10 @@ interface DevSettingsState {
   showFloatingDevMenu: boolean;
   setShowFloatingDevMenu: (show: boolean) => void;
   toggleFloatingDevMenu: () => void;
+  // Random card design override (-1 = auto/session seed)
+  randomCardVariantIndex: number;
+  setRandomCardVariantIndex: (index: number) => void;
+  cycleRandomCardVariant: (totalVariants: number) => void;
 }
 
 export const useDevSettingsStore = create<DevSettingsState>()(
@@ -16,6 +20,14 @@ export const useDevSettingsStore = create<DevSettingsState>()(
         set({showFloatingDevMenu: show}),
       toggleFloatingDevMenu: () =>
         set(state => ({showFloatingDevMenu: !state.showFloatingDevMenu})),
+      randomCardVariantIndex: -1,
+      setRandomCardVariantIndex: (index: number) =>
+        set({randomCardVariantIndex: index}),
+      cycleRandomCardVariant: (totalVariants: number) =>
+        set(state => {
+          const next = state.randomCardVariantIndex + 1;
+          return {randomCardVariantIndex: next >= totalVariants ? -1 : next};
+        }),
     }),
     {
       name: 'dev-settings-store',

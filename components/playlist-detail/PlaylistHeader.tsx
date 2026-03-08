@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
@@ -14,7 +14,7 @@ interface PlaylistHeaderProps {
   subtitle: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
-  onOptionsPress: () => void;
+  onOptionsPress?: () => void;
   theme: Theme;
 }
 
@@ -34,16 +34,18 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
     <View style={styles.headerContainer}>
       <View style={styles.contentArea}>
         {/* Back Button */}
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-          hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+        {Platform.OS !== 'ios' && (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
@@ -65,13 +67,15 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <Pressable style={styles.circleButton} onPress={onOptionsPress}>
-          <Feather
-            name="more-horizontal"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+        {Platform.OS !== 'ios' && onOptionsPress && (
+          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
         <Pressable
           style={[styles.circleButton, styles.playButton]}
           onPress={onPlayPress}>
@@ -99,14 +103,14 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(40),
+      paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
       paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',
-      top: insets.top + moderateScale(10),
+      top: Platform.OS === 'ios' ? moderateScale(10) : insets.top + moderateScale(10),
       left: moderateScale(15),
       zIndex: 10,
       padding: moderateScale(8),

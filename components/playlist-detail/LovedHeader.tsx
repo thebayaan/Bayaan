@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ interface LovedHeaderProps {
   subtitle: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
-  onOptionsPress: () => void;
+  onOptionsPress?: () => void;
   theme: Theme;
 }
 
@@ -54,13 +54,15 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <Pressable style={styles.circleButton} onPress={onOptionsPress}>
-          <Feather
-            name="more-horizontal"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+        {Platform.OS !== 'ios' && onOptionsPress && (
+          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
         <Pressable
           style={[styles.circleButton, styles.playButton]}
           onPress={onPlayPress}>
@@ -88,7 +90,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(40),
+      paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
       paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,

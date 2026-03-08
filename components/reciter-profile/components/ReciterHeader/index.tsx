@@ -1,11 +1,12 @@
 import React from 'react';
-import {View, Text} from 'react-native';
+import {View, Text, Platform} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {ReciterHeaderProps} from '@/components/reciter-profile/types';
+import {Link} from 'expo-router';
 
 export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   reciter,
@@ -15,22 +16,28 @@ export const ReciterHeader: React.FC<ReciterHeaderProps> = ({
   const {theme} = useTheme();
   const styles = createStyles(theme);
 
+  const topPadding = showSearch
+    ? moderateScale(15)
+    : Platform.OS === 'ios'
+      ? moderateScale(10)
+      : insets.top + moderateScale(50);
+
   return (
     <View
       style={[
         styles.container,
-        {
-          paddingTop: showSearch
-            ? moderateScale(15)
-            : insets.top + moderateScale(50),
-        },
+        {paddingTop: topPadding},
       ]}>
-      <ReciterImage
-        reciterName={reciter.name}
-        imageUrl={reciter.image_url || undefined}
-        style={styles.reciterImage}
-        profileIconSize={moderateScale(48)}
-      />
+      <Link.AppleZoomTarget>
+        <View>
+          <ReciterImage
+            reciterName={reciter.name}
+            imageUrl={reciter.image_url || undefined}
+            style={styles.reciterImage}
+            profileIconSize={moderateScale(48)}
+          />
+        </View>
+      </Link.AppleZoomTarget>
       <Text style={styles.reciterName} numberOfLines={2}>
         {reciter.name}
       </Text>
