@@ -25,7 +25,7 @@ CategorySectionHeader.displayName = 'CategorySectionHeader';
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     container: {
-      backgroundColor: theme.colors.background,
+      backgroundColor: 'transparent',
       paddingHorizontal: moderateScale(16),
       paddingTop: moderateScale(16),
       paddingBottom: moderateScale(8),
