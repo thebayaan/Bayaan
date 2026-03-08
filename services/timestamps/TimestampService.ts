@@ -1,5 +1,6 @@
 import {timestampDatabaseService} from './TimestampDatabaseService';
-import type {AyahTimestamp, TimestampMeta} from '@/types/timestamps';
+import {timestampFetchService} from './TimestampFetchService';
+import type {AyahTimestamp} from '@/types/timestamps';
 
 class TimestampService {
   private cache = new Map<string, AyahTimestamp[]>();
@@ -8,41 +9,53 @@ class TimestampService {
     await timestampDatabaseService.initialize();
   }
 
+  /**
+   * Check if a rewayat has timestamp support (static check, no network).
+   */
+  hasTimestampSource(rewayatId: string): boolean {
+    return timestampFetchService.getSourceForRewayat(rewayatId) !== null;
+  }
+
+  /**
+   * Get timestamps for a surah. Checks:
+   * 1. In-memory cache (instant)
+   * 2. SQLite cache (fast, ~1ms)
+   * 3. API fetch + cache (network, ~200ms)
+   */
   async getTimestampsForSurah(
     rewayatId: string,
     surahNumber: number,
   ): Promise<AyahTimestamp[] | null> {
     const key = `${rewayatId}-${surahNumber}`;
 
+    // 1. In-memory cache
     const cached = this.cache.get(key);
     if (cached) return cached;
 
     try {
-      const timestamps = await timestampDatabaseService.getTimestampsForSurah(
+      // 2. SQLite cache
+      const dbTimestamps = await timestampDatabaseService.getTimestampsForSurah(
         rewayatId,
         surahNumber,
       );
 
-      if (timestamps.length === 0) return null;
+      if (dbTimestamps.length > 0) {
+        this.cache.set(key, dbTimestamps);
+        return dbTimestamps;
+      }
 
-      this.cache.set(key, timestamps);
-      return timestamps;
-    } catch {
+      // 3. Fetch from API and cache
+      const fetched = await timestampFetchService.fetchAndCache(
+        rewayatId,
+        surahNumber,
+      );
+
+      if (fetched) {
+        this.cache.set(key, fetched);
+        return fetched;
+      }
+
       return null;
-    }
-  }
-
-  async hasTimestamps(rewayatId: string): Promise<boolean> {
-    try {
-      return await timestampDatabaseService.hasTimestamps(rewayatId);
-    } catch {
-      return false;
-    }
-  }
-
-  async getMeta(rewayatId: string): Promise<TimestampMeta | null> {
-    try {
-      return await timestampDatabaseService.getMeta(rewayatId);
     } catch {
       return null;
     }
