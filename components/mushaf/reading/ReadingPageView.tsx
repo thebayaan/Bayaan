@@ -14,6 +14,8 @@ import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseIte
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
+import {themeDataService} from '@/services/mushaf/ThemeDataService';
+import Color from 'color';
 import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
@@ -79,6 +81,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     s => s.transliterationFontSize,
   );
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const showThemes = useMushafSettingsStore(s => s.showThemes);
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
@@ -88,8 +91,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||
@@ -163,30 +166,43 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
         );
       }
 
+      const themeInfo = showThemes
+        ? themeDataService.getThemeForVerse(item.verse.verse_key)
+        : undefined;
+      const themeBg =
+        themeInfo && themeInfo.themeIndex % 2 === 0
+          ? Color(textColor).alpha(0.12).toString()
+          : undefined;
+
       return (
-        <VerseItem
+        <View
           key={item.verse.verse_key}
-          verse={item.verse}
-          onVersePress={handleVersePress}
-          textColor={textColor}
-          borderColor={borderColor}
-          showTranslation={showTranslation}
-          showTransliteration={showTransliteration}
-          showTajweed={showTajweed}
-          arabicFontFamily="Uthmani"
-          transliterationFontSize={transliterationFontSize}
-          translationFontSize={translationFontSize}
-          arabicFontSize={arabicFontSize}
-          fontMgr={fontMgr}
-          dkFontFamily={dkFontFamily}
-          indexedTajweedData={indexedTajweedData}
-          source="mushaf"
-          translationName={translationName}
-          translationId={selectedTranslationId}
-          showWBW={showWBW}
-          wbwShowTranslation={wbwShowTranslation}
-          wbwShowTransliteration={wbwShowTransliteration}
-        />
+          style={
+            themeBg ? {backgroundColor: themeBg, borderRadius: 6} : undefined
+          }>
+          <VerseItem
+            verse={item.verse}
+            onVersePress={handleVersePress}
+            textColor={textColor}
+            borderColor={borderColor}
+            showTranslation={showTranslation}
+            showTransliteration={showTransliteration}
+            showTajweed={showTajweed}
+            arabicFontFamily="Uthmani"
+            transliterationFontSize={transliterationFontSize}
+            translationFontSize={translationFontSize}
+            arabicFontSize={arabicFontSize}
+            fontMgr={fontMgr}
+            dkFontFamily={dkFontFamily}
+            indexedTajweedData={indexedTajweedData}
+            source="mushaf"
+            translationName={translationName}
+            translationId={selectedTranslationId}
+            showWBW={showWBW}
+            wbwShowTranslation={wbwShowTranslation}
+            wbwShowTransliteration={wbwShowTransliteration}
+          />
+        </View>
       );
     },
     [
@@ -209,6 +225,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       showWBW,
       wbwShowTranslation,
       wbwShowTransliteration,
+      showThemes,
+      textColor,
     ],
   );
 

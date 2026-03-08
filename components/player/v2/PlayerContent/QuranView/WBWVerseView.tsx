@@ -194,7 +194,8 @@ function computeColumnWidth(
       measureTextWidth(transliteration, fontMgr, TRANSLIT_FONT_SIZE),
     );
   }
-  return Math.max(maxWidth, MIN_COL_WIDTH);
+  // Add small buffer to account for Skia↔RN text measurement differences
+  return Math.max(maxWidth + 2, MIN_COL_WIDTH);
 }
 
 function computeRTLLayout(
@@ -369,7 +370,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     const tajweedWords = useMemo(
       () =>
         showTajweed && indexedTajweedData
-          ? indexedTajweedData[verseKey] ?? null
+          ? (indexedTajweedData[verseKey] ?? null)
           : null,
       [showTajweed, indexedTajweedData, verseKey],
     );
@@ -576,8 +577,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
                     style={[
                       styles.transliterationText,
                       {color: derivedColors.transliteration},
-                    ]}
-                    numberOfLines={1}>
+                    ]}>
                     {item.transliteration}
                   </Text>
                 )}
@@ -586,8 +586,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
                     style={[
                       styles.translationText,
                       {color: derivedColors.translation},
-                    ]}
-                    numberOfLines={1}>
+                    ]}>
                     {item.translation}
                   </Text>
                 )}

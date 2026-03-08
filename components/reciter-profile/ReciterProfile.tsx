@@ -17,6 +17,7 @@ import {
   useWindowDimensions,
   InteractionManager,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -60,8 +61,6 @@ import {moderateScale} from 'react-native-size-matters';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 import {useNavigation} from 'expo-router';
-import {useHeaderHeight} from '@react-navigation/elements';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
 
 interface ReciterProfileProps {
   id: string;
@@ -178,7 +177,6 @@ const SurahListSkeleton: React.FC<{theme: any}> = React.memo(({theme}) => {
 });
 
 const isIOS = Platform.OS === 'ios';
-const USE_GLASS = isIOS && isLiquidGlassAvailable();
 
 const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
@@ -190,7 +188,6 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const bottomInset = useBottomInset();
   const {height: screenHeight, width: screenWidth} = useWindowDimensions();
   const navigation = useNavigation();
-  const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
 
   // Synchronous reciter init — data available on first render, no deferred loading delay
   const initialReciter = useMemo(
@@ -219,7 +216,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   ).current;
   const [showSearch, setShowSearch] = useState(false);
 
-  // iOS native header: search icon in headerRight
+  // iOS native header: search icon in headerRight, hidden when search is active
   const headerTitleShownRef = useRef(false);
   useLayoutEffect(() => {
     if (!isIOS) return;
@@ -228,17 +225,24 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       headerTitle: '',
       headerBackTitle: ' ',
       headerBackButtonDisplayMode: 'minimal',
-      headerRight: () => (
-        <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
-          <Feather
-            name="search"
-            size={moderateScale(20)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      ),
+      headerTransparent: false,
+      headerStyle: {backgroundColor: theme.colors.background},
+      headerShadowVisible: false,
+      // Hide back button and search icon when SearchView is open (it has its own cancel)
+      headerBackVisible: !showSearch,
+      headerRight: showSearch
+        ? () => null
+        : () => (
+            <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
+              <Feather
+                name="search"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+          ),
     });
-  }, [navigation, theme]);
+  }, [navigation, theme, showSearch]);
 
   const [viewMode, setViewMode] = useState<ReciterProfileViewMode>(
     useSettings(state => state.reciterProfileViewMode),
@@ -263,9 +267,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const [stickyHeight, setStickyHeight] = useState(0);
   const [stickyTitleHeight, setStickyTitleHeight] = useState(0);
 
-  // iOS: sticky section must offset below the native navigation header
+  // iOS: solid header — content starts below header, no offset needed
   // Android: offset below the custom sticky title bar overlay
-  const stickyPinOffset = isIOS ? iosHeaderHeight : stickyTitleHeight;
+  const stickyPinOffset = isIOS ? 0 : stickyTitleHeight;
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
   const {startNewChain} = useRecentlyPlayedStore();
@@ -780,38 +784,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
         translucent
         backgroundColor="transparent"
       />
-      {showSearch ? (
-        <SearchView
-          surahs={filteredSurahs}
-          onSurahPress={handleSurahPress}
-          reciterId={currentReciterId}
-          isLoved={isLovedWithCurrentRewayat}
-          onOptionsPress={(surah: Surah) =>
-            SheetManager.show('surah-options', {
-              payload: {
-                surah,
-                reciterId: currentReciterId,
-                rewayatId: selectedRewayat?.id,
-                onAddToQueue: handleAddToQueue,
-                hideGoToReciter: true,
-              },
-            })
-          }
-          searchQuery={searchQuery}
-          onSearchChange={handleSearch}
-          onCloseSearch={() => {
-            setShowSearch(false);
-            setSearchQuery('');
-          }}
-          availableRewayat={rewayatList}
-          selectedRewayatId={selectedRewayatId}
-          onRewayatSelect={handleRewayatChange}
-          isDarkMode={theme.isDarkMode}
-          reciterName={reciter.name}
-          viewMode={viewMode}
-          getColorForSurah={getColorForSurah}
-        />
-      ) : (
+      {/* Main content — always mounted to preserve pager scroll position */}
+      <View style={{flex: 1}} pointerEvents={showSearch ? 'none' : 'auto'}>
         <>
           {/* Single outer scroll: header collapses, tab bar sticks, content scrolls */}
           <RNAnimated.ScrollView
@@ -870,206 +844,100 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               onLayout={e => setStickyHeight(e.nativeEvent.layout.height)}
               style={{paddingTop: stickyPinOffset}}
               pointerEvents="box-none">
-              {USE_GLASS ? (
-                <View style={{
-                  marginHorizontal: moderateScale(10),
-                  marginBottom: moderateScale(4),
-                }}>
-                  <GlassView style={{
-                    borderRadius: moderateScale(16),
-                    overflow: 'hidden',
-                    paddingVertical: moderateScale(4),
-                  }}>
-                    {tabs.length > 0 && (
-                      <RewayatTabBar
-                        tabs={tabs}
-                        activeTabId={activeTab}
-                        onTabChange={handleTabChange}
-                        theme={theme}
-                        scrollX={scrollX}
-                        screenWidth={screenWidth}
-                      />
-                    )}
-                    <View style={[styles.controlsRow, {backgroundColor: 'transparent'}]}>
-                      {activeTab !== 'uploads' && (
-                        <View style={styles.sortOptionsContainer}>
-                          <Pressable
-                            style={[
-                              styles.optionButton,
-                              sortOption === 'asc' && styles.activeOptionButton,
-                            ]}
-                            onPress={() => changeSortOption('asc')}>
-                            <Text
-                              style={[
-                                styles.optionButtonText,
-                                sortOption === 'asc' && styles.activeOptionText,
-                              ]}>
-                              Asc
-                            </Text>
-                          </Pressable>
-                          <Pressable
-                            style={[
-                              styles.optionButton,
-                              sortOption === 'desc' && styles.activeOptionButton,
-                            ]}
-                            onPress={() => changeSortOption('desc')}>
-                            <Text
-                              style={[
-                                styles.optionButtonText,
-                                sortOption === 'desc' && styles.activeOptionText,
-                              ]}>
-                              Desc
-                            </Text>
-                          </Pressable>
-                          <Pressable
-                            style={[
-                              styles.optionButton,
-                              sortOption === 'revelation' &&
-                                styles.activeOptionButton,
-                            ]}
-                            onPress={() => changeSortOption('revelation')}>
-                            <Text
-                              style={[
-                                styles.optionButtonText,
-                                sortOption === 'revelation' &&
-                                  styles.activeOptionText,
-                              ]}>
-                              Rev
-                            </Text>
-                          </Pressable>
-                        </View>
-                      )}
-                      <View style={styles.rightControlsContainer}>
-                        <Pressable
-                          style={[
-                            styles.optionButton,
-                            {
-                              marginRight: moderateScale(15),
-                              marginTop: moderateScale(4),
-                            },
-                          ]}
-                          onPress={toggleShowLovedOnly}>
-                          <Animated.View style={heartAnimatedStyle}>
-                            <HeartIcon
-                              size={moderateScale(22)}
-                              color={
-                                showLovedOnly
-                                  ? theme.colors.error
-                                  : theme.colors.textSecondary
-                              }
-                              filled={true}
-                            />
-                          </Animated.View>
-                        </Pressable>
-                        <Pressable
-                          style={styles.viewModeButton}
-                          onPress={toggleViewMode}>
-                          <Feather
-                            name={viewMode === 'card' ? 'list' : 'grid'}
-                            size={moderateScale(16)}
-                            color={theme.colors.text}
-                          />
-                        </Pressable>
-                      </View>
-                    </View>
-                  </GlassView>
-                </View>
-              ) : (
-                <View style={{backgroundColor: theme.colors.background}}>
-                  {tabs.length > 0 && (
-                    <RewayatTabBar
-                      tabs={tabs}
-                      activeTabId={activeTab}
-                      onTabChange={handleTabChange}
-                      theme={theme}
-                      scrollX={scrollX}
-                      screenWidth={screenWidth}
-                    />
-                  )}
-                  <View style={styles.controlsRow}>
-                    {activeTab !== 'uploads' && (
-                      <View style={styles.sortOptionsContainer}>
-                        <Pressable
-                          style={[
-                            styles.optionButton,
-                            sortOption === 'asc' && styles.activeOptionButton,
-                          ]}
-                          onPress={() => changeSortOption('asc')}>
-                          <Text
-                            style={[
-                              styles.optionButtonText,
-                              sortOption === 'asc' && styles.activeOptionText,
-                            ]}>
-                            Asc
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          style={[
-                            styles.optionButton,
-                            sortOption === 'desc' && styles.activeOptionButton,
-                          ]}
-                          onPress={() => changeSortOption('desc')}>
-                          <Text
-                            style={[
-                              styles.optionButtonText,
-                              sortOption === 'desc' && styles.activeOptionText,
-                            ]}>
-                            Desc
-                          </Text>
-                        </Pressable>
-                        <Pressable
-                          style={[
-                            styles.optionButton,
-                            sortOption === 'revelation' &&
-                              styles.activeOptionButton,
-                          ]}
-                          onPress={() => changeSortOption('revelation')}>
-                          <Text
-                            style={[
-                              styles.optionButtonText,
-                              sortOption === 'revelation' &&
-                                styles.activeOptionText,
-                            ]}>
-                            Rev
-                          </Text>
-                        </Pressable>
-                      </View>
-                    )}
-                    <View style={styles.rightControlsContainer}>
+              <View style={{backgroundColor: theme.colors.background}}>
+                {tabs.length > 0 && (
+                  <RewayatTabBar
+                    tabs={tabs}
+                    activeTabId={activeTab}
+                    onTabChange={handleTabChange}
+                    theme={theme}
+                    scrollX={scrollX}
+                    screenWidth={screenWidth}
+                  />
+                )}
+                <View style={styles.controlsRow}>
+                  {activeTab !== 'uploads' && (
+                    <View style={styles.sortOptionsContainer}>
                       <Pressable
                         style={[
                           styles.optionButton,
-                          {
-                            marginRight: moderateScale(15),
-                            marginTop: moderateScale(4),
-                          },
+                          sortOption === 'asc' && styles.activeOptionButton,
                         ]}
-                        onPress={toggleShowLovedOnly}>
-                        <Animated.View style={heartAnimatedStyle}>
-                          <HeartIcon
-                            size={moderateScale(22)}
-                            color={
-                              showLovedOnly
-                                ? theme.colors.error
-                                : theme.colors.textSecondary
-                            }
-                            filled={true}
-                          />
-                        </Animated.View>
+                        onPress={() => changeSortOption('asc')}>
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'asc' && styles.activeOptionText,
+                          ]}>
+                          Asc
+                        </Text>
                       </Pressable>
                       <Pressable
-                        style={styles.viewModeButton}
-                        onPress={toggleViewMode}>
-                        <Feather
-                          name={viewMode === 'card' ? 'list' : 'grid'}
-                          size={moderateScale(16)}
-                          color={theme.colors.text}
-                        />
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'desc' && styles.activeOptionButton,
+                        ]}
+                        onPress={() => changeSortOption('desc')}>
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'desc' && styles.activeOptionText,
+                          ]}>
+                          Desc
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={[
+                          styles.optionButton,
+                          sortOption === 'revelation' &&
+                            styles.activeOptionButton,
+                        ]}
+                        onPress={() => changeSortOption('revelation')}>
+                        <Text
+                          style={[
+                            styles.optionButtonText,
+                            sortOption === 'revelation' &&
+                              styles.activeOptionText,
+                          ]}>
+                          Rev
+                        </Text>
                       </Pressable>
                     </View>
+                  )}
+                  <View style={styles.rightControlsContainer}>
+                    <Pressable
+                      style={[
+                        styles.optionButton,
+                        {
+                          marginRight: moderateScale(15),
+                          marginTop: moderateScale(4),
+                        },
+                      ]}
+                      onPress={toggleShowLovedOnly}>
+                      <Animated.View style={heartAnimatedStyle}>
+                        <HeartIcon
+                          size={moderateScale(22)}
+                          color={
+                            showLovedOnly
+                              ? theme.colors.error
+                              : theme.colors.textSecondary
+                          }
+                          filled={true}
+                        />
+                      </Animated.View>
+                    </Pressable>
+                    <Pressable
+                      style={styles.viewModeButton}
+                      onPress={toggleViewMode}>
+                      <Feather
+                        name={viewMode === 'card' ? 'list' : 'grid'}
+                        size={moderateScale(16)}
+                        color={theme.colors.text}
+                      />
+                    </Pressable>
                   </View>
                 </View>
-              )}
+              </View>
             </View>
 
             {/* Child 2: Horizontal pager — lazy-rendered, swipeable */}
@@ -1209,6 +1077,41 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
             />
           )}
         </>
+      </View>
+      {/* Search overlay — mounted on top, preserves main content underneath */}
+      {showSearch && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+          <SearchView
+            surahs={filteredSurahs}
+            onSurahPress={handleSurahPress}
+            reciterId={currentReciterId}
+            isLoved={isLovedWithCurrentRewayat}
+            onOptionsPress={(surah: Surah) =>
+              SheetManager.show('surah-options', {
+                payload: {
+                  surah,
+                  reciterId: currentReciterId,
+                  rewayatId: selectedRewayat?.id,
+                  onAddToQueue: handleAddToQueue,
+                  hideGoToReciter: true,
+                },
+              })
+            }
+            searchQuery={searchQuery}
+            onSearchChange={handleSearch}
+            onCloseSearch={() => {
+              setShowSearch(false);
+              setSearchQuery('');
+            }}
+            availableRewayat={rewayatList}
+            selectedRewayatId={selectedRewayatId}
+            onRewayatSelect={handleRewayatChange}
+            isDarkMode={theme.isDarkMode}
+            reciterName={reciter.name}
+            viewMode={viewMode}
+            getColorForSurah={getColorForSurah}
+          />
+        </View>
       )}
     </View>
   );

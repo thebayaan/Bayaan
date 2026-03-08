@@ -33,6 +33,8 @@ import {
   MirrorWavesIcon,
   HighlightIcon,
   ChainLinksIcon,
+  GroupedLinesIcon,
+  BreakdownIcon,
 } from '@/components/Icons';
 import Color from 'color';
 import {router} from 'expo-router';
@@ -48,6 +50,8 @@ import {ShareContent} from './verse-actions/ShareContent';
 import {SimilarVersesContent} from './verse-actions/SimilarVersesContent';
 import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
+import {ThemeContent} from './verse-actions/ThemeContent';
+import {WBWContent} from './verse-actions/WBWContent';
 
 const surahData = require('@/data/surahData.json');
 const quranVerses = require('@/data/quran.json');
@@ -61,6 +65,8 @@ type ActiveScreen =
   | 'phrases'
   | 'translation'
   | 'tafseer'
+  | 'theme'
+  | 'wbw'
   | null;
 
 const SCREEN_TITLES: Record<string, string> = {
@@ -71,6 +77,8 @@ const SCREEN_TITLES: Record<string, string> = {
   phrases: 'Shared Phrases',
   translation: 'Translation',
   tafseer: 'Tafseer',
+  theme: 'Theme',
+  wbw: 'Word by Word',
 };
 
 const SHEET_HEIGHT = Dimensions.get('window').height * 0.85;
@@ -232,6 +240,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleTafseer = useCallback(() => {
     setActiveScreen('tafseer');
+  }, []);
+
+  const handleTheme = useCallback(() => {
+    setActiveScreen('theme');
+  }, []);
+
+  const handleWBW = useCallback(() => {
+    setActiveScreen('wbw');
   }, []);
 
   // QUL data: theme label and per-feature availability
@@ -464,7 +480,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const isSimilar = activeScreen === 'similar' || activeScreen === 'phrases';
   const isFullScreen =
-    activeScreen === 'translation' || activeScreen === 'tafseer';
+    activeScreen === 'translation' ||
+    activeScreen === 'tafseer' ||
+    activeScreen === 'theme' ||
+    activeScreen === 'wbw';
 
   return (
     <ActionSheet
@@ -510,6 +529,20 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 )}
                 {activeScreen === 'tafseer' && (
                   <TafseerContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'theme' && (
+                  <ThemeContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
+                    onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'wbw' && (
+                  <WBWContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     onBack={handleBack}
@@ -688,6 +721,40 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       color={theme.colors.text}
                     />
                     <Text style={styles.optionText}>Tafseer</Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {!isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleTheme}>
+                    <GroupedLinesIcon
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Theme</Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {!isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleWBW}>
+                    <BreakdownIcon
+                      size={moderateScale(18)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Word by Word</Text>
                   </Pressable>
                 </>
               ) : null}

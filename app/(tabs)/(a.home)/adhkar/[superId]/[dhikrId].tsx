@@ -176,6 +176,7 @@ const DhikrReaderScreen: React.FC = () => {
   // Set native header with title + position subtitle
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerTitleAlign: 'center',
       headerTitle: () => (
         <View style={{alignItems: 'center'}}>
           <Text

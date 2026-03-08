@@ -1003,22 +1003,121 @@ export const MushafPagePillIcon: React.FC<IconProps> = ({color, size}) => (
       strokeWidth={1.3}
     />
     {/* Divider 1 */}
-    <Line x1="6" y1="4" x2="18" y2="4" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+    <Line
+      x1="6"
+      y1="4"
+      x2="18"
+      y2="4"
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      opacity={0.9}
+    />
     {/* Surah 1 */}
-    <Line x1="7" y1="5.8" x2="17" y2="5.8" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
-    <Line x1="8" y1="7.2" x2="16" y2="7.2" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line
+      x1="7"
+      y1="5.8"
+      x2="17"
+      y2="5.8"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="8"
+      y1="7.2"
+      x2="16"
+      y2="7.2"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
     {/* Divider 2 */}
-    <Line x1="6" y1="9" x2="18" y2="9" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+    <Line
+      x1="6"
+      y1="9"
+      x2="18"
+      y2="9"
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      opacity={0.9}
+    />
     {/* Surah 2 */}
-    <Line x1="7" y1="10.8" x2="17" y2="10.8" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
-    <Line x1="7.5" y1="12.2" x2="16.5" y2="12.2" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
-    <Line x1="9" y1="13.6" x2="15" y2="13.6" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line
+      x1="7"
+      y1="10.8"
+      x2="17"
+      y2="10.8"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="7.5"
+      y1="12.2"
+      x2="16.5"
+      y2="12.2"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="9"
+      y1="13.6"
+      x2="15"
+      y2="13.6"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
     {/* Divider 3 */}
-    <Line x1="6" y1="15.4" x2="18" y2="15.4" stroke={color} strokeWidth={1.4} strokeLinecap="round" opacity={0.9} />
+    <Line
+      x1="6"
+      y1="15.4"
+      x2="18"
+      y2="15.4"
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      opacity={0.9}
+    />
     {/* Surah 3 */}
-    <Line x1="7" y1="17.2" x2="17" y2="17.2" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
-    <Line x1="8" y1="18.6" x2="16" y2="18.6" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
-    <Line x1="9" y1="20" x2="15" y2="20" stroke={color} strokeWidth={0.7} strokeLinecap="round" opacity={0.45} />
+    <Line
+      x1="7"
+      y1="17.2"
+      x2="17"
+      y2="17.2"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="8"
+      y1="18.6"
+      x2="16"
+      y2="18.6"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="9"
+      y1="20"
+      x2="15"
+      y2="20"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
   </Svg>
 );
 
@@ -1710,6 +1809,178 @@ export const SettingsIcon: React.FC<IconProps> = ({color, size, filled}) => (
         />
       </>
     )}
+  </Svg>
+);
+
+export const GroupedLinesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={3}
+      y={2}
+      width={3}
+      height={8}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
+    />
+    <Line
+      x1={9}
+      y1={4}
+      x2={20}
+      y2={4}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={9}
+      y1={8}
+      x2={17}
+      y2={8}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Rect
+      x={3}
+      y={14}
+      width={3}
+      height={8}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
+    />
+    <Line
+      x1={9}
+      y1={16}
+      x2={20}
+      y2={16}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={9}
+      y1={20}
+      x2={15}
+      y2={20}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const BreakdownIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={3}
+      y={2}
+      width={18}
+      height={6}
+      rx={2}
+      stroke={color}
+      strokeWidth={1.4}
+    />
+    <Line
+      x1={7}
+      y1={5}
+      x2={17}
+      y2={5}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={8}
+      y1={8}
+      x2={8}
+      y2={11}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.4}
+    />
+    <Line
+      x1={16}
+      y1={8}
+      x2={16}
+      y2={11}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.4}
+    />
+    <Line
+      x1={12}
+      y1={8}
+      x2={12}
+      y2={11}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.4}
+    />
+    <Rect
+      x={2}
+      y={11}
+      width={5.5}
+      height={5}
+      rx={1.5}
+      fill={color}
+      opacity={0.1}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Rect
+      x={9.25}
+      y={11}
+      width={5.5}
+      height={5}
+      rx={1.5}
+      fill={color}
+      opacity={0.1}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Rect
+      x={16.5}
+      y={11}
+      width={5.5}
+      height={5}
+      rx={1.5}
+      fill={color}
+      opacity={0.1}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Line
+      x1={3}
+      y1={19}
+      x2={6.5}
+      y2={19}
+      stroke={color}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1={10.25}
+      y1={19}
+      x2={13.75}
+      y2={19}
+      stroke={color}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1={17.5}
+      y1={19}
+      x2={21}
+      y2={19}
+      stroke={color}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
   </Svg>
 );
 
