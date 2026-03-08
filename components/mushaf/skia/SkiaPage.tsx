@@ -27,6 +27,7 @@ import {
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
+import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -110,6 +111,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   }, [lineWidth]);
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const showThemes = useMushafSettingsStore(s => s.showThemes);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
@@ -117,8 +119,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : uthmaniFont === 'v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
 
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,
@@ -502,7 +504,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         ? new Set(selectedVerseKeys)
         : null;
 
-    if (!hasAnnotations && !hasPlayback && !selectedSet) return EMPTY_BG_MAP;
+    if (!hasAnnotations && !hasPlayback && !selectedSet && !showThemes)
+      return EMPTY_BG_MAP;
 
     const map = new Map<
       number,
@@ -527,6 +530,27 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         });
       }
     };
+
+    // Layer 0: Theme zebra highlights (lowest priority)
+    if (showThemes) {
+      const themeColor = Color(textColor).alpha(0.04).toString();
+      const pageVerseKeys =
+        mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber);
+      for (const vk of pageVerseKeys) {
+        // Skip verses that will be painted by a higher layer
+        if (persistentHighlights[vk]) continue;
+        if (playbackVerseKey === vk) continue;
+        if (selectedSet?.has(vk)) continue;
+
+        const themeInfo = themeDataService.getThemeForVerse(vk);
+        if (!themeInfo) continue;
+
+        // Only paint even-indexed themes; odd themes stay transparent (zebra)
+        if (themeInfo.themeIndex % 2 !== 0) continue;
+
+        addVerseHighlight(vk, themeColor);
+      }
+    }
 
     // Layer 1: Persistent annotation highlights (lowest priority)
     for (const [verseKey, colorName] of Object.entries(persistentHighlights)) {
@@ -559,6 +583,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     pageNumber,
     selectionBgColor,
     EMPTY_BG_MAP,
+    showThemes,
+    textColor,
   ]);
 
   if (!fontMgr || !justResults) {
