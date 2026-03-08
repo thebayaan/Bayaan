@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {AyahTimestamp} from '@/types/timestamps';
 import {RECITERS} from '@/data/reciterData';
 import {timestampService} from '@/services/timestamps/TimestampService';
-import {timestampDatabaseService} from '@/services/timestamps/TimestampDatabaseService';
+import {timestampFetchService} from '@/services/timestamps/TimestampFetchService';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
@@ -393,13 +393,12 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
 
       computeAvailableReciters: async () => {
         try {
-          const allMeta = await timestampDatabaseService.getAllMeta();
-          const rewayatIds = new Set(allMeta.map(m => m.rewayatId));
-
           const available: AvailableReciter[] = [];
           for (const reciter of RECITERS) {
             for (const rewayat of reciter.rewayat) {
-              if (rewayatIds.has(rewayat.id)) {
+              if (
+                timestampFetchService.getSourceForRewayat(rewayat.id) !== null
+              ) {
                 available.push({
                   rewayatId: rewayat.id,
                   reciterName: reciter.name,
