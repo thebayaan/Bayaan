@@ -2,7 +2,7 @@ import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ThemeMode, PrimaryColor, Theme, createTheme} from '@/utils/themeUtils';
-import {Appearance, Platform} from 'react-native';
+import {Appearance} from 'react-native';
 
 interface ThemeState {
   themeMode: ThemeMode;
@@ -43,14 +43,12 @@ export const useThemeStore = create<ThemeState>()(
       primaryColor: 'Blue',
       theme: getEffectiveTheme('system', 'Blue'),
 
-      setThemeMode: mode =>
+      setThemeMode: _mode =>
         set(state => {
-          // On iOS, always follow system appearance (liquid glass requires it)
-          const effectiveMode =
-            Platform.OS === 'ios' ? 'system' : mode;
-          const newTheme = getEffectiveTheme(effectiveMode, state.primaryColor);
+          // Always follow system appearance
+          const newTheme = getEffectiveTheme('system', state.primaryColor);
           return {
-            themeMode: effectiveMode,
+            themeMode: 'system' as ThemeMode,
             theme: newTheme,
           };
         }),
@@ -73,13 +71,11 @@ export const useThemeStore = create<ThemeState>()(
       }),
       onRehydrateStorage: () => state => {
         if (state) {
-          // On iOS, always force system theme (liquid glass requires it)
-          const effectiveMode =
-            Platform.OS === 'ios' ? 'system' : state.themeMode;
-          const theme = getEffectiveTheme(effectiveMode, state.primaryColor);
+          // Always force system theme
+          const theme = getEffectiveTheme('system', state.primaryColor);
           useThemeStore.setState({
             ...state,
-            themeMode: effectiveMode,
+            themeMode: 'system',
             theme,
           });
         }
