@@ -8,7 +8,9 @@ import {Icon} from '@rneui/themed';
 import {Feather} from '@expo/vector-icons';
 import {
   MushafPagePillIcon,
-  ScrollModePillIcon,
+  ListViewPillIcon,
+  HorizontalScrollPillIcon,
+  VerticalScrollPillIcon,
   BookLayoutPillIcon,
   FullscreenPillIcon,
 } from '@/components/Icons';
@@ -28,6 +30,7 @@ import {
   DISPLAY_MIN,
   DISPLAY_MAX,
   type MushafRenderer,
+  type MushafScrollDirection,
 } from '@/store/mushafSettingsStore';
 
 // --- Pre-cache Translation/Transliteration Data --- //
@@ -416,6 +419,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     setPageLayout,
     viewMode,
     setViewMode,
+    scrollDirection,
+    setScrollDirection,
     showWBW,
     wbwShowTranslation,
     wbwShowTransliteration,
@@ -430,8 +435,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const fontMgr =
     mushafPreloadService.initialized && digitalKhattDataService.initialized
       ? mushafPreloadService.fontMgr
@@ -490,10 +495,10 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     <View style={[styles.container, containerStyle]}>
       {showTitle && <Text style={styles.title}>Mushaf Settings</Text>}
 
-      {/* SCROLL DIRECTION Section (hidden from player context) */}
+      {/* VIEW TYPE Section (hidden from player context) */}
       {context !== 'player' && (
         <>
-          <Text style={styles.sectionHeader}>SCROLL DIRECTION</Text>
+          <Text style={styles.sectionHeader}>VIEW TYPE</Text>
           <View style={styles.card}>
             <Pressable
               style={({pressed}) => [
@@ -505,7 +510,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
               />
-              <Text style={styles.settingRowLabel}>Horizontal</Text>
+              <Text style={styles.settingRowLabel}>Mushaf</Text>
               {viewMode === 'mushaf' && (
                 <Feather
                   name="check"
@@ -520,13 +525,13 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setViewMode('reading')}>
-              <ScrollModePillIcon
+              onPress={() => setViewMode('list')}>
+              <ListViewPillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
               />
-              <Text style={styles.settingRowLabel}>Vertical</Text>
-              {viewMode === 'reading' && (
+              <Text style={styles.settingRowLabel}>List</Text>
+              {viewMode === 'list' && (
                 <Feather
                   name="check"
                   size={moderateScale(18)}
@@ -536,20 +541,20 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             </Pressable>
           </View>
 
-          <Text style={styles.sectionHeader}>PAGE DESIGN</Text>
+          <Text style={styles.sectionHeader}>SCROLL DIRECTION</Text>
           <View style={styles.card}>
             <Pressable
               style={({pressed}) => [
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setPageLayout('fullscreen')}>
-              <FullscreenPillIcon
+              onPress={() => setScrollDirection('horizontal')}>
+              <HorizontalScrollPillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
               />
-              <Text style={styles.settingRowLabel}>Fullscreen</Text>
-              {pageLayout === 'fullscreen' && (
+              <Text style={styles.settingRowLabel}>Horizontal</Text>
+              {scrollDirection === 'horizontal' && (
                 <Feather
                   name="check"
                   size={moderateScale(18)}
@@ -563,13 +568,13 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 styles.settingRow,
                 pressed && styles.settingRowPressed,
               ]}
-              onPress={() => setPageLayout('book')}>
-              <BookLayoutPillIcon
+              onPress={() => setScrollDirection('vertical')}>
+              <VerticalScrollPillIcon
                 size={moderateScale(20)}
                 color={Color(theme.colors.text).alpha(0.7).toString()}
               />
-              <Text style={styles.settingRowLabel}>Book</Text>
-              {pageLayout === 'book' && (
+              <Text style={styles.settingRowLabel}>Vertical</Text>
+              {scrollDirection === 'vertical' && (
                 <Feather
                   name="check"
                   size={moderateScale(18)}
@@ -578,11 +583,59 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               )}
             </Pressable>
           </View>
+
+          {/* PAGE DESIGN: only in mushaf view + horizontal */}
+          {viewMode === 'mushaf' && scrollDirection === 'horizontal' && (
+            <>
+              <Text style={styles.sectionHeader}>PAGE DESIGN</Text>
+              <View style={styles.card}>
+                <Pressable
+                  style={({pressed}) => [
+                    styles.settingRow,
+                    pressed && styles.settingRowPressed,
+                  ]}
+                  onPress={() => setPageLayout('fullscreen')}>
+                  <FullscreenPillIcon
+                    size={moderateScale(20)}
+                    color={Color(theme.colors.text).alpha(0.7).toString()}
+                  />
+                  <Text style={styles.settingRowLabel}>Fullscreen</Text>
+                  {pageLayout === 'fullscreen' && (
+                    <Feather
+                      name="check"
+                      size={moderateScale(18)}
+                      color={Color(theme.colors.text).alpha(0.7).toString()}
+                    />
+                  )}
+                </Pressable>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.settingRow,
+                    pressed && styles.settingRowPressed,
+                  ]}
+                  onPress={() => setPageLayout('book')}>
+                  <BookLayoutPillIcon
+                    size={moderateScale(20)}
+                    color={Color(theme.colors.text).alpha(0.7).toString()}
+                  />
+                  <Text style={styles.settingRowLabel}>Book</Text>
+                  {pageLayout === 'book' && (
+                    <Feather
+                      name="check"
+                      size={moderateScale(18)}
+                      color={Color(theme.colors.text).alpha(0.7).toString()}
+                    />
+                  )}
+                </Pressable>
+              </View>
+            </>
+          )}
         </>
       )}
 
-      {/* Word by Word Section */}
-      {context !== 'player' && (
+      {/* Word by Word Section — only in list view */}
+      {context !== 'player' && viewMode === 'list' && (
         <>
           <Text style={styles.sectionHeader}>WORD BY WORD</Text>
           <View style={styles.card}>
@@ -637,8 +690,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         </>
       )}
 
-      {/* Player View Section (shown in player context OR mushaf reading mode) */}
-      {(context !== 'mushaf' || viewMode === 'reading') && (
+      {/* Translation/Transliteration Section (shown in player context OR list view mode) */}
+      {(context !== 'mushaf' || viewMode === 'list') && (
         <>
           <View style={styles.card}>
             <FontSizeControl
