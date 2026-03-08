@@ -32,7 +32,7 @@ export default function HomeLayout() {
         }}
       />
       <Stack.Screen name="playlist/[id]" options={{title: ''}} />
-      <Stack.Screen name="adhkar" options={{}} />
+      <Stack.Screen name="adhkar" options={{headerShown: false}} />
       <Stack.Screen name="settings/index" options={{}} />
       <Stack.Screen name="settings/storage" options={{}} />
       <Stack.Screen name="settings/about" options={{}} />

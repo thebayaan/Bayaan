@@ -1,10 +1,10 @@
 import React, {useMemo} from 'react';
-import {Text, Pressable, ScrollView, View, Linking, Switch, Platform} from 'react-native';
+import {Text, Pressable, ScrollView, View, Linking, Switch} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Theme, ThemeMode} from '@/utils/themeUtils';
-import {Feather, Ionicons, MaterialIcons} from '@expo/vector-icons';
+import {Theme} from '@/utils/themeUtils';
+import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
@@ -32,19 +32,6 @@ const isExternalLink = (type: string): boolean => {
     type,
   );
 };
-
-interface ThemeOption {
-  label: string;
-  value: ThemeMode;
-  icon: string;
-  iconType: string;
-}
-
-const themeOptions: ThemeOption[] = [
-  {label: 'System', value: 'system', icon: 'smartphone', iconType: 'feather'},
-  {label: 'Light', value: 'light', icon: 'sun', iconType: 'feather'},
-  {label: 'Dark', value: 'dark', icon: 'moon', iconType: 'ionicon'},
-];
 
 const settingsItems = [
   {
@@ -211,7 +198,7 @@ const renderIcon = (
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const {theme, themeMode, setThemeMode} = useTheme();
+  const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -286,68 +273,6 @@ export default function SettingsScreen() {
           {paddingTop: insets.top + moderateScale(16), paddingBottom: bottomInset},
         ]}
         showsVerticalScrollIndicator={false}>
-        {/* Theme Selector — hidden on iOS where system theme is required for liquid glass */}
-        {Platform.OS !== 'ios' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionHeader}>THEME</Text>
-            <View style={styles.segmentedTrack}>
-              {themeOptions.map(option => {
-                const isActive = themeMode === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    style={[styles.segment, isActive && styles.segmentActive]}
-                    onPress={() => setThemeMode(option.value)}>
-                    <View style={styles.segmentIconWrap}>
-                      {option.iconType === 'ionicon' ? (
-                        <Ionicons
-                          name={option.icon as any}
-                          size={moderateScale(16)}
-                          color={
-                            isActive
-                              ? theme.colors.text
-                              : Color(theme.colors.textSecondary)
-                                  .alpha(0.6)
-                                  .toString()
-                          }
-                        />
-                      ) : (
-                        <Feather
-                          name={option.icon as any}
-                          size={moderateScale(16)}
-                          color={
-                            isActive
-                              ? theme.colors.text
-                              : Color(theme.colors.textSecondary)
-                                  .alpha(0.6)
-                                  .toString()
-                          }
-                        />
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        {
-                          color: isActive
-                            ? theme.colors.text
-                            : Color(theme.colors.textSecondary)
-                                .alpha(0.6)
-                                .toString(),
-                          fontFamily: isActive
-                            ? 'Manrope-SemiBold'
-                            : 'Manrope-Medium',
-                        },
-                      ]}>
-                      {option.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* Settings Sections */}
         {settingsItems.map(section => (
           <View key={section.section} style={styles.section}>
@@ -445,37 +370,6 @@ const createStyles = (theme: Theme) =>
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
       marginLeft: moderateScale(2),
-    },
-
-    // --- Theme Segmented Control ---
-    segmentedTrack: {
-      flexDirection: 'row',
-      borderRadius: moderateScale(10),
-      padding: moderateScale(3),
-      backgroundColor: Color(theme.colors.text).alpha(0.05).toString(),
-    },
-    segment: {
-      flex: 1,
-      paddingVertical: moderateScale(7),
-      borderRadius: moderateScale(8),
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: moderateScale(3),
-    },
-    segmentActive: {
-      backgroundColor: Color(theme.colors.text).alpha(0.12).toString(),
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 1},
-      shadowOpacity: 0.06,
-      shadowRadius: 3,
-      elevation: 1,
-    },
-    segmentIconWrap: {
-      height: moderateScale(18),
-      justifyContent: 'center',
-    },
-    segmentText: {
-      fontSize: moderateScale(11),
     },
 
     // --- Cards ---

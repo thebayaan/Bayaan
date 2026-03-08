@@ -171,7 +171,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
         : undefined;
       const themeBg =
         themeInfo && themeInfo.themeIndex % 2 === 0
-          ? Color(textColor).alpha(0.04).toString()
+          ? Color(textColor).alpha(0.12).toString()
           : undefined;
 
       return (

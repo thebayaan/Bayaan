@@ -22,6 +22,7 @@ import {
   useNavigation,
   Link,
 } from 'expo-router';
+import {Ionicons} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
@@ -223,9 +224,18 @@ const SuperCategoryListScreen: React.FC = () => {
       headerTintColor: theme.colors.text,
       headerShadowVisible: false,
       headerTitleAlign: 'center',
-      ...(Platform.OS === 'ios'
-        ? {headerBackButtonDisplayMode: 'minimal', headerBackTitle: ' '}
-        : {}),
+      headerLeft: () => (
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          style={{padding: moderateScale(4)}}>
+          <Ionicons
+            name="chevron-back"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ),
       headerTitle: () => (
         <View style={{alignItems: 'center'}}>
           <Text

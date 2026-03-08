@@ -533,7 +533,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
     // Layer 0: Theme zebra highlights (lowest priority)
     if (showThemes) {
-      const themeColor = Color(textColor).alpha(0.04).toString();
+      const themeColor = Color(textColor).alpha(0.12).toString();
       const pageVerseKeys =
         mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber);
       for (const vk of pageVerseKeys) {
