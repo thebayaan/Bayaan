@@ -44,6 +44,7 @@ export interface MushafPlayerStoreState {
   rangeEnd: RangeEndpoint | null;
   availableReciters: AvailableReciter[];
   pendingStartVerseKey: string | null;
+  timestampError: string | null;
   _versePlayCount: number;
   _rangePlayCount: number;
 
@@ -86,6 +87,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
       rangeEnd: null,
       availableReciters: [],
       pendingStartVerseKey: null,
+      timestampError: null,
       _versePlayCount: 1,
       _rangePlayCount: 1,
       isImmersive: false,
@@ -145,6 +147,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
           playbackState: 'loading',
           currentPage: page,
           pendingStartVerseKey: null,
+          timestampError: null,
           _versePlayCount: 1,
           _rangePlayCount: 1,
         });
@@ -173,10 +176,14 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
             surahNumber,
           );
           if (!timestamps) {
-            console.error(
+            console.warn(
               `[MushafPlayerStore] No timestamps for rewayat=${rewayatId} surah=${surahNumber}`,
             );
-            set({playbackState: 'idle'});
+            set({
+              playbackState: 'idle',
+              timestampError:
+                'Timestamps unavailable for this reciter on this surah. Try a different reciter.',
+            });
             return;
           }
 
@@ -386,6 +393,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
           timestamps: null,
           rangeStart: null,
           rangeEnd: null,
+          timestampError: null,
           _versePlayCount: 1,
           _rangePlayCount: 1,
         });

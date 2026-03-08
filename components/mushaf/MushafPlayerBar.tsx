@@ -38,6 +38,7 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   const currentAyah = useMushafPlayerStore(s => s.currentAyah);
+  const timestampError = useMushafPlayerStore(s => s.timestampError);
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
   const isPlaying = playbackState === 'playing';
@@ -92,6 +93,41 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
     });
   }, [currentPage]);
 
+  const handleChangeReciter = useCallback(() => {
+    useMushafPlayerStore.setState({timestampError: null, currentPage});
+    SheetManager.show('mushaf-player-options', {
+      payload: {currentPage},
+    });
+  }, [currentPage]);
+
+  // ── Error state: show message + change reciter button ────
+  if (isIdle && timestampError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text
+          style={[
+            styles.errorText,
+            {color: Color(theme.colors.text).alpha(0.7).toString()},
+          ]}
+          numberOfLines={1}>
+          {timestampError}
+        </Text>
+        <Pressable
+          style={[
+            styles.changeReciterButton,
+            {backgroundColor: Color(theme.colors.text).alpha(0.08).toString()},
+          ]}
+          onPress={handleChangeReciter}
+          accessibilityRole="button"
+          accessibilityLabel="Change reciter">
+          <Text style={[styles.changeReciterText, {color: theme.colors.text}]}>
+            Change Reciter
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   // ── Idle state: [Search] — spacer — [Play] — spacer — [Options] ────
   if (isIdle) {
     return (
@@ -110,7 +146,10 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
         <View style={styles.controlsCenter}>
           <Pressable
-            style={[styles.playButtonRect, {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()}]}
+            style={[
+              styles.playButtonRect,
+              {backgroundColor: Color(theme.colors.text).alpha(0.1).toString()},
+            ]}
             onPress={handlePlayPress}
             accessibilityRole="button"
             accessibilityLabel="Play">
@@ -219,6 +258,27 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 };
 
 const styles = StyleSheet.create({
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: moderateScale(52),
+    paddingHorizontal: moderateScale(12),
+    gap: moderateScale(10),
+  },
+  errorText: {
+    flex: 1,
+    fontSize: moderateScale(11.5),
+    fontFamily: 'Manrope-Regular',
+  },
+  changeReciterButton: {
+    paddingHorizontal: moderateScale(14),
+    paddingVertical: moderateScale(8),
+    borderRadius: moderateScale(10),
+  },
+  changeReciterText: {
+    fontSize: moderateScale(12),
+    fontFamily: 'Manrope-SemiBold',
+  },
   idleRow: {
     flexDirection: 'row',
     alignItems: 'center',
