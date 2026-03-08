@@ -11109,7 +11109,7 @@
         "reciter_id": "93b67f4e-0985-4d8d-8e75-565a2482ee75",
         "name": "Hafs A'n Assem",
         "style": "murattal",
-        "server": "https://server6.mp3quran.net/balilah/",
+        "server": "https://download.quranicaudio.com/quran/bandar_baleela/complete",
         "surah_total": 114,
         "surah_list": [
           1,
@@ -16773,7 +16773,7 @@
         "reciter_id": "06c3f79f-02d9-42e8-9e9b-c6f355648305",
         "name": "Hafs A'n Assem",
         "style": "murattal",
-        "server": "https://server12.mp3quran.net/maher/",
+        "server": "https://download.quranicaudio.com/qdc/maher_al_meaqli/year1440",
         "surah_total": 114,
         "surah_list": [
           1,
@@ -17621,7 +17621,7 @@
         "reciter_id": "fceff03b-ad82-499d-896c-220e30f29aea",
         "name": "Hafs A'n Assem",
         "style": "murattal",
-        "server": "https://server8.mp3quran.net/bna/",
+        "server": "https://download.quranicaudio.com/quran/mahmood_ali_albana",
         "surah_total": 114,
         "surah_list": [
           1,
@@ -22268,7 +22268,7 @@
         "reciter_id": "fcfb7857-7bd2-4e61-b1b7-1bb9d7292cd8",
         "name": "Hafs A'n Assem",
         "style": "murattal",
-        "server": "https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/public/quran-audio/reciters/mohammed-jibreel",
+        "server": "https://download.quranicaudio.com/quran/muhammad_jibreel/complete",
         "surah_total": 114,
         "surah_list": [
           1,
@@ -22790,7 +22790,7 @@
         "reciter_id": "b5acd08c-b023-4bf3-b806-f1b8c12d6d33",
         "name": "Hafs A'n Assem",
         "style": "mojawwad",
-        "server": "https://server10.mp3quran.net/minsh/Almusshaf-Al-Mojawwad/",
+        "server": "https://download.quranicaudio.com/qdc/siddiq_al-minshawi/mujawwad",
         "surah_total": 114,
         "surah_list": [
           1,
@@ -24272,7 +24272,7 @@
         "reciter_id": "3d297df1-0e0d-4e43-be18-2d817a40e5cd",
         "name": "Hafs A'n Assem",
         "style": "murattal",
-        "server": "https://server8.mp3quran.net/mustafa/",
+        "server": "https://download.quranicaudio.com/quran/mostafa_ismaeel",
         "surah_total": 114,
         "surah_list": [
           1,
