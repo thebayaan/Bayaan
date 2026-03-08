@@ -18,6 +18,8 @@ export interface Rewayat {
   surah_list: (number | null)[]; // Allow null values in the array
   source_type: string;
   created_at: string;
+  mp3quran_read_id?: number;
+  qdc_reciter_id?: number;
 }
 
 export const RECITERS: Reciter[] = recitersData;
