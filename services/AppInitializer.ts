@@ -10,6 +10,7 @@ import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {wbwDataService} from '@/services/wbw/WBWDataService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {timestampService} from '@/services/timestamps/TimestampService';
+import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import {useTimestampStore} from '@/store/timestampStore';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
@@ -320,6 +321,20 @@ appInitializer.registerService({
   initialize: async () => {
     await timestampService.initialize();
     useTimestampStore.getState().loadFollowAlongRegistry();
+  },
+});
+
+/**
+ * Theme Data (Priority 10)
+ * Pre-builds verse→theme lookup map for thematic highlighting.
+ * Non-critical - lazy init on first access if this fails.
+ */
+appInitializer.registerService({
+  name: 'Theme Data',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    themeDataService.init();
   },
 });
 
