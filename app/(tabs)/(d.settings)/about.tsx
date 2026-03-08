@@ -1,12 +1,9 @@
 import React, {useMemo} from 'react';
 import {View, Text, ScrollView, Image} from 'react-native';
-import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import Header from '@/components/Header';
 import {VersionDisplay} from '@/components/VersionDisplay';
 
 interface FeatureProps {
@@ -24,16 +21,14 @@ const Feature = ({title, description, styles}: FeatureProps) => (
 
 export default function AboutScreen() {
   const {theme} = useTheme();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.container}>
-      <Header title="About Bayaan" onBack={() => router.back()} />
       <ScrollView
-        style={[styles.content, {paddingTop: insets.top + moderateScale(56)}]}
+        style={styles.content}
         contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
         <View>
           <View style={styles.logoContainer}>
