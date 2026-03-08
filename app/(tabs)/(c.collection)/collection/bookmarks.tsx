@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   StatusBar,
+  Platform,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -22,6 +23,7 @@ import {BookmarkItem} from '@/components/collection/BookmarkItem';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
 
 interface BookmarkData {
@@ -37,6 +39,12 @@ const BookmarksScreen = () => {
   const [bookmarks, setBookmarks] = useState<BookmarkData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+
+  useCollectionNativeHeader({
+    title: 'Bookmarks',
+    scrollY,
+    hasContent: bookmarks.length > 0 && !loading,
+  });
 
   const loadBookmarks = useCallback(async () => {
     try {
@@ -95,7 +103,7 @@ const BookmarksScreen = () => {
   const ListHeaderComponent = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
-        <View style={{paddingTop: insets.top}} />
+        <View style={{paddingTop: Platform.OS === 'ios' ? 0 : insets.top}} />
         <View style={styles.headerContent}>
           <View
             style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
@@ -154,22 +162,24 @@ const BookmarksScreen = () => {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-            Bookmarks
-          </Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
+              Bookmarks
+            </Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <Text
             style={[styles.loadingText, {color: theme.colors.textSecondary}]}>
@@ -184,22 +194,24 @@ const BookmarksScreen = () => {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
-          <Pressable
-            style={styles.emptyHeaderBack}
-            onPress={() => router.back()}
-            hitSlop={8}>
-            <Feather
-              name="arrow-left"
-              size={moderateScale(22)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-          <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
-            Bookmarks
-          </Text>
-          <View style={styles.emptyHeaderBack} />
-        </View>
+        {Platform.OS !== 'ios' && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={[styles.emptyHeaderTitle, {color: theme.colors.text}]}>
+              Bookmarks
+            </Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
         <View style={styles.emptyContent}>
           <View style={styles.emptyIcon}>
             <Feather
@@ -225,26 +237,28 @@ const BookmarksScreen = () => {
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <StatusBar barStyle="default" />
 
-      <RNAnimated.View
-        style={[
-          styles.fixedBackButton,
-          {
-            top: insets.top + moderateScale(10),
-            opacity: scrollY.interpolate({
-              inputRange: [80, 120],
-              outputRange: [1, 0],
-              extrapolate: 'clamp',
-            }),
-          },
-        ]}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Feather
-            name="arrow-left"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </Pressable>
-      </RNAnimated.View>
+      {Platform.OS !== 'ios' && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              top: insets.top + moderateScale(10),
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
 
       <RNAnimated.FlatList
         data={bookmarks}
@@ -258,8 +272,11 @@ const BookmarksScreen = () => {
         )}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="automatic"
       />
-      <CollectionStickyHeader title="Bookmarks" scrollY={scrollY} />
+      {Platform.OS !== 'ios' && (
+        <CollectionStickyHeader title="Bookmarks" scrollY={scrollY} />
+      )}
     </View>
   );
 };

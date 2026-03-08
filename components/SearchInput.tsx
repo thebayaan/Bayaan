@@ -65,6 +65,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
       style,
       keyboardAppearance,
       autoCorrect = false,
+      autoFocus = false,
       autoCapitalize = 'none',
       ...props
     },
@@ -114,7 +115,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             autoCorrect={autoCorrect}
             autoCapitalize={autoCapitalize}
             {...props}
-            autoFocus={false}
+            autoFocus={autoFocus}
           />
           {value.length > 0 && (
             <Pressable
