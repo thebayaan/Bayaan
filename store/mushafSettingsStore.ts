@@ -22,7 +22,8 @@ export const getDisplayValue = (actualFontSize: number): number => {
 
 export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
-export type MushafViewMode = 'mushaf' | 'reading';
+export type MushafViewMode = 'mushaf' | 'list';
+export type MushafScrollDirection = 'horizontal' | 'vertical';
 
 export interface RecentRead {
   surahId: number;
@@ -56,8 +57,11 @@ interface MushafSettingsState {
   // Mushaf renderer selection
   mushafRenderer: MushafRenderer;
 
-  // View mode (mushaf pages vs reading view)
+  // View mode (mushaf pages vs list view)
   viewMode: MushafViewMode;
+
+  // Scroll direction (horizontal paging vs vertical continuous scroll)
+  scrollDirection: MushafScrollDirection;
 
   // Recently read positions (last 10, chain-based — not deduplicated by surahId)
   recentPages: RecentRead[];
@@ -80,6 +84,7 @@ interface MushafSettingsState {
   setMushafRenderer: (renderer: MushafRenderer) => void;
   setPageLayout: (layout: MushafPageLayout) => void;
   setViewMode: (mode: MushafViewMode) => void;
+  setScrollDirection: (direction: MushafScrollDirection) => void;
   updateActiveChain: (surahId: number, page: number) => void;
   startNewChain: (surahId: number, page: number) => void;
   resumeChain: (index: number) => void;
@@ -104,6 +109,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       uthmaniFont: 'v1', // Default to V1
       mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
       viewMode: 'mushaf' as MushafViewMode,
+      scrollDirection: 'horizontal' as MushafScrollDirection,
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
       recentPages: [],
       selectedTranslationId: 'saheeh',
@@ -134,11 +140,13 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             renderer === 'dk_v1'
               ? 'v1'
               : renderer === 'dk_indopak'
-              ? 'v2'
-              : 'v2',
+                ? 'v2'
+                : 'v2',
         }),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
+      setScrollDirection: (direction: MushafScrollDirection) =>
+        set({scrollDirection: direction}),
       updateActiveChain: (surahId: number, page: number) =>
         set(state => {
           const updated = [...state.recentPages];
@@ -171,7 +179,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 8,
+      version: 9,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -213,6 +221,13 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.showWBW = false;
           state.wbwShowTranslation = true;
           state.wbwShowTransliteration = false;
+        }
+        if (version < 9) {
+          // Migrate viewMode: 'reading' → 'list', add scrollDirection
+          if (state.viewMode === 'reading') {
+            state.viewMode = 'list';
+          }
+          state.scrollDirection = 'horizontal';
         }
         return state as unknown as MushafSettingsState;
       },
