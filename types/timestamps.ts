@@ -76,3 +76,34 @@ export function mapAyahTimestampRow(row: AyahTimestampRow): AyahTimestamp {
     durationMs: row.duration_ms,
   };
 }
+
+// --- API Response Types ---
+
+export type TimestampSource = 'mp3quran' | 'qdc' | 'local';
+
+/** MP3Quran /api/v3/ayat_timing response shape */
+export interface Mp3QuranTimingResponse {
+  ayat_timing: Mp3QuranAyahTiming[];
+}
+
+export interface Mp3QuranAyahTiming {
+  ayah: number;
+  start_time: number; // seconds (float)
+  end_time: number; // seconds (float)
+}
+
+/** QDC /api/qdc/audio/reciters/{id}/audio_files response shape */
+export interface QdcAudioFileResponse {
+  audio_files: QdcAudioFile[];
+}
+
+export interface QdcAudioFile {
+  verse_timings: QdcVerseTiming[];
+}
+
+export interface QdcVerseTiming {
+  verse_key: string; // "2:255"
+  timestamp_from: number; // milliseconds
+  timestamp_to: number; // milliseconds
+  segments: number[][]; // word-level segments (ignored for now)
+}
