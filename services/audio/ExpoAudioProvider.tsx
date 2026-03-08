@@ -156,6 +156,14 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       // When main player starts playing, coordinate with mushaf player
       if (state === 'playing' && currentState !== 'playing') {
         audioCoordinator.mainWillPlay();
+
+        // Re-apply playback rate after interruptions (calls, alarms, etc.)
+        // The OS resets the native player's rate to 1.0 but the store keeps
+        // the user's chosen rate — sync them back up.
+        const storedRate = usePlayerStore.getState().playback.rate;
+        if (storedRate !== 1 && player.playbackRate !== storedRate) {
+          expoAudioService.setRate(storedRate);
+        }
       }
 
       updatePlaybackState({state});
