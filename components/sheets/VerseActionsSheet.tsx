@@ -7,6 +7,8 @@ import {
   Dimensions,
   BackHandler,
   Platform,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -83,10 +85,25 @@ const SCREEN_TITLES: Record<string, string> = {
 
 const SHEET_HEIGHT = Dimensions.get('window').height * 0.85;
 
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
-  const [activeScreen, setActiveScreen] = useState<ActiveScreen>(null);
+  const [activeScreen, setActiveScreenRaw] = useState<ActiveScreen>(null);
+
+  const setActiveScreen = useCallback((screen: ActiveScreen) => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(250, 'easeInEaseOut', 'opacity'),
+    );
+    setActiveScreenRaw(screen);
+  }, []);
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
@@ -283,7 +300,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, []);
 
   const startPlaybackForSelection = useCallback(
-    (loop: boolean) => {
+    async (loop: boolean) => {
       lightHaptics();
       const store = useMushafPlayerStore.getState();
 
@@ -298,12 +315,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           currentPage: page,
           pendingStartVerseKey: firstKey,
         });
-        SheetManager.hideAll();
-        setTimeout(() => {
-          SheetManager.show('mushaf-player-options', {
-            payload: {currentPage: page},
-          });
-        }, 300);
+        await SheetManager.hideAll();
+        SheetManager.show('mushaf-player-options', {
+          payload: {currentPage: page},
+        });
         return;
       }
 
@@ -363,12 +378,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     return useTimestampStore.getState().supportedRewayatIds.has(trackRewayatId);
   }, []);
 
-  const handleShowFollowAlong = useCallback(() => {
+  const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
-    SheetManager.hideAll();
-    setTimeout(() => {
-      SheetManager.show('follow-along');
-    }, 300);
+    await SheetManager.hideAll();
+    SheetManager.show('follow-along');
   }, []);
 
   const handlePlayerPlayFromHere = useCallback(() => {
@@ -400,7 +413,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     SheetManager.hideAll();
   }, [verseKey, verseKeys, isRange]);
 
-  const handlePlayerRepeat = useCallback(() => {
+  const handlePlayerRepeat = useCallback(async () => {
     lightHaptics();
     const keys = isRange ? verseKeys! : [verseKey];
     const firstKey = keys[0];
@@ -429,7 +442,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       playerState.pause();
     }
 
-    SheetManager.hideAll();
+    await SheetManager.hideAll();
     playerState.setSheetMode('hidden');
 
     useMushafPlayerStore.setState({
@@ -446,11 +459,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       },
     });
 
-    setTimeout(() => {
-      SheetManager.show('mushaf-player-options', {
-        payload: {currentPage: page},
-      });
-    }, 600);
+    SheetManager.show('mushaf-player-options', {
+      payload: {currentPage: page},
+    });
   }, [verseKey, verseKeys, isRange]);
 
   useEffect(() => {
