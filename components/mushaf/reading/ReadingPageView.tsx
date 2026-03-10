@@ -1,7 +1,14 @@
-import React, {useMemo, useCallback, useEffect} from 'react';
-import {View, ScrollView, StyleSheet, Text} from 'react-native';
+import React, {useMemo, useCallback, useEffect, useRef} from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -61,6 +68,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   onTap,
 }) => {
   const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const verseOffsetsRef = useRef<Map<string, number>>(new Map());
 
   // Settings subscriptions
   const showTranslation = useMushafSettingsStore(s => s.showTranslation);
@@ -91,8 +100,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||
@@ -102,6 +111,11 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
 
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
+
+  // Active ayah highlighting
+  const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const playbackState = useMushafPlayerStore(s => s.playbackState);
+  const isPlaying = playbackState === 'playing';
 
   const items = useMemo(() => getReadingPageItems(pageNumber), [pageNumber]);
 
@@ -136,6 +150,15 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   useEffect(() => {
     if (firstSurah) loadAnnotationsForSurah(firstSurah);
   }, [firstSurah, loadAnnotationsForSurah]);
+
+  // Auto-scroll to active ayah within the page
+  useEffect(() => {
+    if (!isPlaying || !currentVerseKey) return;
+    const y = verseOffsetsRef.current.get(currentVerseKey);
+    if (y != null) {
+      scrollViewRef.current?.scrollTo({y, animated: true});
+    }
+  }, [isPlaying, currentVerseKey]);
 
   // Tap on verse → toggle immersive mode (matches DKPageView tap behavior)
   const handleVersePress = useCallback(() => {
@@ -177,6 +200,12 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       return (
         <View
           key={item.verse.verse_key}
+          onLayout={(e: LayoutChangeEvent) => {
+            verseOffsetsRef.current.set(
+              item.verse.verse_key,
+              e.nativeEvent.layout.y,
+            );
+          }}
           style={
             themeBg ? {backgroundColor: themeBg, borderRadius: 6} : undefined
           }>
@@ -195,6 +224,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
+            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
@@ -220,6 +250,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       dkFontFamily,
       indexedTajweedData,
       handleVersePress,
+      currentVerseKey,
+      isPlaying,
       translationName,
       selectedTranslationId,
       showWBW,
@@ -284,6 +316,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
                   },
             ]}>
             <ScrollView
+              ref={scrollViewRef}
               style={styles.scrollView}
               contentContainerStyle={{
                 paddingHorizontal: bookContentPadding,
@@ -303,6 +336,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
         </>
       ) : (
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={{
             paddingTop: PAGE_PADDING_TOP - METADATA_OFFSET,
