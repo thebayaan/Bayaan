@@ -11,7 +11,8 @@ export default function AdhkarLayout() {
           headerShadowVisible: false,
           headerBackTitle: '',
         }}>
-        <Stack.Screen name="[superId]" />
+        <Stack.Screen name="[superId]/index" />
+        <Stack.Screen name="[superId]/[dhikrId]" />
         <Stack.Screen name="saved" />
       </Stack>
     </AdhkarAudioProvider>
