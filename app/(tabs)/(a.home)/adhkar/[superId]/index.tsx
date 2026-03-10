@@ -223,6 +223,8 @@ const SuperCategoryListScreen: React.FC = () => {
       headerStyle: {backgroundColor: 'transparent'},
       headerTintColor: theme.colors.text,
       headerShadowVisible: false,
+      title: '',
+      headerBackTitle: '',
       headerTitleAlign: 'center',
       headerLeft: () => (
         <Pressable

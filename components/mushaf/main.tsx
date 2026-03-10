@@ -478,8 +478,17 @@ export default function MushafViewer({
     [isVertical],
   );
 
+  // In vertical mode, scroll to the exact verse during playback
+  const navigateToVerseAnimated = useCallback((verseKey: string) => {
+    continuousListRef.current?.scrollToVerse(verseKey, true);
+  }, []);
+
   // Auto-page-turn during mushaf playback
-  useMushafAutoPageTurn(currentPage, navigateToPageAnimated);
+  useMushafAutoPageTurn(
+    currentPage,
+    navigateToPageAnimated,
+    isVertical ? navigateToVerseAnimated : undefined,
+  );
 
   const navigateToSurah = useCallback(
     (surahId: number) => {
@@ -602,8 +611,8 @@ export default function MushafViewer({
           backgroundColor: isVertical
             ? theme.colors.background
             : isBookLayout
-              ? edgeBg
-              : theme.colors.card,
+            ? edgeBg
+            : theme.colors.card,
         },
       ]}>
       {/* Content area: horizontal FlatList or vertical continuous view */}

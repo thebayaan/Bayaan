@@ -61,6 +61,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 import {useNavigation} from 'expo-router';
+import {useHeaderHeight} from '@react-navigation/elements';
 
 interface ReciterProfileProps {
   id: string;
@@ -188,6 +189,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const bottomInset = useBottomInset();
   const {height: screenHeight, width: screenWidth} = useWindowDimensions();
   const navigation = useNavigation();
+  const headerHeight = isIOS ? useHeaderHeight() : 0;
 
   // Synchronous reciter init — data available on first render, no deferred loading delay
   const initialReciter = useMemo(
@@ -225,8 +227,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       headerTitle: '',
       headerBackTitle: ' ',
       headerBackButtonDisplayMode: 'minimal',
-      headerTransparent: false,
-      headerStyle: {backgroundColor: theme.colors.background},
+      headerTransparent: true,
+      headerStyle: {backgroundColor: 'transparent'},
       headerShadowVisible: false,
       // Hide back button and search icon when SearchView is open (it has its own cancel)
       headerBackVisible: !showSearch,
@@ -267,9 +269,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const [stickyHeight, setStickyHeight] = useState(0);
   const [stickyTitleHeight, setStickyTitleHeight] = useState(0);
 
-  // iOS: solid header — content starts below header, no offset needed
-  // Android: offset below the custom sticky title bar overlay
-  const stickyPinOffset = isIOS ? 0 : stickyTitleHeight;
+  // iOS: offset below transparent native header; Android: below custom sticky title
+  const stickyPinOffset = isIOS ? headerHeight : stickyTitleHeight;
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
   const {startNewChain} = useRecentlyPlayedStore();
@@ -807,6 +808,11 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                       headerTitleShownRef.current = shouldShow;
                       navigation.setOptions({
                         headerTitle: shouldShow ? reciter.name : '',
+                        headerStyle: {
+                          backgroundColor: shouldShow
+                            ? theme.colors.background
+                            : 'transparent',
+                        },
                       });
                     }
                   }

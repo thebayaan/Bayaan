@@ -13,6 +13,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 export function useMushafAutoPageTurn(
   currentPage: number,
   navigateToPage: (page: number) => void,
+  navigateToVerse?: (verseKey: string) => void,
 ) {
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
@@ -26,6 +27,16 @@ export function useMushafAutoPageTurn(
   useEffect(() => {
     if (playbackState !== 'playing' || !currentVerseKey) return;
 
+    // In verse-level navigation mode (vertical/list view), scroll to every ayah
+    if (navigateToVerse) {
+      navigateToVerse(currentVerseKey);
+      // Still keep page ref in sync
+      const targetPage =
+        digitalKhattDataService.getPageForVerse(currentVerseKey);
+      if (targetPage) lastNavigatedPage.current = targetPage;
+      return;
+    }
+
     const targetPage = digitalKhattDataService.getPageForVerse(currentVerseKey);
     if (!targetPage) return;
 
@@ -34,5 +45,5 @@ export function useMushafAutoPageTurn(
       lastNavigatedPage.current = targetPage;
       navigateToPage(targetPage);
     }
-  }, [playbackState, currentVerseKey, navigateToPage]);
+  }, [playbackState, currentVerseKey, navigateToPage, navigateToVerse]);
 }
