@@ -1,5 +1,6 @@
 import React, {memo, useCallback, useEffect, useMemo, useState} from 'react';
 import {
+  PixelRatio,
   Pressable,
   StyleSheet,
   Text,
@@ -49,6 +50,9 @@ const TRANSLIT_FONT_SIZE = moderateScale(10.5);
 const MIN_COL_WIDTH = moderateScale(36);
 const HIGHLIGHT_PADDING = moderateScale(4);
 const HIGHLIGHT_RADIUS = moderateScale(6);
+// Metal GPU textures are limited to 8192 physical pixels.
+// Divide by device pixel ratio to get safe logical-point limit.
+const MAX_CANVAS_HEIGHT = Math.floor(8192 / PixelRatio.get()) - 100;
 
 // --- Types ---
 
@@ -370,7 +374,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     const tajweedWords = useMemo(
       () =>
         showTajweed && indexedTajweedData
-          ? (indexedTajweedData[verseKey] ?? null)
+          ? indexedTajweedData[verseKey] ?? null
           : null,
       [showTajweed, indexedTajweedData, verseKey],
     );
@@ -503,6 +507,65 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
       [computedLayout, onWordPress, onLongPress],
     );
 
+    // Split layout items into canvas chunks that stay within Metal texture limits
+    const canvasChunks = useMemo(() => {
+      if (!computedLayout) return [];
+      if (computedLayout.totalHeight <= MAX_CANVAS_HEIGHT) {
+        return [
+          {
+            startY: 0,
+            height: computedLayout.totalHeight,
+            items: computedLayout.items,
+          },
+        ];
+      }
+      // Group items by row (same Y = same row)
+      const rowYs = [...new Set(computedLayout.items.map(i => i.y))].sort(
+        (a, b) => a - b,
+      );
+      const chunks: Array<{
+        startY: number;
+        height: number;
+        items: PositionedWord[];
+      }> = [];
+      let chunkStartY = 0;
+      let chunkItems: PositionedWord[] = [];
+      for (const rowY of rowYs) {
+        const rowItems = computedLayout.items.filter(i => i.y === rowY);
+        const rowBottom = Math.max(
+          ...rowItems.map(i => i.y + i.totalItemHeight),
+        );
+        if (
+          rowBottom - chunkStartY > MAX_CANVAS_HEIGHT &&
+          chunkItems.length > 0
+        ) {
+          const chunkEndY = Math.max(
+            ...chunkItems.map(i => i.y + i.totalItemHeight),
+          );
+          chunks.push({
+            startY: chunkStartY,
+            height: chunkEndY - chunkStartY,
+            items: chunkItems,
+          });
+          chunkStartY = rowY;
+          chunkItems = [...rowItems];
+        } else {
+          chunkItems.push(...rowItems);
+        }
+      }
+      if (chunkItems.length > 0) {
+        const chunkEndY = Math.max(
+          ...chunkItems.map(i => i.y + i.totalItemHeight),
+        );
+        chunks.push({
+          startY: chunkStartY,
+          height: chunkEndY - chunkStartY,
+          items: chunkItems,
+        });
+      }
+      return chunks;
+    }, [computedLayout]);
+
     if (!wbwWords) return null;
 
     // Optimized single-canvas render when Skia is available and width is measured
@@ -532,26 +595,29 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
               }}
             />
           ))}
-          {/* Single Canvas for ALL Arabic text */}
-          <Canvas
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              top: PADDING_VERTICAL,
-              left: 0,
-              width: containerWidth,
-              height: computedLayout.totalHeight,
-            }}>
-            {computedLayout.items.map(item => (
-              <Paragraph
-                key={item.dkPosition}
-                paragraph={item.paragraph}
-                x={item.x + (item.columnWidth - item.arabicWidth) / 2}
-                y={item.y}
-                width={item.arabicWidth}
-              />
-            ))}
-          </Canvas>
+          {/* Canvas chunks — split to stay within Metal texture size limits */}
+          {canvasChunks.map((chunk, idx) => (
+            <Canvas
+              key={idx}
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                top: PADDING_VERTICAL + chunk.startY,
+                left: 0,
+                width: containerWidth,
+                height: chunk.height,
+              }}>
+              {chunk.items.map(item => (
+                <Paragraph
+                  key={item.dkPosition}
+                  paragraph={item.paragraph}
+                  x={item.x + (item.columnWidth - item.arabicWidth) / 2}
+                  y={item.y - chunk.startY}
+                  width={item.arabicWidth}
+                />
+              ))}
+            </Canvas>
+          ))}
           {/* Dividers + translation/transliteration overlays */}
           {computedLayout.items.map(item => {
             if (item.isEndMarker) return null;
