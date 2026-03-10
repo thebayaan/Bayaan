@@ -4,14 +4,12 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  ActivityIndicator,
   ToastAndroid,
   Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {getMultipleRandomTracks} from '@/utils/randomRecitation';
-import {usePlayerStore} from '@/services/player/store/playerStore';
 import * as Haptics from 'expo-haptics';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
@@ -48,8 +46,6 @@ export function RandomRecitationHero({
   isCompact = false,
 }: RandomRecitationHeroProps) {
   const {theme} = useTheme();
-  const isLoading = usePlayerStore(state => state.loading.trackLoading);
-
   const {updateQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
 
@@ -136,7 +132,6 @@ export function RandomRecitationHero({
       style={[styles.container, containerHeight, animatedStyle, style]}>
       <Pressable
         onPress={handleRandomPlay}
-        disabled={isLoading}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={{flex: 1}}>
@@ -145,13 +140,6 @@ export function RandomRecitationHero({
 
         {/* Content */}
         <View style={styles.content}>
-          {isLoading && (
-            <ActivityIndicator
-              color={theme.colors.text}
-              size="small"
-              style={{marginRight: moderateScale(10)}}
-            />
-          )}
           <View style={styles.textContainer}>
             <Text style={[styles.title, {color: textColors.labelColor}]}>
               {copy.label}
