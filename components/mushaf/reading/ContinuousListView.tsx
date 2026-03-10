@@ -20,6 +20,7 @@ import {
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
@@ -163,6 +164,12 @@ const ContinuousListView = forwardRef<
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
 
+    // Active ayah highlighting (same pattern as player QuranView)
+    const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+    const playbackState = useMushafPlayerStore(s => s.playbackState);
+    const isPlaying = playbackState === 'playing';
+
+
     // Expose navigation methods to parent
     useImperativeHandle(ref, () => ({
       scrollToPage: (page: number, animated = false) => {
@@ -212,8 +219,8 @@ const ContinuousListView = forwardRef<
       mushafRenderer === 'dk_indopak'
         ? 'DigitalKhattIndoPak'
         : mushafRenderer === 'dk_v1'
-          ? 'DigitalKhattV1'
-          : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
     const isDK =
       (mushafRenderer === 'dk_v1' ||
         mushafRenderer === 'dk_v2' ||
@@ -302,6 +309,7 @@ const ContinuousListView = forwardRef<
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
+            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
@@ -326,6 +334,8 @@ const ContinuousListView = forwardRef<
         dkFontFamily,
         indexedTajweedData,
         handleVersePress,
+        currentVerseKey,
+        isPlaying,
         translationName,
         selectedTranslationId,
         showWBW,
@@ -352,6 +362,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={items}
         renderItem={renderItem}
+        extraData={currentVerseKey}
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}
