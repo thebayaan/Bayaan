@@ -222,10 +222,10 @@ export const VerseItem = memo<VerseItemProps>(
           arabicText: verse.text,
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
-          source: 'player',
+          source: source ?? 'player',
         },
       });
-    }, [verseKey, verse, selectVerse]);
+    }, [verseKey, verse, selectVerse, source]);
 
     // Options button → same as long press
     const handleOptionsPress = useCallback(() => {
@@ -238,10 +238,10 @@ export const VerseItem = memo<VerseItemProps>(
           arabicText: verse.text,
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
-          source: 'player',
+          source: source ?? 'player',
         },
       });
-    }, [verseKey, verse, selectVerse]);
+    }, [verseKey, verse, selectVerse, source]);
 
     const handleWordPress = useCallback(
       (position: number) => {
