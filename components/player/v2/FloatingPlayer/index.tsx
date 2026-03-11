@@ -5,6 +5,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {expandPlayerSheet} from '@/services/player/sheetRef';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
@@ -20,7 +21,7 @@ const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
-  const {play, pause, setSheetMode} = usePlayerActions();
+  const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
   const currentIndex = usePlayerStore(state => state.queue.currentIndex);
@@ -47,8 +48,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const shouldShow = !stateRestoring && !!currentTrack && !isMushafActive;
 
   const handlePress = useCallback(() => {
-    setSheetMode('full');
-  }, [setSheetMode]);
+    expandPlayerSheet();
+  }, []);
 
   const handlePlayPause = useCallback(async () => {
     if (playbackState === 'playing') {
@@ -66,7 +67,10 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
       right: FLOATING_UI_HORIZONTAL_MARGIN,
       backgroundColor: USE_GLASS
         ? 'transparent'
-        : Color(theme.colors.background).mix(Color(theme.colors.text), 0.08).alpha(0.92).toString(),
+        : Color(theme.colors.background)
+            .mix(Color(theme.colors.text), 0.08)
+            .alpha(0.92)
+            .toString(),
       borderRadius: moderateScale(20),
       borderWidth: USE_GLASS ? 0 : 1,
       borderColor: USE_GLASS
@@ -93,9 +97,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   return (
     <Container
       style={containerStyle}
-      {...(USE_GLASS
-        ? {glassEffectStyle: 'regular' as const}
-        : {})}>
+      {...(USE_GLASS ? {glassEffectStyle: 'regular' as const} : {})}>
       <Pressable
         onPress={handlePress}
         style={styles.content}
