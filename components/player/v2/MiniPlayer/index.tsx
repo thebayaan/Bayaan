@@ -3,6 +3,7 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
+import {expandPlayerSheet} from '@/services/player/sheetRef';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ReciterImage} from '@/components/ReciterImage';
@@ -10,7 +11,7 @@ import Color from 'color';
 
 function MiniPlayerInner() {
   const {theme} = useTheme();
-  const {play, pause, setSheetMode} = usePlayerActions();
+  const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
   const currentIndex = usePlayerStore(state => state.queue.currentIndex);
@@ -40,8 +41,8 @@ function MiniPlayerInner() {
   }, [playbackState, pause, play]);
 
   const handlePress = useCallback(() => {
-    setSheetMode('full');
-  }, [setSheetMode]);
+    expandPlayerSheet();
+  }, []);
 
   if (stateRestoring || !currentTrack) return null;
 
