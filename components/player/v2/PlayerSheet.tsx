@@ -1,28 +1,32 @@
-import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { StyleSheet, StatusBar, View, Platform, BackHandler } from 'react-native';
+import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
+import {StyleSheet, StatusBar, View, Platform, BackHandler} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
-import { usePlayerActions } from '@/hooks/usePlayerActions';
-import { usePlayerStore } from '@/services/player/store/playerStore';
-import { useTheme } from '@/hooks/useTheme';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
-import { SURAHS } from '@/data/surahData';
-import { useReciterNavigation } from '@/hooks/useReciterNavigation';
-import { SheetManager } from 'react-native-actions-sheet';
-import { useTimestampStore } from '@/store/timestampStore';
-import { useRewayatFollowAlong } from '@/hooks/useFollowAlong';
+import {SURAHS} from '@/data/surahData';
+import {useReciterNavigation} from '@/hooks/useReciterNavigation';
+import {SheetManager} from 'react-native-actions-sheet';
+import {useTimestampStore} from '@/store/timestampStore';
+import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
+import {
+  registerPlayerSheetRef,
+  unregisterPlayerSheetRef,
+} from '@/services/player/sheetRef';
 
 export const PlayerSheet = () => {
-  const { theme } = useTheme();
+  const {theme} = useTheme();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
-  const { navigateToReciterProfile } = useReciterNavigation();
+  const {navigateToReciterProfile} = useReciterNavigation();
 
-  const { setSheetMode, setRate, updateSettings, setImmersive } =
+  const {setSheetMode, setRate, updateSettings, setImmersive} =
     usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
   const loading = usePlayerStore(s => s.loading);
@@ -30,6 +34,12 @@ export const PlayerSheet = () => {
   const isImmersive = usePlayerStore(s => s.isImmersive);
   const playbackRate = usePlayerStore(s => s.playback.rate);
   const settings = usePlayerStore(s => s.settings);
+
+  // Register ref so MiniPlayer/FloatingPlayer can call expand() directly
+  useEffect(() => {
+    registerPlayerSheetRef(bottomSheetRef);
+    return () => unregisterPlayerSheetRef();
+  }, []);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -139,13 +149,13 @@ export const PlayerSheet = () => {
 
   const handleSleepTimerChange = useCallback(
     (minutes: number) => {
-      updateSettings({ sleepTimer: minutes });
+      updateSettings({sleepTimer: minutes});
     },
     [updateSettings],
   );
 
   const handleTurnOffTimer = useCallback(() => {
-    updateSettings({ sleepTimer: 0 });
+    updateSettings({sleepTimer: 0});
   }, [updateSettings]);
 
   const handleGoToReciter = useCallback(() => {
@@ -179,7 +189,7 @@ export const PlayerSheet = () => {
   }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
 
   const handleShowMushafLayoutSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout', { payload: { context: 'player' } });
+    SheetManager.show('mushaf-layout', {payload: {context: 'player'}});
   }, []);
 
   const handleShowAmbientSheet = useCallback(() => {
@@ -258,7 +268,6 @@ export const PlayerSheet = () => {
     return null;
   }
 
-  const currentIndex = sheetMode === 'full' ? 0 : -1;
   const textColor = Color(theme.colors.text);
   const isLightText = textColor.isLight();
 
@@ -278,14 +287,15 @@ export const PlayerSheet = () => {
         enablePanDownToClose
         enableDynamicSizing={false}
         backdropComponent={renderBackdrop}
-        index={currentIndex}
+        index={-1}
         animateOnMount={false}
         handleComponent={renderHandleComponent}
         enableContentPanningGesture
+        enableOverDrag={false}
         style={styles.sheet}
         backgroundStyle={[
           styles.background,
-          { backgroundColor: theme.colors.background },
+          {backgroundColor: theme.colors.background},
         ]}>
         <PlayerContent
           onSpeedPress={handleShowSpeedSheet}

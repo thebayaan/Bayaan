@@ -1,32 +1,36 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { View, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, {useState, useCallback, useEffect, useMemo} from 'react';
+import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import Animated, {
+  runOnJS,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useBottomSheetGestureHandlers } from '@gorhom/bottom-sheet';
-import { QueueList } from './QueueList';
-import { QuranView } from './QuranView';
-import { TrackInfo } from './TrackInfo';
-import { PlaybackControls } from './PlaybackControls';
-import { ControlButtons } from './ControlButtons';
-import { UploadPlaceholder } from './UploadPlaceholder';
-import { Header } from './Header';
-import { moderateScale } from 'react-native-size-matters';
-import { usePlayerActions } from '@/hooks/usePlayerActions';
-import { usePlayerStore } from '@/services/player/store/playerStore';
-import { useVerseSelectionStore } from '@/store/verseSelectionStore';
-import { useTheme } from '@/hooks/useTheme';
-import { useMushafSettingsStore } from '@/store/mushafSettingsStore';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {Gesture, GestureDetector} from 'react-native-gesture-handler';
+import {
+  useBottomSheetGestureHandlers,
+  useBottomSheetInternal,
+} from '@gorhom/bottom-sheet';
+import {QueueList} from './QueueList';
+import {QuranView} from './QuranView';
+import {TrackInfo} from './TrackInfo';
+import {PlaybackControls} from './PlaybackControls';
+import {ControlButtons} from './ControlButtons';
+import {UploadPlaceholder} from './UploadPlaceholder';
+import {Header} from './Header';
+import {moderateScale} from 'react-native-size-matters';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {useTheme} from '@/hooks/useTheme';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
-import { useTimestampLoader } from '@/hooks/useTimestampLoader';
-import { useAyahTracker } from '@/hooks/useAyahTracker';
-import { useTimestampStore } from '@/store/timestampStore';
-import { findAyahTimestamp } from '@/utils/timestampUtils';
-import { useRewayatFollowAlong } from '@/hooks/useFollowAlong';
+import {useTimestampLoader} from '@/hooks/useTimestampLoader';
+import {useAyahTracker} from '@/hooks/useAyahTracker';
+import {useTimestampStore} from '@/store/timestampStore';
+import {findAyahTimestamp} from '@/utils/timestampUtils';
+import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
 
 interface PlayerContentProps {
   onSpeedPress: () => void;
@@ -49,7 +53,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onOptionsPress,
   onFollowAlongPress,
 }) => {
-  const { theme } = useTheme();
+  const {theme} = useTheme();
   const [showQueue, setShowQueue] = useState(false);
   const {
     updateQueue,
@@ -69,17 +73,50 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
 
   // Use the bottom-sheet handle gesture so overlay pans close the sheet
   // regardless of the FlashList scroll offset
-  const { handlePanGestureHandler } = useBottomSheetGestureHandlers();
+  const {handlePanGestureHandler} = useBottomSheetGestureHandlers();
+  const {animatedPosition, animatedLayoutState} = useBottomSheetInternal();
+
+  // Safety sync: when a gesture drags the sheet exactly to the closed
+  // position, gorhom's animateToPosition early-returns (no animation needed)
+  // so onChange never fires and sheetMode stays stale. This callback ensures
+  // the store is synced after every gesture.
+  const {setSheetMode} = usePlayerActions();
+  const syncSheetModeIfClosed = useCallback(() => {
+    const {sheetMode} = usePlayerStore.getState();
+    if (sheetMode !== 'hidden') {
+      setSheetMode('hidden');
+    }
+  }, [setSheetMode]);
+
   const sheetDragGesture = useMemo(
     () =>
       Gesture.Pan()
         .onStart(handlePanGestureHandler.handleOnStart)
         .onChange(handlePanGestureHandler.handleOnChange)
         .onEnd(handlePanGestureHandler.handleOnEnd)
-        .onFinalize(handlePanGestureHandler.handleOnFinalize)
+        .onFinalize(event => {
+          'worklet';
+          handlePanGestureHandler.handleOnFinalize(event);
+
+          // If position is at/near closed detent, force-sync sheetMode.
+          // This catches the edge case where handleOnEnd returns early
+          // without starting an animation (destination === current position).
+          const containerHeight = animatedLayoutState.get().containerHeight;
+          if (
+            containerHeight > 0 &&
+            animatedPosition.value >= containerHeight - 1
+          ) {
+            runOnJS(syncSheetModeIfClosed)();
+          }
+        })
         .shouldCancelWhenOutside(false)
         .runOnJS(false),
-    [handlePanGestureHandler],
+    [
+      handlePanGestureHandler,
+      animatedPosition,
+      animatedLayoutState,
+      syncSheetModeIfClosed,
+    ],
   );
 
   // Overlay height measurement
@@ -205,7 +242,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     <View style={styles.container}>
       {/* QuranView / QueueList fills the entire area */}
       <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.card }]}>
+        style={[StyleSheet.absoluteFill, {backgroundColor: theme.colors.card}]}>
         {showQueue ? (
           <View style={styles.fullArea}>
             <QueueList
@@ -286,7 +323,9 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
             onMushafLayoutPress={onMushafLayoutPress}
             onAmbientPress={onAmbientPress}
             onFollowAlongPress={onFollowAlongPress}
-            followAlongActive={followAlongAvailable && followAlongEnabled && isLocked}
+            followAlongActive={
+              followAlongAvailable && followAlongEnabled && isLocked
+            }
             followAlongAvailable={followAlongAvailable}
           />
         </Animated.View>
