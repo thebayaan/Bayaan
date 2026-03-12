@@ -12,10 +12,10 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
   {
     id: 'welcome',
     icon: 'app-icon',
-    title: 'Welcome to Bayaan 2.0',
+    title: 'Welcome to Bayaan',
     subtitle: 'A New Chapter',
     description:
-      'A major update with a beautiful Mushaf, ayah highlighting, adhkar, ambient sounds, and so much more.',
+      'A beautiful Mushaf, ayah highlighting, word-by-word translation, adhkar, ambient sounds, and so much more.',
   },
   {
     id: 'mushaf',
@@ -54,6 +54,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
   {
     id: 'ambient',
     icon: 'leaf-outline',
+    isCustomIcon: true,
     gradientColors: ['#10B981', '#059669'],
     title: 'Ambient Sounds',
     description:
@@ -70,10 +71,46 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
   {
     id: 'adhkar',
     icon: 'flower-outline',
+    isCustomIcon: true,
     gradientColors: ['#EC4899', '#DB2777'],
     title: 'Adhkar (Remembrance)',
     description:
       'The complete Hisnul Muslim collection with audio playback, Play All mode, and saved favorites.',
+  },
+  {
+    id: 'wbw',
+    icon: 'text-outline',
+    isCustomIcon: true,
+    gradientColors: ['#0EA5E9', '#0284C7'],
+    title: 'Word by Word',
+    description:
+      'Tap any word to see its meaning, transliteration, and grammar — right in the mushaf or player.',
+  },
+  {
+    id: 'translations',
+    icon: 'language-outline',
+    isCustomIcon: true,
+    gradientColors: ['#A855F7', '#7C3AED'],
+    title: 'Translations & Tafseer',
+    description:
+      'Browse dozens of translations and scholarly commentaries in multiple languages, all downloadable for offline use.',
+  },
+  {
+    id: 'themes',
+    icon: 'color-palette-outline',
+    isCustomIcon: true,
+    gradientColors: ['#F43F5E', '#E11D48'],
+    title: 'Thematic Highlighting',
+    description:
+      'Verses are color-coded by theme so you can see the structure and topics of each surah at a glance.',
+  },
+  {
+    id: 'indopak',
+    icon: 'globe-outline',
+    gradientColors: ['#22D3EE', '#06B6D4'],
+    title: 'IndoPak Script',
+    description:
+      'Switch to the IndoPak Nastaliq script in the mushaf for the style used across South Asia.',
   },
   {
     id: 'downloads',

@@ -1993,3 +1993,30 @@ export const QuranBookIcon: React.FC<IconProps> = ({color, size}) => (
     />
   </Svg>
 );
+
+export const TasbihIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Beads forming an oval loop */}
+    <Circle cx={12} cy={2} r={1.4} fill={color} />
+    <Circle cx={7.5} cy={3.8} r={1.4} fill={color} />
+    <Circle cx={16.5} cy={3.8} r={1.4} fill={color} />
+    <Circle cx={5} cy={7} r={1.4} fill={color} />
+    <Circle cx={19} cy={7} r={1.4} fill={color} />
+    <Circle cx={5} cy={10.5} r={1.4} fill={color} />
+    <Circle cx={19} cy={10.5} r={1.4} fill={color} />
+    <Circle cx={7.5} cy={13.2} r={1.4} fill={color} />
+    <Circle cx={16.5} cy={13.2} r={1.4} fill={color} />
+    {/* Imam bead (larger) */}
+    <Circle cx={12} cy={15} r={1.9} fill={color} />
+    {/* Tassel */}
+    <Line
+      x1={12}
+      y1={17}
+      x2={12}
+      y2={22}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
