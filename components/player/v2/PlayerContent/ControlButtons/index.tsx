@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import {GlassView} from 'expo-glass-effect';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -37,6 +38,8 @@ interface ControlButtonsProps {
 interface Styles {
   wrapper: ViewStyle;
   button: ViewStyle;
+  glassButton: ViewStyle;
+  glassButtonInner: ViewStyle;
   speedButtonText: TextStyle;
 }
 
@@ -78,19 +81,26 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
     settings.sleepTimerEnd !== null && settings.sleepTimerEnd > Date.now();
 
   const activeBackgroundColor = Color(theme.colors.text).alpha(0.08).toString();
-  const defaultIconColor = Color(theme.colors.text).alpha(0.7).toString();
+  const defaultIconColor = theme.colors.text;
   const activeIconColor = theme.colors.text;
 
   return (
     <View style={styles.wrapper}>
       {onMushafLayoutPress && (
-        <Pressable onPress={handleMushafLayoutPress} style={styles.button}>
-          <Ionicons
-            name="options-outline"
-            size={moderateScale(20)}
-            color={defaultIconColor}
-          />
-        </Pressable>
+        <GlassView
+          style={styles.glassButton}
+          glassEffectStyle="regular"
+          isInteractive>
+          <Pressable
+            onPress={handleMushafLayoutPress}
+            style={styles.glassButtonInner}>
+            <Ionicons
+              name="options-outline"
+              size={moderateScale(20)}
+              color={defaultIconColor}
+            />
+          </Pressable>
+        </GlassView>
       )}
 
       <Pressable
@@ -177,17 +187,17 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         />
       </Pressable>
 
-      <Pressable
-        onPress={onQueuePress}
-        style={[
-          styles.button,
-          showQueue && {backgroundColor: activeBackgroundColor},
-        ]}>
-        <QueueIcon
-          size={moderateScale(20)}
-          color={showQueue ? activeIconColor : defaultIconColor}
-        />
-      </Pressable>
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        isInteractive>
+        <Pressable onPress={onQueuePress} style={styles.glassButtonInner}>
+          <QueueIcon
+            size={moderateScale(20)}
+            color={showQueue ? activeIconColor : defaultIconColor}
+          />
+        </Pressable>
+      </GlassView>
     </View>
   );
 };
@@ -198,14 +208,23 @@ const styles = StyleSheet.create<Styles>({
     justifyContent: 'space-evenly',
     alignItems: 'center',
     paddingVertical: moderateScale(10),
-    paddingHorizontal: moderateScale(16),
     width: '100%',
   },
   button: {
-    width: moderateScale(38),
-    height: moderateScale(38),
-    borderRadius: moderateScale(12),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: moderateScale(14),
     backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  glassButton: {
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: moderateScale(22),
+  },
+  glassButtonInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },

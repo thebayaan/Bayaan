@@ -1,7 +1,8 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {GlassView} from 'expo-glass-effect';
 import {moderateScale} from 'react-native-size-matters';
-import {Entypo, Feather} from '@expo/vector-icons';
+import {SymbolView} from 'expo-symbols';
 import {
   Canvas,
   Paragraph,
@@ -112,23 +113,35 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
 
   return (
     <View style={styles.header}>
-      <Pressable style={styles.closeButton} onPress={handleClose}>
-        <Entypo
-          name="chevron-thin-down"
-          size={moderateScale(22)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <GlassView
+        style={styles.closeButton}
+        glassEffectStyle="regular"
+        isInteractive>
+        <Pressable style={styles.glassButtonInner} onPress={handleClose}>
+          <SymbolView
+            name="xmark"
+            size={moderateScale(18)}
+            tintColor={theme.colors.text}
+            weight="medium"
+          />
+        </Pressable>
+      </GlassView>
 
       {renderSurahName()}
 
-      <Pressable style={styles.optionsButton} onPress={onOptionsPress}>
-        <Feather
-          name="more-horizontal"
-          size={moderateScale(22)}
-          color={theme.colors.text}
-        />
-      </Pressable>
+      <GlassView
+        style={styles.optionsButton}
+        glassEffectStyle="regular"
+        isInteractive>
+        <Pressable style={styles.glassButtonInner} onPress={onOptionsPress}>
+          <SymbolView
+            name="ellipsis"
+            size={moderateScale(18)}
+            tintColor={theme.colors.text}
+            weight="medium"
+          />
+        </Pressable>
+      </GlassView>
     </View>
   );
 };
@@ -138,27 +151,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: moderateScale(10),
+    paddingVertical: moderateScale(4),
     paddingHorizontal: moderateScale(16),
     width: '100%',
   },
   closeButton: {
     position: 'absolute',
-    left: moderateScale(15),
+    left: moderateScale(10),
     zIndex: 1,
-    padding: moderateScale(10),
     width: moderateScale(44),
     height: moderateScale(44),
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: moderateScale(22),
   },
   optionsButton: {
     position: 'absolute',
-    right: moderateScale(15),
+    right: moderateScale(10),
     zIndex: 1,
-    padding: moderateScale(10),
     width: moderateScale(44),
     height: moderateScale(44),
+    borderRadius: moderateScale(22),
+  },
+  glassButtonInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },

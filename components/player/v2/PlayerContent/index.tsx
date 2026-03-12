@@ -1,5 +1,6 @@
 import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
+import {GlassView} from 'expo-glass-effect';
 import Animated, {
   runOnJS,
   useSharedValue,
@@ -263,7 +264,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
                 transliterationFontSize={transliterationFontSize}
                 translationFontSize={translationFontSize}
                 arabicFontSize={arabicFontSize}
-                contentPaddingTop={headerHeight}
+                contentPaddingTop={insets.top + moderateScale(4) + headerHeight}
                 contentPaddingBottom={controlsHeight}
               />
             )}
@@ -271,48 +272,45 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
         )}
       </View>
 
-      {/* Header overlay — absolute positioned at top */}
+      {/* Header overlay — floating glass card */}
       <GestureDetector gesture={sheetDragGesture}>
         <Animated.View
           style={[
             styles.headerOverlay,
             overlayAnimatedStyle,
             {
-              backgroundColor: theme.colors.background,
-              paddingTop: insets.top + moderateScale(12),
+              top: insets.top + moderateScale(4),
+              borderColor: Color(theme.colors.text).alpha(0.1).toString(),
             },
           ]}
           pointerEvents={isImmersive ? 'none' : 'auto'}
           onLayout={handleHeaderLayout}>
-          <View style={styles.handleContainer}>
-            <View
-              style={[
-                styles.handle,
-                {
-                  backgroundColor: Color(theme.colors.text)
-                    .alpha(0.2)
-                    .toString(),
-                },
-              ]}
-            />
-          </View>
+          {/* Glass background */}
+          <GlassView
+            style={StyleSheet.absoluteFill}
+            glassEffectStyle="regular"
+          />
           <Header onOptionsPress={onOptionsPress} />
         </Animated.View>
       </GestureDetector>
 
-      {/* Controls overlay — absolute positioned at bottom */}
+      {/* Controls overlay — floating glass card */}
       <GestureDetector gesture={sheetDragGesture}>
         <Animated.View
           style={[
             styles.controlsOverlay,
             overlayAnimatedStyle,
             {
-              backgroundColor: theme.colors.background,
-              paddingBottom: insets.bottom || moderateScale(20),
+              borderColor: Color(theme.colors.text).alpha(0.1).toString(),
             },
           ]}
           pointerEvents={isImmersive ? 'none' : 'auto'}
           onLayout={handleControlsLayout}>
+          {/* Glass background */}
+          <GlassView
+            style={StyleSheet.absoluteFill}
+            glassEffectStyle="regular"
+          />
           <TrackInfo />
           <PlaybackControls />
           <ControlButtons
@@ -330,20 +328,6 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           />
         </Animated.View>
       </GestureDetector>
-
-      {/* Rounded TV frame between header and controls */}
-      <Animated.View
-        style={[
-          styles.tvFrame,
-          overlayAnimatedStyle,
-          {
-            top: headerHeight,
-            bottom: controlsHeight,
-            borderColor: Color(theme.colors.text).alpha(0.08).toString(),
-          },
-        ]}
-        pointerEvents="none"
-      />
     </View>
   );
 };
@@ -355,39 +339,30 @@ const styles = StyleSheet.create({
   },
   fullArea: {
     flex: 1,
-    paddingHorizontal: moderateScale(20),
+    paddingHorizontal: moderateScale(8),
   },
   headerOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    top: moderateScale(20),
+    left: moderateScale(16),
+    right: moderateScale(16),
     alignItems: 'center',
-    paddingTop: 0,
-  },
-  handleContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  handle: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-  },
-  tvFrame: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: moderateScale(38),
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
   controlsOverlay: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: moderateScale(20),
-    paddingTop: moderateScale(10),
+    bottom: moderateScale(20),
+    left: moderateScale(16),
+    right: moderateScale(16),
+    borderRadius: moderateScale(38),
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+    paddingHorizontal: moderateScale(14),
+    paddingTop: moderateScale(14),
   },
 });
 
