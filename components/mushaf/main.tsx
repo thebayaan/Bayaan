@@ -18,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import {useRouter, useNavigation} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
+import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
@@ -272,14 +273,15 @@ export default function MushafViewer({
   }, [storeSearchMode]);
 
   const {theme, isDarkMode} = useTheme();
+  const readingColors = useReadingThemeColors();
   const glassColorScheme = useGlassColorScheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
   const isVertical = scrollDirection === 'vertical';
   const isBookLayout = pageLayout === 'book';
-  const edgeBg = isDarkMode ? '#000' : theme.colors.card;
-  const pageBg = isDarkMode ? theme.colors.card : theme.colors.background;
+  const edgeBg = isDarkMode ? '#000' : readingColors.card;
+  const pageBg = isDarkMode ? readingColors.card : readingColors.background;
   const edgeBorderColor = isDarkMode
     ? Color(theme.colors.border).darken(0.3).toString()
     : Color(theme.colors.border).lighten(0.3).toString();
@@ -611,18 +613,18 @@ export default function MushafViewer({
         styles.container,
         {
           backgroundColor: isVertical
-            ? theme.colors.background
+            ? readingColors.background
             : isBookLayout
               ? edgeBg
-              : theme.colors.card,
+              : readingColors.card,
         },
       ]}>
       {/* Content area: horizontal FlatList or vertical continuous view */}
       {isVertical && viewMode === 'mushaf' ? (
         <ContinuousMushafView
           ref={continuousListRef}
-          textColor={theme.colors.text}
-          dividerColor={theme.colors.textSecondary}
+          textColor={readingColors.text}
+          dividerColor={readingColors.textSecondary}
           onTap={toggleImmersive}
           initialPage={currentPage}
           onCurrentPageChange={handleContinuousPageChange}
@@ -630,8 +632,8 @@ export default function MushafViewer({
       ) : isVertical && viewMode === 'list' ? (
         <ContinuousListView
           ref={continuousListRef}
-          textColor={theme.colors.text}
-          labelColor={theme.colors.textSecondary}
+          textColor={readingColors.text}
+          labelColor={readingColors.textSecondary}
           borderColor={edgeBorderColor}
           onTap={toggleImmersive}
           initialPage={currentPage}
@@ -644,11 +646,11 @@ export default function MushafViewer({
           renderItem={({item}) => {
             const commonProps = {
               pageNumber: item,
-              textColor: theme.colors.text,
+              textColor: readingColors.text,
               surahLabel: getSurahNamesForPage(item),
               juzLabel: `Juz ${getJuzForPage(item)}`,
               pageLabel: String(item),
-              labelColor: theme.colors.textSecondary,
+              labelColor: readingColors.textSecondary,
               borderColor: edgeBorderColor,
               cardColor: pageBg,
               bgColor: edgeBg,

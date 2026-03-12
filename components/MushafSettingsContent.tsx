@@ -23,6 +23,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {getReadingThemeById} from '@/constants/readingThemes';
 import {
   useMushafSettingsStore,
   getActualFontSize,
@@ -389,14 +390,16 @@ interface MushafSettingsContentProps {
   containerStyle?: object;
   showTitle?: boolean;
   context?: 'mushaf' | 'player';
+  onOpenThemePicker?: () => void;
 }
 
 export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   containerStyle,
   showTitle = true,
   context,
+  onOpenThemePicker,
 }) => {
-  const {theme} = useTheme();
+  const {theme, themeMode} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {indexedTajweedData, isLoading: isTajweedLoading} = useTajweedStore();
 
@@ -429,6 +432,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     toggleWBWTranslation,
     toggleWBWTransliteration,
     toggleThemes,
+    lightThemeId,
+    darkThemeId,
   } = useMushafSettingsStore();
 
   const verseKey = '3:138';
@@ -635,6 +640,30 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           )}
         </>
       )}
+
+      {/* READING THEME Section */}
+      <Text style={styles.sectionHeader}>READING THEME</Text>
+      <View style={styles.card}>
+        <Pressable
+          style={({pressed}) => [
+            styles.settingRow,
+            pressed && styles.settingRowPressed,
+          ]}
+          onPress={onOpenThemePicker}>
+          <Text style={styles.settingRowLabel}>
+            {themeMode === 'system'
+              ? 'System'
+              : (getReadingThemeById(
+                  themeMode === 'light' ? lightThemeId : darkThemeId,
+                )?.name ?? 'System')}
+          </Text>
+          <Feather
+            name="chevron-right"
+            size={moderateScale(18)}
+            color={Color(theme.colors.text).alpha(0.2).toString()}
+          />
+        </Pressable>
+      </View>
 
       {/* Word by Word Section — only in list view */}
       {context !== 'player' && viewMode === 'list' && (
