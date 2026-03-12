@@ -106,7 +106,6 @@ module.exports = {
     },
     plugins: [
       'expo-router',
-      ['expo-asset', {assets: ['./assets/data/timestamps.db']}],
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
       'expo-media-library',

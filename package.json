@@ -3,7 +3,7 @@
   "main": "expo-router/entry",
   "version": "2.1.0",
   "scripts": {
-    "postinstall": "patch-package && gzip -dkf assets/data/timestamps.db.gz 2>/dev/null || true",
+    "postinstall": "patch-package",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
