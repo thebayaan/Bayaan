@@ -1,5 +1,32 @@
 [
   {
+    "version": "2.1",
+    "releaseDate": "2026-03-11",
+    "title": "Deeper Understanding",
+    "highlights": [
+      {
+        "title": "Word by Word",
+        "description": "Tap any word to see its meaning, transliteration, and grammar — right in the mushaf or player",
+        "icon": "text-outline"
+      },
+      {
+        "title": "Translations & Tafseer",
+        "description": "Browse dozens of translations and scholarly commentaries in multiple languages, all downloadable for offline use",
+        "icon": "language-outline"
+      },
+      {
+        "title": "Thematic Highlighting",
+        "description": "Verses are color-coded by theme so you can see the structure and topics of each surah at a glance",
+        "icon": "color-palette-outline"
+      },
+      {
+        "title": "IndoPak Script",
+        "description": "Switch to the IndoPak Nastaliq script in the mushaf for the style used across South Asia",
+        "icon": "globe-outline"
+      }
+    ]
+  },
+  {
     "version": "2.0",
     "releaseDate": "2026-02-18",
     "title": "A New Chapter",
