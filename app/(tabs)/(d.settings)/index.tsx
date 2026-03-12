@@ -26,6 +26,7 @@ import {
   ShieldLockIcon,
 } from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {ThemePicker} from '@/components/settings/ThemePicker';
 
 const isExternalLink = (type: string): boolean => {
   return ['support', 'featureRequest', 'terms', 'privacy', 'rateApp'].includes(
@@ -270,9 +271,18 @@ export default function SettingsScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          {paddingTop: insets.top + moderateScale(16), paddingBottom: bottomInset},
+          {
+            paddingTop: insets.top + moderateScale(16),
+            paddingBottom: bottomInset,
+          },
         ]}
         showsVerticalScrollIndicator={false}>
+        {/* Appearance */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>APPEARANCE</Text>
+          <ThemePicker />
+        </View>
+
         {/* Settings Sections */}
         {settingsItems.map(section => (
           <View key={section.section} style={styles.section}>

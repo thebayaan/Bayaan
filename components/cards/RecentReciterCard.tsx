@@ -1,12 +1,13 @@
 import React, {useCallback, useMemo} from 'react';
-import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {ReciterImage} from '@/components/ReciterImage';
 import {PlayIcon} from '@/components/Icons';
 import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {Slider} from '@miblanchard/react-native-slider';
 import {
   getReciterById,
@@ -242,16 +243,18 @@ export const RecentReciterCard = ({
   ]);
 
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const glassColorScheme = useGlassColorScheme();
 
-  const useGlass = Platform.OS === 'ios' && isLiquidGlassAvailable();
-  const CardWrapper = useGlass ? GlassView : View;
+  const CardWrapper = USE_GLASS ? GlassView : View;
 
   return (
     <CardWrapper
-      style={[styles.container, useGlass && styles.glassContainer]}
-      {...(useGlass ? {glassEffectStyle: 'regular'} : {})}>
+      style={[styles.container, USE_GLASS && styles.glassContainer]}
+      {...(USE_GLASS
+        ? {glassEffectStyle: 'regular', colorScheme: glassColorScheme}
+        : {})}>
       {/* Background layers (fallback for non-glass) */}
-      {!useGlass && (
+      {!USE_GLASS && (
         <>
           <View
             style={[
@@ -301,7 +304,6 @@ export const RecentReciterCard = ({
       <Text style={styles.reciterName} numberOfLines={1}>
         {reciterName}
       </Text>
-
 
       {/* Bottom zone: Playback controls — resumes audio */}
       <Pressable

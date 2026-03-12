@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Platform,
   TouchableOpacity,
   InteractionManager,
 } from 'react-native';
@@ -27,9 +26,8 @@ import Color from 'color';
 import {Link} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getRandomColors} from '@/utils/gradientColors';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 // Error Boundary for ScrollingHero
 class ScrollingHeroErrorBoundary extends React.Component<{
@@ -426,6 +424,7 @@ function createStyles(theme: Theme) {
 export const ScrollingHero = React.memo(
   () => {
     const {theme} = useTheme();
+    const glassColorScheme = useGlassColorScheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
     const distributedReciters = useDistributedReciters(RECITERS);
@@ -442,23 +441,16 @@ export const ScrollingHero = React.memo(
       <>
         <View style={styles.columnsContainer}>
           {columnConfigs.map((config, index) => (
-            <Column
-              key={index}
-              config={config}
-              styles={styles}
-              theme={theme}
-            />
+            <Column key={index} config={config} styles={styles} theme={theme} />
           ))}
         </View>
         <Overlay isRevealed={false} theme={theme} styles={styles} />
         <View style={styles.contentOverlay} pointerEvents="none">
           {USE_GLASS ? (
             <GlassView
-              style={[
-                styles.browseButton,
-                {borderRadius: moderateScale(25)},
-              ]}
-              glassEffectStyle="regular">
+              style={[styles.browseButton, {borderRadius: moderateScale(25)}]}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
               <Text style={styles.buttonText}>Browse All</Text>
               <Feather
                 name="arrow-right"
@@ -476,9 +468,7 @@ export const ScrollingHero = React.memo(
                     .alpha(0.95)
                     .toString(),
                   borderWidth: 1,
-                  borderColor: Color(theme.colors.border)
-                    .alpha(0.2)
-                    .toString(),
+                  borderColor: Color(theme.colors.border).alpha(0.2).toString(),
                   borderRadius: moderateScale(25),
                 },
               ]}>
@@ -501,7 +491,10 @@ export const ScrollingHero = React.memo(
           <Link href="/(tabs)/(a.home)/browse-all" asChild>
             <Pressable style={StyleSheet.flatten([styles.glassWrapper])}>
               <Link.AppleZoom>
-                <GlassView style={styles.glassInner} glassEffectStyle="regular">
+                <GlassView
+                  style={styles.glassInner}
+                  glassEffectStyle="regular"
+                  colorScheme={glassColorScheme}>
                   {scrollingContent}
                 </GlassView>
               </Link.AppleZoom>

@@ -21,6 +21,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
+import {useGlassColorScheme} from '@/hooks/useGlassProps';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
 import {moderateScale} from 'react-native-size-matters';
@@ -271,6 +272,7 @@ export default function MushafViewer({
   }, [storeSearchMode]);
 
   const {theme, isDarkMode} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
@@ -344,7 +346,7 @@ export default function MushafViewer({
       headerTitle: () => (
         <GlassView
           glassEffectStyle="regular"
-          colorScheme={isDarkMode ? 'dark' : 'light'}
+          colorScheme={glassColorScheme}
           tintColor={isDarkMode ? 'rgba(0,0,0,0.5)' : undefined}
           style={{
             borderRadius: moderateScale(14),
@@ -611,8 +613,8 @@ export default function MushafViewer({
           backgroundColor: isVertical
             ? theme.colors.background
             : isBookLayout
-            ? edgeBg
-            : theme.colors.card,
+              ? edgeBg
+              : theme.colors.card,
         },
       ]}>
       {/* Content area: horizontal FlatList or vertical continuous view */}

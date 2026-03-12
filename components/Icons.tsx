@@ -2020,3 +2020,105 @@ export const TasbihIcon: React.FC<IconProps> = ({color, size}) => (
     />
   </Svg>
 );
+
+export const SunIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx={12} cy={12} r={4.5} stroke={color} strokeWidth={1.5} />
+    <Line
+      x1={12}
+      y1={2.5}
+      x2={12}
+      y2={5}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={12}
+      y1={19}
+      x2={12}
+      y2={21.5}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={2.5}
+      y1={12}
+      x2={5}
+      y2={12}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={19}
+      y1={12}
+      x2={21.5}
+      y2={12}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={5.28}
+      y1={5.28}
+      x2={7.05}
+      y2={7.05}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={16.95}
+      y1={16.95}
+      x2={18.72}
+      y2={18.72}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={5.28}
+      y1={18.72}
+      x2={7.05}
+      y2={16.95}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={16.95}
+      y1={7.05}
+      x2={18.72}
+      y2={5.28}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const MoonIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20.5 12.5c-.67 4.44-4.64 7.5-9.11 7.5C6.48 20 2.5 16.48 2.5 11.5c0-4.47 3.06-8.44 7.5-9.11a8 8 0 0010.5 10.11z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const AutoThemeIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Circle split in half — left light, right dark */}
+    <Circle cx={12} cy={12} r={8.5} stroke={color} strokeWidth={1.5} />
+    {/* Right half filled (dark side) */}
+    <Path d="M12 3.5a8.5 8.5 0 010 17V3.5z" fill={color} opacity={0.85} />
+    {/* Small star on the dark side */}
+    <Circle cx={14.5} cy={10} r={1} fill="white" opacity={0.9} />
+    <Circle cx={16} cy={13.5} r={0.6} fill="white" opacity={0.7} />
+  </Svg>
+);

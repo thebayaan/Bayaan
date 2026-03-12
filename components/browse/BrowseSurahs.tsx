@@ -1,11 +1,5 @@
 import React, {useState, useMemo, useCallback, useLayoutEffect} from 'react';
-import {
-  View,
-  FlatList,
-  Text,
-  Platform,
-  Pressable,
-} from 'react-native';
+import {View, FlatList, Text, Platform, Pressable} from 'react-native';
 import {useRouter, useNavigation} from 'expo-router';
 import {
   moderateScale,
@@ -28,10 +22,10 @@ import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {Theme} from '@/utils/themeUtils';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
 import {useHeaderHeight} from '@react-navigation/elements';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 const isIOS = Platform.OS === 'ios';
-const USE_GLASS = isIOS && isLiquidGlassAvailable();
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
@@ -164,6 +158,7 @@ interface BrowseSurahsProps {
 export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const router = useRouter();
   const navigation = useNavigation();
+  const glassColorScheme = useGlassColorScheme();
   const insets = useSafeAreaInsets();
   const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
   const {askEveryTime, defaultReciterSelection} = useSettings();
@@ -446,7 +441,9 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     if (USE_GLASS) {
       return (
         <View style={styles.glassWrapper}>
-          <GlassView style={styles.glassInner}>{controlsContent}</GlassView>
+          <GlassView style={styles.glassInner} colorScheme={glassColorScheme}>
+            {controlsContent}
+          </GlassView>
         </View>
       );
     }

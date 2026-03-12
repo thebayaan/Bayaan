@@ -1,14 +1,13 @@
 import React, {useMemo} from 'react';
-import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {ReciterImage} from '@/components/ReciterImage';
 import Color from 'color';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+import {GlassView} from 'expo-glass-effect';
 import {Link} from 'expo-router';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 interface BrowseReciterCardProps {
   reciter: Reciter;
@@ -79,6 +78,7 @@ const BrowseReciterCard = React.memo(
     height,
     theme,
   }: BrowseReciterCardProps) => {
+    const glassColorScheme = useGlassColorScheme();
     const styles = useMemo(
       () => createStyles(theme, width, height),
       [theme, width, height],
@@ -128,7 +128,8 @@ const BrowseReciterCard = React.memo(
                   styles.container,
                   styles.glassContainer,
                 ])}
-                glassEffectStyle="regular">
+                glassEffectStyle="regular"
+                colorScheme={glassColorScheme}>
                 {content}
               </GlassView>
             </Link.AppleZoom>

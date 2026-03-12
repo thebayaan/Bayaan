@@ -1,6 +1,7 @@
 import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
+import {useGlassColorScheme} from '@/hooks/useGlassProps';
 import Animated, {
   runOnJS,
   useSharedValue,
@@ -55,6 +56,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onFollowAlongPress,
 }) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const [showQueue, setShowQueue] = useState(false);
   const {
     updateQueue,
@@ -289,6 +291,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           <GlassView
             style={StyleSheet.absoluteFill}
             glassEffectStyle="regular"
+            colorScheme={glassColorScheme}
           />
           <Header onOptionsPress={onOptionsPress} />
         </Animated.View>
@@ -310,6 +313,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           <GlassView
             style={StyleSheet.absoluteFill}
             glassEffectStyle="regular"
+            colorScheme={glassColorScheme}
           />
           <TrackInfo />
           <PlaybackControls />

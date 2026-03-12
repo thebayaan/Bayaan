@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable, Platform, StyleSheet} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Image} from 'expo-image';
 import {moderateScale} from 'react-native-size-matters';
@@ -8,9 +8,8 @@ import {useTheme} from '@/hooks/useTheme';
 import {SuperCategory} from '@/types/adhkar';
 import {ADHKAR_CATEGORY_IMAGES} from '@/constants/adhkarImages';
 import {Link} from 'expo-router';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
   // Main adhkar
@@ -60,6 +59,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
   height,
 }: AdhkarBentoCardProps) {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const isDarkMode = theme.isDarkMode;
 
   // Subtle gradient incorporating the category's color (same pattern as ExploreView)
@@ -144,7 +144,10 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
       <Link {...linkProps}>
         <Pressable style={StyleSheet.flatten([styles.glassWrapper])}>
           <Link.AppleZoom>
-            <GlassView style={styles.glassInner} glassEffectStyle="regular">
+            <GlassView
+              style={styles.glassInner}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>
