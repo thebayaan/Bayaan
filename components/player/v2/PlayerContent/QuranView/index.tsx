@@ -3,6 +3,7 @@ import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
+import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Surah} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
@@ -95,6 +96,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   contentPaddingBottom,
 }) => {
   const {theme} = useTheme();
+  const readingColors = useReadingThemeColors();
   const {width: screenWidth} = useWindowDimensions();
   const contentWidth = screenWidth - 2 * moderateScale(20);
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
@@ -133,8 +135,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
 
   // Tajweed data for DK Skia rendering (verse-level indexed)
@@ -188,7 +190,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       <VerseItem
         verse={item}
         onVersePress={onVersePress}
-        textColor={theme.colors.text}
+        textColor={readingColors.text}
         borderColor={theme.colors.border}
         showTranslation={showTranslation}
         showTransliteration={showTransliteration}
@@ -210,7 +212,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     ),
     [
       onVersePress,
-      theme.colors.text,
+      readingColors.text,
       theme.colors.border,
       showTranslation,
       showTransliteration,
@@ -259,8 +261,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
             surahNumber={currentSurah}
             showBismillah={!!surah?.bismillah_pre}
             width={contentWidth}
-            textColor={theme.colors.textSecondary}
-            nameColor={theme.colors.text}
+            textColor={readingColors.textSecondary}
+            nameColor={readingColors.text}
             showTajweed={showTajweed}
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}

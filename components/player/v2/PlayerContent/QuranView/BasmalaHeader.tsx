@@ -131,8 +131,9 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
       charToRule,
       showTajweed,
     );
-    // Extra horizontal room so the basm glyph isn't clipped at canvas edges
-    const hPad = moderateScale(12);
+    // Extra horizontal room so the basm glyph isn't clipped at canvas edges.
+    // V2 font renders a wider basm glyph — scale padding with width for larger devices.
+    const hPad = Math.max(moderateScale(16), width * 0.06);
     return (
       <View style={containerStyle}>
         <Canvas style={{width: width + hPad * 2, height, direction: 'rtl'}}>

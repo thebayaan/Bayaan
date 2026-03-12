@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {getReadingThemeById} from '@/constants/readingThemes';
 
 // Constants for font sizing
 export const DISPLAY_MIN = 1;
@@ -24,7 +25,6 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
-
 export interface RecentRead {
   surahId: number;
   page: number;
@@ -70,6 +70,10 @@ interface MushafSettingsState {
   // Active translation (bundled or downloaded remote)
   selectedTranslationId: string;
 
+  // Reading theme (mushaf-only, does not affect global app theme)
+  lightThemeId: string;
+  darkThemeId: string;
+
   // Actions
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
@@ -92,6 +96,7 @@ interface MushafSettingsState {
   resumeChain: (index: number) => void;
   clearRecentPages: () => void;
   setSelectedTranslationId: (id: string) => void;
+  setReadingTheme: (themeId: string) => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -116,6 +121,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       pageLayout: 'book' as MushafPageLayout, // Default to book page view
       recentPages: [],
       selectedTranslationId: 'saheeh',
+      lightThemeId: 'default',
+      darkThemeId: 'dark-default',
 
       // Actions
       toggleTranslation: () =>
@@ -179,11 +186,19 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       clearRecentPages: () => set({recentPages: []}),
       setSelectedTranslationId: (id: string) =>
         set({selectedTranslationId: id}),
+      setReadingTheme: (themeId: string) =>
+        set(state => {
+          const rt = getReadingThemeById(themeId);
+          if (!rt) return state;
+          return rt.mode === 'light'
+            ? {lightThemeId: themeId}
+            : {darkThemeId: themeId};
+        }),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 10,
+      version: 11,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -235,6 +250,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         }
         if (version < 10) {
           state.showThemes = false;
+        }
+        if (version < 11) {
+          state.lightThemeId = 'default';
+          state.darkThemeId = 'dark-default';
         }
         return state as unknown as MushafSettingsState;
       },

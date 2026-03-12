@@ -37,6 +37,8 @@ import {
   ChainLinksIcon,
   GroupedLinesIcon,
   BreakdownIcon,
+  CopyIcon,
+  ShareIcon,
 } from '@/components/Icons';
 import Color from 'color';
 import {router} from 'expo-router';
@@ -841,11 +843,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleCopy}>
-                <Feather
-                  name="copy"
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
+                <CopyIcon size={moderateScale(18)} color={theme.colors.text} />
                 <Text style={styles.optionText}>Copy</Text>
               </Pressable>
               <View style={styles.divider} />
@@ -855,11 +853,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleShare}>
-                <Feather
-                  name="share"
-                  size={moderateScale(18)}
-                  color={theme.colors.text}
-                />
+                <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
                 <Text style={styles.optionText}>Share</Text>
               </Pressable>
             </View>

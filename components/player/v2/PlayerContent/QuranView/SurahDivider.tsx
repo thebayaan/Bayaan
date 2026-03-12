@@ -8,7 +8,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import type {SkFont} from '@shopify/react-native-skia';
 
 const REFERENCE_SIZE = 100;
-const NAME_SCALE = 0.4;
+const NAME_SCALE = 0.32;
 const DIVIDER_PADDING_V = verticalScale(4);
 
 const fallbackSurahNames: Record<number, string> = {};
