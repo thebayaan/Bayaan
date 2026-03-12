@@ -295,7 +295,7 @@ export const PlayerSheet = () => {
         style={styles.sheet}
         backgroundStyle={[
           styles.background,
-          {backgroundColor: theme.colors.background},
+          {backgroundColor: 'transparent'},
         ]}>
         <PlayerContent
           onSpeedPress={handleShowSpeedSheet}
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   background: {
-    borderTopLeftRadius: 45,
-    borderTopRightRadius: 45,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
 });
