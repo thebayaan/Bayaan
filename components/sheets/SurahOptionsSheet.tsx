@@ -10,7 +10,13 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {QueueIcon, HeartIcon, CheckIcon, ProfileIcon} from '@/components/Icons';
+import {
+  QueueIcon,
+  HeartIcon,
+  CheckIcon,
+  ProfileIcon,
+  LearnAboutIcon,
+} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
@@ -352,8 +358,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 {isCurrentlyDownloading
                   ? `Downloading ${Math.round(downloadProgress * 100)}%`
                   : isTrackDownloaded
-                  ? 'Downloaded'
-                  : 'Download'}
+                    ? 'Downloaded'
+                    : 'Download'}
               </Text>
             </Pressable>
 
@@ -432,8 +438,7 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 pressed && styles.optionPressed,
               ]}
               onPress={handleViewInfo}>
-              <Feather
-                name="info"
+              <LearnAboutIcon
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
