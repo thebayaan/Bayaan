@@ -1186,52 +1186,49 @@ export const ScrollModePillIcon: React.FC<IconProps> = ({color, size}) => (
 // List View — Flowing text lines (no page border)
 export const ListViewPillIcon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Line
-      x1="3"
-      y1="4.5"
-      x2="21"
-      y2="4.5"
+    <Rect
+      x={10}
+      y={2.5}
+      width={11}
+      height={3}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
       stroke={color}
-      strokeWidth={1.3}
-      strokeLinecap="round"
+      strokeWidth={0.8}
     />
-    <Line
-      x1="3"
-      y1="8"
-      x2="19"
-      y2="8"
+    <Rect
+      x={3}
+      y={7.5}
+      width={12}
+      height={3}
+      rx={1.5}
+      fill={color}
       stroke={color}
-      strokeWidth={1.3}
-      strokeLinecap="round"
-      opacity={0.7}
+      strokeWidth={0.8}
+      opacity={0.5}
     />
-    <Line
-      x1="3"
-      y1="11.5"
-      x2="21"
-      y2="11.5"
+    <Rect
+      x={9}
+      y={12.5}
+      width={12}
+      height={3}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
       stroke={color}
-      strokeWidth={1.3}
-      strokeLinecap="round"
+      strokeWidth={0.8}
     />
-    <Line
-      x1="3"
-      y1="15"
-      x2="17"
-      y2="15"
+    <Rect
+      x={3}
+      y={17.5}
+      width={11}
+      height={3}
+      rx={1.5}
+      fill={color}
       stroke={color}
-      strokeWidth={1.3}
-      strokeLinecap="round"
-      opacity={0.7}
-    />
-    <Line
-      x1="3"
-      y1="18.5"
-      x2="21"
-      y2="18.5"
-      stroke={color}
-      strokeWidth={1.3}
-      strokeLinecap="round"
+      strokeWidth={0.8}
+      opacity={0.5}
     />
   </Svg>
 );
@@ -2120,5 +2117,135 @@ export const AutoThemeIcon: React.FC<IconProps> = ({color, size}) => (
     {/* Small star on the dark side */}
     <Circle cx={14.5} cy={10} r={1} fill="white" opacity={0.9} />
     <Circle cx={16} cy={13.5} r={0.6} fill="white" opacity={0.7} />
+  </Svg>
+);
+
+export const ThreeStarsReviewIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M5 10L5.8 12.5H8.3L6.3 14L7 16.5L5 15L3 16.5L3.7 14L1.7 12.5H4.2Z"
+      stroke={color}
+      strokeWidth={1}
+      fill={color}
+      opacity={0.15}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 4L13.2 7.5H16.7L13.8 9.5L14.8 13L12 11L9.2 13L10.2 9.5L7.3 7.5H10.8Z"
+      stroke={color}
+      strokeWidth={1.2}
+      fill={color}
+      opacity={0.2}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M19 10L19.8 12.5H22.3L20.3 14L21 16.5L19 15L17 16.5L17.7 14L15.7 12.5H18.2Z"
+      stroke={color}
+      strokeWidth={1}
+      fill={color}
+      opacity={0.15}
+      strokeLinejoin="round"
+    />
+    <Line
+      x1={5}
+      y1={20}
+      x2={19}
+      y2={20}
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.2}
+    />
+  </Svg>
+);
+
+export const CopyIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={2}
+      y={6}
+      width={13}
+      height={15}
+      rx={2}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.35}
+    />
+    <Rect
+      x={7}
+      y={3}
+      width={13}
+      height={15}
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+  </Svg>
+);
+
+export const ShareIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Line
+      x1={12}
+      y1={3}
+      x2={12}
+      y2={15}
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M8 7L12 3L16 7"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M5 12V19C5 19.55 5.45 20 6 20H18C18.55 20 19 19.55 19 19V12"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const LearnAboutIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 2C8 2 5 5 5 9C5 12 7 14 8 15.5V18C8 18.55 8.45 19 9 19H15C15.55 19 16 18.55 16 18V15.5C17 14 19 12 19 9C19 5 16 2 12 2Z"
+      stroke={color}
+      strokeWidth={1.3}
+      fill={color}
+      opacity={0.06}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Line
+      x1={9}
+      y1={21}
+      x2={15}
+      y2={21}
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={10}
+      y1={23}
+      x2={14}
+      y2={23}
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M10 12C10 12 11 10 12 10C13 10 14 12 14 12"
+      stroke={color}
+      strokeWidth={0.8}
+      opacity={0.3}
+      strokeLinecap="round"
+    />
   </Svg>
 );
