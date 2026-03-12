@@ -100,11 +100,22 @@ export const useTafseerStore = create<TafseerStoreState>()(
     {
       name: 'tafseer-store',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 2,
+      version: 3,
       // Only persist selected tafseer
       partialize: state => ({
         selectedTafseerId: state.selectedTafseerId,
       }),
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as {selectedTafseerId?: string | null};
+        if (version < 3) {
+          // Existing users had null — default to bundled Ibn Kathir
+          return {
+            ...state,
+            selectedTafseerId: state.selectedTafseerId || '169',
+          };
+        }
+        return state;
+      },
     },
   ),
 );
