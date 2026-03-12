@@ -206,7 +206,8 @@ function HomeScreen() {
           {USE_GLASS ? (
             <GlassView
               style={headerStyles.mushafGlass}
-              glassEffectStyle="regular">
+              glassEffectStyle="regular"
+              isInteractive>
               <Pressable
                 onPress={handleMushafPress}
                 style={headerStyles.mushafInner}>
@@ -259,10 +260,9 @@ const createHeaderStyles = (
     mushafGlass: {
       position: 'absolute',
       right: moderateScale(16),
-      width: moderateScale(40),
-      height: moderateScale(40),
-      borderRadius: moderateScale(20),
-      overflow: 'hidden',
+      width: moderateScale(44),
+      height: moderateScale(44),
+      borderRadius: moderateScale(22),
     },
     mushafInner: {
       flex: 1,
