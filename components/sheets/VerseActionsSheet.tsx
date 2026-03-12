@@ -516,19 +516,47 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
         {activeScreen ? (
           <>
-            <Pressable
-              onPress={handleBack}
-              style={({pressed}) => [styles.backRow, pressed && {opacity: 0.6}]}
-              hitSlop={8}>
-              <Feather
-                name="chevron-left"
-                size={moderateScale(16)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.backRowText}>
-                {SCREEN_TITLES[activeScreen] ?? 'Back'}
-              </Text>
-            </Pressable>
+            <View style={styles.backRowContainer}>
+              <Pressable
+                onPress={handleBack}
+                style={({pressed}) => [
+                  styles.backRow,
+                  pressed && {opacity: 0.6},
+                ]}
+                hitSlop={8}>
+                <Feather
+                  name="chevron-left"
+                  size={moderateScale(16)}
+                  color={theme.colors.text}
+                />
+                <Text style={styles.backRowText}>
+                  {SCREEN_TITLES[activeScreen] ?? 'Back'}
+                </Text>
+              </Pressable>
+              {(activeScreen === 'translation' ||
+                activeScreen === 'tafseer') && (
+                <Pressable
+                  onPress={() => {
+                    lightHaptics();
+                    SheetManager.hideAll();
+                    usePlayerStore.getState().setSheetMode('hidden');
+                    setTimeout(() => {
+                      router.push('/(tabs)/(a.home)/translations');
+                    }, 300);
+                  }}
+                  style={({pressed}) => [
+                    styles.settingsButton,
+                    pressed && {opacity: 0.6},
+                  ]}
+                  hitSlop={8}>
+                  <Feather
+                    name="settings"
+                    size={moderateScale(16)}
+                    color={Color(theme.colors.text).alpha(0.5).toString()}
+                  />
+                </Pressable>
+              )}
+            </View>
             {isFullScreen ? (
               <View style={{flex: 1}}>
                 {activeScreen === 'translation' && (
@@ -910,11 +938,19 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       marginLeft: moderateScale(10),
     },
+    backRowContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: moderateScale(10),
+    },
     backRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: moderateScale(2),
-      marginBottom: moderateScale(10),
+    },
+    settingsButton: {
+      padding: moderateScale(4),
     },
     backRowText: {
       fontSize: moderateScale(13),
