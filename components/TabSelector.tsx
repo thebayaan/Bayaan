@@ -1,5 +1,12 @@
 import React, {useEffect, useRef} from 'react';
-import {View, Text, Pressable, Animated, StyleSheet, Platform} from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  Animated,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -10,15 +17,18 @@ interface TabSelectorProps<T extends string> {
   options: T[];
   selectedOption: T;
   onSelect: (option: T) => void;
+  width?: number;
 }
 
 function TabSelector<T extends string>({
   options,
   selectedOption,
   onSelect,
+  width,
 }: TabSelectorProps<T>) {
   const {theme} = useTheme();
   const selectedIndex = options.indexOf(selectedOption);
+  const resolvedWidth = width ?? moderateScale(80 * options.length);
 
   if (Platform.OS === 'ios') {
     return (
@@ -29,13 +39,16 @@ function TabSelector<T extends string>({
           const index = event.nativeEvent.selectedSegmentIndex;
           onSelect(options[index]);
         }}
-        style={{width: moderateScale(80 * options.length), height: moderateScale(40), alignSelf: 'center'}}
+        style={{
+          width: resolvedWidth,
+          height: moderateScale(40),
+        }}
       />
     );
   }
 
   // Android: original tab selector with sliding indicator
-  const styles = createStyles(theme, options.length);
+  const styles = createStyles(theme, options.length, resolvedWidth);
 
   const indicatorPosition = useRef(
     new Animated.Value(options.indexOf(selectedOption)),
@@ -77,12 +90,11 @@ function TabSelector<T extends string>({
   );
 }
 
-const createStyles = (theme: Theme, optionCount: number) =>
+const createStyles = (theme: Theme, _optionCount: number, width: number) =>
   StyleSheet.create({
     container: {
-      width: moderateScale(80 * optionCount),
+      width,
       height: moderateScale(40),
-      alignSelf: 'center',
     },
     tabsContainer: {
       flexDirection: 'row',
