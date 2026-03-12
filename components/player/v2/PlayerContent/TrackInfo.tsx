@@ -1,5 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
+import {GlassView} from 'expo-glass-effect';
+import {SymbolView} from 'expo-symbols';
 import {Pressable} from 'react-native-gesture-handler';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -10,12 +12,7 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
-import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import {MicrophoneIcon} from '@/components/Icons';
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
@@ -26,7 +23,6 @@ export const TrackInfo = () => {
   const [, setReciter] = useState<Reciter | null>(null);
   const [rewayat, setRewayat] = useState<Rewayat | null>(null);
   const {isTrackLoved, toggleTrackLoved} = useLoved();
-  const scale = useSharedValue(1);
 
   useEffect(() => {
     setRewayat(null);
@@ -78,20 +74,11 @@ export const TrackInfo = () => {
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {
-      // Animate the heart
-      scale.value = withSpring(1.2, {}, () => {
-        scale.value = withSpring(1);
-      });
-
       toggleTrackLoved(currentTrack);
     }
-  }, [currentTrack, scale, toggleTrackLoved]);
+  }, [currentTrack, toggleTrackLoved]);
 
   const isLoved = currentTrack ? isTrackLoved(currentTrack) : false;
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: scale.value}],
-  }));
 
   return (
     <View style={styles.container}>
@@ -145,20 +132,24 @@ export const TrackInfo = () => {
           </View>
         </Pressable>
 
-        <Pressable
-          style={({pressed}) => [
-            styles.loveButton,
-            {opacity: pressed ? 0.7 : 1},
-          ]}
-          onPress={handleToggleLoved}>
-          <Animated.View style={animatedStyle}>
-            <HeartIcon
-              size={moderateScale(32)}
-              color={isLoved ? 'red' : theme.colors.text}
-              filled={isLoved}
+        <GlassView
+          style={styles.loveButton}
+          glassEffectStyle="regular"
+          isInteractive>
+          <Pressable
+            style={({pressed}) => [
+              styles.loveButtonInner,
+              {opacity: pressed ? 0.7 : 1},
+            ]}
+            onPress={handleToggleLoved}>
+            <SymbolView
+              name={isLoved ? 'heart.fill' : 'heart'}
+              size={moderateScale(22)}
+              tintColor={isLoved ? 'red' : theme.colors.text}
+              weight="medium"
             />
-          </Animated.View>
-        </Pressable>
+          </Pressable>
+        </GlassView>
       </View>
     </View>
   );
@@ -173,7 +164,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: moderateScale(8),
   },
   trackInfoTouchable: {
     flexDirection: 'row',
@@ -186,7 +176,7 @@ const styles = StyleSheet.create({
   reciterImage: {
     width: moderateScale(50),
     height: moderateScale(50),
-    borderRadius: moderateScale(6),
+    borderRadius: moderateScale(25),
   },
   uploadArtwork: {
     justifyContent: 'center',
@@ -214,7 +204,13 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loveButton: {
-    paddingLeft: moderateScale(8),
+    marginLeft: moderateScale(8),
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(25),
+  },
+  loveButtonInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
