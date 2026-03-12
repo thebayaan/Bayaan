@@ -18,7 +18,10 @@ export function generateAudioUrl(
     throw new Error('No rewayat found for reciter');
   }
 
-  return `${rewayat.server}/${paddedSurahId}.mp3`;
+  const filename = rewayat.file_pattern
+    ? rewayat.file_pattern.replace('{NNN}', paddedSurahId)
+    : `${paddedSurahId}.mp3`;
+  return `${rewayat.server}/${filename}`;
 }
 
 /**

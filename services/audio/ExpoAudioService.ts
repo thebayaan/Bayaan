@@ -125,8 +125,14 @@ class ExpoAudioService {
 
       if (__DEV__) console.log('[ExpoAudioService] Loading track:', url);
 
-      // Create the audio source
+      // Create the audio source with headers for sources that need them
       const source: AudioSource = {uri: url};
+      if (url.includes('podcasts.qurancentral.com')) {
+        source.headers = {
+          Referer: 'https://qurancentral.com/',
+          Origin: 'https://qurancentral.com',
+        };
+      }
 
       // Replace current audio with new source
       await this.player.replace(source);

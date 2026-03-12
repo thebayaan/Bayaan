@@ -20,6 +20,7 @@ export interface Rewayat {
   created_at: string;
   mp3quran_read_id?: number;
   qdc_reciter_id?: number;
+  file_pattern?: string; // e.g., "reciter-name-{NNN}-muslimcentral.com.mp3" — {NNN} replaced with 3-digit surah number
 }
 
 export const RECITERS: Reciter[] = recitersData;

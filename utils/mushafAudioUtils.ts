@@ -19,7 +19,10 @@ export function resolveMushafAudioUrl(
   if (reciter) {
     const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
     if (rewayat) {
-      return `${rewayat.server}/${paddedSurah}.mp3`;
+      const filename = rewayat.file_pattern
+        ? rewayat.file_pattern.replace('{NNN}', paddedSurah)
+        : `${paddedSurah}.mp3`;
+      return `${rewayat.server}/${filename}`;
     }
   }
 

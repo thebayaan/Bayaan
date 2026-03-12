@@ -193,7 +193,10 @@ export async function fetchAudioUrl(
 
   // Format surah number with leading zeros
   const surahStr = surahId.toString().padStart(3, '0');
-  return `${rewayat.server}/${surahStr}.mp3`;
+  const filename = rewayat.file_pattern
+    ? rewayat.file_pattern.replace('{NNN}', surahStr)
+    : `${surahStr}.mp3`;
+  return `${rewayat.server}/${filename}`;
 }
 
 // Search functions
