@@ -25,7 +25,7 @@ export const useTafseerStore = create<TafseerStoreState>()(
   persist(
     (set, get) => ({
       downloadedMeta: [],
-      selectedTafseerId: null,
+      selectedTafseerId: '169',
       downloadingId: null,
       downloadProgress: 0,
 

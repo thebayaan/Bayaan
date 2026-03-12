@@ -312,6 +312,65 @@ class TafseerDbService {
     );
     return row != null;
   }
+
+  /**
+   * Import the bundled Ibn Kathir (Abridged) tafseer into SQLite.
+   * The compact JSON stores only group leaders (1,895 entries instead of 6,231)
+   * to minimize bundle size. This method expands groups into per-verse rows.
+   * Runs once on first launch — subsequent calls are no-ops.
+   */
+  async importBundledIbnKathir(): Promise<void> {
+    const already = await this.isDownloaded('169');
+    if (already) return;
+
+    const db = await this.ensureReady();
+    const compactData =
+      require('@/data/ibn-kathir-tafseer-compact.json') as Array<{
+        s: number;
+        f: number;
+        t: number;
+        text: string;
+      }>;
+
+    // Expand compact entries into per-verse rows
+    const verses: Array<{
+      verseKey: string;
+      surahNumber: number;
+      ayahNumber: number;
+      text: string;
+      groupVerseKey: string;
+      fromAyah: number;
+      toAyah: number;
+    }> = [];
+
+    for (const entry of compactData) {
+      const groupVerseKey = `${entry.s}:${entry.f}`;
+      for (let ayah = entry.f; ayah <= entry.t; ayah++) {
+        verses.push({
+          verseKey: `${entry.s}:${ayah}`,
+          surahNumber: entry.s,
+          ayahNumber: ayah,
+          text: entry.text,
+          groupVerseKey,
+          fromAyah: entry.f,
+          toAyah: entry.t,
+        });
+      }
+    }
+
+    await this.saveTafseer(
+      '169',
+      'Ibn Kathir (Abridged)',
+      'Ibn Kathir (Abridged)',
+      'English',
+      'ltr',
+      verses,
+    );
+
+    console.log(
+      `[TafseerDbService] Bundled Ibn Kathir imported (${verses.length} verses)`,
+    );
+  }
 }
 
 export const tafseerDbService = new TafseerDbService();
