@@ -7,6 +7,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {useTafseerStore} from '@/store/tafseerStore';
 import {wbwDataService} from '@/services/wbw/WBWDataService';
 import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
 import {timestampService} from '@/services/timestamps/TimestampService';
@@ -402,6 +403,8 @@ appInitializer.registerService({
   critical: false,
   initialize: async () => {
     await tafseerDbService.initialize();
+    await tafseerDbService.importBundledIbnKathir();
+    await useTafseerStore.getState().loadDownloadedMeta();
   },
 });
 
