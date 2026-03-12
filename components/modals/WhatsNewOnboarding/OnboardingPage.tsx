@@ -10,6 +10,11 @@ import {
   RepeatIcon,
   DownloadIcon,
   PlaylistIcon,
+  BreakdownIcon,
+  AmbientIcon,
+  StackedVolumesIcon,
+  GroupedLinesIcon,
+  TasbihIcon,
 } from '@/components/Icons';
 
 const CUSTOM_ICONS: Record<
@@ -20,6 +25,11 @@ const CUSTOM_ICONS: Record<
   memorize: {component: RepeatIcon, size: moderateScale(64)},
   downloads: {component: DownloadIcon, size: moderateScale(56)},
   playlists: {component: PlaylistIcon, size: moderateScale(56)},
+  wbw: {component: BreakdownIcon, size: moderateScale(56)},
+  ambient: {component: AmbientIcon, size: moderateScale(56)},
+  adhkar: {component: TasbihIcon, size: moderateScale(56)},
+  translations: {component: StackedVolumesIcon, size: moderateScale(56)},
+  themes: {component: GroupedLinesIcon, size: moderateScale(56)},
 };
 
 function renderIcon(page: OnboardingPageType) {
