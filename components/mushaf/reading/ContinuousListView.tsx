@@ -232,7 +232,7 @@ const ContinuousListView = forwardRef<
 
     const items = useMemo(() => buildContinuousListItems(), []);
 
-    const contentWidth = SCREEN_WIDTH - moderateScale(24);
+    const contentWidth = SCREEN_WIDTH - moderateScale(16);
 
     // Load annotations for visible surahs
     const loadAnnotationsForSurah = useVerseAnnotationsStore(
@@ -369,7 +369,7 @@ const ContinuousListView = forwardRef<
         contentContainerStyle={{
           paddingTop: insets.top + verticalScale(60),
           paddingBottom: insets.bottom + verticalScale(80),
-          paddingHorizontal: moderateScale(12),
+          paddingHorizontal: moderateScale(8),
         }}
         showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewableItemsChanged}
