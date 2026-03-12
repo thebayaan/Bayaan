@@ -1,12 +1,5 @@
 import React, {useMemo} from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Platform,
-  ViewStyle,
-} from 'react-native';
+import {View, Text, StyleSheet, Pressable, ViewStyle} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {LinearGradient} from 'expo-linear-gradient';
 import {Ionicons} from '@expo/vector-icons';
@@ -14,11 +7,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {HeroSection} from './HeroSection';
 import {Link} from 'expo-router';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import Svg, {Circle, Path, Defs, RadialGradient, Stop} from 'react-native-svg';
 import {pickHeroTheme, HeroColorTheme} from '@/components/hero/heroThemes';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 // Match SurahsHero height
 const SECTION_HEIGHT = moderateScale(150);
@@ -141,6 +133,7 @@ interface SavedAdhkarCardProps {
  */
 const SavedAdhkarCard = ({savedCount, style}: SavedAdhkarCardProps) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const heroTheme = useMemo(() => pickHeroTheme(), []);
   const styles = useMemo(
     () => createStyles(theme, heroTheme),
@@ -193,7 +186,10 @@ const SavedAdhkarCard = ({savedCount, style}: SavedAdhkarCardProps) => {
       <Link href="/(tabs)/(a.home)/adhkar/saved" asChild>
         <Pressable style={StyleSheet.flatten([styles.glassWrapper, style])}>
           <Link.AppleZoom>
-            <GlassView style={styles.glassInner} glassEffectStyle="regular">
+            <GlassView
+              style={styles.glassInner}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>

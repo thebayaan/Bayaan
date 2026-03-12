@@ -8,7 +8,6 @@ import {
   StyleProp,
   ViewStyle,
   GestureResponderEvent,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
@@ -25,9 +24,8 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {Link} from 'expo-router';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -79,6 +77,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   mushafLink = false,
 }) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
 
   // Get download state
   const isDownloadedBase = useIsDownloaded(
@@ -442,7 +441,8 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           <Link.AppleZoom>
             <GlassView
               style={styles.glassInner}
-              glassEffectStyle="regular">
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>
@@ -482,7 +482,8 @@ export const SurahCard: React.FC<SurahCardProps> = ({
         style={StyleSheet.flatten([styles.glassWrapper, style])}>
         <GlassView
           style={styles.glassInner}
-          glassEffectStyle="regular">
+          glassEffectStyle="regular"
+          colorScheme={glassColorScheme}>
           {cardContent}
         </GlassView>
       </Pressable>

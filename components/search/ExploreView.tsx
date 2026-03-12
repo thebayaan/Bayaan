@@ -16,9 +16,8 @@ import {useWindowDimensions} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
@@ -119,6 +118,7 @@ const BentoTileComponent = React.memo(
     dimensions: {width: number; height: number};
   }) => {
     const {theme} = useTheme();
+    const glassColorScheme = useGlassColorScheme();
 
     // Subtle gradient incorporating the tile's unique color
     const baseColor = Color(tile.backgroundColor);
@@ -183,7 +183,8 @@ const BentoTileComponent = React.memo(
             <Link.AppleZoom>
               <GlassView
                 style={tileInnerStyles.glassInner}
-                glassEffectStyle="regular">
+                glassEffectStyle="regular"
+                colorScheme={glassColorScheme}>
                 {tileContent}
               </GlassView>
             </Link.AppleZoom>
@@ -317,7 +318,10 @@ export const ExploreView = React.memo(
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: Platform.OS === 'ios' ? insets.top + moderateScale(16) : moderateScale(16),
+              paddingTop:
+                Platform.OS === 'ios'
+                  ? insets.top + moderateScale(16)
+                  : moderateScale(16),
               paddingHorizontal: horizontalPadding,
               paddingBottom: bottomInset,
             },

@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo} from 'react';
-import {View, Pressable, Text, StyleSheet, Platform} from 'react-native';
+import {View, Pressable, Text, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {
@@ -17,9 +17,8 @@ import {
   FLOATING_UI_HORIZONTAL_MARGIN,
   FLOATING_TAB_BAR_BOTTOM_MARGIN,
 } from '@/utils/constants';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 function getIcon(
   routeName: string,
@@ -92,6 +91,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   navigation,
 }) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const insets = useSafeAreaInsets();
   const iconSize = moderateScale(24, 0.2);
 
@@ -103,7 +103,10 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
       right: FLOATING_UI_HORIZONTAL_MARGIN,
       backgroundColor: USE_GLASS
         ? 'transparent'
-        : Color(theme.colors.background).mix(Color(theme.colors.text), 0.08).alpha(0.92).toString(),
+        : Color(theme.colors.background)
+            .mix(Color(theme.colors.text), 0.08)
+            .alpha(0.92)
+            .toString(),
       borderRadius: moderateScale(24),
       borderWidth: USE_GLASS ? 0 : 1,
       borderColor: USE_GLASS
@@ -142,7 +145,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
     <Container
       style={containerStyle}
       {...(USE_GLASS
-        ? {glassEffectStyle: 'regular' as const}
+        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
         : {})}>
       <View style={styles.content}>
         {state.routes.map((route, index) => {

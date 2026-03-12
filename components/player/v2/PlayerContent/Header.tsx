@@ -1,6 +1,7 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
+import {useGlassColorScheme} from '@/hooks/useGlassProps';
 import {moderateScale} from 'react-native-size-matters';
 import {SymbolView} from 'expo-symbols';
 import {
@@ -32,6 +33,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const {setSheetMode} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
 
@@ -116,6 +118,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       <GlassView
         style={styles.closeButton}
         glassEffectStyle="regular"
+        colorScheme={glassColorScheme}
         isInteractive>
         <Pressable style={styles.glassButtonInner} onPress={handleClose}>
           <SymbolView
@@ -132,6 +135,7 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       <GlassView
         style={styles.optionsButton}
         glassEffectStyle="regular"
+        colorScheme={glassColorScheme}
         isInteractive>
         <Pressable style={styles.glassButtonInner} onPress={onOptionsPress}>
           <SymbolView

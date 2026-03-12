@@ -1,5 +1,5 @@
 import React, {useCallback, useMemo, useRef} from 'react';
-import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {usePathname} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
@@ -15,12 +15,12 @@ import {
   getFloatingPlayerBottomPosition,
   FLOATING_UI_HORIZONTAL_MARGIN,
 } from '@/utils/constants';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const {play, pause} = usePlayerActions();
   const playbackState = usePlayerStore(state => state.playback.state);
   const queueTracks = usePlayerStore(state => state.queue.tracks);
@@ -97,7 +97,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   return (
     <Container
       style={containerStyle}
-      {...(USE_GLASS ? {glassEffectStyle: 'regular' as const} : {})}>
+      {...(USE_GLASS
+        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
+        : {})}>
       <Pressable
         onPress={handlePress}
         style={styles.content}

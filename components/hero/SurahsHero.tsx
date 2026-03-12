@@ -1,12 +1,5 @@
 import React, {useCallback, useMemo} from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  Pressable,
-  Platform,
-  ViewStyle,
-} from 'react-native';
+import {StyleSheet, Text, View, Pressable, ViewStyle} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -16,7 +9,8 @@ import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import {HeroSection} from './HeroSection';
 import {SurahOfTheDay} from './SurahOfTheDay';
 import {Link} from 'expo-router';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import Svg, {
   Defs,
   RadialGradient as SvgRadialGradient,
@@ -24,8 +18,6 @@ import Svg, {
   Rect,
 } from 'react-native-svg';
 import {SESSION_SEED, pickHeroTheme} from '@/components/hero/heroThemes';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
 
 // Same SECTION_HEIGHT as ScrollingHero for consistency
 const SECTION_HEIGHT = moderateScale(150);
@@ -64,6 +56,7 @@ export const SurahHeroSection = ({
   style,
 }: SurahHeroSectionProps) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const heroTheme = useMemo(() => pickHeroTheme(), []);
   const handleLongPress = useCallback(() => {
     onLongPress?.(surah);
@@ -187,7 +180,10 @@ export const SurahHeroSection = ({
           {...pressableProps}
           style={StyleSheet.flatten([styles.glassWrapper, style])}>
           <Link.AppleZoom>
-            <GlassView style={styles.glassInner} glassEffectStyle="regular">
+            <GlassView
+              style={styles.glassInner}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
               {cardContent}
             </GlassView>
           </Link.AppleZoom>

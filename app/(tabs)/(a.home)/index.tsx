@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useLayoutEffect, useMemo} from 'react';
-import {View, Pressable, StyleSheet, Platform} from 'react-native';
+import {View, Pressable, StyleSheet} from 'react-native';
 import {useRouter, useNavigation} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {createStyles} from './_styles';
@@ -19,9 +19,8 @@ import {QuranIcon} from '@/components/Icons';
 import Color from 'color';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 type ViewOption = 'Reciters' | 'Surahs' | 'Adhkar';
 
@@ -29,6 +28,7 @@ function HomeScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const styles = createStyles(theme);
   const [activeView, setActiveView] = useState<ViewOption>('Reciters');
   const insets = useSafeAreaInsets();
@@ -207,6 +207,7 @@ function HomeScreen() {
             <GlassView
               style={headerStyles.mushafGlass}
               glassEffectStyle="regular"
+              colorScheme={glassColorScheme}
               isInteractive>
               <Pressable
                 onPress={handleMushafPress}

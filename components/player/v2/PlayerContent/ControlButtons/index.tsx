@@ -8,6 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import {GlassView} from 'expo-glass-effect';
+import {useGlassColorScheme} from '@/hooks/useGlassProps';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -55,6 +56,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   followAlongAvailable,
 }) => {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const {updateSettings} = usePlayerActions();
   const playbackRate = usePlayerStore(s => s.playback.rate);
   const settings = usePlayerStore(s => s.settings);
@@ -90,6 +92,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         <GlassView
           style={styles.glassButton}
           glassEffectStyle="regular"
+          colorScheme={glassColorScheme}
           isInteractive>
           <Pressable
             onPress={handleMushafLayoutPress}
@@ -190,6 +193,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
       <GlassView
         style={styles.glassButton}
         glassEffectStyle="regular"
+        colorScheme={glassColorScheme}
         isInteractive>
         <Pressable onPress={onQueuePress} style={styles.glassButtonInner}>
           <QueueIcon
