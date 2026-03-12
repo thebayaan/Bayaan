@@ -43,12 +43,17 @@ export const useThemeStore = create<ThemeState>()(
       primaryColor: 'Blue',
       theme: getEffectiveTheme('system', 'Blue'),
 
-      setThemeMode: _mode =>
+      setThemeMode: mode =>
         set(state => {
-          // Always follow system appearance
-          const newTheme = getEffectiveTheme('system', state.primaryColor);
+          const newTheme = getEffectiveTheme(mode, state.primaryColor);
+          // Sync native UI (keyboard, alerts, liquid glass chrome) with the choice
+          if (mode === 'system') {
+            Appearance.setColorScheme(null as any); // revert to system
+          } else {
+            Appearance.setColorScheme(mode);
+          }
           return {
-            themeMode: 'system' as ThemeMode,
+            themeMode: mode,
             theme: newTheme,
           };
         }),
@@ -71,11 +76,15 @@ export const useThemeStore = create<ThemeState>()(
       }),
       onRehydrateStorage: () => state => {
         if (state) {
-          // Always force system theme
-          const theme = getEffectiveTheme('system', state.primaryColor);
+          const theme = getEffectiveTheme(state.themeMode, state.primaryColor);
+          // Sync native UI with the persisted preference on app launch
+          if (state.themeMode === 'system') {
+            Appearance.setColorScheme(null as any);
+          } else {
+            Appearance.setColorScheme(state.themeMode);
+          }
           useThemeStore.setState({
             ...state,
-            themeMode: 'system',
             theme,
           });
         }

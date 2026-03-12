@@ -1,13 +1,12 @@
 import React, {useMemo} from 'react';
-import {Pressable, Text, View, StyleSheet, Platform} from 'react-native';
+import {Pressable, Text, View, StyleSheet} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {RewayatInfo} from '@/data/rewayatCollections';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
 import {Link} from 'expo-router';
-import {GlassView, isLiquidGlassAvailable} from 'expo-glass-effect';
-
-const USE_GLASS = Platform.OS === 'ios' && isLiquidGlassAvailable();
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 interface RewayatCardProps {
   rewayat: RewayatInfo;
@@ -23,6 +22,7 @@ function RewayatCard({
   height = moderateScale(92),
 }: RewayatCardProps) {
   const {theme} = useTheme();
+  const glassColorScheme = useGlassColorScheme();
   const styles = useMemo(
     () => createStyles(theme, width, height),
     [theme, width, height],
@@ -63,7 +63,8 @@ function RewayatCard({
                 styles.container,
                 styles.glassContainer,
               ])}
-              glassEffectStyle="regular">
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
               {content}
             </GlassView>
           </Link.AppleZoom>
