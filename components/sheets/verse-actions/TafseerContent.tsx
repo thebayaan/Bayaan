@@ -15,6 +15,11 @@ import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
+import {router} from 'expo-router';
+import {SheetManager} from 'react-native-actions-sheet';
+import {lightHaptics} from '@/utils/haptics';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {StackedVolumesIcon} from '@/components/Icons';
 import type {QuranData} from '@/types/quran';
 import {useTafseerStore} from '@/store/tafseerStore';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
@@ -162,18 +167,25 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
         <View style={styles.divider} />
 
         {hasNoTafaseer ? (
-          <View style={styles.emptyState}>
-            <Feather
-              name="book-open"
+          <Pressable
+            style={styles.emptyState}
+            onPress={() => {
+              lightHaptics();
+              SheetManager.hideAll();
+              usePlayerStore.getState().setSheetMode('hidden');
+              setTimeout(() => {
+                router.push('/(tabs)/(a.home)/translations');
+              }, 300);
+            }}>
+            <StackedVolumesIcon
               size={moderateScale(32)}
               color={Color(theme.colors.text).alpha(0.2).toString()}
             />
             <Text style={styles.emptyStateTitle}>No Tafaseer Downloaded</Text>
             <Text style={styles.emptyStateText}>
-              Download a tafseer from Settings {'>'} Translations to view
-              commentary here.
+              Tap here to download a tafseer and view commentary.
             </Text>
-          </View>
+          </Pressable>
         ) : (
           <>
             {/* Tafseer selector */}
