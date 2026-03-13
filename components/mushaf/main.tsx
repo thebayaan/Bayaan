@@ -176,6 +176,7 @@ const DKPageView: React.FC<{
       <SkiaPage
         pageNumber={pageNumber}
         textColor={textColor}
+        dividerColor={labelColor}
         contentMarginLeft={effectiveMarginLeft}
         onReady={() => setPageReady(true)}
         onTap={onTap}

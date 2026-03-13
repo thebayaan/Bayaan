@@ -38,15 +38,13 @@ export default function SettingsLayout() {
         name="default-reciter"
         options={{title: 'Default Reciter'}}
       />
-      <Stack.Screen
-        name="reciter-choice"
-        options={{title: 'Reciter Choice'}}
-      />
+      <Stack.Screen name="reciter-choice" options={{title: 'Reciter Choice'}} />
       <Stack.Screen name="account" options={{title: 'Account'}} />
       <Stack.Screen
         name="translations"
         options={{title: 'Translations & Tafaseer'}}
       />
+      <Stack.Screen name="reading-theme" options={{title: 'Reading Theme'}} />
       <Stack.Screen name="whats-new" options={{title: "What's New"}} />
     </Stack>
   );
