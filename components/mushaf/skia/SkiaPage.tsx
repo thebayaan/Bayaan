@@ -58,6 +58,7 @@ interface ParagraphInfo {
 interface SkiaPageProps {
   pageNumber: number;
   textColor: string;
+  dividerColor: string;
   contentMarginLeft?: number;
   onReady?: () => void;
   onTap?: () => void;
@@ -66,6 +67,7 @@ interface SkiaPageProps {
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
   textColor,
+  dividerColor,
   contentMarginLeft,
   onReady,
   onTap,
@@ -613,7 +615,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
                 yPos={lineYPositions[lineIndex]}
                 pageWidth={lineWidth}
                 xOffset={margin}
-                dividerColor={theme.colors.textSecondary}
+                dividerColor={dividerColor}
                 nameColor={textColor}
                 lineHeight={
                   lineIndex < lineYPositions.length - 1
