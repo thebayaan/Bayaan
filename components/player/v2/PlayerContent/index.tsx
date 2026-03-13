@@ -25,6 +25,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useVerseSelectionStore} from '@/store/verseSelectionStore';
 import {useTheme} from '@/hooks/useTheme';
+import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
@@ -56,6 +57,7 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
   onFollowAlongPress,
 }) => {
   const {theme} = useTheme();
+  const readingColors = useReadingThemeColors();
   const glassColorScheme = useGlassColorScheme();
   const [showQueue, setShowQueue] = useState(false);
   const {
@@ -245,7 +247,10 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
     <View style={styles.container}>
       {/* QuranView / QueueList fills the entire area */}
       <View
-        style={[StyleSheet.absoluteFill, {backgroundColor: theme.colors.card}]}>
+        style={[
+          StyleSheet.absoluteFill,
+          {backgroundColor: readingColors.background},
+        ]}>
         {showQueue ? (
           <View style={styles.fullArea}>
             <QueueList
