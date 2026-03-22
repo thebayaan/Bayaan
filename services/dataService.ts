@@ -191,9 +191,11 @@ export async function fetchAudioUrl(
     }
   }
 
+  // Remove trailing slash from server URL to avoid double slashes
+  const serverUrl = rewayat.server.replace(/\/$/, "");
   // Format surah number with leading zeros
   const surahStr = surahId.toString().padStart(3, '0');
-  return `${rewayat.server}/${surahStr}.mp3`;
+  return `${serverUrl}/${surahStr}.mp3`;
 }
 
 // Search functions

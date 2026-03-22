@@ -179,11 +179,13 @@ export function generateAudioUrl(
 
   // If the server URL is a Supabase storage URL
   if (rewayat.server.includes('supabase.co')) {
-    return `${rewayat.server}/${paddedSurahId}.mp3`;
+    return `${serverUrl}/${paddedSurahId}.mp3`;
   }
 
+  // Remove trailing slash from server URL to avoid double slashes
+  const serverUrl = rewayat.server.replace(/\/$/, "");
   // Default mp3quran.net URL
-  return `${rewayat.server}/${paddedSurahId}.mp3`;
+  return `${serverUrl}/${paddedSurahId}.mp3`;
 }
 
 /**
