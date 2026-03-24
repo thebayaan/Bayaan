@@ -112,7 +112,15 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
         </Text>
       );
     }
-    return null;
+    // Fallback for uploads without a surah — show category or [Untagged]
+    const fallbackLabel = currentTrack?.uploadCategory || '';
+    return (
+      <Text
+        style={[styles.fallbackName, {color: theme.colors.text}]}
+        numberOfLines={1}>
+        {fallbackLabel}
+      </Text>
+    );
   };
 
   const PillWrapper = USE_GLASS ? GlassView : FrostedView;
@@ -174,6 +182,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: moderateScale(54),
     paddingVertical: moderateScale(4),
     paddingHorizontal: moderateScale(16),
     width: '100%',
@@ -203,7 +212,6 @@ const styles = StyleSheet.create({
   },
   fallbackName: {
     fontSize: moderateScale(18),
-    fontWeight: '600',
     textAlign: 'center',
   },
 });
