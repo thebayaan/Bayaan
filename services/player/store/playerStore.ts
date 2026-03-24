@@ -762,6 +762,22 @@ export const usePlayerStore = create<PlayerStoreState>()(
           // Don't persist the interval object
           sleepTimerInterval: null,
         },
+        // Persist queue so uploads survive app restart
+        queue: {
+          tracks: state.queue.tracks,
+          currentIndex: state.queue.currentIndex,
+          total: state.queue.total,
+          loading: false,
+          endReached: false,
+        },
+        // Persist playback position/duration for resume
+        playback: {
+          state: 'paused' as const,
+          position: state.playback.position,
+          duration: state.playback.duration,
+          rate: state.playback.rate,
+          buffering: false,
+        },
       }),
     },
   ),

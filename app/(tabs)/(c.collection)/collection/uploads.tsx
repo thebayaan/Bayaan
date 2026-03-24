@@ -18,7 +18,7 @@ import {MicrophoneIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useUploadsStore, getCustomReciterName} from '@/store/uploadsStore';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
-import {createUserUploadTrack} from '@/utils/track';
+import {createUserUploadTrack, addUploadToRecentlyPlayed} from '@/utils/track';
 import {getSurahById, getReciterName} from '@/services/dataService';
 import {shuffleArray} from '@/utils/arrayUtils';
 import Color from 'color';
@@ -309,6 +309,7 @@ export default function UploadsScreen() {
       const tracks = recitations.map(createUserUploadTrack);
       await updateQueue(tracks, 0);
       await play();
+      addUploadToRecentlyPlayed(recitations[0]);
     } catch (error) {
       console.error('Error playing all uploads:', error);
     }
@@ -321,6 +322,7 @@ export default function UploadsScreen() {
       const tracks = shuffled.map(createUserUploadTrack);
       await updateQueue(tracks, 0);
       await play();
+      addUploadToRecentlyPlayed(shuffled[0]);
     } catch (error) {
       console.error('Error shuffling uploads:', error);
     }
@@ -332,6 +334,7 @@ export default function UploadsScreen() {
         const tracks = recitations.map(createUserUploadTrack);
         await updateQueue(tracks, index);
         await play();
+        addUploadToRecentlyPlayed(item);
       } catch (error) {
         console.error('Error playing uploaded recitation:', error);
       }
@@ -434,7 +437,11 @@ export default function UploadsScreen() {
         <View
           style={[
             styles.contentArea,
-            {paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40)},
+            {
+              paddingTop: USE_GLASS
+                ? moderateScale(16)
+                : insets.top + moderateScale(40),
+            },
           ]}>
           {/* Hero Icon */}
           <View style={styles.contentCenter}>

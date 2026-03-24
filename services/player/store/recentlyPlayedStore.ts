@@ -12,6 +12,14 @@ export interface RecentlyPlayedTrack {
   progress: number;
   duration: number;
   timestamp: number;
+  /** When true, this entry represents a user-uploaded recitation */
+  isUserUpload?: boolean;
+  /** ID into uploadsStore.recitations for uploaded tracks */
+  userRecitationId?: string;
+  /** Display title override for uploads (e.g., filename or custom title) */
+  uploadTitle?: string;
+  /** Display artist override for uploads (e.g., "My Recitations") */
+  uploadArtist?: string;
 }
 
 interface RecentlyPlayedState {
@@ -44,6 +52,27 @@ interface RecentlyPlayedState {
   updateProgress: (
     reciterId: string,
     surahId: number,
+    progress: number,
+    duration: number,
+  ) => void;
+
+  /** Pushes old [0] down, creates fresh [0] for an uploaded recitation. */
+  startUploadChain: (
+    reciter: Reciter,
+    surah: Surah,
+    progress: number,
+    duration: number,
+    rewayatId: string,
+    uploadMeta: {
+      userRecitationId: string;
+      uploadTitle: string;
+      uploadArtist: string;
+    },
+  ) => void;
+
+  /** Updates progress for an upload track in recentTracks. */
+  updateUploadProgress: (
+    userRecitationId: string,
     progress: number,
     duration: number,
   ) => void;
@@ -110,6 +139,60 @@ export const useRecentlyPlayedStore = create<RecentlyPlayedState>()(
             progressMap: {...state.progressMap, [key]: progress},
             durationMap: {...state.durationMap, [key]: duration},
           };
+        }),
+
+      startUploadChain: (
+        reciter,
+        surah,
+        progress,
+        duration,
+        rewayatId,
+        uploadMeta,
+      ) =>
+        set(state => {
+          const key = `upload:${uploadMeta.userRecitationId}`;
+          // Remove any existing entry for this upload
+          const withoutDupe = state.recentTracks.filter(
+            t => t.userRecitationId !== uploadMeta.userRecitationId,
+          );
+          return {
+            recentTracks: [
+              {
+                reciter,
+                surah,
+                rewayatId,
+                progress,
+                duration,
+                timestamp: Date.now(),
+                isUserUpload: true,
+                userRecitationId: uploadMeta.userRecitationId,
+                uploadTitle: uploadMeta.uploadTitle,
+                uploadArtist: uploadMeta.uploadArtist,
+              },
+              ...withoutDupe,
+            ].slice(0, 10),
+            progressMap: {...state.progressMap, [key]: progress},
+            durationMap: {...state.durationMap, [key]: duration},
+          };
+        }),
+
+      updateUploadProgress: (userRecitationId, progress, duration) =>
+        set(state => {
+          const key = `upload:${userRecitationId}`;
+          const maps = {
+            progressMap: {...state.progressMap, [key]: progress},
+            durationMap: {...state.durationMap, [key]: duration},
+          };
+
+          // Find and update the upload entry
+          const idx = state.recentTracks.findIndex(
+            t => t.userRecitationId === userRecitationId,
+          );
+          if (idx === -1) return maps;
+
+          const updated = [...state.recentTracks];
+          updated[idx] = {...updated[idx], progress, duration};
+          return {recentTracks: updated, ...maps};
         }),
 
       resumeChain: (index: number) =>

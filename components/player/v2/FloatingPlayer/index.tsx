@@ -66,7 +66,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
       bottom: getFloatingPlayerBottomPosition(insets.bottom),
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(100),
       overflow: 'hidden' as const,
       borderWidth: USE_GLASS ? 0 : 1,
       borderColor: USE_GLASS
@@ -121,9 +121,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
           {isLoadingNewTrack ? (
             <LoadingIndicator color={theme.colors.text} />
           ) : playbackState === 'playing' ? (
-            <PauseIcon color={theme.colors.text} size={moderateScale(22)} />
+            <PauseIcon color={theme.colors.text} size={moderateScale(20, 0.2)} />
           ) : (
-            <PlayIcon color={theme.colors.text} size={moderateScale(22)} />
+            <PlayIcon color={theme.colors.text} size={moderateScale(20, 0.2)} />
           )}
         </Pressable>
       </Pressable>
@@ -135,33 +135,33 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(10),
-    gap: moderateScale(12),
+    paddingHorizontal: moderateScale(14, 0.2),
+    paddingVertical: moderateScale(7, 0.2),
+    gap: moderateScale(10, 0.2),
   },
   artwork: {
-    width: moderateScale(40),
-    height: moderateScale(40),
-    borderRadius: moderateScale(10),
+    width: moderateScale(36, 0.2),
+    height: moderateScale(36, 0.2),
+    borderRadius: moderateScale(8, 0.2),
     overflow: 'hidden',
     flexShrink: 0,
   },
   trackInfo: {
     flex: 1,
     justifyContent: 'center',
-    gap: moderateScale(2),
+    gap: 2,
   },
   title: {
-    fontSize: moderateScale(13),
+    fontSize: moderateScale(13, 0.2),
     fontFamily: 'Manrope-SemiBold',
   },
   subtitle: {
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(11, 0.2),
     fontFamily: 'Manrope-Medium',
   },
   playButton: {
-    width: moderateScale(36),
-    height: moderateScale(36),
+    width: moderateScale(34, 0.2),
+    height: moderateScale(34, 0.2),
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

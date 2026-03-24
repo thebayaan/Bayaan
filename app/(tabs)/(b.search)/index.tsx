@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  Platform,
   StyleSheet,
   Keyboard,
 } from 'react-native';
@@ -15,6 +14,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export default function SearchScreen() {
   const {theme} = useTheme();
@@ -33,7 +33,7 @@ export default function SearchScreen() {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {Platform.OS === 'ios' && (
+      {USE_GLASS && (
         <Stack.SearchBar
           placement="automatic"
           placeholder="Search surahs or reciters"
@@ -55,7 +55,7 @@ export default function SearchScreen() {
           hideNavigationBar
         />
       )}
-      {Platform.OS === 'android' && (
+      {!USE_GLASS && (
         <View
           style={[
             styles.androidSearchContainer,
@@ -120,7 +120,7 @@ export default function SearchScreen() {
         }}
         query={query}
         isSearchActive={isSearchActive}
-        skipTopInset={Platform.OS === 'android'}
+        skipTopInset={!USE_GLASS}
       />
     </View>
   );

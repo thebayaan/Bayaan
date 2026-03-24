@@ -5,7 +5,7 @@ import {
   Pressable,
   Text,
   ScrollView,
-  Platform,
+
 } from 'react-native';
 import {Link} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
@@ -319,7 +319,7 @@ export const ExploreView = React.memo(
             styles.scrollContent,
             {
               paddingTop:
-                Platform.OS === 'ios'
+                USE_GLASS
                   ? insets.top + moderateScale(16)
                   : moderateScale(16),
               paddingHorizontal: horizontalPadding,
