@@ -1,7 +1,8 @@
 import React, {useLayoutEffect} from 'react';
-import {Animated as RNAnimated, Platform} from 'react-native';
+import {Animated as RNAnimated} from 'react-native';
 import {useNavigation} from 'expo-router';
 import {useTheme} from './useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface UseCollectionNativeHeaderOptions {
   title: string;
@@ -22,7 +23,7 @@ export function useCollectionNativeHeader({
   const {theme} = useTheme();
 
   useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!USE_GLASS) return;
 
     navigation.setOptions({
       headerTitle: hasContent

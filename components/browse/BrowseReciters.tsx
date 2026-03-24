@@ -7,7 +7,6 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
-  Platform,
 } from 'react-native';
 import Animated, {
   FadeIn,
@@ -35,6 +34,7 @@ import {useSettings} from '@/hooks/useSettings';
 import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useHeaderHeight} from '@react-navigation/elements';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface BrowseRecitersProps {
   theme: Theme;
@@ -116,7 +116,7 @@ export default function BrowseReciters({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // On iOS, the native Stack header handles the top area; on Android, use custom Header
-  const useNativeHeader = Platform.OS === 'ios';
+  const useNativeHeader = USE_GLASS;
   const iosHeaderHeight = useNativeHeader ? useHeaderHeight() : 0;
 
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(

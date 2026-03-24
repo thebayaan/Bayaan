@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useMemo} from 'react';
-import {View, Text, FlatList, Platform} from 'react-native';
+import {View, Text, FlatList} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {
   ScaledSheet,
@@ -15,6 +15,7 @@ import {useReciterStore} from '@/store/reciterStore';
 import {useRouter} from 'expo-router';
 import {ReciterImage} from '@/components/ReciterImage';
 import {useHeaderHeight} from '@react-navigation/elements';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export default function DefaultReciterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,7 +26,7 @@ export default function DefaultReciterScreen() {
   const setDefaultReciter = useReciterStore(state => state.setDefaultReciter);
   const router = useRouter();
   const rawHeaderHeight = useHeaderHeight();
-  const headerHeight = Platform.OS === 'ios' ? rawHeaderHeight : 0;
+  const headerHeight = USE_GLASS ? rawHeaderHeight : 0;
 
   const hasCompleteQuran = useCallback((reciter: Reciter) => {
     return reciter.rewayat.some(

@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable, Platform} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import Color from 'color';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface PlaylistHeaderProps {
   title: string;
@@ -34,7 +35,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
     <View style={styles.headerContainer}>
       <View style={styles.contentArea}>
         {/* Back Button */}
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <Pressable
             style={styles.backButton}
             onPress={() => router.back()}
@@ -67,7 +68,7 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        {Platform.OS !== 'ios' && onOptionsPress && (
+        {!USE_GLASS && onOptionsPress && (
           <Pressable style={styles.circleButton} onPress={onOptionsPress}>
             <Feather
               name="more-horizontal"
@@ -103,14 +104,14 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
+      paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
       paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',
-      top: Platform.OS === 'ios' ? moderateScale(10) : insets.top + moderateScale(10),
+      top: USE_GLASS ? moderateScale(10) : insets.top + moderateScale(10),
       left: moderateScale(15),
       zIndex: 10,
       padding: moderateScale(8),

@@ -1,5 +1,5 @@
 import React, {useCallback, useState} from 'react';
-import {View, ScrollView, Text, Pressable, Platform} from 'react-native';
+import {View, ScrollView, Text, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
@@ -24,6 +24,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {useFocusEffect} from '@react-navigation/native';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface CategoryItem {
   id: string;
@@ -148,12 +149,12 @@ export default function CollectionScreen() {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior={
-          Platform.OS === 'ios' ? 'automatic' : 'never'
+          USE_GLASS ? 'automatic' : 'never'
         }
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           paddingTop:
-            Platform.OS === 'ios'
+            USE_GLASS
               ? moderateScale(16)
               : insets.top + moderateScale(16),
         }}>

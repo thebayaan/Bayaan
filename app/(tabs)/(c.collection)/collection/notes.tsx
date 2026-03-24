@@ -5,10 +5,10 @@ import {
   Pressable,
   StyleSheet,
   StatusBar,
-  Platform,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {useFocusEffect} from '@react-navigation/native';
@@ -123,7 +123,7 @@ const NotesScreen = () => {
   const ListHeaderComponent = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
-        <View style={{paddingTop: Platform.OS === 'ios' ? 0 : insets.top}} />
+        <View style={{paddingTop: USE_GLASS ? 0 : insets.top}} />
         <View style={styles.headerContent}>
           <View
             style={[styles.heroIconContainer, {backgroundColor: heroOuterBg}]}>
@@ -170,7 +170,7 @@ const NotesScreen = () => {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -202,7 +202,7 @@ const NotesScreen = () => {
     return (
       <View
         style={[styles.container, {backgroundColor: theme.colors.background}]}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -245,7 +245,7 @@ const NotesScreen = () => {
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <StatusBar barStyle="default" />
 
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,
@@ -282,7 +282,7 @@ const NotesScreen = () => {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader title="Notes" scrollY={scrollY} />
       )}
     </View>

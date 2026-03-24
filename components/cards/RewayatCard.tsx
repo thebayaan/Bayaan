@@ -75,11 +75,7 @@ function RewayatCard({
 
   return (
     <Link href={linkHref} asChild>
-      <Pressable style={styles.container}>
-        <Link.AppleZoom>
-          <View style={{flex: 1}}>{content}</View>
-        </Link.AppleZoom>
-      </Pressable>
+      <Pressable style={styles.container}>{content}</Pressable>
     </Link>
   );
 }

@@ -17,6 +17,7 @@ import {
 } from '@/utils/constants';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
@@ -65,13 +66,8 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
       bottom: getFloatingPlayerBottomPosition(insets.bottom),
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      backgroundColor: USE_GLASS
-        ? 'transparent'
-        : Color(theme.colors.background)
-            .mix(Color(theme.colors.text), 0.08)
-            .alpha(0.92)
-            .toString(),
       borderRadius: moderateScale(20),
+      overflow: 'hidden' as const,
       borderWidth: USE_GLASS ? 0 : 1,
       borderColor: USE_GLASS
         ? undefined
@@ -92,7 +88,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     .alpha(0.45)
     .toString();
 
-  const Container = USE_GLASS ? GlassView : View;
+  const Container = USE_GLASS ? GlassView : FrostedView;
 
   return (
     <Container

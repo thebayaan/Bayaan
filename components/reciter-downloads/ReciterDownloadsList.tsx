@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
-import {View, Text, StyleSheet, Animated as RNAnimated, Platform, Pressable} from 'react-native';
+import {View, Text, StyleSheet, Animated as RNAnimated, Pressable} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {SurahItem} from '@/components/SurahItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
@@ -22,6 +22,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {Feather} from '@expo/vector-icons';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface DownloadTrackData {
   download: DownloadedSurah;
@@ -390,7 +391,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         } downloaded`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onOptionsPress={Platform.OS === 'ios' ? undefined : handleRemoveAllDownloads}
+        onOptionsPress={USE_GLASS ? undefined : handleRemoveAllDownloads}
         theme={theme}
       />
     );
@@ -457,7 +458,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader
           title={reciter?.name || 'Downloads'}
           scrollY={scrollY}

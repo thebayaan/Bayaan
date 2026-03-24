@@ -15,9 +15,9 @@ import {
   Alert,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {TrackItem} from '@/components/TrackItem';
 import {
   getReciterById,
@@ -126,7 +126,7 @@ function findBestRewayat(
   return reciter.rewayat[0]?.id;
 }
 
-const isIOS = Platform.OS === 'ios';
+const isGlass = USE_GLASS;
 
 const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   playlist,
@@ -135,14 +135,14 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
   const {updateQueue, addToQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
   const navigation = useNavigation();
-  const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
+  const iosHeaderHeight = isGlass ? useHeaderHeight() : 0;
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   // iOS: reveal playlist title in native header on scroll
   const headerTitleShownRef = useRef(false);
   useLayoutEffect(() => {
-    if (!isIOS) return;
+    if (!isGlass) return;
     navigation.setOptions({
       headerTitle: '',
     });
@@ -669,7 +669,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         ListHeaderComponent={listHeaderComponent}
         contentContainerStyle={[
           styles.listContentContainer,
-          isIOS && {paddingTop: iosHeaderHeight},
+          isGlass && {paddingTop: iosHeaderHeight},
         ]}
         ListEmptyComponent={listEmptyComponent}
         onScroll={RNAnimated.event(
@@ -677,7 +677,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
           {
             useNativeDriver: true,
             listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-              if (!isIOS) return;
+              if (!isGlass) return;
               const y = e.nativeEvent.contentOffset.y;
               // Show title after scrolling past the header area
               const threshold = moderateScale(120);
@@ -694,7 +694,7 @@ const SystemPlaylistDetail: React.FC<SystemPlaylistDetailProps> = ({
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      {!isIOS && (
+      {!isGlass && (
         <CollectionStickyHeader title={playlist.title} scrollY={scrollY} />
       )}
     </View>

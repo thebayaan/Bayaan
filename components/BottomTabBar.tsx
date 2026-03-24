@@ -19,6 +19,7 @@ import {
 } from '@/utils/constants';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 
 function getIcon(
   routeName: string,
@@ -101,13 +102,8 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
       bottom: insets.bottom + FLOATING_TAB_BAR_BOTTOM_MARGIN,
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      backgroundColor: USE_GLASS
-        ? 'transparent'
-        : Color(theme.colors.background)
-            .mix(Color(theme.colors.text), 0.08)
-            .alpha(0.92)
-            .toString(),
       borderRadius: moderateScale(24),
+      overflow: 'hidden' as const,
       borderWidth: USE_GLASS ? 0 : 1,
       borderColor: USE_GLASS
         ? undefined
@@ -139,7 +135,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
     [state.index, navigation],
   );
 
-  const Container = USE_GLASS ? GlassView : View;
+  const Container = USE_GLASS ? GlassView : FrostedView;
 
   return (
     <Container

@@ -1,7 +1,7 @@
 import React, {useLayoutEffect} from 'react';
 import {useRouter, useLocalSearchParams, useNavigation} from 'expo-router';
-import {Platform} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import BrowseReciters from '@/components/browse/BrowseReciters';
 import {SURAHS} from '@/data/surahData';
 
@@ -29,7 +29,7 @@ export default function BrowseScreen() {
 
   // Set native header title on iOS
   useLayoutEffect(() => {
-    if (Platform.OS === 'ios') {
+    if (USE_GLASS) {
       navigation.setOptions({headerTitle: title});
     }
   }, [navigation, title]);

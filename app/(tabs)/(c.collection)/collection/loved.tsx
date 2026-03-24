@@ -6,10 +6,10 @@ import {
   StyleSheet,
   Alert,
   StatusBar,
-  Platform,
   Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
@@ -623,7 +623,7 @@ const LovedScreen = () => {
         }`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onOptionsPress={Platform.OS === 'ios' ? undefined : handleOptionsMenu}
+        onOptionsPress={USE_GLASS ? undefined : handleOptionsMenu}
         theme={theme}
       />
     );
@@ -666,7 +666,7 @@ const LovedScreen = () => {
   if (loading) {
     return (
       <View style={styles.container}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -692,7 +692,7 @@ const LovedScreen = () => {
   if (lovedData.length === 0) {
     return (
       <View style={styles.container}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -727,7 +727,7 @@ const LovedScreen = () => {
     <View style={styles.container}>
       <StatusBar barStyle="default" />
 
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,
@@ -763,7 +763,7 @@ const LovedScreen = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader title="Loved" scrollY={scrollY} />
       )}
     </View>
