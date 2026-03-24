@@ -11,7 +11,6 @@ import {
   SectionList,
   FlatList,
   Text,
-  Platform,
   ViewToken,
   Pressable,
   StyleSheet,
@@ -24,6 +23,7 @@ import {
 } from 'expo-router';
 import {Ionicons} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -300,9 +300,13 @@ const SuperCategoryListScreen: React.FC = () => {
         }}
         asChild>
         <Pressable style={StyleSheet.flatten([{flex: 1}])}>
-          <Link.AppleZoom>
+          {USE_GLASS ? (
+            <Link.AppleZoom>
+              <DhikrListItem dhikr={item.dhikr} index={item.index} />
+            </Link.AppleZoom>
+          ) : (
             <DhikrListItem dhikr={item.dhikr} index={item.index} />
-          </Link.AppleZoom>
+          )}
         </Pressable>
       </Link>
     ),
@@ -366,15 +370,15 @@ const SuperCategoryListScreen: React.FC = () => {
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
-          contentInset={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
+          contentInset={USE_GLASS ? {top: headerHeight} : undefined}
           contentOffset={
-            Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined
+            USE_GLASS ? {x: 0, y: -headerHeight} : undefined
           }
           scrollIndicatorInsets={
-            Platform.OS === 'ios' ? {top: headerHeight} : undefined
+            USE_GLASS ? {top: headerHeight} : undefined
           }
           style={
-            Platform.OS === 'android' ? {marginTop: headerHeight} : undefined
+            !USE_GLASS ? {marginTop: headerHeight} : undefined
           }
           showsVerticalScrollIndicator={false}
           initialNumToRender={10}
@@ -391,15 +395,15 @@ const SuperCategoryListScreen: React.FC = () => {
           keyExtractor={keyExtractor}
           stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
-          contentInset={Platform.OS === 'ios' ? {top: headerHeight} : undefined}
+          contentInset={USE_GLASS ? {top: headerHeight} : undefined}
           contentOffset={
-            Platform.OS === 'ios' ? {x: 0, y: -headerHeight} : undefined
+            USE_GLASS ? {x: 0, y: -headerHeight} : undefined
           }
           scrollIndicatorInsets={
-            Platform.OS === 'ios' ? {top: headerHeight} : undefined
+            USE_GLASS ? {top: headerHeight} : undefined
           }
           style={
-            Platform.OS === 'android' ? {marginTop: headerHeight} : undefined
+            !USE_GLASS ? {marginTop: headerHeight} : undefined
           }
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}

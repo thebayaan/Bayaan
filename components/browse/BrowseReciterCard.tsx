@@ -141,9 +141,7 @@ const BrowseReciterCard = React.memo(
     return (
       <Link href={linkHref} asChild>
         <Pressable onLongPress={onLongPress} style={styles.container}>
-          <Link.AppleZoom>
-            <View style={{flex: 1}}>{content}</View>
-          </Link.AppleZoom>
+          {content}
         </Pressable>
       </Link>
     );

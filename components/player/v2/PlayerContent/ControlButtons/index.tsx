@@ -8,7 +8,8 @@ import {
   TextStyle,
 } from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {useGlassColorScheme} from '@/hooks/useGlassProps';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
@@ -86,14 +87,19 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   const defaultIconColor = theme.colors.text;
   const activeIconColor = theme.colors.text;
 
+  const PillWrapper = USE_GLASS ? GlassView : FrostedView;
+  const pillProps = USE_GLASS
+    ? {
+        glassEffectStyle: 'regular' as const,
+        colorScheme: glassColorScheme,
+        isInteractive: true,
+      }
+    : {};
+
   return (
     <View style={styles.wrapper}>
       {onMushafLayoutPress && (
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme={glassColorScheme}
-          isInteractive>
+        <PillWrapper style={styles.glassButton} {...pillProps}>
           <Pressable
             onPress={handleMushafLayoutPress}
             style={styles.glassButtonInner}>
@@ -103,7 +109,7 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
               color={defaultIconColor}
             />
           </Pressable>
-        </GlassView>
+        </PillWrapper>
       )}
 
       <Pressable
@@ -190,18 +196,14 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
         />
       </Pressable>
 
-      <GlassView
-        style={styles.glassButton}
-        glassEffectStyle="regular"
-        colorScheme={glassColorScheme}
-        isInteractive>
+      <PillWrapper style={styles.glassButton} {...pillProps}>
         <Pressable onPress={onQueuePress} style={styles.glassButtonInner}>
           <QueueIcon
             size={moderateScale(20)}
             color={showQueue ? activeIconColor : defaultIconColor}
           />
         </Pressable>
-      </GlassView>
+      </PillWrapper>
     </View>
   );
 };
@@ -226,6 +228,7 @@ const styles = StyleSheet.create<Styles>({
     width: moderateScale(44),
     height: moderateScale(44),
     borderRadius: moderateScale(22),
+    overflow: 'hidden',
   },
   glassButtonInner: {
     flex: 1,

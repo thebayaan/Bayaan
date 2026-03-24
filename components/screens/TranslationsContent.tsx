@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -21,6 +20,7 @@ import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {useHeaderHeight} from '@react-navigation/elements';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useNavigation} from 'expo-router';
 import TabSelector from '@/components/TabSelector';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
@@ -129,7 +129,7 @@ export default function TranslationsContent() {
   const navigation = useNavigation();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const rawHeaderHeight = useHeaderHeight();
-  const headerHeight = Platform.OS === 'ios' ? rawHeaderHeight : 0;
+  const headerHeight = USE_GLASS ? rawHeaderHeight : 0;
   const bottomInset = useBottomInset();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('Translations');

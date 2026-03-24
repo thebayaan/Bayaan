@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, Pressable, Platform} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import {Theme} from '@/utils/themeUtils';
 import {PlayIcon, ShuffleIcon, HeartIcon} from '@/components/Icons';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface LovedHeaderProps {
   title: string;
@@ -54,7 +55,7 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        {Platform.OS !== 'ios' && onOptionsPress && (
+        {!USE_GLASS && onOptionsPress && (
           <Pressable style={styles.circleButton} onPress={onOptionsPress}>
             <Feather
               name="more-horizontal"
@@ -90,7 +91,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
+      paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
       paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,

@@ -22,7 +22,8 @@ import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
 import {Ionicons} from '@expo/vector-icons';
 import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
-import {useGlassColorScheme} from '@/hooks/useGlassProps';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 import {BackButton} from '@/components/BackButton';
 import MushafSearchView from './MushafSearchView';
 import {moderateScale} from 'react-native-size-matters';
@@ -262,10 +263,10 @@ export default function MushafViewer({
     },
     [isSearchMode],
   );
-  // iOS: sync search mode from store (toolbar search button sets store directly)
+  // iOS 26: sync search mode from store (toolbar search button sets store directly)
   const storeSearchMode = useMushafPlayerStore(s => s.isSearchMode);
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!USE_GLASS) return;
     if (storeSearchMode !== isSearchMode) {
       setIsSearchModeRaw(storeSearchMode);
       // Toolbar search button always means "search with focus"
@@ -328,9 +329,9 @@ export default function MushafViewer({
 
   const currentSurahId = pageToSurah[currentPage] || 1;
 
-  // iOS: configure Stack navigator header based on current mode
+  // iOS 26: configure Stack navigator header based on current mode
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
+    if (!USE_GLASS) return;
 
     if (isImmersive || isSearchMode) {
       // Hide native header — search overlay renders its own UI
@@ -341,20 +342,27 @@ export default function MushafViewer({
       return;
     }
 
-    // Normal mode: GlassView title + options button
+    // Normal mode: Glass/blur title + options button
+    const TitleWrapper = USE_GLASS ? GlassView : FrostedView;
+    const titleWrapperProps = USE_GLASS
+      ? {
+          glassEffectStyle: 'regular' as const,
+          colorScheme: glassColorScheme,
+          tintColor: isDarkMode ? 'rgba(0,0,0,0.5)' : undefined,
+        }
+      : {};
     navigation.setOptions({
       headerShown: true,
       headerBackVisible: true,
       headerSearchBarOptions: undefined,
       headerTitle: () => (
-        <GlassView
-          glassEffectStyle="regular"
-          colorScheme={glassColorScheme}
-          tintColor={isDarkMode ? 'rgba(0,0,0,0.5)' : undefined}
+        <TitleWrapper
+          {...titleWrapperProps}
           style={{
             borderRadius: moderateScale(14),
             paddingHorizontal: moderateScale(14),
             paddingVertical: moderateScale(6),
+            overflow: 'hidden' as const,
           }}>
           <Pressable
             onPress={() => setIsSearchMode(true)}
@@ -391,7 +399,7 @@ export default function MushafViewer({
               Page {currentPage} · Juz {getJuzForPage(currentPage)}
             </Text>
           </Pressable>
-        </GlassView>
+        </TitleWrapper>
       ),
       headerLeft: undefined,
       headerRight: () => (
@@ -691,8 +699,8 @@ export default function MushafViewer({
 
       {!isSearchMode && (
         <>
-          {/* Android: custom header (iOS uses Stack navigator header from _layout) */}
-          {Platform.OS === 'android' && (
+          {/* Non-glass: custom header (iOS 26 uses Stack navigator header) */}
+          {!USE_GLASS && (
             <Animated.View
               style={[
                 styles.header,
@@ -774,9 +782,9 @@ export default function MushafViewer({
           )}
 
           {/* ================================================================ */}
-          {/* Normal mode bottom bar — Android only (iOS uses Stack.Toolbar)  */}
+          {/* Normal mode bottom bar — non-glass (iOS 26 uses Stack.Toolbar)  */}
           {/* ================================================================ */}
-          {Platform.OS === 'android' && (
+          {!USE_GLASS && (
             <Animated.View
               style={[
                 styles.bottomBar,

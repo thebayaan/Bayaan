@@ -288,14 +288,23 @@ export const RecentReciterCard = ({
           }}
           asChild>
           <Pressable onLongPress={handleLongPress}>
-            <Link.AppleZoom>
+            {USE_GLASS ? (
+              <Link.AppleZoom>
+                <ReciterImage
+                  imageUrl={imageUrl}
+                  reciterName={reciterName}
+                  style={styles.image}
+                  profileIconSize={moderateScale(40)}
+                />
+              </Link.AppleZoom>
+            ) : (
               <ReciterImage
                 imageUrl={imageUrl}
                 reciterName={reciterName}
                 style={styles.image}
                 profileIconSize={moderateScale(40)}
               />
-            </Link.AppleZoom>
+            )}
           </Pressable>
         </Link>
       </View>

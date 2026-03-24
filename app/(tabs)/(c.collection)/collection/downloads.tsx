@@ -6,9 +6,9 @@ import {
   StyleSheet,
   ListRenderItem,
   Animated as RNAnimated,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
@@ -110,7 +110,7 @@ export default function DownloadsScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
+          paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
           paddingBottom: moderateScale(10),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,
@@ -471,7 +471,7 @@ export default function DownloadsScreen() {
   if (downloads.length === 0) {
     return (
       <View style={styles.container}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -527,7 +527,7 @@ export default function DownloadsScreen() {
         </View>
 
         <View style={styles.actionButtons}>
-          {Platform.OS !== 'ios' && (
+          {!USE_GLASS && (
             <Pressable
               style={[
                 styles.circleButton,
@@ -607,7 +607,7 @@ export default function DownloadsScreen() {
 
   return (
     <View style={styles.container}>
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,
@@ -647,7 +647,7 @@ export default function DownloadsScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader title="Downloads" scrollY={scrollY} />
       )}
     </View>

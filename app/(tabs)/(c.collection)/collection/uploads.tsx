@@ -7,9 +7,9 @@ import {
   ListRenderItemInfo,
   ActivityIndicator,
   Animated as RNAnimated,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {moderateScale} from 'react-native-size-matters';
@@ -376,7 +376,7 @@ export default function UploadsScreen() {
   if (!hasRecitations) {
     return (
       <View style={styles.container}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -434,7 +434,7 @@ export default function UploadsScreen() {
         <View
           style={[
             styles.contentArea,
-            {paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40)},
+            {paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40)},
           ]}>
           {/* Hero Icon */}
           <View style={styles.contentCenter}>
@@ -455,7 +455,7 @@ export default function UploadsScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          {Platform.OS !== 'ios' && (
+          {!USE_GLASS && (
             <Pressable
               style={[
                 styles.circleButton,
@@ -523,7 +523,7 @@ export default function UploadsScreen() {
 
   return (
     <View style={styles.container}>
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,
@@ -562,7 +562,7 @@ export default function UploadsScreen() {
         scrollEventThrottle={16}
         contentInsetAdjustmentBehavior="automatic"
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader title="Uploads" scrollY={scrollY} />
       )}
     </View>

@@ -1,10 +1,9 @@
 import React from 'react';
-import {Animated, StyleSheet, Text, Platform, View} from 'react-native';
+import {Animated, StyleSheet, Text, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {BlurView} from '@react-native-community/blur';
 import {StickyHeaderProps} from '@/components/reciter-profile/types';
 
 /**
@@ -33,24 +32,14 @@ export const StickyHeader: React.FC<StickyHeaderProps> = ({
           paddingTop: insets.top,
         },
       ]}>
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          blurAmount={100}
-          blurType={isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: isDarkMode
-                ? 'rgba(0,0,0,0.75)'
-                : 'rgba(255,255,255,0.85)',
-            },
-          ]}
-        />
-      )}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.colors.background,
+          },
+        ]}
+      />
       <Text style={[styles.stickyHeaderTitle, {color: theme.colors.text}]}>
         {reciterName}
       </Text>

@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   FlatList,
-  Platform,
   Keyboard,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -17,7 +16,6 @@ import Animated, {FadeIn, FadeOut} from 'react-native-reanimated';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SearchInput} from '@/components/SearchInput';
-import {BlurView} from '@react-native-community/blur';
 import {StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
 import {SurahCard} from '@/components/cards/SurahCard';
@@ -164,33 +162,14 @@ export const SearchView: React.FC<SearchViewProps> = ({
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={80}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}>
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: Color(theme.colors.card)
-                    .alpha(0.7)
-                    .toString(),
-                },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: theme.colors.card,
-                opacity: 0.95,
-              },
-            ]}
-          />
-        )}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: theme.colors.card,
+            },
+          ]}
+        />
         <Text style={[styles.reciterName, {color: theme.colors.text}]}>
           {reciterName}
         </Text>

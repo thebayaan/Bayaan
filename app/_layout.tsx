@@ -40,6 +40,7 @@ import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -395,7 +396,7 @@ export default function RootLayout() {
                   <Stack.Screen
                     name="mushaf"
                     options={{
-                      headerShown: Platform.OS === 'ios',
+                      headerShown: USE_GLASS,
                       headerTransparent: true,
                       headerStyle: {backgroundColor: 'transparent'},
                       headerShadowVisible: false,

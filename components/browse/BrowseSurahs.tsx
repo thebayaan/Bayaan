@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback, useLayoutEffect} from 'react';
-import {View, FlatList, Text, Platform, Pressable} from 'react-native';
+import {View, FlatList, Text, Pressable} from 'react-native';
 import {useRouter, useNavigation} from 'expo-router';
 import {
   moderateScale,
@@ -25,7 +25,7 @@ import {useHeaderHeight} from '@react-navigation/elements';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
-const isIOS = Platform.OS === 'ios';
+const isGlass = USE_GLASS;
 
 // Define types for clarity, matching the ones in useSettings
 type ViewMode = 'card' | 'list';
@@ -160,7 +160,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
   const navigation = useNavigation();
   const glassColorScheme = useGlassColorScheme();
   const insets = useSafeAreaInsets();
-  const iosHeaderHeight = isIOS ? useHeaderHeight() : 0;
+  const iosHeaderHeight = isGlass ? useHeaderHeight() : 0;
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const {playWithReciter, playWithRandomReciter} = useReciterSelection();
@@ -176,7 +176,7 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
 
   // iOS: set native header title
   useLayoutEffect(() => {
-    if (!isIOS) return;
+    if (!isGlass) return;
     navigation.setOptions({
       headerTitle: 'All Surahs',
     });
@@ -469,18 +469,18 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {/* Android: custom header | iOS: native header via layout */}
-      {!isIOS && <Header title="All Surahs" onBack={onBack} showBlur={true} />}
+      {!isGlass && <Header title="All Surahs" onBack={onBack} showBlur={true} />}
 
       <View
         style={[
           styles.content,
-          !isIOS && {marginTop: insets.top + moderateScale(56)},
+          !isGlass && {marginTop: insets.top + moderateScale(56)},
         ]}>
         {/* Android: inline options row (normal flow) */}
-        {!isIOS && renderOptionsRow()}
+        {!isGlass && renderOptionsRow()}
 
         {/* iOS: floating sticky options bar below native header */}
-        {isIOS && (
+        {isGlass && (
           <View style={[styles.stickyBarContainer, {top: iosHeaderHeight}]}>
             {renderOptionsRow()}
           </View>
@@ -499,11 +499,11 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
               data={displaySurahs}
               renderItem={renderCardItem}
               keyExtractor={item => `card-${item.id}`}
-              contentInsetAdjustmentBehavior={isIOS ? 'automatic' : 'never'}
+              contentInsetAdjustmentBehavior={isGlass ? 'automatic' : 'never'}
               contentContainerStyle={[
                 styles.listContent,
                 styles.scrollContent,
-                isIOS && {paddingTop: stickyBarTotalHeight},
+                isGlass && {paddingTop: stickyBarTotalHeight},
               ]}
               numColumns={2}
               columnWrapperStyle={styles.columnWrapper}
@@ -525,12 +525,12 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
                   ? `juz-${item.juzNumber}`
                   : `list-${item.surah.id}-${index}`
               }
-              contentInsetAdjustmentBehavior={isIOS ? 'automatic' : 'never'}
+              contentInsetAdjustmentBehavior={isGlass ? 'automatic' : 'never'}
               contentContainerStyle={[
                 styles.listContent,
                 styles.listViewContent,
                 styles.scrollContent,
-                isIOS && {paddingTop: stickyBarTotalHeight},
+                isGlass && {paddingTop: stickyBarTotalHeight},
               ]}
               numColumns={1}
               {...flatListProps}

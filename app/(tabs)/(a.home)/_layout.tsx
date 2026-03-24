@@ -1,5 +1,5 @@
 import {Stack} from 'expo-router';
-import {Platform} from 'react-native';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export default function HomeLayout() {
   return (
@@ -20,15 +20,15 @@ export default function HomeLayout() {
         name="reciter/[id]"
         options={{
           title: '',
-          // Android uses custom NavigationButtons; hide native header to avoid clash
-          headerShown: Platform.OS === 'ios',
+          // Non-glass devices use custom NavigationButtons; hide native header to avoid clash
+          headerShown: USE_GLASS,
         }}
       />
       <Stack.Screen
         name="reciter/browse"
         options={{
-          // Android uses custom Header component inside BrowseReciters
-          headerShown: Platform.OS === 'ios',
+          // Non-glass devices use custom Header component inside BrowseReciters
+          headerShown: USE_GLASS,
         }}
       />
       <Stack.Screen name="playlist/[id]" options={{title: ''}} />
@@ -49,8 +49,8 @@ export default function HomeLayout() {
         name="browse-all"
         options={{
           title: 'Browse All',
-          // Android uses custom Header component; hide native header to avoid clash
-          headerShown: Platform.OS === 'ios',
+          // Non-glass devices use custom Header component; hide native header to avoid clash
+          headerShown: USE_GLASS,
         }}
       />
     </Stack>
