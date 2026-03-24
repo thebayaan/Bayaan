@@ -1,9 +1,11 @@
 import React, {useMemo} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {useGlassColorScheme} from '@/hooks/useGlassProps';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from 'react-native-size-matters';
 import {SymbolView} from 'expo-symbols';
+import {Entypo, Feather} from '@expo/vector-icons';
 import {
   Canvas,
   Paragraph,
@@ -113,39 +115,56 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
     return null;
   };
 
+  const PillWrapper = USE_GLASS ? GlassView : FrostedView;
+  const pillProps = USE_GLASS
+    ? {
+        glassEffectStyle: 'regular' as const,
+        colorScheme: glassColorScheme,
+        isInteractive: true,
+      }
+    : {};
+
   return (
     <View style={styles.header}>
-      <GlassView
-        style={styles.closeButton}
-        glassEffectStyle="regular"
-        colorScheme={glassColorScheme}
-        isInteractive>
+      <PillWrapper style={styles.closeButton} {...pillProps}>
         <Pressable style={styles.glassButtonInner} onPress={handleClose}>
-          <SymbolView
-            name="xmark"
-            size={moderateScale(18)}
-            tintColor={theme.colors.text}
-            weight="medium"
-          />
+          {USE_GLASS ? (
+            <SymbolView
+              name="xmark"
+              size={moderateScale(18)}
+              tintColor={theme.colors.text}
+              weight="medium"
+            />
+          ) : (
+            <Entypo
+              name="chevron-thin-down"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          )}
         </Pressable>
-      </GlassView>
+      </PillWrapper>
 
       {renderSurahName()}
 
-      <GlassView
-        style={styles.optionsButton}
-        glassEffectStyle="regular"
-        colorScheme={glassColorScheme}
-        isInteractive>
+      <PillWrapper style={styles.optionsButton} {...pillProps}>
         <Pressable style={styles.glassButtonInner} onPress={onOptionsPress}>
-          <SymbolView
-            name="ellipsis"
-            size={moderateScale(18)}
-            tintColor={theme.colors.text}
-            weight="medium"
-          />
+          {USE_GLASS ? (
+            <SymbolView
+              name="ellipsis"
+              size={moderateScale(18)}
+              tintColor={theme.colors.text}
+              weight="medium"
+            />
+          ) : (
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          )}
         </Pressable>
-      </GlassView>
+      </PillWrapper>
     </View>
   );
 };
@@ -166,6 +185,7 @@ const styles = StyleSheet.create({
     width: moderateScale(44),
     height: moderateScale(44),
     borderRadius: moderateScale(22),
+    overflow: 'hidden',
   },
   optionsButton: {
     position: 'absolute',
@@ -174,6 +194,7 @@ const styles = StyleSheet.create({
     width: moderateScale(44),
     height: moderateScale(44),
     borderRadius: moderateScale(22),
+    overflow: 'hidden',
   },
   glassButtonInner: {
     flex: 1,

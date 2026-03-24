@@ -1,6 +1,6 @@
-import {Platform} from 'react-native';
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export default function SettingsLayout() {
   const {theme} = useTheme();
@@ -11,7 +11,7 @@ export default function SettingsLayout() {
         headerShown: true,
         freezeOnBlur: true,
         headerTintColor: theme.colors.text,
-        ...(Platform.OS === 'ios'
+        ...(USE_GLASS
           ? {
               headerTransparent: true,
               headerStyle: {backgroundColor: 'transparent'},

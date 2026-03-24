@@ -5,9 +5,9 @@ import {
   Pressable,
   StyleSheet,
   Animated as RNAnimated,
-  Platform,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {PlaylistItem} from '@/components/PlaylistItem';
 import {useRouter} from 'expo-router';
@@ -54,7 +54,7 @@ export default function PlaylistsScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: Platform.OS === 'ios' ? moderateScale(16) : insets.top + moderateScale(40),
+          paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
           paddingBottom: moderateScale(30),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,
@@ -258,7 +258,7 @@ export default function PlaylistsScreen() {
   if (playlists.length === 0) {
     return (
       <View style={styles.container}>
-        {Platform.OS !== 'ios' && (
+        {!USE_GLASS && (
           <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
             <Pressable
               style={styles.emptyHeaderBack}
@@ -335,7 +335,7 @@ export default function PlaylistsScreen() {
 
   return (
     <View style={styles.container}>
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <RNAnimated.View
           style={[
             styles.fixedBackButton,
@@ -371,7 +371,7 @@ export default function PlaylistsScreen() {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader title="Playlists" scrollY={scrollY} />
       )}
     </View>

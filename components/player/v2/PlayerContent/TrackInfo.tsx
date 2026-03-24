@@ -1,7 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {useGlassColorScheme} from '@/hooks/useGlassProps';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 import {SymbolView} from 'expo-symbols';
 import {Pressable} from 'react-native-gesture-handler';
 import {moderateScale} from 'react-native-size-matters';
@@ -13,7 +14,12 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
-import {MicrophoneIcon} from '@/components/Icons';
+import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
@@ -25,6 +31,10 @@ export const TrackInfo = () => {
   const [, setReciter] = useState<Reciter | null>(null);
   const [rewayat, setRewayat] = useState<Rewayat | null>(null);
   const {isTrackLoved, toggleTrackLoved} = useLoved();
+  const loveScale = useSharedValue(1);
+  const loveAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: loveScale.value}],
+  }));
 
   useEffect(() => {
     setRewayat(null);
@@ -76,9 +86,14 @@ export const TrackInfo = () => {
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {
+      if (!USE_GLASS) {
+        loveScale.value = withSpring(1.2, {}, () => {
+          loveScale.value = withSpring(1);
+        });
+      }
       toggleTrackLoved(currentTrack);
     }
-  }, [currentTrack, toggleTrackLoved]);
+  }, [currentTrack, loveScale, toggleTrackLoved]);
 
   const isLoved = currentTrack ? isTrackLoved(currentTrack) : false;
 
@@ -134,25 +149,44 @@ export const TrackInfo = () => {
           </View>
         </Pressable>
 
-        <GlassView
-          style={styles.loveButton}
-          glassEffectStyle="regular"
-          colorScheme={glassColorScheme}
-          isInteractive>
-          <Pressable
-            style={({pressed}) => [
-              styles.loveButtonInner,
-              {opacity: pressed ? 0.7 : 1},
-            ]}
-            onPress={handleToggleLoved}>
-            <SymbolView
-              name={isLoved ? 'heart.fill' : 'heart'}
-              size={moderateScale(22)}
-              tintColor={isLoved ? 'red' : theme.colors.text}
-              weight="medium"
-            />
-          </Pressable>
-        </GlassView>
+        {USE_GLASS ? (
+          <GlassView
+            style={styles.loveButton}
+            glassEffectStyle="regular"
+            colorScheme={glassColorScheme}
+            isInteractive>
+            <Pressable
+              style={({pressed}) => [
+                styles.loveButtonInner,
+                {opacity: pressed ? 0.7 : 1},
+              ]}
+              onPress={handleToggleLoved}>
+              <SymbolView
+                name={isLoved ? 'heart.fill' : 'heart'}
+                size={moderateScale(22)}
+                tintColor={isLoved ? 'red' : theme.colors.text}
+                weight="medium"
+              />
+            </Pressable>
+          </GlassView>
+        ) : (
+          <FrostedView style={styles.loveButton}>
+            <Pressable
+              style={({pressed}) => [
+                styles.loveButtonInner,
+                {opacity: pressed ? 0.7 : 1},
+              ]}
+              onPress={handleToggleLoved}>
+              <Animated.View style={loveAnimatedStyle}>
+                <HeartIcon
+                  size={moderateScale(22)}
+                  color={isLoved ? 'red' : theme.colors.text}
+                  filled={isLoved}
+                />
+              </Animated.View>
+            </Pressable>
+          </FrostedView>
+        )}
       </View>
     </View>
   );
@@ -211,6 +245,7 @@ const styles = StyleSheet.create({
     width: moderateScale(50),
     height: moderateScale(50),
     borderRadius: moderateScale(25),
+    overflow: 'hidden',
   },
   loveButtonInner: {
     flex: 1,

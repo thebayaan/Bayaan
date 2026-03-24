@@ -62,6 +62,7 @@ import {useBottomInset} from '@/hooks/useBottomInset';
 import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 import {useNavigation} from 'expo-router';
 import {useHeaderHeight} from '@react-navigation/elements';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface ReciterProfileProps {
   id: string;
@@ -177,7 +178,9 @@ const SurahListSkeleton: React.FC<{theme: any}> = React.memo(({theme}) => {
   );
 });
 
-const isIOS = Platform.OS === 'ios';
+// Use USE_GLASS (iOS 26+) instead of Platform.OS so non-glass iOS
+// devices get the same custom header/nav buttons as Android.
+const isGlass = USE_GLASS;
 
 const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
@@ -189,7 +192,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const bottomInset = useBottomInset();
   const {height: screenHeight, width: screenWidth} = useWindowDimensions();
   const navigation = useNavigation();
-  const headerHeight = isIOS ? useHeaderHeight() : 0;
+  const headerHeight = isGlass ? useHeaderHeight() : 0;
 
   // Synchronous reciter init — data available on first render, no deferred loading delay
   const initialReciter = useMemo(
@@ -221,7 +224,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   // iOS native header: search icon in headerRight, hidden when search is active
   const headerTitleShownRef = useRef(false);
   useLayoutEffect(() => {
-    if (!isIOS) return;
+    if (!isGlass) return;
     headerTitleShownRef.current = false;
     navigation.setOptions({
       headerTitle: '',
@@ -270,7 +273,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   const [stickyTitleHeight, setStickyTitleHeight] = useState(0);
 
   // iOS: offset below transparent native header; Android: below custom sticky title
-  const stickyPinOffset = isIOS ? headerHeight : stickyTitleHeight;
+  const stickyPinOffset = isGlass ? headerHeight : stickyTitleHeight;
   const {isLovedWithRewayat} = useLoved();
   const {isDownloaded} = useDownloadQueries();
   const {startNewChain} = useRecentlyPlayedStore();
@@ -792,7 +795,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
           <RNAnimated.ScrollView
             ref={outerScrollRef}
             stickyHeaderIndices={[1]}
-            contentInsetAdjustmentBehavior={isIOS ? 'automatic' : 'never'}
+            contentInsetAdjustmentBehavior={isGlass ? 'automatic' : 'never'}
             onScroll={RNAnimated.event(
               [{nativeEvent: {contentOffset: {y: scrollY}}}],
               {
@@ -801,7 +804,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                   const y = e.nativeEvent.contentOffset.y;
                   currentScrollYRef.current = y;
                   // iOS: show reciter name in native header when scrolled past header
-                  if (isIOS && reciter) {
+                  if (isGlass && reciter) {
                     const threshold = collapsePoint * 0.6;
                     const shouldShow = y >= threshold;
                     if (shouldShow !== headerTitleShownRef.current) {
@@ -1044,7 +1047,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
           </RNAnimated.ScrollView>
 
           {/* Sticky title bar — fades in as outer scroll collapses header (Android only) */}
-          {!isIOS && (
+          {!isGlass && (
             <RNAnimated.View
               pointerEvents="none"
               onLayout={e => setStickyTitleHeight(e.nativeEvent.layout.height)}
@@ -1072,7 +1075,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               </Text>
             </RNAnimated.View>
           )}
-          {!isIOS && (
+          {!isGlass && (
             <NavigationButtons
               insets={insets}
               iconsOpacity={iconsOpacity}
@@ -1125,15 +1128,28 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
 // Lightweight wrapper — defers mounting the heavy content until the navigation
 // transition finishes so the screen push feels instant.
+// On Android, InteractionManager can hang indefinitely if an interaction never
+// completes, so we race it against a short timeout.
 const ReciterProfile: React.FC<ReciterProfileProps> = props => {
   const [ready, setReady] = useState(false);
   const {theme} = useTheme();
 
   useEffect(() => {
-    const handle = InteractionManager.runAfterInteractions(() => {
+    let settled = false;
+    const markReady = () => {
+      if (settled) return;
+      settled = true;
       setReady(true);
-    });
-    return () => handle.cancel();
+    };
+
+    const handle = InteractionManager.runAfterInteractions(markReady);
+    // Fallback: if interactions don't settle within 300ms, mount anyway
+    const timer = setTimeout(markReady, 300);
+
+    return () => {
+      handle.cancel();
+      clearTimeout(timer);
+    };
   }, []);
 
   if (!ready) {

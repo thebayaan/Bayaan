@@ -1,13 +1,13 @@
 import React from 'react';
-import {Platform} from 'react-native';
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export default function CollectionLayout() {
   const {theme} = useTheme();
 
   const collectionScreenOptions =
-    Platform.OS === 'ios'
+    USE_GLASS
       ? {
           headerShown: true,
           headerTransparent: true,
@@ -29,7 +29,7 @@ export default function CollectionLayout() {
       <Stack.Screen
         name="index"
         options={
-          Platform.OS === 'ios'
+          USE_GLASS
             ? {title: '', headerBackTitle: ' '}
             : undefined
         }
@@ -37,7 +37,7 @@ export default function CollectionLayout() {
       <Stack.Screen
         name="reciter/[id]"
         options={{
-          ...(Platform.OS === 'ios'
+          ...(USE_GLASS
             ? {
                 headerShown: true,
                 headerTransparent: true,

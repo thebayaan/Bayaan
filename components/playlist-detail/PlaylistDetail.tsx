@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ListRenderItem,
   Animated as RNAnimated,
-  Platform,
   Pressable,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
@@ -26,6 +25,7 @@ import * as Haptics from 'expo-haptics';
 import {UserPlaylist} from '@/services/database/DatabaseService';
 import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface PlaylistTrack {
   id: string;
@@ -384,7 +384,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         }`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onOptionsPress={Platform.OS === 'ios' ? undefined : handleOptionsPress}
+        onOptionsPress={USE_GLASS ? undefined : handleOptionsPress}
         theme={theme}
       />
     );
@@ -445,7 +445,7 @@ const PlaylistDetail: React.FC<PlaylistDetailProps> = ({id}) => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      {Platform.OS !== 'ios' && (
+      {!USE_GLASS && (
         <CollectionStickyHeader title={playlist.name} scrollY={scrollY} />
       )}
     </View>

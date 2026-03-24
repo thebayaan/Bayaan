@@ -6,6 +6,7 @@ import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 import {Link} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface PlaylistCardProps {
   name: string;
@@ -120,7 +121,11 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({
         }}
         asChild>
         <Pressable onLongPress={onLongPress}>
-          <Link.AppleZoom>{cardContent}</Link.AppleZoom>
+          {USE_GLASS ? (
+            <Link.AppleZoom>{cardContent}</Link.AppleZoom>
+          ) : (
+            cardContent
+          )}
         </Pressable>
       </Link>
     );

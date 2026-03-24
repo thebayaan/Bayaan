@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useCallback} from 'react';
-import {View, ActivityIndicator, StyleSheet, Platform} from 'react-native';
+import {View, ActivityIndicator, StyleSheet} from 'react-native';
 import {Stack, useLocalSearchParams} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
@@ -10,6 +10,7 @@ import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SheetManager} from 'react-native-actions-sheet';
 import {SURAHS} from '@/data/surahData';
 import MushafViewer from '@/components/mushaf/main';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export type MushafScreenParams = {
   surah?: string;
@@ -87,7 +88,7 @@ export default function MushafScreen() {
   return (
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      {Platform.OS === 'ios' && <MushafToolbar />}
+      {USE_GLASS && <MushafToolbar />}
       <MushafViewer pageNumber={pageNumber} initialVerseKey={initialVerseKey} />
     </View>
   );

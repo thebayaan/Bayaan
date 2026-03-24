@@ -1,7 +1,8 @@
 import React from 'react';
-import {Platform, View} from 'react-native';
+import {View} from 'react-native';
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 const EmptyHeaderBackground = () => <View />;
 
@@ -17,7 +18,7 @@ export default function SearchLayout() {
       <Stack.Screen
         name="index"
         options={
-          Platform.OS === 'ios'
+          USE_GLASS
             ? {
                 headerShown: true,
                 headerTransparent: true,
@@ -32,7 +33,7 @@ export default function SearchLayout() {
       <Stack.Screen
         name="browse-all"
         options={{
-          ...(Platform.OS === 'ios'
+          ...(USE_GLASS
             ? {
                 headerShown: true,
                 headerLargeTitle: false,
@@ -51,7 +52,7 @@ export default function SearchLayout() {
       <Stack.Screen
         name="browse-all-surahs"
         options={{
-          ...(Platform.OS === 'ios'
+          ...(USE_GLASS
             ? {
                 headerShown: true,
                 headerTransparent: true,
@@ -69,7 +70,7 @@ export default function SearchLayout() {
       <Stack.Screen
         name="system-playlist/[id]"
         options={{
-          ...(Platform.OS === 'ios'
+          ...(USE_GLASS
             ? {
                 headerShown: true,
                 headerTransparent: true,
@@ -87,7 +88,7 @@ export default function SearchLayout() {
       <Stack.Screen
         name="reciter/[id]"
         options={{
-          ...(Platform.OS === 'ios'
+          ...(USE_GLASS
             ? {
                 headerShown: true,
                 headerTransparent: true,

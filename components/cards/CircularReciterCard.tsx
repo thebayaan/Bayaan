@@ -13,6 +13,7 @@ import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Link} from 'expo-router';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface CircularReciterCardProps {
   imageUrl?: string;
@@ -162,6 +163,14 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   );
 
   if (useZoom) {
+    const inner = USE_GLASS ? (
+      <Link.AppleZoom>
+        <View style={{flex: 1}}>{content}</View>
+      </Link.AppleZoom>
+    ) : (
+      content
+    );
+
     return (
       <Link
         href={{
@@ -170,9 +179,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
         }}
         asChild>
         <Pressable onLongPress={onLongPress} style={styles.container}>
-          <Link.AppleZoom>
-            <View style={{flex: 1}}>{content}</View>
-          </Link.AppleZoom>
+          {inner}
         </Pressable>
       </Link>
     );

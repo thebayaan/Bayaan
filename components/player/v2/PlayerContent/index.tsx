@@ -1,7 +1,8 @@
 import React, {useState, useCallback, useEffect, useMemo} from 'react';
 import {View, StyleSheet, LayoutChangeEvent} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
-import {useGlassColorScheme} from '@/hooks/useGlassProps';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 import Animated, {
   runOnJS,
   useSharedValue,
@@ -292,12 +293,16 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           ]}
           pointerEvents={isImmersive ? 'none' : 'auto'}
           onLayout={handleHeaderLayout}>
-          {/* Glass background */}
-          <GlassView
-            style={StyleSheet.absoluteFill}
-            glassEffectStyle="regular"
-            colorScheme={glassColorScheme}
-          />
+          {/* Glass/blur background */}
+          {USE_GLASS ? (
+            <GlassView
+              style={StyleSheet.absoluteFill}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}
+            />
+          ) : (
+            <FrostedView style={StyleSheet.absoluteFill} />
+          )}
           <Header onOptionsPress={onOptionsPress} />
         </Animated.View>
       </GestureDetector>
@@ -314,12 +319,16 @@ const PlayerContent: React.FC<PlayerContentProps> = ({
           ]}
           pointerEvents={isImmersive ? 'none' : 'auto'}
           onLayout={handleControlsLayout}>
-          {/* Glass background */}
-          <GlassView
-            style={StyleSheet.absoluteFill}
-            glassEffectStyle="regular"
-            colorScheme={glassColorScheme}
-          />
+          {/* Glass/blur background */}
+          {USE_GLASS ? (
+            <GlassView
+              style={StyleSheet.absoluteFill}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}
+            />
+          ) : (
+            <FrostedView style={StyleSheet.absoluteFill} />
+          )}
           <TrackInfo />
           <PlaybackControls />
           <ControlButtons
