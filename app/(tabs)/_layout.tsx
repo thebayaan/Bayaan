@@ -17,6 +17,7 @@ import {
   CollectionIcon,
   SettingsIcon,
 } from '@/components/Icons';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 const ICON_SIZE = 24;
 
@@ -138,7 +139,7 @@ export default function TabsLayout() {
         translucent
         backgroundColor="transparent"
       />
-      {Platform.OS === 'ios' ? <IOSTabs /> : <AndroidTabs />}
+      {USE_GLASS ? <IOSTabs /> : <AndroidTabs />}
     </>
   );
 }

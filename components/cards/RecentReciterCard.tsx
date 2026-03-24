@@ -25,6 +25,8 @@ import {shallow} from 'zustand/shallow';
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {useRouter, Link} from 'expo-router';
 import {SheetManager} from 'react-native-actions-sheet';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {createUserUploadTrack} from '@/utils/track';
 
 interface RecentReciterCardProps {
   imageUrl?: string;
@@ -38,6 +40,8 @@ interface RecentReciterCardProps {
   isRecent?: boolean;
   rewayatId?: string;
   index: number;
+  isUserUpload?: boolean;
+  userRecitationId?: string;
 }
 
 export const RecentReciterCard = ({
@@ -51,6 +55,8 @@ export const RecentReciterCard = ({
   isRecent = false,
   rewayatId,
   index,
+  isUserUpload,
+  userRecitationId,
 }: RecentReciterCardProps) => {
   const {theme} = useTheme();
   const {updateQueue} = usePlayerActions();
@@ -75,7 +81,14 @@ export const RecentReciterCard = ({
         ? tracks[currentIndex]
         : null;
 
-    if (!reciterId || !currentTrack || !surahId) return false;
+    if (!currentTrack) return false;
+
+    // Upload track match by userRecitationId
+    if (isUserUpload && userRecitationId) {
+      return currentTrack.userRecitationId === userRecitationId;
+    }
+
+    if (!reciterId || !surahId) return false;
 
     const rewayatMatches =
       rewayatId && currentTrack.rewayatId
@@ -87,7 +100,15 @@ export const RecentReciterCard = ({
       currentTrack.surahId === surahId.toString() &&
       rewayatMatches
     );
-  }, [reciterId, surahId, rewayatId, currentIndex, tracks]);
+  }, [
+    reciterId,
+    surahId,
+    rewayatId,
+    currentIndex,
+    tracks,
+    isUserUpload,
+    userRecitationId,
+  ]);
 
   // Calculate time remaining
   const timeRemaining = useMemo(() => {
@@ -122,6 +143,25 @@ export const RecentReciterCard = ({
   // Resume playback
   const handlePlayPress = useCallback(async () => {
     try {
+      // Handle upload tracks
+      if (isUserUpload && userRecitationId) {
+        const recitation = useUploadsStore
+          .getState()
+          .recitations.find(r => r.id === userRecitationId);
+        if (!recitation) {
+          console.error('Could not find uploaded recitation');
+          return;
+        }
+        const uploadTrack = createUserUploadTrack(recitation);
+        const startPosition =
+          isCurrentlyPlaying && storePosition >= 0
+            ? storePosition
+            : progress * duration;
+        await updateQueue([uploadTrack], 0, startPosition);
+        useRecentlyPlayedStore.getState().resumeChain(index);
+        return;
+      }
+
       const [reciter, surah] = await Promise.all([
         getReciterById(reciterId),
         getSurahById(surahId),
@@ -216,6 +256,8 @@ export const RecentReciterCard = ({
     updateQueue,
     index,
     rewayatId,
+    isUserUpload,
+    userRecitationId,
   ]);
 
   // Long press options
@@ -281,32 +323,43 @@ export const RecentReciterCard = ({
 
       {/* Image box — matches playback zone spacing */}
       <View style={styles.imageContainer}>
-        <Link
-          href={{
-            pathname: '/(tabs)/(a.home)/reciter/[id]',
-            params: {id: reciterId},
-          }}
-          asChild>
-          <Pressable onLongPress={handleLongPress}>
-            {USE_GLASS ? (
-              <Link.AppleZoom>
+        {isUserUpload ? (
+          <Pressable onPress={handlePlayPress} onLongPress={handleLongPress}>
+            <ReciterImage
+              imageUrl={imageUrl}
+              reciterName={reciterName}
+              style={styles.image}
+              profileIconSize={moderateScale(40)}
+            />
+          </Pressable>
+        ) : (
+          <Link
+            href={{
+              pathname: '/(tabs)/(a.home)/reciter/[id]',
+              params: {id: reciterId},
+            }}
+            asChild>
+            <Pressable onLongPress={handleLongPress}>
+              {USE_GLASS ? (
+                <Link.AppleZoom>
+                  <ReciterImage
+                    imageUrl={imageUrl}
+                    reciterName={reciterName}
+                    style={styles.image}
+                    profileIconSize={moderateScale(40)}
+                  />
+                </Link.AppleZoom>
+              ) : (
                 <ReciterImage
                   imageUrl={imageUrl}
                   reciterName={reciterName}
                   style={styles.image}
                   profileIconSize={moderateScale(40)}
                 />
-              </Link.AppleZoom>
-            ) : (
-              <ReciterImage
-                imageUrl={imageUrl}
-                reciterName={reciterName}
-                style={styles.image}
-                profileIconSize={moderateScale(40)}
-              />
-            )}
-          </Pressable>
-        </Link>
+              )}
+            </Pressable>
+          </Link>
+        )}
       </View>
 
       {/* Reciter name */}

@@ -63,7 +63,7 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
 
       const store = usePlayerStore.getState();
       const currentTrack = store.queue.tracks[store.queue.currentIndex];
-      if (!currentTrack?.reciterId || !currentTrack?.surahId) return;
+      if (!currentTrack) return;
 
       const progress = Math.max(0, Math.min(1, position / duration));
       const now = Date.now();
@@ -71,18 +71,37 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       const elapsed = now - lastPersistedAt.current;
 
       // Avoid writing every second; persist meaningful progress or forced events.
-      if (!force && elapsed < PROGRESS_PERSIST_INTERVAL && progressDelta < 0.01) {
+      if (
+        !force &&
+        elapsed < PROGRESS_PERSIST_INTERVAL &&
+        progressDelta < 0.01
+      ) {
         return;
       }
 
-      useRecentlyPlayedStore
-        .getState()
-        .updateProgress(
-          currentTrack.reciterId,
-          parseInt(currentTrack.surahId, 10),
-          progress,
-          duration,
-        );
+      if (currentTrack.isUserUpload && currentTrack.userRecitationId) {
+        // Upload track — update via upload-specific progress path
+        useRecentlyPlayedStore
+          .getState()
+          .updateUploadProgress(
+            currentTrack.userRecitationId,
+            progress,
+            duration,
+          );
+      } else if (currentTrack.reciterId && currentTrack.surahId) {
+        // System reciter track
+        useRecentlyPlayedStore
+          .getState()
+          .updateProgress(
+            currentTrack.reciterId,
+            parseInt(currentTrack.surahId, 10),
+            progress,
+            duration,
+          );
+      }
+
+      // Always update playerStore playback position (persisted for all tracks)
+      store.updatePlaybackState({position, duration});
 
       lastPersistedAt.current = now;
       lastPersistedProgress.current = progress;

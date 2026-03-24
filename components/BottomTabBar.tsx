@@ -94,7 +94,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
   const {theme} = useTheme();
   const glassColorScheme = useGlassColorScheme();
   const insets = useSafeAreaInsets();
-  const iconSize = moderateScale(24, 0.2);
+  const iconSize = moderateScale(22, 0.2);
 
   const containerStyle = useMemo(
     () => ({
@@ -102,7 +102,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
       bottom: insets.bottom + FLOATING_TAB_BAR_BOTTOM_MARGIN,
       left: FLOATING_UI_HORIZONTAL_MARGIN,
       right: FLOATING_UI_HORIZONTAL_MARGIN,
-      borderRadius: moderateScale(24),
+      borderRadius: moderateScale(100),
       overflow: 'hidden' as const,
       borderWidth: USE_GLASS ? 0 : 1,
       borderColor: USE_GLASS
@@ -176,12 +176,13 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({
 const styles = StyleSheet.create({
   content: {
     flexDirection: 'row',
+    paddingHorizontal: moderateScale(8),
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: moderateScale(10),
+    paddingVertical: moderateScale(7),
   },
   tabText: {
     fontSize: moderateScale(10, 0.2),

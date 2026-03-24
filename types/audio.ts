@@ -12,6 +12,10 @@ export interface Track {
   rewayatId?: string;
   isUserUpload?: boolean;
   userRecitationId?: string;
+  /** Category label for non-surah uploads (dua, lecture, tafsir, other) */
+  uploadCategory?: string;
+  /** Rewayah display name carried from upload tags (fallback when rewayatId isn't resolved) */
+  rewayahName?: string;
 }
 
 // Helper type for track conversion
@@ -39,5 +43,7 @@ export function ensureTrackFields(track: TrackWithOptionalFields): Track {
     rewayatId: track.rewayatId,
     isUserUpload: track.isUserUpload,
     userRecitationId: track.userRecitationId,
+    uploadCategory: track.uploadCategory,
+    rewayahName: track.rewayahName,
   };
 }
