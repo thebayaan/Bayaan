@@ -9,6 +9,25 @@ import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {Track} from '@/types/audio';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {createUserUploadTrack} from '@/utils/track';
+
+/**
+ * Waits for playerStore to finish hydrating from AsyncStorage.
+ * Returns immediately if already hydrated.
+ */
+function waitForPlayerStoreHydration(): Promise<void> {
+  return new Promise(resolve => {
+    if (usePlayerStore.persist.hasHydrated()) {
+      resolve();
+      return;
+    }
+    const unsub = usePlayerStore.persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
+}
 
 /**
  * Phase 1: Populates the player store queue and playback state from
@@ -20,10 +39,81 @@ import {Track} from '@/types/audio';
  */
 export async function restoreSession(): Promise<void> {
   try {
+    // Wait for playerStore to hydrate from AsyncStorage so we can read
+    // the persisted queue (important for upload tracks).
+    await waitForPlayerStoreHydration();
+
+    const persistedState = usePlayerStore.getState();
+    const persistedTrack =
+      persistedState.queue.tracks[persistedState.queue.currentIndex];
+
+    // Upload tracks aren't tracked in recentlyPlayedStore, so restore from
+    // the persisted playerStore queue directly.
+    if (persistedTrack?.isUserUpload) {
+      const startPosition =
+        persistedState.playback.position > 0
+          ? persistedState.playback.position
+          : 0;
+
+      persistedState.updatePlaybackState({
+        state: 'paused',
+        position: startPosition,
+        duration: persistedState.playback.duration,
+      });
+
+      if (__DEV__) {
+        console.log(
+          '[RestoreSession] Restored upload track from persisted queue',
+          {
+            title: persistedTrack.title,
+            position: Math.round(startPosition),
+          },
+        );
+      }
+
+      loadAudioInBackground(persistedTrack.url, startPosition);
+      return;
+    }
+
     const recentTracks = useRecentlyPlayedStore.getState().recentTracks;
     if (recentTracks.length === 0) return;
 
-    const {reciter, surah, rewayatId, progress, duration} = recentTracks[0];
+    const recent = recentTracks[0];
+
+    // Handle upload entry in recentlyPlayedStore
+    if (recent.isUserUpload && recent.userRecitationId) {
+      const recitation = useUploadsStore
+        .getState()
+        .recitations.find(r => r.id === recent.userRecitationId);
+      if (recitation) {
+        const uploadTrack = createUserUploadTrack(recitation);
+        const startPosition = recent.progress * recent.duration;
+
+        const playerStore = usePlayerStore.getState();
+        playerStore.updateQueueState({tracks: [uploadTrack], currentIndex: 0});
+        playerStore.updatePlaybackState({
+          position: startPosition,
+          duration: recent.duration,
+          state: 'paused',
+        });
+
+        if (__DEV__) {
+          console.log('[RestoreSession] Restored upload from recentTracks', {
+            title: uploadTrack.title,
+            position: Math.round(startPosition),
+          });
+        }
+
+        loadAudioInBackground(uploadTrack.url, startPosition);
+        return;
+      }
+      // Upload file was deleted — fall through to next recent track or bail
+      if (recentTracks.length <= 1) return;
+      // Could try recentTracks[1] but keep it simple for now
+      return;
+    }
+
+    const {reciter, surah, rewayatId, progress, duration} = recent;
     const startPosition = progress * duration;
 
     // Build the full queue for auto-advance
