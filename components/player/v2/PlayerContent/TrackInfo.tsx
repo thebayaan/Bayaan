@@ -7,7 +7,6 @@ import {SymbolView} from 'expo-symbols';
 import {Pressable} from 'react-native-gesture-handler';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {ReciterImage} from '@/components/ReciterImage';
@@ -24,7 +23,6 @@ import Animated, {
 export const TrackInfo = () => {
   const {theme} = useTheme();
   const glassColorScheme = useGlassColorScheme();
-  const {setSheetMode} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
   const {navigateToReciterProfile} = useReciterNavigation();
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
@@ -72,17 +70,9 @@ export const TrackInfo = () => {
 
   const handleReciterPress = useCallback(() => {
     if (currentTrack && !isUploadWithoutReciter) {
-      setSheetMode('hidden');
-      setTimeout(() => {
-        navigateToReciterProfile(currentTrack.reciterId);
-      }, 100);
+      navigateToReciterProfile(currentTrack.reciterId);
     }
-  }, [
-    currentTrack,
-    isUploadWithoutReciter,
-    setSheetMode,
-    navigateToReciterProfile,
-  ]);
+  }, [currentTrack, isUploadWithoutReciter, navigateToReciterProfile]);
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {

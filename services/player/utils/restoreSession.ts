@@ -14,18 +14,37 @@ import {createUserUploadTrack} from '@/utils/track';
 
 /**
  * Waits for playerStore to finish hydrating from AsyncStorage.
- * Returns immediately if already hydrated.
+ * Returns immediately if already hydrated. Falls back after a timeout
+ * to prevent the splash screen from hanging indefinitely on Android
+ * where AsyncStorage (SQLite-backed) can be slow or miss the event.
  */
-function waitForPlayerStoreHydration(): Promise<void> {
+function waitForPlayerStoreHydration(timeoutMs = 3000): Promise<void> {
   return new Promise(resolve => {
     if (usePlayerStore.persist.hasHydrated()) {
       resolve();
       return;
     }
+
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
     const unsub = usePlayerStore.persist.onFinishHydration(() => {
       unsub();
-      resolve();
+      settle();
     });
+
+    setTimeout(() => {
+      if (__DEV__ && !settled) {
+        console.warn(
+          `[RestoreSession] playerStore hydration timed out after ${timeoutMs}ms, continuing`,
+        );
+      }
+      settle();
+    }, timeoutMs);
   });
 }
 
