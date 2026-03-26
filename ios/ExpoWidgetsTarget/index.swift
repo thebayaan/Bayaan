@@ -6,8 +6,10 @@ internal import ExpoWidgets
 struct ExportWidgets0: WidgetBundle {
   var body: some Widget {
     AyahOfTheDay()
-	NowPlaying()
-	BayaanShortcuts()
+    NowPlaying()
+    LastRead()
+    ListeningStats()
+    Favorites()
     WidgetLiveActivity()
   }
 }

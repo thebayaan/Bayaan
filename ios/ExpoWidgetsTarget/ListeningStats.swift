@@ -2,15 +2,15 @@ import WidgetKit
 import SwiftUI
 internal import ExpoWidgets
 
-struct BayaanShortcuts: Widget {
-  let name: String = "BayaanShortcuts"
+struct ListeningStats: Widget {
+  let name: String = "ListeningStats"
 
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: name, provider: WidgetsTimelineProvider(name: name)) { entry in
       WidgetsEntryView(entry: entry)
     }
-    .configurationDisplayName("Bayaan")
-    .description("Open Mushaf, reciters, and playlists.")
+    .configurationDisplayName("Listening Stats")
+    .description("See your Quran listening activity at a glance.")
     .supportedFamilies([.systemSmall, .systemMedium])
   }
 }

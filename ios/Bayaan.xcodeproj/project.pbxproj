@@ -25,7 +25,9 @@
 		E884B36CCA7B4A55A2FA6C68 /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = AE81D1C7B72443849B647163 /* ShareExtensionPreprocessor.js */; };
 		EFDC5A07E477483490531136 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82D4BF52809B488AABB90457 /* ShareViewController.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		F492A573D8014547AA393567 /* BayaanShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A895C4C218C4D22B170104C /* BayaanShortcuts.swift */; };
+		A1B2C3D4E5F64A01AAAA0001 /* LastRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64A01BBBB0001 /* LastRead.swift */; };
+		A1B2C3D4E5F64A01AAAA0003 /* ListeningStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64A01BBBB0003 /* ListeningStats.swift */; };
+		A1B2C3D4E5F64A01AAAA0004 /* Favorites.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64A01BBBB0004 /* Favorites.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,7 +84,9 @@
 		43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ExpoWidgetsTarget.appex; path = ExpoWidgetsTarget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		452C20CF86814670BB9E45CD /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
 		47A60A272A224C29AF885979 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements"; sourceTree = "<group>"; };
-		4A895C4C218C4D22B170104C /* BayaanShortcuts.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = BayaanShortcuts.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/BayaanShortcuts.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F64A01BBBB0001 /* LastRead.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = LastRead.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/LastRead.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F64A01BBBB0003 /* ListeningStats.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ListeningStats.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/ListeningStats.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F64A01BBBB0004 /* Favorites.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = Favorites.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/Favorites.swift"; sourceTree = "<group>"; };
 		5D8A06970A074FA0880B01BD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		78EACC5526D183B18EB33AE7 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Bayaan/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		7AC382E733D64BD3B12BE8DC /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/Info.plist"; sourceTree = "<group>"; };
@@ -193,7 +197,9 @@
 				D9AC88E12D224D43877EF807 /* index.swift */,
 				882C7A29C6BC47ACB31C5C3A /* AyahOfTheDay.swift */,
 				D780BCC4111846939C4E8CB5 /* NowPlaying.swift */,
-				4A895C4C218C4D22B170104C /* BayaanShortcuts.swift */,
+				A1B2C3D4E5F64A01BBBB0001 /* LastRead.swift */,
+				A1B2C3D4E5F64A01BBBB0003 /* ListeningStats.swift */,
+				A1B2C3D4E5F64A01BBBB0004 /* Favorites.swift */,
 				2B34D16D4E1D470187785220 /* ExpoWidgetsTarget.entitlements */,
 			);
 			name = ExpoWidgetsTarget;
@@ -631,7 +637,9 @@
 				7509202A6F354F2382BF8B39 /* index.swift in Sources */,
 				73130CD9D03C40D2B161F6E1 /* AyahOfTheDay.swift in Sources */,
 				2E47EFA9ED994A099C49C15A /* NowPlaying.swift in Sources */,
-				F492A573D8014547AA393567 /* BayaanShortcuts.swift in Sources */,
+				A1B2C3D4E5F64A01AAAA0001 /* LastRead.swift in Sources */,
+				A1B2C3D4E5F64A01AAAA0003 /* ListeningStats.swift in Sources */,
+				A1B2C3D4E5F64A01AAAA0004 /* Favorites.swift in Sources */,
 				331C12D725CC60F00CA969BF /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
