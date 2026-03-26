@@ -106,6 +106,32 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      [
+        'expo-widgets',
+        {
+          widgets: [
+            {
+              name: 'AyahOfTheDay',
+              displayName: 'Ayah of the Day',
+              description:
+                'A daily verse with English translation (Saheeh International).',
+              supportedFamilies: ['systemSmall', 'systemMedium', 'systemLarge'],
+            },
+            {
+              name: 'NowPlaying',
+              displayName: 'Now Playing',
+              description: 'What is playing in Bayaan.',
+              supportedFamilies: ['systemSmall', 'systemMedium'],
+            },
+            {
+              name: 'BayaanShortcuts',
+              displayName: 'Bayaan',
+              description: 'Open Mushaf, reciters, and playlists.',
+              supportedFamilies: ['systemSmall', 'systemMedium'],
+            },
+          ],
+        },
+      ],
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
       'expo-media-library',

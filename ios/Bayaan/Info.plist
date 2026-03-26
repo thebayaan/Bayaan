@@ -25,7 +25,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.1.0</string>
+	<string>2.1.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -44,7 +44,11 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>573</string>
+	<string>598</string>
+	<key>ExpoWidgetsAppGroupIdentifier</key>
+	<string>group.com.bayaan.app</string>
+	<key>ExpoWidgets_EnablePushNotifications</key>
+	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSMinimumSystemVersion</key>
@@ -76,6 +80,10 @@
 	<string>Allow $(PRODUCT_NAME) to access your photos</string>
 	<key>NSPrivacyPolicyURL</key>
 	<string>https://osmansaeday.github.io/bayaan-privacy-policy</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<false/>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
