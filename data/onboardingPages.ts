@@ -6,6 +6,8 @@ export interface OnboardingPage {
   title: string;
   subtitle?: string;
   description: string;
+  /** The minimum app version where this page was introduced (e.g. "2.0") */
+  minVersion: string;
 }
 
 export const ONBOARDING_PAGES: OnboardingPage[] = [
@@ -16,6 +18,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     subtitle: 'A New Chapter',
     description:
       'A beautiful Mushaf, ayah highlighting, word-by-word translation, adhkar, ambient sounds, and so much more.',
+    minVersion: '2.0',
   },
   {
     id: 'mushaf',
@@ -25,6 +28,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'The Mushaf',
     description:
       'A dedicated reading screen with the full Uthmani script, beautiful tajweed coloring, and an immersive reading mode.',
+    minVersion: '2.0',
   },
   {
     id: 'highlighting',
@@ -33,6 +37,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Follow Along',
     description:
       'Each ayah highlights in sync with the recitation so you never lose your place. Available for most of your favorite reciters, and coming to all reciters soon.',
+    minVersion: '2.0',
   },
   {
     id: 'memorize',
@@ -42,6 +47,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Listen to Memorize',
     description:
       'Repeat a single ayah, play a range of verses, or loop an entire page. Perfect for hifdh and review.',
+    minVersion: '2.0',
   },
   {
     id: 'uploads',
@@ -50,6 +56,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Personal Recitations',
     description:
       'Import your own audio recordings, tag them with surah and reciter metadata, and organize your personal collection.',
+    minVersion: '2.0',
   },
   {
     id: 'ambient',
@@ -59,6 +66,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Ambient Sounds',
     description:
       'Layer calming nature soundscapes like rain, ocean, forest, and more over your recitation for a focused experience.',
+    minVersion: '2.0',
   },
   {
     id: 'verse-interactions',
@@ -67,6 +75,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Verse Interactions',
     description:
       'Bookmark, highlight, take notes, copy, and share any verse. Your annotations sync across the app.',
+    minVersion: '2.0',
   },
   {
     id: 'adhkar',
@@ -76,6 +85,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Adhkar (Remembrance)',
     description:
       'The complete Hisnul Muslim collection with audio playback, Play All mode, and saved favorites.',
+    minVersion: '2.0',
   },
   {
     id: 'wbw',
@@ -85,6 +95,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Word by Word',
     description:
       'Tap any word to see its meaning, transliteration, and grammar — right in the mushaf or player.',
+    minVersion: '2.1',
   },
   {
     id: 'translations',
@@ -94,6 +105,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Translations & Tafseer',
     description:
       'Browse dozens of translations and scholarly commentaries in multiple languages, all downloadable for offline use.',
+    minVersion: '2.1',
   },
   {
     id: 'themes',
@@ -103,6 +115,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Thematic Highlighting',
     description:
       'Verses are color-coded by theme so you can see the structure and topics of each surah at a glance.',
+    minVersion: '2.1',
   },
   {
     id: 'indopak',
@@ -111,6 +124,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'IndoPak Script',
     description:
       'Switch to the IndoPak Nastaliq script in the mushaf for the style used across South Asia.',
+    minVersion: '2.1',
   },
   {
     id: 'downloads',
@@ -120,6 +134,7 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Offline Downloads',
     description:
       'Download individual surahs or entire playlists so you can listen without an internet connection.',
+    minVersion: '1.3',
   },
   {
     id: 'playlists',
@@ -129,5 +144,6 @@ export const ONBOARDING_PAGES: OnboardingPage[] = [
     title: 'Playlists',
     description:
       'Create custom playlists, reorder tracks, and build your own listening routines.',
+    minVersion: '1.3',
   },
 ];
