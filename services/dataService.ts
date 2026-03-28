@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
 import {usePlayerStore} from './player/store/playerStore';
+import {generateAudioUrl} from '../utils/audioUtils';
 
 // Constants
 const RECITERS_KEY = 'bayaan_reciters';
@@ -191,9 +192,7 @@ export async function fetchAudioUrl(
     }
   }
 
-  // Format surah number with leading zeros
-  const surahStr = surahId.toString().padStart(3, '0');
-  return `${rewayat.server}/${surahStr}.mp3`;
+  return generateAudioUrl(reciter, surahId.toString(), rewayatId);
 }
 
 // Search functions

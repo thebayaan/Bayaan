@@ -1,6 +1,37 @@
-import {Reciter} from '@/data/reciterData';
+import {Reciter, Rewayat} from '@/data/reciterData';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {resolveFilePath} from '@/services/downloadService';
+import rewayatSlugs from '@/data/rewayat-slugs.json';
+
+const R2_CDN_BASE = 'https://cdn.thebayaan.com';
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[''`]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
+}
+
+function buildR2Url(
+  reciter: Reciter,
+  rewayat: Rewayat,
+  paddedSurahId: string,
+): string | null {
+  const reciterSlug = slugify(reciter.name);
+  const rewayahSlug =
+    rewayatSlugs.rewayat[rewayat.name as keyof typeof rewayatSlugs.rewayat];
+  const styleSlug =
+    rewayatSlugs.styles[rewayat.style as keyof typeof rewayatSlugs.styles] ??
+    'murattal';
+
+  if (!rewayahSlug) {
+    return null;
+  }
+
+  return `${R2_CDN_BASE}/quran/recitations/${reciterSlug}/${rewayahSlug}/${styleSlug}/default/${paddedSurahId}.mp3`;
+}
 
 export function generateAudioUrl(
   reciter: Reciter,
@@ -18,6 +49,15 @@ export function generateAudioUrl(
     throw new Error('No rewayat found for reciter');
   }
 
+  // Use R2 CDN for Supabase-hosted reciters
+  if (rewayat.source_type === 'supabase') {
+    const r2Url = buildR2Url(reciter, rewayat, paddedSurahId);
+    if (r2Url) {
+      return r2Url;
+    }
+  }
+
+  // Fallback to original server URL
   return `${rewayat.server}/${paddedSurahId}.mp3`;
 }
 

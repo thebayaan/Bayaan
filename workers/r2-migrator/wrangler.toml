@@ -1,0 +1,24 @@
+name = "bayaan-r2-migrator"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "bayaan-audio"
+
+# Queue — tasks go in, consumer processes them server-side
+[[queues.producers]]
+binding = "MIGRATION_QUEUE"
+queue = "bayaan-migration-queue"
+
+[[queues.consumers]]
+queue = "bayaan-migration-queue"
+max_batch_size = 10
+max_retries = 3
+max_batch_timeout = 30
+
+# KV for tracking progress counters
+[[kv_namespaces]]
+binding = "MIGRATION_STATUS"
+id = "084c655993c348228312162ef9bfd2c0"
