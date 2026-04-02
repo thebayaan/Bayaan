@@ -16773,7 +16773,7 @@
         "reciter_id": "06c3f79f-02d9-42e8-9e9b-c6f355648305",
         "name": "Hafs A'n Assem",
         "style": "murattal",
-        "server": "https://download.quranicaudio.com/qdc/maher_al_meaqli/year1440",
+        "server": "https://server12.mp3quran.net/maher",
         "surah_total": 114,
         "surah_list": [
           1,
@@ -22790,7 +22790,7 @@
         "reciter_id": "b5acd08c-b023-4bf3-b806-f1b8c12d6d33",
         "name": "Hafs A'n Assem",
         "style": "mojawwad",
-        "server": "https://download.quranicaudio.com/qdc/siddiq_al-minshawi/mujawwad",
+        "server": "https://server10.mp3quran.net/minsh/Almusshaf-Al-Mojawwad",
         "surah_total": 114,
         "surah_list": [
           1,
