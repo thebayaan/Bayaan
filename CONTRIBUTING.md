@@ -49,6 +49,7 @@ npx expo start
 ## What the API key is for
 
 The Bayaan backend (`api.bayaan.app`) serves:
+
 - Reciter and rewayat metadata (242+ reciters)
 - Audio URL resolution
 - Ayah timestamps for follow-along
@@ -67,3 +68,4 @@ self-hosting instructions.
 - Branch off `develop`, not `main`
 - Keep PRs focused — one feature or fix per PR
 - Run the app on both iOS and Android before submitting
+
