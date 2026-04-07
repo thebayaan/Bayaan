@@ -8,7 +8,7 @@ import {BAYAAN_API_URL, BAYAAN_API_KEY} from '@env';
 
 const RECITERS_KEY = 'bayaan_reciters';
 const RECITER_SERVERS_KEY = 'bayaan_reciter_servers';
-const DATA_VERSION = '3'; // Increment: reciters now fetched from API
+const DATA_VERSION = '3'; // Increment: reciters fetched from API, not bundled
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
@@ -29,16 +29,20 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(storedData));
 }
 
+// ── In-place cache population ─────────────────────────────────────────────────
+// RECITERS is a shared mutable array imported across 20+ files.
+// We mutate it in-place so every importer automatically sees the data
+// without needing import changes anywhere.
+
+function populateReciters(data: Reciter[]): void {
+  RECITERS.splice(0, RECITERS.length, ...data);
+}
+
 // ── API client ────────────────────────────────────────────────────────────────
 
 const API_BASE = BAYAAN_API_URL ?? 'https://api.bayaan.app';
 const API_KEY = BAYAAN_API_KEY;
 
-// If no API key is configured (e.g. community forks without a key set),
-// skip all API calls and use bundled data only.
-const API_ENABLED = typeof API_KEY === 'string' && API_KEY.length > 0;
-
-// Fetch all reciters with all pages
 async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
   const PAGE_SIZE = 200;
   let page = 1;
@@ -61,7 +65,6 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
       ...r,
       rewayat: (r.rewayat ?? []).map((rw: any) => ({
         ...rw,
-        // API returns surah_list as number[], which matches the Reciter type
         surah_list: rw.surah_list ?? [],
       })),
     }));
@@ -101,39 +104,38 @@ export function searchSurahs(query: string): Surah[] {
 // ── Reciter functions ─────────────────────────────────────────────────────────
 
 /**
- * Returns reciters from cache immediately, then refreshes from the API
- * in the background if the API is reachable.
+ * Returns reciters from AsyncStorage cache immediately (fast, works offline),
+ * then refreshes from the API in the background.
  *
- * On first launch (no cache): fetches from API, falls back to bundled
- * reciters.json if the API is unavailable.
+ * Also populates the shared RECITERS array in-place so all sync importers
+ * across the app see the live data after the first call.
  */
 export async function getAllReciters(): Promise<Reciter[]> {
-  // No API key configured — use bundled data directly (community forks, CI, etc.)
-  if (!API_ENABLED) {
-    return RECITERS;
-  }
-
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
-  // Background refresh — don't await, returns stale data immediately
-  refreshRecitersInBackground(cached?.length ?? 0).catch(() => {});
+  if (cached && cached.length > 0) {
+    // Populate sync cache immediately from AsyncStorage
+    populateReciters(cached);
+    // Refresh from API in the background
+    refreshRecitersInBackground(cached.length).catch(() => {});
+    return cached;
+  }
 
-  if (cached && cached.length > 0) return cached;
-
-  // First launch — must block until we have data
+  // First launch — fetch from API (blocking)
   try {
     const apiReciters = await fetchAllRecitersFromApi();
     if (apiReciters.length > 0) {
       await setStoredData(RECITERS_KEY, apiReciters);
+      populateReciters(apiReciters);
       return apiReciters;
     }
   } catch (err) {
-    console.warn('[dataService] API unavailable on first load, using bundle:', err);
+    console.warn('[dataService] API fetch failed on first load:', err);
   }
 
-  // Final fallback: bundled JSON
-  await setStoredData(RECITERS_KEY, RECITERS);
-  return RECITERS;
+  // API unavailable on first launch — return empty, app shows loading/empty states
+  console.warn('[dataService] No reciter data available. Check BAYAAN_API_KEY.');
+  return [];
 }
 
 async function refreshRecitersInBackground(cachedCount: number): Promise<void> {
@@ -141,9 +143,10 @@ async function refreshRecitersInBackground(cachedCount: number): Promise<void> {
     const apiReciters = await fetchAllRecitersFromApi();
     if (apiReciters.length > 0 && apiReciters.length !== cachedCount) {
       await setStoredData(RECITERS_KEY, apiReciters);
+      populateReciters(apiReciters);
     }
   } catch {
-    // Silently fail — cached data remains in use
+    // Silently fail — cached data stays in use
   }
 }
 
@@ -152,8 +155,7 @@ export async function getReciterById(id: string): Promise<Reciter | undefined> {
   return reciters.find(reciter => reciter.id === id);
 }
 
-// Synchronous version used in time-critical paths — reads from the bundle
-// (not the API-refreshed cache) as AsyncStorage is async
+// Sync version reads from the in-memory RECITERS array (populated after first load)
 export function getReciterByIdSync(id: string): Reciter | undefined {
   return RECITERS.find(reciter => reciter.id === id);
 }
@@ -247,10 +249,6 @@ export async function filterReciters(options: {
 
 // ── Audio URL ─────────────────────────────────────────────────────────────────
 
-/**
- * Resolves audio URL using cached reciter data (no extra network call).
- * URL format matches what the API /v1/audio-url returns.
- */
 export async function fetchAudioUrl(
   surahId: number,
   reciterId: string,
