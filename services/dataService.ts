@@ -34,17 +34,9 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
 const API_BASE = BAYAAN_API_URL ?? 'https://api.bayaan.app';
 const API_KEY = BAYAAN_API_KEY;
 
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  if (!res.ok) throw new Error(`Bayaan API error: ${res.status} ${path}`);
-  const json = await res.json();
-  return json.data as T;
-}
+// If no API key is configured (e.g. community forks without a key set),
+// skip all API calls and use bundled data only.
+const API_ENABLED = typeof API_KEY === 'string' && API_KEY.length > 0;
 
 // Fetch all reciters with all pages
 async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
@@ -116,6 +108,11 @@ export function searchSurahs(query: string): Surah[] {
  * reciters.json if the API is unavailable.
  */
 export async function getAllReciters(): Promise<Reciter[]> {
+  // No API key configured — use bundled data directly (community forks, CI, etc.)
+  if (!API_ENABLED) {
+    return RECITERS;
+  }
+
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
   // Background refresh — don't await, returns stale data immediately
