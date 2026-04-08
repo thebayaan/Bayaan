@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
 import {usePlayerStore} from './player/store/playerStore';
-import {BAYAAN_API_URL, BAYAAN_API_KEY} from '@env';
+import {useReciterStore} from '../store/reciterStore';
+const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
+const BAYAAN_API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -36,11 +38,13 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
 
 function populateReciters(data: Reciter[]): void {
   RECITERS.splice(0, RECITERS.length, ...data);
+  // Refresh the store's default reciter now that RECITERS is populated
+  useReciterStore.getState().refreshDefaultReciter();
 }
 
 // ── API client ────────────────────────────────────────────────────────────────
 
-const API_BASE = BAYAAN_API_URL ?? 'https://api.bayaan.app';
+const API_BASE = BAYAAN_API_URL ?? 'https://bayaan-backend-production.up.railway.app';
 const API_KEY = BAYAAN_API_KEY;
 
 async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
