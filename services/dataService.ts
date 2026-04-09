@@ -44,7 +44,7 @@ function populateReciters(data: Reciter[]): void {
 
 // ── API client ────────────────────────────────────────────────────────────────
 
-const API_BASE = BAYAAN_API_URL ?? 'https://bayaan-backend-production.up.railway.app';
+const API_BASE = BAYAAN_API_URL;
 const API_KEY = BAYAAN_API_KEY;
 
 async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
@@ -53,14 +53,12 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
   let allReciters: Reciter[] = [];
 
   while (true) {
+    const headers: Record<string, string> = {'Content-Type': 'application/json'};
+    if (API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`;
+
     const res = await fetch(
       `${API_BASE}/v1/reciters?page=${page}&limit=${PAGE_SIZE}`,
-      {
-        headers: {
-          Authorization: `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      },
+      {headers},
     );
     if (!res.ok) throw new Error(`Bayaan API error: ${res.status}`);
     const json = await res.json();
@@ -115,13 +113,16 @@ export function searchSurahs(query: string): Surah[] {
  * across the app see the live data after the first call.
  */
 export async function getAllReciters(): Promise<Reciter[]> {
+  if (!API_BASE || !API_KEY) {
+    console.warn('[dataService] EXPO_PUBLIC_BAYAAN_API_URL or EXPO_PUBLIC_BAYAAN_API_KEY is not set. No reciter data will be loaded.');
+    return [];
+  }
+
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
   if (cached && cached.length > 0) {
-    // Populate sync cache immediately from AsyncStorage
     populateReciters(cached);
-    // Refresh from API in the background
-    refreshRecitersInBackground(cached.length).catch(() => {});
+    refreshRecitersInBackground().catch(() => {});
     return cached;
   }
 
@@ -137,15 +138,14 @@ export async function getAllReciters(): Promise<Reciter[]> {
     console.warn('[dataService] API fetch failed on first load:', err);
   }
 
-  // API unavailable on first launch — return empty, app shows loading/empty states
-  console.warn('[dataService] No reciter data available. Check BAYAAN_API_KEY.');
+  console.warn('[dataService] No reciter data available.');
   return [];
 }
 
-async function refreshRecitersInBackground(cachedCount: number): Promise<void> {
+async function refreshRecitersInBackground(): Promise<void> {
   try {
     const apiReciters = await fetchAllRecitersFromApi();
-    if (apiReciters.length > 0 && apiReciters.length !== cachedCount) {
+    if (apiReciters.length > 0) {
       await setStoredData(RECITERS_KEY, apiReciters);
       populateReciters(apiReciters);
     }
