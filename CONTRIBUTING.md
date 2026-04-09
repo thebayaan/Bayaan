@@ -26,17 +26,16 @@ Bayaan uses a backend API to serve reciter data. For local development and
 testing, you can use the **community API key**:
 
 ```
-BAYAAN_API_URL=https://api.bayaan.app
-BAYAAN_API_KEY=<community key — see pinned issue or README>
+EXPO_PUBLIC_BAYAAN_API_URL=https://api.bayaan.app
+EXPO_PUBLIC_BAYAAN_API_KEY=<community key — see pinned issue or README>
 ```
 
 The community key has a lower rate limit than the official app key, but is
 more than enough for building and testing.
 
-> **No key at all?** That works too. If `BAYAAN_API_KEY` is not set, the app
-> falls back to the bundled `data/reciters.json` automatically. You can build,
-> run, and test every feature — you just won't get live reciter updates from
-> the API.
+> **No key set?** The app will start but the reciter list will be empty —
+> all reciter data comes from the API. You need at minimum the community key
+> to see reciters. Ask in a GitHub issue or the pinned discussion to get one.
 
 ### 4. Run
 
