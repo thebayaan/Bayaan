@@ -3,6 +3,7 @@ import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
 import {usePlayerStore} from './player/store/playerStore';
 import {useReciterStore} from '../store/reciterStore';
+import {useApiHealthStore} from '../store/apiHealthStore';
 const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
 const BAYAAN_API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY;
 
@@ -19,11 +20,16 @@ interface StoredData<T> {
   data: T;
 }
 
-async function getStoredData<T>(key: string): Promise<T | null> {
+async function getStoredData<T>(
+  key: string,
+  opts: {allowStale?: boolean} = {},
+): Promise<{data: T; isStale: boolean} | null> {
   const storedItem = await AsyncStorage.getItem(key);
   if (!storedItem) return null;
   const {version, data}: StoredData<T> = JSON.parse(storedItem);
-  return version === DATA_VERSION ? data : null;
+  if (version === DATA_VERSION) return {data, isStale: false};
+  if (opts.allowStale) return {data, isStale: true};
+  return null;
 }
 
 async function setStoredData<T>(key: string, data: T): Promise<void> {
@@ -113,17 +119,27 @@ export function searchSurahs(query: string): Surah[] {
  * across the app see the live data after the first call.
  */
 export async function getAllReciters(): Promise<Reciter[]> {
+  const {setDisrupted, setRetryFn, clearDisruption} =
+    useApiHealthStore.getState();
+
   if (!API_BASE || !API_KEY) {
-    console.warn('[dataService] EXPO_PUBLIC_BAYAAN_API_URL or EXPO_PUBLIC_BAYAAN_API_KEY is not set. No reciter data will be loaded.');
+    console.warn(
+      '[dataService] EXPO_PUBLIC_BAYAAN_API_URL or EXPO_PUBLIC_BAYAAN_API_KEY is not set.',
+    );
     return [];
   }
 
+  const retry = async () => {
+    await getAllReciters();
+  };
+  setRetryFn(retry);
+
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
-  if (cached && cached.length > 0) {
-    populateReciters(cached);
+  if (cached && cached.data.length > 0) {
+    populateReciters(cached.data);
     refreshRecitersInBackground().catch(() => {});
-    return cached;
+    return cached.data;
   }
 
   // First launch — fetch from API (blocking)
@@ -132,25 +148,37 @@ export async function getAllReciters(): Promise<Reciter[]> {
     if (apiReciters.length > 0) {
       await setStoredData(RECITERS_KEY, apiReciters);
       populateReciters(apiReciters);
+      clearDisruption();
       return apiReciters;
     }
   } catch (err) {
     console.warn('[dataService] API fetch failed on first load:', err);
+    // Try stale cache before giving up
+    const stale = await getStoredData<Reciter[]>(RECITERS_KEY, {
+      allowStale: true,
+    });
+    if (stale && stale.data.length > 0) {
+      populateReciters(stale.data);
+      setDisrupted(true, {reason: 'unreachable', stale: true});
+      return stale.data;
+    }
+    setDisrupted(true, {reason: 'unreachable', stale: false});
   }
 
-  console.warn('[dataService] No reciter data available.');
   return [];
 }
 
 async function refreshRecitersInBackground(): Promise<void> {
+  const {setDisrupted, clearDisruption} = useApiHealthStore.getState();
   try {
     const apiReciters = await fetchAllRecitersFromApi();
     if (apiReciters.length > 0) {
       await setStoredData(RECITERS_KEY, apiReciters);
       populateReciters(apiReciters);
+      clearDisruption();
     }
   } catch {
-    // Silently fail — cached data stays in use
+    setDisrupted(true, {reason: 'unreachable', stale: true});
   }
 }
 
