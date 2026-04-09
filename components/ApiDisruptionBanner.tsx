@@ -7,40 +7,57 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useApiHealthStore} from '@/store/apiHealthStore';
+import {useNetworkStore} from '@/store/networkStore';
 
 export function ApiDisruptionBanner() {
   const {isDisrupted, usingStaleCache, retryFn} = useApiHealthStore();
+  const isOnline = useNetworkStore(s => s.isOnline);
   const [modalVisible, setModalVisible] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const insets = useSafeAreaInsets();
 
-  if (!isDisrupted) return null;
+  const showBanner = !isOnline || isDisrupted;
+  const isOffline = !isOnline;
+
+  if (!showBanner) return null;
 
   const handleRetry = async () => {
-    if (!retryFn || retrying) return;
+    if (retrying) return;
     setRetrying(true);
     try {
-      await retryFn();
+      if (retryFn) await retryFn();
     } finally {
       setRetrying(false);
     }
   };
+
+  const bannerBg = isOffline ? '#F3F4F6' : '#FEF3C7';
+  const bannerBorder = isOffline ? '#D1D5DB' : '#F59E0B';
+  const bannerTextColor = isOffline ? '#374151' : '#92400E';
+  const buttonBg = isOffline ? '#E5E7EB' : '#FDE68A';
 
   return (
     <>
       <View
         style={[
           styles.banner,
-          {paddingTop: insets.top > 0 ? insets.top + 4 : 12},
+          {
+            paddingTop: insets.top > 0 ? insets.top + 4 : 12,
+            backgroundColor: bannerBg,
+            borderBottomColor: bannerBorder,
+          },
         ]}>
         <View style={styles.bannerContent}>
-          <Text style={styles.bannerIcon}>⚠️</Text>
-          <Text style={styles.bannerText} numberOfLines={1}>
-            {usingStaleCache
+          <Text style={styles.bannerIcon}>{isOffline ? '📵' : '⚠️'}</Text>
+          <Text
+            style={[styles.bannerText, {color: bannerTextColor}]}
+            numberOfLines={1}>
+            {isOffline
+              ? 'No internet connection'
+              : usingStaleCache
               ? 'Showing cached data — backend unreachable'
               : 'Backend unreachable — some content unavailable'}
           </Text>
@@ -49,18 +66,24 @@ export function ApiDisruptionBanner() {
           <TouchableOpacity
             onPress={handleRetry}
             disabled={retrying}
-            style={styles.bannerButton}>
+            style={[styles.bannerButton, {backgroundColor: buttonBg}]}>
             {retrying ? (
-              <ActivityIndicator size="small" color="#7a5400" />
+              <ActivityIndicator size="small" color={bannerTextColor} />
             ) : (
-              <Text style={styles.bannerButtonText}>Retry</Text>
+              <Text style={[styles.bannerButtonText, {color: bannerTextColor}]}>
+                Retry
+              </Text>
             )}
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setModalVisible(true)}
-            style={[styles.bannerButton, styles.bannerButtonMore]}>
-            <Text style={styles.bannerButtonText}>More</Text>
-          </TouchableOpacity>
+          {!isOffline && (
+            <TouchableOpacity
+              onPress={() => setModalVisible(true)}
+              style={[styles.bannerButton, {backgroundColor: '#F59E0B22'}]}>
+              <Text style={[styles.bannerButtonText, {color: bannerTextColor}]}>
+                More
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -114,7 +137,10 @@ export function ApiDisruptionBanner() {
           <View
             style={[styles.modalFooter, {paddingBottom: insets.bottom + 8}]}>
             <TouchableOpacity
-              style={[styles.retryButton, retrying && styles.retryButtonDisabled]}
+              style={[
+                styles.retryButton,
+                retrying && styles.retryButtonDisabled,
+              ]}
               onPress={async () => {
                 await handleRetry();
                 setModalVisible(false);
@@ -132,6 +158,7 @@ export function ApiDisruptionBanner() {
               <Text style={styles.dismissButtonText}>Dismiss</Text>
             </TouchableOpacity>
           </View>
+
         </View>
       </Modal>
     </>
