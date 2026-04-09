@@ -33,6 +33,7 @@ import {
 import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
 import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
+import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {restoreSession} from '@/services/player/utils/restoreSession';
@@ -72,6 +73,7 @@ export default function RootLayout() {
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
+  useNetworkMonitor();
 
   // Build React Navigation theme so card/background colors match during transitions
   const navigationTheme = useMemo(
