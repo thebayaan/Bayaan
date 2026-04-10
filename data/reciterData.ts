@@ -7,6 +7,7 @@
 export interface Reciter {
   id: string;
   name: string;
+  slug?: string | null;
   date: string | null;
   image_url: string | null;
   rewayat: Rewayat[];
