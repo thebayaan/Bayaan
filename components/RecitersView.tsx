@@ -41,10 +41,14 @@ import {useRouter} from 'expo-router';
 import Color from 'color';
 import {useReciterFollowAlong} from '@/hooks/useFollowAlong';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useAdhkarStore} from '@/store/adhkarStore';
+import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
+import {SuperCategory} from '@/types/adhkar';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
-  headerHeight: number;
 }
 
 type SectionItem = Reciter | RecentlyPlayedTrack | RewayatInfo | UserPlaylist;
@@ -378,9 +382,10 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
   return shuffled;
 }
 
-function RecitersView({onReciterPress, headerHeight}: RecitersViewProps) {
+function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
   const bottomInset = useBottomInset();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
@@ -505,18 +510,38 @@ function RecitersView({onReciterPress, headerHeight}: RecitersViewProps) {
 
   const showNewToQuran = shouldShowNewToQuran();
 
-  // Get random gradient colors from the utility
+  // Adhkar data for the section at the bottom
+  const mainSuperCategories = useAdhkarStore(
+    state => state.mainSuperCategories,
+  );
+  const adhkarLoaded = useAdhkarStore(state => state.superCategoriesLoaded);
+
+  // Interleave adhkar categories for consistent display order
+  const adhkarCategories = useMemo(() => {
+    const left = mainSuperCategories
+      .filter(c => c.column === 'left')
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const right = mainSuperCategories
+      .filter(c => c.column === 'right')
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const result: SuperCategory[] = [];
+    const maxLen = Math.max(left.length, right.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (i < left.length) result.push(left[i]);
+      if (i < right.length) result.push(right[i]);
+    }
+    return result;
+  }, [mainSuperCategories]);
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{
-        paddingTop: headerHeight,
-        paddingBottom: bottomInset,
-      }}
-      contentInsetAdjustmentBehavior="never"
-      automaticallyAdjustContentInsets={false}
-      automaticallyAdjustsScrollIndicatorInsets={false}
+      contentContainerStyle={
+        USE_GLASS
+          ? undefined
+          : {paddingTop: insets.top, paddingBottom: bottomInset}
+      }
+      contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
       {/* Use the unified RecitersHero component */}
@@ -565,6 +590,31 @@ function RecitersView({onReciterPress, headerHeight}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
+      )}
+
+      {/* Adhkar section */}
+      {adhkarLoaded && adhkarCategories.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+              Adhkar
+            </Text>
+          </View>
+          <FlatList
+            data={adhkarCategories}
+            renderItem={({item}) => (
+              <AdhkarBentoCard
+                category={item}
+                width={moderateScale(140)}
+                height={moderateScale(100)}
+              />
+            )}
+            keyExtractor={item => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sectionContent}
+          />
+        </View>
       )}
 
       {/* Follow Along - reciters with verse-by-verse tracking */}
@@ -677,8 +727,5 @@ const styles = StyleSheet.create({
 });
 
 export default React.memo(RecitersView, (prevProps, nextProps) => {
-  return (
-    prevProps.onReciterPress === nextProps.onReciterPress &&
-    prevProps.headerHeight === nextProps.headerHeight
-  );
+  return prevProps.onReciterPress === nextProps.onReciterPress;
 });

@@ -1,5 +1,5 @@
 import React, {useMemo, useCallback} from 'react';
-import {View, Text, StyleSheet, Pressable} from 'react-native';
+import {View, Text, StyleSheet, Pressable, Platform} from 'react-native';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
@@ -7,17 +7,18 @@ import {SurahCard} from './cards/SurahCard';
 import {SurahItem} from './SurahItem';
 import {SURAHS, Surah} from '@/data/surahData';
 import Color from 'color';
-import {SurahsHero} from '@/components/hero/SurahsHero';
 import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {Feather} from '@expo/vector-icons';
 import {useSettings} from '@/hooks/useSettings';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {ContinueReadingHero} from '@/components/hero/ContinueReadingHero';
 
 interface SurahsViewProps {
   onSurahPress: (surah: Surah) => void;
   onSurahLongPress?: (surah: Surah) => void;
-  headerHeight: number;
 }
 
 type ViewMode = 'card' | 'list';
@@ -26,16 +27,6 @@ type SortOption = 'asc' | 'desc' | 'revelation';
 type FlatItem =
   | {type: 'juz-header'; juzName: string; key: string}
   | {type: 'surah-row'; surahs: Surah[]; key: string};
-
-function getSurahOfTheDay(): Surah {
-  const today = new Date();
-  const startOfYear = new Date(today.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor(
-    (today.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const surahIndex = dayOfYear % 114;
-  return SURAHS[surahIndex];
-}
 
 function groupSurahsIntoPairs(surahs: Surah[]): Surah[][] {
   const pairs: Surah[][] = [];
@@ -52,12 +43,10 @@ function groupSurahsIntoPairs(surahs: Surah[]): Surah[][] {
 export default function SurahsView({
   onSurahPress,
   onSurahLongPress,
-  headerHeight,
 }: SurahsViewProps) {
   const {theme} = useTheme();
   const bottomInset = useBottomInset();
-
-  const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
+  const insets = useSafeAreaInsets();
 
   // Persisted settings
   const viewMode = useSettings(state => state.browseViewMode);
@@ -209,10 +198,7 @@ export default function SurahsView({
     () => (
       <View>
         <View style={styles.heroContainer}>
-          <SurahsHero
-            surahOfTheDay={surahOfTheDay}
-            onSurahLongPress={onSurahLongPress}
-          />
+          <ContinueReadingHero onSurahLongPress={onSurahLongPress} />
         </View>
 
         <View style={styles.optionsBar}>
@@ -273,8 +259,6 @@ export default function SurahsView({
       </View>
     ),
     [
-      surahOfTheDay,
-      onSurahPress,
       onSurahLongPress,
       sortOption,
       viewMode,
@@ -288,6 +272,12 @@ export default function SurahsView({
 
   const getItemType = useCallback((item: FlatItem) => item.type, []);
 
+  // iOS with NativeTabs: automatic content insets handle top/bottom
+  // Android / older iOS: manual padding needed
+  const contentPadding = USE_GLASS
+    ? undefined
+    : {paddingTop: insets.top, paddingBottom: bottomInset};
+
   return (
     <View style={styles.container}>
       <FlashList
@@ -298,11 +288,8 @@ export default function SurahsView({
         getItemType={getItemType}
         stickyHeaderIndices={stickyIndices}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingBottom: bottomInset,
-          paddingTop: headerHeight,
-        }}
-        contentInsetAdjustmentBehavior="never"
+        contentContainerStyle={contentPadding}
+        contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         drawDistance={moderateScale(300)}
       />
     </View>
