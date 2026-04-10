@@ -23,7 +23,7 @@ module.exports = {
         usesNonExemptEncryption: false,
       },
       teamId: 'S4W5Q2L53W',
-      associatedDomains: ['applinks:app.thebayaan.com'],
+      associatedDomains: ['applinks:api.thebayaan.com'],
       infoPlist: {
         NSMicrophoneUsageDescription:
           'This app uses the microphone to play audio.',
@@ -101,7 +101,7 @@ module.exports = {
           data: [
             {
               scheme: 'https',
-              host: 'app.thebayaan.com',
+              host: 'api.thebayaan.com',
               pathPrefix: '/share',
             },
           ],

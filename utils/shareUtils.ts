@@ -1,6 +1,6 @@
 import {Share, Platform} from 'react-native';
 
-const BASE_URL = 'https://app.thebayaan.com';
+const BASE_URL = 'https://api.thebayaan.com';
 
 export function reciterShareUrl(slugOrId: string): string {
   return `${BASE_URL}/share/reciter/${slugOrId}`;
