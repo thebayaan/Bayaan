@@ -27,6 +27,10 @@ const tabIcons = {
     default: require('@/assets/images/tab-icons/home-default.png'),
     selected: require('@/assets/images/tab-icons/home-filled.png'),
   },
+  surahs: {
+    default: require('@/assets/images/tab-icons/surahs-default.png'),
+    selected: require('@/assets/images/tab-icons/surahs-filled.png'),
+  },
   search: {
     default: require('@/assets/images/tab-icons/search-default.png'),
     selected: require('@/assets/images/tab-icons/search-filled.png'),
@@ -64,10 +68,19 @@ function IOSTabs() {
       )}
       <NativeTabs.Trigger
         name="(a.home)"
-        disableAutomaticContentInsets
         contentStyle={{backgroundColor: theme.colors.background}}>
         <NativeTabs.Trigger.Icon src={tabIcons.home} renderingMode="template" />
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger
+        name="(b.surahs)"
+        contentStyle={{backgroundColor: theme.colors.background}}>
+        <NativeTabs.Trigger.Icon
+          src={tabIcons.surahs}
+          renderingMode="template"
+        />
+        <NativeTabs.Trigger.Label>Surahs</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger
@@ -120,6 +133,7 @@ function AndroidTabs() {
         }}
         tabBar={tabBarComponent}>
         <Tabs.Screen name="(a.home)" options={{title: 'Home'}} />
+        <Tabs.Screen name="(b.surahs)" options={{title: 'Surahs'}} />
         <Tabs.Screen name="(b.search)" options={{title: 'Search'}} />
         <Tabs.Screen name="(c.collection)" options={{title: 'Collection'}} />
         <Tabs.Screen name="(d.settings)" options={{title: 'Settings'}} />
