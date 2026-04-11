@@ -11,7 +11,7 @@ const BAYAAN_API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY;
 
 const RECITERS_KEY = 'bayaan_reciters';
 const RECITER_SERVERS_KEY = 'bayaan_reciter_servers';
-const DATA_VERSION = '3'; // Increment: reciters fetched from API, not bundled
+const DATA_VERSION = '4'; // Increment: bust cache for R2 CDN URL migration
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
 
@@ -59,7 +59,9 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
   let allReciters: Reciter[] = [];
 
   while (true) {
-    const headers: Record<string, string> = {'Content-Type': 'application/json'};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
     if (API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`;
 
     const res = await fetch(
@@ -190,6 +192,10 @@ export async function getReciterById(id: string): Promise<Reciter | undefined> {
 // Sync version reads from the in-memory RECITERS array (populated after first load)
 export function getReciterByIdSync(id: string): Reciter | undefined {
   return RECITERS.find(reciter => reciter.id === id);
+}
+
+export function getReciterBySlug(slug: string): Reciter | undefined {
+  return RECITERS.find(r => r.slug === slug);
 }
 
 export function getReciterName(reciterId: string): string | null {

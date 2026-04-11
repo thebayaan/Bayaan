@@ -779,6 +779,17 @@ export const usePlayerStore = create<PlayerStoreState>()(
           buffering: false,
         },
       }),
+      onRehydrateStorage: () => state => {
+        if (!state) return;
+        const tracks = state.queue?.tracks ?? [];
+        const hasStaleUrls = tracks.some(
+          t => t.url.includes('mp3quran.net') || t.url.includes('supabase.co'),
+        );
+        if (hasStaleUrls) {
+          console.log('[PlayerStore] Clearing stale URLs from persisted queue');
+          state.queue = {...state.queue, tracks: [], currentIndex: 0, total: 0};
+        }
+      },
     },
   ),
 );
