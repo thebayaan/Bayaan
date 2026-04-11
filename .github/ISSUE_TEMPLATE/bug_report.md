@@ -1,26 +1,17 @@
 ---
 
 ## name: Bug report
+
 about: Something is not working correctly
 labels: bug
 
 ## Description
 
-
-
 ## Steps to reproduce
-
-
-
-
 
 ## Expected behaviour
 
-
-
 ## Actual behaviour
-
-
 
 ## Environment
 
@@ -35,7 +26,4 @@ labels: bug
 
 ## Logs / screenshots
 
-
-
 ## Additional context
-
