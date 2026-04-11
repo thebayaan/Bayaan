@@ -115,11 +115,13 @@ const AUTH_TOKEN = process.env.AUTH_TOKEN;
 const BAYAAN_API_KEY = process.env.BAYAAN_API_KEY;
 
 const DRY_RUN = process.argv.includes('--dry-run');
+const STATUS_ONLY = process.argv.includes('--status');
+const RESET_STATUS = process.argv.includes('--reset-status');
 const CDN_BASE = 'https://cdn.thebayaan.com';
 const R2_KEY_PREFIX = 'quran/recitations';
 const API_BASE = 'https://bayaan-backend-production.up.railway.app';
 const PAGE_LIMIT = 200;
-const BATCH_SIZE = 50; // Worker max per request
+const ENQUEUE_BATCH_SIZE = 500; // Worker chunks to 100 internally
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -214,10 +216,8 @@ async function isOnR2(r2KeyBase: string): Promise<boolean> {
 // Worker API
 // ---------------------------------------------------------------------------
 
-async function sendBatchToWorker(
-  files: MigrateFile[],
-): Promise<MigrateResponse> {
-  const res = await fetch(`${WORKER_URL}/migrate`, {
+async function enqueueBatch(files: MigrateFile[]): Promise<number> {
+  const res = await fetch(`${WORKER_URL}/enqueue`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${AUTH_TOKEN}`,
@@ -228,10 +228,46 @@ async function sendBatchToWorker(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Worker /migrate failed (${res.status}): ${body}`);
+    throw new Error(`Worker /enqueue failed (${res.status}): ${body}`);
   }
 
-  return res.json() as Promise<MigrateResponse>;
+  const json = (await res.json()) as {enqueued: number};
+  return json.enqueued;
+}
+
+async function checkStatus(): Promise<void> {
+  const res = await fetch(`${WORKER_URL}/status`, {
+    headers: {Authorization: `Bearer ${AUTH_TOKEN}`},
+  });
+
+  if (!res.ok) throw new Error(`Status check failed: ${res.status}`);
+
+  const data = (await res.json()) as {
+    enqueued: number;
+    processed: number;
+    succeeded: number;
+    failed: number;
+    remaining: number;
+    percent_done: number;
+  };
+
+  console.log('=== Migration Queue Status ===');
+  console.log(`  Enqueued:    ${data.enqueued}`);
+  console.log(`  Processed:   ${data.processed}`);
+  console.log(`  Succeeded:   ${data.succeeded}`);
+  console.log(`  Failed:      ${data.failed}`);
+  console.log(`  Remaining:   ${data.remaining}`);
+  console.log(`  Progress:    ${data.percent_done}%`);
+}
+
+async function resetStatus(): Promise<void> {
+  const res = await fetch(`${WORKER_URL}/status/reset`, {
+    method: 'POST',
+    headers: {Authorization: `Bearer ${AUTH_TOKEN}`},
+  });
+
+  if (!res.ok) throw new Error(`Status reset failed: ${res.status}`);
+  console.log('Status counters reset.');
 }
 
 // ---------------------------------------------------------------------------
@@ -241,8 +277,18 @@ async function sendBatchToWorker(
 async function main(): Promise<void> {
   validateEnv();
 
+  if (STATUS_ONLY) {
+    await checkStatus();
+    return;
+  }
+
+  if (RESET_STATUS) {
+    await resetStatus();
+    return;
+  }
+
   if (DRY_RUN) {
-    console.log('=== DRY RUN — no files will be migrated ===\n');
+    console.log('=== DRY RUN — no files will be enqueued ===\n');
   }
 
   // Health check
@@ -343,68 +389,45 @@ async function main(): Promise<void> {
       });
 
       console.log(
-        `${prefix} ${files.length} surahs to migrate from ${sourceServer}`,
+        `${prefix} ${files.length} surahs to enqueue from ${sourceServer}`,
       );
 
+      stats.surahsSent += files.length;
+
       if (DRY_RUN) {
-        stats.surahsSent += files.length;
         continue;
       }
 
-      // Send in batches of BATCH_SIZE (worker max is 50)
-      for (let i = 0; i < files.length; i += BATCH_SIZE) {
-        const batch = files.slice(i, i + BATCH_SIZE);
-        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-        const totalBatches = Math.ceil(files.length / BATCH_SIZE);
-
-        if (totalBatches > 1) {
-          console.log(
-            `  ${prefix} Batch ${batchNum}/${totalBatches} (${batch.length} files)`,
-          );
-        }
-
+      // Enqueue in batches (worker chunks to 100 internally)
+      for (let i = 0; i < files.length; i += ENQUEUE_BATCH_SIZE) {
+        const batch = files.slice(i, i + ENQUEUE_BATCH_SIZE);
         try {
-          const response = await sendBatchToWorker(batch);
-          stats.surahsSent += response.total;
-          stats.surahsSucceeded += response.succeeded;
-          stats.surahsFailed += response.failed;
-
-          for (const result of response.results) {
-            if (!result.success) {
-              stats.failedFiles.push(
-                `${result.r2_key}: ${result.error ?? 'unknown'}`,
-              );
-            }
-          }
-
-          console.log(
-            `  ${prefix} Batch done — succeeded: ${response.succeeded}, failed: ${response.failed}`,
-          );
+          const enqueued = await enqueueBatch(batch);
+          stats.surahsSucceeded += enqueued;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error(`  ${prefix} Batch error: ${msg}`);
+          console.error(`  ${prefix} Enqueue error: ${msg}`);
           stats.surahsFailed += batch.length;
-          stats.surahsSent += batch.length;
         }
       }
     }
   }
 
   // Summary
-  console.log('\n=== Upload Summary ===');
-  if (DRY_RUN) console.log('(DRY RUN — no changes were written)');
+  console.log('\n=== Enqueue Summary ===');
+  if (DRY_RUN) console.log('(DRY RUN — nothing was enqueued)');
   console.log(`  Rewayat processed:   ${stats.rewayatProcessed}`);
   console.log(`  Rewayat skipped:     ${stats.rewayatSkipped}`);
   console.log(`  Rewayat failed:      ${stats.rewayatFailed}`);
-  console.log(`  Surahs sent:         ${stats.surahsSent}`);
-  console.log(`  Surahs succeeded:    ${stats.surahsSucceeded}`);
+  console.log(`  Surahs total:        ${stats.surahsSent}`);
+  console.log(`  Surahs enqueued:     ${stats.surahsSucceeded}`);
   console.log(`  Surahs failed:       ${stats.surahsFailed}`);
 
-  if (stats.failedFiles.length > 0) {
-    console.log('\nFailed files:');
-    for (const f of stats.failedFiles) {
-      console.log(`  - ${f}`);
-    }
+  if (!DRY_RUN && stats.surahsSucceeded > 0) {
+    console.log('\nThe Worker is now processing the queue in the background.');
+    console.log(
+      'Check progress with: npx tsx scripts/upload-missing-to-r2.ts --status',
+    );
   }
 }
 
