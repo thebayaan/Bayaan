@@ -51,6 +51,7 @@ function getDefaultReciter(): Reciter {
 
 interface ReciterState {
   defaultReciter: Reciter;
+  isInitialized: boolean;
   setDefaultReciter: (reciter: Reciter) => void;
   refreshDefaultReciter: () => void;
 }
@@ -59,6 +60,7 @@ export const useReciterStore = create<ReciterState>()(
   persist(
     set => ({
       defaultReciter: getDefaultReciter(),
+      isInitialized: false,
       refreshDefaultReciter: () => {
         _defaultReciter = null;
         set({defaultReciter: getDefaultReciter()});
@@ -80,6 +82,7 @@ export const useReciterStore = create<ReciterState>()(
     }),
     {
       name: 'reciter-storage',
+      partialize: state => ({defaultReciter: state.defaultReciter}),
       storage: {
         getItem: async name => {
           const value = await AsyncStorage.getItem(name);
