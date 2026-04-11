@@ -7,6 +7,7 @@
 ## The Problem (TL;DR)
 
 NativeTabs on iOS forces ScrollViews/FlatLists to use automatic safe area insets, causing:
+
 - Content pushed down by ~30-40px top padding
 - Layout flashing when switching tabs (pre-render happens with device-only insets)
 - Issues even when explicitly setting `contentInsetAdjustmentBehavior="never"`
@@ -94,28 +95,34 @@ const cachedInsets = React.useContext(InsetsContext);
 ## Implementation Steps
 
 ### Step 1: Audit Current Code
+
 Find all ScrollView/FlatList in tab screens:
+
 ```bash
 grep -r "ScrollView\|FlatList" app/\(tabs\)/
 ```
 
 ### Step 2: Apply Fix 1 Everywhere
+
 Add `contentInsetAdjustmentBehavior="never"` to all scrollable components
 
 ### Step 3: Test Each Tab
+
 1. Launch app
 2. Visit each tab
 3. Scroll content
 4. Check for:
-   - Extra top padding
-   - Content displaced
-   - Flashing/layout shift
-   - Blank area above content
+  - Extra top padding
+  - Content displaced
+  - Flashing/layout shift
+  - Blank area above content
 
 ### Step 4: Apply Fix 2 if Needed
+
 If Fix 1 doesn't fully work, add decoy View
 
 ### Step 5: Test on Both Platforms
+
 - iOS (priority: has the bug)
 - Android (should work fine already)
 
@@ -187,27 +194,33 @@ export default function TabScreen() {
 ## What NOT to Do
 
 ❌ Don't rely on `disableAutomaticContentInsets` prop on NativeTabs.Trigger
+
 - This is the root cause of the bug (prop arrives too late)
 
 ❌ Don't assume Android is the same as iOS
+
 - Android doesn't have this issue, so don't test it as validation
 
 ❌ Don't use `contentInsetAdjustmentBehavior="automatic"`
+
 - This is what the native override forces anyway
 
 ❌ Don't leave contentInset props undefined
+
 - Be explicit with "never" + manual padding
 
 ---
 
 ## Related GitHub Issues to Monitor
 
-| Issue | Watch For |
-|-------|-----------|
-| [expo/expo#43056](https://github.com/expo/expo/issues/43056) | ScrollView ignores "never" inset (main issue) |
-| [expo/expo#40775](https://github.com/expo/expo/issues/40775) | FlashList top inset issue |
-| [expo/expo#42486](https://github.com/expo/expo/issues/42486) | Pre-render safe area flash |
-| [software-mansion/react-native-screens#3573](https://github.com/software-mansion/react-native-screens/issues/3573) | Device-only insets on pre-render |
+
+| Issue                                                                                                              | Watch For                                     |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- |
+| [expo/expo#43056](https://github.com/expo/expo/issues/43056)                                                       | ScrollView ignores "never" inset (main issue) |
+| [expo/expo#40775](https://github.com/expo/expo/issues/40775)                                                       | FlashList top inset issue                     |
+| [expo/expo#42486](https://github.com/expo/expo/issues/42486)                                                       | Pre-render safe area flash                    |
+| [software-mansion/react-native-screens#3573](https://github.com/software-mansion/react-native-screens/issues/3573) | Device-only insets on pre-render              |
+
 
 ---
 
@@ -215,25 +228,25 @@ export default function TabScreen() {
 
 ### Per Tab Screen
 
-- [ ] No extra top padding visible
-- [ ] Content starts at correct position (below status bar)
-- [ ] First scroll smoothly (no jump)
-- [ ] Can scroll to all content
-- [ ] No blank area above content
+- No extra top padding visible
+- Content starts at correct position (below status bar)
+- First scroll smoothly (no jump)
+- Can scroll to all content
+- No blank area above content
 
 ### Across All Tabs
 
-- [ ] Initial tab: no flash
-- [ ] Switch to 2nd tab: check for flash
-- [ ] Switch to 3rd+ tabs: check for flash
-- [ ] Return to 1st tab: no re-flash
-- [ ] Scroll in each tab: smooth
-- [ ] No content displacement
+- Initial tab: no flash
+- Switch to 2nd tab: check for flash
+- Switch to 3rd+ tabs: check for flash
+- Return to 1st tab: no re-flash
+- Scroll in each tab: smooth
+- No content displacement
 
 ### Platform Testing
 
-- [ ] iOS: all checks above
-- [ ] Android: confirm no regression (should be fine)
+- iOS: all checks above
+- Android: confirm no regression (should be fine)
 
 ---
 
@@ -261,6 +274,7 @@ If after implementing all three fixes you still see issues:
 2. Check if there's a conflicting ViewContainer or SafeAreaView
 3. Test in Expo Go vs. Dev Client (might be environment difference)
 4. Create minimal reproduction and file issue on expo/expo with:
-   - `contentInsetAdjustmentBehavior="never"` explicitly set
-   - Decoy View present
-   - Details about where it still fails
+  - `contentInsetAdjustmentBehavior="never"` explicitly set
+  - Decoy View present
+  - Details about where it still fails
+
