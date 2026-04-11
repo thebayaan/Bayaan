@@ -35,7 +35,7 @@ interface PaginatedResponse {
     total: number;
     page: number;
     limit: number;
-    totalPages: number;
+    total_pages: number;
   };
 }
 
@@ -97,12 +97,12 @@ async function authenticate(): Promise<string> {
     throw new Error(`Authentication failed (${res.status}): ${body}`);
   }
 
-  const data = (await res.json()) as {token: string};
-  if (!data.token) {
+  const json = (await res.json()) as {data: {token: string}};
+  if (!json.data?.token) {
     throw new Error('Authentication response missing token');
   }
 
-  jwtToken = data.token;
+  jwtToken = json.data.token;
   console.log('Authenticated successfully.');
   return jwtToken;
 }
@@ -137,17 +137,17 @@ async function fetchRecitersPage(page: number): Promise<PaginatedResponse> {
 async function fetchAllReciters(): Promise<ReciterEntry[]> {
   console.log('Fetching all reciters...');
   const first = await fetchRecitersPage(1);
-  const {totalPages} = first.meta;
+  const {total_pages} = first.meta;
   const all: ReciterEntry[] = [...first.data];
 
   console.log(
-    `  Page 1/${totalPages} — ${first.data.length} reciters (total: ${first.meta.total})`,
+    `  Page 1/${total_pages} — ${first.data.length} reciters (total: ${first.meta.total})`,
   );
 
-  for (let page = 2; page <= totalPages; page++) {
+  for (let page = 2; page <= total_pages; page++) {
     const resp = await fetchRecitersPage(page);
     all.push(...resp.data);
-    console.log(`  Page ${page}/${totalPages} — ${resp.data.length} reciters`);
+    console.log(`  Page ${page}/${total_pages} — ${resp.data.length} reciters`);
   }
 
   console.log(`Fetched ${all.length} reciters total.\n`);
@@ -188,9 +188,10 @@ async function updateRewayat(
   }
 }
 
-async function verifyR2Url(url: string): Promise<boolean> {
+async function verifyR2Url(url: string, firstSurah: number): Promise<boolean> {
+  const padded = firstSurah.toString().padStart(3, '0');
   try {
-    const res = await fetch(`${url}/001.mp3`, {method: 'HEAD'});
+    const res = await fetch(`${url}/${padded}.mp3`, {method: 'HEAD'});
     return res.ok;
   } catch {
     return false;
@@ -331,11 +332,16 @@ async function migrate(): Promise<void> {
       // ------------------------------------------------------------------
       // Verify R2 URL resolves before committing
       // ------------------------------------------------------------------
-      console.log(`${prefix} Verifying ${r2Url}/001.mp3 ...`);
-      const verified = await verifyR2Url(r2Url);
+      const surahList = (rewayat.surah_list ?? []).filter(
+        (n): n is number => n !== null,
+      );
+      const firstSurah = surahList[0] ?? 1;
+      const padded = firstSurah.toString().padStart(3, '0');
+      console.log(`${prefix} Verifying ${r2Url}/${padded}.mp3 ...`);
+      const verified = await verifyR2Url(r2Url, firstSurah);
       if (!verified) {
         console.warn(
-          `${prefix} R2 verification failed (HEAD 001.mp3 not 200) — skipping`,
+          `${prefix} R2 verification failed (HEAD ${padded}.mp3 not 200) — skipping`,
         );
         result.failed++;
         continue;
