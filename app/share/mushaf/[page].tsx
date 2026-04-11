@@ -23,7 +23,7 @@ export default function ShareMushafReceiver() {
         justifyContent: 'center',
         backgroundColor: theme.colors.background,
       }}>
-      <ActivityIndicator color={theme.colors.primary} />
+      <ActivityIndicator color={theme.colors.text} />
     </View>
   );
 }

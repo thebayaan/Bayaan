@@ -3,21 +3,22 @@ import {View, ActivityIndicator} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 
-export default function ShareAdhkarReceiver() {
-  const {superId} = useLocalSearchParams<{superId: string}>();
+export default function ShareVerseReceiver() {
+  const {surah, ayah} = useLocalSearchParams<{surah: string; ayah: string}>();
   const router = useRouter();
   const {theme} = useTheme();
 
   useEffect(() => {
-    if (!superId) {
+    if (!surah || !ayah) {
       router.replace('/');
       return;
     }
+
     router.replace({
-      pathname: '/(tabs)/(a.home)/adhkar/[superId]',
-      params: {superId},
+      pathname: '/mushaf',
+      params: {surah, ayah},
     });
-  }, [superId, router]);
+  }, [surah, ayah, router]);
 
   return (
     <View
