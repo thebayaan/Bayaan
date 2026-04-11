@@ -1,6 +1,6 @@
-# Android Floating Tab Bar + Redesigned Floating Player
+> **SHIPPED — This feature is implemented.** The floating tab bar and floating player redesign shipped. See `components/BottomTabBar.tsx` and the `FloatingPlayer` component.
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+# Android Floating Tab Bar + Redesigned Floating Player
 
 **Goal:** Redesign Android's bottom tab bar as a floating pill and simplify the floating player to an artwork-forward layout matching iOS MiniPlayer style.
 
