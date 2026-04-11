@@ -29,6 +29,14 @@ import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {getReciterByIdSync} from '@/services/dataService';
+import {
+  recitationShareUrl,
+  getRewayatSlug,
+  getStyleSlug,
+  shareUrl,
+} from '@/utils/shareUtils';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -256,6 +264,28 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     }, 300);
   }, [userRecitationId, handleClose]);
 
+  const handleShare = useCallback(() => {
+    if (!reciterId || !rewayatId || !surah) return;
+    const reciter = getReciterByIdSync(reciterId);
+    if (!reciter?.slug) return;
+    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
+    if (!rewayat) return;
+    const rewayatSlugVal = getRewayatSlug(rewayat);
+    if (!rewayatSlugVal) return;
+    const styleSlug = getStyleSlug(rewayat);
+    const surahNum = surah.id;
+    const position = usePlayerStore.getState().playback.position;
+    const timestampSec = position > 0 ? Math.floor(position) : undefined;
+    const url = recitationShareUrl(
+      reciter.slug,
+      rewayatSlugVal,
+      styleSlug,
+      surahNum,
+      timestampSec,
+    );
+    shareUrl(url, `Listen to Surah ${surahNum} on Bayaan`);
+  }, [reciterId, rewayatId, surah]);
+
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       setShowSurahInfo(false);
@@ -329,8 +359,8 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             {isCurrentlyDownloading
               ? `Downloading ${Math.round(downloadProgress * 100)}%`
               : isTrackDownloaded
-              ? 'Downloaded'
-              : 'Download'}
+                ? 'Downloaded'
+                : 'Download'}
           </Text>
         </Pressable>
       ),
@@ -376,6 +406,27 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
           <Text style={styles.optionText}>
             {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
           </Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (!!reciterId && !!rewayatId && !!surah) {
+    optionEntries.push({
+      key: 'share',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleShare}>
+          <Feather
+            name="share"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Share</Text>
         </Pressable>
       ),
     });
