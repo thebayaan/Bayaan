@@ -46,6 +46,7 @@ function populateReciters(data: Reciter[]): void {
   RECITERS.splice(0, RECITERS.length, ...data);
   // Refresh the store's default reciter now that RECITERS is populated
   useReciterStore.getState().refreshDefaultReciter();
+  useReciterStore.setState({isInitialized: true});
 }
 
 // ── API client ────────────────────────────────────────────────────────────────
