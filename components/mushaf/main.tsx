@@ -19,7 +19,8 @@ import Animated, {
 import {useRouter, useNavigation} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
-import {Ionicons} from '@expo/vector-icons';
+import {Ionicons, Feather} from '@expo/vector-icons';
+import {mushafShareUrl, shareUrl} from '@/utils/shareUtils';
 import {SheetManager} from 'react-native-actions-sheet';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
@@ -329,6 +330,11 @@ export default function MushafViewer({
 
   const currentSurahId = pageToSurah[currentPage] || 1;
 
+  const handleSharePage = useCallback(() => {
+    const url = mushafShareUrl(currentPage);
+    shareUrl(url, `Check out page ${currentPage} of the Quran on Bayaan`);
+  }, [currentPage]);
+
   // iOS 26: configure Stack navigator header based on current mode
   useEffect(() => {
     if (!USE_GLASS) return;
@@ -403,20 +409,37 @@ export default function MushafViewer({
       ),
       headerLeft: undefined,
       headerRight: () => (
-        <Pressable
-          onPress={() =>
-            SheetManager.show('mushaf-layout', {
-              payload: {context: 'mushaf'},
-            })
-          }
-          hitSlop={10}
-          style={{padding: moderateScale(6)}}>
-          <Ionicons
-            name="options-outline"
-            size={moderateScale(22)}
-            color={theme.colors.text}
-          />
-        </Pressable>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: moderateScale(4),
+          }}>
+          <Pressable
+            onPress={handleSharePage}
+            hitSlop={10}
+            style={{padding: moderateScale(6)}}>
+            <Feather
+              name="share"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              SheetManager.show('mushaf-layout', {
+                payload: {context: 'mushaf'},
+              })
+            }
+            hitSlop={10}
+            style={{padding: moderateScale(6)}}>
+            <Ionicons
+              name="options-outline"
+              size={moderateScale(22)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </View>
       ),
     });
   }, [
@@ -424,6 +447,7 @@ export default function MushafViewer({
     isSearchMode,
     currentPage,
     currentSurahId,
+    handleSharePage,
     theme,
     isDarkMode,
     navigation,
