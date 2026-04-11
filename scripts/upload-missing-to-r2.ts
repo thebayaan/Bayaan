@@ -1,69 +1,23 @@
 /**
  * upload-missing-to-r2.ts
  *
- * Downloads audio files from source servers (mp3quran.net / quranicaudio.com)
- * and uploads them to the Cloudflare R2 bucket for any rewayat not yet on R2.
+ * Sends migration tasks to the Cloudflare R2 Migrator Worker for any rewayat
+ * not yet on R2. The Worker fetches from source (mp3quran / quranicaudio) and
+ * writes directly to R2 server-side — no local download/upload needed.
  *
  * Usage:
  *   npx tsx scripts/upload-missing-to-r2.ts [--dry-run]
  *
  * Required env vars:
- *   R2_ACCOUNT_ID        — Cloudflare account ID
- *   R2_ACCESS_KEY_ID     — R2 API token access key
- *   R2_SECRET_ACCESS_KEY — R2 API token secret
- *   BAYAAN_API_KEY       — Bearer token for the backend API
+ *   WORKER_URL  — R2 migrator worker URL
+ *   AUTH_TOKEN  — Worker auth token
+ *   BAYAAN_API_KEY — Bearer token for the backend API
+ *
+ * Or: reads from .env.r2-worker automatically if present.
  */
 
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
-
-// ---------------------------------------------------------------------------
-// Minimal local types that mirror the @aws-sdk/client-s3 surface we use.
-// Using these avoids a compile-time hard dependency — the runtime check below
-// provides a helpful error if the package is not installed.
-// ---------------------------------------------------------------------------
-interface S3ClientConfig {
-  region: string;
-  endpoint: string;
-  credentials: {accessKeyId: string; secretAccessKey: string};
-}
-
-interface PutObjectInput {
-  Bucket: string;
-  Key: string;
-  Body: Buffer;
-  ContentType: string;
-  CacheControl: string;
-}
-
-interface S3ClientInstance {
-  send(cmd: unknown): Promise<unknown>;
-}
-
-interface S3Sdk {
-  S3Client: new (config: S3ClientConfig) => S3ClientInstance;
-  PutObjectCommand: new (input: PutObjectInput) => unknown;
-}
-
-// ---------------------------------------------------------------------------
-// Dependency check — print helpful instructions if @aws-sdk/client-s3 is missing
-// ---------------------------------------------------------------------------
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const awsSdk = ((): S3Sdk => {
-  try {
-    return require('@aws-sdk/client-s3') as S3Sdk;
-  } catch {
-    console.error(
-      '\n[ERROR] @aws-sdk/client-s3 is not installed.\n' +
-        'Run one of the following to install it:\n\n' +
-        '  npm install @aws-sdk/client-s3\n' +
-        '  # or\n' +
-        '  yarn add @aws-sdk/client-s3\n',
-    );
-    process.exit(1);
-  }
-})();
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,31 +57,69 @@ interface PaginatedResponse {
   };
 }
 
+interface MigrateFile {
+  source_url: string;
+  r2_key: string;
+}
+
+interface MigrateResult {
+  r2_key: string;
+  success: boolean;
+  size?: number;
+  error?: string;
+}
+
+interface MigrateResponse {
+  succeeded: number;
+  failed: number;
+  total: number;
+  results: MigrateResult[];
+}
+
 interface UploadStats {
   rewayatProcessed: number;
   rewayatSkipped: number;
   rewayatFailed: number;
-  surahsUploaded: number;
+  surahsSent: number;
+  surahsSucceeded: number;
   surahsFailed: number;
-  surahsSkipped: number;
+  failedFiles: string[];
 }
 
 // ---------------------------------------------------------------------------
-// Config / env
+// Config
 // ---------------------------------------------------------------------------
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
+function loadEnvFile(): void {
+  const envPath = path.resolve(__dirname, '../.env.r2-worker');
+  if (!fs.existsSync(envPath)) return;
+
+  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIndex = trimmed.indexOf('=');
+    if (eqIndex === -1) continue;
+    const key = trimmed.slice(0, eqIndex).trim();
+    const val = trimmed.slice(eqIndex + 1).trim();
+    if (!process.env[key]) {
+      process.env[key] = val;
+    }
+  }
+}
+
+loadEnvFile();
+
+const WORKER_URL = process.env.WORKER_URL;
+const AUTH_TOKEN = process.env.AUTH_TOKEN;
 const BAYAAN_API_KEY = process.env.BAYAAN_API_KEY;
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const R2_BUCKET = 'bayaan-audio';
 const CDN_BASE = 'https://cdn.example.com';
 const R2_KEY_PREFIX = 'quran/recitations';
 const API_BASE = 'https://bayaan-backend-production.up.railway.app';
 const PAGE_LIMIT = 200;
-const MAX_CONCURRENCY = 5;
+const BATCH_SIZE = 50; // Worker max per request
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -135,32 +127,17 @@ const MAX_CONCURRENCY = 5;
 
 function validateEnv(): void {
   const missing: string[] = [];
-  if (!R2_ACCOUNT_ID) missing.push('R2_ACCOUNT_ID');
-  if (!R2_ACCESS_KEY_ID) missing.push('R2_ACCESS_KEY_ID');
-  if (!R2_SECRET_ACCESS_KEY) missing.push('R2_SECRET_ACCESS_KEY');
+  if (!WORKER_URL) missing.push('WORKER_URL');
+  if (!AUTH_TOKEN) missing.push('AUTH_TOKEN');
   if (!BAYAAN_API_KEY) missing.push('BAYAAN_API_KEY');
 
   if (missing.length > 0) {
     console.error(
-      `[ERROR] Missing required environment variables: ${missing.join(', ')}`,
+      `[ERROR] Missing required env vars: ${missing.join(', ')}\n` +
+        'Set them directly or create .env.r2-worker with WORKER_URL and AUTH_TOKEN',
     );
     process.exit(1);
   }
-}
-
-// ---------------------------------------------------------------------------
-// R2 client (lazy — not constructed in dry-run)
-// ---------------------------------------------------------------------------
-
-function createS3Client(): S3ClientInstance {
-  return new awsSdk.S3Client({
-    region: 'auto',
-    endpoint: `https://${R2_ACCOUNT_ID!}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: R2_ACCESS_KEY_ID!,
-      secretAccessKey: R2_SECRET_ACCESS_KEY!,
-    },
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -189,14 +166,9 @@ async function fetchAllReciters(): Promise<ReciterEntry[]> {
   const {total_pages} = first.meta;
   const all: ReciterEntry[] = [...first.data];
 
-  console.log(
-    `  Page 1/${total_pages} — ${first.data.length} reciters (total: ${first.meta.total})`,
-  );
-
   for (let page = 2; page <= total_pages; page++) {
     const resp = await fetchRecitersPage(page);
     all.push(...resp.data);
-    console.log(`  Page ${page}/${total_pages} — ${resp.data.length} reciters`);
   }
 
   console.log(`Fetched ${all.length} reciters total.\n`);
@@ -224,10 +196,6 @@ function buildR2KeyBase(
   return `${R2_KEY_PREFIX}/${reciterSlug}/${rewayahSlug}/${styleSlug}/default`;
 }
 
-function surahFileName(surahNumber: number): string {
-  return surahNumber.toString().padStart(3, '0') + '.mp3';
-}
-
 // ---------------------------------------------------------------------------
 // R2 presence check
 // ---------------------------------------------------------------------------
@@ -243,120 +211,27 @@ async function isOnR2(r2KeyBase: string): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
-// Download + upload
+// Worker API
 // ---------------------------------------------------------------------------
 
-async function downloadToTemp(url: string): Promise<string | null> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    if (res.status === 404) return null; // expected — log at call site
-    throw new Error(`HTTP ${res.status} fetching ${url}`);
-  }
-
-  const tempPath = path.join(
-    os.tmpdir(),
-    `bayaan-r2-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`,
-  );
-  const arrayBuffer = await res.arrayBuffer();
-  fs.writeFileSync(tempPath, Buffer.from(arrayBuffer));
-  return tempPath;
-}
-
-async function uploadToR2(
-  s3: S3ClientInstance,
-  r2Key: string,
-  filePath: string,
-): Promise<void> {
-  const fileBody = fs.readFileSync(filePath);
-  const cmd = new awsSdk.PutObjectCommand({
-    Bucket: R2_BUCKET,
-    Key: r2Key,
-    Body: fileBody,
-    ContentType: 'audio/mpeg',
-    CacheControl: 'public, max-age=31536000, immutable',
+async function sendBatchToWorker(
+  files: MigrateFile[],
+): Promise<MigrateResponse> {
+  const res = await fetch(`${WORKER_URL}/migrate`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${AUTH_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({files}),
   });
-  await s3.send(cmd);
-}
 
-// ---------------------------------------------------------------------------
-// Concurrency helper
-// ---------------------------------------------------------------------------
-
-async function runConcurrent<T>(
-  tasks: Array<() => Promise<T>>,
-  concurrency: number,
-): Promise<T[]> {
-  const results: T[] = [];
-  let index = 0;
-
-  async function worker(): Promise<void> {
-    while (index < tasks.length) {
-      const taskIndex = index++;
-      results[taskIndex] = await tasks[taskIndex]();
-    }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Worker /migrate failed (${res.status}): ${body}`);
   }
 
-  const workers = Array.from(
-    {length: Math.min(concurrency, tasks.length)},
-    worker,
-  );
-  await Promise.all(workers);
-  return results;
-}
-
-// ---------------------------------------------------------------------------
-// Process a single rewayat
-// ---------------------------------------------------------------------------
-
-interface SurahResult {
-  surah: number;
-  status: 'uploaded' | 'skipped' | 'failed';
-  reason?: string;
-}
-
-async function processSurah(
-  s3: S3ClientInstance | null,
-  r2KeyBase: string,
-  sourceServer: string,
-  surahNumber: number,
-  prefix: string,
-): Promise<SurahResult> {
-  const fileName = surahFileName(surahNumber);
-  const sourceUrl = `${sourceServer}/${fileName}`;
-  const r2Key = `${r2KeyBase}/${fileName}`;
-
-  if (DRY_RUN) {
-    console.log(
-      `  [DRY-RUN] Would upload surah ${surahNumber}: ${sourceUrl} → ${r2Key}`,
-    );
-    return {surah: surahNumber, status: 'skipped', reason: 'dry-run'};
-  }
-
-  let tempPath: string | null = null;
-  try {
-    tempPath = await downloadToTemp(sourceUrl);
-    if (tempPath === null) {
-      console.warn(
-        `  ${prefix} Surah ${surahNumber}: source 404 — ${sourceUrl}`,
-      );
-      return {surah: surahNumber, status: 'failed', reason: '404 at source'};
-    }
-
-    await uploadToR2(s3!, r2Key, tempPath);
-    return {surah: surahNumber, status: 'uploaded'};
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`  ${prefix} Surah ${surahNumber}: error — ${msg}`);
-    return {surah: surahNumber, status: 'failed', reason: msg};
-  } finally {
-    if (tempPath) {
-      try {
-        fs.unlinkSync(tempPath);
-      } catch {
-        // best-effort cleanup
-      }
-    }
-  }
+  return res.json() as Promise<MigrateResponse>;
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +242,21 @@ async function main(): Promise<void> {
   validateEnv();
 
   if (DRY_RUN) {
-    console.log('=== DRY RUN — no files will be downloaded or uploaded ===\n');
+    console.log('=== DRY RUN — no files will be migrated ===\n');
+  }
+
+  // Health check
+  try {
+    const healthRes = await fetch(`${WORKER_URL}/health`, {
+      headers: {Authorization: `Bearer ${AUTH_TOKEN}`},
+    });
+    if (!healthRes.ok) throw new Error(`HTTP ${healthRes.status}`);
+    console.log('Worker health check: OK\n');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`Worker health check failed: ${msg}`);
+    console.error(`URL: ${WORKER_URL}/health`);
+    process.exit(1);
   }
 
   const slugsPath = path.resolve(__dirname, '../data/rewayat-slugs.json');
@@ -375,17 +264,16 @@ async function main(): Promise<void> {
     fs.readFileSync(slugsPath, 'utf8'),
   );
 
-  const s3: S3ClientInstance | null = DRY_RUN ? null : createS3Client();
-
   const reciters = await fetchAllReciters();
 
   const stats: UploadStats = {
     rewayatProcessed: 0,
     rewayatSkipped: 0,
     rewayatFailed: 0,
-    surahsUploaded: 0,
+    surahsSent: 0,
+    surahsSucceeded: 0,
     surahsFailed: 0,
-    surahsSkipped: 0,
+    failedFiles: [],
   };
 
   for (const reciter of reciters) {
@@ -394,20 +282,16 @@ async function main(): Promise<void> {
     for (const rewayat of reciter.rewayat) {
       const prefix = `[${reciter.name} / ${rewayat.name} (${rewayat.style})]`;
 
-      // Skip if already on R2
       if (rewayat.server?.includes('cdn.example.com')) {
         stats.rewayatSkipped++;
         continue;
       }
 
-      // Skip reciters with no slug
       if (!reciter.slug) {
-        console.warn(`${prefix} Reciter has no slug — skipping`);
-        stats.rewayatFailed++;
+        stats.rewayatSkipped++;
         continue;
       }
 
-      // Build R2 key base
       const r2KeyBase = buildR2KeyBase(
         reciter.slug,
         rewayat.name,
@@ -417,22 +301,18 @@ async function main(): Promise<void> {
 
       if (!r2KeyBase) {
         console.warn(
-          `${prefix} Cannot build R2 path (unmapped rewayah or style: "${rewayat.name}" / "${rewayat.style}") — skipping`,
+          `${prefix} Unmapped rewayah/style: "${rewayat.name}" / "${rewayat.style}" — skipping`,
         );
         stats.rewayatFailed++;
         continue;
       }
 
-      // Check if surah 001 already on R2 (quick presence check)
-      console.log(`${prefix} Checking R2 presence...`);
       const alreadyPresent = await isOnR2(r2KeyBase);
       if (alreadyPresent) {
-        console.log(`${prefix} Already on R2 (001.mp3 found) — skipping`);
         stats.rewayatSkipped++;
         continue;
       }
 
-      // Build surah list
       const rawSurahList = rewayat.surah_list ?? [];
       const surahNumbers: number[] = rawSurahList.filter(
         (n): n is number => n !== null && typeof n === 'number',
@@ -451,51 +331,81 @@ async function main(): Promise<void> {
         continue;
       }
 
-      console.log(
-        `${prefix} Uploading ${surahNumbers.length} surahs from ${sourceServer}`,
-      );
-
       stats.rewayatProcessed++;
 
-      // Build tasks for concurrent execution
-      const tasks = surahNumbers.map(
-        surahNumber => () =>
-          processSurah(s3, r2KeyBase, sourceServer, surahNumber, prefix),
-      );
-
-      const results = await runConcurrent(tasks, MAX_CONCURRENCY);
-
-      let uploaded = 0;
-      let failed = 0;
-      let skipped = 0;
-
-      for (const result of results) {
-        if (result.status === 'uploaded') uploaded++;
-        else if (result.status === 'failed') failed++;
-        else skipped++;
-      }
-
-      stats.surahsUploaded += uploaded;
-      stats.surahsFailed += failed;
-      stats.surahsSkipped += skipped;
+      // Build file list for this rewayat
+      const files: MigrateFile[] = surahNumbers.map(surahNum => {
+        const fileName = surahNum.toString().padStart(3, '0') + '.mp3';
+        return {
+          source_url: `${sourceServer}/${fileName}`,
+          r2_key: `${r2KeyBase}/${fileName}`,
+        };
+      });
 
       console.log(
-        `${prefix} Done — uploaded: ${uploaded}, failed: ${failed}, skipped: ${skipped}`,
+        `${prefix} ${files.length} surahs to migrate from ${sourceServer}`,
       );
+
+      if (DRY_RUN) {
+        stats.surahsSent += files.length;
+        continue;
+      }
+
+      // Send in batches of BATCH_SIZE (worker max is 50)
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const batch = files.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(files.length / BATCH_SIZE);
+
+        if (totalBatches > 1) {
+          console.log(
+            `  ${prefix} Batch ${batchNum}/${totalBatches} (${batch.length} files)`,
+          );
+        }
+
+        try {
+          const response = await sendBatchToWorker(batch);
+          stats.surahsSent += response.total;
+          stats.surahsSucceeded += response.succeeded;
+          stats.surahsFailed += response.failed;
+
+          for (const result of response.results) {
+            if (!result.success) {
+              stats.failedFiles.push(
+                `${result.r2_key}: ${result.error ?? 'unknown'}`,
+              );
+            }
+          }
+
+          console.log(
+            `  ${prefix} Batch done — succeeded: ${response.succeeded}, failed: ${response.failed}`,
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`  ${prefix} Batch error: ${msg}`);
+          stats.surahsFailed += batch.length;
+          stats.surahsSent += batch.length;
+        }
+      }
     }
   }
 
-  // ---------------------------------------------------------------------------
   // Summary
-  // ---------------------------------------------------------------------------
   console.log('\n=== Upload Summary ===');
   if (DRY_RUN) console.log('(DRY RUN — no changes were written)');
-  console.log(`  Rewayat processed:  ${stats.rewayatProcessed}`);
-  console.log(`  Rewayat skipped:    ${stats.rewayatSkipped}`);
-  console.log(`  Rewayat failed:     ${stats.rewayatFailed}`);
-  console.log(`  Surahs uploaded:    ${stats.surahsUploaded}`);
-  console.log(`  Surahs failed:      ${stats.surahsFailed}`);
-  console.log(`  Surahs skipped:     ${stats.surahsSkipped}`);
+  console.log(`  Rewayat processed:   ${stats.rewayatProcessed}`);
+  console.log(`  Rewayat skipped:     ${stats.rewayatSkipped}`);
+  console.log(`  Rewayat failed:      ${stats.rewayatFailed}`);
+  console.log(`  Surahs sent:         ${stats.surahsSent}`);
+  console.log(`  Surahs succeeded:    ${stats.surahsSucceeded}`);
+  console.log(`  Surahs failed:       ${stats.surahsFailed}`);
+
+  if (stats.failedFiles.length > 0) {
+    console.log('\nFailed files:');
+    for (const f of stats.failedFiles) {
+      console.log(`  - ${f}`);
+    }
+  }
 }
 
 main().catch(err => {
