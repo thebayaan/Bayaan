@@ -1,216 +1,237 @@
-# Player System
-
-This document describes the Bayaan audio player architecture — how playback works, how state flows, and how to extend the system.
-
----
+# Unified Player System
 
 ## Overview
+The Unified Player System integrates playback and queue management into a cohesive architecture. This system provides a reliable, performant, and maintainable solution for audio playback in Bayaan.
 
-The player is built on [expo-audio](https://docs.expo.dev/versions/latest/sdk/audio/) and consists of three layers:
+## Architecture
 
-1. **ExpoAudioService** — a singleton that wraps the native `AudioPlayer` and exposes imperative playback commands
-2. **ExpoAudioProvider** — a React provider mounted at the app root that bridges the native player to the Zustand store
-3. **playerStore** — a Zustand store (persisted via AsyncStorage) that is the single source of truth for all player state
+### Core Components
+1. **State Management**
+   - Unified state interface
+   - State validation
+   - Persistence layer
+   - Error handling
 
----
+2. **Event System**
+   - Playback events
+   - Queue events
+   - Error events
+   - State synchronization
+   - Remote control events
+   - Background playback service
 
-## Data flow
+3. **Storage Layer**
+   - State persistence
+   - Audio caching
+   - Recovery mechanisms
+   - Offline support
 
-```mermaid
-flowchart LR
-    UserAction["User action\n(tap play/pause)"]
-    PlayerStore["playerStore\n(Zustand)"]
-    AudioService["ExpoAudioService\n(singleton)"]
-    NativePlayer["AudioPlayer\n(expo-audio native)"]
-    Provider["ExpoAudioProvider\n(React bridge)"]
-    UI["Player UI\n(FloatingPlayer, MiniPlayer)"]
-
-    UserAction -->|"usePlayerActions()"| PlayerStore
-    PlayerStore -->|"expoAudioService.play()"| AudioService
-    AudioService -->|"player.play()"| NativePlayer
-    NativePlayer -->|"useAudioPlayerStatus()"| Provider
-    Provider -->|"updatePlaybackState()"| PlayerStore
-    PlayerStore -->|"usePlayerStore(selector)"| UI
+### Directory Structure
+```
+services/player/
+├── README.md                 # This documentation
+├── types/                    # Type definitions
+│   ├── state.ts             # State interfaces
+│   ├── events.ts            # Event type definitions
+│   └── errors.ts            # Error type definitions
+├── store/                    # State management
+│   ├── playerStore.ts       # Unified player store
+│   └── validation.ts        # State validation
+├── events/                   # Event handling
+│   ├── bridge.ts            # Event bridge system
+│   ├── handlers.ts          # Event handlers
+│   └── playbackService.ts   # Background playback service
+└── utils/                    # Utilities
+    ├── storage.ts           # Storage operations
+    └── errors.ts            # Error handling
 ```
 
----
+## State Management
 
-## Components
-
-### ExpoAudioService (`services/audio/ExpoAudioService.ts`)
-
-Singleton class. Owns the connection to the native `AudioPlayer` instance and exposes imperative methods:
-
-| Method | Description |
-|--------|-------------|
-| `initialize()` | Set up audio mode for background playback (call once at startup) |
-| `setPlayer(player)` | Bind the React `AudioPlayer` instance created by the provider |
-| `loadUrl(url)` | Load an audio URL without playing |
-| `play()` | Resume or start playback |
-| `pause()` | Pause playback |
-| `seekTo(seconds)` | Seek to a position |
-| `setRate(rate)` | Set playback rate (0.5–2.0) |
-
-```typescript
-import {expoAudioService} from '@/services/audio/ExpoAudioService';
-```
-
-### ExpoAudioProvider (`services/audio/ExpoAudioProvider.tsx`)
-
-Must be mounted at the app root (`app/_layout.tsx`). Responsibilities:
-- Creates the `AudioPlayer` instance via `useAudioPlayer(null)`
-- Passes it to `ExpoAudioService` via `setPlayer()`
-- Subscribes to `useAudioPlayerStatus()` for reactive playback updates
-- Throttles progress writes to the store (1s on iOS, 2s on Android)
-- Writes playback state transitions back to `playerStore`
-- Persists position to `recentlyPlayedStore` every 10 seconds or on pause
-- Handles `didJustFinish` to auto-advance the queue or repeat
-- Syncs ambient audio pause/resume with main playback state
-- Manages lock screen "now playing" info via `LockScreenService`
-
-### playerStore (`services/player/store/playerStore.ts`)
-
-Zustand store persisted via AsyncStorage under the key `player-store`. State shape:
+### Unified State Interface
+The unified state combines playback and queue states into a single, coherent interface:
 
 ```typescript
 interface UnifiedPlayerState {
-  playback: {
-    state: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'ended';
-    position: number;    // current position in seconds
-    duration: number;    // total duration in seconds
-    rate: number;        // playback speed (0.5–2.0)
-    buffering: boolean;
-  };
-  queue: {
-    tracks: Track[];
-    currentIndex: number;
-    total: number;
-  };
-  settings: {
-    repeatMode: 'off' | 'track' | 'queue';
-    sleepTimer: { enabled: boolean; duration: number } | null;
-    skipSilence: boolean;
-  };
-  ui: {
-    sheetMode: 'hidden' | 'full';
-    isImmersive: boolean;
-  };
+  playback: PlaybackState;    // Current playback state
+  queue: QueueState;          // Queue state
+  loading: LoadingState;      // Loading states
+  error: ErrorState;          // Error states
+  settings: PlaybackSettings; // Playback settings
+  ui: UIState;               // UI-related state
 }
 ```
 
-**Key actions:**
+### State Flow
+1. User Action → State Update
+2. State Update → Validation
+3. Validation → Storage
+4. Storage → Event Emission
+5. Event → UI Update
 
+## Event System
+
+### Event Types
+1. **Playback Events**
+   - Track started/ended
+   - Playback state changed
+   - Progress updated
+   - Remote control events
+   - Audio session events
+
+2. **Queue Events**
+   - Queue updated
+   - Position changed
+   - Batch loaded
+
+3. **System Events**
+   - Error occurred
+   - Recovery attempted
+   - State synchronized
+
+### Playback Service
+The playback service (`playbackService.ts`) handles all background playback functionality:
+
+1. **Remote Controls**
+   - Play/Pause/Stop
+   - Next/Previous track
+   - Seek controls
+   - Jump forward/backward
+
+2. **State Management**
+   - Playback state updates
+   - Track changes
+   - Progress tracking
+   - Error handling
+
+3. **Audio Session**
+   - Interruption handling
+   - Audio focus management
+   - Background playback
+
+4. **Error Recovery**
+   - Automatic retry
+   - State restoration
+   - Error reporting
+
+## Error Handling
+
+### Error Types
+1. **Playback Errors**
+   - Loading failures
+   - Network issues
+   - Format problems
+   - Remote control errors
+
+2. **Queue Errors**
+   - Batch loading failures
+   - State synchronization issues
+   - Index out of bounds
+
+3. **System Errors**
+   - Storage failures
+   - State corruption
+   - Recovery failures
+
+### Recovery Strategies
+1. **Immediate Recovery**
+   - Retry failed operations
+   - Load alternative source
+   - Reset to known state
+
+2. **Graceful Degradation**
+   - Continue with partial data
+   - Switch to offline mode
+   - Maintain basic functionality
+
+## Usage
+
+### Basic Implementation
 ```typescript
-// Start playback of a new queue
-store.updateQueue(tracks: Track[], startIndex: number)
+import {usePlayerStore} from './store/playerStore';
 
-// Playback controls
-store.play()
-store.pause()
-store.skipToNext()
-store.skipToPrevious()
-store.seekTo(seconds: number)
-store.setRate(rate: number)
+// Access unified state
+const {playback, queue} = usePlayerStore();
 
-// Queue management
-store.addToQueue(tracks: Track[])
-store.removeFromQueue(index: number)
-store.moveInQueue(fromIndex: number, toIndex: number)
-
-// Settings
-store.setRepeatMode('off' | 'track' | 'queue')
-store.setSleepTimer(durationMs: number)
-store.clearSleepTimer()
+// Handle playback
+const handlePlay = async () => {
+  try {
+    await playerStore.play();
+  } catch (error) {
+    handleError(error);
+  }
+};
 ```
 
-### usePlayerActions (`hooks/usePlayerActions.ts`)
-
-A zero-re-render hook that returns player action callbacks. Use this in components that only dispatch actions (e.g. control buttons) — it never triggers a re-render when player state changes.
-
+### Event Handling
 ```typescript
-const { play, pause, skipToNext, updateQueue } = usePlayerActions();
+import {usePlayerEvents} from './events/bridge';
+
+usePlayerEvents({
+  onTrackEnd: async () => {
+    // Handle track end
+  },
+  onError: async (error) => {
+    // Handle error
+  }
+});
 ```
 
-For components that need to read state and re-render on changes, use `usePlayerStore` with a selector:
-
+### Playback Service Integration
 ```typescript
-const isPlaying = usePlayerStore(s => s.playback.state === 'playing');
-const currentTrack = usePlayerStore(s => s.queue.tracks[s.queue.currentIndex]);
+import TrackPlayer from 'react-native-track-player';
+import playbackService from './events/playbackService';
+
+// Register the playback service
+TrackPlayer.registerPlaybackService(() => playbackService);
 ```
 
----
+## Testing
 
-## Queue management
+### Unit Tests
+- State management
+- Event handling
+- Error recovery
+- Storage operations
+- Remote control handling
+- Audio session management
 
-The queue is a flat array of `Track` objects in `playerStore`. Tracks are loaded all at once when a reciter/surah list is opened (the entire surah list for the reciter is queued). The current track is identified by `queue.currentIndex`.
+### Integration Tests
+- State synchronization
+- Event propagation
+- Error boundaries
+- Storage persistence
+- Background playback
+- Remote controls
 
-`Track` shape (from `types/audio.ts`):
-```typescript
-interface Track {
-  id: string;
-  url: string;               // Remote or local file URL
-  title: string;             // Surah name
-  artist: string;            // Reciter name
-  artwork?: string;          // Reciter image URL
-  reciterId?: string;
-  surahId?: string;
-  rewayatId?: string;
-  isDownloaded?: boolean;
-  localPath?: string;        // Set if downloaded
-  isUserUpload?: boolean;
-  userRecitationId?: string;
-}
-```
+## Performance Considerations
 
-When a track has `localPath` set, the download service resolves the path at runtime via `resolveFilePath()` to handle iOS app update path changes.
+### State Updates
+- Batch updates when possible
+- Minimize re-renders
+- Use selective subscriptions
+- Implement memoization
 
----
+### Storage Operations
+- Prioritize critical data
+- Implement caching
+- Use efficient serialization
+- Handle storage limits
 
-## Download state
+### Background Processing
+- Optimize event handlers
+- Minimize background operations
+- Efficient audio session management
+- Battery usage optimization
 
-Download state is managed by `downloadStore` (`services/player/store/downloadStore.ts`), separate from the player store. It tracks:
-- Active downloads (progress 0–1)
-- Completed downloads (local path and metadata)
-- Download queue
+## Migration Guide
 
-The player checks download status when loading a track — if a local file exists and is readable, it plays from disk rather than streaming.
-
----
-
-## Playback modes
-
-| Mode | Behavior |
-|------|----------|
-| Repeat off (default) | Queue plays to end, stops |
-| Repeat track | Current track loops indefinitely |
-| Repeat queue | Queue restarts from index 0 after last track |
-
----
-
-## Ambient audio
-
-Ambient nature sounds (rain, ocean, etc.) run in a separate `AmbientAudioService` using a second `AudioPlayer` instance. The ambient player is independent of the queue but syncs pause/resume with main playback through `ExpoAudioProvider`. See [docs/features/ambient-sounds.md](ambient-sounds.md).
-
----
-
-## Mushaf audio
-
-When the user plays audio in the Mushaf reader, `MushafAudioService` takes over. `AudioCoordinator` ensures the main player and mushaf player do not play simultaneously — only one audio source is active at a time.
-
----
-
-## Background playback
-
-Background audio is enabled via the `expo-audio` plugin configuration in `app.config.js`:
-
-```javascript
-['expo-audio', { enableBackgroundPlayback: true }]
-```
-
-And the iOS `UIBackgroundModes: ['audio']` plist entry. Lock screen controls (play/pause, skip, now-playing metadata) are managed by `LockScreenService`.
-
----
-
-## Session restore
-
-On app launch, `services/player/utils/restoreSession.ts` attempts to restore the previous playback session from the persisted store state — reloading the queue and seeking to the last known position (in a paused state).
+### From Legacy System
+1. Replace direct TrackPlayer calls with store actions
+2. Update state management to use unified store
+3. Implement error handling using new error system
+4. Add event listeners through event bridge
+5. Register playback service for background operation
+6. Update UI components to use new store
+7. Test remote controls and background playback
+8. Verify error recovery and state persistence

@@ -1,5 +1,3 @@
-> **SHIPPED — This feature is implemented.** On-demand timestamp fetching shipped. See `TimestampFetchService` and `TimestampDatabaseService`.
-
 # On-Demand Timestamp Fetch & Cache — Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

@@ -1,6 +1,6 @@
-> **ARCHIVED — Historical document.** This log tracked authentication-related code removed for the initial release. The `app/(auth)/` route group referenced here no longer exists. Authentication is not currently implemented.
+# Authentication Removal Log
 
-# Authentication Removal Log (Historical)
+This file tracks all authentication-related code that was temporarily removed for the initial release. This will serve as a reference when re-implementing authentication features in future updates.
 
 ## Note on Auth Directory
 The `app/(auth)/*` directory has been intentionally preserved (but not referenced in the app) for the following reasons:

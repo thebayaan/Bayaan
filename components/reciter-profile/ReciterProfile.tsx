@@ -63,7 +63,6 @@ import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 import {useNavigation} from 'expo-router';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
-import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
 
 interface ReciterProfileProps {
   id: string;
@@ -239,30 +238,13 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       headerRight: showSearch
         ? () => null
         : () => (
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: moderateScale(16)}}>
-              <Pressable
-                onPress={() => {
-                  const slug = reciter?.slug ?? currentReciterId;
-                  shareUrl(
-                    reciterShareUrl(slug),
-                    `Listen to ${reciter?.name ?? 'this reciter'} on Bayaan`,
-                  );
-                }}
-                hitSlop={8}>
-                <Feather
-                  name="share"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-              <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
-                <Feather
-                  name="search"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              </Pressable>
-            </View>
+            <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
+              <Feather
+                name="search"
+                size={moderateScale(20)}
+                color={theme.colors.text}
+              />
+            </Pressable>
           ),
     });
   }, [navigation, theme, showSearch]);
@@ -1098,13 +1080,8 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               insets={insets}
               iconsOpacity={iconsOpacity}
               iconsZIndex={iconsZIndex}
-              onSearchPress={() => setShowSearch(true)}
-              onSharePress={() => {
-                const slug = reciter?.slug ?? currentReciterId;
-                shareUrl(
-                  reciterShareUrl(slug),
-                  `Listen to ${reciter?.name ?? 'this reciter'} on Bayaan`,
-                );
+              onSearchPress={() => {
+                setShowSearch(true);
               }}
             />
           )}

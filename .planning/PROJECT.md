@@ -37,7 +37,6 @@ Reliable, uninterrupted Quran playback — users must be able to listen to recit
 ## Context
 
 **Technical environment:**
-
 - React Native 0.76.9 with Expo SDK 52
 - Expo Router v4 for file-based navigation
 - Zustand for state management with AsyncStorage persistence
@@ -45,14 +44,12 @@ Reliable, uninterrupted Quran playback — users must be able to listen to recit
 - react-native-track-player for audio (known issues, migration planned)
 
 **Known issues to address:**
-
 - Android performance is slow, especially playback responsiveness
 - Background player controls become inconsistent after extended playback
 - usePlayback hook has architectural issues (global state, race conditions)
 - Tight coupling between TrackPlayer events and Zustand stores
 
 **Codebase health:**
-
 - Well-structured layered architecture
 - Some large components need refactoring (ReciterProfile, BrowseReciters)
 - Test coverage gaps in playback and download services
@@ -65,15 +62,12 @@ Reliable, uninterrupted Quran playback — users must be able to listen to recit
 
 ## Key Decisions
 
-
-| Decision                  | Rationale                                                    | Outcome                                                  |
-| ------------------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
-| Zustand over Redux        | Simpler API, less boilerplate, sufficient for app complexity | ✓ Good                                                   |
-| SQLite for playlists      | Need relational queries, AsyncStorage insufficient           | ✓ Good                                                   |
-| react-native-track-player | Standard choice at time of development                       | ⚠️ Revisit — migration to react-native-audio-api planned |
-| Expo managed workflow     | Faster iteration, OTA updates                                | ✓ Good                                                   |
-
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Zustand over Redux | Simpler API, less boilerplate, sufficient for app complexity | ✓ Good |
+| SQLite for playlists | Need relational queries, AsyncStorage insufficient | ✓ Good |
+| react-native-track-player | Standard choice at time of development | ⚠️ Revisit — migration to react-native-audio-api planned |
+| Expo managed workflow | Faster iteration, OTA updates | ✓ Good |
 
 ---
-
 *Last updated: 2026-01-26 after initialization*

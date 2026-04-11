@@ -1,5 +1,3 @@
-> **SHIPPED — This feature is implemented.** Mushaf thematic highlighting shipped. See `ThemeDataService`, `themeDataService.init()`, and the Skia mushaf rendering layer.
-
 # Mushaf Thematic Highlighting Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
@@ -15,7 +13,6 @@
 ### Task 1: Create ThemeDataService
 
 **Files:**
-
 - Create: `services/mushaf/ThemeDataService.ts`
 - Reference: `data/quran-themes.json`
 
@@ -135,7 +132,6 @@ git commit -m "feat(themes): add ThemeDataService with verse→theme lookup"
 ### Task 2: Add showThemes toggle to mushaf settings store
 
 **Files:**
-
 - Modify: `store/mushafSettingsStore.ts`
 
 **Step 1: Add the toggle**
@@ -193,7 +189,6 @@ git commit -m "feat(themes): add showThemes toggle to mushaf settings store"
 ### Task 3: Add "Themes" toggle to MushafSettingsContent UI
 
 **Files:**
-
 - Modify: `components/MushafSettingsContent.tsx`
 
 **Step 1: Subscribe to the new toggle**
@@ -253,7 +248,6 @@ git commit -m "feat(themes): add Thematic Highlighting toggle in settings UI"
 ### Task 4: Add theme zebra highlights in Skia mushaf mode
 
 **Files:**
-
 - Modify: `components/mushaf/skia/SkiaPage.tsx`
 
 **Step 1: Import the theme service and subscribe to setting**
@@ -276,12 +270,11 @@ const showThemes = useMushafSettingsStore(s => s.showThemes);
 In the `lineBackgroundHighlightsMap` useMemo (around line 495), **before** the early return on line 505:
 
 1. Update the early return to include themes check:
-
 ```typescript
 if (!hasAnnotations && !hasPlayback && !selectedSet && !showThemes) return EMPTY_BG_MAP;
 ```
 
-1. After the `addVerseHighlight` helper (line 529), before Layer 1, add:
+2. After the `addVerseHighlight` helper (line 529), before Layer 1, add:
 
 ```typescript
     // Layer 0: Theme zebra highlights (lowest priority — painted first)
@@ -304,12 +297,11 @@ if (!hasAnnotations && !hasPlayback && !selectedSet && !showThemes) return EMPTY
     }
 ```
 
-1. Add `showThemes` and `textColor` to the useMemo dependency array (around line 553).
+3. Add `showThemes` and `textColor` to the useMemo dependency array (around line 553).
 
 **Step 3: Import Color if not already imported**
 
 Check if `Color` is imported in SkiaPage.tsx. If not:
-
 ```typescript
 import Color from 'color';
 ```
@@ -335,7 +327,6 @@ git commit -m "feat(themes): add zebra theme highlights in Skia mushaf mode"
 ### Task 5: Add theme zebra highlights in Reading (list) mode
 
 **Files:**
-
 - Modify: `components/mushaf/reading/ReadingPageView.tsx`
 
 **Step 1: Import theme service and Color**
@@ -419,7 +410,6 @@ git commit -m "feat(themes): add zebra theme highlights in reading list mode"
 ### Task 6: Create ThemeContent component for verse actions sheet
 
 **Files:**
-
 - Create: `components/sheets/verse-actions/ThemeContent.tsx`
 
 **Step 1: Create the component**
@@ -567,7 +557,6 @@ git commit -m "feat(themes): create ThemeContent component for verse actions"
 ### Task 7: Wire ThemeContent into VerseActionsSheet
 
 **Files:**
-
 - Modify: `components/sheets/VerseActionsSheet.tsx`
 
 **Step 1: Import ThemeContent**
@@ -683,13 +672,11 @@ git commit -m "feat(themes): wire Theme option into verse actions sheet"
 ### Task 8: Initialize ThemeDataService in AppInitializer
 
 **Files:**
-
 - Modify: `services/AppInitializer.ts`
 
 **Step 1: Import and register**
 
 Add import:
-
 ```typescript
 import {themeDataService} from './mushaf/ThemeDataService';
 ```
@@ -746,12 +733,11 @@ Expected: No new lint errors
 
 **Step 4: Manual test checklist**
 
-- Open mushaf settings → "Thematic Highlighting" toggle appears
-- Toggle ON → alternating subtle highlights visible on mushaf pages (Skia mode)
-- Switch to list mode → alternating background on verse items
-- Toggle OFF → highlights disappear
-- Tap a verse → verse actions sheet → "Theme" option visible
-- Tap "Theme" → shows theme name, passage range, verse count
-- Existing highlights, playback, and selection override theme highlights
-- App starts correctly (ThemeDataService initializes)
-
+- [ ] Open mushaf settings → "Thematic Highlighting" toggle appears
+- [ ] Toggle ON → alternating subtle highlights visible on mushaf pages (Skia mode)
+- [ ] Switch to list mode → alternating background on verse items
+- [ ] Toggle OFF → highlights disappear
+- [ ] Tap a verse → verse actions sheet → "Theme" option visible
+- [ ] Tap "Theme" → shows theme name, passage range, verse count
+- [ ] Existing highlights, playback, and selection override theme highlights
+- [ ] App starts correctly (ThemeDataService initializes)

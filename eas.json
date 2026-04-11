@@ -13,7 +13,9 @@
       "android": {
         "buildType": "apk"
       },
-      "env": {}
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-dev.bayaan.app"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -23,7 +25,9 @@
       "android": {
         "buildType": "apk"
       },
-      "env": {}
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api-staging.bayaan.app"
+      }
     },
     "production": {
       "autoIncrement": true,
@@ -36,7 +40,7 @@
         "credentialsSource": "remote"
       },
       "env": {
-        "EXPO_PUBLIC_BAYAAN_API_URL": "https://api.thebayaan.com"
+        "EXPO_PUBLIC_API_URL": "https://api.bayaan.app"
       }
     }
   },

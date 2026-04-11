@@ -1,5 +1,3 @@
-> **ARCHIVED — Historical document.** This postmortem describes performance work done during the react-native-track-player era. The app now uses expo-audio. The patterns described (store pre-warming, lazy loading) are still valid, but specific file paths and API names may be outdated.
-
 # Performance Optimization Postmortem: Playback Initiation Lag Fixes
 
 ## Executive Summary
@@ -7,7 +5,6 @@
 This document outlines the performance optimizations implemented to resolve lag issues when initiating playback and switching between surahs. The optimizations focused on eliminating blocking operations in the critical playback path, ensuring the download store is properly hydrated, and fixing race conditions that caused UI/playback mismatches.
 
 **Key Metrics:**
-
 - **Before:** First surah playback: ~500-1000ms lag
 - **After:** First surah playback: <100ms (5-10x improvement)
 - **Before:** Quick surah switching: UI mismatch, 300-500ms lag
@@ -18,31 +15,25 @@ This document outlines the performance optimizations implemented to resolve lag 
 ## Problems Identified
 
 ### 1. Cold Start Lag
-
 **Symptom:** Significant delay (500-1000ms) when playing the first surah after app launch.
 
 **Root Causes:**
-
 - Download store hydration was happening synchronously during first playback
 - `generateSmartAudioUrl()` was checking download status synchronously, blocking playback
 - Store updates were happening synchronously before playback started
 
 ### 2. Slow Surah Switching
-
 **Symptom:** When switching surahs quickly, there was noticeable lag (300-500ms) and the UI would sometimes show the wrong surah.
 
 **Root Causes:**
-
 - `TrackPlayer.reset()` was blocking while previous track was still loading/buffering
 - Store updates were deferred with `setTimeout`, causing race conditions
 - Multiple rapid operations could queue up and interfere with each other
 
 ### 3. Store-State Mismatch
-
 **Symptom:** Floating player UI showed one surah while a different surah was actually playing.
 
 **Root Causes:**
-
 - Store updates were asynchronous (`setTimeout`), allowing older operations to overwrite newer ones
 - No proper race condition protection when switching surahs rapidly
 
@@ -55,14 +46,12 @@ This document outlines the performance optimizations implemented to resolve lag 
 **Problem:** The download store uses Zustand persist middleware, which hydrates asynchronously from AsyncStorage. On first access, this could cause a delay.
 
 **Solution:**
-
 - Pre-warm the download store during app initialization in `app/_layout.tsx`
 - Call `useDownloadStore.getState()` before calling `generateSmartAudioUrl()` to ensure hydration is complete
 - Use `isDownloadedWithRewayat()` when `rewayatId` is provided (more accurate than `isDownloaded()`)
 - The download check itself is fast (<1ms) once the store is hydrated - it's just a `.some()` check on an in-memory array
 
 **Code Changes:**
-
 ```typescript
 // In app/_layout.tsx
 useDownloadStore.getState(); // Pre-warm during app init
@@ -79,7 +68,6 @@ const isDownloaded = rewayatId
 ```
 
 **Files Modified:**
-
 - `app/_layout.tsx`
 - `components/reciter-profile/ReciterProfile.tsx`
 - `hooks/usePlayback.ts`
@@ -91,13 +79,11 @@ const isDownloaded = rewayatId
 **Problem:** Store updates were deferred with `setTimeout(..., 0)`, causing race conditions when switching surahs quickly.
 
 **Solution:**
-
 - Update the store **synchronously** immediately after `TrackPlayer.play()` completes
 - Keep the operation ID check to prevent race conditions
 - This ensures the store always matches what's actually playing in TrackPlayer
 
 **Before:**
-
 ```typescript
 await TrackPlayer.play();
 setTimeout(() => {
@@ -107,7 +93,6 @@ setTimeout(() => {
 ```
 
 **After:**
-
 ```typescript
 await TrackPlayer.play();
 // ✅ Update immediately and synchronously
@@ -117,7 +102,6 @@ if (currentOperationRef.current === operationId) {
 ```
 
 **Files Modified:**
-
 - `components/reciter-profile/ReciterProfile.tsx` (handleSurahPress, handlePlayAll, handleShuffleAll)
 
 ---
@@ -127,13 +111,11 @@ if (currentOperationRef.current === operationId) {
 **Problem:** Creating all tracks upfront was slow. Creating tracks lazily one-by-one was also slow.
 
 **Solution:**
-
 - **Hybrid Approach:** Create and play ONLY the first track immediately
 - Load remaining tracks in parallel in the background (doesn't block playback)
 - Add remaining tracks all at once when ready (single efficient `TrackPlayer.add()` call)
 
 **Implementation:**
-
 ```typescript
 // 1. Create ONLY first track (instant - ~5ms)
 const firstTrack = { /* ... */ };
@@ -154,7 +136,6 @@ Promise.all(remainingSurahs.map(s => createTrack(s)))
 ```
 
 **Files Modified:**
-
 - `components/reciter-profile/ReciterProfile.tsx`
 - `hooks/usePlayback.ts`
 - `components/cards/RecentReciterCard.tsx`
@@ -166,14 +147,12 @@ Promise.all(remainingSurahs.map(s => createTrack(s)))
 **Problem:** Multiple rapid playback operations could interfere with each other.
 
 **Solution:**
-
 - Generate unique operation ID for each playback operation
 - Store in `useRef` to persist across async operations
 - Check operation ID before updating store or adding tracks
 - Clear operation ID on error or when new operation starts
 
 **Implementation:**
-
 ```typescript
 const currentOperationRef = useRef<string | null>(null);
 
@@ -195,7 +174,6 @@ const handleSurahPress = async (surah: Surah) => {
 ```
 
 **Files Modified:**
-
 - `components/reciter-profile/ReciterProfile.tsx`
 - `components/cards/RecentReciterCard.tsx`
 
@@ -204,7 +182,6 @@ const handleSurahPress = async (surah: Surah) => {
 ## Performance Improvements
 
 ### Before Optimizations
-
 ```
 ┌─────────────────────────────────────────────────┐
 │ User presses play                              │
@@ -222,7 +199,6 @@ const handleSurahPress = async (surah: Surah) => {
 ```
 
 ### After Optimizations
-
 ```
 ┌─────────────────────────────────────────────────┐
 │ User presses play                              │
@@ -246,26 +222,22 @@ const handleSurahPress = async (surah: Surah) => {
 ## Key Learnings
 
 ### 1. Store Hydration Matters
-
 - Zustand persist stores hydrate asynchronously
 - First access can be slow if not pre-warmed
 - Always pre-warm persisted stores during app initialization
 - Ensure hydration is complete before critical operations
 
 ### 2. Synchronous vs Asynchronous Updates
-
 - **Store updates** that affect UI should be **synchronous** to prevent race conditions
 - **Background operations** (loading remaining tracks) should be **asynchronous**
 - Use operation IDs to prevent stale updates from overwriting newer ones
 
 ### 3. Critical Path Optimization
-
 - Identify the critical path (what user sees immediately)
 - Defer non-critical operations to background
 - Play first track immediately, load rest in parallel
 
 ### 4. Race Condition Prevention
-
 - Use `useRef` for operation IDs (persists across async operations)
 - Check operation ID before any store update or background operation
 - Clear operation ID on error or when new operation starts
@@ -275,23 +247,23 @@ const handleSurahPress = async (surah: Surah) => {
 ## Testing Recommendations
 
 ### Manual Testing
-
 1. **Cold Start Test:**
-  - Kill app completely
-  - Open app and immediately play first surah
-  - Should start playing within 100-200ms
+   - Kill app completely
+   - Open app and immediately play first surah
+   - Should start playing within 100-200ms
+
 2. **Quick Switching Test:**
-  - Play surah A
-  - Immediately switch to surah B (within 1 second)
-  - UI should show surah B, and surah B should be playing
-  - No lag or mismatch
+   - Play surah A
+   - Immediately switch to surah B (within 1 second)
+   - UI should show surah B, and surah B should be playing
+   - No lag or mismatch
+
 3. **Download Check Test:**
-  - With downloaded surahs, verify local files are used
-  - Without downloaded surahs, verify remote URLs are used
-  - Both should be fast (<10ms to determine)
+   - With downloaded surahs, verify local files are used
+   - Without downloaded surahs, verify remote URLs are used
+   - Both should be fast (<10ms to determine)
 
 ### Performance Monitoring
-
 - Add performance markers around critical operations
 - Monitor `generateSmartAudioUrl` execution time
 - Track store update timing
@@ -302,24 +274,25 @@ const handleSurahPress = async (surah: Surah) => {
 ## Files Modified
 
 ### Core Changes
-
 - `components/reciter-profile/ReciterProfile.tsx`
   - Added download store pre-warming
   - Changed to synchronous store updates
   - Implemented hybrid playback approach
   - Added operation ID race condition protection
+
 - `hooks/usePlayback.ts`
   - Added download store pre-warming
   - Implemented hybrid playback approach in `playFromSurah`
+
 - `components/cards/RecentReciterCard.tsx`
   - Implemented hybrid playback approach
   - Added operation ID race condition protection
+
 - `app/_layout.tsx`
   - Pre-warm download store during app initialization
   - Added 50ms delay to allow store hydration
 
 ### Utility Functions
-
 - `utils/audioUtils.ts`
   - `generateSmartAudioUrl()` - **Fixed:** Now uses `isDownloadedWithRewayat()` when `rewayatId` is provided (was incorrectly using `isDownloaded()`)
   - Called with warm store for fast performance
@@ -329,14 +302,12 @@ const handleSurahPress = async (surah: Surah) => {
 ## Future Improvements
 
 ### Potential Optimizations
-
 1. **Track Caching:** Cache track objects for recently played reciters
 2. **Predictive Loading:** Pre-load next few tracks when user is near end of current track
 3. **Batch Store Updates:** Collect multiple store updates and apply atomically
 4. **TrackPlayer Queue Optimization:** Investigate if `reset()` can be made faster
 
 ### Monitoring
-
 - Add performance metrics collection
 - Track average playback initiation time
 - Monitor race condition occurrences

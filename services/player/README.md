@@ -1,162 +1,237 @@
-# Player System
+# Unified Player System
 
-The player system is built on [expo-audio](https://docs.expo.dev/versions/latest/sdk/audio/) and consists of three layers: an audio engine singleton, a React bridge provider, and a Zustand store for state.
-
----
+## Overview
+The Unified Player System integrates playback and queue management into a cohesive architecture. This system provides a reliable, performant, and maintainable solution for audio playback in Bayaan.
 
 ## Architecture
 
+### Core Components
+1. **State Management**
+   - Unified state interface
+   - State validation
+   - Persistence layer
+   - Error handling
+
+2. **Event System**
+   - Playback events
+   - Queue events
+   - Error events
+   - State synchronization
+   - Remote control events
+   - Background playback service
+
+3. **Storage Layer**
+   - State persistence
+   - Audio caching
+   - Recovery mechanisms
+   - Offline support
+
+### Directory Structure
 ```
-User action (e.g. tap play)
-        │
-        ▼
-  playerStore.play()           ← Zustand store action
-        │
-        ▼
-  expoAudioService.play()      ← Singleton service call
-        │
-        ▼
-  AudioPlayer (expo-audio)     ← Native audio engine
-        │
-        ▼
-  useAudioPlayerStatus()       ← Reactive status hook (in ExpoAudioProvider)
-        │
-        ▼
-  playerStore.updatePlaybackState()  ← State written back to Zustand
+services/player/
+├── README.md                 # This documentation
+├── types/                    # Type definitions
+│   ├── state.ts             # State interfaces
+│   ├── events.ts            # Event type definitions
+│   └── errors.ts            # Error type definitions
+├── store/                    # State management
+│   ├── playerStore.ts       # Unified player store
+│   └── validation.ts        # State validation
+├── events/                   # Event handling
+│   ├── bridge.ts            # Event bridge system
+│   ├── handlers.ts          # Event handlers
+│   └── playbackService.ts   # Background playback service
+└── utils/                    # Utilities
+    ├── storage.ts           # Storage operations
+    └── errors.ts            # Error handling
 ```
 
----
+## State Management
 
-## Core components
-
-### `services/audio/ExpoAudioService.ts`
-
-Singleton class wrapping the expo-audio `AudioPlayer`. Handles:
-
-- Audio mode initialization (background playback, silent mode bypass)
-- `play()`, `pause()`, `seekTo()`, `setRate()`, `loadUrl()`
-- State listener pattern for non-React consumers
-- Connected to the React `AudioPlayer` instance via `setPlayer()` called from the provider
-
-Access via the exported singleton:
-
-```typescript
-import {expoAudioService} from '@/services/audio/ExpoAudioService';
-```
-
-### `services/audio/ExpoAudioProvider.tsx`
-
-React provider that must be mounted at the app root (`app/_layout.tsx`). It:
-
-- Creates the `AudioPlayer` instance via `useAudioPlayer(null)`
-- Passes the instance to `ExpoAudioService` via `setPlayer()`
-- Subscribes to reactive status updates with `useAudioPlayerStatus()`
-- Writes progress, playback state, and track-end events back to `playerStore`
-- Syncs ambient audio with main playback (pause/resume together)
-- Handles lock screen controls via `LockScreenService`
-
-### `services/player/store/playerStore.ts`
-
-Zustand store (with AsyncStorage persistence) that owns all player state:
+### Unified State Interface
+The unified state combines playback and queue states into a single, coherent interface:
 
 ```typescript
 interface UnifiedPlayerState {
-  playback: {
-    state: 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'ended';
-    position: number;    // seconds
-    duration: number;    // seconds
-    rate: number;        // 0.5 – 2.0
-    buffering: boolean;
-  };
-  queue: {
-    tracks: Track[];
-    currentIndex: number;
-    total: number;
-  };
-  settings: {
-    repeatMode: 'off' | 'track' | 'queue';
-    sleepTimer: { enabled: boolean; duration: number } | null;
-    skipSilence: boolean;
-  };
-  ui: {
-    sheetMode: 'hidden' | 'full';
-    isImmersive: boolean;
-  };
+  playback: PlaybackState;    // Current playback state
+  queue: QueueState;          // Queue state
+  loading: LoadingState;      // Loading states
+  error: ErrorState;          // Error states
+  settings: PlaybackSettings; // Playback settings
+  ui: UIState;               // UI-related state
 }
 ```
 
-Key actions:
+### State Flow
+1. User Action → State Update
+2. State Update → Validation
+3. Validation → Storage
+4. Storage → Event Emission
+5. Event → UI Update
 
-- `play()`, `pause()`, `skipToNext()`, `skipToPrevious()`
-- `updateQueue(tracks, startIndex)` — replaces queue and starts playback
-- `addToQueue(tracks)`, `removeFromQueue(index)`, `moveInQueue(from, to)`
-- `seekTo(position)`, `setRate(rate)`, `setRepeatMode(mode)`
-- `setSleepTimer(durationMs)`, `clearSleepTimer()`
+## Event System
 
-### `hooks/usePlayerActions.ts`
+### Event Types
+1. **Playback Events**
+   - Track started/ended
+   - Playback state changed
+   - Progress updated
+   - Remote control events
+   - Audio session events
 
-Zero-re-render hook for dispatching player actions. Preferred over direct store subscriptions in components that only need to trigger actions.
+2. **Queue Events**
+   - Queue updated
+   - Position changed
+   - Batch loaded
 
+3. **System Events**
+   - Error occurred
+   - Recovery attempted
+   - State synchronized
+
+### Playback Service
+The playback service (`playbackService.ts`) handles all background playback functionality:
+
+1. **Remote Controls**
+   - Play/Pause/Stop
+   - Next/Previous track
+   - Seek controls
+   - Jump forward/backward
+
+2. **State Management**
+   - Playback state updates
+   - Track changes
+   - Progress tracking
+   - Error handling
+
+3. **Audio Session**
+   - Interruption handling
+   - Audio focus management
+   - Background playback
+
+4. **Error Recovery**
+   - Automatic retry
+   - State restoration
+   - Error reporting
+
+## Error Handling
+
+### Error Types
+1. **Playback Errors**
+   - Loading failures
+   - Network issues
+   - Format problems
+   - Remote control errors
+
+2. **Queue Errors**
+   - Batch loading failures
+   - State synchronization issues
+   - Index out of bounds
+
+3. **System Errors**
+   - Storage failures
+   - State corruption
+   - Recovery failures
+
+### Recovery Strategies
+1. **Immediate Recovery**
+   - Retry failed operations
+   - Load alternative source
+   - Reset to known state
+
+2. **Graceful Degradation**
+   - Continue with partial data
+   - Switch to offline mode
+   - Maintain basic functionality
+
+## Usage
+
+### Basic Implementation
 ```typescript
-const { play, pause, skipToNext, updateQueue } = usePlayerActions();
+import {usePlayerStore} from './store/playerStore';
+
+// Access unified state
+const {playback, queue} = usePlayerStore();
+
+// Handle playback
+const handlePlay = async () => {
+  try {
+    await playerStore.play();
+  } catch (error) {
+    handleError(error);
+  }
+};
 ```
 
-Use `usePlayerStore(selector)` only when a component needs to read and re-render on state changes.
+### Event Handling
+```typescript
+import {usePlayerEvents} from './events/bridge';
 
----
-
-## Directory structure
-
-```
-services/
-├── audio/
-│   ├── ExpoAudioService.ts      # Core audio engine singleton
-│   ├── ExpoAudioProvider.tsx    # React bridge (mount at root)
-│   ├── AmbientAudioService.ts   # Ambient sounds (second AudioPlayer)
-│   ├── AudioCoordinator.ts      # Coordinates main vs mushaf audio
-│   ├── LockScreenService.ts     # Lock screen / now-playing info
-│   └── MushafAudioService.ts    # Mushaf verse-by-verse playback
-└── player/
-    ├── store/
-    │   ├── playerStore.ts           # Main player state
-    │   ├── downloadStore.ts         # Download state and progress
-    │   ├── lovedStore.ts            # Loved/favourited tracks
-    │   ├── recentlyPlayedStore.ts   # Recently played history
-    │   ├── favoriteRecitersStore.ts # Favourite reciters
-    │   └── progressStore.ts         # Playback progress persistence
-    ├── types/
-    │   └── state.ts                 # UnifiedPlayerState types
-    └── utils/
-        ├── storage.ts               # AsyncStorage helpers
-        └── restoreSession.ts        # Session restore on app launch
+usePlayerEvents({
+  onTrackEnd: async () => {
+    // Handle track end
+  },
+  onError: async (error) => {
+    // Handle error
+  }
+});
 ```
 
----
+### Playback Service Integration
+```typescript
+import TrackPlayer from 'react-native-track-player';
+import playbackService from './events/playbackService';
 
-## Adding a new player action
+// Register the playback service
+TrackPlayer.registerPlaybackService(() => playbackService);
+```
 
-1. Add the action to `UnifiedPlayerState` in `services/player/types/state.ts`
-2. Implement the action in `services/player/store/playerStore.ts`
-3. Call `expoAudioService` methods as needed
-4. Export via `usePlayerActions` if it should be zero-re-render accessible
+## Testing
 
----
+### Unit Tests
+- State management
+- Event handling
+- Error recovery
+- Storage operations
+- Remote control handling
+- Audio session management
 
-## Ambient audio
+### Integration Tests
+- State synchronization
+- Event propagation
+- Error boundaries
+- Storage persistence
+- Background playback
+- Remote controls
 
-Ambient sounds use a separate `AudioPlayer` instance managed by `AmbientAudioService`. The ambient player is independent of the main queue but syncs pause/resume state through `ExpoAudioProvider`. See [docs/features/ambient-sounds.md](../../docs/features/ambient-sounds.md) for details.
+## Performance Considerations
 
----
+### State Updates
+- Batch updates when possible
+- Minimize re-renders
+- Use selective subscriptions
+- Implement memoization
 
-## Mushaf audio
+### Storage Operations
+- Prioritize critical data
+- Implement caching
+- Use efficient serialization
+- Handle storage limits
 
-The Mushaf reader uses `MushafAudioService` for verse-by-verse playback, coordinated through `AudioCoordinator` to prevent simultaneous playback with the main player. The active audio source is tracked in `AudioCoordinator.getActiveSource()`.
+### Background Processing
+- Optimize event handlers
+- Minimize background operations
+- Efficient audio session management
+- Battery usage optimization
 
----
+## Migration Guide
 
-## Further reading
-
-- [docs/features/player.md](../../docs/features/player.md) — full player feature documentation
-- [docs/features/downloads.md](../../docs/features/downloads.md) — offline download system
-- [docs/architecture/current-state.md](../../docs/architecture/current-state.md) — full architecture overview
-
+### From Legacy System
+1. Replace direct TrackPlayer calls with store actions
+2. Update state management to use unified store
+3. Implement error handling using new error system
+4. Add event listeners through event bridge
+5. Register playback service for background operation
+6. Update UI components to use new store
+7. Test remote controls and background playback
+8. Verify error recovery and state persistence

@@ -23,4 +23,4 @@ Recommended read order:
 - `QuranTextService` tokenizes lines and classifies spaces.
 - `JustService` computes width fitting with space controls plus OpenType feature expansion.
 - `surah_name` lines are RN text overlays, not Skia ayah-line rendering.
-- Layout results are persisted in MMKV via `MushafLayoutCacheService` and in an in-memory cache.
+- Layout results are persisted in AsyncStorage (`dk_layout_*`) and in-memory cache.

@@ -1,153 +1,235 @@
 # Bayaan Documentation
 
-This is the documentation hub for the Bayaan open-source Quran app. All docs live in this directory.
+Welcome to the Bayaan Quran Audio App documentation. This directory contains comprehensive guides, architecture documentation, and development resources.
 
-**Tech stack:** React Native 0.83 · Expo SDK 55 · Expo Router v4 · expo-audio · Zustand · expo-sqlite · MMKV · Skia
+## 📚 Table of Contents
+
+### Getting Started
+- [Main README](../README.md) - Project overview and quick start
+- [App Initialization](development/app-initialization.md) - App startup process and lifecycle
+
+### Development
+
+#### Workflow & Guidelines
+- [Claude AI Instructions](development/claude.md) - AI coding assistant guidelines
+- [Git Workflow](development/git-workflow.md) - Branching, commits, and collaboration
+
+#### Features
+- [Downloads](features/downloads.md) - Offline download functionality and performance optimizations
+- [Player](features/player.md) - Audio player architecture and usage
+- [Queue Management](features/queue.md) - Queue system and track management
+- [Reciter Profiles](features/reciter-profile.md) - Reciter profile components
+- [Digital Khatt](features/digital-khatt/README.md) - Full Uthmani Mushaf rendering implementation and debugging guide
+
+### Architecture
+
+- [Playback Migration](architecture/playback-migration.md) - Player system migration guide
+- [Authentication Removal](architecture/auth-removal.md) - Auth system removal documentation
+
+### Deployment
+
+- [Deployment Guide](deployment/deployment.md) - EAS Build and deployment procedures
+- [Version Management](deployment/version-management.md) - App versioning and build numbers
+
+### Testing
+
+- [Download Testing](testing/download-testing.md) - Comprehensive download feature testing guide
+
+## 🔍 Quick Links
+
+### Most Common Tasks
+
+**Development:**
+- Setting up the development environment → [Main README](../README.md)
+- Understanding app initialization → [App Initialization](development/app-initialization.md)
+- Following git workflow → [Git Workflow](development/git-workflow.md)
+
+**Features:**
+- Implementing downloads → [Downloads Documentation](features/downloads.md)
+- Working with the player → [Player Documentation](features/player.md)
+- Managing playback queue → [Queue Documentation](features/queue.md)
+
+**Deployment:**
+- Building for production → [Deployment Guide](deployment/deployment.md)
+- Managing versions → [Version Management](deployment/version-management.md)
+
+**Testing:**
+- Testing downloads → [Download Testing Guide](testing/download-testing.md)
+
+## 📁 Documentation Structure
+
+```
+docs/
+├── README.md                           # This file - Documentation index
+│
+├── development/                        # Development guides
+│   ├── app-initialization.md          # App startup and lifecycle
+│   ├── claude.md                       # AI assistant guidelines
+│   └── git-workflow.md                 # Git best practices
+│
+├── features/                           # Feature documentation
+│   ├── downloads.md                    # Download system (comprehensive)
+│   ├── digital-khatt/                  # Digital Khatt implementation docs
+│   │   ├── README.md                   # Hub and reading order
+│   │   ├── architecture.md             # Ownership and lifecycle
+│   │   ├── data-pipeline.md            # SQLite to in-memory flow
+│   │   ├── rendering-pipeline.md       # React -> Skia rendering path
+│   │   ├── justification-engine.md     # Kashida/feature internals
+│   │   ├── debugging-playbook.md       # Symptom-based debugging
+│   │   ├── development-guide.md        # Safe change workflow
+│   │   └── glossary.md                 # Terminology
+│   ├── player.md                       # Audio player
+│   ├── queue.md                        # Queue management
+│   └── reciter-profile.md              # Reciter profiles
+│
+├── architecture/                       # Architecture docs
+│   ├── playback-migration.md           # Player migration
+│   └── auth-removal.md                 # Auth removal history
+│
+├── deployment/                         # Deployment guides
+│   ├── deployment.md                   # Build & deploy
+│   └── version-management.md           # Versioning
+│
+└── testing/                            # Testing guides
+    └── download-testing.md             # Download feature tests
+```
+
+## 🎯 Documentation by Role
+
+### For New Developers
+
+1. Start with [Main README](../README.md) for project setup
+2. Read [App Initialization](development/app-initialization.md) to understand startup
+3. Review [Git Workflow](development/git-workflow.md) for collaboration
+4. Explore feature docs based on your work area
+
+### For Feature Development
+
+**Downloads:**
+- [Downloads Documentation](features/downloads.md) - Complete guide with API reference
+- [Download Testing](testing/download-testing.md) - Testing procedures
+
+**Player:**
+- [Player Documentation](features/player.md) - Player architecture
+- [Queue Documentation](features/queue.md) - Queue management
+- [Playback Migration](architecture/playback-migration.md) - Migration history
+
+**Mushaf (Uthmani / Digital Khatt):**
+- [Digital Khatt Hub](features/digital-khatt/README.md) - Full architecture and implementation map
+- [Debugging Playbook](features/digital-khatt/debugging-playbook.md) - Fast troubleshooting workflow
+
+**UI Components:**
+- [Reciter Profiles](features/reciter-profile.md) - Profile components
+
+### For DevOps/Release Management
+
+1. [Deployment Guide](deployment/deployment.md) - Complete deployment procedures
+2. [Version Management](deployment/version-management.md) - Versioning system
+3. [Git Workflow](development/git-workflow.md) - Release branching
+
+### For QA/Testing
+
+1. [Download Testing](testing/download-testing.md) - Download feature test cases
+2. Feature documentation for understanding functionality
+3. [App Initialization](development/app-initialization.md) - App lifecycle
+
+## 🔧 Tech Stack Quick Reference
+
+### Core Technologies
+- **Framework:** React Native (0.76.9) with Expo (52.0.25)
+- **Navigation:** Expo Router (4.0.20)
+- **State Management:** Zustand (4.5.5)
+- **Audio:** React Native Track Player (4.1.1)
+- **Storage:** AsyncStorage, Expo SQLite
+- **Styling:** StyleSheet, React Native Size Matters
+
+### Key Libraries
+- **UI:** @gorhom/bottom-sheet, react-native-reanimated
+- **Gestures:** react-native-gesture-handler
+- **Images:** react-native-fast-image
+- **i18n:** react-i18next
+
+For complete dependencies, see [package.json](../package.json)
+
+## 📖 Documentation Standards
+
+### Writing Documentation
+
+When adding or updating documentation:
+
+1. **Use Clear Headers:** Organize with H2, H3 hierarchy
+2. **Code Examples:** Provide working TypeScript examples
+3. **Cross-References:** Link to related documentation
+4. **Keep Updated:** Update docs when code changes
+5. **Test Examples:** Ensure code examples are tested and work
+
+### File Naming
+
+- Use lowercase with hyphens: `feature-name.md`
+- Be descriptive: `download-testing.md` not `test.md`
+- Group by category in subdirectories
+
+### Markdown Style
+
+```markdown
+# Page Title (H1 - only one per file)
+
+## Main Section (H2)
+
+Brief description of the section.
+
+### Subsection (H3)
+
+Content with examples:
+
+\`\`\`typescript
+// Clear, working code examples
+const example = 'value';
+\`\`\`
+
+**Important notes** in bold.
+
+- Bullet points for lists
+- Keep them concise
+```
+
+## 🤝 Contributing to Documentation
+
+1. Create documentation for new features
+2. Update existing docs when refactoring
+3. Add examples and use cases
+4. Keep API references current
+5. Test code examples before committing
+
+## 🔗 External Resources
+
+### Expo Documentation
+- [Expo Docs](https://docs.expo.dev/)
+- [Expo Router](https://docs.expo.dev/router/introduction/)
+- [EAS Build](https://docs.expo.dev/build/introduction/)
+
+### React Native
+- [React Native Docs](https://reactnative.dev/)
+- [React Native Track Player](https://react-native-track-player.js.org/)
+
+### State Management
+- [Zustand](https://docs.pmnd.rs/zustand/getting-started/introduction)
+
+## 📝 Need Help?
+
+- Check the relevant documentation section above
+- Search for keywords in documentation files
+- Review code examples in feature docs
+- Check the [Main README](../README.md) for setup issues
+
+## 🔄 Recent Updates
+
+- **2024-11:** Download performance optimization and testing documentation
+- **2024-11:** Documentation reorganization and structure
+- **2024-10:** Version management system documentation
+- **2024-09:** Playback migration documentation
 
 ---
 
-## Getting started
+**Note:** This documentation is actively maintained. If you find errors or areas for improvement, please update the relevant files and commit your changes.
 
-New to the project? Start here:
-
-1. [README.md](../README.md) — project overview, features, quick start
-2. [CONTRIBUTING.md](../CONTRIBUTING.md) — setup guide, code standards, PR workflow
-3. [Architecture overview](architecture/current-state.md) — how all the pieces fit together
-4. [Self-hosting guide](contributing/self-hosting.md) — running your own backend
-
----
-
-## Architecture
-
-| Document | Description |
-|----------|-------------|
-| [current-state.md](architecture/current-state.md) | Full architecture overview: startup, audio, navigation, state, database |
-| [playback-migration.md](architecture/playback-migration.md) | **[ARCHIVED]** Historical plan for migrating from TrackPlayer to expo-audio |
-| [auth-removal.md](architecture/auth-removal.md) | **[ARCHIVED]** Log of authentication removal for initial release |
-
----
-
-## Features
-
-### Implemented features
-
-| Document | Description |
-|----------|-------------|
-| [player.md](features/player.md) | Audio player architecture, ExpoAudioService, playerStore, queue |
-| [queue.md](features/queue.md) | Queue management, track shape, repeat modes |
-| [downloads.md](features/downloads.md) | Offline download system, downloadStore, file path resolution |
-| [ambient-sounds.md](features/ambient-sounds.md) | Ambient audio, AmbientAudioService, ambient store |
-| [verse-interactions.md](features/verse-interactions.md) | Verse annotations — bookmarks, notes, highlights |
-| [ayah-timestamps.md](features/ayah-timestamps.md) | Ayah timestamp fetch, cache, and follow-along system |
-| [reciter-profile.md](features/reciter-profile.md) | Reciter profile screen components |
-| [whats-new.md](features/whats-new.md) | What's New / changelog feature |
-| [uploads.md](features/uploads.md) | User-uploaded recitations feature |
-| [mushaf-page.md](features/mushaf-page.md) | Mushaf page feature overview (see digital-khatt/ for rendering details) |
-| [digital-khatt-rendering.md](features/digital-khatt-rendering.md) | Digital Khatt rendering overview |
-| [adhkar-feature-plan.md](features/adhkar-feature-plan.md) | Adhkar feature — implementation reference |
-
-### Digital Khatt (Mushaf rendering)
-
-Deep documentation of the Uthmani Mushaf rendering system:
-
-| Document | Description |
-|----------|-------------|
-| [README.md](features/digital-khatt/README.md) | Hub — reading order, TL;DR, primary source files |
-| [architecture.md](features/digital-khatt/architecture.md) | System architecture |
-| [data-pipeline.md](features/digital-khatt/data-pipeline.md) | Data loading pipeline |
-| [rendering-pipeline.md](features/digital-khatt/rendering-pipeline.md) | Skia rendering pipeline |
-| [justification-engine.md](features/digital-khatt/justification-engine.md) | Line justification engine |
-| [mmkv-layout-cache-proposal.md](features/digital-khatt/mmkv-layout-cache-proposal.md) | MMKV layout cache design |
-| [debugging-playbook.md](features/digital-khatt/debugging-playbook.md) | Debugging guide |
-| [development-guide.md](features/digital-khatt/development-guide.md) | Development guide |
-| [glossary.md](features/digital-khatt/glossary.md) | Terminology glossary |
-
-### Planned / future features
-
-| Document | Description |
-|----------|-------------|
-| [analytics.md](features/analytics.md) | Analytics (planned) |
-| [cloud-sync.md](features/cloud-sync.md) | Cloud sync (planned) |
-| [shareable-links.md](features/shareable-links.md) | Deep link sharing |
-| [carplay-android-auto.md](features/carplay-android-auto.md) | CarPlay / Android Auto |
-| [smartwatch.md](features/smartwatch.md) | Smartwatch integration |
-| [tv-app.md](features/tv-app.md) | TV app |
-| [web-app.md](features/web-app.md) | Separate web app |
-| [widgets.md](features/widgets.md) | Home screen widgets |
-| [player-transition.md](features/player-transition.md) | Player UI transition improvements |
-| [translations-tafaseer-research.md](features/translations-tafaseer-research.md) | Translations and Tafaseer research |
-
----
-
-## Development
-
-| Document | Description |
-|----------|-------------|
-| [app-initialization.md](development/app-initialization.md) | AppInitializer system, priorities, registering new services |
-| [git-workflow.md](development/git-workflow.md) | Git flow, branching conventions, PR process |
-| [android-performance-enhancements.md](development/android-performance-enhancements.md) | Android performance audit and improvements |
-| [performance-postmortem.md](development/performance-postmortem.md) | **[ARCHIVED]** Playback performance postmortem (TrackPlayer era) |
-| [whats-new-implementation.md](development/whats-new-implementation.md) | What's New feature implementation notes |
-
----
-
-## Contributing
-
-| Document | Description |
-|----------|-------------|
-| [CONTRIBUTING.md](../CONTRIBUTING.md) | Setup, code standards, PR workflow |
-| [ai-guidelines.md](contributing/ai-guidelines.md) | AI-assisted development policy and code marking convention |
-| [self-hosting.md](contributing/self-hosting.md) | Running your own backend (Supabase, API, EAS) |
-
----
-
-## Deployment
-
-| Document | Description |
-|----------|-------------|
-| [deployment.md](deployment/deployment.md) | Full build and release process for iOS and Android |
-| [version-management.md](deployment/version-management.md) | Git-based versioning, `generate-version.js`, build numbers |
-
----
-
-## Research
-
-| Document | Description |
-|----------|-------------|
-| [native-tabs-inset-issues.md](research/native-tabs-inset-issues.md) | NativeTabs safe area issues (SDK 55) |
-| [native-tabs-quick-fixes.md](research/native-tabs-quick-fixes.md) | NativeTabs quick fix workarounds |
-| [download-systems-analysis.md](download-systems-analysis.md) | Download codepath consolidation analysis |
-
----
-
-## Performance (Android)
-
-| Document | Description |
-|----------|-------------|
-| [00-tracker.md](android-perf/00-tracker.md) | Android performance work tracker (phases 1–5) |
-| [android-performance-audit.md](android-performance-audit.md) | Original Android performance audit |
-| [phase-2-handoff.md](android-perf/phase-2-handoff.md) | Phase 2 handoff notes |
-| [phase-3-handoff.md](android-perf/phase-3-handoff.md) | Phase 3 handoff notes |
-
----
-
-## Testing
-
-| Document | Description |
-|----------|-------------|
-| [download-testing.md](testing/download-testing.md) | Manual download regression test checklist |
-
----
-
-## Implementation plans (shipped)
-
-These documents were written before implementation and are kept for historical reference. Each has a **SHIPPED** banner at the top.
-
-| Document | Feature |
-|----------|---------|
-| [2026-03-04-word-by-word-translation-design.md](plans/2026-03-04-word-by-word-translation-design.md) | Word-by-word translation design |
-| [2026-03-04-word-by-word-implementation.md](plans/2026-03-04-word-by-word-implementation.md) | Word-by-word implementation plan |
-| [2026-03-06-android-floating-ui.md](plans/2026-03-06-android-floating-ui.md) | Android floating tab bar + player |
-| [2026-03-06-android-floating-ui-design.md](plans/2026-03-06-android-floating-ui-design.md) | Android floating UI design |
-| [2026-03-07-on-demand-timestamps.md](plans/2026-03-07-on-demand-timestamps.md) | On-demand timestamp fetch |
-| [2026-03-07-mushaf-thematic-highlighting.md](plans/2026-03-07-mushaf-thematic-highlighting.md) | Mushaf thematic highlighting |

@@ -2,34 +2,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Surah, SURAHS} from '../data/surahData';
 import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
 import {usePlayerStore} from './player/store/playerStore';
-import {useReciterStore} from '../store/reciterStore';
-import {useApiHealthStore} from '../store/apiHealthStore';
-const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
-const BAYAAN_API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY;
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
+// Constants
 const RECITERS_KEY = 'bayaan_reciters';
 const RECITER_SERVERS_KEY = 'bayaan_reciter_servers';
-const DATA_VERSION = '3'; // Increment: reciters fetched from API, not bundled
+const DATA_VERSION = '2'; // Increment version due to structure change
 
-// ── Storage helpers ───────────────────────────────────────────────────────────
-
+// Helper functions
 interface StoredData<T> {
   version: string;
   data: T;
 }
 
-async function getStoredData<T>(
-  key: string,
-  opts: {allowStale?: boolean} = {},
-): Promise<{data: T; isStale: boolean} | null> {
+async function getStoredData<T>(key: string): Promise<T | null> {
   const storedItem = await AsyncStorage.getItem(key);
   if (!storedItem) return null;
+
   const {version, data}: StoredData<T> = JSON.parse(storedItem);
-  if (version === DATA_VERSION) return {data, isStale: false};
-  if (opts.allowStale) return {data, isStale: true};
-  return null;
+  return version === DATA_VERSION ? data : null;
 }
 
 async function setStoredData<T>(key: string, data: T): Promise<void> {
@@ -37,58 +27,7 @@ async function setStoredData<T>(key: string, data: T): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(storedData));
 }
 
-// ── In-place cache population ─────────────────────────────────────────────────
-// RECITERS is a shared mutable array imported across 20+ files.
-// We mutate it in-place so every importer automatically sees the data
-// without needing import changes anywhere.
-
-function populateReciters(data: Reciter[]): void {
-  RECITERS.splice(0, RECITERS.length, ...data);
-  // Refresh the store's default reciter now that RECITERS is populated
-  useReciterStore.getState().refreshDefaultReciter();
-}
-
-// ── API client ────────────────────────────────────────────────────────────────
-
-const API_BASE = BAYAAN_API_URL;
-const API_KEY = BAYAAN_API_KEY;
-
-async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
-  const PAGE_SIZE = 200;
-  let page = 1;
-  let allReciters: Reciter[] = [];
-
-  while (true) {
-    const headers: Record<string, string> = {'Content-Type': 'application/json'};
-    if (API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`;
-
-    const res = await fetch(
-      `${API_BASE}/v1/reciters?page=${page}&limit=${PAGE_SIZE}`,
-      {headers},
-    );
-    if (!res.ok) throw new Error(`Bayaan API error: ${res.status}`);
-    const json = await res.json();
-
-    const reciters: Reciter[] = (json.data ?? []).map((r: any) => ({
-      ...r,
-      rewayat: (r.rewayat ?? []).map((rw: any) => ({
-        ...rw,
-        surah_list: rw.surah_list ?? [],
-      })),
-    }));
-
-    allReciters = allReciters.concat(reciters);
-
-    const {total_pages} = json.meta ?? {};
-    if (!total_pages || page >= total_pages) break;
-    page++;
-  }
-
-  return allReciters;
-}
-
-// ── Surah functions ───────────────────────────────────────────────────────────
-
+// Surah-related functions
 export async function getAllSurahs(): Promise<Surah[]> {
   return SURAHS;
 }
@@ -109,77 +48,17 @@ export function searchSurahs(query: string): Surah[] {
   );
 }
 
-// ── Reciter functions ─────────────────────────────────────────────────────────
-
-/**
- * Returns reciters from AsyncStorage cache immediately (fast, works offline),
- * then refreshes from the API in the background.
- *
- * Also populates the shared RECITERS array in-place so all sync importers
- * across the app see the live data after the first call.
- */
+// Reciter-related functions
 export async function getAllReciters(): Promise<Reciter[]> {
-  const {setDisrupted, setRetryFn, clearDisruption} =
-    useApiHealthStore.getState();
+  const storedReciters = await getStoredData<Reciter[]>(RECITERS_KEY);
 
-  if (!API_BASE || !API_KEY) {
-    console.warn(
-      '[dataService] EXPO_PUBLIC_BAYAAN_API_URL or EXPO_PUBLIC_BAYAAN_API_KEY is not set.',
-    );
-    return [];
+  // If stored count doesn't match RECITERS count, update storage
+  if (!storedReciters || storedReciters.length !== RECITERS.length) {
+    await setStoredData(RECITERS_KEY, RECITERS);
+    return RECITERS;
   }
 
-  const retry = async () => {
-    await getAllReciters();
-  };
-  setRetryFn(retry);
-
-  const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
-
-  if (cached && cached.data.length > 0) {
-    populateReciters(cached.data);
-    refreshRecitersInBackground().catch(() => {});
-    return cached.data;
-  }
-
-  // First launch — fetch from API (blocking)
-  try {
-    const apiReciters = await fetchAllRecitersFromApi();
-    if (apiReciters.length > 0) {
-      await setStoredData(RECITERS_KEY, apiReciters);
-      populateReciters(apiReciters);
-      clearDisruption();
-      return apiReciters;
-    }
-  } catch (err) {
-    console.warn('[dataService] API fetch failed on first load:', err);
-    // Try stale cache before giving up
-    const stale = await getStoredData<Reciter[]>(RECITERS_KEY, {
-      allowStale: true,
-    });
-    if (stale && stale.data.length > 0) {
-      populateReciters(stale.data);
-      setDisrupted(true, {reason: 'unreachable', stale: true});
-      return stale.data;
-    }
-    setDisrupted(true, {reason: 'unreachable', stale: false});
-  }
-
-  return [];
-}
-
-async function refreshRecitersInBackground(): Promise<void> {
-  const {setDisrupted, clearDisruption} = useApiHealthStore.getState();
-  try {
-    const apiReciters = await fetchAllRecitersFromApi();
-    if (apiReciters.length > 0) {
-      await setStoredData(RECITERS_KEY, apiReciters);
-      populateReciters(apiReciters);
-      clearDisruption();
-    }
-  } catch {
-    setDisrupted(true, {reason: 'unreachable', stale: true});
-  }
+  return storedReciters;
 }
 
 export async function getReciterById(id: string): Promise<Reciter | undefined> {
@@ -187,7 +66,6 @@ export async function getReciterById(id: string): Promise<Reciter | undefined> {
   return reciters.find(reciter => reciter.id === id);
 }
 
-// Sync version reads from the in-memory RECITERS array (populated after first load)
 export function getReciterByIdSync(id: string): Reciter | undefined {
   return RECITERS.find(reciter => reciter.id === id);
 }
@@ -197,8 +75,7 @@ export function getReciterName(reciterId: string): string | null {
   return reciter ? reciter.name : null;
 }
 
-// ── Rewayat functions ─────────────────────────────────────────────────────────
-
+// New rewayat-related functions
 export async function getReciterRewayat(reciterId: string): Promise<Rewayat[]> {
   const reciter = await getReciterById(reciterId);
   return reciter ? reciter.rewayat : [];
@@ -206,7 +83,7 @@ export async function getReciterRewayat(reciterId: string): Promise<Rewayat[]> {
 
 export async function getReciterStyles(reciterId: string): Promise<string[]> {
   const rewayat = await getReciterRewayat(reciterId);
-  return [...new Set(rewayat.map(r => r.style))];
+  return [...new Set(rewayat.map(r => r.style))]; // Get unique styles
 }
 
 export async function getRecitersForSurah(
@@ -248,11 +125,13 @@ export async function filterReciters(options: {
   const normalizedQuery = options.query?.toLowerCase() ?? '';
 
   return reciters.filter(reciter => {
+    // Filter by style if specified
     if (options.style) {
       const hasStyle = reciter.rewayat.some(r => r.style === options.style);
       if (!hasStyle) return false;
     }
 
+    // Filter by surah if specified
     if (options.hasSurah !== undefined) {
       const hasSurah = reciter.rewayat.some(
         r =>
@@ -264,6 +143,7 @@ export async function filterReciters(options: {
       if (!hasSurah) return false;
     }
 
+    // Filter by search query if specified
     if (normalizedQuery) {
       const matchesQuery =
         reciter.name.toLowerCase().includes(normalizedQuery) ||
@@ -279,12 +159,11 @@ export async function filterReciters(options: {
   });
 }
 
-// ── Audio URL ─────────────────────────────────────────────────────────────────
-
+// Audio URL related functions
 export async function fetchAudioUrl(
   surahId: number,
   reciterId: string,
-  rewayatId?: string,
+  rewayatId?: string, // Optional: if not provided, use first available rewayat
 ): Promise<string> {
   console.log('fetchAudioUrl called with:', {surahId, reciterId, rewayatId});
 
@@ -299,6 +178,7 @@ export async function fetchAudioUrl(
 
   if (!rewayat) throw new Error('Rewayat not found');
 
+  // Check if surah_list exists and contains the surah
   if (rewayat.surah_list) {
     const validSurahs = rewayat.surah_list.filter(
       (id): id is number => id !== null,
@@ -311,30 +191,33 @@ export async function fetchAudioUrl(
     }
   }
 
+  // Format surah number with leading zeros
   const surahStr = surahId.toString().padStart(3, '0');
   return `${rewayat.server}/${surahStr}.mp3`;
 }
 
-// ── Search ────────────────────────────────────────────────────────────────────
-
+// Search functions
 export async function searchReciters(query: string): Promise<Reciter[]> {
   const reciters = await getAllReciters();
   const normalizedQuery = query.toLowerCase();
+
   return reciters.filter(reciter =>
     reciter.name.toLowerCase().includes(normalizedQuery),
   );
 }
 
-// ── Utility ───────────────────────────────────────────────────────────────────
-
+// Utility functions
 export async function clearStoredData(): Promise<void> {
   try {
+    // Clear AsyncStorage data
     await AsyncStorage.multiRemove([
       RECITERS_KEY,
       RECITER_SERVERS_KEY,
-      '@bayaan/last_track',
-      '@bayaan/last_position',
+      '@bayaan/last_track', // From trackPersistence.ts
+      '@bayaan/last_position', // From trackPersistence.ts
     ]);
+
+    // Reset player store state (also clears the queue)
     await usePlayerStore.getState().cleanup();
   } catch (error) {
     console.error('Error clearing stored data:', error);

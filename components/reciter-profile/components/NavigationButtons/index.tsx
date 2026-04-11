@@ -1,5 +1,5 @@
 import React from 'react';
-import {Animated, Pressable, View} from 'react-native';
+import {Animated, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -13,7 +13,6 @@ interface NavigationButtonsProps {
   iconsOpacity: Animated.Value;
   iconsZIndex: Animated.Value;
   onSearchPress: () => void;
-  onSharePress?: () => void;
 }
 
 export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
@@ -21,7 +20,6 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
   iconsOpacity,
   iconsZIndex,
   onSearchPress,
-  onSharePress,
 }) => {
   const router = useRouter();
   const {theme} = useTheme();
@@ -48,27 +46,15 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
       </Animated.View>
       <Animated.View
         style={[
-          styles.rightButtons,
+          styles.searchButton,
           {
             top: insets.top,
-            right: moderateScale(15),
+            right: moderateScale(20),
             opacity: iconsOpacity,
             zIndex: iconsZIndex,
           },
         ]}>
-        {onSharePress && (
-          <Pressable
-            onPress={onSharePress}
-            hitSlop={8}
-            style={{marginRight: moderateScale(16)}}>
-            <Feather
-              name="share"
-              size={moderateScale(20)}
-              color={theme.colors.text}
-            />
-          </Pressable>
-        )}
-        <Pressable onPress={onSearchPress} hitSlop={8}>
+        <Pressable onPress={onSearchPress}>
           <Feather
             name="search"
             size={moderateScale(20)}
@@ -85,10 +71,8 @@ const styles = ScaledSheet.create({
     position: 'absolute',
     zIndex: 10,
   },
-  rightButtons: {
+  searchButton: {
     position: 'absolute',
     zIndex: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
 });
