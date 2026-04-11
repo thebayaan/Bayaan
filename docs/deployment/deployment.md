@@ -4,7 +4,7 @@ This document outlines the complete process for deploying the Bayaan app to both
 
 ## Version Management
 
-Bayaan uses a Git-based version management system described in detail in [VERSION-MANAGEMENT.md](docs/VERSION-MANAGEMENT.md).
+Bayaan uses a Git-based version management system described in detail in [version-management.md](version-management.md).
 
 ### Quick Version Summary
 
