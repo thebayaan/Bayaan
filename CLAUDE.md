@@ -17,6 +17,7 @@ When Claude learns something essential about this project that should be remembe
 ```
 
 **When to update this file:**
+
 - After discovering a non-obvious solution to a problem
 - When adding new features that require specific patterns
 - After debugging issues that took significant effort to resolve
@@ -133,6 +134,7 @@ npm run resize-splash-images
 ### Component Structure Pattern
 
 Components follow a consistent pattern:
+
 ```typescript
 // 1. Props interface at the top
 interface MyComponentProps {
@@ -171,34 +173,38 @@ The app uses a unified alpha-based color system derived from `theme.colors.text`
 
 ### Color Tokens
 
-| Token | Value | Usage |
-|---|---|---|
-| Card bg | `Color(theme.colors.text).alpha(0.04)` | Surface backgrounds |
-| Card border | `Color(theme.colors.text).alpha(0.06)` | 1px borders on cards |
-| Divider | `Color(theme.colors.text).alpha(0.06)` | Hairline separators inside cards |
-| Pressed bg | `Color(theme.colors.text).alpha(0.06)` | Pressable feedback |
-| Secondary bg | `Color(theme.colors.text).alpha(0.08)` | Selected/active cards |
-| Switch track off | `Color(theme.colors.text).alpha(0.1)` | Switch inactive |
-| Segmented active | `Color(theme.colors.text).alpha(0.12)` | Active segment bg |
-| Chevron | `Color(theme.colors.text).alpha(0.2)` | Nav arrows |
-| Icon | `Color(theme.colors.text).alpha(0.7)` | Secondary icons |
-| Option label | `Color(theme.colors.text).alpha(0.85)` | Row labels |
-| Switch track on | `Color(theme.colors.text).alpha(0.65)` | Switch active |
-| Section header | `Color(theme.colors.textSecondary).alpha(0.5)` | ALL CAPS labels |
-| Hint/description | `Color(theme.colors.textSecondary).alpha(0.45)` | Sub-text, descriptions |
-| Switch thumb | `#FFFFFF` | Always white |
-| Primary btn bg | `theme.colors.text` | Action buttons |
-| Primary btn text | `theme.colors.background` | Button text |
+
+| Token            | Value                                           | Usage                            |
+| ---------------- | ----------------------------------------------- | -------------------------------- |
+| Card bg          | `Color(theme.colors.text).alpha(0.04)`          | Surface backgrounds              |
+| Card border      | `Color(theme.colors.text).alpha(0.06)`          | 1px borders on cards             |
+| Divider          | `Color(theme.colors.text).alpha(0.06)`          | Hairline separators inside cards |
+| Pressed bg       | `Color(theme.colors.text).alpha(0.06)`          | Pressable feedback               |
+| Secondary bg     | `Color(theme.colors.text).alpha(0.08)`          | Selected/active cards            |
+| Switch track off | `Color(theme.colors.text).alpha(0.1)`           | Switch inactive                  |
+| Segmented active | `Color(theme.colors.text).alpha(0.12)`          | Active segment bg                |
+| Chevron          | `Color(theme.colors.text).alpha(0.2)`           | Nav arrows                       |
+| Icon             | `Color(theme.colors.text).alpha(0.7)`           | Secondary icons                  |
+| Option label     | `Color(theme.colors.text).alpha(0.85)`          | Row labels                       |
+| Switch track on  | `Color(theme.colors.text).alpha(0.65)`          | Switch active                    |
+| Section header   | `Color(theme.colors.textSecondary).alpha(0.5)`  | ALL CAPS labels                  |
+| Hint/description | `Color(theme.colors.textSecondary).alpha(0.45)` | Sub-text, descriptions           |
+| Switch thumb     | `#FFFFFF`                                       | Always white                     |
+| Primary btn bg   | `theme.colors.text`                             | Action buttons                   |
+| Primary btn text | `theme.colors.background`                       | Button text                      |
+
 
 ### Typography
 
-| Role | Font | Size | Extra |
-|---|---|---|---|
-| Section header | `Manrope-SemiBold` | `ms(10.5)` | `uppercase`, `letterSpacing: 1.2` |
-| Option label | `Manrope-Medium` | `ms(13.5)` | |
-| Description | `Manrope-Regular` | `ms(11-11.5)` | |
-| Hint text | `Manrope-Regular` | `ms(11.5)` | |
-| Primary btn | `Manrope-SemiBold` | `ms(15)` | |
+
+| Role           | Font               | Size          | Extra                             |
+| -------------- | ------------------ | ------------- | --------------------------------- |
+| Section header | `Manrope-SemiBold` | `ms(10.5)`    | `uppercase`, `letterSpacing: 1.2` |
+| Option label   | `Manrope-Medium`   | `ms(13.5)`    |                                   |
+| Description    | `Manrope-Regular`  | `ms(11-11.5)` |                                   |
+| Hint text      | `Manrope-Regular`  | `ms(11.5)`    |                                   |
+| Primary btn    | `Manrope-SemiBold` | `ms(15)`      |                                   |
+
 
 ### Card Pattern
 
@@ -291,32 +297,28 @@ Bayaan is a React Native/Expo application for Quran audio playback.
 ### Core Architecture Components
 
 1. **Expo Router (v4)**: File-based routing system
-   - Route files in `/app` directory (similar to Next.js)
-   - Nested routes in subdirectories
-   - Layout files (`_layout.tsx`) provide shared UI elements
-
+  - Route files in `/app` directory (similar to Next.js)
+  - Nested routes in subdirectories
+  - Layout files (`_layout.tsx`) provide shared UI elements
 2. **Zustand State Management**:
-   - Global stores in `/store` directory
-   - Separate stores for different concerns (player, queue, downloads, etc.)
-   - Persistent state with AsyncStorage integration
-
+  - Global stores in `/store` directory
+  - Separate stores for different concerns (player, queue, downloads, etc.)
+  - Persistent state with AsyncStorage integration
 3. **Audio Playback System**:
-   - Uses `expo-audio` via `ExpoAudioService` singleton (`services/audio/ExpoAudioService.ts`)
-   - React bridge via `ExpoAudioProvider` (`services/audio/ExpoAudioProvider.tsx`)
-   - Player state in Zustand (`services/player/store/playerStore.ts`)
-   - Custom playback services in `/services/player`
-
+  - Uses `expo-audio` via `ExpoAudioService` singleton (`services/audio/ExpoAudioService.ts`)
+  - React bridge via `ExpoAudioProvider` (`services/audio/ExpoAudioProvider.tsx`)
+  - Player state in Zustand (`services/player/store/playerStore.ts`)
+  - Custom playback services in `/services/player`
 4. **App Initialization** (`services/AppInitializer.ts`):
-   - Central orchestrator for all service initialization
-   - Priority-based initialization order
-   - Critical vs non-critical service handling
-   - SQLite services must register here for preloading
-
+  - Central orchestrator for all service initialization
+  - Priority-based initialization order
+  - Critical vs non-critical service handling
+  - SQLite services must register here for preloading
 5. **Mushaf Layout Cache** (`services/mushaf/MushafLayoutCacheService.ts`):
-   - Precomputes all 604 Uthmani page justification layouts into MMKV
-   - Synchronous reads (<1ms) eliminate computation on the render path
-   - Registered in AppInitializer at priority 8 (non-critical, background)
-   - See `docs/features/digital-khatt/mmkv-layout-cache-proposal.md` for details
+  - Precomputes all 604 Uthmani page justification layouts into MMKV
+  - Synchronous reads (<1ms) eliminate computation on the render path
+  - Registered in AppInitializer at priority 8 (non-critical, background)
+  - See `docs/features/digital-khatt/mmkv-layout-cache-proposal.md` for details
 
 ### Code Structure
 
@@ -413,17 +415,16 @@ For detailed deployment information, refer to `docs/deployment/deployment.md`.
 1. Bump version using appropriate command
 2. Commit changes and push with version tag
 3. **Android:**
-   ```bash
+  ```bash
    expo prebuild --platform android --clean
    cd android && ./gradlew bundleRelease
-   ```
+  ```
    AAB location: `android/app/build/outputs/bundle/release/app-release.aab`
-
 4. **iOS:**
-   ```bash
+  ```bash
    expo prebuild --platform ios --clean
    cd ios && open Bayaan.xcworkspace
-   ```
+  ```
    In Xcode: Clean Build Folder → Build → Archive
 
 ### Keystore & Credentials
@@ -441,11 +442,13 @@ This section documents the complete process for adding new reciters or updating 
 ### Supabase Configuration
 
 **Project Details:**
+
 - Project ID: `tncrklrswaounqmirayh`
 - Project URL: `https://tncrklrswaounqmirayh.supabase.co`
 - Environment variables: `~/Documents/Bayaan/.env`
 
 **Required Keys:**
+
 - `SUPABASE_URL` - Project URL
 - `SUPABASE_ANON_KEY` - For read operations
 - `SUPABASE_SERVICE_ROLE_KEY` - Required for storage uploads (bypasses RLS)
@@ -453,24 +456,30 @@ This section documents the complete process for adding new reciters or updating 
 ### Database Schema
 
 #### `reciters` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| name | text | Reciter's display name |
-| date | text | Birth/death dates or era |
-| image_url | text | URL to reciter's image |
+
+
+| Column    | Type | Description              |
+| --------- | ---- | ------------------------ |
+| id        | uuid | Primary key              |
+| name      | text | Reciter's display name   |
+| date      | text | Birth/death dates or era |
+| image_url | text | URL to reciter's image   |
+
 
 #### `rewayat` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| reciter_id | uuid | Foreign key to reciters |
-| name | text | Rewayah name (e.g., "Hafs A'n Asim") |
-| style | text | Recitation style |
-| server | text | Base URL for audio files |
-| surah_total | integer | Total number of available surahs |
-| surah_list | text | Comma-separated list of surah numbers |
-| source_type | text | Source identifier ("supabase", "mp3quran") |
+
+
+| Column      | Type    | Description                                |
+| ----------- | ------- | ------------------------------------------ |
+| id          | uuid    | Primary key                                |
+| reciter_id  | uuid    | Foreign key to reciters                    |
+| name        | text    | Rewayah name (e.g., "Hafs A'n Asim")       |
+| style       | text    | Recitation style                           |
+| server      | text    | Base URL for audio files                   |
+| surah_total | integer | Total number of available surahs           |
+| surah_list  | text    | Comma-separated list of surah numbers      |
+| source_type | text    | Source identifier ("supabase", "mp3quran") |
+
 
 ### Storage Bucket Structure
 
@@ -484,6 +493,7 @@ quran-audio/
 ```
 
 **File Naming Convention:**
+
 - 3-digit zero-padded surah numbers: `001.mp3`, `002.mp3`, ..., `114.mp3`
 - Folder names: lowercase with hyphens (e.g., `mohammed-jibreel`)
 
@@ -492,6 +502,7 @@ quran-audio/
 #### 1. Download Recitations
 
 **From SoundCloud:**
+
 ```bash
 cd /Users/osmansaeday/Documents/Recitations/{reciter-name}
 yt-dlp -x --audio-format mp3 --audio-quality 0 \
@@ -501,6 +512,7 @@ yt-dlp -x --audio-format mp3 --audio-quality 0 \
 ```
 
 **From MP3Quran.net:**
+
 ```bash
 # API: https://mp3quran.net/api/v3/reciters?language=eng
 curl -o 001.mp3 "https://server{X}.mp3quran.net/{reciter}/001.mp3"
@@ -567,6 +579,7 @@ done
 ```
 
 **For large files (>100MB):**
+
 ```bash
 ffprobe {file}.mp3 2>&1 | grep -E "bitrate|Duration"
 ffmpeg -i {file}.mp3 -b:a 128k -y {file}_compressed.mp3
@@ -591,22 +604,26 @@ npm run fetch-reciters
 
 ### Common Issues and Solutions
 
-| Issue | Solution |
-|-------|----------|
-| "Payload too large" | Compress to <100MB using ffmpeg at 128kbps |
-| "RLS policy violation" | Use SERVICE_ROLE_KEY instead of ANON_KEY |
-| Missing @supabase/supabase-js | Run `npm install @supabase/supabase-js` |
-| Incomplete SoundCloud downloads | Use `--download-archive downloaded.txt` to resume |
-| Files not playing | Verify 3-digit naming, check server URL has no trailing slash |
+
+| Issue                           | Solution                                                      |
+| ------------------------------- | ------------------------------------------------------------- |
+| "Payload too large"             | Compress to <100MB using ffmpeg at 128kbps                    |
+| "RLS policy violation"          | Use SERVICE_ROLE_KEY instead of ANON_KEY                      |
+| Missing @supabase/supabase-js   | Run `npm install @supabase/supabase-js`                       |
+| Incomplete SoundCloud downloads | Use `--download-archive downloaded.txt` to resume             |
+| Files not playing               | Verify 3-digit naming, check server URL has no trailing slash |
+
 
 ### Audio Sources Reference
 
-| Source | URL Pattern |
-|--------|-------------|
-| MP3Quran.net | `https://server{X}.mp3quran.net/{reciter}/{surah}.mp3` |
-| Archive.org | `https://archive.org/download/{collection}/{file}` |
-| SoundCloud | Use yt-dlp with playlist URL |
-| Supabase | `https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/public/quran-audio/reciters/{folder}/{surah}.mp3` |
+
+| Source       | URL Pattern                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------- |
+| MP3Quran.net | `https://server{X}.mp3quran.net/{reciter}/{surah}.mp3`                                                        |
+| Archive.org  | `https://archive.org/download/{collection}/{file}`                                                            |
+| SoundCloud   | Use yt-dlp with playlist URL                                                                                  |
+| Supabase     | `https://tncrklrswaounqmirayh.supabase.co/storage/v1/object/public/quran-audio/reciters/{folder}/{surah}.mp3` |
+
 
 ### Local Recitations Directory
 
@@ -624,6 +641,7 @@ npm run fetch-reciters
 Ambient nature sounds play simultaneously with Quran recitation using a second `AudioPlayer` from expo-audio.
 
 ### Key Files
+
 - `types/ambient.ts` — `AmbientSoundType`, `AMBIENT_SOUNDS` map with bundled asset `require()` refs
 - `services/audio/AmbientAudioService.ts` — Singleton using `createAudioPlayer()`, manages loop/volume/fade
 - `store/ambientStore.ts` — Zustand store (persisted) for preferences (currentSound, volume)
@@ -633,6 +651,7 @@ Ambient nature sounds play simultaneously with Quran recitation using a second `
 - `assets/audio/ambient/` — Bundled MP3 files (rain, forest, ocean, stream, night, thunder, fireplace, wind)
 
 ### Architecture
+
 - Ambient uses `createAudioPlayer(source)` (not the hook) so it persists outside React lifecycle
 - `player.loop = true`, volume controlled independently
 - Ambient does NOT seek or change rate with Quran playback

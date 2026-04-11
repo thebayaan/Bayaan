@@ -32,6 +32,8 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
+import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {restoreSession} from '@/services/player/utils/restoreSession';
@@ -71,6 +73,7 @@ export default function RootLayout() {
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
+  useNetworkMonitor();
 
   // Build React Navigation theme so card/background colors match during transitions
   const navigationTheme = useMemo(
@@ -382,6 +385,7 @@ export default function RootLayout() {
               // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
               overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
               onLayout={onLayoutRootView}>
+              <ApiDisruptionBanner />
               <SheetProvider>
                 <Stack
                   screenOptions={{
