@@ -202,8 +202,9 @@ function buildR2KeyBase(
 // R2 presence check
 // ---------------------------------------------------------------------------
 
-async function isOnR2(r2KeyBase: string): Promise<boolean> {
-  const url = `${CDN_BASE}/${r2KeyBase}/001.mp3`;
+async function isOnR2(r2KeyBase: string, firstSurah: number): Promise<boolean> {
+  const padded = firstSurah.toString().padStart(3, '0');
+  const url = `${CDN_BASE}/${r2KeyBase}/${padded}.mp3`;
   try {
     const res = await fetch(url, {method: 'HEAD'});
     return res.ok;
@@ -353,12 +354,6 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const alreadyPresent = await isOnR2(r2KeyBase);
-      if (alreadyPresent) {
-        stats.rewayatSkipped++;
-        continue;
-      }
-
       const rawSurahList = rewayat.surah_list ?? [];
       const surahNumbers: number[] = rawSurahList.filter(
         (n): n is number => n !== null && typeof n === 'number',
@@ -367,6 +362,12 @@ async function main(): Promise<void> {
       if (surahNumbers.length === 0) {
         console.warn(`${prefix} No valid surah numbers — skipping`);
         stats.rewayatFailed++;
+        continue;
+      }
+
+      const alreadyPresent = await isOnR2(r2KeyBase, surahNumbers[0]);
+      if (alreadyPresent) {
+        stats.rewayatSkipped++;
         continue;
       }
 
