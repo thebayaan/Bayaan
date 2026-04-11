@@ -28,6 +28,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
+import {verseShareUrl, shareUrl as nativeShareUrl} from '@/utils/shareUtils';
 
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
@@ -57,6 +58,8 @@ interface ShareContentProps {
 
 export const ShareContent: React.FC<ShareContentProps> = ({
   verseKey,
+  surahNumber,
+  ayahNumber,
   verseKeys: verseKeysProp,
   onDone,
 }) => {
@@ -81,8 +84,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
 
   const previewWidth = screenWidth - moderateScale(48);
   const captureLogicalWidth = 1080 / PixelRatio.get();
@@ -145,6 +148,13 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     await Share.share({message});
     SheetManager.hideAll();
   }, [arabicText, translation, verseRefText]);
+
+  const handleShareLink = useCallback(async () => {
+    lightHaptics();
+    const url = verseShareUrl(surahNumber, ayahNumber);
+    await nativeShareUrl(url, `Quran ${verseRefText}`);
+    SheetManager.hideAll();
+  }, [surahNumber, ayahNumber, verseRefText]);
 
   if (!fontMgr) return null;
 
@@ -242,6 +252,20 @@ export const ShareContent: React.FC<ShareContentProps> = ({
             color={theme.colors.text}
           />
           <Text style={styles.secondaryButtonText}>Share as Text</Text>
+        </Pressable>
+
+        <Pressable
+          style={({pressed}) => [
+            styles.secondaryButton,
+            pressed && {opacity: 0.85},
+          ]}
+          onPress={handleShareLink}>
+          <Feather
+            name="link"
+            size={moderateScale(16)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.secondaryButtonText}>Share Link</Text>
         </Pressable>
       </View>
     </ScrollView>

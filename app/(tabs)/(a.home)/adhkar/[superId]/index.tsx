@@ -275,13 +275,10 @@ const SuperCategoryListScreen: React.FC = () => {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: moderateScale(4),
-            paddingHorizontal: moderateScale(4),
+            gap: moderateScale(20),
+            paddingHorizontal: moderateScale(6),
           }}>
-          <Pressable
-            onPress={handleShare}
-            hitSlop={8}
-            style={{padding: moderateScale(4)}}>
+          <Pressable onPress={handleShare} hitSlop={8}>
             <Feather
               name="share"
               size={moderateScale(20)}

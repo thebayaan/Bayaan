@@ -239,7 +239,13 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       headerRight: showSearch
         ? () => null
         : () => (
-            <View style={{flexDirection: 'row', alignItems: 'center', gap: moderateScale(16)}}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: moderateScale(20),
+                paddingHorizontal: moderateScale(6),
+              }}>
               <Pressable
                 onPress={() => {
                   const slug = reciter?.slug ?? currentReciterId;

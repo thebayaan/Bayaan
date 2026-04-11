@@ -413,12 +413,10 @@ export default function MushafViewer({
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: moderateScale(4),
+            gap: moderateScale(20),
+            paddingHorizontal: moderateScale(6),
           }}>
-          <Pressable
-            onPress={handleSharePage}
-            hitSlop={10}
-            style={{padding: moderateScale(6)}}>
+          <Pressable onPress={handleSharePage} hitSlop={8}>
             <Feather
               name="share"
               size={moderateScale(20)}
@@ -431,8 +429,7 @@ export default function MushafViewer({
                 payload: {context: 'mushaf'},
               })
             }
-            hitSlop={10}
-            style={{padding: moderateScale(6)}}>
+            hitSlop={8}>
             <Ionicons
               name="options-outline"
               size={moderateScale(22)}
