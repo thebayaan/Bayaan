@@ -40,7 +40,6 @@ import {
   CopyIcon,
   ShareIcon,
 } from '@/components/Icons';
-import {verseShareUrl, shareUrl} from '@/utils/shareUtils';
 import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
@@ -253,13 +252,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lightHaptics();
     setActiveScreen('share');
   }, []);
-
-  const handleShareVerseLink = useCallback(async () => {
-    lightHaptics();
-    const url = verseShareUrl(surahNumber, ayahNumber);
-    await shareUrl(url, `Quran ${surahNumber}:${ayahNumber}`);
-    SheetManager.hideAll();
-  }, [surahNumber, ayahNumber]);
 
   const handleTranslation = useCallback(() => {
     setActiveScreen('translation');
@@ -864,24 +856,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 <ShareIcon size={moderateScale(18)} color={theme.colors.text} />
                 <Text style={styles.optionText}>Share</Text>
               </Pressable>
-              {!isRange && (
-                <>
-                  <View style={styles.divider} />
-                  <Pressable
-                    style={({pressed}) => [
-                      styles.option,
-                      pressed && styles.optionPressed,
-                    ]}
-                    onPress={handleShareVerseLink}>
-                    <Feather
-                      name="share"
-                      size={moderateScale(18)}
-                      color={theme.colors.text}
-                    />
-                    <Text style={styles.optionText}>Share Link</Text>
-                  </Pressable>
-                </>
-              )}
             </View>
           </ScrollView>
         )}
