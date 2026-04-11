@@ -3,23 +3,25 @@ import {View, ActivityIndicator} from 'react-native';
 import {useLocalSearchParams, useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 
-export default function ShareReciterSurahReceiver() {
-  const {slug, num} = useLocalSearchParams<{slug: string; num: string}>();
+export default function ShareDhikrReceiver() {
+  const {superId, dhikrId} = useLocalSearchParams<{
+    superId: string;
+    dhikrId: string;
+  }>();
   const router = useRouter();
   const {theme} = useTheme();
 
   useEffect(() => {
-    if (!slug) {
+    if (!superId || !dhikrId) {
       router.replace('/');
       return;
     }
-    // Navigate to the reciter profile — the reciter screen handles surah
-    // selection via params. Pass surah number so it can pre-select if supported.
+
     router.replace({
-      pathname: '/(tabs)/(a.home)/reciter/[id]',
-      params: {id: slug, surah: num ?? ''},
+      pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
+      params: {superId, dhikrId},
     });
-  }, [slug, num, router]);
+  }, [superId, dhikrId, router]);
 
   return (
     <View
@@ -29,7 +31,7 @@ export default function ShareReciterSurahReceiver() {
         justifyContent: 'center',
         backgroundColor: theme.colors.background,
       }}>
-      <ActivityIndicator color={theme.colors.primary} />
+      <ActivityIndicator color={theme.colors.text} />
     </View>
   );
 }
