@@ -36,7 +36,9 @@ function getIcon(
     case '(a.home)':
       return <HomeIcon filled={isFocused} color={color} size={iconSize} />;
     case '(b.surahs)':
-      return <QuranIcon filled={isFocused} color={color} size={iconSize} />;
+      return (
+        <QuranIcon filled={isFocused} color={color} size={iconSize * 1.2} />
+      );
     case '(b.search)':
       return <SearchIcon filled={isFocused} color={color} size={iconSize} />;
     case '(c.collection)':
