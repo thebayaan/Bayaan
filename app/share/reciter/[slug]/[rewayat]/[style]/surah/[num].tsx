@@ -5,6 +5,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {useReciterStore} from '@/store/reciterStore';
 import {getReciterBySlug} from '@/services/dataService';
 import {resolveRewayat} from '@/utils/shareUtils';
+import {generateSmartAudioUrl} from '@/utils/audioUtils';
+import {getReciterArtwork} from '@/utils/artworkUtils';
+import {SURAHS} from '@/data/surahData';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 
 export default function ShareRecitationReceiver() {
   const {slug, rewayat, style, num} = useLocalSearchParams<{
@@ -27,16 +31,39 @@ export default function ShareRecitationReceiver() {
     }
 
     const rw = resolveRewayat(reciter, rewayat, style);
+    if (!rw) {
+      router.replace('/');
+      return;
+    }
 
-    router.replace({
-      pathname: '/(tabs)/(a.home)/reciter/[id]',
-      params: {
-        id: reciter.id,
-        surah: num,
-        rewayatId: rw?.id ?? '',
-        autoPlay: '1',
-      },
-    });
+    const surahNum = parseInt(num, 10);
+    const surah = SURAHS.find(s => s.id === surahNum);
+    const artwork = getReciterArtwork(reciter);
+    const track = {
+      id: `${reciter.id}:${surahNum}`,
+      url: generateSmartAudioUrl(reciter, surahNum.toString(), rw.id),
+      title: surah?.name ?? `Surah ${surahNum}`,
+      artist: reciter.name,
+      reciterId: reciter.id,
+      artwork,
+      surahId: surahNum.toString(),
+      reciterName: reciter.name,
+      rewayatId: rw.id,
+    };
+
+    const startPlaybackAndNavigate = async (): Promise<void> => {
+      await usePlayerStore.getState().updateQueue([track], 0);
+
+      router.replace('/(tabs)/(a.home)');
+      setTimeout(() => {
+        router.push({
+          pathname: '/(tabs)/(a.home)/reciter/[id]',
+          params: {id: reciter.id},
+        });
+      }, 100);
+    };
+
+    startPlaybackAndNavigate();
   }, [isInitialized, slug, rewayat, style, num, router]);
 
   return (

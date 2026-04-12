@@ -13,10 +13,13 @@ export default function ShareAdhkarReceiver() {
       router.replace('/');
       return;
     }
-    router.replace({
-      pathname: '/(tabs)/(a.home)/adhkar/[superId]',
-      params: {superId},
-    });
+    router.replace('/(tabs)/(a.home)');
+    setTimeout(() => {
+      router.push({
+        pathname: '/(tabs)/(a.home)/adhkar/[superId]',
+        params: {superId},
+      });
+    }, 100);
   }, [superId, router]);
 
   return (

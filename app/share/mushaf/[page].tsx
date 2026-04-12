@@ -9,10 +9,13 @@ export default function ShareMushafReceiver() {
   const {theme} = useTheme();
 
   useEffect(() => {
-    router.replace({
-      pathname: '/mushaf',
-      params: page ? {page} : {},
-    });
+    router.replace('/(tabs)/(b.surahs)');
+    setTimeout(() => {
+      router.push({
+        pathname: '/mushaf',
+        params: page ? {page} : {},
+      });
+    }, 100);
   }, [page, router]);
 
   return (

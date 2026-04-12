@@ -20,10 +20,13 @@ export default function ShareReciterReceiver() {
       return;
     }
 
-    router.replace({
-      pathname: '/(tabs)/(a.home)/reciter/[id]',
-      params: {id: reciter.id},
-    });
+    router.replace('/(tabs)/(a.home)');
+    setTimeout(() => {
+      router.push({
+        pathname: '/(tabs)/(a.home)/reciter/[id]',
+        params: {id: reciter.id},
+      });
+    }, 100);
   }, [isInitialized, slug, router]);
 
   return (
