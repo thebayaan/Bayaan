@@ -2,7 +2,7 @@ import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ThemeMode, PrimaryColor, Theme, createTheme} from '@/utils/themeUtils';
-import {Appearance} from 'react-native';
+import {Appearance, Platform} from 'react-native';
 
 interface ThemeState {
   themeMode: ThemeMode;
@@ -47,8 +47,11 @@ export const useThemeStore = create<ThemeState>()(
         set(state => {
           const newTheme = getEffectiveTheme(mode, state.primaryColor);
           // Sync native UI (keyboard, alerts, liquid glass chrome) with the choice
+          // Android's AppearanceModule.setColorScheme crashes on null — skip the call entirely
           if (mode === 'system') {
-            Appearance.setColorScheme(null as any); // revert to system
+            if (Platform.OS !== 'android') {
+              Appearance.setColorScheme(null as any);
+            }
           } else {
             Appearance.setColorScheme(mode);
           }
@@ -79,7 +82,9 @@ export const useThemeStore = create<ThemeState>()(
           const theme = getEffectiveTheme(state.themeMode, state.primaryColor);
           // Sync native UI with the persisted preference on app launch
           if (state.themeMode === 'system') {
-            Appearance.setColorScheme(null as any);
+            if (Platform.OS !== 'android') {
+              Appearance.setColorScheme(null as any);
+            }
           } else {
             Appearance.setColorScheme(state.themeMode);
           }
