@@ -13,6 +13,7 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
 import {RECITERS} from '@/data/reciterData';
+import {resolveRewayatName, getRewayahNames} from '@/data/rewayat';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 interface FilterModalProps {
@@ -36,20 +37,42 @@ const STYLE_OPTIONS = [
   {label: 'Murattal', value: 'murattal'},
 ];
 
-// Get unique rewayat names from reciters
-const getUniqueRewayatNames = () => {
-  const rewayatNames = new Set<string>();
+// Get rewayat names available in the reciter data, ordered by canonical Qira'at teacher order.
+// Groups DB names (including aliases) under their canonical registry entry, then returns
+// them in registry order so the UI follows the traditional Qira'at sequence.
+const getAvailableRewayatNames = (): string[] => {
+  // Collect all unique DB names from reciters
+  const dbNames = new Set<string>();
+  for (const reciter of RECITERS) {
+    for (const r of reciter.rewayat) {
+      if (r.name) dbNames.add(r.name);
+    }
+  }
 
-  RECITERS.forEach(reciter => {
-    reciter.rewayat.forEach(r => {
-      if (r.name) {
-        rewayatNames.add(r.name);
+  // Build ordered list: for each canonical entry, include matching DB names in registry order
+  const canonicalNames = getRewayahNames();
+  const ordered: string[] = [];
+  const placed = new Set<string>();
+
+  for (const primaryName of canonicalNames) {
+    for (const dbName of dbNames) {
+      if (placed.has(dbName)) continue;
+      const resolved = resolveRewayatName(dbName);
+      if (resolved && resolved.name === primaryName) {
+        ordered.push(dbName);
+        placed.add(dbName);
       }
-    });
-  });
+    }
+  }
 
-  // Convert to array and sort alphabetically
-  return Array.from(rewayatNames).sort();
+  // Append any unresolved DB names at the end
+  for (const dbName of dbNames) {
+    if (!placed.has(dbName)) {
+      ordered.push(dbName);
+    }
+  }
+
+  return ordered;
 };
 
 function createStyles(theme: Theme) {
@@ -193,7 +216,7 @@ export default function FilterModal({
 }: FilterModalProps) {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const rewayatNames = useMemo(() => getUniqueRewayatNames(), []);
+  const rewayatNames = useMemo(() => getAvailableRewayatNames(), []);
 
   const defaultFilters: FilterOptions = {
     styles: [],
