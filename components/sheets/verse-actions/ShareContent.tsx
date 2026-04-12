@@ -151,7 +151,11 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 
   const handleShareLink = useCallback(async () => {
     lightHaptics();
-    const url = verseShareUrl(surahNumber, ayahNumber);
+    const url = verseShareUrl(
+      surahNumber,
+      ayahNumber,
+      isDarkMode ? 'dark' : 'light',
+    );
     await nativeShareUrl(url, `Quran ${verseRefText}`);
     SheetManager.hideAll();
   }, [surahNumber, ayahNumber, verseRefText]);
