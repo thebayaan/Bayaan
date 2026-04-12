@@ -29,6 +29,7 @@ web-build/
 
 .cursorrules
 .cursor/
+.superpowers/
 
 config.ts
 
