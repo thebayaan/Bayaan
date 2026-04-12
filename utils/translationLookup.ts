@@ -3,23 +3,38 @@ import {
   type BundledTranslationId,
 } from '@/types/translation';
 
-interface BundledVerseEntry {
+interface SaheehEntry {
   t: string;
   f?: Record<string, string>;
 }
 
-type BundledTranslationData = Record<string, BundledVerseEntry>;
+interface ClearQuranEntry {
+  resource_id: number;
+  text: string;
+}
+
+interface ClearQuranData {
+  translations: ClearQuranEntry[];
+}
 
 // Module-scope data (require() is cached by Metro — zero cost after first load)
 const saheehData =
-  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as BundledTranslationData;
+  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as Record<
+    string,
+    SaheehEntry
+  >;
 const clearQuranData =
-  require('@/data/clear-quran-translation.json') as BundledTranslationData;
+  require('@/data/clear-quran-translation.json') as ClearQuranData;
 
-const BUNDLED_DATA: Record<BundledTranslationId, BundledTranslationData> = {
-  saheeh: saheehData,
-  'clear-quran': clearQuranData,
-};
+// Build verse_key → global 1-based index map for Clear Quran (keyed by sequential verse id)
+// The Clear Quran translations array is 0-indexed by global verse ID (1-6236 → index 0-6235)
+import type {QuranData} from '@/types/quran';
+const quranData = require('@/data/quran.json') as QuranData;
+
+const verseKeyToGlobalId: Record<string, number> = {};
+for (const verse of Object.values(quranData)) {
+  verseKeyToGlobalId[verse.verse_key] = verse.id;
+}
 
 function stripHtml(text: string): string {
   return text.replace(/<[^>]*>/g, '');
@@ -29,22 +44,36 @@ export function getBundledTranslation(
   verseKey: string,
   translationId: BundledTranslationId,
 ): string {
-  return BUNDLED_DATA[translationId][verseKey]?.t ?? '';
+  if (translationId === 'saheeh') {
+    return saheehData[verseKey]?.t ?? '';
+  }
+  const globalId = verseKeyToGlobalId[verseKey];
+  if (globalId == null) return '';
+  const entry = clearQuranData.translations[globalId - 1];
+  return entry ? stripHtml(entry.text) : '';
 }
 
 export function getBundledTranslationRaw(
   verseKey: string,
   translationId: BundledTranslationId,
 ): string {
-  const raw = BUNDLED_DATA[translationId][verseKey]?.t ?? '';
-  return stripHtml(raw);
+  if (translationId === 'saheeh') {
+    return saheehData[verseKey]?.t ?? '';
+  }
+  const globalId = verseKeyToGlobalId[verseKey];
+  if (globalId == null) return '';
+  return clearQuranData.translations[globalId - 1]?.text ?? '';
 }
 
 export function getBundledFootnotes(
   verseKey: string,
   translationId: BundledTranslationId,
 ): Record<string, string> | undefined {
-  return BUNDLED_DATA[translationId][verseKey]?.f;
+  if (translationId === 'saheeh') {
+    return saheehData[verseKey]?.f;
+  }
+  // Clear Quran doesn't have structured footnotes in our data
+  return undefined;
 }
 
 // Module-scope name registry for remote translations.
