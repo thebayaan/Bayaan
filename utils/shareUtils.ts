@@ -19,12 +19,18 @@ export function recitationShareUrl(
   return timestampSec ? `${base}?t=${timestampSec}` : base;
 }
 
-export function mushafShareUrl(page: number): string {
-  return `${BASE_URL}/share/mushaf/${page}`;
+export function mushafShareUrl(page: number, theme?: 'dark' | 'light'): string {
+  const base = `${BASE_URL}/share/mushaf/${page}`;
+  return theme === 'light' ? `${base}?theme=light` : base;
 }
 
-export function verseShareUrl(surah: number, ayah: number): string {
-  return `${BASE_URL}/share/verse/${surah}/${ayah}`;
+export function verseShareUrl(
+  surah: number,
+  ayah: number,
+  theme?: 'dark' | 'light',
+): string {
+  const base = `${BASE_URL}/share/verse/${surah}/${ayah}`;
+  return theme === 'light' ? `${base}?theme=light` : base;
 }
 
 export function adhkarShareUrl(superId: string): string {
