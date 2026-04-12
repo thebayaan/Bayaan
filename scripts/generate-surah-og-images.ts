@@ -57,7 +57,125 @@ function fontToBase64(filename: string): string {
 
 const manropeSemiBoldB64 = fontToBase64('Manrope-SemiBold.ttf');
 const manropeMediumB64 = fontToBase64('Manrope-Medium.ttf');
-const scheherazadeB64 = fontToBase64('ScheherazadeNew-Regular.ttf');
+const surahNamesB64 = fontToBase64('surah_names.ttf');
+
+// PUA codepoints from surahGlyphMap — maps surah ID to Unicode char
+const SURAH_GLYPHS: Record<number, string> = {
+  1: '\uE904',
+  2: '\uE905',
+  3: '\uE906',
+  4: '\uE907',
+  5: '\uE908',
+  6: '\uE90B',
+  7: '\uE90C',
+  8: '\uE90D',
+  9: '\uE90E',
+  10: '\uE90F',
+  11: '\uE910',
+  12: '\uE911',
+  13: '\uE912',
+  14: '\uE913',
+  15: '\uE914',
+  16: '\uE915',
+  17: '\uE916',
+  18: '\uE917',
+  19: '\uE918',
+  20: '\uE919',
+  21: '\uE91A',
+  22: '\uE91B',
+  23: '\uE91C',
+  24: '\uE91D',
+  25: '\uE91E',
+  26: '\uE91F',
+  27: '\uE920',
+  28: '\uE921',
+  29: '\uE922',
+  30: '\uE923',
+  31: '\uE924',
+  32: '\uE925',
+  33: '\uE926',
+  34: '\uE92E',
+  35: '\uE92F',
+  36: '\uE930',
+  37: '\uE931',
+  38: '\uE909',
+  39: '\uE90A',
+  40: '\uE927',
+  41: '\uE928',
+  42: '\uE929',
+  43: '\uE92A',
+  44: '\uE92B',
+  45: '\uE92C',
+  46: '\uE92D',
+  47: '\uE932',
+  48: '\uE902',
+  49: '\uE933',
+  50: '\uE934',
+  51: '\uE935',
+  52: '\uE936',
+  53: '\uE937',
+  54: '\uE938',
+  55: '\uE939',
+  56: '\uE93A',
+  57: '\uE93B',
+  58: '\uE93C',
+  59: '\uE900',
+  60: '\uE901',
+  61: '\uE941',
+  62: '\uE942',
+  63: '\uE943',
+  64: '\uE944',
+  65: '\uE945',
+  66: '\uE946',
+  67: '\uE947',
+  68: '\uE948',
+  69: '\uE949',
+  70: '\uE94A',
+  71: '\uE94B',
+  72: '\uE94C',
+  73: '\uE94D',
+  74: '\uE94E',
+  75: '\uE94F',
+  76: '\uE950',
+  77: '\uE951',
+  78: '\uE952',
+  79: '\uE93D',
+  80: '\uE93E',
+  81: '\uE93F',
+  82: '\uE940',
+  83: '\uE953',
+  84: '\uE954',
+  85: '\uE955',
+  86: '\uE956',
+  87: '\uE957',
+  88: '\uE958',
+  89: '\uE959',
+  90: '\uE95A',
+  91: '\uE95B',
+  92: '\uE95C',
+  93: '\uE95D',
+  94: '\uE95E',
+  95: '\uE95F',
+  96: '\uE960',
+  97: '\uE961',
+  98: '\uE962',
+  99: '\uE963',
+  100: '\uE964',
+  101: '\uE965',
+  102: '\uE966',
+  103: '\uE967',
+  104: '\uE968',
+  105: '\uE969',
+  106: '\uE96A',
+  107: '\uE96B',
+  108: '\uE96C',
+  109: '\uE96D',
+  110: '\uE96E',
+  111: '\uE96F',
+  112: '\uE970',
+  113: '\uE971',
+  114: '\uE972',
+};
 
 // ── Surah data ──────────────────────────────────────────────────────────────
 
@@ -84,13 +202,29 @@ const MESH_PALETTES = [
   ['#a5b4fc', '#c4b5fd', '#f9a8d4', '#5eead4'], // twilight
 ];
 
-const HERO_BG = [
-  '#1a1520', // purple
-  '#1a1510', // gold
-  '#0a1a1a', // teal
-  '#1c1015', // rose
-  '#0f172a', // indigo
-  '#0a1f15', // emerald
+const HERO_BG_DARK = [
+  '#1a1520',
+  '#1a1510',
+  '#0a1a1a',
+  '#1c1015',
+  '#0f172a',
+  '#0a1f15',
+];
+const HERO_BG_LIGHT = [
+  '#f5f0ff',
+  '#fdf8f0',
+  '#f0fdfa',
+  '#fff1f2',
+  '#eef2ff',
+  '#f0fdf4',
+];
+const HERO_ACCENT_DARK = [
+  '#a78bfa',
+  '#d4a574',
+  '#5eead4',
+  '#fda4af',
+  '#a5b4fc',
+  '#86efac',
 ];
 
 // ── SVG Icons ───────────────────────────────────────────────────────────────
@@ -113,10 +247,15 @@ const MADINAH_SVG = `<svg viewBox="0 0 1024 1024" fill="none" xmlns="http://www.
 
 // ── HTML builder ────────────────────────────────────────────────────────────
 
-function buildHtml(surah: SurahData): string {
+function buildHtml(surah: SurahData, dark: boolean): string {
   const idx = surah.id % 6;
   const palette = MESH_PALETTES[idx];
-  const baseBg = HERO_BG[idx];
+  const baseBg = dark ? HERO_BG_DARK[idx] : HERO_BG_LIGHT[idx];
+  const accentColor = HERO_ACCENT_DARK[idx];
+  const textColor = dark ? 'white' : '#1A1A1A';
+  const mainOpacity = dark ? 0.18 : 0.22;
+  const secondaryOpacity = dark ? 0.1 : 0.14;
+  const subtleAlpha = dark ? '0.15' : '0.25';
 
   const isMakkah = surah.revelation_place === 'Makkah';
   const placeIcon = isMakkah ? MAKKAH_SVG : MADINAH_SVG;
@@ -137,9 +276,9 @@ function buildHtml(surah: SurahData): string {
     src: url(data:font/truetype;base64,${manropeMediumB64}) format('truetype');
   }
   @font-face {
-    font-family: 'Scheherazade';
+    font-family: 'SurahNames';
     font-weight: 400;
-    src: url(data:font/truetype;base64,${scheherazadeB64}) format('truetype');
+    src: url(data:font/truetype;base64,${surahNamesB64}) format('truetype');
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -185,41 +324,32 @@ function buildHtml(surah: SurahData): string {
   .badge {
     font-family: 'Manrope', sans-serif;
     font-weight: 600;
-    font-size: 24px;
-    color: white;
-    opacity: 0.6;
-    background: rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 8px 18px;
+    font-size: 36px;
+    color: ${textColor};
+    opacity: 0.8;
   }
   .place {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-family: 'Manrope', sans-serif;
-    font-weight: 500;
-    font-size: 22px;
-    color: white;
-    opacity: 0.5;
+    color: ${textColor};
+    opacity: 0.8;
   }
   .place-icon {
-    width: 28px;
-    height: 28px;
-    color: white;
+    width: 48px;
+    height: 48px;
+    color: ${textColor};
   }
   .arabic-name {
-    font-family: 'Scheherazade', serif;
-    font-size: 52px;
-    color: white;
-    opacity: 0.4;
-    margin-bottom: 12px;
-    direction: rtl;
+    font-family: 'SurahNames', serif;
+    font-size: 90px;
+    color: ${textColor};
+    margin-bottom: 16px;
   }
   .surah-name {
     font-family: 'Manrope', sans-serif;
     font-weight: 600;
     font-size: 72px;
-    color: white;
+    color: ${textColor};
     text-align: center;
     line-height: 1.2;
   }
@@ -227,7 +357,7 @@ function buildHtml(surah: SurahData): string {
     font-family: 'Manrope', sans-serif;
     font-weight: 500;
     font-size: 28px;
-    color: white;
+    color: ${textColor};
     opacity: 0.45;
     margin-top: 16px;
     text-align: center;
@@ -238,32 +368,25 @@ function buildHtml(surah: SurahData): string {
     left: 56px;
     right: 56px;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
-  }
-  .verses {
-    font-family: 'Manrope', sans-serif;
-    font-weight: 500;
-    font-size: 22px;
-    color: white;
-    opacity: 0.45;
   }
   .branding {
     display: flex;
     align-items: center;
-    gap: 10px;
-    opacity: 0.35;
+    gap: 12px;
+    opacity: 0.8;
   }
   .branding-text {
     font-family: 'Manrope', sans-serif;
     font-weight: 600;
-    font-size: 22px;
-    color: white;
+    font-size: 32px;
+    color: ${textColor};
   }
   .starburst {
-    width: 24px;
-    height: 24px;
-    color: white;
+    width: 36px;
+    height: 36px;
+    color: ${textColor};
   }
 </style>
 </head>
@@ -272,19 +395,19 @@ function buildHtml(surah: SurahData): string {
   <svg class="mesh" width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <radialGradient id="g1" cx="0.2" cy="0.3" r="0.45">
-        <stop offset="0%" stop-color="${palette[0]}" stop-opacity="0.18"/>
+        <stop offset="0%" stop-color="${palette[0]}" stop-opacity="${mainOpacity}"/>
         <stop offset="100%" stop-color="${palette[0]}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="g2" cx="0.8" cy="0.75" r="0.4">
-        <stop offset="0%" stop-color="${palette[1]}" stop-opacity="0.18"/>
+        <stop offset="0%" stop-color="${palette[1]}" stop-opacity="${mainOpacity}"/>
         <stop offset="100%" stop-color="${palette[1]}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="g3" cx="0.6" cy="0.2" r="0.32">
-        <stop offset="0%" stop-color="${palette[2]}" stop-opacity="0.10"/>
+        <stop offset="0%" stop-color="${palette[2]}" stop-opacity="${secondaryOpacity}"/>
         <stop offset="100%" stop-color="${palette[2]}" stop-opacity="0"/>
       </radialGradient>
       <radialGradient id="g4" cx="0.3" cy="0.85" r="0.28">
-        <stop offset="0%" stop-color="${palette[3]}" stop-opacity="0.10"/>
+        <stop offset="0%" stop-color="${palette[3]}" stop-opacity="${secondaryOpacity}"/>
         <stop offset="100%" stop-color="${palette[3]}" stop-opacity="0"/>
       </radialGradient>
     </defs>
@@ -298,17 +421,15 @@ function buildHtml(surah: SurahData): string {
       <div class="badge">${surah.id}</div>
       <div class="place">
         <span class="place-icon">${placeIcon}</span>
-        ${surah.revelation_place}
       </div>
     </div>
-    <div class="arabic-name">${surah.name_arabic}</div>
+    <div class="arabic-name">&#x${(SURAH_GLYPHS[surah.id]?.codePointAt(0) ?? 0xe904).toString(16)};</div>
     <div class="surah-name">${surah.name}</div>
     <div class="translated">${surah.translated_name_english}</div>
     <div class="bottom-row">
-      <div class="verses">${surah.verses_count} verses</div>
       <div class="branding">
         <svg class="starburst" viewBox="0 0 1023 872" xmlns="http://www.w3.org/2000/svg">
-          <path d="${STARBURST_PATH}" fill="white"/>
+          <path d="${STARBURST_PATH}" fill="currentColor"/>
         </svg>
         <span class="branding-text">Bayaan</span>
       </div>
@@ -350,25 +471,29 @@ async function main(): Promise<void> {
   });
 
   for (const surah of toProcess) {
-    const page = await context.newPage();
-    const html = buildHtml(surah);
-    await page.setContent(html, {waitUntil: 'networkidle'});
+    for (const mode of ['dark', 'light'] as const) {
+      const page = await context.newPage();
+      const html = buildHtml(surah, mode === 'dark');
+      await page.setContent(html, {waitUntil: 'networkidle'});
 
-    const png = await page.screenshot({
-      type: 'png',
-      clip: {x: 0, y: 0, width: SIZE, height: SIZE},
-    });
+      const png = await page.screenshot({
+        type: 'png',
+        clip: {x: 0, y: 0, width: SIZE, height: SIZE},
+      });
 
-    await page.close();
+      await page.close();
 
-    if (DRY_RUN) {
-      const outPath = `/tmp/surah-og-${surah.id}.png`;
-      fs.writeFileSync(outPath, png);
-      console.log(`  [${surah.id}] ${surah.name} -> ${outPath}`);
-    } else {
-      const key = `assets/og-images/surah/${surah.id}.png`;
-      await uploadToR2(key, Buffer.from(png));
-      console.log(`  [${surah.id}] ${surah.name} -> ${key}`);
+      const suffix = mode === 'light' ? '-light' : '';
+
+      if (DRY_RUN) {
+        const outPath = `/tmp/surah-og-${surah.id}${suffix}.png`;
+        fs.writeFileSync(outPath, png);
+        console.log(`  [${surah.id}] ${surah.name} (${mode}) -> ${outPath}`);
+      } else {
+        const key = `assets/og-images/surah/${surah.id}${suffix}.png`;
+        await uploadToR2(key, Buffer.from(png));
+        console.log(`  [${surah.id}] ${surah.name} (${mode}) -> ${key}`);
+      }
     }
   }
 
@@ -376,7 +501,12 @@ async function main(): Promise<void> {
 
   if (DRY_RUN) {
     console.log('\nOpening generated images...');
-    const files = toProcess.map(s => `/tmp/surah-og-${s.id}.png`).join(' ');
+    const files = toProcess
+      .flatMap(s => [
+        `/tmp/surah-og-${s.id}.png`,
+        `/tmp/surah-og-${s.id}-light.png`,
+      ])
+      .join(' ');
     execSync(`open ${files}`);
   }
 
