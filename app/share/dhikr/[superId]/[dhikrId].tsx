@@ -17,10 +17,19 @@ export default function ShareDhikrReceiver() {
       return;
     }
 
-    router.replace({
-      pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
-      params: {superId, dhikrId},
-    });
+    router.replace('/(tabs)/(a.home)');
+    setTimeout(() => {
+      router.push({
+        pathname: '/(tabs)/(a.home)/adhkar/[superId]',
+        params: {superId},
+      });
+      setTimeout(() => {
+        router.push({
+          pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
+          params: {superId, dhikrId},
+        });
+      }, 100);
+    }, 100);
   }, [superId, dhikrId, router]);
 
   return (

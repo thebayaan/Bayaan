@@ -14,10 +14,13 @@ export default function ShareVerseReceiver() {
       return;
     }
 
-    router.replace({
-      pathname: '/mushaf',
-      params: {surah, ayah},
-    });
+    router.replace('/(tabs)/(b.surahs)');
+    setTimeout(() => {
+      router.push({
+        pathname: '/mushaf',
+        params: {surah, ayah},
+      });
+    }, 100);
   }, [surah, ayah, router]);
 
   return (

@@ -67,7 +67,7 @@ export function resolveRewayat(
 export async function shareUrl(url: string, message: string): Promise<void> {
   try {
     if (Platform.OS === 'ios') {
-      await Share.share({url, message});
+      await Share.share({url});
     } else {
       await Share.share({message: `${message}\n${url}`});
     }
