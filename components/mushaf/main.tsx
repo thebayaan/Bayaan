@@ -331,9 +331,9 @@ export default function MushafViewer({
   const currentSurahId = pageToSurah[currentPage] || 1;
 
   const handleSharePage = useCallback(() => {
-    const url = mushafShareUrl(currentPage);
+    const url = mushafShareUrl(currentPage, isDarkMode ? 'dark' : 'light');
     shareUrl(url, `Check out page ${currentPage} of the Quran on Bayaan`);
-  }, [currentPage]);
+  }, [currentPage, isDarkMode]);
 
   // iOS 26: configure Stack navigator header based on current mode
   useEffect(() => {
