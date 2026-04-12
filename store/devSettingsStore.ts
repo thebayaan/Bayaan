@@ -6,6 +6,8 @@ interface DevSettingsState {
   showFloatingDevMenu: boolean;
   setShowFloatingDevMenu: (show: boolean) => void;
   toggleFloatingDevMenu: () => void;
+  forceNetworkBanner: boolean;
+  toggleForceNetworkBanner: () => void;
   // Random card design override (-1 = auto/session seed)
   randomCardVariantIndex: number;
   setRandomCardVariantIndex: (index: number) => void;
@@ -20,6 +22,9 @@ export const useDevSettingsStore = create<DevSettingsState>()(
         set({showFloatingDevMenu: show}),
       toggleFloatingDevMenu: () =>
         set(state => ({showFloatingDevMenu: !state.showFloatingDevMenu})),
+      forceNetworkBanner: false,
+      toggleForceNetworkBanner: () =>
+        set(state => ({forceNetworkBanner: !state.forceNetworkBanner})),
       randomCardVariantIndex: -1,
       setRandomCardVariantIndex: (index: number) =>
         set({randomCardVariantIndex: index}),

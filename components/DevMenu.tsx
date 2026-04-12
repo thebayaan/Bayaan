@@ -27,6 +27,10 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
   const cycleRandomCardVariant = useDevSettingsStore(
     s => s.cycleRandomCardVariant,
   );
+  const forceNetworkBanner = useDevSettingsStore(s => s.forceNetworkBanner);
+  const toggleForceNetworkBanner = useDevSettingsStore(
+    s => s.toggleForceNetworkBanner,
+  );
 
   function getRandomCardLabel() {
     if (randomCardVariantIndex < 0) return 'Auto (session seed)';
@@ -188,6 +192,25 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
             onPressOut={() => setPressedItem(null)}>
             <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
               🎨 Random Card: {getRandomCardLabel()}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[
+              styles.devMenuItem,
+              {
+                backgroundColor:
+                  pressedItem === 'networkBanner'
+                    ? Color(theme.colors.text).alpha(0.08).toString()
+                    : 'transparent',
+              },
+            ]}
+            onPress={toggleForceNetworkBanner}
+            onPressIn={() => setPressedItem('networkBanner')}
+            onPressOut={() => setPressedItem(null)}>
+            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
+              📡 Network Banner: {forceNetworkBanner ? 'ON' : 'OFF'}
             </Text>
           </TouchableOpacity>
 
