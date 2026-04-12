@@ -8,6 +8,7 @@ import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
 import Color from 'color';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
 import {
   QuranIcon,
@@ -200,6 +201,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
   const bottomInset = useBottomInset();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
 
@@ -271,6 +273,7 @@ export default function SettingsScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
+            paddingTop: insets.top + moderateScale(10),
             paddingBottom: bottomInset,
           },
         ]}
