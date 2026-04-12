@@ -4,8 +4,28 @@ import {Reciter, Rewayat, RECITERS} from '../data/reciterData';
 import {usePlayerStore} from './player/store/playerStore';
 import {useReciterStore} from '../store/reciterStore';
 import {useApiHealthStore} from '../store/apiHealthStore';
+import fallbackReciters from '../data/reciters-fallback.json';
+
 const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
 const BAYAAN_API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY;
+
+// ── Killswitch ───────────────────────────────────────────────────────────────
+
+const CDN_CONFIG_URL = 'https://cdn.example.com/config/app-config.json';
+
+async function isBackendEnabled(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(CDN_CONFIG_URL, {signal: controller.signal});
+    clearTimeout(timeout);
+    if (!res.ok) return true; // Config fetch failed, assume backend is fine
+    const config = await res.json();
+    return config.useBackendApi !== false;
+  } catch {
+    return true; // CDN unreachable, proceed normally
+  }
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -136,6 +156,17 @@ export async function getAllReciters(): Promise<Reciter[]> {
     await getAllReciters();
   };
   setRetryFn(retry);
+
+  // Killswitch check — if backend is disabled via CDN config, use bundled fallback
+  const backendEnabled = await isBackendEnabled();
+  if (!backendEnabled) {
+    console.log(
+      '[dataService] Killswitch active — using bundled fallback data',
+    );
+    const fallback = fallbackReciters as Reciter[];
+    populateReciters(fallback);
+    return fallback;
+  }
 
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
