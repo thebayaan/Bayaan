@@ -410,7 +410,10 @@ export default function BrowseReciters({
       } else {
         router.push({
           pathname: '/(tabs)/(a.home)/reciter/[id]',
-          params: {id: reciter.id},
+          params: {
+            id: reciter.id,
+            ...(selectedRewayatId ? {rewayatId: selectedRewayatId} : {}),
+          },
         });
       }
     },
@@ -423,6 +426,35 @@ export default function BrowseReciters({
       handleSearchBlur();
     }
   }, [isSearchFocused, handleSearchBlur]);
+
+  // Resolve the matching rewayat ID for a given reciter based on current teacher/student filter
+  const getRewayatIdForReciter = useCallback(
+    (reciter: Reciter): string | undefined => {
+      const teacher = selectedTeacher;
+      const student = selectedStudent;
+      if (!teacher && !student) return undefined;
+
+      let match =
+        teacher && student
+          ? reciter.rewayat.find(r => {
+              if (!r.name) return false;
+              return (
+                resolveTeacher(r.name) === teacher &&
+                resolveStudent(r.name) === student
+              );
+            })
+          : undefined;
+
+      if (!match && teacher) {
+        match = reciter.rewayat.find(
+          r => r.name && resolveTeacher(r.name) === teacher,
+        );
+      }
+
+      return match?.id;
+    },
+    [selectedTeacher, selectedStudent],
+  );
 
   // Top offset: native header height on iOS, 0 on Android (custom Header handles it)
   const topOffset = useNativeHeader ? iosHeaderHeight : 0;
@@ -444,7 +476,11 @@ export default function BrowseReciters({
         <View
           style={[
             styles.searchFilterContainer,
-            {marginTop: useNativeHeader ? topOffset : insets.top + moderateScale(56)},
+            {
+              marginTop: useNativeHeader
+                ? topOffset
+                : insets.top + moderateScale(56),
+            },
           ]}>
           <SearchInput
             placeholder="Search reciters..."
@@ -551,6 +587,7 @@ export default function BrowseReciters({
             theme={theme}
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={() => Keyboard.dismiss()}
+            getRewayatIdForReciter={getRewayatIdForReciter}
           />
         </View>
 

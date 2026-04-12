@@ -479,10 +479,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         : [],
     [sessionSeed, registryLoaded],
   );
-  const rewayatTypes = useMemo(
-    () => seededShuffle(getAllRewayatTypes(), sessionSeed + 7),
-    [sessionSeed],
-  );
+  const rewayatTypes = useMemo(() => getAllRewayatTypes(), []);
 
   // Handler for rewayat card press
   const handleRewayatPress = (rewayat: RewayatInfo) => {
@@ -599,6 +596,21 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
             <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
               Adhkar
             </Text>
+            <Pressable
+              onPress={() => router.push('/(tabs)/(a.home)/adhkar')}
+              hitSlop={8}>
+              <Text
+                style={[
+                  styles.seeMoreButton,
+                  {
+                    color: Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString(),
+                  },
+                ]}>
+                See More
+              </Text>
+            </Pressable>
           </View>
           <FlatList
             data={adhkarCategories}
@@ -675,7 +687,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       {/* Rewayat collection - Browse by different narration styles */}
       {rewayatTypes.length > 0 && (
         <Section
-          title="Explore by Rewayat"
+          title="Explore by Rewayah"
           data={rewayatTypes}
           variant="rewayat"
           onReciterPress={onReciterPress}
@@ -717,6 +729,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Manrope-SemiBold',
   },
   clearButton: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Medium',
+  },
+  seeMoreButton: {
     fontSize: moderateScale(13),
     fontFamily: 'Manrope-Medium',
   },
