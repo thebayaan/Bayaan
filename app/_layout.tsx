@@ -37,6 +37,7 @@ import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {restoreSession} from '@/services/player/utils/restoreSession';
+import {getAllReciters} from '@/services/dataService';
 import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
@@ -160,6 +161,10 @@ export default function RootLayout() {
         // Initialize expo-audio service
         await expoAudioService.initialize();
         if (__DEV__) console.log('[App] expo-audio service initialized');
+
+        // Fetch reciter data from backend API (or fallback if killswitch active)
+        await getAllReciters();
+        if (__DEV__) console.log('[App] Reciter data loaded');
 
         // Initialize all SQLite services, adhkar, playlists, mushaf, fonts, stores, etc.
         // This blocks splash screen so everything is ready when the user sees the app
