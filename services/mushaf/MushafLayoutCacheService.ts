@@ -1,13 +1,20 @@
 import {createMMKV, type MMKV} from 'react-native-mmkv';
 
 import {type JustResultByLine, replacer, reviver} from './JustificationService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // Bump this when font files change or layout computation logic changes.
 // Incrementing invalidates all cached layouts and forces recomputation.
-const SCHEMA_VERSION = 8;
+// v9: layouts are now keyed by rewayah (word widths differ per transmission
+// — sharing a cache across rewayahs leaves Shouba lines under-stretched).
+const SCHEMA_VERSION = 9;
 
-function mmkvKey(fontFamily: string, pageNumber: number): string {
-  return `dk:${fontFamily}:${pageNumber}`;
+function mmkvKey(
+  fontFamily: string,
+  pageNumber: number,
+  rewayah: string,
+): string {
+  return `dk:${fontFamily}:${rewayah}:${pageNumber}`;
 }
 
 /**
@@ -40,7 +47,8 @@ class MushafLayoutCacheService {
     pageNumber: number,
     fontFamily: string,
   ): JustResultByLine[] | undefined {
-    const key = mmkvKey(fontFamily, pageNumber);
+    const rewayah = useMushafSettingsStore.getState().rewayah;
+    const key = mmkvKey(fontFamily, pageNumber, rewayah);
     const json = this.mmkv.getString(key);
     if (!json) return undefined;
     const parsed = JSON.parse(json, reviver) as JustResultByLine[];
@@ -57,7 +65,8 @@ class MushafLayoutCacheService {
     fontFamily: string,
     data: JustResultByLine[],
   ): void {
-    const key = mmkvKey(fontFamily, pageNumber);
+    const rewayah = useMushafSettingsStore.getState().rewayah;
+    const key = mmkvKey(fontFamily, pageNumber, rewayah);
     this.mmkv.set(key, JSON.stringify(data, replacer));
   }
 

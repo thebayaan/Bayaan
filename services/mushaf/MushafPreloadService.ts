@@ -5,6 +5,9 @@ import {
 } from '@shopify/react-native-skia';
 import {Image} from 'react-native';
 import {digitalKhattDataService} from './DigitalKhattDataService';
+import {quranTextService} from './QuranTextService';
+import {rewayahDiffService} from './RewayahDiffService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
@@ -57,8 +60,22 @@ class MushafPreloadService {
   }
 
   private async _doInit(): Promise<void> {
+    // Wait for Zustand persist hydration so DK service reads the user's
+    // saved rewayah rather than the default (otherwise a reloaded app with
+    // Shu'bah persisted would briefly init against Hafs and never catch up).
+    await waitForSettingsHydration();
+
     // DK data must be ready first — page lines are needed for layout computation
     await digitalKhattDataService.initialize();
+
+    // Load rewayah diff ranges for the current rewayah, then keep in sync.
+    // On switch the line-text caches and diff cache must be cleared before
+    // SkiaPage re-renders so line text and highlight offsets are recomputed.
+    rewayahDiffService.loadForRewayah(digitalKhattDataService.rewayah);
+    digitalKhattDataService.onRewayahChange(rewayah => {
+      quranTextService.clearCaches();
+      rewayahDiffService.loadForRewayah(rewayah);
+    });
 
     await this.loadSkiaFonts();
 
@@ -96,3 +113,14 @@ class MushafPreloadService {
 }
 
 export const mushafPreloadService = new MushafPreloadService();
+
+function waitForSettingsHydration(): Promise<void> {
+  const persist = useMushafSettingsStore.persist;
+  if (persist.hasHydrated()) return Promise.resolve();
+  return new Promise<void>(resolve => {
+    const unsub = persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
+}

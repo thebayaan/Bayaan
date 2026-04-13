@@ -32,6 +32,7 @@ import {
   DISPLAY_MAX,
   type MushafRenderer,
   type MushafScrollDirection,
+  type RewayahId,
 } from '@/store/mushafSettingsStore';
 
 // --- Pre-cache Translation/Transliteration Data --- //
@@ -434,6 +435,10 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     toggleThemes,
     lightThemeId,
     darkThemeId,
+    rewayah,
+    showRewayahDiffs,
+    setRewayah,
+    toggleRewayahDiffs,
   } = useMushafSettingsStore();
 
   const verseKey = '3:138';
@@ -496,6 +501,22 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       setMushafRenderer(value);
     },
     [setMushafRenderer],
+  );
+
+  const handleRewayahSelect = useCallback(
+    async (value: RewayahId) => {
+      if (value === rewayah) return;
+      // Load the new words DB BEFORE flipping the store so React re-renders
+      // with the correct text/layout already in place.
+      try {
+        await digitalKhattDataService.switchRewayah(value);
+      } catch (error) {
+        console.error('[MushafSettings] Failed to switch rewayah:', error);
+        return;
+      }
+      setRewayah(value);
+    },
+    [rewayah, setRewayah],
   );
 
   return (
@@ -875,9 +896,83 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           );
         })}
       </View>
+
+      {/* REWAYAH Section */}
+      <Text style={styles.sectionHeader}>REWAYAH</Text>
+      <View style={styles.card}>
+        {REWAYAH_OPTIONS.map((option, idx) => {
+          const isSelected = rewayah === option.value;
+          return (
+            <React.Fragment key={option.value}>
+              {idx > 0 && <View style={styles.divider} />}
+              <Pressable
+                style={({pressed}) => [
+                  styles.radioRow,
+                  pressed && styles.radioRowPressed,
+                ]}
+                onPress={() => handleRewayahSelect(option.value)}>
+                <View
+                  style={[
+                    styles.radioCircle,
+                    isSelected && styles.radioCircleSelected,
+                  ]}>
+                  {isSelected && <View style={styles.radioCircleFill} />}
+                </View>
+                <View style={styles.radioTextContainer}>
+                  <Text
+                    style={[
+                      styles.radioLabel,
+                      isSelected && styles.radioLabelSelected,
+                    ]}>
+                    {option.label}
+                  </Text>
+                  <Text style={styles.radioDescription}>
+                    {option.description}
+                  </Text>
+                </View>
+              </Pressable>
+            </React.Fragment>
+          );
+        })}
+      </View>
+      {rewayah !== 'hafs' && (
+        <View style={styles.card}>
+          <View style={styles.optionRow}>
+            <Text style={styles.optionLabel}>Show Differences</Text>
+            <Switch
+              trackColor={trackColor}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor={trackColor.false}
+              onValueChange={toggleRewayahDiffs}
+              value={showRewayahDiffs}
+              style={styles.switchStyle}
+            />
+          </View>
+          <Text style={styles.helperText}>
+            Highlights words that differ from Hafs in the current rewayah
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
+
+const REWAYAH_OPTIONS: Array<{
+  value: RewayahId;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'hafs',
+    label: "Hafs 'an Asim",
+    description: 'The standard reading, used by most of the Muslim world',
+  },
+  {
+    value: 'shouba',
+    label: "Shu'bah 'an Asim",
+    description: "The second Kufan transmission from Asim, brother of Hafs'",
+  },
+];
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

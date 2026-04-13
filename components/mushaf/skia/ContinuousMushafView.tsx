@@ -34,6 +34,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {JustService} from '@/services/mushaf/JustificationService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
+import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
 import {
   quranTextService,
   PAGE_WIDTH,
@@ -107,10 +108,15 @@ interface MushafPageContentProps {
   showTajweed: boolean;
   indexedTajweedData: IndexedTajweedData | null;
   fontFamily: string;
+  rewayah: string;
+  showRewayahDiffs: boolean;
   dividerFont: SkFont | null;
   nameFontSize: number;
   onTap?: () => void;
 }
+
+// Background tint for rewayah-diff words — matches SkiaPage.
+const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
 
 const EMPTY_BG_MAP = new Map<
   number,
@@ -126,6 +132,8 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     showTajweed,
     indexedTajweedData,
     fontFamily,
+    rewayah,
+    showRewayahDiffs,
     dividerFont,
     nameFontSize,
     onTap,
@@ -155,7 +163,11 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
       }
       return result;
-    }, [pageNumber, fontMgr, fontFamily]);
+      // rewayah is intentionally in the dep list even though it's not read
+      // directly: getCachedPageLayout/setPageLayout key the cache by rewayah
+      // internally, so the memo must re-run when rewayah changes.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageNumber, fontMgr, fontFamily, rewayah]);
 
     const lineTajweedMaps = useMemo(() => {
       if (!showTajweed || !indexedTajweedData) return null;
@@ -400,17 +412,38 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     >(() => {
       const hasAnnotations = Object.keys(persistentHighlights).length > 0;
       const hasPlayback = !!playbackVerseKey;
+      const hasRewayahDiffs =
+        showRewayahDiffs && rewayah !== 'hafs' && rewayahDiffService.hasDiffs;
       const selectedSet =
         selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
           ? new Set(selectedVerseKeys)
           : null;
 
-      if (!hasAnnotations && !hasPlayback && !selectedSet) return EMPTY_BG_MAP;
+      if (!hasAnnotations && !hasPlayback && !selectedSet && !hasRewayahDiffs)
+        return EMPTY_BG_MAP;
 
       const map = new Map<
         number,
         Array<{start: number; end: number; color: string}>
       >();
+
+      if (hasRewayahDiffs) {
+        for (let lineIndex = 0; lineIndex < pageLines.length; lineIndex++) {
+          const ranges = rewayahDiffService.getDiffRangesForLine(
+            pageNumber,
+            lineIndex,
+          );
+          if (ranges.length === 0) continue;
+          let arr = map.get(lineIndex);
+          if (!arr) {
+            arr = [];
+            map.set(lineIndex, arr);
+          }
+          for (const r of ranges) {
+            arr.push({start: r.start, end: r.end, color: REWAYAH_DIFF_COLOR});
+          }
+        }
+      }
 
       const addVerseHighlight = (vk: string, color: string) => {
         const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
@@ -463,6 +496,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       selectedPageNumber,
       pageNumber,
       selectionBgColor,
+      rewayah,
+      showRewayahDiffs,
+      pageLines,
     ]);
 
     // ── Render ─────────────────────────────────────────────
@@ -581,6 +617,8 @@ const ContinuousMushafView = forwardRef<
   // Settings subscriptions
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
+  const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
   const fontFamily =
@@ -647,6 +685,8 @@ const ContinuousMushafView = forwardRef<
           showTajweed={showTajweed}
           indexedTajweedData={indexedTajweedData}
           fontFamily={fontFamily}
+          rewayah={rewayah}
+          showRewayahDiffs={showRewayahDiffs}
           dividerFont={surahHeaderFonts.dividerFont}
           nameFontSize={surahHeaderFonts.nameFontSize}
           onTap={onTap}
@@ -660,6 +700,8 @@ const ContinuousMushafView = forwardRef<
       showTajweed,
       indexedTajweedData,
       fontFamily,
+      rewayah,
+      showRewayahDiffs,
       surahHeaderFonts,
       onTap,
     ],
