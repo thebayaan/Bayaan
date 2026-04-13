@@ -4,6 +4,7 @@ import {
   UserPlaylist,
   PlaylistItem,
 } from '@/services/playlist/PlaylistService';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 interface PlaylistsState {
   // State
@@ -81,6 +82,10 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
       await new Promise(resolve => setTimeout(resolve, 50));
       // Refresh the list to get updated item counts
       await get().loadPlaylists();
+      analyticsService.trackPlaylistModified({
+        action: 'create',
+        track_count: 0,
+      });
       return newPlaylist;
     } catch (err) {
       const errorMessage =
@@ -182,6 +187,11 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
       );
       // Refresh to update item counts
       await get().loadPlaylists();
+      const playlist = get().playlists.find(p => p.id === playlistId);
+      analyticsService.trackPlaylistModified({
+        action: 'add_track',
+        track_count: playlist?.itemCount ?? 0,
+      });
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to add item to playlist';
@@ -197,6 +207,10 @@ export const usePlaylistsStore = create<PlaylistsState>((set, get) => ({
       await playlistService.removeFromPlaylist(itemId);
       // Refresh to update item counts
       await get().loadPlaylists();
+      analyticsService.trackPlaylistModified({
+        action: 'remove_track',
+        track_count: 0,
+      });
     } catch (err) {
       const errorMessage =
         err instanceof Error
