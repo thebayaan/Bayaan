@@ -48,6 +48,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import * as Sentry from '@sentry/react-native';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -68,6 +69,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 SystemUI.setBackgroundColorAsync(
   Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
 );
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+  tracesSampleRate: 0.2,
+  enableAutoSessionTracking: true,
+});
 
 /** Connects PostHog SDK to our analytics service and tracks app lifecycle. */
 function AnalyticsConnector(): null {
@@ -100,7 +107,7 @@ function AnalyticsConnector(): null {
   return null;
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
@@ -478,3 +485,5 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);
