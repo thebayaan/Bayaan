@@ -9,12 +9,14 @@ import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {
+  AppState,
   View,
   Text,
   Platform,
   StatusBar as RNStatusBar,
   Appearance,
   InteractionManager,
+  type AppStateStatus,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ThemeProvider} from '@react-navigation/native';
@@ -34,7 +36,8 @@ import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
 import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
-import {PostHogProvider} from 'posthog-react-native';
+import {PostHogProvider, usePostHog} from 'posthog-react-native';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {restoreSession} from '@/services/player/utils/restoreSession';
@@ -65,6 +68,37 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 SystemUI.setBackgroundColorAsync(
   Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
 );
+
+/** Connects PostHog SDK to our analytics service and tracks app lifecycle. */
+function AnalyticsConnector(): null {
+  const posthog = usePostHog();
+
+  // Connect PostHog instance to analytics service
+  useEffect(() => {
+    if (posthog) {
+      analyticsService.setPostHogInstance(posthog);
+      analyticsService.trackAppOpened();
+    }
+  }, [posthog]);
+
+  // Track app foreground/background transitions
+  useEffect(() => {
+    function handleAppStateChange(nextState: AppStateStatus): void {
+      if (nextState === 'background' || nextState === 'inactive') {
+        analyticsService.trackAppBackgrounded();
+      } else if (nextState === 'active') {
+        analyticsService.trackAppOpened();
+      }
+    }
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
+    );
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
@@ -393,6 +427,7 @@ export default function RootLayout() {
         autocapture={{
           captureScreens: true,
         }}>
+        <AnalyticsConnector />
         <ThemeProvider value={navigationTheme}>
           <SafeAreaProvider>
             <ExpoAudioProvider>
