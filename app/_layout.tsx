@@ -34,6 +34,7 @@ import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
 import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
+import {PostHogProvider} from 'posthog-react-native';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {restoreSession} from '@/services/player/utils/restoreSession';
@@ -382,49 +383,63 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider value={navigationTheme}>
-        <SafeAreaProvider>
-          <ExpoAudioProvider>
-            <GestureHandlerRootView
-              style={{flex: 1, backgroundColor: theme.colors.background}}
-              // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
-              overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
-              onLayout={onLayoutRootView}>
-              <ApiDisruptionBanner />
-              <SheetProvider>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: {
-                      paddingTop: 0,
-                      backgroundColor: theme.colors.background,
-                    },
-                    animation: 'fade',
-                  }}>
-                  <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-                  <Stack.Screen
-                    name="mushaf"
-                    options={{
-                      headerShown: USE_GLASS,
-                      headerTransparent: true,
-                      headerStyle: {backgroundColor: 'transparent'},
-                      headerShadowVisible: false,
-                      headerTitle: '',
-                      headerTitleAlign: 'center',
-                      headerBackButtonDisplayMode: 'minimal',
-                      animation: 'slide_from_right',
-                      fullScreenGestureEnabled: false,
-                    }}
-                  />
-                </Stack>
-                <PlayerSheet />
-                <WhatsNewModal ref={whatsNewModalRef} />
-                <DevMenu whatsNewModalRef={whatsNewModalRef} />
-              </SheetProvider>
-            </GestureHandlerRootView>
-          </ExpoAudioProvider>
-        </SafeAreaProvider>
-      </ThemeProvider>
+      <PostHogProvider
+        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? ''}
+        options={{
+          host: 'https://us.i.posthog.com',
+          flushAt: 20,
+          flushInterval: 30000,
+        }}
+        autocapture={{
+          captureScreens: true,
+        }}>
+        <ThemeProvider value={navigationTheme}>
+          <SafeAreaProvider>
+            <ExpoAudioProvider>
+              <GestureHandlerRootView
+                style={{flex: 1, backgroundColor: theme.colors.background}}
+                // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
+                overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                onLayout={onLayoutRootView}>
+                <ApiDisruptionBanner />
+                <SheetProvider>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: {
+                        paddingTop: 0,
+                        backgroundColor: theme.colors.background,
+                      },
+                      animation: 'fade',
+                    }}>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{headerShown: false}}
+                    />
+                    <Stack.Screen
+                      name="mushaf"
+                      options={{
+                        headerShown: USE_GLASS,
+                        headerTransparent: true,
+                        headerStyle: {backgroundColor: 'transparent'},
+                        headerShadowVisible: false,
+                        headerTitle: '',
+                        headerTitleAlign: 'center',
+                        headerBackButtonDisplayMode: 'minimal',
+                        animation: 'slide_from_right',
+                        fullScreenGestureEnabled: false,
+                      }}
+                    />
+                  </Stack>
+                  <PlayerSheet />
+                  <WhatsNewModal ref={whatsNewModalRef} />
+                  <DevMenu whatsNewModalRef={whatsNewModalRef} />
+                </SheetProvider>
+              </GestureHandlerRootView>
+            </ExpoAudioProvider>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </PostHogProvider>
     </ErrorBoundary>
   );
 }
