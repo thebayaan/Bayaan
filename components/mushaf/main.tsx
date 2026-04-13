@@ -59,6 +59,7 @@ import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
 } from './PageEdgeDecoration';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
@@ -330,6 +331,63 @@ export default function MushafViewer({
 
   const currentSurahId = pageToSurah[currentPage] || 1;
 
+  // --- Analytics: mushaf page tracking ---
+  const pageReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageVisibleSinceRef = useRef<number>(Date.now());
+  const sessionStartRef = useRef<number>(Date.now());
+  const pagesOpenedRef = useRef<number>(1);
+  const pagesReadRef = useRef<number>(0);
+
+  const trackPageChange = useCallback(
+    (page: number) => {
+      const surahId = pageToSurah[page] || 1;
+      const juzNumber = getJuzForPage(page);
+
+      // Fire page_opened
+      analyticsService.trackMushafPageOpened({
+        page_number: page,
+        surah_id: surahId,
+        juz_number: juzNumber,
+      });
+      pagesOpenedRef.current += 1;
+
+      // Clear existing page_read timer
+      if (pageReadTimerRef.current) {
+        clearTimeout(pageReadTimerRef.current);
+      }
+
+      // Start new 15s timer for page_read
+      pageVisibleSinceRef.current = Date.now();
+      pageReadTimerRef.current = setTimeout(() => {
+        const durationMs = Date.now() - pageVisibleSinceRef.current;
+        analyticsService.trackMushafPageRead({
+          page_number: page,
+          duration_ms: durationMs,
+          surah_id: surahId,
+        });
+        pagesReadRef.current += 1;
+      }, 15_000);
+    },
+    [pageToSurah],
+  );
+
+  // Track initial page + start page_read timer on mount
+  useEffect(() => {
+    trackPageChange(initialPage);
+    return () => {
+      // Session ended on unmount
+      if (pageReadTimerRef.current) {
+        clearTimeout(pageReadTimerRef.current);
+      }
+      analyticsService.trackMushafSessionEnded({
+        pages_opened: pagesOpenedRef.current,
+        pages_read: pagesReadRef.current,
+        total_duration_ms: Date.now() - sessionStartRef.current,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSharePage = useCallback(() => {
     const url = mushafShareUrl(currentPage, isDarkMode ? 'dark' : 'light');
     shareUrl(url, `Check out page ${currentPage} of the Quran on Bayaan`);
@@ -457,6 +515,7 @@ export default function MushafViewer({
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
         mushafSessionStore.setLastReadPage(page);
+        trackPageChange(page);
         // Update the active reading chain (swipe = same chain, even across surah boundaries)
         const surahId = digitalKhattDataService.initialized
           ? digitalKhattDataService.getPageToSurah()[page]
@@ -466,7 +525,7 @@ export default function MushafViewer({
         }
       }
     },
-    [],
+    [trackPageChange],
   );
 
   const viewabilityConfig = useMemo(
@@ -607,13 +666,14 @@ export default function MushafViewer({
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
         mushafSessionStore.setLastReadPage(page);
+        trackPageChange(page);
         const surahId = pageToSurah[page];
         if (surahId) {
           useMushafSettingsStore.getState().updateActiveChain(surahId, page);
         }
       }
     },
-    [currentPage, pageToSurah],
+    [currentPage, pageToSurah, trackPageChange],
   );
 
   // Mushaf player state

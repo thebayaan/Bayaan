@@ -28,6 +28,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -235,6 +236,14 @@ export function SearchView({
       );
 
       setSearchResults(combinedResults);
+
+      // Fire analytics after search completes (already debounced via debouncedQuery)
+      if (debouncedQuery.trim().length > 0) {
+        analyticsService.trackSearchPerformed({
+          query: debouncedQuery.trim(),
+          results_count: combinedResults.length,
+        });
+      }
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
@@ -433,7 +442,10 @@ export function SearchView({
           <ScrollView
             style={styles.flexFill}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, {paddingBottom: bottomInset}]}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {paddingBottom: bottomInset},
+            ]}
             keyboardShouldPersistTaps="handled">
             {recentSearches.length > 0 ? (
               <View>
