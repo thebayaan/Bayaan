@@ -53,6 +53,11 @@ class QuranTextService {
     this.initLineWidths();
   }
 
+  clearCaches(): void {
+    this.lineTextCache.clear();
+    this.lineTextInfoCache.clear();
+  }
+
   private initBases(): void {
     for (let i = 0; i < dualJoinLetters.length; i++) {
       this.bases.add(dualJoinLetters.charCodeAt(i));
