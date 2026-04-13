@@ -145,11 +145,12 @@ export async function getAllReciters(): Promise<Reciter[]> {
   const {setDisrupted, setRetryFn, clearDisruption} =
     useApiHealthStore.getState();
 
-  if (!API_BASE || !API_KEY) {
+  const canFetchFromApi = Boolean(API_BASE && API_KEY);
+
+  if (!canFetchFromApi) {
     console.warn(
       '[dataService] EXPO_PUBLIC_BAYAAN_API_URL or EXPO_PUBLIC_BAYAAN_API_KEY is not set.',
     );
-    return [];
   }
 
   const retry = async () => {
@@ -158,45 +159,59 @@ export async function getAllReciters(): Promise<Reciter[]> {
   setRetryFn(retry);
 
   // Killswitch check — if backend is disabled via CDN config, use bundled fallback
-  const backendEnabled = await isBackendEnabled();
-  if (!backendEnabled) {
-    console.log(
-      '[dataService] Killswitch active — using bundled fallback data',
-    );
-    const fallback = fallbackReciters as Reciter[];
-    populateReciters(fallback);
-    return fallback;
+  if (canFetchFromApi) {
+    const backendEnabled = await isBackendEnabled();
+    if (!backendEnabled) {
+      console.log(
+        '[dataService] Killswitch active — using bundled fallback data',
+      );
+      const fallback = fallbackReciters as Reciter[];
+      populateReciters(fallback);
+      return fallback;
+    }
   }
 
   const cached = await getStoredData<Reciter[]>(RECITERS_KEY);
 
   if (cached && cached.data.length > 0) {
     populateReciters(cached.data);
-    refreshRecitersInBackground().catch(() => {});
+    if (canFetchFromApi) {
+      refreshRecitersInBackground().catch(() => {});
+    }
     return cached.data;
   }
 
   // First launch — fetch from API (blocking)
-  try {
-    const apiReciters = await fetchAllRecitersFromApi();
-    if (apiReciters.length > 0) {
-      await setStoredData(RECITERS_KEY, apiReciters);
-      populateReciters(apiReciters);
-      clearDisruption();
-      return apiReciters;
+  if (canFetchFromApi) {
+    try {
+      const apiReciters = await fetchAllRecitersFromApi();
+      if (apiReciters.length > 0) {
+        await setStoredData(RECITERS_KEY, apiReciters);
+        populateReciters(apiReciters);
+        clearDisruption();
+        return apiReciters;
+      }
+    } catch (err) {
+      console.warn('[dataService] API fetch failed on first load:', err);
+      // Try stale cache before giving up
+      const stale = await getStoredData<Reciter[]>(RECITERS_KEY, {
+        allowStale: true,
+      });
+      if (stale && stale.data.length > 0) {
+        populateReciters(stale.data);
+        setDisrupted(true, {reason: 'unreachable', stale: true});
+        return stale.data;
+      }
+      setDisrupted(true, {reason: 'unreachable', stale: false});
     }
-  } catch (err) {
-    console.warn('[dataService] API fetch failed on first load:', err);
-    // Try stale cache before giving up
-    const stale = await getStoredData<Reciter[]>(RECITERS_KEY, {
-      allowStale: true,
-    });
-    if (stale && stale.data.length > 0) {
-      populateReciters(stale.data);
-      setDisrupted(true, {reason: 'unreachable', stale: true});
-      return stale.data;
-    }
-    setDisrupted(true, {reason: 'unreachable', stale: false});
+  }
+
+  // Last resort — bundled fallback data
+  const fallback = fallbackReciters as Reciter[];
+  if (fallback.length > 0) {
+    console.log('[dataService] Using bundled fallback data');
+    populateReciters(fallback);
+    return fallback;
   }
 
   return [];
