@@ -6,9 +6,9 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {Feather, MaterialIcons} from '@expo/vector-icons';
 import {clearPlayerCache} from '@/services/player/utils/storage';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Color from 'color';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
 import {
   QuranIcon,
@@ -200,8 +200,8 @@ const renderIcon = (
 export default function SettingsScreen() {
   const router = useRouter();
   const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
   const bottomInset = useBottomInset();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
 
@@ -269,10 +269,11 @@ export default function SettingsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + moderateScale(16),
+            paddingTop: insets.top + moderateScale(10),
             paddingBottom: bottomInset,
           },
         ]}

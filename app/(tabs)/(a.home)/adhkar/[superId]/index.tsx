@@ -21,7 +21,7 @@ import {
   useNavigation,
   Link,
 } from 'expo-router';
-import {Ionicons} from '@expo/vector-icons';
+import {Ionicons, Feather} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useAdhkar} from '@/hooks/useAdhkar';
@@ -36,6 +36,7 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from '@react-navigation/elements';
+import {adhkarShareUrl, shareUrl} from '@/utils/shareUtils';
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -164,6 +165,12 @@ const SuperCategoryListScreen: React.FC = () => {
     return categoryGroups.flatMap(group => group.adhkar);
   }, [categoryGroups]);
 
+  const handleShare = useCallback(() => {
+    if (!superId) return;
+    const url = adhkarShareUrl(superId);
+    shareUrl(url, `Check out ${displayTitle} on Bayaan`);
+  }, [superId, displayTitle]);
+
   // Play All handler
   const handlePlayAll = useCallback(() => {
     if (!superId) return;
@@ -264,7 +271,20 @@ const SuperCategoryListScreen: React.FC = () => {
         </View>
       ),
       headerRight: () => (
-        <View style={{paddingHorizontal: moderateScale(4)}}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: moderateScale(20),
+            paddingHorizontal: moderateScale(6),
+          }}>
+          <Pressable onPress={handleShare} hitSlop={8}>
+            <Feather
+              name="share"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
           <PlayAllButton
             onPress={handlePlayAll}
             isPlaying={isThisCategoryPlaying}
@@ -278,6 +298,7 @@ const SuperCategoryListScreen: React.FC = () => {
     displayTitle,
     currentSectionTitle,
     isSingleCategory,
+    handleShare,
     handlePlayAll,
     isThisCategoryPlaying,
     loading,
@@ -371,15 +392,9 @@ const SuperCategoryListScreen: React.FC = () => {
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           contentInset={USE_GLASS ? {top: headerHeight} : undefined}
-          contentOffset={
-            USE_GLASS ? {x: 0, y: -headerHeight} : undefined
-          }
-          scrollIndicatorInsets={
-            USE_GLASS ? {top: headerHeight} : undefined
-          }
-          style={
-            !USE_GLASS ? {marginTop: headerHeight} : undefined
-          }
+          contentOffset={USE_GLASS ? {x: 0, y: -headerHeight} : undefined}
+          scrollIndicatorInsets={USE_GLASS ? {top: headerHeight} : undefined}
+          style={!USE_GLASS ? {marginTop: headerHeight} : undefined}
           showsVerticalScrollIndicator={false}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
@@ -396,15 +411,9 @@ const SuperCategoryListScreen: React.FC = () => {
           stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
           contentInset={USE_GLASS ? {top: headerHeight} : undefined}
-          contentOffset={
-            USE_GLASS ? {x: 0, y: -headerHeight} : undefined
-          }
-          scrollIndicatorInsets={
-            USE_GLASS ? {top: headerHeight} : undefined
-          }
-          style={
-            !USE_GLASS ? {marginTop: headerHeight} : undefined
-          }
+          contentOffset={USE_GLASS ? {x: 0, y: -headerHeight} : undefined}
+          scrollIndicatorInsets={USE_GLASS ? {top: headerHeight} : undefined}
+          style={!USE_GLASS ? {marginTop: headerHeight} : undefined}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
           maxToRenderPerBatch={15}

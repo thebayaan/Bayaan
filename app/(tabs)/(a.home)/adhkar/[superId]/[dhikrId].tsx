@@ -1,12 +1,21 @@
-import React, {useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect} from 'react';
+import React, {
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  useMemo,
+  useLayoutEffect,
+} from 'react';
 import {
   View,
   Text,
   FlatList,
   Dimensions,
   ViewToken,
+  Pressable,
 } from 'react-native';
 import {useLocalSearchParams, useRouter, useNavigation} from 'expo-router';
+import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useAdhkar} from '@/hooks/useAdhkar';
@@ -20,6 +29,7 @@ import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from '@react-navigation/elements';
+import {dhikrShareUrl, shareUrl} from '@/utils/shareUtils';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -173,6 +183,12 @@ const DhikrReaderScreen: React.FC = () => {
     return initialCategoryTitle || superCategoryTitle || 'Dhikr';
   }, [currentDhikr, categoryTitles, initialCategoryTitle, superCategoryTitle]);
 
+  const handleShareDhikr = useCallback(() => {
+    if (!superId || !currentDhikr) return;
+    const url = dhikrShareUrl(superId, currentDhikr.id);
+    shareUrl(url, `Check out this dhikr on Bayaan`);
+  }, [superId, currentDhikr]);
+
   // Set native header with title + position subtitle
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -201,8 +217,30 @@ const DhikrReaderScreen: React.FC = () => {
           )}
         </View>
       ),
+      headerRight: () => (
+        <Pressable
+          onPress={handleShareDhikr}
+          hitSlop={8}
+          style={{
+            padding: moderateScale(4),
+            paddingHorizontal: moderateScale(8),
+          }}>
+          <Feather
+            name="share"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ),
     });
-  }, [navigation, displayTitle, currentIndex, adhkarList.length, theme]);
+  }, [
+    navigation,
+    displayTitle,
+    currentIndex,
+    adhkarList.length,
+    handleShareDhikr,
+    theme,
+  ]);
 
   const handleSaveToggle = useCallback(
     (dhikr: Dhikr) => {
@@ -284,7 +322,11 @@ const DhikrReaderScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.listContainer, {paddingTop: headerHeight, paddingBottom: insets.bottom}]}>
+      <View
+        style={[
+          styles.listContainer,
+          {paddingTop: headerHeight, paddingBottom: insets.bottom},
+        ]}>
         <FlatList
           ref={flatListRef}
           data={adhkarList}

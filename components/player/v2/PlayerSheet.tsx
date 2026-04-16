@@ -293,10 +293,7 @@ export const PlayerSheet = () => {
         enableContentPanningGesture
         enableOverDrag={false}
         style={styles.sheet}
-        backgroundStyle={[
-          styles.background,
-          {backgroundColor: 'transparent'},
-        ]}>
+        backgroundStyle={[styles.background, {backgroundColor: 'transparent'}]}>
         <PlayerContent
           onSpeedPress={handleShowSpeedSheet}
           onSleepTimerPress={handleShowSleepTimerSheet}

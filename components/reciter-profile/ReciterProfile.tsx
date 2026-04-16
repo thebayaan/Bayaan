@@ -63,10 +63,12 @@ import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 import {useNavigation} from 'expo-router';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
 
 interface ReciterProfileProps {
   id: string;
   showLoved?: boolean;
+  initialRewayatId?: string;
 }
 
 // Define types matching useSettings
@@ -185,6 +187,7 @@ const isGlass = USE_GLASS;
 const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   id: currentReciterId,
   showLoved = false,
+  initialRewayatId: initialRewayatIdProp,
 }) => {
   const {theme} = useTheme();
   const styles = createSharedStyles(theme);
@@ -199,7 +202,16 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     () => initReciter(currentReciterId),
     [currentReciterId],
   );
-  const initialRewayatId = initialReciter?.rewayat[0]?.id;
+  // Prefer the rewayat passed via navigation, then fall back to the first one
+  const initialRewayatId = useMemo(() => {
+    if (
+      initialRewayatIdProp &&
+      initialReciter?.rewayat.some(r => r.id === initialRewayatIdProp)
+    ) {
+      return initialRewayatIdProp;
+    }
+    return initialReciter?.rewayat[0]?.id;
+  }, [initialRewayatIdProp, initialReciter]);
 
   const [reciter, setReciter] = useState<Reciter | null>(initialReciter);
   const surahs = SURAHS;
@@ -210,7 +222,22 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   const scrollY = useRef(new RNAnimated.Value(0)).current;
   const scrollX = useRef(
-    new RNAnimated.Value(initialReciter ? screenWidth : 0),
+    new RNAnimated.Value(
+      initialReciter
+        ? (() => {
+            // "My Uploads" is at index 0; rewayat start at index 1.
+            // Find the index of the initial rewayat to set the correct scroll position.
+            if (!initialRewayatId) return screenWidth;
+            const rewayatIndex = initialReciter.rewayat.findIndex(
+              r => r.id === initialRewayatId,
+            );
+            // +1 because "My Uploads" occupies index 0
+            return rewayatIndex >= 0
+              ? (rewayatIndex + 1) * screenWidth
+              : screenWidth;
+          })()
+        : 0,
+    ),
   ).current;
   const iconsOpacity = useRef(new RNAnimated.Value(1)).current;
   const iconsZIndex = useRef(new RNAnimated.Value(20)).current;
@@ -238,13 +265,36 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       headerRight: showSearch
         ? () => null
         : () => (
-            <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
-              <Feather
-                name="search"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-            </Pressable>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: moderateScale(20),
+                paddingHorizontal: moderateScale(6),
+              }}>
+              <Pressable
+                onPress={() => {
+                  const slug = reciter?.slug ?? currentReciterId;
+                  shareUrl(
+                    reciterShareUrl(slug),
+                    `Listen to ${reciter?.name ?? 'this reciter'} on Bayaan`,
+                  );
+                }}
+                hitSlop={8}>
+                <Feather
+                  name="share"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+              <Pressable onPress={() => setShowSearch(true)} hitSlop={8}>
+                <Feather
+                  name="search"
+                  size={moderateScale(20)}
+                  color={theme.colors.text}
+                />
+              </Pressable>
+            </View>
           ),
     });
   }, [navigation, theme, showSearch]);
@@ -719,14 +769,25 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     ],
   );
 
-  // Opacity-gated reveal: scroll pager to first rewayat (index 1) before showing
+  // Opacity-gated reveal: scroll pager to initial rewayat tab before showing.
+  // Defaults to index 1 (first rewayat, skipping "My Uploads" at index 0),
+  // but honours initialRewayatId when navigating from a rewayah-specific context.
+  const initialTabIndex = useMemo(() => {
+    if (!initialRewayatId) return 1;
+    const idx = tabs.findIndex(t => t.id === initialRewayatId);
+    return idx >= 0 ? idx : 1;
+  }, [initialRewayatId, tabs]);
+
   const handlePagerContentSizeChange = useCallback(
     (contentWidth: number) => {
       if (pagerScrolledRef.current) return;
-      if (contentWidth >= 2 * screenWidth) {
+      const targetX = initialTabIndex * screenWidth;
+      if (contentWidth >= targetX + screenWidth) {
         pagerScrolledRef.current = true;
+        // Set scrollX so the tab bar indicator lands on the correct tab immediately
+        scrollX.setValue(targetX);
         horizontalRef.current?.scrollTo({
-          x: screenWidth,
+          x: targetX,
           y: 0,
           animated: false,
         });
@@ -736,7 +797,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
         });
       }
     },
-    [screenWidth, pagerOpacity],
+    [screenWidth, pagerOpacity, initialTabIndex, scrollX],
   );
 
   // Sticky title bar opacity — fades in as the outer scroll collapses the header
@@ -1080,8 +1141,13 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
               insets={insets}
               iconsOpacity={iconsOpacity}
               iconsZIndex={iconsZIndex}
-              onSearchPress={() => {
-                setShowSearch(true);
+              onSearchPress={() => setShowSearch(true)}
+              onSharePress={() => {
+                const slug = reciter?.slug ?? currentReciterId;
+                shareUrl(
+                  reciterShareUrl(slug),
+                  `Listen to ${reciter?.name ?? 'this reciter'} on Bayaan`,
+                );
               }}
             />
           )}

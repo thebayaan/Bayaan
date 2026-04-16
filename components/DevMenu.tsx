@@ -4,6 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {quickTestWhatsNew, logVersionState} from '@/utils/devUtils';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {WhatsNewModalRef} from '@/components/modals/WhatsNewOnboarding';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {
@@ -26,6 +27,10 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
   );
   const cycleRandomCardVariant = useDevSettingsStore(
     s => s.cycleRandomCardVariant,
+  );
+  const forceNetworkBanner = useDevSettingsStore(s => s.forceNetworkBanner);
+  const toggleForceNetworkBanner = useDevSettingsStore(
+    s => s.toggleForceNetworkBanner,
   );
 
   function getRandomCardLabel() {
@@ -178,6 +183,37 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
               styles.devMenuItem,
               {
                 backgroundColor:
+                  pressedItem === 'resetMushafData'
+                    ? Color(theme.colors.text).alpha(0.08).toString()
+                    : 'transparent',
+              },
+            ]}
+            onPress={async () => {
+              try {
+                await digitalKhattDataService.resetDatabases();
+                mushafLayoutCacheService.clearAll();
+                Alert.alert(
+                  'Mushaf Data Reset',
+                  'Runtime SQLite databases and MMKV layout cache wiped. Reload the app (shake → Reload) to re-import from assets.',
+                  [{text: 'OK'}],
+                );
+              } catch (error) {
+                Alert.alert('Reset Failed', String(error), [{text: 'OK'}]);
+              }
+            }}
+            onPressIn={() => setPressedItem('resetMushafData')}
+            onPressOut={() => setPressedItem(null)}>
+            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
+              ♻️ Reset Mushaf Data (DBs + Cache)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[
+              styles.devMenuItem,
+              {
+                backgroundColor:
                   pressedItem === 'randomCard'
                     ? Color(theme.colors.text).alpha(0.08).toString()
                     : 'transparent',
@@ -188,6 +224,25 @@ export function DevMenu({whatsNewModalRef}: DevMenuProps) {
             onPressOut={() => setPressedItem(null)}>
             <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
               🎨 Random Card: {getRandomCardLabel()}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[
+              styles.devMenuItem,
+              {
+                backgroundColor:
+                  pressedItem === 'networkBanner'
+                    ? Color(theme.colors.text).alpha(0.08).toString()
+                    : 'transparent',
+              },
+            ]}
+            onPress={toggleForceNetworkBanner}
+            onPressIn={() => setPressedItem('networkBanner')}
+            onPressOut={() => setPressedItem(null)}>
+            <Text style={[styles.devMenuText, {color: theme.colors.text}]}>
+              📡 Network Banner: {forceNetworkBanner ? 'ON' : 'OFF'}
             </Text>
           </TouchableOpacity>
 

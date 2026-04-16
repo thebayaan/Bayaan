@@ -974,7 +974,14 @@ function getPageLayoutCache(
   fontSizeLineWidthRatio: number,
   fontFamily: string,
 ): Map<number, JustResultByLine[]> {
-  const cacheKey = `${fontFamily}::${fontSizeLineWidthRatio}`;
+  // Word widths differ per rewayah (same font, different text), so each
+  // rewayah needs its own in-memory cache partition. Read from the settings
+  // store at call time so cache keys stay in sync with whatever rewayah
+  // the user has selected.
+  const {useMushafSettingsStore} =
+    require('@/store/mushafSettingsStore') as typeof import('@/store/mushafSettingsStore');
+  const rewayah = useMushafSettingsStore.getState().rewayah;
+  const cacheKey = `${fontFamily}::${rewayah}::${fontSizeLineWidthRatio}`;
   const existing = pageLayoutsCache.get(cacheKey);
   if (existing) return existing;
   const created = new Map<number, JustResultByLine[]>();

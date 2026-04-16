@@ -1,7 +1,7 @@
 {
   "name": "bayaan",
   "main": "expo-router/entry",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "scripts": {
     "postinstall": "patch-package",
     "start": "expo start",
@@ -35,6 +35,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1029.0",
     "@babel/runtime": "^7.20.6",
     "@expo/server": "^0.1.0",
     "@expo/ui": "~55.0.5",
@@ -45,6 +46,7 @@
     "@miblanchard/react-native-slider": "^2.6.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/blur": "^4.4.1",
+    "@react-native-community/netinfo": "11.5.2",
     "@react-native-community/slider": "5.1.2",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-segmented-control/segmented-control": "2.5.7",
@@ -126,6 +128,7 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.25.1",
     "@react-native-community/eslint-config": "^3.2.0",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/color": "^3.0.6",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4.17.7",
@@ -146,9 +149,11 @@
     "jest-expo": "~55.0.9",
     "metro": "^0.83.1",
     "patch-package": "^8.0.1",
+    "playwright": "^1.59.1",
     "prettier": "^3.3.3",
     "react-native-asset": "^2.1.1",
     "react-test-renderer": "19.2.0",
+    "satori": "^0.26.0",
     "sharp": "^0.33.5",
     "ts-node": "^10.9.2",
     "typescript": "~5.9.2"

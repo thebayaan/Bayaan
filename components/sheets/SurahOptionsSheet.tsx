@@ -36,6 +36,13 @@ import {downloadSurah} from '@/services/downloadService';
 import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
+import {getReciterByIdSync} from '@/services/dataService';
+import {
+  recitationShareUrl,
+  getRewayatSlug,
+  getStyleSlug,
+  shareUrl,
+} from '@/utils/shareUtils';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -250,6 +257,24 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     });
   }, [reciterId, surah, rewayatId]);
 
+  const handleShare = useCallback(() => {
+    if (!reciterId || !rewayatId || !surah) return;
+    const reciter = getReciterByIdSync(reciterId);
+    if (!reciter?.slug) return;
+    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
+    if (!rewayat) return;
+    const rewayatSlugVal = getRewayatSlug(rewayat);
+    if (!rewayatSlugVal) return;
+    const styleSlug = getStyleSlug(rewayat);
+    const url = recitationShareUrl(
+      reciter.slug,
+      rewayatSlugVal,
+      styleSlug,
+      surah.id,
+    );
+    shareUrl(url, `Listen to ${surah.name} on Bayaan`);
+  }, [reciterId, rewayatId, surah]);
+
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       setShowSurahInfo(false);
@@ -410,6 +435,25 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
                 Add to Collection
               </Text>
             </Pressable>
+
+            {reciterId && rewayatId && (
+              <>
+                <View style={styles.divider} />
+                <Pressable
+                  style={({pressed}) => [
+                    styles.option,
+                    pressed && styles.optionPressed,
+                  ]}
+                  onPress={handleShare}>
+                  <Feather
+                    name="share"
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.optionText}>Share</Text>
+                </Pressable>
+              </>
+            )}
 
             {reciterId && !payload?.hideGoToReciter && (
               <>

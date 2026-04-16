@@ -15,6 +15,11 @@ let _defaultReciter: Reciter | null = null;
 function getDefaultReciter(): Reciter {
   if (_defaultReciter) return _defaultReciter;
 
+  // RECITERS is empty on first launch before API data loads — return placeholder
+  if (RECITERS.length === 0) {
+    return {id: '', name: '', date: null, image_url: null, rewayat: []};
+  }
+
   const misharyAlafasi = RECITERS.find(
     reciter =>
       reciter.name === 'Mishary Alafasi' &&
@@ -46,13 +51,20 @@ function getDefaultReciter(): Reciter {
 
 interface ReciterState {
   defaultReciter: Reciter;
+  isInitialized: boolean;
   setDefaultReciter: (reciter: Reciter) => void;
+  refreshDefaultReciter: () => void;
 }
 
 export const useReciterStore = create<ReciterState>()(
   persist(
     set => ({
       defaultReciter: getDefaultReciter(),
+      isInitialized: false,
+      refreshDefaultReciter: () => {
+        _defaultReciter = null;
+        set({defaultReciter: getDefaultReciter()});
+      },
       setDefaultReciter: reciter => {
         // When setting a new default reciter, ensure Hafs is the first rewayat if available
         const hafsRewayat = getHafsRewayat(reciter);
@@ -70,6 +82,7 @@ export const useReciterStore = create<ReciterState>()(
     }),
     {
       name: 'reciter-storage',
+      partialize: state => ({defaultReciter: state.defaultReciter}),
       storage: {
         getItem: async name => {
           const value = await AsyncStorage.getItem(name);

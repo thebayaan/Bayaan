@@ -17,6 +17,7 @@ interface BrowseReciterCardProps {
   height: number;
   theme: Theme;
   showFollowAlong?: boolean;
+  rewayatId?: string;
 }
 
 function createStyles(theme: Theme, width: number, height: number) {
@@ -77,6 +78,7 @@ const BrowseReciterCard = React.memo(
     width,
     height,
     theme,
+    rewayatId,
   }: BrowseReciterCardProps) => {
     const glassColorScheme = useGlassColorScheme();
     const styles = useMemo(
@@ -115,7 +117,7 @@ const BrowseReciterCard = React.memo(
 
     const linkHref = {
       pathname: '/(tabs)/(a.home)/reciter/[id]' as const,
-      params: {id: reciter.id},
+      params: {id: reciter.id, ...(rewayatId ? {rewayatId} : {})},
     };
 
     if (USE_GLASS) {

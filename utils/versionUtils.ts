@@ -162,6 +162,26 @@ export async function markVersionAsSeen(): Promise<void> {
 }
 
 /**
+ * Filter onboarding pages to only those introduced after lastSeenVersion.
+ * If no lastSeenVersion (fresh install), returns all pages.
+ */
+export function filterPagesByVersion<T extends {minVersion: string}>(
+  pages: T[],
+  lastSeenVersion: string | null,
+): T[] {
+  if (!lastSeenVersion) {
+    return pages;
+  }
+
+  const lastNorm = normalizeVersion(lastSeenVersion);
+
+  return pages.filter(page => {
+    const pageNorm = normalizeVersion(page.minVersion);
+    return semver.gt(pageNorm, lastNorm);
+  });
+}
+
+/**
  * Reset the version tracking (useful for testing)
  */
 export async function resetVersionTracking(): Promise<void> {

@@ -25,7 +25,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.1.1</string>
+	<string>2.1.2</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -44,7 +44,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>598</string>
+	<string>614</string>
 	<key>ExpoWidgetsAppGroupIdentifier</key>
 	<string>group.com.bayaan.app</string>
 	<key>ExpoWidgets_EnablePushNotifications</key>

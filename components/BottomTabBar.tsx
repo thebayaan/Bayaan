@@ -4,6 +4,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {
   HomeIcon,
+  QuranIcon,
   SearchIcon,
   CollectionIcon,
   SettingsIcon,
@@ -34,6 +35,10 @@ function getIcon(
   switch (routeName) {
     case '(a.home)':
       return <HomeIcon filled={isFocused} color={color} size={iconSize} />;
+    case '(b.surahs)':
+      return (
+        <QuranIcon filled={isFocused} color={color} size={iconSize * 1.2} />
+      );
     case '(b.search)':
       return <SearchIcon filled={isFocused} color={color} size={iconSize} />;
     case '(c.collection)':

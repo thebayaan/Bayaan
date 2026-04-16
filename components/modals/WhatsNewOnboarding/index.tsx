@@ -23,7 +23,12 @@ import Animated, {
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
-import {hasVersionChanged, markVersionAsSeen} from '@/utils/versionUtils';
+import {
+  hasVersionChanged,
+  markVersionAsSeen,
+  getLastSeenVersion,
+  filterPagesByVersion,
+} from '@/utils/versionUtils';
 import {ONBOARDING_PAGES, OnboardingPage} from '@/data/onboardingPages';
 import OnboardingPageComponent from './OnboardingPage';
 import DotIndicator from './DotIndicator';
@@ -38,6 +43,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const {theme} = useTheme();
   const [visible, setVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+  const [pages, setPages] = useState<OnboardingPage[]>(ONBOARDING_PAGES);
   const flatListRef = useRef<FlatList<OnboardingPage>>(null);
   const scrollX = useSharedValue(0);
 
@@ -47,10 +53,11 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   );
   const pageWidth = modalWidth - moderateScale(64); // account for modal padding
 
-  const isLastPage = currentPage === ONBOARDING_PAGES.length - 1;
+  const isLastPage = currentPage === pages.length - 1;
 
   useImperativeHandle(ref, () => ({
     show: () => {
+      setPages(ONBOARDING_PAGES);
       setCurrentPage(0);
       scrollX.value = 0;
       flatListRef.current?.scrollToOffset({offset: 0, animated: false});
@@ -63,6 +70,12 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
       try {
         const versionChanged = await hasVersionChanged();
         if (versionChanged) {
+          const lastSeen = await getLastSeenVersion();
+          const filtered = filterPagesByVersion(ONBOARDING_PAGES, lastSeen);
+
+          if (filtered.length === 0) return;
+
+          setPages(filtered);
           setTimeout(() => {
             setVisible(true);
           }, 800);
@@ -121,7 +134,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
       <OnboardingPageComponent
         page={item}
         width={pageWidth}
-        isIntroPage={index === 0}
+        isIntroPage={item.id === 'welcome'}
       />
     ),
     [pageWidth],
@@ -163,7 +176,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
           <View style={styles.pagesContainer}>
             <Animated.FlatList
               ref={flatListRef as any}
-              data={ONBOARDING_PAGES}
+              data={pages}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
               horizontal
@@ -182,7 +195,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
 
           {/* Dot indicator */}
           <DotIndicator
-            totalPages={ONBOARDING_PAGES.length}
+            totalPages={pages.length}
             scrollX={scrollX}
             pageWidth={pageWidth}
           />

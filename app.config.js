@@ -23,6 +23,7 @@ module.exports = {
         usesNonExemptEncryption: false,
       },
       teamId: 'S4W5Q2L53W',
+      associatedDomains: ['applinks:app.thebayaan.com'],
       infoPlist: {
         NSMicrophoneUsageDescription:
           'This app uses the microphone to play audio.',
@@ -93,6 +94,20 @@ module.exports = {
         backgroundColor: '#8dc9d6',
       },
       screenOrientation: 'portrait',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/share',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     // React Compiler disabled - causes performance issues with Zustand subscriptions
     // experiments: {

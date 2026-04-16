@@ -1,6 +1,23 @@
 import * as SQLite from 'expo-sqlite';
+import {
+  useMushafSettingsStore,
+  type RewayahId,
+} from '@/store/mushafSettingsStore';
 
 const TOTAL_PAGES = 604;
+
+// Each rewayah ships its own words DB. Layout DB is shared (same 604-page
+// Madinah mushaf geometry), so only the words table changes on switch.
+const REWAYAH_WORDS_DB: Record<RewayahId, {dbName: string; asset: number}> = {
+  hafs: {
+    dbName: 'dk_words.db',
+    asset: require('../../data/mushaf/digitalkhatt/digital-khatt-v2.db'),
+  },
+  shouba: {
+    dbName: 'dk_words_shouba.db',
+    asset: require('../../data/mushaf/digitalkhatt/dk_words_shouba.db'),
+  },
+};
 
 // Basmallah text is always the same 4 words — hardcoded to avoid DB lookup
 // (layout DB has NULL word IDs for basmallah lines)
@@ -22,6 +39,8 @@ export interface DKWordInfo {
   wordPositionInVerse: number;
 }
 
+type RewayahChangeListener = (rewayah: RewayahId) => void;
+
 class DigitalKhattDataService {
   private wordsById: Map<number, string> = new Map();
   private wordInfoById: Map<number, DKWordInfo> = new Map();
@@ -30,6 +49,8 @@ class DigitalKhattDataService {
   private surahStartPages: Record<number, number> = {};
   private pageToSurah: Record<number, number> = {};
   private verseToPage: Map<string, number> | null = null;
+  private currentRewayah: RewayahId = 'hafs';
+  private rewayahListeners: Set<RewayahChangeListener> = new Set();
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
 
@@ -37,10 +58,20 @@ class DigitalKhattDataService {
     return this._initialized;
   }
 
+  get rewayah(): RewayahId {
+    return this.currentRewayah;
+  }
+
+  onRewayahChange(listener: RewayahChangeListener): () => void {
+    this.rewayahListeners.add(listener);
+    return () => this.rewayahListeners.delete(listener);
+  }
+
   async initialize(): Promise<void> {
     if (this._initialized) return;
     if (this._initializing) return this._initializing;
 
+    this.currentRewayah = useMushafSettingsStore.getState().rewayah;
     this._initializing = this._doInit();
     return this._initializing;
   }
@@ -59,8 +90,51 @@ class DigitalKhattDataService {
     }
   }
 
+  /**
+   * Dev-only: delete every runtime SQLite database this service imports
+   * (per-rewayah words DBs + the shared layout DB). On next launch the
+   * assets are re-imported from source, picking up any content changes.
+   * Pair with `mushafLayoutCacheService.clearAll()` in dev tooling so the
+   * MMKV layout cache isn't left referencing the wiped word IDs.
+   */
+  async resetDatabases(): Promise<void> {
+    this._initialized = false;
+    this._initializing = null;
+    this.wordsById.clear();
+    this.wordInfoById.clear();
+    this.verseWords.clear();
+    this.pageLines.clear();
+    this.surahStartPages = {};
+    this.pageToSurah = {};
+    this.verseToPage = null;
+
+    const dbNames = [
+      ...Object.values(REWAYAH_WORDS_DB).map(cfg => cfg.dbName),
+      'dk_layout.db',
+    ];
+    for (const dbName of dbNames) {
+      try {
+        await SQLite.deleteDatabaseAsync(dbName);
+      } catch {
+        // DB may not exist yet — ignore
+      }
+    }
+  }
+
+  async switchRewayah(rewayah: RewayahId): Promise<void> {
+    if (rewayah === this.currentRewayah) return;
+    this.currentRewayah = rewayah;
+    this.wordsById.clear();
+    this.wordInfoById.clear();
+    this.verseWords.clear();
+    this.verseToPage = null;
+    await this.loadWords();
+    for (const listener of this.rewayahListeners) listener(rewayah);
+  }
+
   private async loadWords(): Promise<void> {
-    const dbName = 'dk_words.db';
+    const cfg = REWAYAH_WORDS_DB[this.currentRewayah];
+    const dbName = cfg.dbName;
     let db = await SQLite.openDatabaseAsync(dbName);
 
     const tableCheck = await db
@@ -73,7 +147,7 @@ class DigitalKhattDataService {
       await db.closeAsync();
       await SQLite.deleteDatabaseAsync(dbName);
       await SQLite.importDatabaseFromAssetAsync(dbName, {
-        assetId: require('../../data/mushaf/digitalkhatt/digital-khatt-v2.db'),
+        assetId: cfg.asset,
       });
       db = await SQLite.openDatabaseAsync(dbName);
     }
@@ -149,7 +223,7 @@ class DigitalKhattDataService {
     }
 
     // Build surah mappings by identifying the first Ayah of each surah.
-    // This solves the "header at bottom of previous page" issue by anchoring the 
+    // This solves the "header at bottom of previous page" issue by anchoring the
     // surah to the page where its actual verse content begins.
     for (const row of rows) {
       if (row.line_type === 'ayah') {
@@ -163,7 +237,7 @@ class DigitalKhattDataService {
       }
     }
 
-    // Fallback: If any surahs are missing ayahs in the DB (unlikely), 
+    // Fallback: If any surahs are missing ayahs in the DB (unlikely),
     // use the surah_name lines as a secondary source.
     const surahNameRows = rows.filter(r => r.line_type === 'surah_name');
     for (const row of surahNameRows) {

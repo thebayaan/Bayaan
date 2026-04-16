@@ -28,6 +28,7 @@ import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheServi
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
+import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -63,6 +64,10 @@ interface SkiaPageProps {
   onReady?: () => void;
   onTap?: () => void;
 }
+
+// Background tint applied to words that differ from Hafs when a non-Hafs
+// rewayah is active. Chosen to pop against both light and dark mushaf themes.
+const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
@@ -116,6 +121,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const showThemes = useMushafSettingsStore(s => s.showThemes);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
+  const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontFamily =
     mushafRenderer === 'dk_indopak'
@@ -198,7 +205,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     if (result.length > 0) {
       mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
     }
-  }, [fontMgr, pageNumber, fontSizeLineWidthRatio, fontFamily]);
+  }, [fontMgr, pageNumber, fontSizeLineWidthRatio, fontFamily, rewayah]);
 
   // Calculate Y positions for each line
   const lineYPositions = useMemo(
@@ -501,12 +508,20 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   >(() => {
     const hasAnnotations = Object.keys(persistentHighlights).length > 0;
     const hasPlayback = !!playbackVerseKey;
+    const hasRewayahDiffs =
+      showRewayahDiffs && rewayah !== 'hafs' && rewayahDiffService.hasDiffs;
     const selectedSet =
       selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
         ? new Set(selectedVerseKeys)
         : null;
 
-    if (!hasAnnotations && !hasPlayback && !selectedSet && !showThemes)
+    if (
+      !hasAnnotations &&
+      !hasPlayback &&
+      !selectedSet &&
+      !showThemes &&
+      !hasRewayahDiffs
+    )
       return EMPTY_BG_MAP;
 
     const map = new Map<
@@ -532,6 +547,28 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
         });
       }
     };
+
+    // Layer -1: Rewayah diff highlights (painted first, overdrawn by any
+    // higher-priority highlight). Uses a saturated orange tint so differing
+    // words clearly pop out as a study aid for students.
+    if (hasRewayahDiffs) {
+      const lineCount = digitalKhattDataService.getPageLines(pageNumber).length;
+      for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+        const ranges = rewayahDiffService.getDiffRangesForLine(
+          pageNumber,
+          lineIndex,
+        );
+        if (ranges.length === 0) continue;
+        let arr = map.get(lineIndex);
+        if (!arr) {
+          arr = [];
+          map.set(lineIndex, arr);
+        }
+        for (const r of ranges) {
+          arr.push({start: r.start, end: r.end, color: REWAYAH_DIFF_COLOR});
+        }
+      }
+    }
 
     // Layer 0: Theme zebra highlights (lowest priority)
     if (showThemes) {
@@ -587,6 +624,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     EMPTY_BG_MAP,
     showThemes,
     textColor,
+    rewayah,
+    showRewayahDiffs,
+    pageNumber,
   ]);
 
   if (!fontMgr || !justResults) {

@@ -25,6 +25,7 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
+export type RewayahId = 'hafs' | 'shouba';
 export interface RecentRead {
   surahId: number;
   page: number;
@@ -74,6 +75,10 @@ interface MushafSettingsState {
   lightThemeId: string;
   darkThemeId: string;
 
+  // Rewayah (qiraat transmission) selection
+  rewayah: RewayahId;
+  showRewayahDiffs: boolean;
+
   // Actions
   toggleTranslation: () => void;
   toggleTransliteration: () => void;
@@ -97,6 +102,8 @@ interface MushafSettingsState {
   clearRecentPages: () => void;
   setSelectedTranslationId: (id: string) => void;
   setReadingTheme: (themeId: string) => void;
+  setRewayah: (rewayah: RewayahId) => void;
+  toggleRewayahDiffs: () => void;
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -123,6 +130,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       selectedTranslationId: 'saheeh',
       lightThemeId: 'default',
       darkThemeId: 'dark-default',
+      rewayah: 'hafs' as RewayahId,
+      showRewayahDiffs: true,
 
       // Actions
       toggleTranslation: () =>
@@ -194,11 +203,14 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             ? {lightThemeId: themeId}
             : {darkThemeId: themeId};
         }),
+      setRewayah: (rewayah: RewayahId) => set({rewayah}),
+      toggleRewayahDiffs: () =>
+        set(state => ({showRewayahDiffs: !state.showRewayahDiffs})),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 11,
+      version: 12,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -254,6 +266,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         if (version < 11) {
           state.lightThemeId = 'default';
           state.darkThemeId = 'dark-default';
+        }
+        if (version < 12) {
+          state.rewayah = 'hafs';
+          state.showRewayahDiffs = true;
         }
         return state as unknown as MushafSettingsState;
       },
