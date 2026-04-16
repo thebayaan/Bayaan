@@ -983,6 +983,29 @@ const REWAYAH_OPTIONS: Array<{
     label: "Qunbul 'an Ibn Kathir",
     description: 'The second Meccan transmission from Ibn Kathir',
   },
+  {
+    value: 'warsh',
+    label: "Warsh 'an Nafi'",
+    description:
+      'Medinan transmission from Nafiʿ — dominant across North Africa',
+  },
+  {
+    value: 'qaloon',
+    label: "Qalun 'an Nafi'",
+    description:
+      'The second Medinan transmission from Nafiʿ — read in Libya and parts of Tunisia',
+  },
+  {
+    value: 'doori',
+    label: "Al-Duri 'an Abu Amr",
+    description:
+      'Basran transmission from Abu Amr — common in Sudan and parts of West Africa',
+  },
+  {
+    value: 'soosi',
+    label: "Al-Susi 'an Abu Amr",
+    description: 'The second Basran transmission from Abu Amr',
+  },
 ];
 
 const createStyles = (theme: Theme) =>

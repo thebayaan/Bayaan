@@ -52,6 +52,34 @@ const REWAYAH_DATA: Record<
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
+  warsh: {
+    wordsDbName: 'dk_words_warsh.db',
+    wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_warsh.db'),
+    layoutDbName: 'dk_layout.db',
+    layoutAsset: DK_HAFS_LAYOUT_ASSET,
+    fontFamily: null,
+  },
+  qaloon: {
+    wordsDbName: 'dk_words_qaloon.db',
+    wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_qaloon.db'),
+    layoutDbName: 'dk_layout.db',
+    layoutAsset: DK_HAFS_LAYOUT_ASSET,
+    fontFamily: null,
+  },
+  doori: {
+    wordsDbName: 'dk_words_doori.db',
+    wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_doori.db'),
+    layoutDbName: 'dk_layout.db',
+    layoutAsset: DK_HAFS_LAYOUT_ASSET,
+    fontFamily: null,
+  },
+  soosi: {
+    wordsDbName: 'dk_words_soosi.db',
+    wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_soosi.db'),
+    layoutDbName: 'dk_layout.db',
+    layoutAsset: DK_HAFS_LAYOUT_ASSET,
+    fontFamily: null,
+  },
 };
 
 export function getRewayahFontFamily(rewayah: RewayahId): string | null {
