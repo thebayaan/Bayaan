@@ -34,5 +34,20 @@ export const tajweedColors: {[key: string]: string} = {
   // Teal - Minor rewayah diff. Trailing-vowel / mood-shift changes that
   // aren't letter-level variants but deserve a subtle visual marker,
   // distinct from the background orange for MAJOR content changes.
-  minor_diff: '#00A0A0',
+  minor: '#00A0A0',
+  // Warsh/Qalun published-mushaf tajweed categories. Colors approximate the
+  // standard color-coded Dar al-Ma'rifah / King Fahd Warsh editions so
+  // students reading in the app see the same pedagogical signals.
+  //   Green — Madd al-Badal / Madd al-Lin (U+06E4 marker).
+  madd: '#0CBF71',
+  //   Light blue — Hamza tashil / musahhala (U+06EA/U+06EC).
+  tashil: '#29B6F6',
+  //   Light blue — Ibdal (Warsh hamza → long vowel). Shares hue with
+  //   tashil since both are hamza-treatment rules.
+  ibdal: '#29B6F6',
+  //   Dark blue — Taghliz al-Lam (heavy lam in Allah after ط/ظ/ص).
+  taghliz: '#1A46D0',
+  //   Red — Mukhtalif (word-level reading variants that don't fit a
+  //   specific rule — includes mood/case shifts and genuine content diffs).
+  mukhtalif: '#BF0100',
 };

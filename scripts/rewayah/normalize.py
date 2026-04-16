@@ -49,16 +49,28 @@ CODEPOINT_MAP = {
     "\u0657": "\u08F0",  # open fathatan
     "\u0656": "\u08F2",  # open kasratan
     "\u065E": "\u08F1",  # open dammatan
-    # Codepoints used by KFGQPC Warsh/Qaloon/Doori/Soosi that the
-    # DigitalKhatt font doesn't ship glyphs for — fall back to the nearest
-    # DK-supported equivalent so text renders cleanly instead of dropping
-    # to a system font at wrong baseline/scale.
+    # Purely visual KFGQPC glyph variants the DK font doesn't have — remap
+    # to the nearest DK-supported equivalent. These do NOT carry tajweed
+    # classification signal so substituting loses nothing.
     "\u06D2": "\u0649",  # yeh barree -> alef maksura (same dotless final form)
-    "\u06E4": "\u0653",  # small high madda -> madda above
-    "\u06EA": "",  # empty-centre low stop (rare waqf annotation) -> drop
     "\u200F": "",  # RTL mark (invisible) -> drop; Skia handles RTL from buffer
 }
 _TRANSLATE_TABLE = str.maketrans({k: v for k, v in CODEPOINT_MAP.items()})
+
+# KFGQPC Warsh/Qaloon markers that the DK font can't render BUT carry
+# tajweed classification signal:
+#   U+06E4 ۤ SMALL HIGH MADDA   — Madd al-Badal / Madd al-Lin (green)
+#   U+06EA ۪ EMPTY CENTRE LOW STOP — Tashil / imalah hint (light blue/dark green)
+# Preserve them through normalization so the classifier can read them,
+# then strip just before DB insert via strip_for_render() below.
+_CLASSIFICATION_MARKERS = set("\u06E4\u06EA")
+
+
+def strip_for_render(text: str) -> str:
+    """Remove classification-signal codepoints that DK can't render so the
+    stored DB text renders cleanly. Called AFTER classification decisions
+    have been recorded in the diff JSON."""
+    return "".join(c for c in text if c not in _CLASSIFICATION_MARKERS)
 
 HAMZA_DECOMPOSE = {
     "\u0623": "\u0627" + HAMZA_ABOVE,  # alef-above

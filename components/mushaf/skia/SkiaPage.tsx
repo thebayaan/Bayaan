@@ -29,7 +29,10 @@ import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheServi
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
-import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
+import {
+  rewayahDiffService,
+  type RewayahDiffCategory,
+} from '@/services/mushaf/RewayahDiffService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -130,8 +133,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     (mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : uthmaniFont === 'v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2');
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2');
 
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,
@@ -225,37 +228,58 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return maps;
   }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
-  // Merged char-to-rule maps: tajweed + minor-diff + silah (for rewayat
-  // that use them). Rewayah-specific rules override tajweed on overlapping
-  // positions since they carry rewayah information tajweed doesn't know.
-  // Silah overrides minor-diff (silah color is the specific marker).
+  // Merged char-to-rule maps: tajweed + rewayah categories + silah.
+  // Precedence (later wins): tajweed → mukhtalif → minor → ibdal → tashil →
+  //   madd → taghliz → silah. Silah always takes priority as the most
+  //   specific marker of Bazzi/Qumbul/Warsh/Qaloon pronunciation.
   const lineCharRuleMaps = useMemo(() => {
     const hasSilah = rewayahDiffService.hasSilahColoring;
-    const hasMinor = rewayahDiffService.hasMinorDiffs;
-    if (!hasSilah && !hasMinor && !lineTajweedMaps) return null;
+    const hasAnyRewayah = rewayahDiffService.hasAnyDiffs;
+    if (!hasSilah && !hasAnyRewayah && !lineTajweedMaps) return null;
+
+    // Ordered low→high precedence: later entries override earlier ones
+    // when the same char index is in multiple categories.
+    const categories: readonly RewayahDiffCategory[] = [
+      'mukhtalif',
+      'minor',
+      'ibdal',
+      'tashil',
+      'madd',
+      'taghliz',
+    ];
+
     const maps: (Map<number, string> | null)[] = [];
     for (let i = 0; i < pageLines.length; i++) {
       const tajweed = lineTajweedMaps?.[i] ?? null;
-      const minorIndexes = hasMinor
-        ? rewayahDiffService.getMinorCharsForLine(pageNumber, i)
-        : null;
       const silahIndexes = hasSilah
         ? rewayahDiffService.getSilahCharsForLine(pageNumber, i)
         : null;
-      if (
-        !tajweed &&
-        (!minorIndexes || minorIndexes.length === 0) &&
-        (!silahIndexes || silahIndexes.length === 0)
-      ) {
+      const categoryIndexes: Array<[RewayahDiffCategory, number[]]> = [];
+      if (hasAnyRewayah) {
+        for (const cat of categories) {
+          if (!rewayahDiffService.hasCategory(cat)) continue;
+          const indexes = rewayahDiffService.getCharsForCategory(
+            cat,
+            pageNumber,
+            i,
+          );
+          if (indexes.length > 0) categoryIndexes.push([cat, indexes]);
+        }
+      }
+
+      const anyIndexes =
+        (silahIndexes && silahIndexes.length > 0) || categoryIndexes.length > 0;
+      if (!tajweed && !anyIndexes) {
         maps.push(null);
         continue;
       }
+
       const merged = new Map<number, string>();
       if (tajweed) {
         for (const [k, v] of tajweed) merged.set(k, v);
       }
-      if (minorIndexes) {
-        for (const idx of minorIndexes) merged.set(idx, 'minor_diff');
+      for (const [cat, indexes] of categoryIndexes) {
+        for (const idx of indexes) merged.set(idx, cat);
       }
       if (silahIndexes) {
         for (const idx of silahIndexes) merged.set(idx, 'silah');
