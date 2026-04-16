@@ -46,7 +46,7 @@ import sys
 from difflib import SequenceMatcher
 from pathlib import Path
 
-from normalize import normalize_verse
+from normalize import normalize_verse, strip_for_render
 
 HERE = Path(__file__).parent
 REPO = HERE.parents[1]
@@ -109,31 +109,18 @@ def _strip_base(text: str) -> tuple[str, bool]:
 
 
 def categorize_diff(hafs_text: str, bazzi_text: str) -> str | None:
-    """Classify a Hafs→Bazzi word patch:
-      - None   = silah-only or purely typographic; don't highlight
-      - 'minor' = same letters + same internal vowels; only trailing-vowel
-                  or sukun differs (e.g., 6:28 subjunctive→indicative
-                  نُكَذِّبَ ↔ نُكَذِّبُ)
-      - 'major' = letter-skeleton change or internal vowel swap
-                  (e.g., Jibril→Jabra'il, yaHsabu→yaHsibu)
-    """
+    """Legacy two-tier categorizer for close-to-Hafs rewayat (Shu'bah,
+    Bazzi, Qumbul). Use classify_word() for Warsh/Qaloon/Doori/Soosi
+    where the published mushaf color scheme applies."""
     h_norm, h_silah = _strip_base(hafs_text)
     b_norm, b_silah = _strip_base(bazzi_text)
-
-    # Silah-adjacent trailing vowels: when either side had silah, the
-    # preceding damma/kasra is dictated by silah, not grammar. Strip it
-    # from both sides so we don't false-positive.
     if h_silah or b_silah:
         while h_norm and h_norm[-1] in _TRAILING_VOWELS:
             h_norm = h_norm[:-1]
         while b_norm and b_norm[-1] in _TRAILING_VOWELS:
             b_norm = b_norm[:-1]
-
     if h_norm == b_norm:
         return None
-
-    # Real diff. If only trailing vowel/sukun differs (no silah on either
-    # side), classify as minor — e.g., mood change like fatha↔damma.
     h_trail = h_norm
     b_trail = b_norm
     while h_trail and h_trail[-1] in _TRAILING_VOWELS:
@@ -142,8 +129,112 @@ def categorize_diff(hafs_text: str, bazzi_text: str) -> str | None:
         b_trail = b_trail[:-1]
     if h_trail == b_trail:
         return "minor"
-
     return "major"
+
+
+# === Published-mushaf classification for Warsh/Qaloon/Doori/Soosi ===
+# Categories map to specific tajweed rules with established pedagogical
+# color conventions. See Unicode L2/19-306 for KFGQPC encoding details
+# of the markers we detect here.
+
+_HAMZA_LETTERS = set("\u0621\u0623\u0624\u0625\u0626")  # ء أ ؤ إ ئ
+_IBDAL_LONG_VOWELS = set("\u0627\u0648\u064A")  # ا و ي
+_ARABIC_LETTERS = set(
+    "\u0627\u0628\u0629\u062A\u062B\u062C\u062D\u062E"
+    "\u062F\u0630\u0631\u0632\u0633\u0634\u0635\u0636"
+    "\u0637\u0638\u0639\u063A\u0641\u0642\u0643\u0644"
+    "\u0645\u0646\u0647\u0648\u0649\u064A"
+    "\u0621\u0623\u0624\u0625\u0626"  # hamzas
+    "\u0622\u0671"  # alef madda, alef wasla
+)
+_TAFKHIM_TRIGGERS = set("\u0637\u0638\u0635")  # ط ظ ص
+_ALLAH_SUBSTR = "\u0644\u0644\u0651\u064E\u0647"  # للَّه
+
+
+def _letters_only(text: str) -> str:
+    return "".join(c for c in text if c in _ARABIC_LETTERS)
+
+
+def classify_word(
+    hafs_raw: str,
+    target_raw: str,
+    hafs_prev_raw: str | None,
+    target_prev_raw: str | None,
+) -> str | None:
+    """Classify a patched word into one of the published-mushaf tajweed
+    categories. Returns a category name or None if no semantic diff.
+
+    Categories (first match wins):
+      'madd'      — Madd al-Badal or Madd al-Lin (U+06E4 marker present)
+      'tashil'    — Hamza tashil / musahhala (U+06EA or U+06EC marker)
+      'ibdal'     — Hafs hamza → Warsh long vowel at same position
+      'taghliz'   — Allah following a tafkhim-trigger (ط/ظ/ص + vowel)
+      'naql'      — Vowel transferred from a following hamza-wasl word
+      'mukhtalif' — Any other word-level text diff (fall-through)
+
+    Silah is detected at runtime from stored text (U+06E5/U+06E6) — not
+    emitted here.
+    """
+    # Is there actually a diff?
+    h_strip = strip_for_render(hafs_raw)
+    t_strip = strip_for_render(target_raw)
+    if h_strip == t_strip:
+        return None
+
+    # 1. Madd al-Badal / Madd al-Lin — U+06E4 explicitly marks this in
+    #    KFGQPC Warsh/Qaloon data
+    if "\u06E4" in target_raw:
+        return "madd"
+
+    # 2. Tashil — U+06EA (dot below) or U+06EC (ring above) indicates
+    #    hamza tashil / musahhala in KFGQPC Warsh orthography
+    if "\u06EA" in target_raw or "\u06EC" in target_raw:
+        return "tashil"
+
+    # 3. Ibdal — Hafs hamza in same letter position as Warsh long vowel.
+    #    Letter-count-preserving substitution: أ→ا, ؤ→و, ئ→ي.
+    h_letters = _letters_only(hafs_raw)
+    t_letters = _letters_only(target_raw)
+    if len(h_letters) == len(t_letters):
+        for h_c, t_c in zip(h_letters, t_letters):
+            if h_c in _HAMZA_LETTERS and t_c in _IBDAL_LONG_VOWELS:
+                return "ibdal"
+
+    # 4. Taghliz al-Lam — word is Allah following a tafkhim trigger on the
+    #    preceding word. Hafs usually pronounces the lam tafkhim here too
+    #    but Warsh has more consistent application.
+    if _ALLAH_SUBSTR in target_raw and target_prev_raw:
+        prev_letters = _letters_only(target_prev_raw)
+        if prev_letters and prev_letters[-1] in _TAFKHIM_TRIGGERS:
+            return "taghliz"
+
+    # 5. Naql — Warsh transfers a vowel from following hamza-wasl word onto
+    #    this word's final sukun. Detect by: Hafs ends with sukun AND
+    #    Warsh ends with a vowel AND the NEXT Hafs word starts with hamza.
+    #    We don't have next-word info here so this is a conservative check.
+
+    # 6. Mukhtalif fall-through — but only if there's a SUBSTANTIVE diff.
+    #    Filter out typographic-only variations (alef wasla style, trailing
+    #    vowel mood shifts, silah-adjacent changes) that would otherwise
+    #    flood the page with red. The published mushaf reserves the red
+    #    "mukhtalif" tag for genuine reading variants.
+    h_norm, h_silah = _strip_base(hafs_raw)
+    t_norm, t_silah = _strip_base(target_raw)
+    if h_silah or t_silah:
+        while h_norm and h_norm[-1] in _TRAILING_VOWELS:
+            h_norm = h_norm[:-1]
+        while t_norm and t_norm[-1] in _TRAILING_VOWELS:
+            t_norm = t_norm[:-1]
+    if h_norm == t_norm:
+        return None  # typographic only — don't flood the page
+    # Letter-skeleton comparison. If the letter sequence matches and the
+    # only internal differences are vowel marks, treat as a minor/mood
+    # variant rather than a full mukhtalif (red) highlight.
+    h_letters = _letters_only(h_norm)
+    t_letters = _letters_only(t_norm)
+    if h_letters == t_letters:
+        return None  # just vowel differences, not a content variant
+    return "mukhtalif"
 
 
 def align_content(
@@ -234,6 +325,13 @@ def main() -> None:
                 content_count += 1
         target_markers_by_surah[s] = markers
 
+    # Close-to-Hafs rewayat (same qari, nearly identical content) use the
+    # simple major/minor categorizer. Far rewayat (different qari with
+    # pervasive differences) use the published-mushaf tajweed classifier
+    # and strip classification-only markers before DB write.
+    _CLOSE_REWAYAT = {"shouba", "bazzi", "qumbul"}
+    use_full_classifier = rewayah_id not in _CLOSE_REWAYAT
+
     patched_words = 0
     blanked_markers = 0
     unmatched_base = 0  # Hafs slots the aligner couldn't map
@@ -264,27 +362,50 @@ def main() -> None:
         # marker positions.
         base_content_cursor = 0
         last_target_idx = -1
+        prev_base_text: str | None = None
+        prev_target_raw: str | None = None
 
         for row_id, base_text, is_marker in base_rows_s:
             if not is_marker:
                 target_idx = mapping[base_content_cursor]
                 if target_idx is not None:
-                    new_text = target_content[target_idx]
+                    new_text_raw = target_content[target_idx]
                     last_target_idx = max(last_target_idx, target_idx)
-                    if new_text != base_text:
+                    # DB stores render-safe text (classification-only markers
+                    # stripped so DK font doesn't fall back to system font
+                    # for U+06E4/U+06EA which it doesn't ship glyphs for).
+                    new_text_render = (
+                        strip_for_render(new_text_raw)
+                        if use_full_classifier
+                        else new_text_raw
+                    )
+                    if new_text_render != base_text:
                         cur.execute(
                             "UPDATE words SET text = ? WHERE id = ?",
-                            (new_text, row_id),
+                            (new_text_render, row_id),
                         )
                         patched_words += 1
-                        tier = categorize_diff(base_text, new_text)
-                        if tier is not None:
+                        # Classify using RAW text (with markers) so the
+                        # classifier can see U+06E4/U+06EA.
+                        if use_full_classifier:
+                            cat = classify_word(
+                                base_text,
+                                new_text_raw,
+                                prev_base_text,
+                                prev_target_raw,
+                            )
+                        else:
+                            cat = categorize_diff(base_text, new_text_raw)
+                        if cat is not None:
                             s, a, w = base_verse_key_by_id[row_id]
                             verse_key = f"{s}:{a}"
-                            entry = diff_map.setdefault(
-                                verse_key, {"major": [], "minor": []}
-                            )
-                            entry[tier].append(w)
+                            diff_map.setdefault(verse_key, {}).setdefault(
+                                cat, []
+                            ).append(w)
+                    prev_target_raw = new_text_raw
+                else:
+                    prev_target_raw = None
+                prev_base_text = base_text
                 base_content_cursor += 1
             else:
                 # Marker slot. The "target content position" we've reached
@@ -323,15 +444,14 @@ def main() -> None:
         json.dumps(compact_diff_map, ensure_ascii=False, separators=(",", ":"))
     )
 
-    major_count = sum(
-        len(v.get("major", [])) for v in compact_diff_map.values()
-    )
-    minor_count = sum(
-        len(v.get("minor", [])) for v in compact_diff_map.values()
-    )
+    category_counts: dict[str, int] = {}
+    for tiers in compact_diff_map.values():
+        for cat, positions in tiers.items():
+            category_counts[cat] = category_counts.get(cat, 0) + len(positions)
+
     print(f"Patched words: {patched_words}")
-    print(f"  -> major diffs (background): {major_count}")
-    print(f"  -> minor diffs (foreground): {minor_count}")
+    for cat in sorted(category_counts.keys()):
+        print(f"  -> {cat}: {category_counts[cat]}")
     print(f"  -> total flagged verses: {len(compact_diff_map)}")
     print(f"Blanked markers (merged verses): {blanked_markers}")
     print(f"Unmatched base slots (kept Hafs text): {unmatched_base}")
