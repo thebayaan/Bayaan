@@ -49,6 +49,14 @@ CODEPOINT_MAP = {
     "\u0657": "\u08F0",  # open fathatan
     "\u0656": "\u08F2",  # open kasratan
     "\u065E": "\u08F1",  # open dammatan
+    # Codepoints used by KFGQPC Warsh/Qaloon/Doori/Soosi that the
+    # DigitalKhatt font doesn't ship glyphs for — fall back to the nearest
+    # DK-supported equivalent so text renders cleanly instead of dropping
+    # to a system font at wrong baseline/scale.
+    "\u06D2": "\u0649",  # yeh barree -> alef maksura (same dotless final form)
+    "\u06E4": "\u0653",  # small high madda -> madda above
+    "\u06EA": "",  # empty-centre low stop (rare waqf annotation) -> drop
+    "\u200F": "",  # RTL mark (invisible) -> drop; Skia handles RTL from buffer
 }
 _TRANSLATE_TABLE = str.maketrans({k: v for k, v in CODEPOINT_MAP.items()})
 
