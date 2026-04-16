@@ -96,11 +96,20 @@ def wrap_ayah_marker(text: str) -> str:
     return TRAIL_AYAH_NUM.sub(f" {END_OF_AYAH}" + r"\1", text)
 
 
-def normalize_verse(kfgqpc_text: str) -> str:
-    """Full normalization pipeline: KFGQPC conventions -> Bayaan conventions."""
+def normalize_verse(kfgqpc_text: str, *, wrap_ayah: bool = True) -> str:
+    """Full normalization pipeline: KFGQPC conventions -> Bayaan conventions.
+
+    `wrap_ayah=True` (default) prefixes the trailing ayah digit with U+06DD
+    (Bayaan's DigitalKhatt font expects '۝N'). For rewayat that render with
+    a KFGQPC per-qiraat font, set `wrap_ayah=False` — KFGQPC fonts have an
+    OpenType feature that turns a bare Arabic digit into the ornamental
+    ayah marker, and the U+06DD prefix would render as a SECOND empty marker
+    in front of the numbered one.
+    """
     t = substitute_codepoints(kfgqpc_text)
     t = attach_ruku(t)
-    t = wrap_ayah_marker(t)
+    if wrap_ayah:
+        t = wrap_ayah_marker(t)
     return t
 
 

@@ -28,4 +28,11 @@ export const tajweedColors: {[key: string]: string} = {
   slnt: '#AAAAAA',
   ham_wasl: '#AAAAAA',
   laam_shamsiyah: '#AAAAAA',
+  // Purple - Silah (Bazzi/Qumbul pronoun lengthening). Colors the small
+  // high waw/yeh AND the preceding damma/kasra that it connects to.
+  silah: '#8A4FFF',
+  // Teal - Minor rewayah diff. Trailing-vowel / mood-shift changes that
+  // aren't letter-level variants but deserve a subtle visual marker,
+  // distinct from the background orange for MAJOR content changes.
+  minor_diff: '#00A0A0',
 };
