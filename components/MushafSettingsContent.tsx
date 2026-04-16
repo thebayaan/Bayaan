@@ -972,6 +972,17 @@ const REWAYAH_OPTIONS: Array<{
     label: "Shu'bah 'an Asim",
     description: "The second Kufan transmission from Asim, brother of Hafs'",
   },
+  {
+    value: 'bazzi',
+    label: "Al-Bazzi 'an Ibn Kathir",
+    description:
+      'Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen',
+  },
+  {
+    value: 'qumbul',
+    label: "Qunbul 'an Ibn Kathir",
+    description: 'The second Meccan transmission from Ibn Kathir',
+  },
 ];
 
 const createStyles = (theme: Theme) =>
