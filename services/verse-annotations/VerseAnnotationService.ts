@@ -1,5 +1,10 @@
 import {verseAnnotationDatabaseService} from '@/services/database/VerseAnnotationDatabaseService';
 import type {HighlightColor} from '@/types/verse-annotations';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+
+function currentRewayah(): string {
+  return useMushafSettingsStore.getState().rewayah;
+}
 
 class VerseAnnotationService {
   async initialize(): Promise<void> {
@@ -10,6 +15,7 @@ class VerseAnnotationService {
     verseKey: string,
     surahNumber: number,
     ayahNumber: number,
+    rewayahId?: string,
   ): Promise<boolean> {
     const exists = await verseAnnotationDatabaseService.isBookmarked(verseKey);
     if (exists) {
@@ -20,6 +26,7 @@ class VerseAnnotationService {
       verseKey,
       surahNumber,
       ayahNumber,
+      rewayahId ?? currentRewayah(),
     );
     return true;
   }
@@ -33,9 +40,19 @@ class VerseAnnotationService {
   isBookmarked = verseAnnotationDatabaseService.isBookmarked.bind(
     verseAnnotationDatabaseService,
   );
-  addBookmark = verseAnnotationDatabaseService.addBookmark.bind(
-    verseAnnotationDatabaseService,
-  );
+  addBookmark(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    rewayahId?: string,
+  ) {
+    return verseAnnotationDatabaseService.addBookmark(
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      rewayahId ?? currentRewayah(),
+    );
+  }
 
   addNote(
     verseKey: string,
@@ -43,6 +60,7 @@ class VerseAnnotationService {
     ayahNumber: number,
     content: string,
     verseKeys?: string[],
+    rewayahId?: string,
   ) {
     return verseAnnotationDatabaseService.addNote(
       verseKey,
@@ -50,6 +68,7 @@ class VerseAnnotationService {
       ayahNumber,
       content,
       verseKeys,
+      rewayahId ?? currentRewayah(),
     );
   }
   updateNote = verseAnnotationDatabaseService.updateNote.bind(
@@ -78,9 +97,21 @@ class VerseAnnotationService {
     verseAnnotationDatabaseService,
   );
 
-  upsertHighlight = verseAnnotationDatabaseService.upsertHighlight.bind(
-    verseAnnotationDatabaseService,
-  );
+  upsertHighlight(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    color: HighlightColor,
+    rewayahId?: string,
+  ) {
+    return verseAnnotationDatabaseService.upsertHighlight(
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      color,
+      rewayahId ?? currentRewayah(),
+    );
+  }
   removeHighlight = verseAnnotationDatabaseService.removeHighlight.bind(
     verseAnnotationDatabaseService,
   );
@@ -99,12 +130,14 @@ class VerseAnnotationService {
     surahNumber: number,
     ayahNumber: number,
     color: HighlightColor,
+    rewayahId?: string,
   ) {
     return verseAnnotationDatabaseService.upsertHighlight(
       verseKey,
       surahNumber,
       ayahNumber,
       color,
+      rewayahId ?? currentRewayah(),
     );
   }
 }

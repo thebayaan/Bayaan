@@ -5,6 +5,7 @@ import type {
   VerseHighlight,
   HighlightColor,
 } from '@/types/verse-annotations';
+import type {RewayahId} from '@/store/mushafSettingsStore';
 
 // Database row types (snake_case)
 interface BookmarkRow {
@@ -13,6 +14,7 @@ interface BookmarkRow {
   surah_number: number;
   ayah_number: number;
   created_at: number;
+  rewayah_id: string | null;
 }
 
 interface NoteRow {
@@ -24,6 +26,7 @@ interface NoteRow {
   verse_keys: string | null;
   created_at: number;
   updated_at: number;
+  rewayah_id: string | null;
 }
 
 interface HighlightRow {
@@ -33,10 +36,28 @@ interface HighlightRow {
   ayah_number: number;
   color: string;
   created_at: number;
+  rewayah_id: string | null;
 }
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function parseRewayahId(value: string | null): RewayahId | undefined {
+  if (!value) return undefined;
+  // Trust DB values were written by our own code; still narrow through the
+  // known-set to be safe if a hand-edited DB surfaces something unexpected.
+  const known = new Set<RewayahId>([
+    'hafs',
+    'shouba',
+    'bazzi',
+    'qumbul',
+    'warsh',
+    'qaloon',
+    'doori',
+    'soosi',
+  ]);
+  return known.has(value as RewayahId) ? (value as RewayahId) : undefined;
 }
 
 function mapBookmarkRow(row: BookmarkRow): VerseBookmark {
@@ -46,6 +67,7 @@ function mapBookmarkRow(row: BookmarkRow): VerseBookmark {
     surahNumber: row.surah_number,
     ayahNumber: row.ayah_number,
     createdAt: row.created_at,
+    rewayahId: parseRewayahId(row.rewayah_id),
   };
 }
 
@@ -59,6 +81,7 @@ function mapNoteRow(row: NoteRow): VerseNote {
     verseKeys: row.verse_keys ? row.verse_keys.split(',') : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    rewayahId: parseRewayahId(row.rewayah_id),
   };
 }
 
@@ -70,6 +93,7 @@ function mapHighlightRow(row: HighlightRow): VerseHighlight {
     ayahNumber: row.ayah_number,
     color: row.color as HighlightColor,
     createdAt: row.created_at,
+    rewayahId: parseRewayahId(row.rewayah_id),
   };
 }
 
@@ -210,6 +234,21 @@ class VerseAnnotationDatabaseService {
     } catch {
       // Column already exists
     }
+
+    // Migration: add rewayah_id column to all three annotation tables.
+    // Existing rows stay NULL (treated as rewayah-agnostic — open in the
+    // current app rewayah). New saves stamp the active rewayah at the
+    // moment of creation so "open this bookmark" can restore the reading
+    // the user was in.
+    for (const table of ['bookmarks', 'notes', 'highlights']) {
+      try {
+        await this.db.execAsync(
+          `ALTER TABLE ${table} ADD COLUMN rewayah_id TEXT;`,
+        );
+      } catch {
+        // Column already exists
+      }
+    }
   }
 
   // Bookmark operations
@@ -217,6 +256,7 @@ class VerseAnnotationDatabaseService {
     verseKey: string,
     surahNumber: number,
     ayahNumber: number,
+    rewayahId?: string,
   ): Promise<VerseBookmark> {
     const db = await this.ensureReady();
 
@@ -226,17 +266,19 @@ class VerseAnnotationDatabaseService {
       surahNumber,
       ayahNumber,
       createdAt: Date.now(),
+      rewayahId: rewayahId as VerseBookmark['rewayahId'],
     };
 
     await db.runAsync(
-      `INSERT INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         bookmark.id,
         bookmark.verseKey,
         bookmark.surahNumber,
         bookmark.ayahNumber,
         bookmark.createdAt,
+        bookmark.rewayahId ?? null,
       ],
     );
 
@@ -281,6 +323,7 @@ class VerseAnnotationDatabaseService {
     ayahNumber: number,
     content: string,
     verseKeys?: string[],
+    rewayahId?: string,
   ): Promise<VerseNote> {
     const db = await this.ensureReady();
 
@@ -289,9 +332,19 @@ class VerseAnnotationDatabaseService {
     const verseKeysStr = verseKeys?.length ? verseKeys.join(',') : null;
 
     await db.runAsync(
-      `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, verseKey, surahNumber, ayahNumber, content, verseKeysStr, now, now],
+      `INSERT INTO notes (id, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        content,
+        verseKeysStr,
+        now,
+        now,
+        rewayahId ?? null,
+      ],
     );
 
     return {
@@ -303,6 +356,7 @@ class VerseAnnotationDatabaseService {
       verseKeys: verseKeys?.length ? verseKeys : undefined,
       createdAt: now,
       updatedAt: now,
+      rewayahId: rewayahId as VerseNote['rewayahId'],
     };
   }
 
@@ -368,6 +422,7 @@ class VerseAnnotationDatabaseService {
     surahNumber: number,
     ayahNumber: number,
     color: HighlightColor,
+    rewayahId?: string,
   ): Promise<VerseHighlight> {
     const db = await this.ensureReady();
 
@@ -375,10 +430,10 @@ class VerseAnnotationDatabaseService {
     const id = generateId();
 
     await db.runAsync(
-      `INSERT INTO highlights (id, verse_key, surah_number, ayah_number, color, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT(verse_key) DO UPDATE SET color = excluded.color`,
-      [id, verseKey, surahNumber, ayahNumber, color, now],
+      `INSERT INTO highlights (id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`,
+      [id, verseKey, surahNumber, ayahNumber, color, now, rewayahId ?? null],
     );
 
     return {
@@ -388,6 +443,7 @@ class VerseAnnotationDatabaseService {
       ayahNumber,
       color,
       createdAt: now,
+      rewayahId: rewayahId as VerseHighlight['rewayahId'],
     };
   }
 
