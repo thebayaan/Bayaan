@@ -24,6 +24,8 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {showToast} from '@/utils/toastUtils';
 import {
   useMushafSettingsStore,
   getActualFontSize,
@@ -515,6 +517,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         return;
       }
       setRewayah(value);
+      showToast('Now reading', getRewayahShortLabel(value));
     },
     [rewayah, setRewayah],
   );
