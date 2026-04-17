@@ -291,6 +291,33 @@ def classify_word(
     return ("mukhtalif", [])
 
 
+def classify_mukhtalif_only(
+    hafs_raw: str, target_raw: str
+) -> tuple[str, list[int]] | None:
+    """Strict content-variant-only classifier for Abu Amr rewayat (Doori,
+    Soosi). Skips all marker-based rule inference — those markers encode
+    Abu Amr's own hamza rules, not the Nafi' published-mushaf palette.
+    Emits only 'mukhtalif' for genuine letter-level differences."""
+    h_strip = strip_for_render(hafs_raw)
+    t_strip = strip_for_render(target_raw)
+    if h_strip == t_strip:
+        return None
+    h_norm, h_silah = _strip_base(hafs_raw)
+    t_norm, t_silah = _strip_base(target_raw)
+    if h_silah or t_silah:
+        while h_norm and h_norm[-1] in _TRAILING_VOWELS:
+            h_norm = h_norm[:-1]
+        while t_norm and t_norm[-1] in _TRAILING_VOWELS:
+            t_norm = t_norm[:-1]
+    if h_norm == t_norm:
+        return None
+    h_letters = _letters_only(h_norm)
+    t_letters = _letters_only(t_norm)
+    if h_letters == t_letters:
+        return None
+    return ("mukhtalif", [])
+
+
 def align_content(
     base_texts: list[str], target_texts: list[str]
 ) -> list[int | None]:
@@ -380,12 +407,28 @@ def main() -> None:
                 content_count += 1
         target_markers_by_surah[s] = markers
 
-    # Close-to-Hafs rewayat (same qari, nearly identical content) use the
-    # simple major/minor categorizer. Far rewayat (different qari with
-    # pervasive differences) use the published-mushaf tajweed classifier
-    # and strip classification-only markers before DB write.
+    # Three classifier modes, picked by rewayah:
+    #   close  (shouba/bazzi/qumbul) — legacy two-tier major/minor. Text
+    #          stored verbatim (no markers to strip).
+    #   nafi   (warsh/qaloon)        — full published-mushaf classifier.
+    #          Markers drive letter-level madd/tashil/ibdal/taghliz.
+    #   abu_amr (doori/soosi)        — only mukhtalif (genuine content
+    #          variants). The KFGQPC U+06EA/U+06EC markers in these
+    #          sources describe Abu Amr's own hamza rules, which don't
+    #          map onto the Nafi' published mushaf; inferring rules
+    #          from them produces wrong highlights. Author a proper
+    #          Abu Amr rule classifier later.
+    # Far rewayat (non-close) all strip U+06E4/U+06EA from stored text
+    # since DK can't render them.
     _CLOSE_REWAYAT = {"shouba", "bazzi", "qumbul"}
-    use_full_classifier = rewayah_id not in _CLOSE_REWAYAT
+    _NAFI_REWAYAT = {"warsh", "qaloon"}
+    strip_markers = rewayah_id not in _CLOSE_REWAYAT
+    if rewayah_id in _CLOSE_REWAYAT:
+        classifier_mode = "close"
+    elif rewayah_id in _NAFI_REWAYAT:
+        classifier_mode = "nafi"
+    else:
+        classifier_mode = "abu_amr"
 
     patched_words = 0
     blanked_markers = 0
@@ -431,7 +474,7 @@ def main() -> None:
                     # for U+06E4/U+06EA which it doesn't ship glyphs for).
                     new_text_render = (
                         strip_for_render(new_text_raw)
-                        if use_full_classifier
+                        if strip_markers
                         else new_text_raw
                     )
                     if new_text_render != base_text:
@@ -441,13 +484,17 @@ def main() -> None:
                         )
                         patched_words += 1
                         # Classify using RAW text (with markers) so the
-                        # classifier can see U+06E4/U+06EA.
-                        if use_full_classifier:
+                        # Nafi' classifier can see U+06E4/U+06EA.
+                        if classifier_mode == "nafi":
                             result = classify_word(
                                 base_text,
                                 new_text_raw,
                                 prev_base_text,
                                 prev_target_raw,
+                            )
+                        elif classifier_mode == "abu_amr":
+                            result = classify_mukhtalif_only(
+                                base_text, new_text_raw
                             )
                         else:
                             result = categorize_diff(base_text, new_text_raw)
