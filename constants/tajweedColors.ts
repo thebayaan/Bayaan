@@ -47,7 +47,12 @@ export const tajweedColors: {[key: string]: string} = {
   ibdal: '#29B6F6',
   //   Dark blue — Taghliz al-Lam (heavy lam in Allah after ط/ظ/ص).
   taghliz: '#1A46D0',
-  //   Red — Mukhtalif (word-level reading variants that don't fit a
-  //   specific rule — includes mood/case shifts and genuine content diffs).
-  mukhtalif: '#BF0100',
 };
+
+// Background tint applied to whole-word content variants (legacy 'major'
+// category for Shouba/Bazzi/Qumbul, and 'mukhtalif' for Warsh/Qaloon/
+// Doori/Soosi). Whole-word diffs use a background block instead of a text
+// color to keep the foreground channel reserved for letter-level rules
+// (madd/tashil/ibdal/taghliz/silah) — matches the published-mushaf
+// convention.
+export const REWAYAH_DIFF_BACKGROUND = 'rgba(255, 107, 53, 0.3)';
