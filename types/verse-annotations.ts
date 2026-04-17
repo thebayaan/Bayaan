@@ -8,12 +8,18 @@ export const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
   purple: 'rgba(212, 176, 255, 0.3)',
 };
 
+// Optional rewayah this annotation was saved in. Null on legacy rows
+// written before rewayah stamping was introduced — the UI treats those
+// as rewayah-agnostic and opens them in whatever is currently active.
+import type {RewayahId} from '@/store/mushafSettingsStore';
+
 export interface VerseBookmark {
   id: string;
   verseKey: string;
   surahNumber: number;
   ayahNumber: number;
   createdAt: number;
+  rewayahId?: RewayahId;
 }
 
 export interface VerseNote {
@@ -25,6 +31,7 @@ export interface VerseNote {
   verseKeys?: string[];
   createdAt: number;
   updatedAt: number;
+  rewayahId?: RewayahId;
 }
 
 export interface VerseHighlight {
@@ -34,4 +41,5 @@ export interface VerseHighlight {
   ayahNumber: number;
   color: HighlightColor;
   createdAt: number;
+  rewayahId?: RewayahId;
 }

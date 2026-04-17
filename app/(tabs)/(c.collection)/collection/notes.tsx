@@ -159,6 +159,7 @@ const NotesScreen = () => {
       verseKey={item.note.verseKey}
       verseKeys={item.note.verseKeys}
       notePreview={item.note.content}
+      rewayahId={item.note.rewayahId}
       onPress={() => handleNotePress(item)}
       onOptionsPress={() => handleOptionsPress(item)}
     />
@@ -282,9 +283,7 @@ const NotesScreen = () => {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       />
-      {!USE_GLASS && (
-        <CollectionStickyHeader title="Notes" scrollY={scrollY} />
-      )}
+      {!USE_GLASS && <CollectionStickyHeader title="Notes" scrollY={scrollY} />}
     </View>
   );
 };
