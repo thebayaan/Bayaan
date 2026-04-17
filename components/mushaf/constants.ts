@@ -1,4 +1,30 @@
-import {Dimensions} from 'react-native';
+import {useMemo} from 'react';
+import {Dimensions, useWindowDimensions} from 'react-native';
+import type {EdgeInsets} from 'react-native-safe-area-context';
+import {getIsTablet} from '@/utils/responsive';
+
+// ---------------------------------------------------------------------------
+// Live window dimensions (kept in sync via Dimensions subscription)
+// ---------------------------------------------------------------------------
+
+let _liveWidth = Dimensions.get('window').width;
+let _liveHeight = Dimensions.get('window').height;
+
+Dimensions.addEventListener('change', ({window}) => {
+  _liveWidth = window.width;
+  _liveHeight = window.height;
+});
+
+// ---------------------------------------------------------------------------
+// Module-level snapshot constants (backward-compat).
+//
+// These are captured at import time. They remain correct for the default
+// phone-portrait case (the only case the app supported before iPad work)
+// and are used by modules that cannot easily adopt the hook yet.
+//
+// iPad / rotation-aware consumers should instead use `useMushafLayout()`
+// or `getMushafLayout()` below, which always read the latest dimensions.
+// ---------------------------------------------------------------------------
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
@@ -23,6 +49,7 @@ export function getPageEdgeLayout(pageNumber: number) {
       : PAGE_EDGE_OUTER_MARGIN,
   };
 }
+
 export const LINES_PER_PAGE = 15;
 
 export const CONTENT_WIDTH = SCREEN_WIDTH - PAGE_PADDING_HORIZONTAL * 2;
@@ -31,6 +58,128 @@ export const CONTENT_HEIGHT =
 export const BASE_LINE_HEIGHT = CONTENT_HEIGHT / LINES_PER_PAGE;
 
 export {SCREEN_WIDTH, SCREEN_HEIGHT};
+
+// ---------------------------------------------------------------------------
+// Responsive mushaf layout (hook + static helper)
+// ---------------------------------------------------------------------------
+
+export interface MushafLayoutMetrics {
+  screenWidth: number;
+  screenHeight: number;
+  /** Width of one rendered page (single on phone & iPad portrait, half on iPad landscape). */
+  pageWidth: number;
+  contentWidth: number;
+  contentHeight: number;
+  baseLineHeight: number;
+  paddingHorizontal: number;
+  paddingTop: number;
+  paddingBottom: number;
+  /** True when rendering two facing pages side-by-side. */
+  facingPages: boolean;
+}
+
+export interface MushafLayoutOpts {
+  width?: number;
+  height?: number;
+  insets?: EdgeInsets | null;
+  /** Height of the custom bottom player/toolbar, if any. */
+  toolbarHeight?: number;
+  /** Height of the native stack header, if one is shown. */
+  headerHeight?: number;
+  isTablet?: boolean;
+}
+
+/**
+ * Pure helper that returns mushaf metrics for a given window + insets.
+ *
+ * The important difference vs the legacy `SCREEN_*`/`CONTENT_*` constants
+ * is that `paddingTop` / `paddingBottom` are derived from the real safe
+ * area instead of being frozen at 130/100pt, which is what caused the
+ * "page cut off at the bottom" bug on iPad.
+ */
+export function getMushafLayout(
+  opts: MushafLayoutOpts = {},
+): MushafLayoutMetrics {
+  const width = opts.width ?? _liveWidth;
+  const height = opts.height ?? _liveHeight;
+  const insetTop = opts.insets?.top ?? 0;
+  const insetBottom = opts.insets?.bottom ?? 0;
+  const headerHeight = opts.headerHeight ?? 0;
+  const toolbarHeight = opts.toolbarHeight ?? 0;
+  const isTablet = opts.isTablet ?? getIsTablet();
+
+  const landscape = width >= height;
+  const facingPages = isTablet && landscape;
+
+  const compact = height < 700;
+
+  // Horizontal padding: give iPad more breathing room.
+  const paddingHorizontal = isTablet ? (landscape ? 16 : 20) : compact ? 4 : 8;
+
+  // Vertical padding now includes real safe-area inset + toolbar/header so the
+  // page never tucks under the tab bar, stack header, or bottom player bar.
+  const basePaddingTop = compact ? 95 : 130;
+  const basePaddingBottom = compact ? 70 : 100;
+
+  // On iPad the stack toolbar is much shorter relative to the big canvas;
+  // keep padding tight so line height doesn't shrink.
+  const tabletPaddingTop = Math.max(insetTop + 12, 44) + headerHeight;
+  const tabletPaddingBottom = Math.max(insetBottom + 12, 24) + toolbarHeight;
+
+  const paddingTop = isTablet ? tabletPaddingTop : basePaddingTop;
+  const paddingBottom = isTablet ? tabletPaddingBottom : basePaddingBottom;
+
+  // NOTE: We report `pageWidth === width` for now; the `facingPages` flag is
+  // exposed as a hint so future code can split the canvas in half on iPad
+  // landscape without breaking existing single-page FlatList layouts.
+  const pageWidth = width;
+
+  const contentWidth = pageWidth - paddingHorizontal * 2;
+  const contentHeight = Math.max(height - paddingTop - paddingBottom, 1);
+  const baseLineHeight = contentHeight / LINES_PER_PAGE;
+
+  return {
+    screenWidth: width,
+    screenHeight: height,
+    pageWidth,
+    contentWidth,
+    contentHeight,
+    baseLineHeight,
+    paddingHorizontal,
+    paddingTop,
+    paddingBottom,
+    facingPages,
+  };
+}
+
+/**
+ * React hook that returns live mushaf metrics. Re-renders on rotation /
+ * split-view changes via `useWindowDimensions`.
+ *
+ * Pass `insets` from `useSafeAreaInsets()` and, if applicable, the height
+ * of any on-screen toolbar so the page never clips underneath it.
+ */
+export function useMushafLayout(
+  opts: Omit<MushafLayoutOpts, 'width' | 'height'> = {},
+): MushafLayoutMetrics {
+  const {width, height} = useWindowDimensions();
+
+  return useMemo(
+    () => getMushafLayout({...opts, width, height}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      width,
+      height,
+      opts.insets?.top,
+      opts.insets?.bottom,
+      opts.insets?.left,
+      opts.insets?.right,
+      opts.toolbarHeight,
+      opts.headerHeight,
+      opts.isTablet,
+    ],
+  );
+}
 
 export const SURAH_NAMES: Record<number, string> = {
   1: '\u0627\u0644\u0641\u0627\u062A\u062D\u0629',
@@ -179,18 +328,24 @@ export function getHizbForPage(page: number): number {
 
 /**
  * Calculate Y positions for mushaf page lines with uniform line heights.
- * Every line (surah_name, basmallah, ayah) gets exactly BASE_LINE_HEIGHT.
+ * Every line (surah_name, basmallah, ayah) gets exactly `baseLineHeight`.
  * Pages 1-2 center the block vertically; pages 3-604 start from the top.
+ *
+ * `contentHeight` and `baseLineHeight` default to the module-level constants
+ * (phone-portrait snapshot). iPad / rotation-aware callers should pass the
+ * values returned by `useMushafLayout()` instead.
  */
 export function calculateLineYPositions(
   lines: {line_type: string}[],
   pageNumber: number,
+  contentHeight: number = CONTENT_HEIGHT,
+  baseLineHeight: number = BASE_LINE_HEIGHT,
 ): number[] {
   if (pageNumber === 1 || pageNumber === 2) {
-    const totalHeight = lines.length * BASE_LINE_HEIGHT;
-    const topOffset = (CONTENT_HEIGHT - totalHeight) / 2;
-    return lines.map((_, i) => topOffset + i * BASE_LINE_HEIGHT);
+    const totalHeight = lines.length * baseLineHeight;
+    const topOffset = (contentHeight - totalHeight) / 2;
+    return lines.map((_, i) => topOffset + i * baseLineHeight);
   }
 
-  return lines.map((_, i) => i * BASE_LINE_HEIGHT);
+  return lines.map((_, i) => i * baseLineHeight);
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {MaxWidthContainer} from '@/components/layout/MaxWidthContainer';
 
 export default function CollectionLayout() {
   const {theme} = useTheme();
@@ -21,11 +22,12 @@ export default function CollectionLayout() {
       : undefined;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        freezeOnBlur: true,
-      }}>
+    <MaxWidthContainer>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          freezeOnBlur: true,
+        }}>
       <Stack.Screen
         name="index"
         options={
@@ -87,6 +89,7 @@ export default function CollectionLayout() {
         name="playlist/[id]"
         options={collectionScreenOptions}
       />
-    </Stack>
+      </Stack>
+    </MaxWidthContainer>
   );
 }

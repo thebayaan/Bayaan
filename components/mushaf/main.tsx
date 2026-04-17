@@ -31,14 +31,10 @@ import {moderateScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
-  SCREEN_WIDTH,
-  SCREEN_HEIGHT,
-  PAGE_PADDING_HORIZONTAL,
-  PAGE_PADDING_TOP,
-  PAGE_PADDING_BOTTOM,
-  CONTENT_WIDTH,
   getJuzForPage,
   getPageEdgeLayout,
+  useMushafLayout,
+  type MushafLayoutMetrics,
 } from './constants';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {SURAHS} from '@/data/surahData';
@@ -103,6 +99,7 @@ const DKPageView: React.FC<{
   cardColor: string;
   bgColor: string;
   isBookLayout: boolean;
+  metrics: MushafLayoutMetrics;
   onTap?: () => void;
 }> = ({
   pageNumber,
@@ -115,6 +112,7 @@ const DKPageView: React.FC<{
   cardColor,
   bgColor,
   isBookLayout,
+  metrics,
   onTap,
 }) => {
   const [pageReady, setPageReady] = useState(false);
@@ -128,22 +126,24 @@ const DKPageView: React.FC<{
   // In fullscreen mode, use symmetric padding; in book mode, use asymmetric
   const effectiveMarginLeft = isBookLayout ? contentMarginLeft : undefined;
   const effectiveOuterMargin = isBookLayout
-    ? SCREEN_WIDTH - contentMarginLeft - CONTENT_WIDTH
-    : PAGE_PADDING_HORIZONTAL;
+    ? metrics.pageWidth - contentMarginLeft - metrics.contentWidth
+    : metrics.paddingHorizontal;
   const effectiveLabelLeft = isBookLayout
     ? contentMarginLeft + 8
-    : PAGE_PADDING_HORIZONTAL + 8;
+    : metrics.paddingHorizontal + 8;
 
   // Center page number vertically between content bottom and bottom border
   const pageNumberBottom = isBookLayout
-    ? insets.top + (PAGE_PADDING_BOTTOM - insets.top) / 2 - 8
-    : PAGE_PADDING_BOTTOM - 35;
+    ? insets.top + (metrics.paddingBottom - insets.top) / 2 - 8
+    : metrics.paddingBottom - 35;
 
   return (
     <View
       style={[
         styles.page,
         {
+          width: metrics.pageWidth,
+          height: metrics.screenHeight,
           backgroundColor: isBookLayout ? bgColor : cardColor,
           opacity: pageReady ? 1 : 0,
         },
@@ -183,6 +183,13 @@ const DKPageView: React.FC<{
         contentMarginLeft={effectiveMarginLeft}
         onReady={() => setPageReady(true)}
         onTap={onTap}
+        screenWidth={metrics.pageWidth}
+        screenHeight={metrics.screenHeight}
+        contentWidth={metrics.contentWidth}
+        contentHeight={metrics.contentHeight}
+        baseLineHeight={metrics.baseLineHeight}
+        paddingHorizontal={metrics.paddingHorizontal}
+        paddingTop={metrics.paddingTop}
       />
       {isBookLayout && (
         <PageEdgeDecoration
@@ -197,7 +204,7 @@ const DKPageView: React.FC<{
           styles.pageLabel,
           {
             color: labelColor,
-            top: PAGE_PADDING_TOP - 30,
+            top: metrics.paddingTop - 30,
             left: effectiveLabelLeft,
           },
         ]}
@@ -210,7 +217,7 @@ const DKPageView: React.FC<{
           styles.pageLabel,
           {
             color: labelColor,
-            top: PAGE_PADDING_TOP - 30,
+            top: metrics.paddingTop - 30,
             right: effectiveOuterMargin + 8,
             textAlign: 'right',
           },
@@ -294,6 +301,14 @@ export default function MushafViewer({
   const flatListRef = useRef<FlatList>(null);
   const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
+  // Live mushaf layout metrics — tracks rotation / iPad / safe area.
+  // On non-glass devices the `MushafPlayerBar` renders as a fixed-height
+  // absolute bar; account for it so the page never sits underneath.
+  const metrics = useMushafLayout({
+    insets,
+    toolbarHeight: USE_GLASS ? 0 : 60,
+    headerHeight: USE_GLASS ? 0 : 60,
+  });
 
   // Reanimated overlay animation (same pattern as PlayerContent)
   const overlayOpacity = useSharedValue(1);
@@ -750,7 +765,7 @@ export default function MushafViewer({
             return viewMode === 'list' ? (
               <ReadingPageView {...commonProps} />
             ) : (
-              <DKPageView {...commonProps} />
+              <DKPageView {...commonProps} metrics={metrics} />
             );
           }}
           keyExtractor={item => item.toString()}
@@ -759,8 +774,8 @@ export default function MushafViewer({
           showsHorizontalScrollIndicator={false}
           initialScrollIndex={Math.min(currentPage - 1, TOTAL_PAGES - 1)}
           getItemLayout={(_, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
+            length: metrics.screenWidth,
+            offset: metrics.screenWidth * index,
             index,
           })}
           inverted
@@ -911,8 +926,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    // width and height are provided inline per-page so pages stay in sync
+    // with live window dimensions (rotation / iPad split-view aware).
   },
 
   // Per-page metadata labels
