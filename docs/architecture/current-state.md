@@ -253,6 +253,33 @@ For deep dives see [docs/features/digital-khatt/README.md](../features/digital-k
 
 ---
 
+## Rewayat (multi-qira'at)
+
+The mushaf renders any of the 8 canonical KFGQPC rewayat — Hafs, Shu'bah, Al-Bazzi, Qunbul, Warsh, Qalun, Al-Duri, Al-Susi — selectable from Mushaf Settings. Each ships as a Hafs-layout sibling: shared `dk_layout.db`, per-rewayah `dk_words_<id>.db`.
+
+- `DigitalKhattDataService` holds one active rewayah for the mushaf and a side cache (up to 7 entries, ~4 MB) for surfaces that need a different one (typically the player rendering the reciter's rewayah). `ensureRewayahLoaded(rewayah)` populates the side cache on demand.
+- `RewayahDiffService` loads a per-rewayah diff JSON describing which words differ from Hafs and what highlight category applies. Two channels: background tint for whole-word variants (`major`, `mukhtalif`), foreground color for letter-level rules (`madd`, `tashil`, `ibdal`, `taghliz`, `silah`, `minor`).
+- Copy/share surfaces resolve Arabic text from DK in the current-context rewayah and stamp the short rewayah label on non-Hafs output (text, image, URL `?rewayah=<id>`).
+- Verse bookmarks / notes / highlights persist a nullable `rewayah_id`; legacy rows are backfilled to `'hafs'`. Opening a saved item silently restores the saved rewayah before navigating.
+- Word-by-word locks to Hafs regardless of context (WBW data is Hafs-aligned) with a disclosure.
+
+For deep dive see [docs/features/rewayat.md](../features/rewayat.md).
+
+---
+
+## Analytics
+
+Phase 1 shipped: event tracking, local aggregation, Sentry crash reporting.
+
+- `services/analytics/AnalyticsService.ts` — PostHog-backed event client with killswitch and opt-out.
+- `services/analytics/LocalAggregationStore.ts` — MMKV daily buckets feeding a future stats dashboard.
+- `services/analytics/MeaningfulListenTracker.ts` — 30s / 10% threshold before counting a listen.
+- Instrumented surfaces: player (play, skip, seek, rate change), mushaf navigation, adhkar interactions, search, translation views, reciter interactions, playlists, share creation, app lifecycle.
+
+For deep dive see [docs/features/analytics.md](../features/analytics.md).
+
+---
+
 ## Key patterns
 
 ### Pressable over TouchableOpacity

@@ -15,6 +15,7 @@ Bayaan lets you listen to Quran recitations from 200+ reciters with background a
 
 - **Quran Player** — Stream or download recitations from 200+ reciters across multiple rewayat. Background playback, lock screen controls, sleep timer, playback speed, and repeat modes.
 - **Digital Mushaf** — Full Uthmani text rendered with [Digital Khatt](docs/features/digital-khatt/README.md) using Skia. Verse follow-along synced to audio playback, multiple reading themes.
+- **Multi-Qira'at (Rewayat)** — All 8 canonical KFGQPC [rewayat](docs/features/rewayat.md) selectable from settings (Hafs, Shu'bah, Al-Bazzi, Qunbul, Warsh, Qalun, Al-Duri, Al-Susi). Published-mushaf-style highlighting for differences from Hafs; context flows into player text, share surfaces, and saved annotations.
 - **Adhkar** — Comprehensive collection of daily Adhkar and Du'a with audio, counters, and saved favorites.
 - **Offline Downloads** — Download any reciter's complete Quran for offline playback. Persistent download management with progress tracking.
 - **Playlists** — Create and manage custom playlists backed by SQLite.
