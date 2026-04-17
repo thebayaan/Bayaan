@@ -45,6 +45,8 @@ New to the project? Start here:
 | [mushaf-page.md](features/mushaf-page.md) | Mushaf page feature overview (see digital-khatt/ for rendering details) |
 | [digital-khatt-rendering.md](features/digital-khatt-rendering.md) | Digital Khatt rendering overview |
 | [adhkar-feature-plan.md](features/adhkar-feature-plan.md) | Adhkar feature — implementation reference |
+| [rewayat.md](features/rewayat.md) | Multi-qira'at (rewayat) support — 8 KFGQPC readings across mushaf, player, and UGC |
+| [analytics.md](features/analytics.md) | Analytics & listening insights — Phase 1 shipped (PostHog events, local aggregation, Sentry) |
 
 ### Digital Khatt (Mushaf rendering)
 
@@ -66,7 +68,6 @@ Deep documentation of the Uthmani Mushaf rendering system:
 
 | Document | Description |
 |----------|-------------|
-| [analytics.md](features/analytics.md) | Analytics (planned) |
 | [cloud-sync.md](features/cloud-sync.md) | Cloud sync (planned) |
 | [shareable-links.md](features/shareable-links.md) | Deep link sharing |
 | [carplay-android-auto.md](features/carplay-android-auto.md) | CarPlay / Android Auto |
