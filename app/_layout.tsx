@@ -70,11 +70,15 @@ SystemUI.setBackgroundColorAsync(
   Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
 );
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
-  tracesSampleRate: 0.2,
-  enableAutoSessionTracking: true,
-});
+const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
+
+if (analyticsEnabled) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+    tracesSampleRate: 0.2,
+    enableAutoSessionTracking: true,
+  });
+}
 
 /** Connects PostHog SDK to our analytics service and tracks app lifecycle. */
 function AnalyticsConnector(): null {
