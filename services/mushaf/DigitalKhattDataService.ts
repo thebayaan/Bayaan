@@ -118,6 +118,12 @@ class DigitalKhattDataService {
   private verseToPage: Map<string, number> | null = null;
   private currentRewayah: RewayahId = 'hafs';
   private rewayahListeners: Set<RewayahChangeListener> = new Set();
+  // Side cache for rewayat OTHER than the currently-active mushaf rewayah.
+  // Lets the player render text from a reciter's rewayah without mutating
+  // currentRewayah (which the mushaf page follows). Populated lazily via
+  // ensureRewayahLoaded(). Each inner map mirrors `verseWords`.
+  private sideVerseWords: Map<RewayahId, Map<string, DKWordInfo[]>> = new Map();
+  private sideLoading: Map<RewayahId, Promise<void>> = new Map();
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
 
@@ -174,6 +180,8 @@ class DigitalKhattDataService {
     this.surahStartPages = {};
     this.pageToSurah = {};
     this.verseToPage = null;
+    this.sideVerseWords.clear();
+    this.sideLoading.clear();
 
     const dbNames = new Set<string>();
     for (const cfg of Object.values(REWAYAH_DATA)) {
@@ -198,6 +206,9 @@ class DigitalKhattDataService {
     this.wordInfoById.clear();
     this.verseWords.clear();
     this.verseToPage = null;
+    // The new active rewayah doesn't need its side-cache entry anymore
+    // (it's about to be the main cache). Drop it to reclaim memory.
+    this.sideVerseWords.delete(rewayah);
     await this.loadWords();
     // Layout only reloads if the new rewayah uses a different layout DB
     // (e.g., hafs ↔ shouba share one; hafs ↔ bazzi do not).
@@ -381,14 +392,82 @@ class DigitalKhattDataService {
     return this.pageToSurah;
   }
 
-  getVerseWords(verseKey: string): DKWordInfo[] {
-    return this.verseWords.get(verseKey) || [];
+  getVerseWords(verseKey: string, rewayah?: RewayahId): DKWordInfo[] {
+    if (!rewayah || rewayah === this.currentRewayah) {
+      return this.verseWords.get(verseKey) || [];
+    }
+    return this.sideVerseWords.get(rewayah)?.get(verseKey) || [];
   }
 
-  getVerseText(verseKey: string): string {
-    const words = this.verseWords.get(verseKey);
-    if (!words) return '';
+  getVerseText(verseKey: string, rewayah?: RewayahId): string {
+    const words = this.getVerseWords(verseKey, rewayah);
+    if (words.length === 0) return '';
     return words.map(w => w.text).join(' ');
+  }
+
+  /**
+   * Lazy-load the words DB for a rewayah other than the current one into a
+   * side cache so it can be read synchronously by getVerseText/getVerseWords
+   * with the `rewayah` param. No-op if rewayah is the current one or already
+   * cached. Used by the player to render text for a reciter whose rewayah
+   * differs from the mushaf's active rewayah without mutating global state.
+   */
+  async ensureRewayahLoaded(rewayah: RewayahId): Promise<void> {
+    if (rewayah === this.currentRewayah) return;
+    if (this.sideVerseWords.has(rewayah)) return;
+    const existing = this.sideLoading.get(rewayah);
+    if (existing) return existing;
+    const loadPromise = this._loadSideRewayah(rewayah);
+    this.sideLoading.set(rewayah, loadPromise);
+    try {
+      await loadPromise;
+    } finally {
+      this.sideLoading.delete(rewayah);
+    }
+  }
+
+  private async _loadSideRewayah(rewayah: RewayahId): Promise<void> {
+    const cfg = REWAYAH_DATA[rewayah];
+    const dbName = cfg.wordsDbName;
+    let db = await SQLite.openDatabaseAsync(dbName);
+    const tableCheck = await db
+      .getFirstAsync<{
+        name: string;
+      }>("SELECT name FROM sqlite_master WHERE type='table' AND name='words';")
+      .catch(() => null);
+    if (!tableCheck) {
+      await db.closeAsync();
+      await SQLite.deleteDatabaseAsync(dbName);
+      await SQLite.importDatabaseFromAssetAsync(dbName, {
+        assetId: cfg.wordsAsset,
+      });
+      db = await SQLite.openDatabaseAsync(dbName);
+    }
+    const rows = await db.getAllAsync<{
+      id: number;
+      text: string;
+      location: string;
+    }>('SELECT id, text, location FROM words;');
+    await db.closeAsync();
+
+    const byVerse = new Map<string, DKWordInfo[]>();
+    for (const row of rows) {
+      const parts = row.location.split(':');
+      if (parts.length < 3) continue;
+      const verseKey = `${parts[0]}:${parts[1]}`;
+      const info: DKWordInfo = {
+        text: row.text,
+        verseKey,
+        wordPositionInVerse: parseInt(parts[2], 10),
+      };
+      const arr = byVerse.get(verseKey);
+      if (arr) arr.push(info);
+      else byVerse.set(verseKey, [info]);
+    }
+    for (const words of byVerse.values()) {
+      words.sort((a, b) => a.wordPositionInVerse - b.wordPositionInVerse);
+    }
+    this.sideVerseWords.set(rewayah, byVerse);
   }
 
   getPageForVerse(verseKey: string): number | undefined {
