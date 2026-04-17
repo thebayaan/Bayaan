@@ -1,3 +1,5 @@
+> **SHIPPED — This feature is implemented.** Implementation reference plan; the feature shipped. See `WBWDataService`, `WBWVerseView`, and `mushafSettingsStore`.
+
 # Word-by-Word Translation — Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
@@ -17,6 +19,7 @@
 ### Task 1: Add WBW State to mushafSettingsStore
 
 **Files:**
+
 - Modify: `store/mushafSettingsStore.ts`
 
 **Step 1: Add WBW fields to the interface**
@@ -84,6 +87,7 @@ feat(store): add word-by-word settings to mushafSettingsStore
 ### Task 2: Create WBWDataService
 
 **Files:**
+
 - Create: `services/wbw/WBWDataService.ts`
 
 **Step 1: Create the service**
@@ -191,6 +195,7 @@ feat(wbw): create WBWDataService for word-by-word SQLite lookups
 ### Task 3: Register WBWDataService in AppInitializer
 
 **Files:**
+
 - Modify: `services/AppInitializer.ts`
 
 **Step 1: Add import**
@@ -232,6 +237,7 @@ feat(wbw): register WBWDataService in AppInitializer
 ### Task 4: Create WBWVerseView Component
 
 **Files:**
+
 - Create: `components/player/v2/PlayerContent/QuranView/WBWVerseView.tsx`
 
 **IMPORTANT:** Invoke `frontend-design` skill before writing this component. Follow the alpha-based design system.
@@ -239,6 +245,7 @@ feat(wbw): register WBWDataService in AppInitializer
 This is the core visual component — the RTL flex-wrap grid of word units.
 
 **Key requirements:**
+
 - `flexDirection: 'row-reverse'` + `flexWrap: 'wrap'` for RTL flow
 - Each word unit: Arabic (top) → subtle hairline → transliteration (optional) → translation (optional)
 - Subtle line under each Arabic word: `Color(theme.colors.text).alpha(0.06)`, `StyleSheet.hairlineWidth`
@@ -265,6 +272,7 @@ interface WBWVerseViewProps {
 ```
 
 **Data loading pattern:**
+
 - Use `useState` + `useEffect` to call `wbwDataService.getVerseWords(verseKey)`
 - Match WBW positions to `digitalKhattDataService.getVerseWords(verseKey)` for Arabic text
 - Render each word as a vertical stack
@@ -272,6 +280,7 @@ interface WBWVerseViewProps {
 **Step 1: Write the component**
 
 Use `frontend-design` skill for exact styling decisions. The component should:
+
 - Map DKWordInfo + WBWWord arrays by matching `wordPositionInVerse === position`
 - Filter out verse end markers (DK words without matching WBW position)
 - Render with `flexDirection: 'row-reverse'`, `flexWrap: 'wrap'`, `gap: moderateScale(16)`
@@ -291,6 +300,7 @@ feat(wbw): create WBWVerseView component with RTL flex-wrap grid
 ### Task 5: Add WBW Card to MushafSettingsContent
 
 **Files:**
+
 - Modify: `components/MushafSettingsContent.tsx`
 
 **IMPORTANT:** Invoke `frontend-design` skill. Match the exact card/switch pattern used by existing Transliteration card (lines 644-670).
@@ -388,6 +398,7 @@ feat(wbw): add Word by Word settings card with sub-toggles
 ### Task 6: Integrate WBW into VerseItem
 
 **Files:**
+
 - Modify: `components/player/v2/PlayerContent/QuranView/VerseItem.tsx`
 
 **Step 1: Add WBW props to VerseItemProps**
@@ -451,6 +462,7 @@ feat(wbw): integrate WBWVerseView into VerseItem with conditional rendering
 ### Task 7: Wire WBW Props Through QuranView
 
 **Files:**
+
 - Modify: `components/player/v2/PlayerContent/QuranView/index.tsx`
 
 **Step 1: Add store subscriptions**
@@ -488,6 +500,7 @@ feat(wbw): wire WBW store state through QuranView to VerseItem
 ### Task 8: Create WordDetailSheet
 
 **Files:**
+
 - Create: `components/sheets/WordDetailSheet.tsx`
 - Modify: `components/sheets/sheets.tsx`
 
@@ -496,6 +509,7 @@ feat(wbw): wire WBW store state through QuranView to VerseItem
 **Step 1: Create the sheet component**
 
 The sheet receives `{ verseKey, position }` as payload. It should:
+
 - Look up word data from `wbwDataService.getVerseWords(verseKey)` — find by position
 - Look up Arabic text from `digitalKhattDataService.getVerseWords(verseKey)` — find by `wordPositionInVerse`
 - Display: large Arabic word (centered), transliteration, translation
@@ -509,16 +523,19 @@ The sheet receives `{ verseKey, position }` as payload. It should:
 **Step 2: Register sheet in sheets.tsx**
 
 Add import:
+
 ```typescript
 import {WordDetailSheet} from './WordDetailSheet';
 ```
 
 Add registration:
+
 ```typescript
 registerSheet('word-detail', WordDetailSheet);
 ```
 
 Add type definition:
+
 ```typescript
 'word-detail': SheetDefinition<{
   payload: {
@@ -568,3 +585,4 @@ npx tsc --noEmit
 ```
 feat(wbw): word-by-word translation integration complete
 ```
+
