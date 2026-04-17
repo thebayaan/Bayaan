@@ -66,12 +66,14 @@ const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
 interface TranslationContentProps {
   surahNumber: number;
   ayahNumber: number;
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onBack: () => void;
 }
 
 export const TranslationContent: React.FC<TranslationContentProps> = ({
   surahNumber,
   ayahNumber,
+  rewayah,
   onBack,
 }) => {
   const {theme} = useTheme();
@@ -190,7 +192,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
         </View>
 
         {/* Arabic text */}
-        <SkiaVersePreview verseKey={verse.verseKey} />
+        <SkiaVersePreview verseKey={verse.verseKey} rewayah={rewayah} />
 
         {/* Divider */}
         <View style={styles.divider} />

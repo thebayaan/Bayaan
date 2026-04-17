@@ -31,7 +31,10 @@ import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import {useTheme} from '@/hooks/useTheme';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {
+  digitalKhattDataService,
+  getRewayahFontFamily,
+} from '@/services/mushaf/DigitalKhattDataService';
 import {JustService} from '@/services/mushaf/JustificationService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
@@ -705,11 +708,12 @@ const ContinuousMushafView = forwardRef<
     const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
     const fontFamily =
-      mushafRenderer === 'dk_indopak'
+      getRewayahFontFamily(rewayah) ??
+      (mushafRenderer === 'dk_indopak'
         ? 'DigitalKhattIndoPak'
         : mushafRenderer === 'dk_v1'
         ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+        : 'DigitalKhattV2');
 
     // Navigation
     const surahStartPages = digitalKhattDataService.initialized

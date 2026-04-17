@@ -42,6 +42,7 @@ import {
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -474,6 +475,7 @@ export default function MushafViewer({
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
   const isVertical = scrollDirection === 'vertical';
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : readingColors.card;
@@ -705,7 +707,8 @@ export default function MushafViewer({
                 fontFamily: 'Manrope-Regular',
                 color: theme.colors.textSecondary,
               }}>
-              Page {currentPage} · Juz {getJuzForPage(currentPage)}
+              Page {currentPage} · Juz {getJuzForPage(currentPage)} ·{' '}
+              {getRewayahShortLabel(rewayah)}
             </Text>
           </Pressable>
         </TitleWrapper>
@@ -747,6 +750,7 @@ export default function MushafViewer({
     isSearchMode,
     currentPage,
     currentSurahId,
+    rewayah,
     handleSharePage,
     theme,
     isDarkMode,
@@ -1146,7 +1150,8 @@ export default function MushafViewer({
                         styles.headerMeta,
                         {color: theme.colors.textSecondary},
                       ]}>
-                      Page {currentPage} · Juz {getJuzForPage(currentPage)}
+                      Page {currentPage} · Juz {getJuzForPage(currentPage)} ·{' '}
+                      {getRewayahShortLabel(rewayah)}
                     </Text>
                   </View>
                 </Pressable>

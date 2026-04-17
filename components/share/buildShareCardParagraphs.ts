@@ -33,7 +33,12 @@ import {
   DARK_COLORS,
   type ShareCardColors,
 } from './shareCardConstants';
-import {BASMALLAH_TEXT} from '@/services/mushaf/DigitalKhattDataService';
+import {
+  BASMALLAH_TEXT,
+  digitalKhattDataService,
+} from '@/services/mushaf/DigitalKhattDataService';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import type {RewayahId} from '@/store/mushafSettingsStore';
 
 interface QuranEntry {
   verse_key: string;
@@ -75,19 +80,31 @@ export interface ShareCardElements {
   watermarkTextWidth: number;
   watermarkIconSize: number;
   watermarkGap: number;
+  /** Rendered only when rewayah !== 'hafs' — small label disclosing the
+   *  reading on the share card so recipients can tell which text they're
+   *  seeing. Rendered centered, above the watermark. */
+  rewayahLabelParagraph: SkParagraph | null;
+  rewayahLabelHeight: number;
   totalHeight: number;
   colors: ShareCardColors;
 }
 
 /** Group verse keys by surah number, preserving order. */
-function groupBySurah(verseKeys: string[]): SurahSection[] {
+function groupBySurah(
+  verseKeys: string[],
+  rewayah: RewayahId | undefined,
+): SurahSection[] {
   const sections: SurahSection[] = [];
   let current: SurahSection | null = null;
 
   for (const vk of verseKeys) {
     const [surahStr] = vk.split(':');
     const surahNumber = parseInt(surahStr, 10);
-    const text = textByKey[vk] ?? '';
+    // Prefer DK text for the active rewayah so the rendered share card
+    // matches what the user is reading. Fall back to the static Hafs JSON
+    // for verses DK doesn't cover yet.
+    const text =
+      digitalKhattDataService.getVerseText(vk, rewayah) || textByKey[vk] || '';
 
     if (!current || current.surahNumber !== surahNumber) {
       current = {surahNumber, verseKeys: [], verseTexts: []};
@@ -114,7 +131,13 @@ function computeDividerFontSize(
 
 /** Prepend U+06DD (Arabic End of Ayah) before trailing Arabic-Indic digits. */
 function addVerseMarker(text: string): string {
-  return text.replace(/([٠-٩]+)$/, '\u06DD$1');
+  // If a U+06DD (end-of-ayah) is already adjacent to the trailing digits,
+  // don't re-prefix. DK text concatenated from the words DB includes the
+  // marker word (e.g. "...۝١"), and newer Quran JSON sources do too —
+  // blindly prefixing would produce a double marker like "...۝۝١" which
+  // renders as two empty circles with the number after them.
+  if (/\u06DD\s*[\u0660-\u0669]+$/.test(text)) return text;
+  return text.replace(/([\u0660-\u0669]+)$/, '\u06DD$1');
 }
 
 export function buildShareCardParagraphs(
@@ -126,6 +149,7 @@ export function buildShareCardParagraphs(
   quranCommonTypeface: SkTypeface | null,
   fontFamily: string,
   showBasmallah: boolean,
+  rewayah?: RewayahId,
 ): ShareCardElements {
   const colors = isDarkMode ? DARK_COLORS : LIGHT_COLORS;
   const scale = contentWidth / CARD_CONTENT_WIDTH;
@@ -138,7 +162,7 @@ export function buildShareCardParagraphs(
   const surahGap = CARD_SURAH_GAP * scale;
   const basmallahBottomGap = CARD_BASMALLAH_BOTTOM_GAP * scale;
 
-  const groups = groupBySurah(verseKeys);
+  const groups = groupBySurah(verseKeys, rewayah);
 
   // Build sections
   const sections = groups.map(group => {
@@ -269,6 +293,27 @@ export function buildShareCardParagraphs(
     };
   });
 
+  // Rewayah disclosure label (only when non-Hafs). Rendered centered, above
+  // the watermark, so the share card makes the reading explicit.
+  let rewayahLabelParagraph: SkParagraph | null = null;
+  let rewayahLabelHeight = 0;
+  if (rewayah && rewayah !== 'hafs') {
+    const labelBuilder = Skia.ParagraphBuilder.Make(
+      {textAlign: TextAlign.Center},
+      fontMgr,
+    );
+    labelBuilder.pushStyle({
+      color: Skia.Color(colors.secondary),
+      fontFamilies: ['ManropeSemiBold'],
+      fontSize: watermarkFontSize,
+    });
+    labelBuilder.addText(getRewayahShortLabel(rewayah));
+    labelBuilder.pop();
+    rewayahLabelParagraph = labelBuilder.build();
+    rewayahLabelParagraph.layout(contentWidth);
+    rewayahLabelHeight = rewayahLabelParagraph.getHeight();
+  }
+
   // Watermark: logo + "made with Bayaan" (left-aligned, manually centered in canvas)
   let watermarkParagraph: SkParagraph | null = null;
   let watermarkHeight = 0;
@@ -304,6 +349,7 @@ export function buildShareCardParagraphs(
     }
     totalHeight += section.verseHeight + verseBottomGap;
   });
+  if (rewayahLabelParagraph) totalHeight += rewayahLabelHeight;
   if (watermarkParagraph) totalHeight += watermarkHeight;
   totalHeight += bottomPadding;
 
@@ -314,6 +360,8 @@ export function buildShareCardParagraphs(
     watermarkTextWidth,
     watermarkIconSize,
     watermarkGap,
+    rewayahLabelParagraph,
+    rewayahLabelHeight,
     totalHeight,
     colors,
   };

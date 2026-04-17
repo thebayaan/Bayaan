@@ -21,6 +21,7 @@ interface HighlightContentProps {
   surahNumber: number;
   ayahNumber: number;
   verseKeys?: string[];
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onDone: () => void;
 }
 
@@ -29,6 +30,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
   surahNumber,
   ayahNumber,
   verseKeys,
+  rewayah,
   onDone,
 }) => {
   const {theme} = useTheme();
@@ -47,12 +49,13 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
           parseInt(s, 10),
           parseInt(a, 10),
           color,
+          rewayah,
         );
         store.setHighlight(vk, color);
       }
       onDone();
     },
-    [allKeys, onDone],
+    [allKeys, onDone, rewayah],
   );
 
   const handleRemove = useCallback(async () => {
@@ -67,7 +70,11 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
   return (
     <View>
       <View style={styles.previewCard}>
-        <SkiaVersePreview verseKey={verseKey} verseKeys={verseKeys} />
+        <SkiaVersePreview
+          verseKey={verseKey}
+          verseKeys={verseKeys}
+          rewayah={rewayah}
+        />
       </View>
 
       <Text style={styles.sectionLabel}>CHOOSE COLOR</Text>
