@@ -48,6 +48,7 @@ import {findAyahTimestamp} from '@/utils/timestampUtils';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import * as Clipboard from 'expo-clipboard';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {HighlightContent} from './verse-actions/HighlightContent';
 import {NoteContent} from './verse-actions/NoteContent';
 import {ShareContent} from './verse-actions/ShareContent';
@@ -119,18 +120,28 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     s => s.selectedTranslationId,
   );
 
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const resolvedRewayah = payload?.rewayah ?? mushafRewayah;
+
   const {arabicText, translation, transliteration} = useMemo(() => {
+    // Prefer the rewayah-specific DK text so copy/share matches what the
+    // user is actually reading (or listening to, if player passed its own
+    // rewayah). Fall back to the static Hafs JSON only if DK has no entry.
+    const resolveArabic = (vk: string): string => {
+      const dk = digitalKhattDataService.getVerseText(vk, resolvedRewayah);
+      if (dk) return dk;
+      const legacy = (
+        Object.values(quranVerses) as Array<{verse_key: string; text: string}>
+      ).find(v => v.verse_key === vk)?.text;
+      return legacy ?? '';
+    };
+
     if (isRange) {
       const arabicParts: string[] = [];
       const translationParts: string[] = [];
       const transliterationParts: string[] = [];
       for (const vk of verseKeys) {
-        const arabic = (
-          Object.values(quranVerses) as Array<{
-            verse_key: string;
-            text: string;
-          }>
-        ).find(v => v.verse_key === vk)?.text;
+        const arabic = resolveArabic(vk);
         if (arabic) arabicParts.push(arabic);
         const trans = getTranslationTextRaw(vk, selectedTranslationId);
         if (trans) translationParts.push(trans);
@@ -144,12 +155,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       };
     }
 
-    const resolvedArabic =
-      payload?.arabicText ||
-      (
-        Object.values(quranVerses) as Array<{verse_key: string; text: string}>
-      ).find(v => v.verse_key === verseKey)?.text ||
-      '';
+    const resolvedArabic = payload?.arabicText || resolveArabic(verseKey);
     const resolvedTranslation =
       payload?.translation ||
       getTranslationTextRaw(verseKey, selectedTranslationId) ||
@@ -169,6 +175,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     payload?.translation,
     payload?.transliteration,
     selectedTranslationId,
+    resolvedRewayah,
   ]);
 
   const surah = surahData.find(
@@ -243,10 +250,14 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     const parts: string[] = [];
     if (arabicText) parts.push(arabicText);
     if (translation) parts.push(translation);
-    parts.push(`Quran ${verseRefText}`);
+    const ref =
+      resolvedRewayah === 'hafs'
+        ? `Quran ${verseRefText}`
+        : `Quran ${verseRefText} · ${getRewayahShortLabel(resolvedRewayah)}`;
+    parts.push(ref);
     await Clipboard.setStringAsync(parts.join('\n\n'));
     SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText]);
+  }, [arabicText, translation, verseRefText, resolvedRewayah]);
 
   const handleShare = useCallback(() => {
     lightHaptics();
