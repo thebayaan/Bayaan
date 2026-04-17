@@ -126,14 +126,31 @@ const DKPageView: React.FC<{
     [pageNumber],
   );
 
-  // In fullscreen mode, use symmetric padding; in book mode, use asymmetric
-  const effectiveMarginLeft = isBookLayout ? contentMarginLeft : undefined;
-  const effectiveOuterMargin = isBookLayout
-    ? metrics.pageWidth - contentMarginLeft - metrics.contentWidth
-    : metrics.paddingHorizontal;
-  const effectiveLabelLeft = isBookLayout
-    ? contentMarginLeft + 8
-    : metrics.paddingHorizontal + 8;
+  // On tablet single-page views there is no facing page on the "spine" side,
+  // so the asymmetric book-edge look leaves a sharp corner floating in empty
+  // edgeBg — the user perceives that as a clipped / cut-off card. Render
+  // with all four corners rounded instead. `facingPages` is still the source
+  // of truth: once we add the real two-page spread, that path will use the
+  // asymmetric decoration on each half of the spread.
+  const useSymmetricEdges =
+    isBookLayout &&
+    !metrics.facingPages &&
+    metrics.pageWidth < metrics.screenWidth;
+
+  // In fullscreen mode, use symmetric padding; in book mode the content sits
+  // against the spine. When we force symmetric edges on tablet single-page
+  // we also symmetric-center the content so labels and page number align
+  // with the centered card.
+  const effectiveMarginLeft =
+    isBookLayout && !useSymmetricEdges ? contentMarginLeft : undefined;
+  const effectiveOuterMargin =
+    isBookLayout && !useSymmetricEdges
+      ? metrics.pageWidth - contentMarginLeft - metrics.contentWidth
+      : metrics.paddingHorizontal;
+  const effectiveLabelLeft =
+    isBookLayout && !useSymmetricEdges
+      ? contentMarginLeft + 8
+      : metrics.paddingHorizontal + 8;
 
   // Center page number vertically between content bottom and bottom border
   const pageNumberBottom = isBookLayout
@@ -159,7 +176,16 @@ const DKPageView: React.FC<{
                 bottom: insets.top,
                 backgroundColor: cardColor,
               },
-              isRightPage
+              useSymmetricEdges
+                ? {
+                    left: EDGE_HORIZONTAL_INSET,
+                    right: EDGE_HORIZONTAL_INSET,
+                    borderTopLeftRadius: EDGE_BORDER_RADIUS,
+                    borderBottomLeftRadius: EDGE_BORDER_RADIUS,
+                    borderTopRightRadius: EDGE_BORDER_RADIUS,
+                    borderBottomRightRadius: EDGE_BORDER_RADIUS,
+                  }
+                : isRightPage
                 ? {
                     left: 0,
                     right: EDGE_HORIZONTAL_INSET,
@@ -196,6 +222,7 @@ const DKPageView: React.FC<{
           isRightPage={isRightPage}
           borderColor={borderColor}
           pageColor={cardColor}
+          symmetric={useSymmetricEdges}
         />
       )}
       {/* Surah name(s) — top left */}
