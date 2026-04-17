@@ -1,7 +1,3 @@
-
-
-
-
 # Bayaan
 
 **Open-source Quran recitation app for iOS and Android**
@@ -12,8 +8,6 @@ Bayaan lets you listen to Quran recitations from 200+ reciters with background a
 [Expo](https://expo.dev)
 [TypeScript](https://www.typescriptlang.org)
 [License](LICENSE)
-
-
 
 ---
 
