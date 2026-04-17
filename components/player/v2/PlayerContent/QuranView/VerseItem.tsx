@@ -79,6 +79,10 @@ interface VerseItemProps {
   showWBW?: boolean;
   wbwShowTranslation?: boolean;
   wbwShowTransliteration?: boolean;
+  /** Rewayah the Arabic text is rendered in. Player context: passes the
+   *  currently-playing track's rewayah. Mushaf context: can be omitted to
+   *  follow the active mushaf rewayah automatically. */
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
 }
 
 /**
@@ -113,6 +117,7 @@ export const VerseItem = memo<VerseItemProps>(
     showWBW,
     wbwShowTranslation,
     wbwShowTransliteration,
+    rewayah,
   }) => {
     const verseKey = verse.verse_key;
 
@@ -225,9 +230,10 @@ export const VerseItem = memo<VerseItemProps>(
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
           source: source ?? 'player',
+          rewayah,
         },
       });
-    }, [verseKey, verse, selectVerse, source]);
+    }, [verseKey, verse, selectVerse, source, rewayah]);
 
     // Options button → same as long press
     const handleOptionsPress = useCallback(() => {
@@ -243,9 +249,10 @@ export const VerseItem = memo<VerseItemProps>(
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
           source: source ?? 'player',
+          rewayah,
         },
       });
-    }, [verseKey, verse, selectVerse, source]);
+    }, [verseKey, verse, selectVerse, source, rewayah]);
 
     const handleWordPress = useCallback(
       (position: number) => {
@@ -426,6 +433,7 @@ export const VerseItem = memo<VerseItemProps>(
             indexedTajweedData={indexedTajweedData}
             onTap={handlePress}
             onLongPress={handleLongPress}
+            rewayah={rewayah}
           />
         ) : (
           <View onLayout={handleArabicLayout}>
@@ -440,6 +448,7 @@ export const VerseItem = memo<VerseItemProps>(
                 showTajweed={showTajweed}
                 width={arabicContainerWidth}
                 indexedTajweedData={indexedTajweedData}
+                rewayah={rewayah}
               />
             ) : isQPCSelected && tajweedNodes ? (
               // QPC Rendering: Always use generated tajweedNodes
