@@ -81,27 +81,55 @@ export interface MushafLayoutMetrics {
 export interface MushafLayoutOpts {
   width?: number;
   height?: number;
+  /**
+   * When provided, overrides `width`/`height` and is treated as the *measured*
+   * container size (i.e. after the parent has subtracted the stack header,
+   * toolbar, and safe-area insets). Prefer this on iPad to avoid the "cut off
+   * at the bottom" bug — computing metrics from raw window dimensions
+   * overestimates the available space because the stack chrome is not
+   * accounted for in `useWindowDimensions()`.
+   */
+  containerWidth?: number;
+  containerHeight?: number;
   insets?: EdgeInsets | null;
-  /** Height of the custom bottom player/toolbar, if any. */
+  /** Height of the custom bottom player/toolbar, if any (phone only). */
   toolbarHeight?: number;
-  /** Height of the native stack header, if one is shown. */
+  /** Height of the native stack header, if one is shown (phone only). */
   headerHeight?: number;
   isTablet?: boolean;
 }
 
 /**
- * Pure helper that returns mushaf metrics for a given window + insets.
+ * Reference mushaf content aspect ratio (`contentWidth / contentHeight`).
  *
- * The important difference vs the legacy `SCREEN_*`/`CONTENT_*` constants
- * is that `paddingTop` / `paddingBottom` are derived from the real safe
- * area instead of being frozen at 130/100pt, which is what caused the
- * "page cut off at the bottom" bug on iPad.
+ * Derived from phone-portrait, which has historically rendered correctly:
+ * a 390×844 iPhone gives ~374 content × ~614 content → 0.61. We use a slightly
+ * more conservative 0.65 so that `baseLineHeight` always leaves ~1.9× the
+ * font size of vertical room — without this, iPad landscape (where raw content
+ * is landscape-biased) produces `baseLineHeight < fontSize` and lines collide.
+ */
+const MUSHAF_CONTENT_ASPECT = 0.65;
+
+/**
+ * Pure helper that returns mushaf metrics for a given window/container + insets.
+ *
+ * Two important differences vs the legacy `SCREEN_*`/`CONTENT_*` constants:
+ *
+ *   1. `paddingTop` / `paddingBottom` are derived from the real safe area
+ *      instead of being frozen at 130/100pt. This fixes the "page cut off at
+ *      the bottom" bug on iPad.
+ *   2. On tablet we cap `contentWidth` by `MUSHAF_CONTENT_ASPECT` so that the
+ *      font size (which scales with `contentWidth`) never grows bigger than
+ *      `baseLineHeight` (which scales with `contentHeight`). Without the cap,
+ *      iPad landscape lines overlap.
  */
 export function getMushafLayout(
   opts: MushafLayoutOpts = {},
 ): MushafLayoutMetrics {
-  const width = opts.width ?? _liveWidth;
-  const height = opts.height ?? _liveHeight;
+  // Prefer measured container dims when provided (iPad path). Fall back to
+  // raw window dims for the phone path and for first-render before layout.
+  const width = opts.containerWidth ?? opts.width ?? _liveWidth;
+  const height = opts.containerHeight ?? opts.height ?? _liveHeight;
   const insetTop = opts.insets?.top ?? 0;
   const insetBottom = opts.insets?.bottom ?? 0;
   const headerHeight = opts.headerHeight ?? 0;
@@ -113,37 +141,56 @@ export function getMushafLayout(
 
   const compact = height < 700;
 
-  // Horizontal padding: give iPad more breathing room.
-  const paddingHorizontal = isTablet ? (landscape ? 16 : 20) : compact ? 4 : 8;
-
-  // Vertical padding now includes real safe-area inset + toolbar/header so the
-  // page never tucks under the tab bar, stack header, or bottom player bar.
+  // Phone bakes in the old legacy values so we don't shift any existing pixels.
   const basePaddingTop = compact ? 95 : 130;
   const basePaddingBottom = compact ? 70 : 100;
 
-  // On iPad the stack toolbar is much shorter relative to the big canvas;
-  // keep padding tight so line height doesn't shrink.
-  const tabletPaddingTop = Math.max(insetTop + 12, 44) + headerHeight;
-  const tabletPaddingBottom = Math.max(insetBottom + 12, 24) + toolbarHeight;
+  // Tablet padding: overlay chrome (`headerHeight`/`toolbarHeight` opts, used
+  // when a non-glass iPad renders its custom absolute header/player bar
+  // INSIDE the View) + safe-area inset + aesthetic margin for surah/juz/page
+  // labels. On iOS 26 glass iPad the stack chrome lives *outside* the View,
+  // so the caller passes `headerHeight=0, toolbarHeight=0` and the measured
+  // `containerHeight` already excludes it.
+  const tabletPaddingTop = headerHeight + Math.max(insetTop, 8) + 32;
+  const tabletPaddingBottom = toolbarHeight + Math.max(insetBottom, 8) + 28;
 
   const paddingTop = isTablet ? tabletPaddingTop : basePaddingTop;
   const paddingBottom = isTablet ? tabletPaddingBottom : basePaddingBottom;
 
-  // NOTE: We report `pageWidth === width` for now; the `facingPages` flag is
-  // exposed as a hint so future code can split the canvas in half on iPad
-  // landscape without breaking existing single-page FlatList layouts.
+  // Reserve horizontal padding for surah/juz labels on the page edges.
+  const basePaddingHorizontal = compact ? 4 : 8;
+  let paddingHorizontal = isTablet ? 24 : basePaddingHorizontal;
+
+  // NOTE: `pageWidth === width` for now; the `facingPages` flag is exposed as
+  // a hint so future code can split the canvas in half on iPad landscape
+  // without breaking the existing single-page FlatList layout.
   const pageWidth = width;
 
-  const contentWidth = pageWidth - paddingHorizontal * 2;
-  const contentHeight = Math.max(height - paddingTop - paddingBottom, 1);
-  const baseLineHeight = contentHeight / LINES_PER_PAGE;
+  const rawContentHeight = Math.max(height - paddingTop - paddingBottom, 1);
+  let contentWidth = pageWidth - paddingHorizontal * 2;
+
+  // Tablet-only: cap content width so the rendered page keeps mushaf-like
+  // proportions. This is what prevents line-overlap on iPad Pro 13" landscape.
+  if (isTablet) {
+    const maxContentWidth = Math.max(
+      rawContentHeight * MUSHAF_CONTENT_ASPECT,
+      320,
+    );
+    if (contentWidth > maxContentWidth) {
+      const extra = pageWidth - maxContentWidth;
+      paddingHorizontal = Math.max(extra / 2, 16);
+      contentWidth = pageWidth - paddingHorizontal * 2;
+    }
+  }
+
+  const baseLineHeight = rawContentHeight / LINES_PER_PAGE;
 
   return {
     screenWidth: width,
     screenHeight: height,
     pageWidth,
     contentWidth,
-    contentHeight,
+    contentHeight: rawContentHeight,
     baseLineHeight,
     paddingHorizontal,
     paddingTop,
@@ -170,6 +217,8 @@ export function useMushafLayout(
     [
       width,
       height,
+      opts.containerWidth,
+      opts.containerHeight,
       opts.insets?.top,
       opts.insets?.bottom,
       opts.insets?.left,

@@ -9,7 +9,10 @@ import {
   StatusBar,
   BackHandler,
   Platform,
+  useWindowDimensions,
+  type LayoutChangeEvent,
 } from 'react-native';
+import {useResponsive} from '@/hooks/useResponsive';
 import {FlatList} from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -301,13 +304,45 @@ export default function MushafViewer({
   const flatListRef = useRef<FlatList>(null);
   const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
+  const {isTablet} = useResponsive();
+  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+
+  // Measured size of the FlatList container. Using `useWindowDimensions()`
+  // alone overestimates the available space on iPad because the stack
+  // header and toolbar eat real pixels that `useSafeAreaInsets()` does not
+  // report. `onLayout` gives us the exact space the pages actually own.
+  const [containerSize, setContainerSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const onContainerLayout = useCallback((e: LayoutChangeEvent) => {
+    const {width, height} = e.nativeEvent.layout;
+    setContainerSize(prev => {
+      if (prev && prev.width === width && prev.height === height) return prev;
+      return {width, height};
+    });
+  }, []);
+
+  // On rotation the measured size is stale for a frame — fall back to window
+  // dims until `onLayout` reports the new size.
+  useEffect(() => {
+    setContainerSize(null);
+  }, [windowWidth, windowHeight]);
+
   // Live mushaf layout metrics — tracks rotation / iPad / safe area.
   // On non-glass devices the `MushafPlayerBar` renders as a fixed-height
   // absolute bar; account for it so the page never sits underneath.
+  //
+  // Phone path: keep behaviour identical — don't pass measured dims so the
+  // existing frozen-padding math still applies.
+  // Tablet path: always use measured dims (falls back to window on first frame).
   const metrics = useMushafLayout({
     insets,
     toolbarHeight: USE_GLASS ? 0 : 60,
     headerHeight: USE_GLASS ? 0 : 60,
+    containerWidth: isTablet ? containerSize?.width : undefined,
+    containerHeight: isTablet ? containerSize?.height : undefined,
   });
 
   // Reanimated overlay animation (same pattern as PlayerContent)
@@ -714,6 +749,7 @@ export default function MushafViewer({
 
   return (
     <View
+      onLayout={onContainerLayout}
       style={[
         styles.container,
         {
