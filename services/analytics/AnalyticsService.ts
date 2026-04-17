@@ -32,9 +32,14 @@ import {
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
 
+function isAnalyticsEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
+}
+
 class AnalyticsServiceImpl {
   private posthog: PostHog | null = null;
   private deviceId: string = '';
+  private enabled: boolean = true;
   private meaningfulListenTracker: MeaningfulListenTracker;
   private sessionStartTime: number = Date.now();
   private sessionListenMs: number = 0;
@@ -48,14 +53,17 @@ class AnalyticsServiceImpl {
   }
 
   async initialize(): Promise<void> {
+    this.enabled = isAnalyticsEnabled();
+    if (!this.enabled) return;
     this.deviceId = getOrCreateDeviceId();
     this.sessionStartTime = Date.now();
     this.sessionListenMs = 0;
   }
 
   setPostHogInstance(instance: PostHog): void {
+    if (!this.enabled) return;
     this.posthog = instance;
-    instance.identify(this.deviceId);
+    instance.register({platform: 'mobile'});
   }
 
   private capture(
