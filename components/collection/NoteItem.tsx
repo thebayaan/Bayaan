@@ -7,6 +7,8 @@ import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import type {RewayahId} from '@/store/mushafSettingsStore';
 
 interface NoteItemProps {
   surahName: string;
@@ -15,6 +17,7 @@ interface NoteItemProps {
   verseKey: string;
   verseKeys?: string[];
   notePreview: string;
+  rewayahId?: RewayahId;
   onPress: () => void;
   onOptionsPress: () => void;
 }
@@ -27,6 +30,7 @@ export const NoteItem = memo<NoteItemProps>(
     verseKey,
     verseKeys,
     notePreview,
+    rewayahId,
     onPress,
     onOptionsPress,
   }) => {
@@ -59,6 +63,13 @@ export const NoteItem = memo<NoteItemProps>(
           <View style={styles.versePill}>
             <Text style={styles.versePillText}>{verseRefText}</Text>
           </View>
+          {rewayahId && rewayahId !== 'hafs' && (
+            <View style={styles.rewayahPill}>
+              <Text style={styles.rewayahPillText}>
+                {getRewayahShortLabel(rewayahId)}
+              </Text>
+            </View>
+          )}
           <View style={styles.lineLeft} />
           {surahGlyph ? (
             <Text style={styles.surahGlyph}>{surahGlyph}</Text>
@@ -82,6 +93,7 @@ export const NoteItem = memo<NoteItemProps>(
             verseKey={verseKey}
             verseKeys={verseKeys}
             numberOfLines={isRange ? 3 : undefined}
+            rewayah={rewayahId}
           />
         </View>
 
@@ -129,6 +141,18 @@ const createStyles = (theme: Theme) => {
     },
     versePillText: {
       fontSize: moderateScale(12),
+      fontFamily: theme.fonts.medium,
+      color: accentColor,
+    },
+    rewayahPill: {
+      marginLeft: moderateScale(6),
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(3),
+      borderRadius: moderateScale(6),
+      backgroundColor: Color(accentColor).alpha(0.08).toString(),
+    },
+    rewayahPillText: {
+      fontSize: moderateScale(10.5),
       fontFamily: theme.fonts.medium,
       color: accentColor,
     },

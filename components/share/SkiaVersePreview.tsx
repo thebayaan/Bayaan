@@ -1,6 +1,9 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useReducer, useState} from 'react';
 import {View, Text} from 'react-native';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  useMushafSettingsStore,
+  type RewayahId,
+} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useTheme} from '@/hooks/useTheme';
@@ -10,17 +13,24 @@ interface SkiaVersePreviewProps {
   verseKey: string;
   verseKeys?: string[];
   numberOfLines?: number;
+  /** Override rewayah the preview renders in. Defaults to the active
+   *  mushaf rewayah. Player-context callers pass the currently-playing
+   *  track's rewayah so the preview matches what the user is listening to. */
+  rewayah?: RewayahId;
 }
 
 const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
   verseKey,
   verseKeys,
   numberOfLines = 2,
+  rewayah: rewayahOverride,
 }) => {
   const {theme} = useTheme();
   const [width, setWidth] = useState(0);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const activeRewayah = useMushafSettingsStore(s => s.rewayah);
+  const rewayah: RewayahId = rewayahOverride ?? activeRewayah;
   const fontFamily =
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
@@ -30,13 +40,26 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
 
   const fontMgr = mushafPreloadService.fontMgr;
 
+  // Lazy-load the override rewayah's DB if it's not the active one.
+  const [, bump] = useReducer(x => x + 1, 0);
+  useEffect(() => {
+    if (rewayah === digitalKhattDataService.rewayah) return;
+    let cancelled = false;
+    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(() => {
+      if (!cancelled) bump();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rewayah]);
+
   const text = useMemo(() => {
     const keys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
     return keys
-      .map(vk => digitalKhattDataService.getVerseText(vk))
+      .map(vk => digitalKhattDataService.getVerseText(vk, rewayah))
       .filter(Boolean)
       .join(' ');
-  }, [verseKey, verseKeys]);
+  }, [verseKey, verseKeys, rewayah]);
 
   if (!fontMgr || !text) {
     return (
