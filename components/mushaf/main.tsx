@@ -142,15 +142,12 @@ const DKPageView: React.FC<{
 
   return (
     <View
-      style={[
-        styles.page,
-        {
-          width: metrics.pageWidth,
-          height: metrics.screenHeight,
-          backgroundColor: isBookLayout ? bgColor : cardColor,
-          opacity: pageReady ? 1 : 0,
-        },
-      ]}>
+      style={{
+        width: metrics.pageWidth,
+        height: metrics.screenHeight,
+        backgroundColor: isBookLayout ? bgColor : cardColor,
+        opacity: pageReady ? 1 : 0,
+      }}>
       {isBookLayout && (
         <>
           {/* Card-colored background inside the frame, rounded to match outermost border */}
@@ -242,6 +239,90 @@ const DKPageView: React.FC<{
         ]}>
         {pageLabel}
       </Text>
+    </View>
+  );
+};
+
+// ============================================================================
+// DKSpreadView: FlatList item that hosts a single centered page.
+// On phones this is a thin pass-through (full-width page, zero offset).
+// On iPad the inner DKPageView is `pageWidth`-wide and centered via flex,
+// so the font/size caps in `getMushafLayout` take effect visually.
+//
+// A future follow-up will extend this wrapper to optionally render a second
+// facing page in landscape; the metrics already expose `facingPages` and
+// `facingGap` for that, but the current implementation always draws one.
+// ============================================================================
+const DKSpreadView: React.FC<{
+  pageNumber: number;
+  textColor: string;
+  labelColor: string;
+  borderColor: string;
+  cardColor: string;
+  bgColor: string;
+  edgeBg: string;
+  isBookLayout: boolean;
+  metrics: MushafLayoutMetrics;
+  onTap?: () => void;
+}> = ({
+  pageNumber,
+  textColor,
+  labelColor,
+  borderColor,
+  cardColor,
+  bgColor,
+  edgeBg,
+  isBookLayout,
+  metrics,
+  onTap,
+}) => {
+  const spreadBg = isBookLayout ? edgeBg : cardColor;
+
+  // Fast-path for phones: width === screenWidth + offset === 0 means the
+  // outer wrapper is a no-op, matching the pre-iPad layout byte-for-byte.
+  const needsCentering = metrics.pageWidth < metrics.screenWidth;
+
+  if (!needsCentering) {
+    return (
+      <DKPageView
+        pageNumber={pageNumber}
+        textColor={textColor}
+        surahLabel={getSurahNamesForPage(pageNumber)}
+        juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
+        pageLabel={String(pageNumber)}
+        labelColor={labelColor}
+        borderColor={borderColor}
+        cardColor={cardColor}
+        bgColor={bgColor}
+        isBookLayout={isBookLayout}
+        metrics={metrics}
+        onTap={onTap}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={{
+        width: metrics.screenWidth,
+        height: metrics.screenHeight,
+        backgroundColor: spreadBg,
+        alignItems: 'center',
+      }}>
+      <DKPageView
+        pageNumber={pageNumber}
+        textColor={textColor}
+        surahLabel={getSurahNamesForPage(pageNumber)}
+        juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
+        pageLabel={String(pageNumber)}
+        labelColor={labelColor}
+        borderColor={borderColor}
+        cardColor={cardColor}
+        bgColor={bgColor}
+        isBookLayout={isBookLayout}
+        metrics={metrics}
+        onTap={onTap}
+      />
     </View>
   );
 };
@@ -785,23 +866,36 @@ export default function MushafViewer({
           ref={flatListRef}
           data={pages}
           renderItem={({item}) => {
-            const commonProps = {
-              pageNumber: item,
-              textColor: readingColors.text,
-              surahLabel: getSurahNamesForPage(item),
-              juzLabel: `Juz ${getJuzForPage(item)}`,
-              pageLabel: String(item),
-              labelColor: readingColors.textSecondary,
-              borderColor: edgeBorderColor,
-              cardColor: pageBg,
-              bgColor: edgeBg,
-              isBookLayout,
-              onTap: toggleImmersive,
-            };
-            return viewMode === 'list' ? (
-              <ReadingPageView {...commonProps} />
-            ) : (
-              <DKPageView {...commonProps} metrics={metrics} />
+            if (viewMode === 'list') {
+              return (
+                <ReadingPageView
+                  pageNumber={item}
+                  textColor={readingColors.text}
+                  surahLabel={getSurahNamesForPage(item)}
+                  juzLabel={`Juz ${getJuzForPage(item)}`}
+                  pageLabel={String(item)}
+                  labelColor={readingColors.textSecondary}
+                  borderColor={edgeBorderColor}
+                  cardColor={pageBg}
+                  bgColor={edgeBg}
+                  isBookLayout={isBookLayout}
+                  onTap={toggleImmersive}
+                />
+              );
+            }
+            return (
+              <DKSpreadView
+                pageNumber={item}
+                textColor={readingColors.text}
+                labelColor={readingColors.textSecondary}
+                borderColor={edgeBorderColor}
+                cardColor={pageBg}
+                bgColor={edgeBg}
+                edgeBg={edgeBg}
+                isBookLayout={isBookLayout}
+                metrics={metrics}
+                onTap={toggleImmersive}
+              />
             );
           }}
           keyExtractor={item => item.toString()}
