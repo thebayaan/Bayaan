@@ -1,196 +1,201 @@
-# Bayaan - Quran Audio App
+# Bayaan
 
-[![Expo Version](https://img.shields.io/badge/Expo-^52.0.0-blue.svg)](https://expo.dev/)
-[![React Native Version](https://img.shields.io/badge/React%20Native-0.76.9-blue.svg)](https://reactnative.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-^5.3.3-blue.svg)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-UNLICENSED-lightgrey.svg)](./LICENSE) <!-- Update if license changes -->
+**Open-source Quran recitation app for iOS and Android**
 
-Bayaan is a cross-platform mobile application built with React Native and Expo, designed to provide users with an accessible and feature-rich experience for listening to Quranic recitations.
+Bayaan lets you listen to Quran recitations from 200+ reciters with background audio support, a full Uthmani Mushaf, Adhkar, offline downloads, playlists, and ambient sounds.
 
-## ✨ Features
+[React Native](https://reactnative.dev)
+[Expo](https://expo.dev)
+[TypeScript](https://www.typescriptlang.org)
+[License](LICENSE)
 
-*   Browse and listen to various Quran reciters.
-*   Audio playback controls with background audio support (`react-native-track-player`).
-*   Dark/Light mode support (`userInterfaceStyle: automatic`).
-*   Smooth animations and gestures (`react-native-reanimated`, `moti`).
-*   Intuitive navigation using Expo Router.
-*   State management with Zustand.
-*   Internationalization support (`i18next`).
-*   Fuzzy search capabilities (`fuse.js`).
-*   Customizable UI elements (`@rneui/themed`, `expo-linear-gradient`, `expo-blur`).
+---
 
-## 🚀 Tech Stack
+## Features
 
-*   **Framework:** React Native / Expo SDK 52
-*   **Language:** TypeScript
-*   **Navigation:** Expo Router v4
-*   **State Management:** Zustand
-*   **Audio Player:** `react-native-track-player`
-*   **UI Components:** `@rneui/themed`, `react-native-gesture-handler`, `react-native-reanimated`, `moti`
-*   **Styling:** StyleSheet, possibly custom themes
-*   **Internationalization:** `i18next`, `react-i18next`
-*   **Linting/Formatting:** ESLint, Prettier
-*   **Testing:** Jest / `jest-expo`
-*   **Build/Deployment:** Expo Application Services (EAS)
+- **Quran Player** — Stream or download recitations from 200+ reciters across multiple rewayat. Background playback, lock screen controls, sleep timer, playback speed, and repeat modes.
+- **Digital Mushaf** — Full Uthmani text rendered with [Digital Khatt](docs/features/digital-khatt/README.md) using Skia. Verse follow-along synced to audio playback, multiple reading themes.
+- **Multi-Qira'at (Rewayat)** — All 8 canonical KFGQPC [rewayat](docs/features/rewayat.md) selectable from settings (Hafs, Shu'bah, Al-Bazzi, Qunbul, Warsh, Qalun, Al-Duri, Al-Susi). Published-mushaf-style highlighting for differences from Hafs; context flows into player text, share surfaces, and saved annotations.
+- **Adhkar** — Comprehensive collection of daily Adhkar and Du'a with audio, counters, and saved favorites.
+- **Offline Downloads** — Download any reciter's complete Quran for offline playback. Persistent download management with progress tracking.
+- **Playlists** — Create and manage custom playlists backed by SQLite.
+- **Ambient Sounds** — Layer nature sounds (rain, ocean, forest, etc.) over recitation audio.
+- **Search** — Fast fuzzy search across reciters and surahs using Fuse.js.
+- **Translations & Tafseer** — Multiple translation languages and tafseer editions, downloadable for offline use.
+- **Word-by-Word** — Arabic word-by-word translation overlay in the Mushaf view.
+- **Themes** — Light and dark mode with multiple Mushaf reading themes.
+- **i18n** — Internationalisation via react-i18next with RTL support.
 
-## 
- prerequisites
+---
 
-*   Node.js (LTS version recommended)
-*   npm (preferred package manager) and Yarn (both are used in this project)
-*   Expo CLI: `npm install -g @expo/cli`
-*   Watchman (for macOS): `brew install watchman`
-*   Development Environment Setup: Follow the [React Native Environment Setup](https://reactnative.dev/docs/environment-setup) guide for your specific OS. For Expo development, you might primarily need Node.js, Yarn, and the Expo Go app on your device/simulator.
+## Tech Stack
 
-## 📦 Installation
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <your-repository-url>
-    cd Bayaan
-    ```
-2.  **Install dependencies:** (npm is preferred, but both lockfiles exist)
-    ```bash
-    # Using npm (preferred)
-    npm install 
-    
-    # Or using Yarn
-    yarn install 
-    ```
-3.  **Set up environment variables:**
-    Create a `.env` file in the root directory and add any necessary environment variables (e.g., API keys). Refer to `.env.example` if available or required configuration steps.
+| Layer            | Technology                          |
+| ---------------- | ----------------------------------- |
+| Framework        | React Native 0.83 + Expo SDK 55     |
+| Navigation       | Expo Router v4 (file-based)         |
+| Audio            | expo-audio with background playback |
+| Mushaf rendering | @shopify/react-native-skia          |
+| State management | Zustand                             |
+| Database         | expo-sqlite                         |
+| Fast storage     | react-native-mmkv                   |
+| Lists            | @shopify/flash-list                 |
+| Animations       | react-native-reanimated 4           |
+| Images           | expo-image                          |
+| Backend          | Supabase + custom REST API          |
 
-## ▶️ Running the App
 
-1.  **Start the Metro bundler:**
-    ```bash
-    # Using npm (preferred)
-    npm start 
-    # or
-    # npx expo start
-    
-    # Using Yarn
-    yarn start
-    ```
-    This will start the Expo development server.
-2.  **Run on a device or simulator:**
-    *   **iOS:** Press `i` in the terminal or scan the QR code with the Expo Go app on your iOS device.
-    *   **Android:** Press `a` in the terminal or scan the QR code with the Expo Go app on your Android device.
-    *   **Web:** Press `w` in the terminal (experimental support).
+---
 
-## 🛠️ Available Scripts
+## Architecture
 
-You can run the following scripts using either `npm run <script_name>` or `yarn <script_name>`:
+```mermaid
+flowchart TD
+    AppInitializer["AppInitializer\n(startup orchestrator)"] --> CriticalServices
+    AppInitializer --> NonCriticalServices
 
-*   `start`: Starts the Expo development server.
-*   `android`: Builds the app and runs it on an Android emulator/device (requires native build setup).
-*   `ios`: Builds the app and runs it on an iOS simulator/device (requires native build setup, macOS only).
-*   `web`: Starts the Expo development server for web.
-*   `test`: Runs tests using Jest in watch mode.
-*   `lint`: Lints the codebase using ESLint.
-*   `lint:fix`: Lints the codebase and automatically fixes issues.
-*   `format`: Formats the code using Prettier.
-*   `generate-reciter-images`: Custom script to generate reciter images.
-*   `fetch-reciters`: Custom script to fetch reciter data.
-*   `version:patch|minor|major`: Bumps the app version using a custom script.
+    subgraph CriticalServices ["Critical (sequential)"]
+        DB["DatabaseService\n(SQLite)"]
+        Playlists["PlaylistService"]
+        DB --> Playlists
+    end
 
-## 📁 Folder Structure (Overview)
+    subgraph NonCriticalServices ["Non-critical (parallel)"]
+        ExpoAudio["ExpoAudioService\n(singleton)"]
+        Mushaf["MushafPreloadService\n(Skia + fonts)"]
+        Timestamps["TimestampDatabaseService"]
+        Translations["TranslationDbService"]
+        Stores["Store hydration\n(Zustand)"]
+    end
+
+    ExpoAudio --> ExpoAudioProvider["ExpoAudioProvider\n(React bridge)"]
+    ExpoAudioProvider --> PlayerStore["playerStore\n(Zustand)"]
+    PlayerStore --> UI["Player UI\nFloatingPlayer / MiniPlayer"]
+```
+
+
+
+For a full architecture walkthrough see [docs/architecture/current-state.md](docs/architecture/current-state.md).
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- [Expo CLI](https://docs.expo.dev/get-started/installation/): `npm install -g expo-cli`
+- For iOS: macOS with Xcode 15+
+- For Android: Android Studio with an emulator
+
+### Install
+
+```bash
+git clone https://github.com/thebayaan/Bayaan.git
+cd Bayaan
+npm install
+```
+
+### Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set your API key. For local development, use the **community key** (see [CONTRIBUTING.md](CONTRIBUTING.md#api-key-for-development) or ask in a pinned GitHub issue):
+
+```
+EXPO_PUBLIC_BAYAAN_API_URL=https://api.thebayaan.com
+EXPO_PUBLIC_BAYAAN_API_KEY=<community key>
+```
+
+### Run
+
+```bash
+# Start the Expo dev server
+npm start
+
+# Run on iOS simulator (macOS only)
+npm run ios
+
+# Run on Android emulator
+npm run android
+```
+
+---
+
+## Project Structure
 
 ```
 Bayaan/
-├── app/               # Expo Router screens and layouts
-│   ├── (auth)/        # Authentication screens
-│   ├── (tabs)/        # Main tab-based screens
-│   ├── services/      # Route-specific services
-│   └── _layout.tsx    # Root layout component
-├── assets/            # Static assets (images, fonts)
-├── components/        # Reusable UI components
-├── constants/         # Constant values used across the app
-├── contexts/          # React Context providers (if any beyond Zustand)
-├── data/              # Static data files
-├── hooks/             # Custom React hooks
-├── services/          # Global API services/utilities
-├── store/             # Zustand state management stores
-├── styles/            # Global styles or themes
-├── theme/             # Theme configuration
-├── types/             # TypeScript type definitions
-├── utils/             # Utility functions
-├── scripts/           # Helper scripts for development tasks
-├── app.json           # Expo configuration file
-├── babel.config.js    # Babel configuration
-├── eas.json           # EAS Build configuration
-├── package.json       # Project dependencies and scripts
-└── tsconfig.json      # TypeScript configuration
+├── app/                    # Expo Router screens
+│   ├── (tabs)/             # Main tab navigator
+│   │   ├── (a.home)/       # Home tab
+│   │   ├── (b.search)/     # Search tab
+│   │   ├── (b.surahs)/     # Surahs tab
+│   │   ├── (c.collection)/ # Collection tab (downloads, playlists, etc.)
+│   │   └── (d.settings)/   # Settings tab
+│   ├── share/              # Deep link share targets
+│   └── mushaf.tsx          # Full-screen Mushaf reader
+├── components/             # Reusable UI components
+├── services/               # Business logic and service singletons
+│   ├── audio/              # ExpoAudioService, ExpoAudioProvider, AmbientAudioService
+│   ├── player/             # playerStore, downloadStore, and player utilities
+│   ├── mushaf/             # Digital Khatt rendering services
+│   ├── database/           # SQLite service wrappers
+│   └── AppInitializer.ts   # App startup orchestrator
+├── store/                  # Zustand stores (24 modules)
+├── types/                  # TypeScript type definitions
+├── constants/              # App-wide constants
+├── hooks/                  # Custom React hooks
+├── data/                   # Static data (reciters.json, surahs.json)
+├── assets/                 # Fonts, images, audio
+└── docs/                   # Full documentation
 ```
 
-## 📚 Documentation
+---
 
-Comprehensive documentation is available in the [`docs/`](./docs) directory:
+## Documentation
 
-### Quick Links
-- **[Documentation Index](./docs/README.md)** - Complete documentation overview
-- **[App Initialization](./docs/development/app-initialization.md)** - Understand the app startup process
-- **[Git Workflow](./docs/development/git-workflow.md)** - Branching and collaboration guidelines
-- **[Downloads Feature](./docs/features/downloads.md)** - Offline download functionality
-- **[Deployment Guide](./docs/deployment/deployment.md)** - Build and release procedures
-- **[Version Management](./docs/deployment/version-management.md)** - Git-based versioning system
+Full documentation lives in the `[docs/](docs/README.md)` directory:
 
-### Documentation Structure
-```
-docs/
-├── development/        # Setup, workflows, and dev guidelines
-├── features/          # Feature-specific documentation
-├── architecture/      # System architecture and migrations
-├── deployment/        # Build and deployment guides
-└── testing/           # Testing procedures and guides
-```
+- [Architecture overview](docs/architecture/current-state.md)
+- [Player system](docs/features/player.md)
+- [Digital Khatt / Mushaf](docs/features/digital-khatt/README.md)
+- [Downloads](docs/features/downloads.md)
+- [Deployment guide](docs/deployment/deployment.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Self-hosting](docs/contributing/self-hosting.md)
 
-For a complete guide to all documentation, see the [Documentation Index](./docs/README.md).
+---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! Please follow the standard fork, branch, and pull request workflow. 
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
-**Before contributing:**
-1. Review the [Git Workflow](./docs/development/git-workflow.md)
-2. Check relevant feature documentation in [`docs/features/`](./docs/features)
-3. Ensure your code adheres to the project's linting and formatting rules
-4. Update documentation for any new features or changes
+Key points:
 
-## 📄 License
+- Branch off `develop`, never `main`
+- Run `npx prettier --write` and `npx tsc --noEmit` before submitting
+- Test on both iOS and Android
 
-This project is currently unlicensed. <!-- Update if a license file (e.g., LICENSE.md) exists or is added -->
+---
 
-## 🚢 Deployment
+## License
 
-For detailed instructions on deploying the app to app stores, refer to our comprehensive [Deployment Guide](./docs/deployment/deployment.md). This guide covers:
+This project is licensed under **Apache 2.0 with the Commons Clause**.
 
-- Version management process
-- Android deployment to Google Play Store
-- iOS deployment to Apple App Store
-- Keystore and credential management
-- Troubleshooting common deployment issues
+In plain English: you are free to use, study, and modify this code for non-commercial purposes. You may not sell the software, offer it as a commercial product or service, or build a revenue-generating product substantially derived from it without written permission from the Bayaan project.
 
-We use a Git-based [version management system](./docs/deployment/version-management.md) that automates version numbering based on Git tags.
+See [LICENSE](LICENSE) for the full terms.
 
-### Quick Deployment Commands
+---
 
-```bash
-# Check current version
-npm run version:current
+## Screenshots
 
-# Bump version
-npm run version:patch  # For bug fixes
-npm run version:minor  # For new features
-npm run version:major  # For breaking changes
+> Coming soon — contributions welcome.
 
-# Build Android bundle
-cd android && ./gradlew bundleRelease
+---
 
-# Build iOS (requires Xcode)
-cd ios && open Bayaan.xcworkspace
-# IMPORTANT: First clean and build to ensure version changes are applied
-# In Xcode: Product > Clean Build Folder (Shift+Command+K)
-# Then: Product > Build (Command+B)
-# Only then: Product > Archive
-```
+Built with care for the Muslim community.

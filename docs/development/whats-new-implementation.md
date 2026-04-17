@@ -7,30 +7,35 @@ The What's New feature has been successfully implemented! This feature automatic
 ## 📦 Files Created
 
 ### Core Components
-- **`components/changelog/ChangelogContent.tsx`** - Reusable changelog renderer with categorized sections
-- **`components/modals/WhatsNewModal.tsx`** - Auto-showing bottom sheet modal
-- **`app/(tabs)/(a.home)/settings/whats-new.tsx`** - Full-screen settings page
-- **`components/DevMenu.tsx`** - Floating developer menu for testing (DEV only)
+
+- `**components/changelog/ChangelogContent.tsx**` - Reusable changelog renderer with categorized sections
+- `**components/modals/WhatsNewModal.tsx**` - Auto-showing bottom sheet modal
+- `**app/(tabs)/(a.home)/settings/whats-new.tsx**` - Full-screen settings page
+- `**components/DevMenu.tsx**` - Floating developer menu for testing (DEV only)
 
 ### Data & Types
-- **`data/changelog.json`** - Changelog data (currently populated with v1.0.3)
-- **`types/changelog.ts`** - TypeScript interfaces for type safety
+
+- `**data/changelog.json**` - Changelog data (currently populated with v1.0.3)
+- `**types/changelog.ts**` - TypeScript interfaces for type safety
 
 ### Utilities
-- **`utils/versionUtils.ts`** - Version tracking and AsyncStorage management
-- **`utils/devUtils.ts`** - Development utilities for testing
+
+- `**utils/versionUtils.ts**` - Version tracking and AsyncStorage management
+- `**utils/devUtils.ts**` - Development utilities for testing
 
 ### Documentation
-- **`docs/features/whats-new.md`** - Comprehensive feature documentation
+
+- `**docs/features/whats-new.md**` - Comprehensive feature documentation
 
 ## 📝 Files Modified
 
-- **`app/_layout.tsx`** - Added WhatsNewModal component
-- **`app/(tabs)/(a.home)/settings/index.tsx`** - Added "What's New" menu item
+- `**app/_layout.tsx**` - Added WhatsNewModal component
+- `**app/(tabs)/(a.home)/settings/index.tsx**` - Added "What's New" menu item
 
 ## 🎯 Features Implemented
 
 ### 1. Auto-Show on Update
+
 - ✅ Detects version changes automatically
 - ✅ Shows modal 800ms after app launch (non-blocking)
 - ✅ Beautiful centered floating modal with smooth animations
@@ -38,12 +43,14 @@ The What's New feature has been successfully implemented! This feature automatic
 - ✅ Won't show again until next update
 
 ### 2. Manual Access from Settings
+
 - ✅ "What's New" item in Settings → About Bayaan section
 - ✅ Full-screen changelog view
 - ✅ Gift icon for visual appeal
 - ✅ Smooth navigation with back button
 
 ### 3. Clean & Focused Display
+
 - ✅ Version number and update title
 - ✅ Concise list of what matters to users (3-4 key improvements)
 - ✅ Beautiful centered floating modal
@@ -95,7 +102,6 @@ await quickTestWhatsNew();
 When releasing a new version:
 
 1. **Open `data/changelog.json`**
-
 2. **Add new entry at the START of the array** (most recent first):
 
 ```json
@@ -113,23 +119,26 @@ When releasing a new version:
 
 **Keep it concise**: Only include 3-4 key points that users actually care about. Focus on benefits, not technical details.
 
-3. **Update version numbers**:
-   - `app.json` → `version` field
-   - `package.json` → `version` field
-   - Make sure these match the changelog version
-
-4. **Build and test** before releasing
+1. **Update version numbers**:
+  - `app.json` → `version` field
+  - `package.json` → `version` field
+  - Make sure these match the changelog version
+2. **Build and test** before releasing
 
 ## 🎨 Customization Options
 
 ### Change Modal Height
+
 In `WhatsNewModal.tsx`:
+
 ```typescript
 snapPoints={['85%']} // Adjust percentage
 ```
 
 ### Change Auto-Show Delay
+
 In `WhatsNewModal.tsx`:
+
 ```typescript
 setTimeout(() => {
   bottomSheetRef.current?.snapToIndex(0);
@@ -137,6 +146,7 @@ setTimeout(() => {
 ```
 
 ### Available Icons
+
 - `star` - New Features (default)
 - `trending-up` - Improvements (default)
 - `tool` - Bug Fixes (default)
@@ -150,15 +160,15 @@ setTimeout(() => {
 
 Possible additions for future versions:
 
-- [ ] Show full version history (expandable past versions)
-- [ ] "Share Update" button to share on social media
-- [ ] Search within changelog
-- [ ] Filter changes by category
-- [ ] Mark changes as favorites
-- [ ] In-app feedback for specific changes
-- [ ] Remote changelog loading (fetch from API)
-- [ ] Images/screenshots for major features
-- [ ] Video demos for complex features
+- Show full version history (expandable past versions)
+- "Share Update" button to share on social media
+- Search within changelog
+- Filter changes by category
+- Mark changes as favorites
+- In-app feedback for specific changes
+- Remote changelog loading (fetch from API)
+- Images/screenshots for major features
+- Video demos for complex features
 
 ## 📚 Additional Resources
 
@@ -178,6 +188,7 @@ Possible additions for future versions:
 ---
 
 **Note**: The feature is production-ready and follows all project guidelines including:
+
 - TypeScript strict typing
 - Theme-aware styling
 - Proper press state handling (no activeOpacity)
