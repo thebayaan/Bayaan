@@ -236,18 +236,25 @@ class VerseAnnotationDatabaseService {
     }
 
     // Migration: add rewayah_id column to all three annotation tables.
-    // Existing rows stay NULL (treated as rewayah-agnostic — open in the
-    // current app rewayah). New saves stamp the active rewayah at the
-    // moment of creation so "open this bookmark" can restore the reading
-    // the user was in.
+    // Legacy rows created before rewayah support existed are backfilled
+    // to 'hafs' (the only reading the app showed pre-feature). Idempotent
+    // on rerun — the UPDATE only touches NULLs, new saves stamp their
+    // own rewayah via service callers.
     for (const table of ['bookmarks', 'notes', 'highlights']) {
       try {
         await this.db.execAsync(
           `ALTER TABLE ${table} ADD COLUMN rewayah_id TEXT;`,
         );
-      } catch {
-        // Column already exists
+      } catch (err) {
+        // Idempotent: the column already exists on reruns. Re-throw any
+        // other error (disk full, locked DB, etc.) so callers can fail
+        // loudly instead of silently corrupting subsequent INSERTs.
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.toLowerCase().includes('duplicate column')) throw err;
       }
+      await this.db.execAsync(
+        `UPDATE ${table} SET rewayah_id = 'hafs' WHERE rewayah_id IS NULL;`,
+      );
     }
   }
 

@@ -28,6 +28,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const verseKeys = props.payload?.verseKeys;
   const isRange = verseKeys && verseKeys.length > 1;
   const noteId = props.payload?.noteId;
+  const rewayah = props.payload?.rewayah;
 
   const [noteText, setNoteText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -71,6 +72,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
         ayahNumber,
         noteText.trim(),
         isRange ? verseKeys : undefined,
+        rewayah,
       );
       const store = useVerseAnnotationsStore.getState();
       for (const vk of allKeys) {
@@ -87,6 +89,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
     noteText,
     isEditMode,
     noteId,
+    rewayah,
   ]);
 
   const handleDelete = useCallback(async () => {
@@ -123,6 +126,7 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
             verseKey={verseKey}
             verseKeys={verseKeys}
             numberOfLines={isRange ? 3 : 2}
+            rewayah={rewayah}
           />
         </View>
 
