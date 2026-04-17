@@ -25,7 +25,15 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
-export type RewayahId = 'hafs' | 'shouba';
+export type RewayahId =
+  | 'hafs'
+  | 'shouba'
+  | 'bazzi'
+  | 'qumbul'
+  | 'warsh'
+  | 'qaloon'
+  | 'doori'
+  | 'soosi';
 export interface RecentRead {
   surahId: number;
   page: number;
@@ -160,8 +168,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             renderer === 'dk_v1'
               ? 'v1'
               : renderer === 'dk_indopak'
-                ? 'v2'
-                : 'v2',
+              ? 'v2'
+              : 'v2',
         }),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),

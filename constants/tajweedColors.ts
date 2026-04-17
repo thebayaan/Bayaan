@@ -28,4 +28,31 @@ export const tajweedColors: {[key: string]: string} = {
   slnt: '#AAAAAA',
   ham_wasl: '#AAAAAA',
   laam_shamsiyah: '#AAAAAA',
+  // Purple - Silah (Bazzi/Qumbul pronoun lengthening). Colors the small
+  // high waw/yeh AND the preceding damma/kasra that it connects to.
+  silah: '#8A4FFF',
+  // Teal - Minor rewayah diff. Trailing-vowel / mood-shift changes that
+  // aren't letter-level variants but deserve a subtle visual marker,
+  // distinct from the background orange for MAJOR content changes.
+  minor: '#00A0A0',
+  // Warsh/Qalun published-mushaf tajweed categories. Colors approximate the
+  // standard color-coded Dar al-Ma'rifah / King Fahd Warsh editions so
+  // students reading in the app see the same pedagogical signals.
+  //   Green — Madd al-Badal / Madd al-Lin (U+06E4 marker).
+  madd: '#0CBF71',
+  //   Light blue — Hamza tashil / musahhala (U+06EA/U+06EC).
+  tashil: '#29B6F6',
+  //   Light blue — Ibdal (Warsh hamza → long vowel). Shares hue with
+  //   tashil since both are hamza-treatment rules.
+  ibdal: '#29B6F6',
+  //   Dark blue — Taghliz al-Lam (heavy lam in Allah after ط/ظ/ص).
+  taghliz: '#1A46D0',
 };
+
+// Background tint applied to whole-word content variants (legacy 'major'
+// category for Shouba/Bazzi/Qumbul, and 'mukhtalif' for Warsh/Qaloon/
+// Doori/Soosi). Whole-word diffs use a background block instead of a text
+// color to keep the foreground channel reserved for letter-level rules
+// (madd/tashil/ibdal/taghliz/silah) — matches the published-mushaf
+// convention.
+export const REWAYAH_DIFF_BACKGROUND = 'rgba(255, 107, 53, 0.3)';

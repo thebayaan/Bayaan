@@ -7,18 +7,29 @@ import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import Color from 'color';
 import SkiaVersePreview from '@/components/share/SkiaVersePreview';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import type {RewayahId} from '@/store/mushafSettingsStore';
 
 interface BookmarkItemProps {
   surahName: string;
   ayahNumber: number;
   surahNumber: number;
   verseKey: string;
+  rewayahId?: RewayahId;
   onPress: () => void;
   onOptionsPress: () => void;
 }
 
 export const BookmarkItem = memo<BookmarkItemProps>(
-  ({surahName, ayahNumber, surahNumber, verseKey, onPress, onOptionsPress}) => {
+  ({
+    surahName,
+    ayahNumber,
+    surahNumber,
+    verseKey,
+    rewayahId,
+    onPress,
+    onOptionsPress,
+  }) => {
     const {theme} = useTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -36,6 +47,13 @@ export const BookmarkItem = memo<BookmarkItemProps>(
               {surahNumber}:{ayahNumber}
             </Text>
           </View>
+          {rewayahId && rewayahId !== 'hafs' && (
+            <View style={styles.rewayahPill}>
+              <Text style={styles.rewayahPillText}>
+                {getRewayahShortLabel(rewayahId)}
+              </Text>
+            </View>
+          )}
           <View style={styles.lineLeft} />
           {surahGlyph ? (
             <Text style={styles.surahGlyph}>{surahGlyph}</Text>
@@ -55,7 +73,7 @@ export const BookmarkItem = memo<BookmarkItemProps>(
 
         {/* Arabic text */}
         <View style={styles.arabicContainer}>
-          <SkiaVersePreview verseKey={verseKey} />
+          <SkiaVersePreview verseKey={verseKey} rewayah={rewayahId} />
         </View>
       </Pressable>
     );
@@ -94,6 +112,18 @@ const createStyles = (theme: Theme) => {
     },
     versePillText: {
       fontSize: moderateScale(12),
+      fontFamily: theme.fonts.medium,
+      color: accentColor,
+    },
+    rewayahPill: {
+      marginLeft: moderateScale(6),
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: moderateScale(3),
+      borderRadius: moderateScale(6),
+      backgroundColor: Color(accentColor).alpha(0.08).toString(),
+    },
+    rewayahPillText: {
+      fontSize: moderateScale(10.5),
       fontFamily: theme.fonts.medium,
       color: accentColor,
     },

@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo, useReducer} from 'react';
 import {
   Canvas,
   Paragraph,
@@ -12,6 +12,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import type {RewayahId} from '@/store/mushafSettingsStore';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -28,6 +29,10 @@ interface SkiaVerseTextProps {
   showTajweed: boolean;
   width: number;
   indexedTajweedData: IndexedTajweedData | null;
+  /** Render text from this rewayah's DK words DB instead of the active
+   *  mushaf one. Used by the player to show text matching the currently
+   *  playing reciter's rewayah. Ignored if `text` prop is provided. */
+  rewayah?: RewayahId;
 }
 
 const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
@@ -40,11 +45,25 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   showTajweed,
   width,
   indexedTajweedData,
+  rewayah,
 }) => {
+  const [, bump] = useReducer(x => x + 1, 0);
+  useEffect(() => {
+    if (!rewayah || rewayah === digitalKhattDataService.rewayah) return;
+    let cancelled = false;
+    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(() => {
+      if (!cancelled) bump();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rewayah]);
+
   const verseText = useMemo(
     () =>
-      text ?? (verseKey ? digitalKhattDataService.getVerseText(verseKey) : ''),
-    [text, verseKey],
+      text ??
+      (verseKey ? digitalKhattDataService.getVerseText(verseKey, rewayah) : ''),
+    [text, verseKey, rewayah],
   );
 
   const charToRule = useMemo(() => {

@@ -25,6 +25,9 @@ import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseBookmark} from '@/types/verse-annotations';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import {showToast} from '@/utils/toastUtils';
 
 interface BookmarkData {
   bookmark: VerseBookmark;
@@ -138,11 +141,25 @@ const BookmarksScreen = () => {
       ayahNumber={item.bookmark.ayahNumber}
       surahNumber={item.bookmark.surahNumber}
       verseKey={item.bookmark.verseKey}
-      onPress={() => {
+      rewayahId={item.bookmark.rewayahId}
+      onPress={async () => {
         const verseKey = `${item.bookmark.surahNumber}:${item.bookmark.ayahNumber}`;
-        const page = digitalKhattDataService.getPageForVerse(verseKey);
         const surahStartPages = digitalKhattDataService.getSurahStartPages();
         const fallbackPage = surahStartPages[item.bookmark.surahNumber] || 1;
+        // Silently restore the rewayah the bookmark was saved in so the
+        // opened verse matches what the user was reading at save time.
+        const savedRewayah = item.bookmark.rewayahId;
+        const active = useMushafSettingsStore.getState().rewayah;
+        if (savedRewayah && savedRewayah !== active) {
+          try {
+            await digitalKhattDataService.switchRewayah(savedRewayah);
+            useMushafSettingsStore.getState().setRewayah(savedRewayah);
+            showToast('Opening in', getRewayahShortLabel(savedRewayah));
+          } catch (err) {
+            console.error('[Bookmarks] Failed to switch rewayah:', err);
+          }
+        }
+        const page = digitalKhattDataService.getPageForVerse(verseKey);
         router.push({
           pathname: '/mushaf',
           params: {

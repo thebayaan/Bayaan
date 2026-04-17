@@ -29,9 +29,13 @@ export function verseShareUrl(
   surah: number,
   ayah: number,
   theme?: 'dark' | 'light',
+  rewayah?: string,
 ): string {
   const base = `${BASE_URL}/share/verse/${surah}/${ayah}`;
-  return theme === 'light' ? `${base}?theme=light` : base;
+  const params: string[] = [];
+  if (theme === 'light') params.push('theme=light');
+  if (rewayah && rewayah !== 'hafs') params.push(`rewayah=${rewayah}`);
+  return params.length > 0 ? `${base}?${params.join('&')}` : base;
 }
 
 export function adhkarShareUrl(superId: string): string {
