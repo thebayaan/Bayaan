@@ -184,9 +184,14 @@ Key points:
 
 ## License
 
-This project is licensed under **Apache 2.0 with the Commons Clause**.
+Bayaan is open source under the **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**.
 
-In plain English: you are free to use, study, and modify this code for non-commercial purposes. You may not sell the software, offer it as a commercial product or service, or build a revenue-generating product substantially derived from it without written permission from the Bayaan project.
+In plain English:
+
+- You are free to use, study, modify, and redistribute this code.
+- If you run a modified version as a network service, you must make your modified source code available to users of that service.
+- Any fork or derivative must be licensed under AGPL-3.0-or-later as well.
+- "Bayaan" and the Bayaan logo are trademarks and are **not** licensed under AGPL. Forks must rebrand before distribution. See [TRADEMARKS.md](TRADEMARKS.md) once published.
 
 See [LICENSE](LICENSE) for the full terms.
 
