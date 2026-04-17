@@ -2,6 +2,7 @@
   "name": "bayaan",
   "main": "expo-router/entry",
   "version": "2.1.2",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "postinstall": "patch-package",
     "start": "expo start",
