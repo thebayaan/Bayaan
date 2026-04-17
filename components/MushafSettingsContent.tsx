@@ -15,7 +15,10 @@ import {
   FullscreenPillIcon,
 } from '@/components/Icons';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {tajweedColors} from '@/constants/tajweedColors';
+import {
+  tajweedColors,
+  REWAYAH_DIFF_BACKGROUND,
+} from '@/constants/tajweedColors';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {LinearGradient} from 'expo-linear-gradient';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
@@ -1038,12 +1041,6 @@ const RewayahDiffCard: React.FC<RewayahDiffCardProps> = ({
   );
 };
 
-// Background tint used by SkiaPage for the legacy 'major' category on
-// close-to-Hafs rewayat. Duplicated here (rather than imported) because
-// SkiaPage is a big module and this file already carries design-system
-// metadata.
-const REWAYAH_DIFF_BACKGROUND = 'rgba(255, 107, 53, 0.3)';
-
 interface LegendEntry {
   color: string;
   isBackground?: boolean;
@@ -1151,7 +1148,8 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
         description: 'Pronoun-lengthening mark (ۥ / ۦ)',
       },
       {
-        color: tajweedColors.mukhtalif,
+        color: REWAYAH_DIFF_BACKGROUND,
+        isBackground: true,
         label: 'Word variant',
         description: 'Genuine letter-level difference from Hafs',
       },
@@ -1187,7 +1185,8 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
         description: 'Pronoun-lengthening mark (ۥ / ۦ)',
       },
       {
-        color: tajweedColors.mukhtalif,
+        color: REWAYAH_DIFF_BACKGROUND,
+        isBackground: true,
         label: 'Word variant',
         description: 'Genuine letter-level difference from Hafs',
       },
@@ -1198,7 +1197,8 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
     entries: [
       {
-        color: tajweedColors.mukhtalif,
+        color: REWAYAH_DIFF_BACKGROUND,
+        isBackground: true,
         label: 'Word variant',
         description: 'Genuine letter-level difference from Hafs',
       },
@@ -1209,7 +1209,8 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
     entries: [
       {
-        color: tajweedColors.mukhtalif,
+        color: REWAYAH_DIFF_BACKGROUND,
+        isBackground: true,
         label: 'Word variant',
         description: 'Genuine letter-level difference from Hafs',
       },

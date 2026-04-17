@@ -76,11 +76,12 @@ class RewayahDiffService {
     return false;
   }
 
-  /** Legacy alias: whether 'major' category has entries (used by SkiaPage
-   *  and ContinuousMushafView to decide if background highlights should
-   *  be rendered for close-to-Hafs rewayat like Bazzi/Qumbul/Shu'bah). */
+  /** Whether any whole-word-variant category ('major' for close rewayat,
+   *  'mukhtalif' for far) has entries. Used by SkiaPage and
+   *  ContinuousMushafView to decide if background highlights should be
+   *  rendered at all. */
   get hasDiffs(): boolean {
-    return this.hasCategory('major');
+    return this.hasCategory('major') || this.hasCategory('mukhtalif');
   }
 
   loadForRewayah(rewayah: RewayahId): void {
@@ -201,13 +202,17 @@ class RewayahDiffService {
   }
 
   /**
-   * Background-highlight ranges for the legacy 'major' category (close-to-Hafs
-   * rewayat like Bazzi/Qumbul/Shu'bah). Far rewayat (Warsh/Qaloon/Doori/Soosi)
-   * don't emit a 'major' category and return empty here.
+   * Background-highlight ranges for whole-word content variants. Merges
+   * 'major' (close rewayat: Shouba/Bazzi/Qumbul) and 'mukhtalif' (far
+   * rewayat: Warsh/Qaloon/Doori/Soosi) — both semantically mean "this
+   * word differs from Hafs" and render as a unified background tint.
    */
   getDiffRangesForLine(pageNumber: number, lineIndex: number): DiffRange[] {
     const majorByVerse = this.byCategory.get('major');
-    if (!majorByVerse || majorByVerse.size === 0) return EMPTY_RANGES;
+    const mukhtalifByVerse = this.byCategory.get('mukhtalif');
+    const hasMajor = majorByVerse && majorByVerse.size > 0;
+    const hasMukhtalif = mukhtalifByVerse && mukhtalifByVerse.size > 0;
+    if (!hasMajor && !hasMukhtalif) return EMPTY_RANGES;
     const cacheKey = `${pageNumber}:${lineIndex}`;
     const cached = this.rangeCache.get(cacheKey);
     if (cached) return cached;
@@ -225,8 +230,13 @@ class RewayahDiffService {
       const info = digitalKhattDataService.getWordInfo(wid);
       if (!info) continue;
       const wordLen = info.text.length;
-      const perWord = majorByVerse.get(info.verseKey);
-      if (perWord && perWord.has(info.wordPositionInVerse)) {
+      const inMajor =
+        majorByVerse?.get(info.verseKey)?.has(info.wordPositionInVerse) ??
+        false;
+      const inMukhtalif =
+        mukhtalifByVerse?.get(info.verseKey)?.has(info.wordPositionInVerse) ??
+        false;
+      if (inMajor || inMukhtalif) {
         ranges.push({start: offset, end: offset + wordLen - 1});
       }
       offset += wordLen;

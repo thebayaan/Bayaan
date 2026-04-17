@@ -41,6 +41,7 @@ import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
+import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
 import Color from 'color';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
@@ -68,10 +69,6 @@ interface SkiaPageProps {
   onReady?: () => void;
   onTap?: () => void;
 }
-
-// Background tint applied to words that differ from Hafs when a non-Hafs
-// rewayah is active. Chosen to pop against both light and dark mushaf themes.
-const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
@@ -229,9 +226,12 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
   // Merged char-to-rule maps: tajweed + rewayah categories + silah.
-  // Precedence (later wins): tajweed → mukhtalif → minor → ibdal → tashil →
-  //   madd → taghliz → silah. Silah always takes priority as the most
-  //   specific marker of Bazzi/Qumbul/Warsh/Qaloon pronunciation.
+  // Precedence (later wins): tajweed → minor → ibdal → tashil → madd →
+  //   taghliz → silah. Silah always takes priority as the most specific
+  //   marker of Bazzi/Qumbul/Warsh/Qaloon pronunciation. 'mukhtalif' and
+  //   'major' are whole-word variants — they render as background tint
+  //   (see REWAYAH_DIFF_BACKGROUND in the backgroundHighlights pipeline),
+  //   not as foreground char colors.
   const lineCharRuleMaps = useMemo(() => {
     const hasSilah = rewayahDiffService.hasSilahColoring;
     const hasAnyRewayah = rewayahDiffService.hasAnyDiffs;
@@ -240,7 +240,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     // Ordered low→high precedence: later entries override earlier ones
     // when the same char index is in multiple categories.
     const categories: readonly RewayahDiffCategory[] = [
-      'mukhtalif',
       'minor',
       'ibdal',
       'tashil',
@@ -631,7 +630,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
           map.set(lineIndex, arr);
         }
         for (const r of ranges) {
-          arr.push({start: r.start, end: r.end, color: REWAYAH_DIFF_COLOR});
+          arr.push({
+            start: r.start,
+            end: r.end,
+            color: REWAYAH_DIFF_BACKGROUND,
+          });
         }
       }
     }
