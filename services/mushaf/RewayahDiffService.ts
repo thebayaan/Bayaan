@@ -39,8 +39,10 @@ export type RewayahDiffCategory = (typeof REWAYAH_DIFF_CATEGORIES)[number];
  * the existing per-char color pipeline alongside tajweed rules and silah.
  */
 class RewayahDiffService {
-  // category -> verseKey -> set of word positions within that verse
-  private byCategory: Map<string, Map<string, Set<number>>> = new Map();
+  // category -> verseKey -> (wordPosition -> post-strip char indices).
+  // Empty array = whole-word highlight (legacy major/minor; mukhtalif).
+  private byCategory: Map<string, Map<string, Map<number, number[]>>> =
+    new Map();
   // per-line caches keyed by `${pageNumber}:${lineIndex}:${category}` etc.
   private rangeCache: Map<string, DiffRange[]> = new Map();
   private charCache: Map<string, number[]> = new Map();
@@ -94,17 +96,31 @@ class RewayahDiffService {
     if (!raw) return;
 
     // Diff JSON format supports three shapes:
-    //   Flat array (legacy Shu'bah): {verseKey: number[]} → treat as major
-    //   Two-tier (Bazzi/Qumbul):    {verseKey: {major?, minor?}}
-    //   Multi-category (far):       {verseKey: {madd?, tashil?, ...}}
+    //   Flat array (legacy Shu'bah): {verseKey: number[]} → whole-word major
+    //   Word-only list (legacy two-tier Bazzi/Qumbul):
+    //       {verseKey: {major: number[], minor: number[]}} → whole-word
+    //   Char-level (new): {verseKey: {cat: [[wordPos, [charIdx, ...]]]}}
+    //       Empty charIdx list = whole word.
     for (const [verseKey, value] of Object.entries(raw)) {
       if (Array.isArray(value)) {
-        this.addPositions('major', verseKey, value);
+        this.addPositions(
+          'major',
+          verseKey,
+          value.map(w => [w, []]),
+        );
         continue;
       }
-      for (const [cat, positions] of Object.entries(value)) {
-        if (positions && positions.length > 0) {
-          this.addPositions(cat, verseKey, positions);
+      for (const [cat, entries] of Object.entries(value)) {
+        if (!entries || entries.length === 0) continue;
+        if (typeof entries[0] === 'number') {
+          const words = entries as unknown as number[];
+          this.addPositions(
+            cat,
+            verseKey,
+            words.map(w => [w, []]),
+          );
+        } else {
+          this.addPositions(cat, verseKey, entries as [number, number[]][]);
         }
       }
     }
@@ -113,20 +129,30 @@ class RewayahDiffService {
   private addPositions(
     category: string,
     verseKey: string,
-    positions: number[],
+    entries: [number, number[]][],
   ): void {
     let perVerse = this.byCategory.get(category);
     if (!perVerse) {
       perVerse = new Map();
       this.byCategory.set(category, perVerse);
     }
-    perVerse.set(verseKey, new Set(positions));
+    let perWord = perVerse.get(verseKey);
+    if (!perWord) {
+      perWord = new Map();
+      perVerse.set(verseKey, perWord);
+    }
+    for (const [wordPos, charIndices] of entries) {
+      perWord.set(wordPos, charIndices);
+    }
   }
 
   /**
    * For a given category, returns char indices on the given line that belong
    * to words matching that category. Used by SkiaPage to merge into the
-   * char-rule map alongside tajweed rules.
+   * char-rule map alongside tajweed rules. If a flagged word has specific
+   * char indices stored, only those chars are colored (letter-level
+   * highlighting for madd/tashil/ibdal/taghliz). Empty char list means
+   * whole-word (legacy major/minor and mukhtalif fallback).
    */
   getCharsForCategory(
     category: RewayahDiffCategory,
@@ -151,10 +177,19 @@ class RewayahDiffService {
     for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
       const info = digitalKhattDataService.getWordInfo(wid);
       if (info) {
-        const positions = byVerse.get(info.verseKey);
-        if (positions && positions.has(info.wordPositionInVerse)) {
-          for (let i = 0; i < info.text.length; i++) {
-            indices.push(offset + i);
+        const perWord = byVerse.get(info.verseKey);
+        const charList = perWord?.get(info.wordPositionInVerse);
+        if (charList !== undefined) {
+          if (charList.length === 0) {
+            for (let i = 0; i < info.text.length; i++) {
+              indices.push(offset + i);
+            }
+          } else {
+            for (const c of charList) {
+              if (c >= 0 && c < info.text.length) {
+                indices.push(offset + c);
+              }
+            }
           }
         }
         offset += info.text.length;
@@ -190,8 +225,8 @@ class RewayahDiffService {
       const info = digitalKhattDataService.getWordInfo(wid);
       if (!info) continue;
       const wordLen = info.text.length;
-      const positions = majorByVerse.get(info.verseKey);
-      if (positions && positions.has(info.wordPositionInVerse)) {
+      const perWord = majorByVerse.get(info.verseKey);
+      if (perWord && perWord.has(info.wordPositionInVerse)) {
         ranges.push({start: offset, end: offset + wordLen - 1});
       }
       offset += wordLen;
@@ -245,7 +280,10 @@ class RewayahDiffService {
 const EMPTY_RANGES: DiffRange[] = [];
 const EMPTY_INDICES: number[] = [];
 
-type DiffAsset = Record<string, number[] | Record<string, number[]>>;
+// Diff JSON supports legacy (number[]) and new ([wordPos, charIdx[]][]) entries.
+// Legacy flat arrays at the verse level are treated as whole-word 'major'.
+type CategoryEntries = number[] | [number, number[]][];
+type DiffAsset = Record<string, number[] | Record<string, CategoryEntries>>;
 
 function loadDiffAsset(rewayah: RewayahId): DiffAsset | null {
   if (rewayah === 'shouba') {

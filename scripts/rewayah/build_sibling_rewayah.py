@@ -48,6 +48,10 @@ from pathlib import Path
 
 from normalize import normalize_verse, strip_for_render
 
+# Classification markers that strip_for_render removes. Mirrored here so the
+# anchor helpers can walk pre-strip text and compute post-strip char indices.
+_STRIP_SET = set("\u06E4\u06EA")
+
 HERE = Path(__file__).parent
 REPO = HERE.parents[1]
 OUT_DIR = REPO / "data" / "mushaf" / "digitalkhatt"
@@ -108,10 +112,16 @@ def _strip_base(text: str) -> tuple[str, bool]:
     return "".join(result), had_silah
 
 
-def categorize_diff(hafs_text: str, bazzi_text: str) -> str | None:
+def categorize_diff(
+    hafs_text: str, bazzi_text: str
+) -> tuple[str, list[int]] | None:
     """Legacy two-tier categorizer for close-to-Hafs rewayat (Shu'bah,
     Bazzi, Qumbul). Use classify_word() for Warsh/Qaloon/Doori/Soosi
-    where the published mushaf color scheme applies."""
+    where the published mushaf color scheme applies.
+
+    Returns (category, char_indices). char_indices is always an empty
+    list — close rewayat use whole-word background/foreground highlights
+    for major/minor. The renderer treats [] as 'color the whole word'."""
     h_norm, h_silah = _strip_base(hafs_text)
     b_norm, b_silah = _strip_base(bazzi_text)
     if h_silah or b_silah:
@@ -128,8 +138,8 @@ def categorize_diff(hafs_text: str, bazzi_text: str) -> str | None:
     while b_trail and b_trail[-1] in _TRAILING_VOWELS:
         b_trail = b_trail[:-1]
     if h_trail == b_trail:
-        return "minor"
-    return "major"
+        return ("minor", [])
+    return ("major", [])
 
 
 # === Published-mushaf classification for Warsh/Qaloon/Doori/Soosi ===
@@ -155,25 +165,62 @@ def _letters_only(text: str) -> str:
     return "".join(c for c in text if c in _ARABIC_LETTERS)
 
 
+def _marker_anchors(target_raw: str, marker: str) -> list[int]:
+    """For each occurrence of `marker` in `target_raw`, return the post-strip
+    char index of the nearest preceding base Arabic letter. Classification
+    markers are skipped (they'll be stripped before DB insert). The anchor
+    is the letter the combining mark visually sits on."""
+    anchors: list[int] = []
+    post_idx = 0
+    last_base_post = -1
+    for ch in target_raw:
+        if ch == marker:
+            if last_base_post >= 0:
+                anchors.append(last_base_post)
+            continue
+        if ch in _STRIP_SET:
+            continue
+        if ch in _ARABIC_LETTERS:
+            last_base_post = post_idx
+        post_idx += 1
+    return anchors
+
+
+def _nth_letter_post_idx(target_raw: str, n: int) -> int:
+    """Post-strip char index of the n-th (0-based) Arabic base letter in
+    target_raw. Returns -1 if out of range."""
+    post_idx = 0
+    letter_count = 0
+    for ch in target_raw:
+        if ch in _STRIP_SET:
+            continue
+        if ch in _ARABIC_LETTERS:
+            if letter_count == n:
+                return post_idx
+            letter_count += 1
+        post_idx += 1
+    return -1
+
+
 def classify_word(
     hafs_raw: str,
     target_raw: str,
     hafs_prev_raw: str | None,
     target_prev_raw: str | None,
-) -> str | None:
+) -> tuple[str, list[int]] | None:
     """Classify a patched word into one of the published-mushaf tajweed
-    categories. Returns a category name or None if no semantic diff.
+    categories. Returns (category, post_strip_char_indices) or None.
 
     Categories (first match wins):
       'madd'      — Madd al-Badal or Madd al-Lin (U+06E4 marker present)
       'tashil'    — Hamza tashil / musahhala (U+06EA or U+06EC marker)
       'ibdal'     — Hafs hamza → Warsh long vowel at same position
       'taghliz'   — Allah following a tafkhim-trigger (ط/ظ/ص + vowel)
-      'naql'      — Vowel transferred from a following hamza-wasl word
       'mukhtalif' — Any other word-level text diff (fall-through)
 
-    Silah is detected at runtime from stored text (U+06E5/U+06E6) — not
-    emitted here.
+    char_indices are into the DB-stored (post-strip) word text. Empty list
+    means 'whole word' — the renderer treats it as legacy word-level.
+    Silah is detected at runtime from stored text (U+06E5/U+06E6).
     """
     # Is there actually a diff?
     h_strip = strip_for_render(hafs_raw)
@@ -182,42 +229,52 @@ def classify_word(
         return None
 
     # 1. Madd al-Badal / Madd al-Lin — U+06E4 explicitly marks this in
-    #    KFGQPC Warsh/Qaloon data
+    #    KFGQPC Warsh/Qaloon data. Anchor on the letter it sits above.
     if "\u06E4" in target_raw:
-        return "madd"
+        anchors = _marker_anchors(target_raw, "\u06E4")
+        if anchors:
+            return ("madd", sorted(set(anchors)))
 
     # 2. Tashil — U+06EA (dot below) or U+06EC (ring above) indicates
-    #    hamza tashil / musahhala in KFGQPC Warsh orthography
-    if "\u06EA" in target_raw or "\u06EC" in target_raw:
-        return "tashil"
+    #    hamza tashil / musahhala. Anchor on the carrier letter.
+    tashil_anchors: list[int] = []
+    if "\u06EA" in target_raw:
+        tashil_anchors.extend(_marker_anchors(target_raw, "\u06EA"))
+    if "\u06EC" in target_raw:
+        tashil_anchors.extend(_marker_anchors(target_raw, "\u06EC"))
+    if tashil_anchors:
+        return ("tashil", sorted(set(tashil_anchors)))
 
     # 3. Ibdal — Hafs hamza in same letter position as Warsh long vowel.
-    #    Letter-count-preserving substitution: أ→ا, ؤ→و, ئ→ي.
+    #    Letter-count-preserving substitution: أ→ا, ؤ→و, ئ→ي. Color just
+    #    the substituted letter in the target word.
     h_letters = _letters_only(hafs_raw)
     t_letters = _letters_only(target_raw)
     if len(h_letters) == len(t_letters):
-        for h_c, t_c in zip(h_letters, t_letters):
+        ibdal_anchors: list[int] = []
+        for i, (h_c, t_c) in enumerate(zip(h_letters, t_letters)):
             if h_c in _HAMZA_LETTERS and t_c in _IBDAL_LONG_VOWELS:
-                return "ibdal"
+                idx = _nth_letter_post_idx(target_raw, i)
+                if idx >= 0:
+                    ibdal_anchors.append(idx)
+        if ibdal_anchors:
+            return ("ibdal", sorted(set(ibdal_anchors)))
 
-    # 4. Taghliz al-Lam — word is Allah following a tafkhim trigger on the
-    #    preceding word. Hafs usually pronounces the lam tafkhim here too
-    #    but Warsh has more consistent application.
+    # 4. Taghliz al-Lam — Allah following a tafkhim trigger on the
+    #    preceding word. Color the lam+lam+shadda in للّه.
     if _ALLAH_SUBSTR in target_raw and target_prev_raw:
         prev_letters = _letters_only(target_prev_raw)
         if prev_letters and prev_letters[-1] in _TAFKHIM_TRIGGERS:
-            return "taghliz"
+            post_target = strip_for_render(target_raw)
+            idx = post_target.find(_ALLAH_SUBSTR)
+            if idx >= 0:
+                return ("taghliz", [idx, idx + 1, idx + 2])
 
-    # 5. Naql — Warsh transfers a vowel from following hamza-wasl word onto
-    #    this word's final sukun. Detect by: Hafs ends with sukun AND
-    #    Warsh ends with a vowel AND the NEXT Hafs word starts with hamza.
-    #    We don't have next-word info here so this is a conservative check.
-
-    # 6. Mukhtalif fall-through — but only if there's a SUBSTANTIVE diff.
+    # 5. Mukhtalif fall-through — but only if there's a SUBSTANTIVE diff.
     #    Filter out typographic-only variations (alef wasla style, trailing
     #    vowel mood shifts, silah-adjacent changes) that would otherwise
     #    flood the page with red. The published mushaf reserves the red
-    #    "mukhtalif" tag for genuine reading variants.
+    #    "mukhtalif" tag for genuine reading variants. Whole-word highlight.
     h_norm, h_silah = _strip_base(hafs_raw)
     t_norm, t_silah = _strip_base(target_raw)
     if h_silah or t_silah:
@@ -226,15 +283,12 @@ def classify_word(
         while t_norm and t_norm[-1] in _TRAILING_VOWELS:
             t_norm = t_norm[:-1]
     if h_norm == t_norm:
-        return None  # typographic only — don't flood the page
-    # Letter-skeleton comparison. If the letter sequence matches and the
-    # only internal differences are vowel marks, treat as a minor/mood
-    # variant rather than a full mukhtalif (red) highlight.
+        return None
     h_letters = _letters_only(h_norm)
     t_letters = _letters_only(t_norm)
     if h_letters == t_letters:
-        return None  # just vowel differences, not a content variant
-    return "mukhtalif"
+        return None
+    return ("mukhtalif", [])
 
 
 def align_content(
@@ -282,10 +336,11 @@ def main() -> None:
     base_verse_key_by_id: dict[int, tuple[int, int, int]] = {
         r[0]: (r[1], r[2], r[3]) for r in base_rows
     }
-    # Two-tier diff map keyed by verse; major = background highlights
-    # (letter/internal-vowel changes); minor = foreground-color changes
-    # (trailing-vowel/mood swaps). See categorize_diff().
-    diff_map: dict[str, dict[str, list[int]]] = {}
+    # Diff map: {verseKey: {category: [[wordPos, [charIdx, ...]], ...]}}
+    # Empty char list = whole-word highlight (close-rewayat major/minor and
+    # mukhtalif fallback). Specific char indices = letter-level highlight
+    # for madd/tashil/ibdal/taghliz on far rewayat.
+    diff_map: dict[str, dict[str, list[list]]] = {}
 
     # Build target streams per surah. We need TWO views of the target:
     #   - content stream (no markers) for word-by-word substitution
@@ -388,20 +443,21 @@ def main() -> None:
                         # Classify using RAW text (with markers) so the
                         # classifier can see U+06E4/U+06EA.
                         if use_full_classifier:
-                            cat = classify_word(
+                            result = classify_word(
                                 base_text,
                                 new_text_raw,
                                 prev_base_text,
                                 prev_target_raw,
                             )
                         else:
-                            cat = categorize_diff(base_text, new_text_raw)
-                        if cat is not None:
+                            result = categorize_diff(base_text, new_text_raw)
+                        if result is not None:
+                            cat, char_indices = result
                             s, a, w = base_verse_key_by_id[row_id]
                             verse_key = f"{s}:{a}"
                             diff_map.setdefault(verse_key, {}).setdefault(
                                 cat, []
-                            ).append(w)
+                            ).append([w, char_indices])
                     prev_target_raw = new_text_raw
                 else:
                     prev_target_raw = None
@@ -433,7 +489,7 @@ def main() -> None:
     conn.close()
 
     # Drop empty-list keys to keep the JSON compact.
-    compact_diff_map: dict[str, dict[str, list[int]]] = {}
+    compact_diff_map: dict[str, dict[str, list[list]]] = {}
     for k, tiers in diff_map.items():
         kept = {t: v for t, v in tiers.items() if v}
         if kept:
