@@ -6,6 +6,7 @@ import {
   removeDownload as removeDownloadService,
   extractFilename,
 } from '@/services/downloadService';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 // Throttle utility to prevent excessive state updates during downloads
 const throttleMap = new Map<
@@ -215,6 +216,14 @@ export const useDownloadStore = create<DownloadStoreState>()(
 
       // Actions
       addDownload: (download: DownloadedSurah) => {
+        if (download.status === 'completed') {
+          analyticsService.trackDownloadCompleted({
+            surah_id: parseInt(download.surahId, 10),
+            reciter_id: download.reciterId,
+            file_size_bytes: download.fileSize,
+          });
+        }
+
         set(state => {
           // Check if download already exists (must match reciterId, surahId, AND rewayatId)
           const exists = state.downloads.some(
@@ -391,6 +400,15 @@ export const useDownloadStore = create<DownloadStoreState>()(
 
       // Status management
       setDownloading: (id: string) => {
+        // id format: "reciterId-surahId" or "reciterId-surahId-rewayatId"
+        const parts = id.split('-');
+        if (parts.length >= 2) {
+          analyticsService.trackDownloadStarted({
+            surah_id: parseInt(parts[1], 10),
+            reciter_id: parts[0],
+          });
+        }
+
         set(state => ({
           downloading: [...state.downloading, id],
         }));
