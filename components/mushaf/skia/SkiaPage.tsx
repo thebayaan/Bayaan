@@ -70,6 +70,10 @@ interface SkiaPageProps {
   onTap?: () => void;
 }
 
+// Background tint applied to words that differ from Hafs when a non-Hafs
+// rewayah is active. Chosen to pop against both light and dark mushaf themes.
+const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
+
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
   textColor,

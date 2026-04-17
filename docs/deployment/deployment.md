@@ -150,19 +150,9 @@ Bayaan uses an Expo Config Plugin (`withIOSTeam.js` in the project root) to auto
 4. Choose "Upload" and follow the prompts
 5. Wait for the upload to complete and processing to finish
 
-### Alternatively, Build and Upload via Command Line
+### Terminal-Only Release (Recommended)
 
-```bash
-cd ios
-# Clean and build first
-xcodebuild clean -workspace Bayaan.xcworkspace -scheme Bayaan
-xcodebuild -workspace Bayaan.xcworkspace -scheme Bayaan -configuration Release
-
-# Then run fastlane
-fastlane release
-```
-
-This requires Fastlane to be set up with appropriate configuration.
+For the full terminal-based workflow using `xcodebuild` + `asc` (no Xcode GUI needed), see **[Terminal iOS Release Guide](terminal-ios-release.md)**.
 
 ## Post-Deployment
 

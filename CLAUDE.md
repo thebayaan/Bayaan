@@ -420,18 +420,25 @@ For detailed deployment information, refer to `docs/deployment/deployment.md`.
    cd android && ./gradlew bundleRelease
   ```
    AAB location: `android/app/build/outputs/bundle/release/app-release.aab`
-4. **iOS:**
+4. **iOS (Terminal-only — no Xcode GUI needed):**
   ```bash
    expo prebuild --platform ios --clean
-   cd ios && open Bayaan.xcworkspace
+   xcodebuild archive -workspace ios/Bayaan.xcworkspace -scheme Bayaan \
+     -configuration Release -destination "generic/platform=iOS" \
+     -archivePath build/Bayaan.xcarchive CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=S4W5Q2L53W
+   xcodebuild -exportArchive -archivePath build/Bayaan.xcarchive \
+     -exportPath build/output -exportOptionsPlist ExportOptions.plist
+   asc builds upload --app 6648769980 --ipa build/output/Bayaan.ipa
   ```
-   In Xcode: Clean Build Folder → Build → Archive
+   Full guide: `docs/deployment/terminal-ios-release.md`
 
 ### Keystore & Credentials
 
 - Keystore: `~/Documents/app-credentials/bayaan/keystore/bayaan-upload-key.keystore`
 - Credentials: `~/.gradle/gradle.properties` (BAYAAN_UPLOAD_* variables)
 - iOS Team ID: `S4W5Q2L53W` (auto-configured via `withIOSTeam.js` plugin)
+- App Store Connect API Key: `~/Documents/app-credentials/bayaan/appstoreconnect/AuthKey_89436RZQQ2.p8`
+- App Store Connect CLI (`asc`): authenticated via system keychain, App ID `6648769980`
 
 ---
 
@@ -671,6 +678,7 @@ Additional documentation is available in the `docs/` directory:
 - **[Ambient Sounds](docs/features/ambient-sounds.md)** - Ambient nature sounds feature
 - **[Digital Khatt](docs/features/digital-khatt/README.md)** - Uthmani Mushaf rendering architecture, internals, and debugging
 - **[Deployment Guide](docs/deployment/deployment.md)** - Build and release procedures
+- **[Terminal iOS Release](docs/deployment/terminal-ios-release.md)** - Full terminal-only iOS archive, upload, and submit via `xcodebuild` + `asc`
 - **[Version Management](docs/deployment/version-management.md)** - Git-based versioning
 - **[Git Workflow](docs/development/git-workflow.md)** - Branching and collaboration
 

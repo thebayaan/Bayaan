@@ -1,6 +1,7 @@
 import {Share, Platform} from 'react-native';
 import rewayatSlugs from '@/data/rewayat-slugs.json';
 import type {Reciter, Rewayat} from '@/data/reciterData';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const BASE_URL = 'https://app.thebayaan.com';
 
@@ -68,8 +69,32 @@ export function resolveRewayat(
   });
 }
 
+function inferShareContentType(
+  url: string,
+): 'verse' | 'surah' | 'mushaf' | 'reciter' | 'adhkar' {
+  if (url.includes('/share/verse/')) return 'verse';
+  if (url.includes('/surah/')) return 'surah';
+  if (url.includes('/share/mushaf/')) return 'mushaf';
+  if (url.includes('/share/adhkar/') || url.includes('/share/dhikr/'))
+    return 'adhkar';
+  return 'reciter';
+}
+
+function extractSurahIdFromUrl(url: string): number | undefined {
+  const match = /\/surah\/(\d+)/.exec(url);
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
 export async function shareUrl(url: string, message: string): Promise<void> {
   try {
+    const contentType = inferShareContentType(url);
+    const surahId = extractSurahIdFromUrl(url);
+
+    analyticsService.trackShareCreated({
+      content_type: contentType,
+      ...(surahId !== undefined ? {surah_id: surahId} : {}),
+    });
+
     if (Platform.OS === 'ios') {
       await Share.share({url});
     } else {

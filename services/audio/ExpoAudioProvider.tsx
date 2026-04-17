@@ -18,6 +18,7 @@ import {expoAudioService} from './ExpoAudioService';
 import {lockScreenService} from './LockScreenService';
 import {ambientAudioService} from './AmbientAudioService';
 import {audioCoordinator} from './AudioCoordinator';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {useAmbientStore} from '@/store/ambientStore';
@@ -50,6 +51,12 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
   });
   const isHandlingTrackEnd = useRef(false);
   const wasPlaying = useRef(false);
+
+  // Analytics refs
+  const playbackStartTimeRef = useRef(0);
+  const accumulatedListenMsRef = useRef(0);
+  const lastTrackIdRef = useRef<string | null>(null);
+  const hasFiredStartedRef = useRef(false);
 
   // Get store actions
   const updatePlaybackState = usePlayerStore(
@@ -157,7 +164,54 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
 
       if (status.playing) {
         persistCurrentProgress(status.currentTime, status.duration);
+
+        // Update meaningful listen tracker (currentTime is in seconds)
+        analyticsService.updatePlaybackProgress(
+          Math.round(status.currentTime * 1000),
+        );
       }
+    }
+
+    // Detect track changes for analytics
+    const trackStore = usePlayerStore.getState();
+    const currentTrack =
+      trackStore.queue.tracks[trackStore.queue.currentIndex] ?? null;
+    const currentTrackId = currentTrack?.id ?? null;
+
+    if (currentTrackId !== lastTrackIdRef.current) {
+      // Track changed — reset accumulated listen time
+      accumulatedListenMsRef.current = 0;
+      playbackStartTimeRef.current = 0;
+      hasFiredStartedRef.current = false;
+      lastTrackIdRef.current = currentTrackId;
+    }
+
+    // Fire playback_started and set track duration when a new track starts playing
+    if (
+      currentTrack &&
+      !currentTrack.isUserUpload &&
+      currentTrack.surahId &&
+      status.playing &&
+      status.duration > 0 &&
+      !hasFiredStartedRef.current
+    ) {
+      hasFiredStartedRef.current = true;
+      playbackStartTimeRef.current = Date.now();
+
+      analyticsService.setTrackDuration(
+        Math.round(status.duration * 1000),
+        parseInt(currentTrack.surahId, 10),
+        currentTrack.reciterId,
+        currentTrack.rewayatId ?? '',
+      );
+
+      analyticsService.trackPlaybackStarted({
+        surah_id: parseInt(currentTrack.surahId, 10),
+        reciter_id: currentTrack.reciterId,
+        rewayah_id: currentTrack.rewayatId ?? '',
+        source: 'queue',
+        position_ms: Math.round(status.currentTime * 1000),
+      });
     }
 
     // Playback state mapping (always check, not throttled)
@@ -186,6 +240,42 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       }
 
       updatePlaybackState({state});
+
+      // Analytics: track play/pause transitions for non-user-upload tracks
+      const analyticsTrack =
+        trackStore.queue.tracks[trackStore.queue.currentIndex];
+      if (
+        analyticsTrack &&
+        !analyticsTrack.isUserUpload &&
+        analyticsTrack.surahId
+      ) {
+        const surahId = parseInt(analyticsTrack.surahId, 10);
+
+        if (state === 'playing' && currentState === 'paused') {
+          // Resumed from pause
+          playbackStartTimeRef.current = Date.now();
+          analyticsService.trackPlaybackResumed({
+            surah_id: surahId,
+            reciter_id: analyticsTrack.reciterId,
+            position_ms: Math.round(status.currentTime * 1000),
+          });
+        } else if (
+          state === 'paused' &&
+          wasPlaying.current &&
+          playbackStartTimeRef.current > 0
+        ) {
+          // Paused from playing — calculate listened time
+          const sessionMs = Date.now() - playbackStartTimeRef.current;
+          accumulatedListenMsRef.current += sessionMs;
+          analyticsService.trackPlaybackPaused({
+            surah_id: surahId,
+            reciter_id: analyticsTrack.reciterId,
+            position_ms: Math.round(status.currentTime * 1000),
+            listened_ms: sessionMs,
+          });
+          playbackStartTimeRef.current = 0;
+        }
+      }
 
       // Save progress when pausing (to capture final position)
       if (state === 'paused' && wasPlaying.current && status.duration > 0) {
@@ -240,6 +330,36 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
       const store = usePlayerStore.getState();
       const {repeatMode} = store.settings;
       const {currentIndex, tracks} = store.queue;
+
+      // Analytics: track completion
+      const completedTrack = tracks[currentIndex];
+      if (
+        completedTrack &&
+        !completedTrack.isUserUpload &&
+        completedTrack.surahId
+      ) {
+        const sessionMs =
+          playbackStartTimeRef.current > 0
+            ? Date.now() - playbackStartTimeRef.current
+            : 0;
+        const totalListened = accumulatedListenMsRef.current + sessionMs;
+        const durationMs = Math.round(latestStatusRef.current.duration * 1000);
+
+        analyticsService.trackPlaybackCompleted({
+          surah_id: parseInt(completedTrack.surahId, 10),
+          reciter_id: completedTrack.reciterId,
+          duration_ms: durationMs,
+          listened_ms: totalListened,
+          completion_pct:
+            durationMs > 0
+              ? Math.round((totalListened / durationMs) * 100)
+              : 100,
+        });
+
+        // Reset listen tracking refs
+        playbackStartTimeRef.current = 0;
+        accumulatedListenMsRef.current = 0;
+      }
 
       if (repeatMode === 'track') {
         // Repeat current track

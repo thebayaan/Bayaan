@@ -23,6 +23,7 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 // ─── Data loading (module scope, runs once) ───────────────────────────────
 const quranData = require('@/data/quran.json') as QuranData;
@@ -134,6 +135,17 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
   const activeTranslationText = isBundledTranslation(selectedTranslationId)
     ? stripHtml(getTranslationText(verse.verseKey, selectedTranslationId))
     : stripHtml(downloadedTexts[selectedTranslationId] ?? '');
+
+  // Track translation viewed when the selected translation changes
+  useEffect(() => {
+    const language = isBundledTranslation(selectedTranslationId)
+      ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
+      : selectedTranslationId.split('.')[0] || 'unknown';
+    analyticsService.trackTranslationViewed({
+      translation_id: selectedTranslationId,
+      language,
+    });
+  }, [selectedTranslationId]);
 
   // All other translation IDs (bundled + downloaded, excluding active)
   const otherTranslationIds = useMemo(() => {

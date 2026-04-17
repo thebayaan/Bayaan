@@ -168,8 +168,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             renderer === 'dk_v1'
               ? 'v1'
               : renderer === 'dk_indopak'
-                ? 'v2'
-                : 'v2',
+              ? 'v2'
+              : 'v2',
         }),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
