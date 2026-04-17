@@ -7,6 +7,7 @@ import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {Theme} from '@/utils/themeUtils';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 interface TasbeehCounterProps {
   dhikrId: string;
@@ -61,6 +62,10 @@ export const TasbeehCounter: React.FC<TasbeehCounterProps> = ({
     // Success haptic when reaching target
     if (newCount === targetCount) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      analyticsService.trackTasbeehCompleted({
+        category: dhikrId,
+        count: targetCount,
+      });
     }
   }, [dhikrId, incrementCount, targetCount, animateTap]);
 

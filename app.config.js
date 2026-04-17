@@ -163,6 +163,13 @@ module.exports = {
           androidMultiIntentFilters: ['audio/*'],
         },
       ],
+      [
+        '@sentry/react-native/expo',
+        {
+          organization: 'bayaan',
+          project: 'bayaan-mobile',
+        },
+      ],
       './withAndroidSigning.js',
       './withLargeHeap.js',
       './withIOSTeam.js',
