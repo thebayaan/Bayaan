@@ -161,8 +161,24 @@ _TAFKHIM_TRIGGERS = set("\u0637\u0638\u0635")  # ط ظ ص
 _ALLAH_SUBSTR = "\u0644\u0644\u0651\u064E\u0647"  # للَّه
 
 
+# Orthographic letter variants that represent the same underlying letter
+# across rewayat spelling conventions. Normalized for mukhtalif filtering so
+# typographic-only diffs (hamzat al-wasl ٱ vs ا, alef maksura ى vs yeh ي,
+# alef madda آ vs alef ا) don't register as content variants.
+_LETTER_EQUIVALENTS = {
+    "\u0671": "\u0627",  # alef wasla -> alef
+    "\u0622": "\u0627",  # alef madda -> alef
+    "\u0649": "\u064A",  # alef maksura -> yeh
+}
+
+
 def _letters_only(text: str) -> str:
-    return "".join(c for c in text if c in _ARABIC_LETTERS)
+    out: list[str] = []
+    for c in text:
+        if c not in _ARABIC_LETTERS:
+            continue
+        out.append(_LETTER_EQUIVALENTS.get(c, c))
+    return "".join(out)
 
 
 def _marker_anchors(target_raw: str, marker: str) -> list[int]:
