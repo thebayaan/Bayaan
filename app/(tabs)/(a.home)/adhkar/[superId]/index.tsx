@@ -37,6 +37,7 @@ import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {adhkarShareUrl, shareUrl} from '@/utils/shareUtils';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -96,6 +97,9 @@ const SuperCategoryListScreen: React.FC = () => {
         if (data) {
           setSuperCategory(data.superCategory);
           setCategoryGroups(data.categoryGroups);
+          analyticsService.trackAdhkarSessionStarted({
+            category: data.superCategory.title || superId,
+          });
         }
       } catch (error) {
         console.error('Failed to load super category data:', error);

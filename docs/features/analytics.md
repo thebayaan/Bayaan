@@ -1,9 +1,9 @@
 # Feature: Analytics & Listening Insights
 
-**Status:** In Design
+**Status:** Phase 1 shipped (2026-04) — event tracking, local aggregation, Sentry crash reporting. Phases 2+ (Stats Dashboard, Deep Insights, Wrapped) remain in design.
 **Priority:** High
 **Created:** 2026-02-20
-**Updated:** 2026-04-12
+**Updated:** 2026-04-16
 **GitHub Issue:** [#119](https://github.com/thebayaan/Bayaan/issues/119)
 
 ## Overview

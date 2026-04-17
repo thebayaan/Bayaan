@@ -64,6 +64,7 @@ import {useNavigation} from 'expo-router';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 interface ReciterProfileProps {
   id: string;
@@ -215,6 +216,17 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   const [reciter, setReciter] = useState<Reciter | null>(initialReciter);
   const surahs = SURAHS;
+
+  // Track reciter selected on mount
+  useEffect(() => {
+    if (initialReciter) {
+      analyticsService.trackReciterSelected({
+        reciter_id: initialReciter.id,
+        reciter_name: initialReciter.name,
+      });
+    }
+  }, [initialReciter]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRewayatId, setSelectedRewayatId] = useState<
     string | undefined

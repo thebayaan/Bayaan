@@ -1,3 +1,4 @@
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {databaseService} from '@/services/database/DatabaseService';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
@@ -191,6 +192,20 @@ export const appInitializer = new AppInitializer();
 // Register all services that need initialization here
 // Priority order: 0 = highest priority (initialized first)
 // ============================================================================
+
+/**
+ * Analytics Service (Priority 0)
+ * Initializes device ID and session tracking for analytics
+ * Non-critical - app functions without analytics
+ */
+appInitializer.registerService({
+  name: 'Analytics',
+  priority: 0,
+  critical: false,
+  initialize: async () => {
+    await analyticsService.initialize();
+  },
+});
 
 /**
  * Database Service (Priority 1)
