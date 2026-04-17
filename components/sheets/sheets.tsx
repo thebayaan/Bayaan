@@ -235,6 +235,7 @@ declare module 'react-native-actions-sheet' {
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
+        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-note': SheetDefinition<{
@@ -244,6 +245,7 @@ declare module 'react-native-actions-sheet' {
         ayahNumber: number;
         verseKeys?: string[];
         noteId?: string;
+        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-share': SheetDefinition<{

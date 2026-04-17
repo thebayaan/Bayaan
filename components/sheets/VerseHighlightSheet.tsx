@@ -28,6 +28,7 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
   const surahNumber = props.payload?.surahNumber ?? 0;
   const ayahNumber = props.payload?.ayahNumber ?? 0;
   const verseKeys = props.payload?.verseKeys;
+  const rewayah = props.payload?.rewayah;
   const allKeys = verseKeys && verseKeys.length > 1 ? verseKeys : [verseKey];
 
   const currentColor = useVerseAnnotationsStore(s => s.highlights[verseKey]);
@@ -42,12 +43,13 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
           parseInt(s, 10),
           parseInt(a, 10),
           color,
+          rewayah,
         );
         store.setHighlight(vk, color);
       }
       SheetManager.hideAll();
     },
-    [allKeys],
+    [allKeys, rewayah],
   );
 
   const handleRemove = useCallback(async () => {
@@ -69,7 +71,11 @@ export const VerseHighlightSheet = (props: SheetProps<'verse-highlight'>) => {
         <Text style={styles.title}>Highlight Color</Text>
 
         <View style={styles.ayahContainer}>
-          <SkiaVersePreview verseKey={verseKey} verseKeys={verseKeys} />
+          <SkiaVersePreview
+            verseKey={verseKey}
+            verseKeys={verseKeys}
+            rewayah={rewayah}
+          />
         </View>
 
         <View style={styles.colorsGrid}>

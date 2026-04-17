@@ -219,12 +219,13 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           vk,
           parseInt(s, 10),
           parseInt(a, 10),
+          resolvedRewayah,
         );
         store.addBookmark(vk);
       }
     }
     SheetManager.hideAll();
-  }, [verseKey, verseKeys, isRange, isBookmarked]);
+  }, [verseKey, verseKeys, isRange, isBookmarked, resolvedRewayah]);
 
   const handleHighlight = useCallback(async () => {
     if (isHighlighted) {
@@ -576,6 +577,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <TranslationContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
+                    rewayah={resolvedRewayah}
                     onBack={handleBack}
                   />
                 )}
@@ -583,6 +585,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <TafseerContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
+                    rewayah={resolvedRewayah}
                     onBack={handleBack}
                   />
                 )}
@@ -609,6 +612,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     verseKeys={verseKeys}
+                    rewayah={resolvedRewayah}
                     onDone={handleDismiss}
                   />
                 )}
@@ -618,6 +622,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     verseKeys={verseKeys}
+                    rewayah={resolvedRewayah}
                     onDone={handleDismiss}
                   />
                 )}
@@ -629,6 +634,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     verseKeys={verseKeys}
                     arabicText={arabicText}
                     translation={translation}
+                    rewayah={resolvedRewayah}
                     onDone={handleDismiss}
                   />
                 )}

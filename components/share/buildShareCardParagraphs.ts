@@ -131,7 +131,13 @@ function computeDividerFontSize(
 
 /** Prepend U+06DD (Arabic End of Ayah) before trailing Arabic-Indic digits. */
 function addVerseMarker(text: string): string {
-  return text.replace(/([٠-٩]+)$/, '\u06DD$1');
+  // If a U+06DD (end-of-ayah) is already adjacent to the trailing digits,
+  // don't re-prefix. DK text concatenated from the words DB includes the
+  // marker word (e.g. "...۝١"), and newer Quran JSON sources do too —
+  // blindly prefixing would produce a double marker like "...۝۝١" which
+  // renders as two empty circles with the number after them.
+  if (/\u06DD\s*[\u0660-\u0669]+$/.test(text)) return text;
+  return text.replace(/([\u0660-\u0669]+)$/, '\u06DD$1');
 }
 
 export function buildShareCardParagraphs(
