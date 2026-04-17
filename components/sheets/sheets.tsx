@@ -213,6 +213,9 @@ declare module 'react-native-actions-sheet' {
         translation?: string;
         transliteration?: string;
         source?: 'player' | 'mushaf';
+        // Override the rewayah used for Arabic text resolution and share
+        // disclosure. Defaults to the mushaf's active rewayah.
+        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-copy': SheetDefinition<{

@@ -33,6 +33,10 @@ interface ShareCardPreviewProps {
   width: number;
   /** Optional ref forwarded to the underlying Canvas (used for image capture). */
   canvasRef?: React.RefObject<any>;
+  /** Current-context rewayah. Drives which DK words DB the Arabic text is
+   *  pulled from, and (when non-Hafs) surfaces a small rewayah label on the
+   *  rendered card so shared images disclose the reading. */
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
 }
 
 const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
@@ -45,6 +49,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
   fontFamily,
   width,
   canvasRef,
+  rewayah,
 }) => {
   const padding =
     (CARD_PADDING / (CARD_CONTENT_WIDTH + CARD_PADDING * 2)) * width;
@@ -61,6 +66,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
         quranCommonTypeface,
         fontFamily,
         showBasmallah,
+        rewayah,
       ),
     [
       verseKeys,
@@ -71,6 +77,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
       quranCommonTypeface,
       fontFamily,
       showBasmallah,
+      rewayah,
     ],
   );
 
@@ -166,6 +173,20 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
 
           y += section.verseHeight + CARD_VERSE_BOTTOM_GAP * scale;
         });
+
+        // Rewayah disclosure label (non-Hafs only), centered above watermark.
+        if (elements.rewayahLabelParagraph) {
+          nodes.push(
+            <Paragraph
+              key="rewayah-label"
+              paragraph={elements.rewayahLabelParagraph}
+              x={padding}
+              y={y}
+              width={contentWidth}
+            />,
+          );
+          y += elements.rewayahLabelHeight;
+        }
 
         // Watermark: squircle logo + "made with Bayaan" (centered)
         if (elements.watermarkParagraph) {

@@ -219,7 +219,9 @@ export const VerseItem = memo<VerseItemProps>(
           verseKey,
           surahNumber: verse.surah_number,
           ayahNumber: verse.ayah_number,
-          arabicText: verse.text,
+          // arabicText omitted — the sheet reads from DK so it always
+          // matches the current rewayah instead of the static Hafs
+          // text on this VerseItem prop.
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
           source: source ?? 'player',
@@ -235,7 +237,9 @@ export const VerseItem = memo<VerseItemProps>(
           verseKey,
           surahNumber: verse.surah_number,
           ayahNumber: verse.ayah_number,
-          arabicText: verse.text,
+          // arabicText omitted — the sheet reads from DK so it always
+          // matches the current rewayah instead of the static Hafs
+          // text on this VerseItem prop.
           translation: verse.translation || '',
           transliteration: verse.transliteration || '',
           source: source ?? 'player',
