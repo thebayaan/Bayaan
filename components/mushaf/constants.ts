@@ -204,15 +204,40 @@ export function getMushafLayout(
   // labels breathe. Tuned to keep `fontSize ≈ 34pt` at 720pt page width.
   const paddingHorizontal = 24;
 
-  // NOTE: true facing-pages rendering (two pages per spread with paired
-  // swipes) requires restructuring the FlatList `data` as spreads and is
-  // tracked as a follow-up. For now iPad always renders a single centered
-  // page; this fixes the immediate "lines overlap" / "bottom clipped" bugs
-  // without breaking page navigation. `facingPages` is therefore reported
-  // as `false` regardless of orientation.
-  const cap = landscape
-    ? IPAD_MAX_PAGE_WIDTH_LANDSCAPE
-    : IPAD_MAX_PAGE_WIDTH_SINGLE;
+  // Landscape iPad: render two facing pages per spread. `pageWidth` is each
+  // individual page's width, capped so the font size stays readable. The
+  // FlatList items are spreads whose width is `screenWidth`; the consumer
+  // centers `(2*pageWidth + facingGap)` within `screenWidth` via
+  // `pageOffsetX`.
+  if (landscape) {
+    const facingGap = 12;
+    // Available width for the two pages combined.
+    const availableForPages = Math.max(width - facingGap, 1);
+    const pageWidth = Math.min(
+      IPAD_MAX_PAGE_WIDTH_LANDSCAPE,
+      Math.floor(availableForPages / 2),
+    );
+    const pageOffsetX = Math.max((width - (2 * pageWidth + facingGap)) / 2, 0);
+    const contentWidth = pageWidth - paddingHorizontal * 2;
+
+    return {
+      screenWidth: width,
+      screenHeight: height,
+      pageWidth,
+      pageOffsetX,
+      facingGap,
+      contentWidth,
+      contentHeight,
+      baseLineHeight,
+      paddingHorizontal,
+      paddingTop,
+      paddingBottom,
+      facingPages: true,
+    };
+  }
+
+  // Portrait iPad: single centered page, capped width.
+  const cap = IPAD_MAX_PAGE_WIDTH_SINGLE;
   const pageWidth = Math.min(width, cap);
   const pageOffsetX = Math.max((width - pageWidth) / 2, 0);
   const contentWidth = pageWidth - paddingHorizontal * 2;

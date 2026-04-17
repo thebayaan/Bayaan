@@ -64,6 +64,29 @@ const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
 
 // ============================================================================
+// Spread helpers — iPad landscape renders two facing pages per FlatList item.
+// Spread N (0-indexed) contains pages (2N+1, 2N+2), with the odd page on the
+// right and the even page on the left (standard RTL mushaf convention).
+// ============================================================================
+interface Spread {
+  /** Odd-numbered page (right side in RTL reading order). */
+  right: number;
+  /** Even-numbered page (left side). `null` only if the mushaf has an odd
+   *  total page count — for 604 pages every spread has both. */
+  left: number | null;
+}
+
+const SPREAD_COUNT = Math.ceil(TOTAL_PAGES / 2);
+
+function pageToSpreadIndex(page: number): number {
+  return Math.floor((page - 1) / 2);
+}
+
+function spreadPrimaryPage(spread: Spread): number {
+  return spread.right;
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -271,17 +294,18 @@ const DKPageView: React.FC<{
 };
 
 // ============================================================================
-// DKSpreadView: FlatList item that hosts a single centered page.
-// On phones this is a thin pass-through (full-width page, zero offset).
-// On iPad the inner DKPageView is `pageWidth`-wide and centered via flex,
-// so the font/size caps in `getMushafLayout` take effect visually.
+// DKSpreadView: FlatList item that hosts either a single centered page
+// (phone + iPad portrait) or two facing pages (iPad landscape).
 //
-// A future follow-up will extend this wrapper to optionally render a second
-// facing page in landscape; the metrics already expose `facingPages` and
-// `facingGap` for that, but the current implementation always draws one.
+// When `metrics.facingPages` is true, the view renders
+//   [ even-page | gap | odd-page ]
+// so RTL reading order (right → left) matches a physical mushaf.
 // ============================================================================
 const DKSpreadView: React.FC<{
+  /** Primary page (odd / right side in facing mode). */
   pageNumber: number;
+  /** Facing left page (even). Only used when `metrics.facingPages` is true. */
+  leftPageNumber?: number | null;
   textColor: string;
   labelColor: string;
   borderColor: string;
@@ -293,6 +317,7 @@ const DKSpreadView: React.FC<{
   onTap?: () => void;
 }> = ({
   pageNumber,
+  leftPageNumber,
   textColor,
   labelColor,
   borderColor,
@@ -328,6 +353,55 @@ const DKSpreadView: React.FC<{
     );
   }
 
+  // iPad landscape: render two facing pages side by side. Even page on the
+  // left, odd page on the right. The inner DKPageView sizes itself with
+  // `metrics.pageWidth` so the pair fits within `screenWidth` with
+  // `facingGap` breathing room.
+  if (metrics.facingPages && leftPageNumber != null) {
+    return (
+      <View
+        style={{
+          width: metrics.screenWidth,
+          height: metrics.screenHeight,
+          backgroundColor: spreadBg,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+        <DKPageView
+          pageNumber={leftPageNumber}
+          textColor={textColor}
+          surahLabel={getSurahNamesForPage(leftPageNumber)}
+          juzLabel={`Juz ${getJuzForPage(leftPageNumber)}`}
+          pageLabel={String(leftPageNumber)}
+          labelColor={labelColor}
+          borderColor={borderColor}
+          cardColor={cardColor}
+          bgColor={bgColor}
+          isBookLayout={isBookLayout}
+          metrics={metrics}
+          onTap={onTap}
+        />
+        <View style={{width: metrics.facingGap, height: '100%'}} />
+        <DKPageView
+          pageNumber={pageNumber}
+          textColor={textColor}
+          surahLabel={getSurahNamesForPage(pageNumber)}
+          juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
+          pageLabel={String(pageNumber)}
+          labelColor={labelColor}
+          borderColor={borderColor}
+          cardColor={cardColor}
+          bgColor={bgColor}
+          isBookLayout={isBookLayout}
+          metrics={metrics}
+          onTap={onTap}
+        />
+      </View>
+    );
+  }
+
+  // iPad portrait single-page: centered in spread area.
   return (
     <View
       style={{
@@ -475,6 +549,19 @@ export default function MushafViewer({
 
   const pages = useMemo(
     () => Array.from({length: TOTAL_PAGES}, (_, i) => i + 1),
+    [],
+  );
+
+  // Spread list — only used when `metrics.facingPages` is true (iPad
+  // landscape). Kept stable across renders to avoid re-triggering FlatList
+  // recycling on every metrics change.
+  const spreads = useMemo<Spread[]>(
+    () =>
+      Array.from({length: SPREAD_COUNT}, (_, i) => {
+        const right = i * 2 + 1;
+        const left = i * 2 + 2;
+        return {right, left: left > TOTAL_PAGES ? null : left};
+      }),
     [],
   );
 
@@ -668,19 +755,22 @@ export default function MushafViewer({
 
   const onViewableItemsChanged = useCallback(
     ({viewableItems}: {viewableItems: ViewToken[]}) => {
-      if (viewableItems.length > 0 && viewableItems[0].item) {
-        const page = viewableItems[0].item as number;
-        setCurrentPage(page);
-        useMushafPlayerStore.setState({currentPage: page});
-        mushafSessionStore.setLastReadPage(page);
-        trackPageChange(page);
-        // Update the active reading chain (swipe = same chain, even across surah boundaries)
-        const surahId = digitalKhattDataService.initialized
-          ? digitalKhattDataService.getPageToSurah()[page]
-          : undefined;
-        if (surahId) {
-          useMushafSettingsStore.getState().updateActiveChain(surahId, page);
-        }
+      if (viewableItems.length === 0) return;
+      const first = viewableItems[0].item;
+      if (first == null) return;
+      // Page number depends on data shape: `number` for single-page data,
+      // `Spread` object for facing-pages data.
+      const page: number =
+        typeof first === 'number' ? first : spreadPrimaryPage(first as Spread);
+      setCurrentPage(page);
+      useMushafPlayerStore.setState({currentPage: page});
+      mushafSessionStore.setLastReadPage(page);
+      trackPageChange(page);
+      const surahId = digitalKhattDataService.initialized
+        ? digitalKhattDataService.getPageToSurah()[page]
+        : undefined;
+      if (surahId) {
+        useMushafSettingsStore.getState().updateActiveChain(surahId, page);
       }
     },
     [trackPageChange],
@@ -691,6 +781,14 @@ export default function MushafViewer({
       itemVisiblePercentThreshold: 50,
     }),
     [],
+  );
+
+  // Convert a logical page number to the current FlatList's item index
+  // (spread index when facing-pages is active, page index otherwise).
+  const pageToFlatListIndex = useCallback(
+    (page: number) =>
+      metrics.facingPages ? pageToSpreadIndex(page) : page - 1,
+    [metrics.facingPages],
   );
 
   const navigateToPage = useCallback(
@@ -707,12 +805,12 @@ export default function MushafViewer({
         continuousListRef.current?.scrollToPage(targetPage);
       } else {
         flatListRef.current?.scrollToIndex({
-          index: targetPage - 1,
+          index: pageToFlatListIndex(targetPage),
           animated: false,
         });
       }
     },
-    [isVertical],
+    [isVertical, pageToFlatListIndex],
   );
 
   const navigateToPageAnimated = useCallback(
@@ -721,12 +819,12 @@ export default function MushafViewer({
         continuousListRef.current?.scrollToPage(targetPage, true);
       } else {
         flatListRef.current?.scrollToIndex({
-          index: targetPage - 1,
+          index: pageToFlatListIndex(targetPage),
           animated: true,
         });
       }
     },
-    [isVertical],
+    [isVertical, pageToFlatListIndex],
   );
 
   // In vertical mode, scroll to the exact verse during playback
@@ -803,12 +901,12 @@ export default function MushafViewer({
         continuousListRef.current?.scrollToPage(page);
       } else {
         flatListRef.current?.scrollToIndex({
-          index: page - 1,
+          index: pageToFlatListIndex(page),
           animated: false,
         });
       }
     },
-    [isVertical],
+    [isVertical, pageToFlatListIndex],
   );
 
   const openSearchMode = useCallback(() => setIsSearchMode(true, false), []);
@@ -888,6 +986,46 @@ export default function MushafViewer({
           onTap={toggleImmersive}
           initialPage={currentPage}
           onCurrentPageChange={handleContinuousPageChange}
+        />
+      ) : metrics.facingPages && viewMode === 'mushaf' ? (
+        <FlatList
+          ref={flatListRef}
+          data={spreads}
+          renderItem={({item}) => (
+            <DKSpreadView
+              pageNumber={item.right}
+              leftPageNumber={item.left}
+              textColor={readingColors.text}
+              labelColor={readingColors.textSecondary}
+              borderColor={edgeBorderColor}
+              cardColor={pageBg}
+              bgColor={edgeBg}
+              edgeBg={edgeBg}
+              isBookLayout={isBookLayout}
+              metrics={metrics}
+              onTap={toggleImmersive}
+            />
+          )}
+          keyExtractor={item => `spread-${item.right}`}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={Math.min(
+            pageToSpreadIndex(currentPage),
+            SPREAD_COUNT - 1,
+          )}
+          getItemLayout={(_, index) => ({
+            length: metrics.screenWidth,
+            offset: metrics.screenWidth * index,
+            index,
+          })}
+          inverted
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+          windowSize={7}
+          maxToRenderPerBatch={3}
+          initialNumToRender={1}
+          decelerationRate="fast"
         />
       ) : (
         <FlatList
