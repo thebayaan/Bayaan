@@ -1,6 +1,6 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {verticalScale} from 'react-native-size-matters';
+import {verticalScale} from '@/utils/scale';
 import {Canvas, Skia, useFonts} from '@shopify/react-native-skia';
 import {SURAH_DIVIDER_CHAR} from '@/constants/surahNameGlyphs';
 import SkiaSurahHeader from '@/components/mushaf/skia/SkiaSurahHeader';
