@@ -75,6 +75,9 @@ interface TabletPlayerProps {
   onOptionsPress: () => void;
   onFollowAlongPress: () => void;
   measuredParentWidth?: number;
+  bodyOnly?: boolean;
+  showQueue?: boolean;
+  onQueueToggle?: () => void;
 }
 
 const ANIMATION_DURATION = 250;
@@ -99,6 +102,9 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
   onOptionsPress,
   onFollowAlongPress,
   measuredParentWidth,
+  bodyOnly = false,
+  showQueue: showQueueProp,
+  onQueueToggle,
 }) => {
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
@@ -169,14 +175,20 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
     useVerseSelectionStore.getState().clearSelection();
   }, [currentSurah]);
 
-  const [showQueue, setShowQueue] = useState(false);
+  const [localShowQueue, setLocalShowQueue] = useState(false);
+  const showQueue =
+    showQueueProp !== undefined ? showQueueProp : localShowQueue;
   useEffect(() => {
     if (showQueue) setImmersive(false);
   }, [showQueue, setImmersive]);
 
   const handleQueueTap = useCallback(() => {
-    setShowQueue(prev => !prev);
-  }, []);
+    if (onQueueToggle) {
+      onQueueToggle();
+    } else {
+      setLocalShowQueue(prev => !prev);
+    }
+  }, [onQueueToggle]);
 
   const handleQueueItemPress = useCallback(
     async (index: number) => {
@@ -405,7 +417,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
       contentPaddingTop={moderateScale(12)}
       contentPaddingBottom={moderateScale(12)}
       parentContentWidth={
-        useSidebarLayout
+        !bodyOnly && useSidebarLayout
           ? measuredParentWidth
             ? measuredParentWidth - SIDEBAR_WIDTH
             : undefined
@@ -413,6 +425,19 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
       }
     />
   );
+
+  // ==============================================================
+  // BODY-ONLY: just render the mushaf pane (controls live in a
+  // sibling column owned by PlayerSheet). Used in portrait split.
+  // ==============================================================
+  if (bodyOnly) {
+    return (
+      <View
+        style={[styles.rootCol, {backgroundColor: readingColors.background}]}>
+        <View style={styles.contentPane}>{body}</View>
+      </View>
+    );
+  }
 
   // ==============================================================
   // REUSABLE CONTROL BLOCKS (rendered inline in each layout)
@@ -727,52 +752,64 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
   }
 
   // ==============================================================
-  // PORTRAIT: header (top) + mushaf (middle) + dock (bottom)
+  // PORTRAIT / NARROW: header (top) + mushaf (middle) + floating card (bottom)
   // ==============================================================
   return (
     <View style={[styles.rootCol, {backgroundColor: readingColors.background}]}>
-      {/* Top: Header */}
+      {/* Top: Header (flexShrink: 0 — never squeezed) */}
       <GestureDetector gesture={sheetDragGesture}>
         <Animated.View
           style={[
-            styles.topBar,
-            {
-              paddingTop: insets.top + moderateScale(4),
-              borderBottomColor: hairline,
-            },
+            styles.pTopBar,
+            {paddingTop: insets.top + moderateScale(4)},
             chromeStyle,
           ]}
           pointerEvents={isImmersive ? 'none' : 'auto'}>
-          {glassBackground()}
           <Header onOptionsPress={onOptionsPress} />
         </Animated.View>
       </GestureDetector>
 
-      {/* Middle: Mushaf / Queue / Upload (flex: 1 — takes all remaining space) */}
+      {/* Middle: Mushaf body (flex: 1, shrinks to fit dock) */}
       <View style={styles.contentPane}>{body}</View>
 
-      {/* Bottom: Dock with all controls (natural height, cannot clip) */}
+      {/* Bottom: Floating Now-Playing card
+         - flexShrink: 0 → can never be squeezed by the mushaf
+         - ScrollView inside → if content ever overflows (rotation, font
+           scaling), user can scroll rather than have rows disappear
+         - Rounded card with glass bg, padded from pane edges */}
       <GestureDetector gesture={sheetDragGesture}>
         <Animated.View
           style={[
-            styles.bottomDock,
-            {
-              paddingBottom: insets.bottom + moderateScale(10),
-              borderTopColor: hairline,
-            },
+            styles.pDockWrapper,
+            {paddingBottom: insets.bottom + moderateScale(8)},
             chromeStyle,
           ]}
           pointerEvents={isImmersive ? 'none' : 'auto'}>
-          {glassBackground()}
-          <View style={styles.dockTrackRow}>
-            <View style={styles.dockTrackMeta}>
-              {renderTrackMeta(moderateScale(54), false)}
-            </View>
-            {renderHeart()}
+          <View style={[styles.pDockCard, {borderColor: hairline}]}>
+            {glassBackground()}
+            <ScrollView
+              style={styles.pDockScroll}
+              contentContainerStyle={styles.pDockScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}>
+              {/* Row 1: track + heart */}
+              <View style={styles.pTrackRow}>
+                <View style={styles.pTrackMeta}>
+                  {renderTrackMeta(moderateScale(52), false)}
+                </View>
+                {renderHeart()}
+              </View>
+
+              {/* Row 2: scrubber */}
+              <View style={styles.pScrubberWrap}>{renderScrubber()}</View>
+
+              {/* Row 3: transport */}
+              <View style={styles.pTransportWrap}>{renderTransport()}</View>
+
+              {/* Row 4: tools */}
+              <View style={styles.pToolsWrap}>{renderTools()}</View>
+            </ScrollView>
           </View>
-          {renderScrubber()}
-          {renderTransport()}
-          {renderTools()}
         </Animated.View>
       </GestureDetector>
     </View>
@@ -823,27 +860,50 @@ const styles = StyleSheet.create({
     marginTop: moderateScale(22),
   },
 
-  // ─────── PORTRAIT TOP/BOTTOM ───────
-  topBar: {
+  // ─────── PORTRAIT / NARROW: floating card design ───────
+  pTopBar: {
     paddingHorizontal: moderateScale(4),
-    paddingBottom: moderateScale(6),
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: moderateScale(4),
+    flexShrink: 0,
+    flexGrow: 0,
+  },
+  pDockWrapper: {
+    paddingHorizontal: moderateScale(12),
+    paddingTop: moderateScale(8),
+    flexShrink: 0,
+    flexGrow: 0,
+  },
+  pDockCard: {
+    borderRadius: moderateScale(22),
+    borderCurve: 'continuous',
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
-  bottomDock: {
+  pDockScroll: {
+    maxHeight: moderateScale(360),
+  },
+  pDockScrollContent: {
     paddingTop: moderateScale(12),
-    paddingHorizontal: moderateScale(18),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
+    paddingBottom: moderateScale(10),
+    paddingHorizontal: moderateScale(14),
   },
-  dockTrackRow: {
+  pTrackRow: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
   },
-  dockTrackMeta: {
+  pTrackMeta: {
     flex: 1,
     minWidth: 0,
+  },
+  pScrubberWrap: {
+    marginTop: moderateScale(8),
+  },
+  pTransportWrap: {
+    marginTop: moderateScale(2),
+  },
+  pToolsWrap: {
+    marginTop: moderateScale(8),
   },
 
   // ─────── TRACK META (row + stacked) ───────
