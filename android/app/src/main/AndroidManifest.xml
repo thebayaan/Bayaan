@@ -33,6 +33,15 @@
         <data android:scheme="com.bayaan.app"/>
         <data android:scheme="exp+bayaan"/>
       </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/quran"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/reciter"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/mushaf"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/adhkar"/>
+      </intent-filter>
     </activity>
   </application>
 </manifest>

@@ -19,6 +19,7 @@ module.exports = {
       bundleIdentifier: 'com.bayaan.app',
       buildNumber: versionInfo.buildNumber,
       supportsTablet: true,
+      associatedDomains: ['applinks:app.thebayaan.com'],
       config: {
         usesNonExemptEncryption: false,
       },
@@ -93,6 +94,35 @@ module.exports = {
         backgroundColor: '#8dc9d6',
       },
       screenOrientation: 'portrait',
+      intentFilters: [
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/quran',
+            },
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/reciter',
+            },
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/mushaf',
+            },
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/adhkar',
+            },
+          ],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+      ],
     },
     updates: {
       enabled: true,
