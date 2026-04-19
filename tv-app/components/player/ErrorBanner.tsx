@@ -8,6 +8,8 @@ export function ErrorBanner(): React.ReactElement | null {
   const status = useTVPlayerStore(s => s.status);
   const lastError = useTVPlayerStore(s => s.lastError);
   const retry = useTVPlayerStore(s => s.retry);
+  const next = useTVPlayerStore(s => s.next);
+  const queueLen = useTVPlayerStore(s => s.queue.length);
 
   if (status !== 'error' || !lastError) return null;
 
@@ -15,16 +17,26 @@ export function ErrorBanner(): React.ReactElement | null {
     <View style={styles.wrap}>
       <View style={styles.card}>
         <Text style={styles.kicker}>PLAYBACK ERROR</Text>
-        <Text style={styles.message} numberOfLines={2}>
+        <Text style={styles.message} numberOfLines={3}>
           {lastError}
         </Text>
-        <FocusableButton
-          onPress={() => void retry()}
-          accessibilityLabel="Retry playback"
-          style={styles.cta}
-          hasTVPreferredFocus>
-          <Text style={styles.ctaText}>Try again</Text>
-        </FocusableButton>
+        <View style={styles.row}>
+          <FocusableButton
+            onPress={() => void retry()}
+            accessibilityLabel="Retry playback"
+            style={styles.cta}
+            hasTVPreferredFocus>
+            <Text style={styles.ctaText}>Try again</Text>
+          </FocusableButton>
+          {queueLen > 1 && (
+            <FocusableButton
+              onPress={() => void next()}
+              accessibilityLabel="Skip to next track"
+              style={styles.ctaSecondary}>
+              <Text style={styles.ctaSecondaryText}>Skip</Text>
+            </FocusableButton>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -60,6 +72,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  row: {flexDirection: 'row', gap: 10, marginTop: 4},
   cta: {
     paddingHorizontal: 26,
     paddingVertical: 12,
@@ -70,6 +83,18 @@ const styles = StyleSheet.create({
     color: colors.background,
     fontSize: 15,
     fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  ctaSecondary: {
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  ctaSecondaryText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
 });
