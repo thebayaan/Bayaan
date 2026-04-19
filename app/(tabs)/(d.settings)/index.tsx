@@ -9,6 +9,8 @@ import {clearPlayerCache} from '@/services/player/utils/storage';
 import Color from 'color';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {GlassView} from 'expo-glass-effect';
 import {openAppStoreForReview, markAsRated} from '@/utils/reviewUtils';
 import {
   QuranIcon,
@@ -203,10 +205,11 @@ export default function SettingsScreen() {
   const bottomInset = useBottomInset();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const glassColorScheme = useGlassColorScheme();
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
 
-  const iconColor = Color(theme.colors.text).alpha(0.7).toString();
-  const chevronColor = Color(theme.colors.text).alpha(0.2).toString();
+  const iconColor = theme.colors.text;
+  const chevronColor = theme.colors.textSecondary;
 
   const trackColor = useMemo(
     () => ({
@@ -266,17 +269,33 @@ export default function SettingsScreen() {
     }
   };
 
+  // iOS 26+ NativeTabs: automatic content insets handle top/bottom; manual
+  // padding would double-pad. Other platforms: opt out of automatic and pad
+  // manually.
+  const contentPadding = USE_GLASS
+    ? undefined
+    : {
+        paddingTop: insets.top + moderateScale(10),
+        paddingBottom: bottomInset,
+      };
+
+  const renderCard = (children: React.ReactNode) =>
+    USE_GLASS ? (
+      <GlassView
+        style={styles.card}
+        glassEffectStyle="regular"
+        colorScheme={glassColorScheme}>
+        {children}
+      </GlassView>
+    ) : (
+      <View style={styles.card}>{children}</View>
+    );
+
   return (
     <View style={styles.container}>
       <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: insets.top + moderateScale(10),
-            paddingBottom: bottomInset,
-          },
-        ]}
+        contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
+        contentContainerStyle={[styles.scrollContent, contentPadding]}
         showsVerticalScrollIndicator={false}>
         {/* Appearance */}
         <View style={styles.section}>
@@ -290,8 +309,8 @@ export default function SettingsScreen() {
             <Text style={styles.sectionHeader}>
               {section.section.toUpperCase()}
             </Text>
-            <View style={styles.card}>
-              {section.items.map((item, itemIndex) => (
+            {renderCard(
+              section.items.map((item, itemIndex) => (
                 <React.Fragment key={item.type}>
                   {itemIndex > 0 && <View style={styles.divider} />}
                   <Pressable
@@ -320,8 +339,8 @@ export default function SettingsScreen() {
                     />
                   </Pressable>
                 </React.Fragment>
-              ))}
-            </View>
+              )),
+            )}
           </View>
         ))}
 
@@ -329,7 +348,7 @@ export default function SettingsScreen() {
         {__DEV__ && (
           <View style={styles.section}>
             <Text style={styles.sectionHeader}>DEVELOPER</Text>
-            <View style={styles.card}>
+            {renderCard(
               <View style={styles.settingsRow}>
                 <View style={styles.settingsItemIcon}>
                   <Feather
@@ -352,8 +371,8 @@ export default function SettingsScreen() {
                   ios_backgroundColor={trackColor.false}
                   style={styles.switchStyle}
                 />
-              </View>
-            </View>
+              </View>,
+            )}
           </View>
         )}
       </ScrollView>
@@ -376,7 +395,7 @@ const createStyles = (theme: Theme) =>
     sectionHeader: {
       fontSize: moderateScale(10.5),
       fontFamily: 'Manrope-SemiBold',
-      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      color: theme.colors.textSecondary,
       letterSpacing: 1.2,
       textTransform: 'uppercase',
       marginBottom: moderateScale(6),
@@ -385,15 +404,21 @@ const createStyles = (theme: Theme) =>
 
     // --- Cards ---
     card: {
-      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      backgroundColor: USE_GLASS
+        ? undefined
+        : Color(theme.colors.text).alpha(0.04).toString(),
       borderRadius: moderateScale(14),
-      borderWidth: 1,
-      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderWidth: USE_GLASS ? 0 : 1,
+      borderColor: USE_GLASS
+        ? undefined
+        : Color(theme.colors.text).alpha(0.06).toString(),
       overflow: 'hidden',
     },
     divider: {
       height: 1,
-      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      backgroundColor: Color(theme.colors.text)
+        .alpha(USE_GLASS ? 0.1 : 0.06)
+        .toString(),
       marginHorizontal: moderateScale(16),
     },
 
@@ -419,12 +444,12 @@ const createStyles = (theme: Theme) =>
     settingsTitle: {
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
-      color: Color(theme.colors.text).alpha(0.85).toString(),
+      color: theme.colors.text,
     },
     settingsDescription: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
-      color: Color(theme.colors.textSecondary).alpha(0.45).toString(),
+      color: theme.colors.textSecondary,
       marginTop: moderateScale(1),
     },
 
