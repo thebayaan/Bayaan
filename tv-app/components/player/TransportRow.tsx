@@ -3,6 +3,7 @@ import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
+import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
 
 export function TransportRow(): React.ReactElement {
@@ -10,6 +11,7 @@ export function TransportRow(): React.ReactElement {
     status,
     shuffle,
     repeat,
+    speed,
     toggle,
     next,
     prev,
@@ -67,6 +69,26 @@ export function TransportRow(): React.ReactElement {
         style={[styles.btn, repeat !== 'off' && styles.btnActive]}>
         <Text style={styles.icon}>🔁</Text>
       </FocusableButton>
+      <View style={styles.secondaryRow}>
+        <FocusableButton
+          onPress={() => useOverlayStore.getState().open('speed')}
+          style={styles.sBtn}
+          accessibilityLabel="Speed">
+          <Text style={styles.sText}>{speed}x</Text>
+        </FocusableButton>
+        <FocusableButton
+          onPress={() => useOverlayStore.getState().open('sleep')}
+          style={styles.sBtn}
+          accessibilityLabel="Sleep timer">
+          <Text style={styles.sText}>⏱</Text>
+        </FocusableButton>
+        <FocusableButton
+          onPress={() => useOverlayStore.getState().open('ambient')}
+          style={styles.sBtn}
+          accessibilityLabel="Ambient sounds">
+          <Text style={styles.sText}>🌊</Text>
+        </FocusableButton>
+      </View>
     </View>
   );
 }
@@ -102,4 +124,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroIcon: {color: colors.background, fontSize: 22, fontWeight: '700'},
+  secondaryRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: -44,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  sBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sText: {color: colors.text, fontSize: 12},
 });
