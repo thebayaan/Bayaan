@@ -115,9 +115,7 @@ export function ReciterContextMenu(): React.ReactElement | null {
             onPress={handleShuffle}
           />
           <MenuRow
-            icon={
-              <HeartIcon color={colors.text} size={20} filled={isFav} />
-            }
+            icon={<HeartIcon color={colors.text} size={20} filled={isFav} />}
             label={isFav ? 'Remove from favorites' : 'Add to favorites'}
             onPress={handleFavorite}
           />
