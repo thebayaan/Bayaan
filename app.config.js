@@ -102,7 +102,22 @@ module.exports = {
             {
               scheme: 'https',
               host: 'app.thebayaan.com',
-              pathPrefix: '/share',
+              pathPrefix: '/quran',
+            },
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/reciter',
+            },
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/mushaf',
+            },
+            {
+              scheme: 'https',
+              host: 'app.thebayaan.com',
+              pathPrefix: '/adhkar',
             },
           ],
           category: ['BROWSABLE', 'DEFAULT'],
