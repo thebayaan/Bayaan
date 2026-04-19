@@ -11,8 +11,8 @@ import {useReciters} from '../hooks/useReciters';
 import {colors} from '../theme/colors';
 
 export function NowPlayingScreen(): React.ReactElement {
-  const {queue, currentIndex, positionSeconds, durationSeconds} =
-    useTVPlayerStore();
+  const queue = useTVPlayerStore(s => s.queue);
+  const currentIndex = useTVPlayerStore(s => s.currentIndex);
   const {reciters} = useReciters();
 
   const item = queue[currentIndex];
@@ -32,10 +32,7 @@ export function NowPlayingScreen(): React.ReactElement {
           rewayahName=""
         />
       )}
-      <Scrubber
-        positionSeconds={positionSeconds}
-        durationSeconds={durationSeconds}
-      />
+      <Scrubber />
       <TransportRow />
       <ErrorBanner />
       <SecondaryOverlay />

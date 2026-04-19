@@ -4,8 +4,6 @@ import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
 
-type Props = {positionSeconds: number; durationSeconds: number};
-
 function fmt(t: number): string {
   if (!Number.isFinite(t) || t < 0) return '0:00';
   const h = Math.floor(t / 3600);
@@ -16,10 +14,9 @@ function fmt(t: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function Scrubber({
-  positionSeconds,
-  durationSeconds,
-}: Props): React.ReactElement {
+export function Scrubber(): React.ReactElement {
+  const positionSeconds = useTVPlayerStore(s => s.positionSeconds);
+  const durationSeconds = useTVPlayerStore(s => s.durationSeconds);
   const status = useTVPlayerStore(s => s.status);
   const speed = useTVPlayerStore(s => s.speed);
   const anim = useRef(new Animated.Value(positionSeconds)).current;
