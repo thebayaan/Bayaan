@@ -1,6 +1,6 @@
 import {FlashList} from '@shopify/flash-list';
 import React from 'react';
-import {useWindowDimensions, View} from 'react-native';
+import {StyleSheet, useWindowDimensions, View} from 'react-native';
 import {ReciterCard} from '../rails/ReciterCard';
 import type {Reciter} from '../../types/reciter';
 
@@ -9,8 +9,11 @@ type Props = {
   onSelect: (r: Reciter) => void;
 };
 
-function overrideItemLayout(layout: {span?: number}): void {
+const CELL_HEIGHT = 300;
+
+function overrideItemLayout(layout: {span?: number; size?: number}): void {
   layout.span = 1;
+  layout.size = CELL_HEIGHT;
 }
 
 export function ReciterGrid({reciters, onSelect}: Props): React.ReactElement {
@@ -22,7 +25,7 @@ export function ReciterGrid({reciters, onSelect}: Props): React.ReactElement {
       numColumns={numColumns}
       overrideItemLayout={overrideItemLayout}
       renderItem={({item, index}) => (
-        <View style={{padding: 10}}>
+        <View style={styles.cell}>
           <ReciterCard
             reciter={item}
             onSelect={onSelect}
@@ -34,3 +37,7 @@ export function ReciterGrid({reciters, onSelect}: Props): React.ReactElement {
     />
   );
 }
+
+const styles = StyleSheet.create({
+  cell: {padding: 10},
+});
