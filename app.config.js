@@ -34,6 +34,7 @@ module.exports = {
         UIRequiresFullScreen: true,
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'This app does not use the camera.',
+        LSApplicationQueriesSchemes: ['instagram-stories', 'instagram'],
         BGTaskSchedulerPermittedIdentifiers: ['com.bayaan.app.audio'],
         UIBackgroundModes: ['audio', 'remote-notification'],
         CFBundleURLTypes: [
@@ -173,6 +174,7 @@ module.exports = {
       './withAndroidSigning.js',
       './withLargeHeap.js',
       './withIOSTeam.js',
+      './withInstagramQueries.js',
     ],
   },
 };
