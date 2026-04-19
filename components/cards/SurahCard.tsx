@@ -27,8 +27,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {Link} from 'expo-router';
-import {GlassView} from 'expo-glass-effect';
-import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
@@ -80,7 +79,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   mushafLink = false,
 }) => {
   const {theme} = useTheme();
-  const glassColorScheme = useGlassColorScheme();
 
   // Get download state
   const isDownloadedBase = useIsDownloaded(
@@ -172,16 +170,6 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     container: {
       width: moderateScale(120),
       height: moderateScale(120),
-      borderRadius: moderateScale(20),
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(color).alpha(0.15).toString(),
-    },
-    glassWrapper: {
-      height: moderateScale(120),
-    },
-    glassInner: {
-      flex: 1,
       borderRadius: moderateScale(20),
       overflow: 'hidden',
     },
@@ -438,15 +426,8 @@ export const SurahCard: React.FC<SurahCardProps> = ({
             onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
           }
           delayLongPress={500}
-          style={StyleSheet.flatten([styles.glassWrapper, style])}>
-          <Link.AppleZoom>
-            <GlassView
-              style={styles.glassInner}
-              glassEffectStyle="regular"
-              colorScheme={glassColorScheme}>
-              {cardContent}
-            </GlassView>
-          </Link.AppleZoom>
+          style={StyleSheet.flatten([styles.container, style])}>
+          <Link.AppleZoom>{cardContent}</Link.AppleZoom>
         </Pressable>
       </Link>
     );
@@ -480,13 +461,8 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
         }
         delayLongPress={500}
-        style={StyleSheet.flatten([styles.glassWrapper, style])}>
-        <GlassView
-          style={styles.glassInner}
-          glassEffectStyle="regular"
-          colorScheme={glassColorScheme}>
-          {cardContent}
-        </GlassView>
+        style={StyleSheet.flatten([styles.container, style])}>
+        {cardContent}
       </Pressable>
     );
   }
