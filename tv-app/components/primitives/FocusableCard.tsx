@@ -8,6 +8,7 @@ type Props = {
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
+  focusScale?: number;
 };
 
 export function FocusableCard({
@@ -16,6 +17,7 @@ export function FocusableCard({
   hasTVPreferredFocus,
   style,
   accessibilityLabel,
+  focusScale = 1.08,
 }: Props): React.ReactElement {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
@@ -36,7 +38,7 @@ export function FocusableCard({
         onPress={onPress}
         onFocus={() => {
           setFocused(true);
-          animate(1.08);
+          animate(focusScale);
         }}
         onBlur={() => {
           setFocused(false);

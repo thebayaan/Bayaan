@@ -21,6 +21,7 @@ export function FeaturedBanner({
       style={styles.card}
       onPress={() => onSelect(reciter)}
       hasTVPreferredFocus={hasTVPreferredFocus}
+      focusScale={1.02}
       accessibilityLabel={`Featured: ${reciter.name}`}>
       {reciter.image_url ? (
         <Image
