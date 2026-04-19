@@ -1,4 +1,4 @@
-import {readJSON, storage, writeJSON} from './storage';
+import {readJSON, remove, storage, writeJSON} from './storage';
 
 const KEY = 'bayaan_tv_favorites';
 
@@ -26,6 +26,10 @@ export function toggleFavorite(reciterId: string): boolean {
   const next: FavoriteEntry[] = [{reciterId, addedAt: Date.now()}, ...existing];
   writeJSON(KEY, next);
   return true;
+}
+
+export function clearFavorites(): void {
+  remove(KEY);
 }
 
 export const FAVORITES_KEY = KEY;
