@@ -1,8 +1,25 @@
 import React, {useEffect, useRef} from 'react';
 import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
-import {useTVPlayerStore} from '../../store/tvPlayerStore';
+import {isNetworkError, useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
+
+type Copy = {kicker: string; title: string; body: string};
+
+function copyFor(lastError: string | null): Copy {
+  if (isNetworkError(lastError)) {
+    return {
+      kicker: 'CONNECTION LOST',
+      title: "You're offline",
+      body: 'Playback needs an internet connection. Check your Wi-Fi and try again.',
+    };
+  }
+  return {
+    kicker: 'PLAYBACK ERROR',
+    title: 'Could not play this recitation',
+    body: lastError ?? 'Something went wrong while loading the audio.',
+  };
+}
 
 export function ErrorBanner(): React.ReactElement | null {
   const status = useTVPlayerStore(s => s.status);
@@ -37,12 +54,15 @@ export function ErrorBanner(): React.ReactElement | null {
 
   if (!visible) return null;
 
+  const copy = copyFor(lastError);
+
   return (
     <Animated.View style={[styles.wrap, {opacity}]} pointerEvents="box-none">
       <Animated.View style={[styles.card, {transform: [{scale}]}]}>
-        <Text style={styles.kicker}>PLAYBACK ERROR</Text>
+        <Text style={styles.kicker}>{copy.kicker}</Text>
+        <Text style={styles.title}>{copy.title}</Text>
         <Text style={styles.message} numberOfLines={3}>
-          {lastError}
+          {copy.body}
         </Text>
         <View style={styles.row}>
           <FocusableButton
@@ -78,9 +98,9 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
     borderRadius: 16,
     backgroundColor: colors.surface,
-    maxWidth: 520,
+    maxWidth: 560,
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
   },
   kicker: {
     color: colors.text,
@@ -89,12 +109,23 @@ const styles = StyleSheet.create({
     letterSpacing: 2.2,
     opacity: 0.6,
   },
-  message: {
+  title: {
     color: colors.text,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginTop: 4,
     textAlign: 'center',
-    marginBottom: 8,
+  },
+  message: {
+    color: colors.textSecondary,
+    fontSize: 15,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 10,
+    marginTop: 4,
+    opacity: 0.9,
   },
   row: {flexDirection: 'row', gap: 10, marginTop: 4},
   cta: {

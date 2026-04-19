@@ -268,6 +268,25 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   },
 }));
 
+const NETWORK_HINTS = [
+  'Network request failed',
+  'Unable to resolve host',
+  'The Internet connection appears to be offline',
+  'NSURLErrorDomain',
+  'Could not initiate download',
+  'ERR_INTERNET_DISCONNECTED',
+  'timed out',
+  'ENOTFOUND',
+  'ECONNREFUSED',
+  'The network connection was lost',
+];
+
+export function isNetworkError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  const lower = message.toLowerCase();
+  return NETWORK_HINTS.some(hint => lower.includes(hint.toLowerCase()));
+}
+
 function describeError(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === 'string') return err;
