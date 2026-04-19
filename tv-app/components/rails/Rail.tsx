@@ -23,6 +23,6 @@ export function Rail({title, children}: Props): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  section: {marginBottom: spacing.lg},
-  rail: {gap: spacing.sm, paddingRight: spacing.xl},
+  section: {marginBottom: spacing.md},
+  rail: {gap: 18, paddingRight: spacing.xl, paddingVertical: 6},
 });
