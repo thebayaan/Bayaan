@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {useCallback} from 'react';
 import {View} from 'react-native';
 import {useNavStore} from '../../store/navStore';
+import {useOverlayStore} from '../../store/overlayStore';
 import {HomeScreen} from '../../screens/HomeScreen';
 import {SearchScreen} from '../../screens/SearchScreen';
 import {CollectionScreen} from '../../screens/CollectionScreen';
@@ -15,13 +16,19 @@ export function Router(): React.ReactElement {
   const stack = useNavStore(s => s.stack);
   const pop = useNavStore(s => s.pop);
 
-  useTVBackHandler(() => {
+  const handleBack = useCallback((): boolean => {
+    if (useOverlayStore.getState().active) {
+      useOverlayStore.getState().close();
+      return true;
+    }
     if (stack.length > 0) {
       pop();
       return true;
     }
     return false;
-  });
+  }, [stack.length, pop]);
+
+  useTVBackHandler(handleBack);
 
   const top = stack[stack.length - 1];
 
