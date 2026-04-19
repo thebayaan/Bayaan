@@ -1,6 +1,7 @@
-import React, {useMemo} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {View, ViewStyle} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
+import {useFocusEffect} from '@react-navigation/native';
 import {SURAHS, Surah} from '@/data/surahData';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {HeroSection} from './HeroSection';
@@ -37,7 +38,19 @@ const SECTION_HEIGHT = moderateScale(150);
 export function ContinueReadingHero({
   onSurahLongPress,
 }: ContinueReadingHeroProps) {
-  const lastReadPage = mushafSessionStore.getLastReadPage();
+  // MMKV reads aren't reactive, and this component is typically cached
+  // inside a memoized FlashList header — so re-read the session value
+  // every time the Surahs tab regains focus (e.g. after backing out of
+  // the mushaf) to keep "Continue Reading" in sync with the latest page.
+  const [lastReadPage, setLastReadPage] = useState<number | null>(() =>
+    mushafSessionStore.getLastReadPage(),
+  );
+  useFocusEffect(
+    useCallback(() => {
+      setLastReadPage(mushafSessionStore.getLastReadPage());
+    }, []),
+  );
+
   const surahOfTheDay = useMemo(() => getSurahOfTheDay(), []);
 
   const lastReadSurah = lastReadPage
