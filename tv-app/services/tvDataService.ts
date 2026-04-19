@@ -63,6 +63,20 @@ export async function fetchReciters(opts?: {
   }
 }
 
+export function getCachedRewayat(reciterId: string): Rewayah[] | null {
+  const key = `${SERVERS_KEY}_${reciterId}`;
+  const cached = readJSON<Cached<Rewayah[]>>(key);
+  if (cached && cached.version === DATA_VERSION && cached.data.length > 0) {
+    return cached.data;
+  }
+  const embedded = getCachedReciters()?.find(r => r.id === reciterId)?.rewayat;
+  if (embedded && embedded.length > 0) return embedded;
+  const fromFallback = (fallbackReciters as Reciter[]).find(
+    r => r.id === reciterId,
+  )?.rewayat;
+  return fromFallback ?? null;
+}
+
 export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
   const key = `${SERVERS_KEY}_${reciterId}`;
   const cached = readJSON<Cached<Rewayah[]>>(key);

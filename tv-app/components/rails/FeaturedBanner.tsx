@@ -30,12 +30,11 @@ export function FeaturedBanner({
           cachePolicy="memory-disk"
         />
       ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            {backgroundColor: colors.surfaceElevated},
-          ]}
-        />
+        <View style={styles.fallback}>
+          <Text style={styles.fallbackInitial}>
+            {reciter.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
       )}
       <View style={styles.scrimLeft} />
       <View style={styles.scrimBottom} />
@@ -65,6 +64,20 @@ const styles = StyleSheet.create({
     height: 320,
     backgroundColor: colors.surface,
     overflow: 'hidden',
+  },
+  fallback: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 80,
+  },
+  fallbackInitial: {
+    color: colors.text,
+    fontSize: 260,
+    fontWeight: '200',
+    opacity: 0.22,
+    lineHeight: 260,
   },
   scrimLeft: {
     ...StyleSheet.absoluteFillObject,

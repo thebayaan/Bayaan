@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Image} from 'expo-image';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../components/primitives/FocusableCard';
-import {fetchRewayat} from '../services/tvDataService';
+import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {useReciters} from '../hooks/useReciters';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
@@ -17,15 +17,20 @@ type Props = {reciterId: string};
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const {reciters} = useReciters();
   const reciter = reciters.find(r => r.id === reciterId);
-  const [rewayat, setRewayat] = useState<Rewayah[]>([]);
-  const [activeRewayahId, setActive] = useState<string | null>(null);
+  const [rewayat, setRewayat] = useState<Rewayah[]>(
+    () => getCachedRewayat(reciterId) ?? [],
+  );
+  const [activeRewayahId, setActive] = useState<string | null>(
+    () => getCachedRewayat(reciterId)?.[0]?.id ?? null,
+  );
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
 
   useEffect(() => {
     fetchRewayat(reciterId).then(r => {
+      if (r.length === 0) return;
       setRewayat(r);
-      setActive(r[0]?.id ?? null);
+      setActive(prev => prev ?? r[0]?.id ?? null);
     });
   }, [reciterId]);
 
@@ -98,26 +103,34 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       )}
 
       <Text style={styles.sectionLabel}>Surahs</Text>
-      <View style={styles.grid}>
-        {surahNumbers.map((n, i) => (
-          <FocusableCard
-            key={n}
-            style={styles.surahCard}
-            hasTVPreferredFocus={rewayat.length <= 1 && i === 0}
-            onPress={async () => {
-              if (!current) return;
-              await playRewayah(reciter.id, reciter.name, current, n);
-              push({screen: 'nowPlaying'});
-            }}>
-            <View style={styles.numBadge}>
-              <Text style={styles.num}>{n}</Text>
-            </View>
-            <Text style={styles.name} numberOfLines={1}>
-              {surahByNumber.get(n) ?? `Surah ${n}`}
-            </Text>
-          </FocusableCard>
-        ))}
-      </View>
+      {surahNumbers.length > 0 ? (
+        <View style={styles.grid}>
+          {surahNumbers.map((n, i) => (
+            <FocusableCard
+              key={n}
+              style={styles.surahCard}
+              hasTVPreferredFocus={rewayat.length <= 1 && i === 0}
+              onPress={async () => {
+                if (!current) return;
+                await playRewayah(reciter.id, reciter.name, current, n);
+                push({screen: 'nowPlaying'});
+              }}>
+              <View style={styles.numBadge}>
+                <Text style={styles.num}>{n}</Text>
+              </View>
+              <Text style={styles.name} numberOfLines={1}>
+                {surahByNumber.get(n) ?? `Surah ${n}`}
+              </Text>
+            </FocusableCard>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.emptyGrid}>
+          {Array.from({length: 10}).map((_, i) => (
+            <View key={i} style={[styles.surahCard, styles.surahSkeleton]} />
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -243,5 +256,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     opacity: 0.85,
+  },
+  emptyGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingHorizontal: spacing.xl,
+  },
+  surahSkeleton: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    opacity: 0.5,
   },
 });
