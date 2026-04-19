@@ -1,6 +1,7 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {ArtworkBackdrop} from '../components/player/ArtworkBackdrop';
+import {ArtworkCard} from '../components/player/ArtworkCard';
 import {ErrorBanner} from '../components/player/ErrorBanner';
 import {NowPlayingTitle} from '../components/player/NowPlayingTitle';
 import {Scrubber} from '../components/player/Scrubber';
@@ -25,6 +26,10 @@ export function NowPlayingScreen(): React.ReactElement {
     <View style={styles.container}>
       <ArtworkBackdrop imageUrl={reciter?.image_url ?? null} />
       <UpNextHint />
+      <ArtworkCard
+        imageUrl={reciter?.image_url ?? null}
+        reciterName={reciter?.name ?? ''}
+      />
       {item && (
         <NowPlayingTitle
           index={currentIndex}
