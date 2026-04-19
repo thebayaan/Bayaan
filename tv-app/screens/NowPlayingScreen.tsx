@@ -1,4 +1,3 @@
-// tv-app/screens/NowPlayingScreen.tsx
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {ArtworkBackdrop} from '../components/player/ArtworkBackdrop';
@@ -6,17 +5,13 @@ import {NowPlayingTitle} from '../components/player/NowPlayingTitle';
 import {Scrubber} from '../components/player/Scrubber';
 import {TransportRow} from '../components/player/TransportRow';
 import {SecondaryOverlay} from '../components/player/SecondaryOverlay';
-import {TopTabBar} from '../components/nav/TopTabBar';
-import {AutoHideChrome} from '../components/primitives/AutoHideChrome';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
-import {useFocusTimer} from '../hooks/useFocusTimer';
 import {useReciters} from '../hooks/useReciters';
 import {colors} from '../theme/colors';
 
 export function NowPlayingScreen(): React.ReactElement {
   const {queue, currentIndex, positionSeconds, durationSeconds} =
     useTVPlayerStore();
-  const {visible, reveal} = useFocusTimer(3000);
   const {reciters} = useReciters();
 
   const item = queue[currentIndex];
@@ -25,11 +20,7 @@ export function NowPlayingScreen(): React.ReactElement {
     : null;
 
   return (
-    <View
-      style={styles.container}
-      onTouchStart={reveal}
-      accessible
-      onAccessibilityAction={reveal}>
+    <View style={styles.container}>
       <ArtworkBackdrop imageUrl={reciter?.image_url ?? null} />
       {item && (
         <NowPlayingTitle
@@ -44,10 +35,7 @@ export function NowPlayingScreen(): React.ReactElement {
         positionSeconds={positionSeconds}
         durationSeconds={durationSeconds}
       />
-      <AutoHideChrome visible={visible}>
-        <TopTabBar />
-        <TransportRow />
-      </AutoHideChrome>
+      <TransportRow />
       <SecondaryOverlay />
     </View>
   );
