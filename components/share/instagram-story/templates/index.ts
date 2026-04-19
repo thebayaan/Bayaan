@@ -1,7 +1,11 @@
 import type {Template, TemplateId} from '../types';
 import {classicCreamTemplate} from './classicCream';
+import {midnightGoldTemplate} from './midnightGold';
 
-export const TEMPLATES: readonly Template[] = [classicCreamTemplate];
+export const TEMPLATES: readonly Template[] = [
+  classicCreamTemplate,
+  midnightGoldTemplate,
+];
 
 export function getTemplate(id: TemplateId): Template {
   const t = TEMPLATES.find(x => x.id === id);
