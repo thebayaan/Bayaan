@@ -5,6 +5,11 @@ import type {PlayerStatus, QueueItem} from '../types/player';
 
 export type RepeatMode = 'off' | 'one' | 'all';
 
+export type SleepMode =
+  | {kind: 'off'}
+  | {kind: 'timer'; endsAt: number}
+  | {kind: 'endOfSurah'};
+
 type TVPlayerState = {
   engine: AudioEngine | null;
   queue: QueueItem[];
@@ -15,8 +20,10 @@ type TVPlayerState = {
   speed: number;
   shuffle: boolean;
   repeat: RepeatMode;
+  sleep: SleepMode;
   unsubscribe: (() => void) | null;
   progressWriteTimer: ReturnType<typeof setInterval> | null;
+  sleepTimerId: ReturnType<typeof setTimeout> | null;
 
   setEngine: (engine: AudioEngine) => void;
   loadQueue: (queue: QueueItem[], startIndex: number) => Promise<void>;
@@ -28,6 +35,7 @@ type TVPlayerState = {
   setSpeed: (speed: number) => void;
   setShuffle: (on: boolean) => void;
   setRepeat: (mode: RepeatMode) => void;
+  setSleep: (minutes: number) => void;
   reset: () => void;
 };
 
@@ -41,8 +49,10 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   speed: 1,
   shuffle: false,
   repeat: 'off',
+  sleep: {kind: 'off'},
   unsubscribe: null,
   progressWriteTimer: null,
+  sleepTimerId: null,
 
   setEngine: (engine: AudioEngine): void => {
     const prevEngine = get().engine;
@@ -63,6 +73,11 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         current.positionSeconds > 0 &&
         e.positionSeconds >= e.durationSeconds - 0.5;
       if (!ended) return;
+      if (current.sleep.kind === 'endOfSurah') {
+        engine.pause();
+        set({sleep: {kind: 'off'}});
+        return;
+      }
       if (current.repeat === 'one') {
         engine.seek(0);
         void engine.play();
@@ -159,13 +174,31 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
 
   setRepeat: (repeat: RepeatMode): void => set({repeat}),
 
+  setSleep: (minutes: number): void => {
+    const existing = get().sleepTimerId;
+    if (existing !== null) clearTimeout(existing);
+    if (minutes === 0) {
+      set({sleep: {kind: 'off'}, sleepTimerId: null});
+      return;
+    }
+    if (minutes < 0) {
+      set({sleep: {kind: 'endOfSurah'}, sleepTimerId: null});
+      return;
+    }
+    const endsAt = Date.now() + minutes * 60 * 1000;
+    const timerId = setTimeout(() => {
+      get().engine?.pause();
+      set({sleep: {kind: 'off'}, sleepTimerId: null});
+    }, minutes * 60 * 1000);
+    set({sleep: {kind: 'timer', endsAt}, sleepTimerId: timerId});
+  },
+
   reset: (): void => {
-    const {engine, unsubscribe, progressWriteTimer} = get();
+    const {engine, unsubscribe, progressWriteTimer, sleepTimerId} = get();
     if (unsubscribe) unsubscribe();
     engine?.destroy();
-    if (progressWriteTimer !== null) {
-      clearInterval(progressWriteTimer);
-    }
+    if (progressWriteTimer !== null) clearInterval(progressWriteTimer);
+    if (sleepTimerId !== null) clearTimeout(sleepTimerId);
     set({
       engine: null,
       queue: [],
@@ -176,8 +209,10 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       speed: 1,
       shuffle: false,
       repeat: 'off',
+      sleep: {kind: 'off'},
       unsubscribe: null,
       progressWriteTimer: null,
+      sleepTimerId: null,
     });
   },
 }));

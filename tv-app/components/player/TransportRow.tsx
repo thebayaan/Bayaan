@@ -24,6 +24,7 @@ export function TransportRow(): React.ReactElement {
     shuffle,
     repeat,
     speed,
+    sleep,
     toggle,
     next,
     prev,
@@ -35,6 +36,7 @@ export function TransportRow(): React.ReactElement {
   const isPlaying = status === 'playing';
   const activeTint = colors.text;
   const idleTint = colors.text;
+  const sleepActive = sleep.kind !== 'off';
 
   return (
     <>
@@ -47,7 +49,7 @@ export function TransportRow(): React.ReactElement {
         </FocusableButton>
         <FocusableButton
           onPress={() => useOverlayStore.getState().open('sleep')}
-          style={styles.sBtn}
+          style={[styles.sBtn, sleepActive && styles.sBtnActive]}
           accessibilityLabel="Sleep timer">
           <TimerIcon color={idleTint} size={20} />
         </FocusableButton>
@@ -171,6 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  sBtnActive: {backgroundColor: 'rgba(255,255,255,0.18)'},
   sText: {
     color: colors.text,
     fontSize: 13,
