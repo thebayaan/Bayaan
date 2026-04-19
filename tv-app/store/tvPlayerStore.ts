@@ -65,10 +65,14 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
 
     const unsubscribe = engine.subscribe((e: EngineEvent) => {
       const current = get();
+      const errored = e.status === 'error' && current.status !== 'error';
       set({
         status: e.status,
         positionSeconds: e.positionSeconds,
         durationSeconds: e.durationSeconds,
+        ...(errored && !current.lastError
+          ? {lastError: 'Playback failed'}
+          : {}),
       });
       const ended =
         e.status === 'idle' &&
