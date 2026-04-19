@@ -260,6 +260,19 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
             />
             <Text style={styles.secondaryButtonText}>Share as Text</Text>
           </Pressable>
+
+          <Pressable
+            style={styles.instagramButton}
+            accessibilityRole="button"
+            accessibilityLabel="Share to Instagram Story"
+            onPress={() => {
+              lightHaptics();
+              SheetManager.hide('verse-share');
+              SheetManager.show('instagram-story', {payload: {verseKeys}});
+            }}>
+            <Feather name="instagram" size={moderateScale(18)} color="#fff" />
+            <Text style={styles.instagramButtonText}>Instagram Story</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </ActionSheet>
@@ -343,5 +356,19 @@ const createStyles = (theme: Theme) =>
     },
     buttonDisabled: {
       opacity: 0.6,
+    },
+    instagramButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#dc2743',
+      borderRadius: moderateScale(12),
+      paddingVertical: verticalScale(14),
+      gap: moderateScale(8),
+    },
+    instagramButtonText: {
+      fontSize: moderateScale(16),
+      fontFamily: theme.fonts.semiBold,
+      color: '#fff',
     },
   });
