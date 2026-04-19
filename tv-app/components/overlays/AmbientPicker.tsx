@@ -1,4 +1,3 @@
-// tv-app/components/overlays/AmbientPicker.tsx
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
@@ -22,90 +21,139 @@ export function AmbientPicker(): React.ReactElement {
   const close = useOverlayStore(s => s.close);
   return (
     <View style={styles.wrap}>
+      <Text style={styles.kicker}>BACKDROP</Text>
       <Text style={styles.title}>Ambient Sound</Text>
       <FocusableButton
         onPress={toggle}
         accessibilityLabel="Toggle ambient"
-        style={styles.chip}
+        style={[styles.toggle, enabled && styles.toggleOn]}
         hasTVPreferredFocus>
-        <Text style={styles.chipText}>{enabled ? 'On' : 'Off'}</Text>
+        <Text style={[styles.toggleText, enabled && styles.toggleTextOn]}>
+          {enabled ? 'ON' : 'OFF'}
+        </Text>
       </FocusableButton>
       <View style={styles.grid}>
-        {SOUNDS.map(s => (
-          <FocusableButton
-            key={s}
-            onPress={() => setSound(s)}
-            accessibilityLabel={s}
-            style={[styles.card, currentSound === s && styles.cardActive]}>
-            <Text style={styles.cardText}>{s}</Text>
-          </FocusableButton>
-        ))}
+        {SOUNDS.map(s => {
+          const active = currentSound === s;
+          return (
+            <FocusableButton
+              key={s}
+              onPress={() => setSound(s)}
+              accessibilityLabel={s}
+              style={[styles.card, active && styles.cardActive]}>
+              <Text style={[styles.cardText, active && styles.cardTextActive]}>
+                {s}
+              </Text>
+            </FocusableButton>
+          );
+        })}
       </View>
       <View style={styles.volRow}>
         <FocusableButton
           onPress={() => setVolume(volume - 0.1)}
           accessibilityLabel="Volume down"
           style={styles.volBtn}>
-          <Text style={styles.chipText}>−</Text>
+          <Text style={styles.volBtnText}>−</Text>
         </FocusableButton>
         <Text style={styles.volText}>{Math.round(volume * 100)}%</Text>
         <FocusableButton
           onPress={() => setVolume(volume + 0.1)}
           accessibilityLabel="Volume up"
           style={styles.volBtn}>
-          <Text style={styles.chipText}>+</Text>
+          <Text style={styles.volBtnText}>+</Text>
         </FocusableButton>
       </View>
       <FocusableButton
         onPress={close}
         accessibilityLabel="Close"
         style={styles.close}>
-        <Text style={styles.chipText}>Done</Text>
+        <Text style={styles.closeText}>Done</Text>
       </FocusableButton>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {padding: spacing.lg, gap: spacing.md, alignItems: 'center'},
-  title: {color: colors.text, fontSize: 24, fontWeight: '600'},
-  chip: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
+  wrap: {padding: spacing.xl, gap: 4, alignItems: 'center'},
+  kicker: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2.2,
+    opacity: 0.6,
   },
-  chipText: {color: colors.text, fontSize: 18, fontWeight: '600'},
+  title: {
+    color: colors.text,
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 18,
+  },
+  toggle: {
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 12,
+  },
+  toggleOn: {backgroundColor: colors.text},
+  toggleText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  toggleTextOn: {color: colors.background},
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 10,
     justifyContent: 'center',
+    maxWidth: 520,
   },
   card: {
-    width: 110,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
+    width: 124,
+    height: 80,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardActive: {backgroundColor: colors.surfaceElevated},
-  cardText: {color: colors.text, fontSize: 14, textTransform: 'capitalize'},
-  volRow: {flexDirection: 'row', gap: spacing.md, alignItems: 'center'},
+  cardActive: {backgroundColor: colors.text},
+  cardText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+    textTransform: 'capitalize',
+  },
+  cardTextActive: {color: colors.background},
+  volRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
   volBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  volBtnText: {color: colors.text, fontSize: 22, fontWeight: '700'},
   volText: {
     color: colors.text,
     fontSize: 20,
-    minWidth: 60,
+    minWidth: 72,
     textAlign: 'center',
+    fontWeight: '700',
   },
-  close: {paddingHorizontal: 24, paddingVertical: 10},
+  close: {paddingHorizontal: 32, paddingVertical: 10, marginTop: 8},
+  closeText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    opacity: 0.7,
+  },
 });

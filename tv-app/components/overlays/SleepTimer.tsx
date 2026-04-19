@@ -1,4 +1,3 @@
-// tv-app/components/overlays/SleepTimer.tsx
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
@@ -16,17 +15,17 @@ const OPTIONS = [
 
 export function SleepTimer(): React.ReactElement {
   const close = useOverlayStore(s => s.close);
-  // For v1 we show the UI; wiring to an actual timer that pauses playback
-  // is done inline in tvPlayerStore in a follow-up.
   return (
     <View style={styles.wrap}>
+      <Text style={styles.kicker}>AUTO-STOP</Text>
       <Text style={styles.title}>Sleep Timer</Text>
       <View style={styles.col}>
-        {OPTIONS.map(o => (
+        {OPTIONS.map((o, i) => (
           <FocusableButton
             key={o.label}
             onPress={close}
             accessibilityLabel={o.label}
+            hasTVPreferredFocus={i === 0}
             style={styles.row}>
             <Text style={styles.rowText}>{o.label}</Text>
           </FocusableButton>
@@ -37,9 +36,27 @@ export function SleepTimer(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  wrap: {padding: spacing.lg, gap: spacing.md, alignItems: 'center'},
-  title: {color: colors.text, fontSize: 24, fontWeight: '600'},
-  col: {gap: 6, width: 280},
-  row: {paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8},
-  rowText: {color: colors.text, fontSize: 18},
+  wrap: {padding: spacing.xl, gap: 6, alignItems: 'center'},
+  kicker: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2.2,
+    opacity: 0.6,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 20,
+  },
+  col: {gap: 8, width: 340},
+  row: {
+    paddingVertical: 16,
+    paddingHorizontal: 22,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  rowText: {color: colors.text, fontSize: 18, fontWeight: '600'},
 });
