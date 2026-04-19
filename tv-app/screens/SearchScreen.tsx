@@ -1,14 +1,20 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
+import {FocusableButton} from '../components/primitives/FocusableButton';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
 import {QuickPlayCard} from '../components/rails/QuickPlayCard';
 import {SearchIcon} from '../../components/Icons';
 import {useReciters} from '../hooks/useReciters';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
+import {useSearchRecents} from '../hooks/useSearchRecents';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
+import {
+  clearRecentSearches,
+  recordSearch,
+} from '../services/searchRecentsStore';
 import {fetchRewayat} from '../services/tvDataService';
 import {SURAHS} from '../../data/surahData';
 import {colors} from '../theme/colors';
@@ -21,11 +27,22 @@ export function SearchScreen(): React.ReactElement {
   const [query, setQuery] = useState('');
   const {reciters} = useReciters();
   const {defaultReciterId} = useDefaultReciter();
+  const recents = useSearchRecents();
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
 
   const q = query.trim().toLowerCase();
   const ready = q.length >= 2;
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => recordSearch(query), 1200);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, ready]);
 
   const reciterResults = useMemo(() => {
     if (!ready) return [];
@@ -112,6 +129,31 @@ export function SearchScreen(): React.ReactElement {
             </Rail>
           )}
 
+          {!ready && recents.length > 0 && (
+            <View style={styles.recentsBlock}>
+              <View style={styles.recentsHeader}>
+                <Text style={styles.recentsKicker}>RECENT SEARCHES</Text>
+                <FocusableButton
+                  onPress={() => clearRecentSearches()}
+                  accessibilityLabel="Clear recent searches"
+                  style={styles.clearBtn}>
+                  <Text style={styles.clearBtnText}>Clear</Text>
+                </FocusableButton>
+              </View>
+              <View style={styles.chipRow}>
+                {recents.map(r => (
+                  <FocusableButton
+                    key={r}
+                    onPress={() => setQuery(r)}
+                    accessibilityLabel={`Search ${r}`}
+                    style={styles.recentChip}>
+                    <Text style={styles.recentChipText}>{r}</Text>
+                  </FocusableButton>
+                ))}
+              </View>
+            </View>
+          )}
+
           {!hasAny && (
             <View style={styles.emptyWrap}>
               <Text style={styles.hint}>
@@ -166,6 +208,45 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   results: {flex: 1},
-  emptyWrap: {paddingTop: spacing.xxl, alignItems: 'center'},
+  emptyWrap: {paddingTop: spacing.xl, alignItems: 'center'},
   hint: {color: colors.textSecondary, ...typography.body, opacity: 0.7},
+  recentsBlock: {paddingTop: spacing.sm, paddingBottom: spacing.md},
+  recentsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  recentsKicker: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2.2,
+    opacity: 0.55,
+  },
+  clearBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  clearBtnText: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
+  recentChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  recentChipText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: -0.1,
+  },
 });
