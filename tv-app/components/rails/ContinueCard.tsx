@@ -99,9 +99,10 @@ const styles = StyleSheet.create({
   sub: {color: colors.text, fontSize: 13, opacity: 0.75, marginTop: 3},
   track: {
     marginTop: 12,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 2,
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 3,
+    overflow: 'hidden',
   },
-  fill: {height: '100%', backgroundColor: colors.text, borderRadius: 2},
+  fill: {height: '100%', backgroundColor: colors.text, borderRadius: 3},
 });

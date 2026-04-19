@@ -1,6 +1,7 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
+import {SleepTimerButton} from './SleepTimerButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
@@ -15,7 +16,6 @@ import {
   SeekBackward15Icon,
   SeekForward15Icon,
   ShuffleIcon,
-  TimerIcon,
 } from '../../../components/Icons';
 
 export function TransportRow(): React.ReactElement {
@@ -24,7 +24,6 @@ export function TransportRow(): React.ReactElement {
     shuffle,
     repeat,
     speed,
-    sleep,
     toggle,
     next,
     prev,
@@ -36,7 +35,6 @@ export function TransportRow(): React.ReactElement {
   const isPlaying = status === 'playing';
   const activeTint = colors.text;
   const idleTint = colors.text;
-  const sleepActive = sleep.kind !== 'off';
 
   return (
     <>
@@ -47,12 +45,7 @@ export function TransportRow(): React.ReactElement {
           accessibilityLabel="Speed">
           <Text style={styles.sText}>{speed}x</Text>
         </FocusableButton>
-        <FocusableButton
-          onPress={() => useOverlayStore.getState().open('sleep')}
-          style={[styles.sBtn, sleepActive && styles.sBtnActive]}
-          accessibilityLabel="Sleep timer">
-          <TimerIcon color={idleTint} size={20} />
-        </FocusableButton>
+        <SleepTimerButton />
         <FocusableButton
           onPress={() => useOverlayStore.getState().open('ambient')}
           style={styles.sBtn}
@@ -173,7 +166,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sBtnActive: {backgroundColor: 'rgba(255,255,255,0.18)'},
   sText: {
     color: colors.text,
     fontSize: 13,

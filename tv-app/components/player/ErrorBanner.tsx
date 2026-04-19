@@ -1,5 +1,5 @@
-import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useRef} from 'react';
+import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
@@ -11,11 +11,33 @@ export function ErrorBanner(): React.ReactElement | null {
   const next = useTVPlayerStore(s => s.next);
   const queueLen = useTVPlayerStore(s => s.queue.length);
 
-  if (status !== 'error' || !lastError) return null;
+  const visible = status === 'error' && !!lastError;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.96)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: visible ? 1 : 0,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: visible ? 1 : 0.96,
+        stiffness: 220,
+        damping: 20,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [visible, opacity, scale]);
+
+  if (!visible) return null;
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.card}>
+    <Animated.View style={[styles.wrap, {opacity}]} pointerEvents="box-none">
+      <Animated.View style={[styles.card, {transform: [{scale}]}]}>
         <Text style={styles.kicker}>PLAYBACK ERROR</Text>
         <Text style={styles.message} numberOfLines={3}>
           {lastError}
@@ -37,8 +59,8 @@ export function ErrorBanner(): React.ReactElement | null {
             </FocusableButton>
           )}
         </View>
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
