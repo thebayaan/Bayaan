@@ -16,7 +16,7 @@ export function ErrorBanner(): React.ReactElement | null {
   const scale = useRef(new Animated.Value(0.96)).current;
 
   useEffect(() => {
-    Animated.parallel([
+    const anim = Animated.parallel([
       Animated.timing(opacity, {
         toValue: visible ? 1 : 0,
         duration: 220,
@@ -30,7 +30,9 @@ export function ErrorBanner(): React.ReactElement | null {
         mass: 1,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
+    anim.start();
+    return () => anim.stop();
   }, [visible, opacity, scale]);
 
   if (!visible) return null;
