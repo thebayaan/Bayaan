@@ -37,6 +37,7 @@ export type AudioEngine = {
   seek: (seconds: number) => void;
   setRate: (rate: number) => void;
   subscribe: (cb: (e: EngineEvent) => void) => () => void;
+  destroy: () => void;
 };
 
 const POLL_INTERVAL_MS = 500;
@@ -135,6 +136,12 @@ export function createAudioEngine(): AudioEngine {
           removeStateListener();
         }
       };
+    },
+
+    destroy: (): void => {
+      stopPolling();
+      removeStateListener();
+      listeners.clear();
     },
   };
 }

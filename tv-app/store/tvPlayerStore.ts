@@ -16,6 +16,7 @@ type TVPlayerState = {
   shuffle: boolean;
   repeat: RepeatMode;
   unsubscribe: (() => void) | null;
+  progressWriteTimer: ReturnType<typeof setInterval> | null;
 
   setEngine: (engine: AudioEngine) => void;
   loadQueue: (queue: QueueItem[], startIndex: number) => Promise<void>;
@@ -30,8 +31,6 @@ type TVPlayerState = {
   reset: () => void;
 };
 
-let progressWriteTimer: ReturnType<typeof setInterval> | null = null;
-
 export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   engine: null,
   queue: [],
@@ -43,10 +42,13 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   shuffle: false,
   repeat: 'off',
   unsubscribe: null,
+  progressWriteTimer: null,
 
   setEngine: (engine: AudioEngine): void => {
+    const prevEngine = get().engine;
     const prevUnsub = get().unsubscribe;
     if (prevUnsub) prevUnsub();
+    prevEngine?.destroy();
 
     const unsubscribe = engine.subscribe((e: EngineEvent) => {
       const current = get();
@@ -59,7 +61,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         e.status === 'idle' &&
         current.status === 'playing' &&
         current.positionSeconds > 0 &&
-        e.positionSeconds >= current.durationSeconds - 0.5
+        e.positionSeconds >= e.durationSeconds - 0.5
       ) {
         void get().next();
       }
@@ -73,7 +75,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     set({queue, currentIndex: startIndex, status: 'loading'});
     await engine.load(queue[startIndex].audioUrl);
     await engine.play();
-    startProgressWriter(get);
+    startProgressWriter(get, set);
   },
 
   toggle: (): void => {
@@ -140,11 +142,11 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   setRepeat: (repeat: RepeatMode): void => set({repeat}),
 
   reset: (): void => {
-    const unsub = get().unsubscribe;
-    if (unsub) unsub();
-    if (progressWriteTimer) {
+    const {engine, unsubscribe, progressWriteTimer} = get();
+    if (unsubscribe) unsubscribe();
+    engine?.destroy();
+    if (progressWriteTimer !== null) {
       clearInterval(progressWriteTimer);
-      progressWriteTimer = null;
     }
     set({
       engine: null,
@@ -157,13 +159,18 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       shuffle: false,
       repeat: 'off',
       unsubscribe: null,
+      progressWriteTimer: null,
     });
   },
 }));
 
-function startProgressWriter(get: () => TVPlayerState): void {
-  if (progressWriteTimer) clearInterval(progressWriteTimer);
-  progressWriteTimer = setInterval(() => {
+function startProgressWriter(
+  get: () => TVPlayerState,
+  set: (partial: Partial<TVPlayerState>) => void,
+): void {
+  const existing = get().progressWriteTimer;
+  if (existing !== null) clearInterval(existing);
+  const timer = setInterval(() => {
     const {queue, currentIndex, positionSeconds, durationSeconds, status} =
       get();
     if (status !== 'playing' || queue.length === 0) return;
@@ -176,4 +183,5 @@ function startProgressWriter(get: () => TVPlayerState): void {
       durationSeconds,
     });
   }, 5000);
+  set({progressWriteTimer: timer});
 }

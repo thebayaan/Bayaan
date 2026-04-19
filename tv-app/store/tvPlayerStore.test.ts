@@ -9,6 +9,7 @@ function makeMockEngine(): AudioEngine & {emit: (e: EngineEvent) => void} {
     pause: jest.fn(),
     seek: jest.fn(),
     setRate: jest.fn(),
+    destroy: jest.fn(),
     subscribe: cb => {
       listener = cb;
       return () => {
@@ -148,5 +149,13 @@ describe('tvPlayerStore', () => {
     useTVPlayerStore.getState().setEngine(engine);
     useTVPlayerStore.getState().setSpeed(1.5);
     expect(engine.setRate).toHaveBeenCalledWith(1.5);
+  });
+
+  it('setEngine replacing an engine calls destroy on the prior one', () => {
+    const engineA = {...makeMockEngine(), destroy: jest.fn()};
+    const engineB = {...makeMockEngine(), destroy: jest.fn()};
+    useTVPlayerStore.getState().setEngine(engineA);
+    useTVPlayerStore.getState().setEngine(engineB);
+    expect(engineA.destroy).toHaveBeenCalled();
   });
 });
