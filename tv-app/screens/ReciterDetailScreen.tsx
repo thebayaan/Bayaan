@@ -76,11 +76,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           <View style={styles.heroMeta}>
             <Text style={styles.kicker}>RECITER</Text>
             <Text style={styles.title}>{reciter.name}</Text>
-            <Text style={styles.sub}>
-              {rewayat.length} {rewayat.length === 1 ? 'rewayah' : 'rewayat'}
-              {'  ·  '}
-              {totalSurahs} surahs
-            </Text>
+            {rewayat.length > 0 ? (
+              <Text style={styles.sub}>
+                {rewayat.length} {rewayat.length === 1 ? 'rewayah' : 'rewayat'}
+                {'  ·  '}
+                {totalSurahs} surahs
+              </Text>
+            ) : null}
           </View>
         </View>
       </View>
