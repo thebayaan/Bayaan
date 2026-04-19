@@ -23,7 +23,10 @@ import {
   DEFAULT_TEMPLATE_ID,
   getTemplate,
 } from '@/components/share/instagram-story/templates';
-import {StoryBackgroundCanvas} from '@/components/share/instagram-story/StoryBackgroundCanvas';
+import {
+  IG_STORY_HEIGHT,
+  StoryBackgroundCanvas,
+} from '@/components/share/instagram-story/StoryBackgroundCanvas';
 import {StoryStickerCanvas} from '@/components/share/instagram-story/StoryStickerCanvas';
 import {StoryPreviewCanvas} from '@/components/share/instagram-story/StoryPreviewCanvas';
 import {captureStoryImages} from '@/components/share/instagram-story/captureStoryImages';
@@ -55,12 +58,18 @@ export const InstagramStoryModal = (
       : 'DigitalKhattV2';
 
   const [templateId, setTemplateId] = useState<TemplateId>(DEFAULT_TEMPLATE_ID);
-  const [translationEnabled, setTranslationEnabled] = useState(false);
+  // Translation rendering is deferred to Phase 1.1 — kept here as a
+  // static false so RenderContext stays stable for future toggle wiring.
+  const translationEnabled = false;
   const [isSharing, setIsSharing] = useState(false);
   const [captureLocked, setCaptureLocked] = useState(false);
   const lockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const template = getTemplate(templateId);
+
+  // Safety margin so the sticker has breathing room on IG's 9:16 canvas.
+  const MAX_STICKER_HEIGHT = IG_STORY_HEIGHT - 160;
+
   const ctx: RenderContext | null = useMemo(() => {
     if (!fontMgr) return null;
     return {
@@ -105,17 +114,6 @@ export const InstagramStoryModal = (
     },
     [templateId],
   );
-
-  const handleToggleTranslation = useCallback((): void => {
-    lightHaptics();
-    setTranslationEnabled(v => !v);
-    setCaptureLocked(true);
-    if (lockTimer.current) clearTimeout(lockTimer.current);
-    lockTimer.current = setTimeout(
-      () => setCaptureLocked(false),
-      CAPTURE_LOCK_MS,
-    );
-  }, []);
 
   const handleShare = useCallback(async (): Promise<void> => {
     if (!ctx || captureLocked || isSharing) return;
@@ -184,6 +182,12 @@ export const InstagramStoryModal = (
     screenWidth - moderateScale(48),
   );
 
+  const tooLong = useMemo(() => {
+    if (!ctx) return false;
+    const {height} = template.getStickerDimensions(ctx);
+    return height > MAX_STICKER_HEIGHT;
+  }, [ctx, template, MAX_STICKER_HEIGHT]);
+
   return (
     <ActionSheet
       id={props.sheetId}
@@ -223,28 +227,23 @@ export const InstagramStoryModal = (
             ))}
           </ScrollView>
 
-          <Pressable
-            style={styles.toggleRow}
-            onPress={handleToggleTranslation}
-            accessibilityRole="switch"
-            accessibilityState={{checked: translationEnabled}}
-            accessibilityLabel="Include English translation">
-            <Text style={styles.toggleLabel}>Include translation</Text>
-            <View
-              style={[
-                styles.toggleDot,
-                translationEnabled && styles.toggleDotOn,
-              ]}
-            />
-          </Pressable>
+          {/* Translation toggle deferred to Phase 1.1 — see plan §Task 22
+              follow-up. Fit cascade logic in fitCascade.ts exists but awaits
+              translation integration in buildShareCardParagraphs. */}
+
+          {tooLong && (
+            <Text style={styles.warning}>
+              This verse range is too long to share — try a shorter selection.
+            </Text>
+          )}
 
           <Pressable
             style={[
               styles.shareBtn,
-              (captureLocked || isSharing) && styles.shareBtnDisabled,
+              (captureLocked || isSharing || tooLong) && styles.shareBtnDisabled,
             ]}
             onPress={handleShare}
-            disabled={captureLocked || isSharing}
+            disabled={captureLocked || isSharing || tooLong}
             accessibilityRole="button"
             accessibilityLabel="Share to Instagram Story">
             {isSharing ? (
@@ -313,4 +312,11 @@ const styles = ScaledSheet.create({
   },
   shareBtnDisabled: {opacity: 0.5},
   shareBtnText: {color: '#fff', fontSize: '14@ms', fontWeight: '600'},
+  warning: {
+    marginHorizontal: '16@ms',
+    marginTop: '8@ms',
+    color: '#f59e0b',
+    fontSize: '12@ms',
+    textAlign: 'center',
+  },
 });
