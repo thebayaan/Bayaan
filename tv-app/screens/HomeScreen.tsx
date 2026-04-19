@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -22,6 +22,14 @@ import {spacing} from '../theme/spacing';
 const QUICK_PLAY_SURAHS = [1, 18, 67, 55, 36, 112];
 
 type SurahMeta = {id: number; name: string};
+
+function timeOfDayGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 4) return 'Peaceful night';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
@@ -72,11 +80,15 @@ export function HomeScreen(): React.ReactElement {
   }
 
   const hasContinue = continueEntries.length > 0;
+  const greeting = timeOfDayGreeting();
 
   return (
     <View style={styles.container}>
       <TopTabBar />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.hero}>
+          <Text style={styles.greeting}>{greeting}</Text>
+        </View>
         {spotlight && (
           <FeaturedBanner
             reciter={spotlight}
@@ -145,5 +157,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.xxl,
     gap: spacing.md,
+  },
+  hero: {marginBottom: 4},
+  greeting: {
+    color: colors.text,
+    fontSize: 36,
+    fontWeight: '800',
+    letterSpacing: -0.6,
   },
 });
