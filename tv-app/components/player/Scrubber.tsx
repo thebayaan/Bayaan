@@ -38,6 +38,7 @@ export function Scrubber(): React.ReactElement {
         useNativeDriver: false,
       }).start();
     }
+    return () => anim.stopAnimation();
   }, [anim, positionSeconds, durationSeconds, status, speed]);
 
   const maxRange = useMemo(
