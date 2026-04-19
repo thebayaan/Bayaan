@@ -36,7 +36,12 @@ const TRACK_H = 6;
 const THUMB = 18;
 
 const styles = StyleSheet.create({
-  wrap: {position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: 96},
+  wrap: {
+    position: 'absolute',
+    left: spacing.xl,
+    right: spacing.xl,
+    bottom: 220,
+  },
   track: {
     height: TRACK_H,
     backgroundColor: 'rgba(255,255,255,0.18)',

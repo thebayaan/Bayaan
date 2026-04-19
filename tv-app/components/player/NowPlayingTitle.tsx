@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.xl,
     right: spacing.xl,
-    bottom: 170,
+    bottom: 290,
     gap: 10,
   },
   kicker: {
