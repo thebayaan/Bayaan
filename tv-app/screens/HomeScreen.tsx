@@ -6,6 +6,7 @@ import {ReciterCard} from '../components/rails/ReciterCard';
 import {ContinueCard} from '../components/rails/ContinueCard';
 import {QuickPlayCard} from '../components/rails/QuickPlayCard';
 import {SeeAllCard} from '../components/rails/SeeAllCard';
+import {FeaturedBanner} from '../components/rails/FeaturedBanner';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
@@ -41,7 +42,8 @@ export function HomeScreen(): React.ReactElement {
     return map;
   }, [reciters]);
 
-  const featured = reciters.slice(0, 8);
+  const spotlight = reciters[0] ?? null;
+  const featured = reciters.slice(1, 9);
   const all = reciters.slice(0, 12);
 
   async function handleReciterSelect(reciter: Reciter): Promise<void> {
@@ -75,6 +77,14 @@ export function HomeScreen(): React.ReactElement {
     <View style={styles.container}>
       <TopTabBar />
       <ScrollView contentContainerStyle={styles.scroll}>
+        {spotlight && (
+          <FeaturedBanner
+            reciter={spotlight}
+            onSelect={handleReciterSelect}
+            hasTVPreferredFocus={!hasContinue}
+          />
+        )}
+
         {hasContinue && (
           <Rail title="Continue Listening">
             {continueEntries.map((e, i) => (
@@ -93,12 +103,11 @@ export function HomeScreen(): React.ReactElement {
         )}
 
         <Rail title="Featured Reciters">
-          {featured.map((r, i) => (
+          {featured.map(r => (
             <ReciterCard
               key={r.id}
               reciter={r}
               onSelect={handleReciterSelect}
-              hasTVPreferredFocus={!hasContinue && i === 0}
             />
           ))}
         </Rail>
