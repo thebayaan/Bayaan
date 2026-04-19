@@ -22,17 +22,13 @@ export default function MushafScreen() {
   const {surah, page, ayah} = useLocalSearchParams<MushafScreenParams>();
   const {theme} = useTheme();
 
-  // Safety net — DK data is initialized at AppInitializer priority 4-5
-  if (!digitalKhattDataService.initialized) {
-    return (
-      <View
-        style={[styles.loading, {backgroundColor: theme.colors.background}]}>
-        <ActivityIndicator size="large" color={theme.colors.text} />
-      </View>
-    );
-  }
-
-  const surahStartPages = digitalKhattDataService.getSurahStartPages();
+  // Safety net — DK data is initialized at AppInitializer priority 4-5,
+  // so in practice this is always true by the time MushafScreen mounts.
+  // Capture it as a value so the hooks below run unconditionally.
+  const dkReady = digitalKhattDataService.initialized;
+  const surahStartPages = dkReady
+    ? digitalKhattDataService.getSurahStartPages()
+    : {};
 
   // Resolve page number from params
   const pageNumber = useMemo(() => {
@@ -84,6 +80,15 @@ export default function MushafScreen() {
       useMushafVerseSelectionStore.getState().clearSelection();
     };
   }, [initialVerseKey, pageNumber]);
+
+  if (!dkReady) {
+    return (
+      <View
+        style={[styles.loading, {backgroundColor: theme.colors.background}]}>
+        <ActivityIndicator size="large" color={theme.colors.text} />
+      </View>
+    );
+  }
 
   return (
     <View
