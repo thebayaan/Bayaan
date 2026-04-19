@@ -10,7 +10,7 @@ export function ArtworkBackdrop({imageUrl}: Props): React.ReactElement {
   useEffect(() => {
     if (!imageUrl) return;
     scale.setValue(1);
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(scale, {
           toValue: 1.12,
@@ -25,7 +25,9 @@ export function ArtworkBackdrop({imageUrl}: Props): React.ReactElement {
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    loop.start();
+    return () => loop.stop();
   }, [imageUrl, scale]);
 
   return (
