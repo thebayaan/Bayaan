@@ -18,7 +18,7 @@ import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import type {Rewayah} from '../types/reciter';
 import {SURAHS} from '../../data/surahData';
-import {HeartIcon} from '../../components/Icons';
+import {HeartIcon, PlayIcon, ShuffleIcon} from '../../components/Icons';
 import {colors} from '../theme/colors';
 import {typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
@@ -36,7 +36,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const [activeRewayahId, setActive] = useState<string | null>(
     () => getCachedRewayat(reciterId)?.[0]?.id ?? null,
   );
-  const {playRewayah} = usePlayer();
+  const {playRewayah, shufflePlayRewayah} = usePlayer();
   const favorites = useFavorites();
   const isFav = favorites.some(f => f.reciterId === reciterId);
   const push = useNavStore(s => s.push);
@@ -125,6 +125,37 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               </Text>
             ) : null}
             <View style={styles.heroActions}>
+              {current ? (
+                <FocusableButton
+                  onPress={async () => {
+                    const first = surahNumbers[0];
+                    if (first === undefined) return;
+                    await playRewayah(reciter.id, reciter.name, current, first);
+                    push({screen: 'nowPlaying'});
+                  }}
+                  accessibilityLabel="Play"
+                  hasTVPreferredFocus
+                  style={[styles.primaryBtn]}>
+                  <View style={styles.favInner}>
+                    <PlayIcon color={colors.background} size={18} />
+                    <Text style={styles.primaryText}>Play</Text>
+                  </View>
+                </FocusableButton>
+              ) : null}
+              {current && surahNumbers.length > 1 ? (
+                <FocusableButton
+                  onPress={async () => {
+                    await shufflePlayRewayah(reciter.id, reciter.name, current);
+                    push({screen: 'nowPlaying'});
+                  }}
+                  accessibilityLabel="Shuffle play"
+                  style={styles.ghostBtn}>
+                  <View style={styles.favInner}>
+                    <ShuffleIcon color={colors.text} size={18} />
+                    <Text style={styles.favText}>Shuffle</Text>
+                  </View>
+                </FocusableButton>
+              ) : null}
               <FocusableButton
                 onPress={() => toggleFavorite(reciterId)}
                 accessibilityLabel={
@@ -149,15 +180,14 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
 
       {rewayat.length > 1 && (
         <View style={styles.rewayahRow}>
-          {rewayat.map((r, i) => (
+          {rewayat.map(r => (
             <FocusableCard
               key={r.id}
               style={[
                 styles.chip,
                 activeRewayahId === r.id && styles.chipActive,
               ]}
-              onPress={() => setActive(r.id)}
-              hasTVPreferredFocus={i === 0}>
+              onPress={() => setActive(r.id)}>
               <Text
                 style={[
                   styles.chipText,
@@ -173,11 +203,10 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       <Text style={styles.sectionLabel}>Surahs</Text>
       {surahNumbers.length > 0 ? (
         <View style={styles.grid}>
-          {surahNumbers.map((n, i) => (
+          {surahNumbers.map(n => (
             <FocusableCard
               key={n}
               style={styles.surahCard}
-              hasTVPreferredFocus={rewayat.length <= 1 && i === 0}
               onPress={async () => {
                 if (!current) return;
                 await playRewayah(reciter.id, reciter.name, current, n);
@@ -266,7 +295,25 @@ const styles = StyleSheet.create({
     opacity: 0.75,
     marginTop: 6,
   },
-  heroActions: {flexDirection: 'row', marginTop: 16},
+  heroActions: {flexDirection: 'row', marginTop: 16, gap: 12, flexWrap: 'wrap'},
+  primaryBtn: {
+    paddingHorizontal: 26,
+    paddingVertical: 13,
+    borderRadius: 26,
+    backgroundColor: colors.text,
+  },
+  primaryText: {
+    color: colors.background,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  ghostBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
   favBtn: {
     paddingHorizontal: 18,
     paddingVertical: 10,
