@@ -11,7 +11,7 @@ type Props = {
   hasTVPreferredFocus?: boolean;
 };
 
-export function ReciterCard({
+function ReciterCardImpl({
   reciter,
   onSelect,
   hasTVPreferredFocus,
@@ -47,6 +47,8 @@ export function ReciterCard({
     </FocusableCard>
   );
 }
+
+export const ReciterCard = React.memo(ReciterCardImpl);
 
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
