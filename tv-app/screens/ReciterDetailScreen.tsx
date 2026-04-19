@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image} from 'expo-image';
 import {
   NativeScrollEvent,
@@ -14,18 +14,29 @@ import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {toggleFavorite} from '../services/favoritesStore';
 import {useReciters} from '../hooks/useReciters';
 import {useFavorites} from '../hooks/useFavorites';
+import {useContinueListening} from '../hooks/useContinueListening';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import type {Rewayah} from '../types/reciter';
 import {SURAHS} from '../../data/surahData';
-import {HeartIcon, PlayIcon, ShuffleIcon} from '../../components/Icons';
+import {
+  CheckIcon,
+  HeartIcon,
+  PlayIcon,
+  ShuffleIcon,
+} from '../../components/Icons';
 import {colors} from '../theme/colors';
 import {typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
 
 type Props = {reciterId: string};
+type SortMode = 'asc' | 'desc' | 'revelation';
 
 const scrollPositions = new Map<string, number>();
+
+const revelationOrder = new Map<number, number>(
+  SURAHS.map(s => [s.id, s.revelation_order]),
+);
 
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const {reciters} = useReciters();
@@ -38,8 +49,10 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   );
   const {playRewayah, shufflePlayRewayah} = usePlayer();
   const favorites = useFavorites();
+  const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
   const push = useNavStore(s => s.push);
+  const [sort, setSort] = useState<SortMode>('asc');
 
   const scrollRef = useRef<ScrollView>(null);
   const restoredRef = useRef<boolean>(false);
@@ -68,12 +81,48 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     restoredRef.current = true;
   }
 
+  const current = rewayat.find(r => r.id === activeRewayahId);
+  const baseSurahNumbers: number[] = useMemo(
+    () => (current ? current.surah_list.filter(n => n > 0) : []),
+    [current],
+  );
+
+  const sortedSurahNumbers = useMemo(() => {
+    const copy = baseSurahNumbers.slice();
+    if (sort === 'asc') return copy.sort((a, b) => a - b);
+    if (sort === 'desc') return copy.sort((a, b) => b - a);
+    return copy.sort(
+      (a, b) => (revelationOrder.get(a) ?? a) - (revelationOrder.get(b) ?? b),
+    );
+  }, [baseSurahNumbers, sort]);
+
+  const resumeEntry = useMemo(() => {
+    if (!current) return null;
+    return (
+      continueEntries.find(
+        e => e.reciterId === reciterId && e.rewayahId === current.id,
+      ) ?? null
+    );
+  }, [continueEntries, current, reciterId]);
+
+  const progressByNumber = useMemo(() => {
+    const map = new Map<
+      number,
+      {positionSeconds: number; durationSeconds: number}
+    >();
+    continueEntries
+      .filter(e => e.reciterId === reciterId)
+      .forEach(e =>
+        map.set(e.surahNumber, {
+          positionSeconds: e.positionSeconds,
+          durationSeconds: e.durationSeconds,
+        }),
+      );
+    return map;
+  }, [continueEntries, reciterId]);
+
   if (!reciter) return <View style={styles.container} />;
 
-  const current = rewayat.find(r => r.id === activeRewayahId);
-  const surahNumbers: number[] = current
-    ? current.surah_list.filter(n => n > 0)
-    : [];
   const surahByNumber = new Map<number, string>(
     SURAHS.map(s => [s.id, s.name]),
   );
@@ -128,21 +177,34 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               {current ? (
                 <FocusableButton
                   onPress={async () => {
-                    const first = surahNumbers[0];
-                    if (first === undefined) return;
-                    await playRewayah(reciter.id, reciter.name, current, first);
+                    const target =
+                      resumeEntry?.surahNumber ?? sortedSurahNumbers[0];
+                    if (target === undefined) return;
+                    await playRewayah(
+                      reciter.id,
+                      reciter.name,
+                      current,
+                      target,
+                    );
                     push({screen: 'nowPlaying'});
                   }}
-                  accessibilityLabel="Play"
+                  accessibilityLabel={resumeEntry ? 'Continue' : 'Play'}
                   hasTVPreferredFocus
                   style={[styles.primaryBtn]}>
                   <View style={styles.favInner}>
                     <PlayIcon color={colors.background} size={18} />
-                    <Text style={styles.primaryText}>Play</Text>
+                    <Text style={styles.primaryText}>
+                      {resumeEntry
+                        ? `Continue · ${
+                            surahByNumber.get(resumeEntry.surahNumber) ??
+                            `Surah ${resumeEntry.surahNumber}`
+                          }`
+                        : 'Play'}
+                    </Text>
                   </View>
                 </FocusableButton>
               ) : null}
-              {current && surahNumbers.length > 1 ? (
+              {current && sortedSurahNumbers.length > 1 ? (
                 <FocusableButton
                   onPress={async () => {
                     await shufflePlayRewayah(reciter.id, reciter.name, current);
@@ -200,26 +262,72 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         </View>
       )}
 
-      <Text style={styles.sectionLabel}>Surahs</Text>
-      {surahNumbers.length > 0 ? (
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionLabel}>Surahs</Text>
+        {sortedSurahNumbers.length > 1 ? (
+          <View style={styles.sortRow}>
+            <SortChip
+              label="1–114"
+              active={sort === 'asc'}
+              onPress={() => setSort('asc')}
+            />
+            <SortChip
+              label="114–1"
+              active={sort === 'desc'}
+              onPress={() => setSort('desc')}
+            />
+            <SortChip
+              label="Revelation"
+              active={sort === 'revelation'}
+              onPress={() => setSort('revelation')}
+            />
+          </View>
+        ) : null}
+      </View>
+      {sortedSurahNumbers.length > 0 ? (
         <View style={styles.grid}>
-          {surahNumbers.map(n => (
-            <FocusableCard
-              key={n}
-              style={styles.surahCard}
-              onPress={async () => {
-                if (!current) return;
-                await playRewayah(reciter.id, reciter.name, current, n);
-                push({screen: 'nowPlaying'});
-              }}>
-              <View style={styles.numBadge}>
-                <Text style={styles.num}>{n}</Text>
-              </View>
-              <Text style={styles.name} numberOfLines={1}>
-                {surahByNumber.get(n) ?? `Surah ${n}`}
-              </Text>
-            </FocusableCard>
-          ))}
+          {sortedSurahNumbers.map(n => {
+            const p = progressByNumber.get(n);
+            const ratio =
+              p && p.durationSeconds > 0
+                ? Math.min(1, p.positionSeconds / p.durationSeconds)
+                : 0;
+            const completed = ratio >= 0.97;
+            const inProgress = ratio > 0.02 && !completed;
+            return (
+              <FocusableCard
+                key={n}
+                style={styles.surahCard}
+                onPress={async () => {
+                  if (!current) return;
+                  await playRewayah(reciter.id, reciter.name, current, n);
+                  push({screen: 'nowPlaying'});
+                }}>
+                <View style={styles.numBadge}>
+                  {completed ? (
+                    <CheckIcon color={colors.text} size={20} />
+                  ) : (
+                    <Text style={styles.num}>{n}</Text>
+                  )}
+                </View>
+                <View style={styles.surahMeta}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {surahByNumber.get(n) ?? `Surah ${n}`}
+                  </Text>
+                  {inProgress ? (
+                    <View style={styles.progressTrack}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {width: `${ratio * 100}%`},
+                        ]}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              </FocusableCard>
+            );
+          })}
         </View>
       ) : (
         <View style={styles.emptyGrid}>
@@ -236,6 +344,21 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         </View>
       ) : null}
     </ScrollView>
+  );
+}
+
+type SortChipProps = {label: string; active: boolean; onPress: () => void};
+
+function SortChip({label, active, onPress}: SortChipProps): React.ReactElement {
+  return (
+    <FocusableButton
+      onPress={onPress}
+      accessibilityLabel={`Sort ${label}`}
+      style={[styles.sortChip, active && styles.sortChipActive]}>
+      <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>
+        {label}
+      </Text>
+    </FocusableButton>
   );
 }
 
@@ -360,6 +483,36 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: 16,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: spacing.xl,
+  },
+  sortRow: {flexDirection: 'row', gap: 8, marginTop: spacing.md},
+  sortChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  sortChipActive: {backgroundColor: colors.text},
+  sortChipText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  sortChipTextActive: {color: colors.background},
+  surahMeta: {flex: 1, gap: 4},
+  progressTrack: {
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  progressFill: {height: '100%', backgroundColor: colors.text, borderRadius: 2},
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
