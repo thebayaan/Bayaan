@@ -36,6 +36,7 @@ import {MushafRepeatOptionsSheet} from './MushafRepeatOptionsSheet';
 import {FollowAlongSheet} from './FollowAlongSheet';
 import {WordDetailSheet} from './WordDetailSheet';
 import {HomeCardOptionsSheet} from './HomeCardOptionsSheet';
+import {InstagramStoryModal} from './instagram-story/InstagramStoryModal';
 
 // Register all sheets
 registerSheet('surah-options', SurahOptionsSheet);
@@ -68,6 +69,7 @@ registerSheet('mushaf-repeat-options', MushafRepeatOptionsSheet);
 registerSheet('follow-along', FollowAlongSheet);
 registerSheet('word-detail', WordDetailSheet);
 registerSheet('home-card-options', HomeCardOptionsSheet);
+registerSheet('instagram-story', InstagramStoryModal);
 
 // Type definitions for payloads
 declare module 'react-native-actions-sheet' {
@@ -296,6 +298,11 @@ declare module 'react-native-actions-sheet' {
         recentIndex?: number;
         variant: 'recent' | 'reciter';
         onContinuePlaying?: () => void;
+      };
+    }>;
+    'instagram-story': SheetDefinition<{
+      payload: {
+        verseKeys: string[];
       };
     }>;
   }

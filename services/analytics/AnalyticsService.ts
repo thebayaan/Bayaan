@@ -259,6 +259,25 @@ class AnalyticsServiceImpl {
       rewayahId,
     });
   }
+
+  // TEMP: replaced in Task 24 with real PostHog capture calls.
+  trackInstagramStoryOpened(_props: {verse_range: string}): void {}
+  trackInstagramStoryTemplateSwitched(_props: {
+    from: string;
+    to: string;
+  }): void {}
+  trackInstagramStoryShare(_props: {
+    template: string;
+    translation_shown: boolean;
+    content_type: 'verse';
+    surah_id: number;
+    verse_range: string;
+  }): void {}
+  trackInstagramStoryCancelled(_props: {template: string}): void {}
+  trackInstagramStoryFailed(_props: {
+    template: string;
+    reason: 'not-installed' | 'render-failed' | 'share-error' | 'cancelled';
+  }): void {}
 }
 
 export const analyticsService = new AnalyticsServiceImpl();
