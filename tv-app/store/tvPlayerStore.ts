@@ -21,6 +21,7 @@ type TVPlayerState = {
   shuffle: boolean;
   repeat: RepeatMode;
   sleep: SleepMode;
+  lastError: string | null;
   unsubscribe: (() => void) | null;
   progressWriteTimer: ReturnType<typeof setInterval> | null;
   sleepTimerId: ReturnType<typeof setTimeout> | null;
@@ -36,6 +37,7 @@ type TVPlayerState = {
   setShuffle: (on: boolean) => void;
   setRepeat: (mode: RepeatMode) => void;
   setSleep: (minutes: number) => void;
+  retry: () => Promise<void>;
   reset: () => void;
 };
 
@@ -50,6 +52,7 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   shuffle: false,
   repeat: 'off',
   sleep: {kind: 'off'},
+  lastError: null,
   unsubscribe: null,
   progressWriteTimer: null,
   sleepTimerId: null,
@@ -91,10 +94,14 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   loadQueue: async (queue: QueueItem[], startIndex: number): Promise<void> => {
     const engine = get().engine;
     if (!engine || queue.length === 0) return;
-    set({queue, currentIndex: startIndex, status: 'loading'});
-    await engine.load(queue[startIndex].audioUrl);
-    await engine.play();
-    startProgressWriter(get, set);
+    set({queue, currentIndex: startIndex, status: 'loading', lastError: null});
+    try {
+      await engine.load(queue[startIndex].audioUrl);
+      await engine.play();
+      startProgressWriter(get, set);
+    } catch (err) {
+      set({status: 'error', lastError: describeError(err)});
+    }
   },
 
   toggle: (): void => {
@@ -125,9 +132,13 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         }
       }
     }
-    set({currentIndex: nextIndex, status: 'loading'});
-    await engine.load(queue[nextIndex].audioUrl);
-    await engine.play();
+    set({currentIndex: nextIndex, status: 'loading', lastError: null});
+    try {
+      await engine.load(queue[nextIndex].audioUrl);
+      await engine.play();
+    } catch (err) {
+      set({status: 'error', lastError: describeError(err)});
+    }
   },
 
   prev: async (): Promise<void> => {
@@ -145,9 +156,13 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     } else {
       prevIndex = Math.max(0, currentIndex - 1);
     }
-    set({currentIndex: prevIndex, status: 'loading'});
-    await engine.load(queue[prevIndex].audioUrl);
-    await engine.play();
+    set({currentIndex: prevIndex, status: 'loading', lastError: null});
+    try {
+      await engine.load(queue[prevIndex].audioUrl);
+      await engine.play();
+    } catch (err) {
+      set({status: 'error', lastError: describeError(err)});
+    }
   },
 
   seekBy: (delta: number): void => {
@@ -173,6 +188,18 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   setShuffle: (shuffle: boolean): void => set({shuffle}),
 
   setRepeat: (repeat: RepeatMode): void => set({repeat}),
+
+  retry: async (): Promise<void> => {
+    const {engine, queue, currentIndex} = get();
+    if (!engine || queue.length === 0) return;
+    set({status: 'loading', lastError: null});
+    try {
+      await engine.load(queue[currentIndex].audioUrl);
+      await engine.play();
+    } catch (err) {
+      set({status: 'error', lastError: describeError(err)});
+    }
+  },
 
   setSleep: (minutes: number): void => {
     const existing = get().sleepTimerId;
@@ -210,12 +237,19 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
       shuffle: false,
       repeat: 'off',
       sleep: {kind: 'off'},
+      lastError: null,
       unsubscribe: null,
       progressWriteTimer: null,
       sleepTimerId: null,
     });
   },
 }));
+
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  return 'Playback failed';
+}
 
 function startProgressWriter(
   get: () => TVPlayerState,

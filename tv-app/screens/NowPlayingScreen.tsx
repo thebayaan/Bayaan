@@ -1,6 +1,7 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {ArtworkBackdrop} from '../components/player/ArtworkBackdrop';
+import {ErrorBanner} from '../components/player/ErrorBanner';
 import {NowPlayingTitle} from '../components/player/NowPlayingTitle';
 import {Scrubber} from '../components/player/Scrubber';
 import {TransportRow} from '../components/player/TransportRow';
@@ -36,6 +37,7 @@ export function NowPlayingScreen(): React.ReactElement {
         durationSeconds={durationSeconds}
       />
       <TransportRow />
+      <ErrorBanner />
       <SecondaryOverlay />
     </View>
   );
