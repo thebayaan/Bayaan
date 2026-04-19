@@ -1,6 +1,7 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
+import {NowPlayingChip} from './NowPlayingChip';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
 import {useNavStore, type TabKey} from '../../store/navStore';
@@ -53,7 +54,8 @@ export function TopTabBar(): React.ReactElement {
           );
         })}
       </View>
-      <View style={styles.settingsWrap}>
+      <View style={styles.rightWrap}>
+        <NowPlayingChip />
         <FocusableButton
           onPress={() => switchTab('settings')}
           accessibilityLabel="Settings"
@@ -76,7 +78,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  brandWrap: {width: 180},
+  brandWrap: {width: 340},
   brand: {
     color: colors.text,
     fontSize: 22,
@@ -93,6 +95,12 @@ const styles = StyleSheet.create({
   tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
   tabText: {color: colors.text, fontSize: 16, fontWeight: '500', opacity: 0.45},
   tabActive: {opacity: 1, fontWeight: '700'},
-  settingsWrap: {width: 180, alignItems: 'flex-end'},
+  rightWrap: {
+    width: 340,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
   settings: {padding: spacing.sm},
 });
