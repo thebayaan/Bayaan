@@ -2,6 +2,7 @@ import React from 'react';
 import {Image} from 'expo-image';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import {colors} from '../../theme/colors';
 import type {Reciter} from '../../types/reciter';
 
@@ -20,6 +21,7 @@ function ReciterCardImpl({
     <FocusableCard
       style={styles.card}
       onPress={() => onSelect(reciter)}
+      onLongPress={() => useContextMenuStore.getState().open(reciter.id)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityLabel={reciter.name}>
       <View style={styles.artwork}>

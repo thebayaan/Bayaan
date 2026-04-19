@@ -2,6 +2,7 @@ import React, {useCallback} from 'react';
 import {View} from 'react-native';
 import {useNavStore} from '../../store/navStore';
 import {useOverlayStore} from '../../store/overlayStore';
+import {useContextMenuStore} from '../../store/contextMenuStore';
 import {useOnboarded} from '../../hooks/useOnboarded';
 import {useReciters} from '../../hooks/useReciters';
 import {HomeScreen} from '../../screens/HomeScreen';
@@ -12,6 +13,7 @@ import {NowPlayingScreen} from '../../screens/NowPlayingScreen';
 import {OnboardingScreen} from '../../screens/OnboardingScreen';
 import {ReciterDetailScreen} from '../../screens/ReciterDetailScreen';
 import {CatalogGridScreen} from '../../screens/CatalogGridScreen';
+import {ReciterContextMenu} from '../overlays/ReciterContextMenu';
 import {useTVBackHandler} from '../../hooks/useTVBackHandler';
 
 export function Router(): React.ReactElement {
@@ -22,6 +24,10 @@ export function Router(): React.ReactElement {
   const {reciters} = useReciters();
 
   const handleBack = useCallback((): boolean => {
+    if (useContextMenuStore.getState().reciterId) {
+      useContextMenuStore.getState().close();
+      return true;
+    }
     if (useOverlayStore.getState().active) {
       useOverlayStore.getState().close();
       return true;
@@ -36,18 +42,38 @@ export function Router(): React.ReactElement {
   useTVBackHandler(handleBack);
 
   if (!onboarded && reciters.length > 0) {
-    return <OnboardingScreen />;
+    return (
+      <View style={{flex: 1}}>
+        <OnboardingScreen />
+        <ReciterContextMenu />
+      </View>
+    );
   }
 
   const top = stack[stack.length - 1];
 
   if (top) {
-    if (top.screen === 'nowPlaying') return <NowPlayingScreen />;
+    if (top.screen === 'nowPlaying')
+      return (
+        <View style={{flex: 1}}>
+          <NowPlayingScreen />
+          <ReciterContextMenu />
+        </View>
+      );
     if (top.screen === 'reciterDetail')
       return (
-        <ReciterDetailScreen key={top.reciterId} reciterId={top.reciterId} />
+        <View style={{flex: 1}}>
+          <ReciterDetailScreen key={top.reciterId} reciterId={top.reciterId} />
+          <ReciterContextMenu />
+        </View>
       );
-    if (top.screen === 'catalogGrid') return <CatalogGridScreen />;
+    if (top.screen === 'catalogGrid')
+      return (
+        <View style={{flex: 1}}>
+          <CatalogGridScreen />
+          <ReciterContextMenu />
+        </View>
+      );
   }
 
   return (
@@ -56,6 +82,7 @@ export function Router(): React.ReactElement {
       {currentTab === 'search' && <SearchScreen />}
       {currentTab === 'collection' && <CollectionScreen />}
       {currentTab === 'settings' && <SettingsScreen />}
+      <ReciterContextMenu />
     </View>
   );
 }

@@ -4,6 +4,7 @@ import {colors} from '../../theme/colors';
 
 type Props = {
   onPress: () => void;
+  onLongPress?: () => void;
   children: React.ReactNode;
   hasTVPreferredFocus?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -13,6 +14,7 @@ type Props = {
 
 export function FocusableCard({
   onPress,
+  onLongPress,
   children,
   hasTVPreferredFocus,
   style,
@@ -36,6 +38,7 @@ export function FocusableCard({
     <Animated.View style={{transform: [{scale}]}}>
       <Pressable
         onPress={onPress}
+        onLongPress={onLongPress}
         onFocus={() => {
           setFocused(true);
           animate(focusScale);
