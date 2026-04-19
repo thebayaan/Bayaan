@@ -3,7 +3,6 @@ import {Image} from 'expo-image';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
-import {typography} from '../../theme/typography';
 import type {Reciter} from '../../types/reciter';
 
 type Props = {
@@ -38,10 +37,13 @@ export function ReciterCard({
             </Text>
           </View>
         )}
+        <View style={styles.scrim} />
       </View>
-      <Text style={styles.name} numberOfLines={2}>
-        {reciter.name}
-      </Text>
+      <View style={styles.meta}>
+        <Text style={styles.name} numberOfLines={2}>
+          {reciter.name}
+        </Text>
+      </View>
     </FocusableCard>
   );
 }
@@ -59,17 +61,25 @@ const styles = StyleSheet.create({
   artwork: {flex: 1, backgroundColor: colors.surfaceElevated},
   img: {width: '100%', height: '100%'},
   placeholder: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.surfaceElevated,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initial: {color: colors.text, fontSize: 64, fontWeight: '300', opacity: 0.4},
+  initial: {color: colors.text, fontSize: 64, fontWeight: '300', opacity: 0.35},
+  scrim: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '40%',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  meta: {paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14},
   name: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '600',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
 });

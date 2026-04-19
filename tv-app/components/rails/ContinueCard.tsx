@@ -3,7 +3,6 @@ import {Image} from 'expo-image';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
-import {typography} from '../../theme/typography';
 import type {ContinueEntry} from '../../services/continueListeningStore';
 import type {Reciter} from '../../types/reciter';
 
@@ -47,8 +46,10 @@ export function ContinueCard({
           ]}
         />
       )}
-      <View style={[StyleSheet.absoluteFill, styles.scrim]} />
+      <View style={[StyleSheet.absoluteFill, styles.scrimBase]} />
+      <View style={styles.scrimBottom} />
       <View style={styles.meta}>
+        <Text style={styles.kicker}>CONTINUE</Text>
         <Text style={styles.title} numberOfLines={1}>
           {surahName}
         </Text>
@@ -71,14 +72,35 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   img: {...StyleSheet.absoluteFillObject},
-  scrim: {backgroundColor: 'rgba(0,0,0,0.5)'},
-  meta: {position: 'absolute', left: 16, right: 16, bottom: 14},
-  title: {color: colors.text, fontSize: 18, fontWeight: '700'},
-  sub: {color: colors.text, fontSize: 13, opacity: 0.8, marginTop: 3},
+  scrimBase: {backgroundColor: 'rgba(0,0,0,0.25)'},
+  scrimBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '70%',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  meta: {position: 'absolute', left: 18, right: 18, bottom: 16},
+  kicker: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.6,
+    opacity: 0.75,
+    marginBottom: 4,
+  },
+  title: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  sub: {color: colors.text, fontSize: 13, opacity: 0.75, marginTop: 3},
   track: {
-    marginTop: 10,
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginTop: 12,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     borderRadius: 2,
   },
   fill: {height: '100%', backgroundColor: colors.text, borderRadius: 2},

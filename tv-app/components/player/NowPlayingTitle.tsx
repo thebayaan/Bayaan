@@ -1,4 +1,3 @@
-// tv-app/components/player/NowPlayingTitle.tsx
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {colors} from '../../theme/colors';
@@ -23,11 +22,15 @@ export function NowPlayingTitle({
   return (
     <View style={styles.wrap}>
       <Text style={styles.kicker}>
-        NOW PLAYING · {index + 1} of {total}
+        NOW PLAYING · {index + 1} OF {total}
       </Text>
-      <Text style={styles.title}>{surahName}</Text>
-      <Text style={styles.reciter}>{reciterName}</Text>
-      <Text style={styles.rewayah}>{rewayahName}</Text>
+      <Text style={styles.title} numberOfLines={1}>
+        {surahName}
+      </Text>
+      <Text style={styles.reciter} numberOfLines={1}>
+        {reciterName}
+        {rewayahName ? `  ·  ${rewayahName}` : ''}
+      </Text>
     </View>
   );
 }
@@ -37,11 +40,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: spacing.xl,
     right: spacing.xl,
-    bottom: 150,
-    gap: 4,
+    bottom: 170,
+    gap: 10,
   },
-  kicker: {color: colors.textTertiary, ...typography.label},
-  title: {color: colors.text, ...typography.titleXL, lineHeight: 64},
-  reciter: {color: colors.text, fontSize: 18, opacity: 0.7},
-  rewayah: {color: colors.text, fontSize: 14, opacity: 0.45},
+  kicker: {
+    color: colors.text,
+    ...typography.label,
+    opacity: 0.55,
+  },
+  title: {
+    color: colors.text,
+    ...typography.titleXL,
+    lineHeight: 72,
+    letterSpacing: -1,
+  },
+  reciter: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '500',
+    opacity: 0.75,
+    marginTop: 2,
+  },
 });

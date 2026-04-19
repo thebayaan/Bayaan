@@ -1,4 +1,3 @@
-// tv-app/components/player/Scrubber.tsx
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {colors} from '../../theme/colors';
@@ -33,29 +32,47 @@ export function Scrubber({
   );
 }
 
+const TRACK_H = 6;
+const THUMB = 18;
+
 const styles = StyleSheet.create({
-  wrap: {position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: 90},
+  wrap: {position: 'absolute', left: spacing.xl, right: spacing.xl, bottom: 96},
   track: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 2,
+    height: TRACK_H,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: TRACK_H / 2,
   },
   fill: {
     position: 'absolute',
     left: 0,
     top: 0,
-    height: 4,
+    height: TRACK_H,
     backgroundColor: colors.text,
-    borderRadius: 2,
+    borderRadius: TRACK_H / 2,
   },
   thumb: {
     position: 'absolute',
-    top: -4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    top: -(THUMB - TRACK_H) / 2,
+    marginLeft: -THUMB / 2,
+    width: THUMB,
+    height: THUMB,
+    borderRadius: THUMB / 2,
     backgroundColor: colors.text,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
   },
-  row: {flexDirection: 'row', justifyContent: 'space-between', marginTop: 6},
-  time: {color: colors.text, fontSize: 11, opacity: 0.55},
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  time: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '500',
+    opacity: 0.65,
+    letterSpacing: 0.5,
+  },
 });

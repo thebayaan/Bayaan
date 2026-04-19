@@ -2,7 +2,6 @@ import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableCard} from '../primitives/FocusableCard';
 import {colors} from '../../theme/colors';
-import {typography} from '../../theme/typography';
 
 type Props = {
   surahNumber: number;
@@ -33,6 +32,17 @@ export function QuickPlayCard({
 const styles = StyleSheet.create({
   card: {width: 170, height: 170, backgroundColor: colors.surface},
   inner: {flex: 1, padding: 18, justifyContent: 'space-between'},
-  num: {color: colors.text, fontSize: 56, fontWeight: '200', opacity: 0.6},
-  name: {color: colors.text, fontSize: 16, fontWeight: '600'},
+  num: {
+    color: colors.text,
+    fontSize: 60,
+    fontWeight: '200',
+    opacity: 0.55,
+    letterSpacing: -2,
+  },
+  name: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
 });

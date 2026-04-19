@@ -27,8 +27,12 @@ const TABS: TabEntry[] = [
 export function TopTabBar(): React.ReactElement {
   const current = useNavStore(s => s.currentTab);
   const switchTab = useNavStore(s => s.switchTab);
+
   return (
     <View style={styles.bar}>
+      <View style={styles.brandWrap}>
+        <Text style={styles.brand}>Bayaan</Text>
+      </View>
       <View style={styles.center}>
         {TABS.map(t => {
           const active = current === t.key;
@@ -49,16 +53,18 @@ export function TopTabBar(): React.ReactElement {
           );
         })}
       </View>
-      <FocusableButton
-        onPress={() => switchTab('settings')}
-        accessibilityLabel="Settings"
-        style={styles.settings}>
-        <ProfileIcon
-          color={colors.text}
-          size={24}
-          filled={current === 'settings'}
-        />
-      </FocusableButton>
+      <View style={styles.settingsWrap}>
+        <FocusableButton
+          onPress={() => switchTab('settings')}
+          accessibilityLabel="Settings"
+          style={styles.settings}>
+          <ProfileIcon
+            color={colors.text}
+            size={24}
+            filled={current === 'settings'}
+          />
+        </FocusableButton>
+      </View>
     </View>
   );
 }
@@ -70,6 +76,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  brandWrap: {width: 180},
+  brand: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
   center: {
     flex: 1,
     flexDirection: 'row',
@@ -80,5 +93,6 @@ const styles = StyleSheet.create({
   tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
   tabText: {color: colors.text, fontSize: 16, fontWeight: '500', opacity: 0.45},
   tabActive: {opacity: 1, fontWeight: '700'},
+  settingsWrap: {width: 180, alignItems: 'flex-end'},
   settings: {padding: spacing.sm},
 });
