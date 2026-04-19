@@ -50,6 +50,7 @@ export function TopTabBar(): React.ReactElement {
                   {t.label}
                 </Text>
               </View>
+              {active ? <View style={styles.tabUnderline} /> : null}
             </FocusableButton>
           );
         })}
@@ -95,6 +96,15 @@ const styles = StyleSheet.create({
   tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
   tabText: {color: colors.text, fontSize: 16, fontWeight: '500', opacity: 0.45},
   tabActive: {opacity: 1, fontWeight: '700'},
+  tabUnderline: {
+    position: 'absolute',
+    left: spacing.md + 6,
+    right: spacing.md + 6,
+    bottom: 4,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.text,
+  },
   rightWrap: {
     width: 340,
     flexDirection: 'row',
