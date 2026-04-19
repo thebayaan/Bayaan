@@ -17,7 +17,9 @@ export function SettingsScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <TopTabBar />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}>
         <Text style={styles.kicker}>PROFILE</Text>
         <Text style={styles.pageTitle}>Settings</Text>
 

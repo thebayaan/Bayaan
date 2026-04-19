@@ -79,6 +79,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       style={styles.container}
       contentContainerStyle={styles.scroll}
       scrollEventThrottle={250}
+      showsVerticalScrollIndicator={false}
       onScroll={handleScroll}
       onContentSizeChange={handleContentSizeChange}>
       <View style={styles.hero}>

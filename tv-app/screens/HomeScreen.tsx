@@ -85,7 +85,9 @@ export function HomeScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <TopTabBar />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Text style={styles.greeting}>{greeting}</Text>
         </View>
