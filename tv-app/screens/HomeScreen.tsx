@@ -114,37 +114,43 @@ export function HomeScreen(): React.ReactElement {
           </Rail>
         )}
 
-        <Rail title="Featured Reciters">
-          {featured.map(r => (
-            <ReciterCard
-              key={r.id}
-              reciter={r}
-              onSelect={handleReciterSelect}
-            />
-          ))}
-        </Rail>
+        {featured.length > 0 && (
+          <Rail title="Featured Reciters">
+            {featured.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+          </Rail>
+        )}
 
-        <Rail title="All Reciters">
-          {all.map(r => (
-            <ReciterCard
-              key={r.id}
-              reciter={r}
-              onSelect={handleReciterSelect}
-            />
-          ))}
-          <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
-        </Rail>
+        {all.length > 0 && (
+          <Rail title="All Reciters">
+            {all.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+            <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
+          </Rail>
+        )}
 
-        <Rail title="Quick Play">
-          {QUICK_PLAY_SURAHS.map(n => (
-            <QuickPlayCard
-              key={n}
-              surahNumber={n}
-              surahName={surahByNumber.get(n) ?? `Surah ${n}`}
-              onSelect={handleQuickPlay}
-            />
-          ))}
-        </Rail>
+        {defaultReciterId && (
+          <Rail title="Quick Play">
+            {QUICK_PLAY_SURAHS.map(n => (
+              <QuickPlayCard
+                key={n}
+                surahNumber={n}
+                surahName={surahByNumber.get(n) ?? `Surah ${n}`}
+                onSelect={handleQuickPlay}
+              />
+            ))}
+          </Rail>
+        )}
       </ScrollView>
     </View>
   );
