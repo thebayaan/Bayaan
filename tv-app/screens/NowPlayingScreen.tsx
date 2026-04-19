@@ -5,6 +5,7 @@ import {ErrorBanner} from '../components/player/ErrorBanner';
 import {NowPlayingTitle} from '../components/player/NowPlayingTitle';
 import {Scrubber} from '../components/player/Scrubber';
 import {TransportRow} from '../components/player/TransportRow';
+import {UpNextHint} from '../components/player/UpNextHint';
 import {SecondaryOverlay} from '../components/player/SecondaryOverlay';
 import {useTVPlayerStore} from '../store/tvPlayerStore';
 import {useReciters} from '../hooks/useReciters';
@@ -23,6 +24,7 @@ export function NowPlayingScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <ArtworkBackdrop imageUrl={reciter?.image_url ?? null} />
+      <UpNextHint />
       {item && (
         <NowPlayingTitle
           index={currentIndex}

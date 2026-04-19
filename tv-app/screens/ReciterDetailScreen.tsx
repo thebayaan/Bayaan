@@ -199,6 +199,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           ))}
         </View>
       )}
+
+      {reciter.bio ? (
+        <View style={styles.bioBlock}>
+          <Text style={styles.sectionLabel}>About</Text>
+          <Text style={styles.bio}>{reciter.bio}</Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -347,6 +354,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     paddingHorizontal: spacing.xl,
+  },
+  bioBlock: {marginTop: spacing.xl},
+  bio: {
+    color: colors.textSecondary,
+    fontSize: 17,
+    fontWeight: '400',
+    lineHeight: 28,
+    paddingHorizontal: spacing.xl,
+    opacity: 0.85,
+    maxWidth: 900,
   },
   surahSkeleton: {
     backgroundColor: 'rgba(255,255,255,0.04)',
