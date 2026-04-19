@@ -36,8 +36,8 @@ export function OnboardingScreen(): React.ReactElement {
         <Text style={styles.kicker}>WELCOME TO BAYAAN</Text>
         <Text style={styles.title}>Pick a reciter to start with</Text>
         <Text style={styles.sub}>
-          You can change this anytime in Settings. Your pick becomes the
-          default when you tap Quick Play on the home page.
+          You can change this anytime in Settings. Your pick becomes the default
+          when you tap Quick Play on the home page.
         </Text>
       </View>
       <ScrollView
