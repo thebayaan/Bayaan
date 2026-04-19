@@ -9,6 +9,7 @@ type Props = {
   style?: StyleProp<ViewStyle>;
   focusedStyle?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
+  focusScale?: number;
 };
 
 export function FocusableButton({
@@ -18,14 +19,15 @@ export function FocusableButton({
   style,
   focusedStyle,
   accessibilityLabel,
-}: Props) {
+  focusScale = 1.08,
+}: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
 
-  const handleFocus = () => {
+  const handleFocus = (): void => {
     setIsFocused(true);
     Animated.spring(scaleValue, {
-      toValue: 1.08,
+      toValue: focusScale,
       stiffness: 240,
       damping: 18,
       mass: 1,
@@ -33,7 +35,7 @@ export function FocusableButton({
     }).start();
   };
 
-  const handleBlur = () => {
+  const handleBlur = (): void => {
     setIsFocused(false);
     Animated.spring(scaleValue, {
       toValue: 1,

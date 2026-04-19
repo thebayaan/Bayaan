@@ -21,7 +21,8 @@ export function NowPlayingChip(): React.ReactElement | null {
     <FocusableButton
       onPress={() => push({screen: 'nowPlaying'})}
       accessibilityLabel={`Now playing ${item.title}. Open player.`}
-      style={styles.chip}>
+      style={styles.chip}
+      focusScale={1.04}>
       <View style={styles.inner}>
         <View style={styles.iconWrap}>
           {isPlaying ? (
