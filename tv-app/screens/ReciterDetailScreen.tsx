@@ -1,6 +1,13 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Image} from 'expo-image';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
 import {useReciters} from '../hooks/useReciters';
@@ -14,6 +21,8 @@ import {spacing} from '../theme/spacing';
 
 type Props = {reciterId: string};
 
+const scrollPositions = new Map<string, number>();
+
 export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const {reciters} = useReciters();
   const reciter = reciters.find(r => r.id === reciterId);
@@ -26,6 +35,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
 
+  const scrollRef = useRef<ScrollView>(null);
+  const restoredRef = useRef<boolean>(false);
+
   useEffect(() => {
     fetchRewayat(reciterId).then(r => {
       if (r.length === 0) return;
@@ -33,6 +45,22 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
       setActive(prev => prev ?? r[0]?.id ?? null);
     });
   }, [reciterId]);
+
+  function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
+    scrollPositions.set(reciterId, e.nativeEvent.contentOffset.y);
+  }
+
+  function handleContentSizeChange(_: number, height: number): void {
+    if (restoredRef.current) return;
+    const saved = scrollPositions.get(reciterId);
+    if (saved === undefined || saved <= 0) {
+      restoredRef.current = true;
+      return;
+    }
+    if (height < saved) return;
+    scrollRef.current?.scrollTo({y: saved, animated: false});
+    restoredRef.current = true;
+  }
 
   if (!reciter) return <View style={styles.container} />;
 
@@ -46,7 +74,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const totalSurahs = rewayat.reduce((sum, r) => sum + r.surah_list.length, 0);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
+    <ScrollView
+      ref={scrollRef}
+      style={styles.container}
+      contentContainerStyle={styles.scroll}
+      scrollEventThrottle={250}
+      onScroll={handleScroll}
+      onContentSizeChange={handleContentSizeChange}>
       <View style={styles.hero}>
         {reciter.image_url ? (
           <Image
