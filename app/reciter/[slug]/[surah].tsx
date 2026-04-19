@@ -4,25 +4,24 @@ import {useLocalSearchParams, useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {useReciterStore} from '@/store/reciterStore';
 import {getReciterBySlug} from '@/services/dataService';
-import {resolveRewayat} from '@/utils/shareUtils';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {SURAHS} from '@/data/surahData';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 
-export default function ShareRecitationReceiver() {
-  const {slug, rewayat, style, num} = useLocalSearchParams<{
+export default function RecitationDeepLinkReceiver(): React.ReactElement {
+  const {slug, surah, rewayah, t} = useLocalSearchParams<{
     slug: string;
-    rewayat: string;
-    style: string;
-    num: string;
+    surah: string;
+    rewayah?: string;
+    t?: string;
   }>();
   const router = useRouter();
   const {theme} = useTheme();
   const isInitialized = useReciterStore(s => s.isInitialized);
 
   useEffect(() => {
-    if (!isInitialized || !slug || !rewayat || !style || !num) return;
+    if (!isInitialized || !slug || !surah) return;
 
     const reciter = getReciterBySlug(slug);
     if (!reciter) {
@@ -30,19 +29,26 @@ export default function ShareRecitationReceiver() {
       return;
     }
 
-    const rw = resolveRewayat(reciter, rewayat, style);
+    const rw =
+      (rewayah && reciter.rewayat.find(r => r.id === rewayah)) ||
+      reciter.rewayat[0];
     if (!rw) {
       router.replace('/');
       return;
     }
 
-    const surahNum = parseInt(num, 10);
-    const surah = SURAHS.find(s => s.id === surahNum);
+    const surahNum = parseInt(surah, 10);
+    if (Number.isNaN(surahNum)) {
+      router.replace('/');
+      return;
+    }
+
+    const surahMeta = SURAHS.find(s => s.id === surahNum);
     const artwork = getReciterArtwork(reciter);
     const track = {
       id: `${reciter.id}:${surahNum}`,
       url: generateSmartAudioUrl(reciter, surahNum.toString(), rw.id),
-      title: surah?.name ?? `Surah ${surahNum}`,
+      title: surahMeta?.name ?? `Surah ${surahNum}`,
       artist: reciter.name,
       reciterId: reciter.id,
       artwork,
@@ -54,6 +60,15 @@ export default function ShareRecitationReceiver() {
     const startPlaybackAndNavigate = async (): Promise<void> => {
       await usePlayerStore.getState().updateQueue([track], 0);
 
+      const tSec = t ? parseInt(t, 10) : NaN;
+      if (!Number.isNaN(tSec) && tSec > 0) {
+        try {
+          await usePlayerStore.getState().seekTo(tSec);
+        } catch {
+          // Seek failures are non-fatal — playback still starts at 0.
+        }
+      }
+
       router.replace('/(tabs)/(a.home)');
       setTimeout(() => {
         router.push({
@@ -64,7 +79,7 @@ export default function ShareRecitationReceiver() {
     };
 
     startPlaybackAndNavigate();
-  }, [isInitialized, slug, rewayat, style, num, router]);
+  }, [isInitialized, slug, surah, rewayah, t, router]);
 
   return (
     <View

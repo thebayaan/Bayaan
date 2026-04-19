@@ -47,7 +47,10 @@
       </intent-filter>
       <intent-filter android:autoVerify="true" data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
-        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/share"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/quran"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/reciter"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/mushaf"/>
+        <data android:scheme="https" android:host="app.thebayaan.com" android:pathPrefix="/adhkar"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
