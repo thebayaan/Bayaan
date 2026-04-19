@@ -8,13 +8,17 @@ import {
   Text,
   View,
 } from 'react-native';
+import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {fetchRewayat, getCachedRewayat} from '../services/tvDataService';
+import {toggleFavorite} from '../services/favoritesStore';
 import {useReciters} from '../hooks/useReciters';
+import {useFavorites} from '../hooks/useFavorites';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import type {Rewayah} from '../types/reciter';
 import {SURAHS} from '../../data/surahData';
+import {HeartIcon} from '../../components/Icons';
 import {colors} from '../theme/colors';
 import {typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
@@ -33,6 +37,8 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     () => getCachedRewayat(reciterId)?.[0]?.id ?? null,
   );
   const {playRewayah} = usePlayer();
+  const favorites = useFavorites();
+  const isFav = favorites.some(f => f.reciterId === reciterId);
   const push = useNavStore(s => s.push);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -118,6 +124,25 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 {totalSurahs} surahs
               </Text>
             ) : null}
+            <View style={styles.heroActions}>
+              <FocusableButton
+                onPress={() => toggleFavorite(reciterId)}
+                accessibilityLabel={
+                  isFav ? 'Remove from favorites' : 'Add to favorites'
+                }
+                style={[styles.favBtn, isFav && styles.favBtnActive]}>
+                <View style={styles.favInner}>
+                  <HeartIcon
+                    color={isFav ? colors.background : colors.text}
+                    size={18}
+                    filled={isFav}
+                  />
+                  <Text style={[styles.favText, isFav && styles.favTextActive]}>
+                    {isFav ? 'Favorited' : 'Favorite'}
+                  </Text>
+                </View>
+              </FocusableButton>
+            </View>
           </View>
         </View>
       </View>
@@ -234,6 +259,22 @@ const styles = StyleSheet.create({
     opacity: 0.75,
     marginTop: 6,
   },
+  heroActions: {flexDirection: 'row', marginTop: 16},
+  favBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  favBtnActive: {backgroundColor: colors.text},
+  favInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  favText: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  favTextActive: {color: colors.background},
   rewayahRow: {
     flexDirection: 'row',
     gap: spacing.sm,

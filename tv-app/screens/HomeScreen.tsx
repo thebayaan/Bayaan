@@ -10,6 +10,7 @@ import {FeaturedBanner} from '../components/rails/FeaturedBanner';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
+import {useFavorites} from '../hooks/useFavorites';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import {fetchRewayat} from '../services/tvDataService';
@@ -34,6 +35,7 @@ function timeOfDayGreeting(): string {
 export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const continueEntries = useContinueListening();
+  const favorites = useFavorites();
   const {defaultReciterId} = useDefaultReciter();
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
@@ -53,6 +55,13 @@ export function HomeScreen(): React.ReactElement {
   const spotlight = reciters[0] ?? null;
   const featured = reciters.slice(1, 9);
   const all = reciters.slice(0, 12);
+  const favoriteReciters = useMemo(
+    () =>
+      favorites
+        .map(f => reciterById.get(f.reciterId))
+        .filter((r): r is Reciter => !!r),
+    [favorites, reciterById],
+  );
 
   async function handleReciterSelect(reciter: Reciter): Promise<void> {
     push({screen: 'reciterDetail', reciterId: reciter.id});
@@ -111,6 +120,18 @@ export function HomeScreen(): React.ReactElement {
                 }
                 onSelect={handleContinueSelect}
                 hasTVPreferredFocus={i === 0}
+              />
+            ))}
+          </Rail>
+        )}
+
+        {favoriteReciters.length > 0 && (
+          <Rail title="Your Favorites">
+            {favoriteReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
               />
             ))}
           </Rail>
