@@ -3,6 +3,7 @@ import {StyleSheet, Text, TextInput, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
+import {SearchIcon} from '../../components/Icons';
 import {useReciters} from '../hooks/useReciters';
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
@@ -24,15 +25,18 @@ export function SearchScreen(): React.ReactElement {
     <View style={styles.container}>
       <TopTabBar />
       <View style={styles.body}>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search reciters"
-          placeholderTextColor={colors.textSecondary}
-          style={styles.input}
-        />
+        <View style={styles.inputRow}>
+          <SearchIcon color={colors.textSecondary} size={28} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search reciters"
+            placeholderTextColor={colors.textTertiary}
+            style={styles.input}
+          />
+        </View>
         {filtered.length > 0 ? (
-          <Rail title={`Reciters · ${filtered.length}`}>
+          <Rail title={`${filtered.length} reciters`}>
             {filtered.map((r, i) => (
               <ReciterCard
                 key={r.id}
@@ -45,9 +49,13 @@ export function SearchScreen(): React.ReactElement {
             ))}
           </Rail>
         ) : (
-          <Text style={styles.hint}>
-            {query ? 'No matches' : 'Type to search reciters'}
-          </Text>
+          <View style={styles.emptyWrap}>
+            <Text style={styles.hint}>
+              {query
+                ? 'No reciters match that search'
+                : 'Start typing to find a reciter'}
+            </Text>
+          </View>
         )}
       </View>
     </View>
@@ -57,12 +65,21 @@ export function SearchScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   body: {padding: spacing.xl, gap: spacing.lg},
-  input: {
-    color: colors.text,
-    fontSize: 28,
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
     borderBottomWidth: 2,
-    borderColor: colors.textSecondary,
-    paddingVertical: 8,
+    borderColor: colors.surface,
+    paddingVertical: 10,
   },
-  hint: {color: colors.textSecondary, ...typography.body},
+  input: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 32,
+    fontWeight: '500',
+    paddingVertical: 6,
+  },
+  emptyWrap: {paddingTop: spacing.xxl, alignItems: 'center'},
+  hint: {color: colors.textSecondary, ...typography.body, opacity: 0.7},
 });

@@ -1,11 +1,13 @@
 import React, {useEffect} from 'react';
 import {StatusBar} from 'expo-status-bar';
-import {StyleSheet, View} from 'react-native';
+import {LogBox, StyleSheet, View} from 'react-native';
 import {Router} from './components/nav/Router';
 import {TVAudioProvider} from './components/providers/TVAudioProvider';
 import {createAudioEngine} from './services/audioEngine';
 import {useTVPlayerStore} from './store/tvPlayerStore';
 import {colors} from './theme/colors';
+
+LogBox.ignoreAllLogs(true);
 
 export default function App(): React.ReactElement {
   const setEngine = useTVPlayerStore(s => s.setEngine);

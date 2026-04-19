@@ -3,13 +3,25 @@ import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
-import {typography} from '../../theme/typography';
 import {useNavStore, type TabKey} from '../../store/navStore';
+import {
+  CollectionIcon,
+  HomeIcon,
+  ProfileIcon,
+  SearchIcon,
+  type IconProps,
+} from '../../../components/Icons';
 
-const TABS: {key: TabKey; label: string}[] = [
-  {key: 'home', label: 'Home'},
-  {key: 'search', label: 'Search'},
-  {key: 'collection', label: 'Collection'},
+type TabEntry = {
+  key: TabKey;
+  label: string;
+  icon: React.FC<IconProps>;
+};
+
+const TABS: TabEntry[] = [
+  {key: 'home', label: 'Home', icon: HomeIcon},
+  {key: 'search', label: 'Search', icon: SearchIcon},
+  {key: 'collection', label: 'Collection', icon: CollectionIcon},
 ];
 
 export function TopTabBar(): React.ReactElement {
@@ -18,24 +30,34 @@ export function TopTabBar(): React.ReactElement {
   return (
     <View style={styles.bar}>
       <View style={styles.center}>
-        {TABS.map(t => (
-          <FocusableButton
-            key={t.key}
-            onPress={() => switchTab(t.key)}
-            accessibilityLabel={t.label}
-            style={styles.tab}>
-            <Text
-              style={[styles.tabText, current === t.key && styles.tabActive]}>
-              {t.label}
-            </Text>
-          </FocusableButton>
-        ))}
+        {TABS.map(t => {
+          const active = current === t.key;
+          const Icon = t.icon;
+          return (
+            <FocusableButton
+              key={t.key}
+              onPress={() => switchTab(t.key)}
+              accessibilityLabel={t.label}
+              style={styles.tab}>
+              <View style={styles.tabInner}>
+                <Icon color={colors.text} size={22} filled={active} />
+                <Text style={[styles.tabText, active && styles.tabActive]}>
+                  {t.label}
+                </Text>
+              </View>
+            </FocusableButton>
+          );
+        })}
       </View>
       <FocusableButton
         onPress={() => switchTab('settings')}
         accessibilityLabel="Settings"
         style={styles.settings}>
-        <Text style={styles.tabText}>⚙</Text>
+        <ProfileIcon
+          color={colors.text}
+          size={24}
+          filled={current === 'settings'}
+        />
       </FocusableButton>
     </View>
   );
@@ -54,8 +76,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.lg,
   },
-  tab: {paddingHorizontal: spacing.sm, paddingVertical: 8},
-  tabText: {color: colors.text, ...typography.caption, opacity: 0.45},
+  tab: {paddingHorizontal: spacing.md, paddingVertical: 10},
+  tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
+  tabText: {color: colors.text, fontSize: 16, fontWeight: '500', opacity: 0.45},
   tabActive: {opacity: 1, fontWeight: '700'},
   settings: {padding: spacing.sm},
 });

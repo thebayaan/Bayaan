@@ -1,10 +1,22 @@
-// tv-app/components/player/TransportRow.tsx
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
+import {
+  AmbientIcon,
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PreviousIcon,
+  RepeatAllIcon,
+  RepeatOneIcon,
+  SeekBackward15Icon,
+  SeekForward15Icon,
+  ShuffleIcon,
+  TimerIcon,
+} from '../../../components/Icons';
 
 export function TransportRow(): React.ReactElement {
   const {
@@ -21,6 +33,8 @@ export function TransportRow(): React.ReactElement {
   } = useTVPlayerStore();
 
   const isPlaying = status === 'playing';
+  const activeTint = colors.text;
+  const idleTint = colors.text;
 
   return (
     <View style={styles.row}>
@@ -28,38 +42,42 @@ export function TransportRow(): React.ReactElement {
         onPress={() => setShuffle(!shuffle)}
         accessibilityLabel="Shuffle"
         style={[styles.btn, shuffle && styles.btnActive]}>
-        <Text style={styles.icon}>🔀</Text>
+        <ShuffleIcon color={shuffle ? activeTint : idleTint} size={26} />
       </FocusableButton>
       <FocusableButton
         onPress={() => void prev()}
         accessibilityLabel="Previous"
         style={styles.btn}>
-        <Text style={styles.icon}>⏮</Text>
+        <PreviousIcon color={idleTint} size={30} />
       </FocusableButton>
       <FocusableButton
         onPress={() => seekBy(-15)}
         accessibilityLabel="Back 15 seconds"
         style={styles.btn}>
-        <Text style={styles.small}>−15</Text>
+        <SeekBackward15Icon color={idleTint} size={30} />
       </FocusableButton>
       <FocusableButton
         onPress={toggle}
         accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
         style={styles.hero}
         hasTVPreferredFocus>
-        <Text style={styles.heroIcon}>{isPlaying ? '❚❚' : '▶'}</Text>
+        {isPlaying ? (
+          <PauseIcon color={colors.background} size={32} />
+        ) : (
+          <PlayIcon color={colors.background} size={32} />
+        )}
       </FocusableButton>
       <FocusableButton
         onPress={() => seekBy(15)}
         accessibilityLabel="Forward 15 seconds"
         style={styles.btn}>
-        <Text style={styles.small}>+15</Text>
+        <SeekForward15Icon color={idleTint} size={30} />
       </FocusableButton>
       <FocusableButton
         onPress={() => void next()}
         accessibilityLabel="Next"
         style={styles.btn}>
-        <Text style={styles.icon}>⏭</Text>
+        <NextIcon color={idleTint} size={30} />
       </FocusableButton>
       <FocusableButton
         onPress={() =>
@@ -67,7 +85,14 @@ export function TransportRow(): React.ReactElement {
         }
         accessibilityLabel="Repeat"
         style={[styles.btn, repeat !== 'off' && styles.btnActive]}>
-        <Text style={styles.icon}>🔁</Text>
+        {repeat === 'one' ? (
+          <RepeatOneIcon color={activeTint} size={26} />
+        ) : (
+          <RepeatAllIcon
+            color={repeat === 'all' ? activeTint : idleTint}
+            size={26}
+          />
+        )}
       </FocusableButton>
       <View style={styles.secondaryRow}>
         <FocusableButton
@@ -80,13 +105,13 @@ export function TransportRow(): React.ReactElement {
           onPress={() => useOverlayStore.getState().open('sleep')}
           style={styles.sBtn}
           accessibilityLabel="Sleep timer">
-          <Text style={styles.sText}>⏱</Text>
+          <TimerIcon color={idleTint} size={20} />
         </FocusableButton>
         <FocusableButton
           onPress={() => useOverlayStore.getState().open('ambient')}
           style={styles.sBtn}
           accessibilityLabel="Ambient sounds">
-          <Text style={styles.sText}>🌊</Text>
+          <AmbientIcon color={idleTint} size={22} />
         </FocusableButton>
       </View>
     </View>
@@ -105,41 +130,38 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   btn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   btnActive: {backgroundColor: 'rgba(255,255,255,0.14)'},
-  icon: {color: colors.text, fontSize: 16},
-  small: {color: colors.text, fontSize: 14, fontWeight: '600'},
   hero: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroIcon: {color: colors.background, fontSize: 22, fontWeight: '700'},
   secondaryRow: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: -44,
+    bottom: -50,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 14,
   },
   sBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sText: {color: colors.text, fontSize: 12},
+  sText: {color: colors.text, fontSize: 13, fontWeight: '600'},
 });
