@@ -61,6 +61,10 @@ export function ContinueReadingHero({
             onLongPress={onSurahLongPress}
             title={title}
             style={cardStyle}
+            // Only wire the resume page when the user actually has
+            // reading history; otherwise the hero falls back to
+            // Surah of the Day and should open at page 1.
+            resumePage={lastReadPage ?? undefined}
           />
         </View>
       }
