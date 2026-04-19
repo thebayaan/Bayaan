@@ -97,7 +97,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
         </View>
       )}
 
-      <Text style={styles.sectionLabel}>SURAHS</Text>
+      <Text style={styles.sectionLabel}>Surahs</Text>
       <View style={styles.grid}>
         {surahNumbers.map((n, i) => (
           <FocusableCard
@@ -109,7 +109,9 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               await playRewayah(reciter.id, reciter.name, current, n);
               push({screen: 'nowPlaying'});
             }}>
-            <Text style={styles.num}>{n}</Text>
+            <View style={styles.numBadge}>
+              <Text style={styles.num}>{n}</Text>
+            </View>
             <Text style={styles.name} numberOfLines={1}>
               {surahByNumber.get(n) ?? `Surah ${n}`}
             </Text>
@@ -213,17 +215,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   surahCard: {
-    width: 158,
-    height: 118,
+    width: 170,
+    height: 120,
     backgroundColor: colors.surface,
-    padding: 16,
-    justifyContent: 'space-between',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  numBadge: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   num: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
-  name: {color: colors.text, fontSize: 14, fontWeight: '500', opacity: 0.85},
+  name: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '600',
+    opacity: 0.85,
+  },
 });
