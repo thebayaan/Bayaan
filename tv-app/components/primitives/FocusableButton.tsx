@@ -26,9 +26,10 @@ export function FocusableButton({
     setIsFocused(true);
     Animated.spring(scaleValue, {
       toValue: 1.08,
-      useNativeDriver: false,
-      speed: 160,
-      bounciness: 0,
+      stiffness: 240,
+      damping: 18,
+      mass: 1,
+      useNativeDriver: true,
     }).start();
   };
 
@@ -36,9 +37,10 @@ export function FocusableButton({
     setIsFocused(false);
     Animated.spring(scaleValue, {
       toValue: 1,
-      useNativeDriver: false,
-      speed: 160,
-      bounciness: 0,
+      stiffness: 240,
+      damping: 18,
+      mass: 1,
+      useNativeDriver: true,
     }).start();
   };
 
