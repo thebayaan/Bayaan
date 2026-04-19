@@ -16,7 +16,8 @@
     "expo-status-bar": "~3.0.9",
     "react": "19.2.0",
     "react-native": "npm:react-native-tvos@0.83.2-0",
-    "react-native-mmkv": "^4.3.1"
+    "react-native-mmkv": "^4.3.1",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@react-native-tvos/config-tv": "^0.1.6",
