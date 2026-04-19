@@ -98,7 +98,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               ]}
               onPress={() => setActive(r.id)}
               hasTVPreferredFocus={i === 0}>
-              <Text style={styles.chipText}>{r.name}</Text>
+              <Text
+                style={[
+                  styles.chipText,
+                  activeRewayahId === r.id && styles.chipTextActive,
+                ]}>
+                {r.name}
+              </Text>
             </FocusableCard>
           ))}
         </View>
@@ -214,6 +220,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.1,
   },
+  chipTextActive: {color: colors.background},
   sectionLabel: {
     color: colors.text,
     fontSize: 22,
