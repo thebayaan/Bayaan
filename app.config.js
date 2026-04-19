@@ -43,7 +43,11 @@ module.exports = {
         ],
         NSPrivacyPolicyURL:
           'https://osmansaeday.github.io/bayaan-privacy-policy',
-        UISupportedInterfaceOrientations: ['UIInterfaceOrientationPortrait'],
+        UISupportedInterfaceOrientations: [
+          'UIInterfaceOrientationPortrait',
+          'UIInterfaceOrientationLandscapeLeft',
+          'UIInterfaceOrientationLandscapeRight',
+        ],
         'UISupportedInterfaceOrientations~ipad': [
           'UIInterfaceOrientationPortrait',
           'UIInterfaceOrientationPortraitUpsideDown',

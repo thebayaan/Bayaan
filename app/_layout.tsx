@@ -49,6 +49,7 @@ import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import * as Sentry from '@sentry/react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -162,6 +163,11 @@ function RootLayout() {
     debug: __DEV__,
     resetOnBackground: true,
   });
+
+  // Lock to portrait by default; mushaf.tsx unlocks when that screen is active.
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  }, []);
 
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {

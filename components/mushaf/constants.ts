@@ -85,6 +85,12 @@ export interface MushafLayoutMetrics {
   paddingBottom: number;
   /** True when rendering two facing pages side-by-side (iPad landscape). */
   facingPages: boolean;
+  /**
+   * When set, the page view is taller than the physical screen and should be
+   * wrapped in a ScrollView of this height (= physical landscape screen height).
+   * Only used for phone landscape mode.
+   */
+  scrollContainerHeight?: number;
 }
 
 export interface MushafLayoutOpts {
@@ -182,21 +188,63 @@ export function getMushafLayout(
 
   if (!isTablet) {
     const paddingHorizontal = basePaddingHorizontal;
-    const pageWidth = width;
-    const contentWidth = pageWidth - paddingHorizontal * 2;
+
+    if (!landscape) {
+      const pageWidth = width;
+      const contentWidth = pageWidth - paddingHorizontal * 2;
+      return {
+        screenWidth: width,
+        screenHeight: height,
+        pageWidth,
+        pageOffsetX: 0,
+        facingGap: 0,
+        contentWidth,
+        contentHeight,
+        baseLineHeight,
+        paddingHorizontal,
+        paddingTop,
+        paddingBottom,
+        facingPages: false,
+      };
+    }
+
+    // Phone landscape: full-width "zoomed in" layout.
+    //
+    // The page fills the full landscape width (edge to edge). Because the
+    // font size scales with contentWidth, the text is noticeably larger than
+    // in portrait. The page content is taller than the physical screen, so a
+    // ScrollView wraps it — the user scrolls vertically through the page and
+    // swipes horizontally to change pages.
+    //
+    // fontSize ≈ contentWidth × 0.053 (from SkiaPage: FONTSIZE/PAGE_WIDTH × 0.9)
+    // We maintain the portrait baseLineHeight/fontSize ratio of ~2.1 so
+    // harakat never overlap the line below.
+    const headerH = opts.headerHeight ?? 60;
+    const toolbarH = opts.toolbarHeight ?? 60;
+    const landscapePaddingTop = headerH + insetTop + 12;
+    const landscapePaddingBottom = toolbarH + insetBottom + 8;
+
+    const landscapeContentWidth = width - basePaddingHorizontal * 2;
+    const fontSizeEst = landscapeContentWidth * 0.053;
+    const landscapeBaseLineHeight = fontSizeEst * 2.1;
+    const landscapeContentHeight = landscapeBaseLineHeight * LINES_PER_PAGE;
+    const landscapeScreenHeight =
+      landscapeContentHeight + landscapePaddingTop + landscapePaddingBottom;
+
     return {
       screenWidth: width,
-      screenHeight: height,
-      pageWidth,
+      screenHeight: landscapeScreenHeight,
+      pageWidth: width,
       pageOffsetX: 0,
       facingGap: 0,
-      contentWidth,
-      contentHeight,
-      baseLineHeight,
-      paddingHorizontal,
-      paddingTop,
-      paddingBottom,
+      contentWidth: landscapeContentWidth,
+      contentHeight: landscapeContentHeight,
+      baseLineHeight: landscapeBaseLineHeight,
+      paddingHorizontal: basePaddingHorizontal,
+      paddingTop: landscapePaddingTop,
+      paddingBottom: landscapePaddingBottom,
       facingPages: false,
+      scrollContainerHeight: height,
     };
   }
 

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   Pressable,
+  ScrollView,
   ViewToken,
   StatusBar,
   BackHandler,
@@ -330,6 +331,36 @@ const DKSpreadView: React.FC<{
   onTap,
 }) => {
   const spreadBg = isBookLayout ? edgeBg : cardColor;
+
+  // Phone landscape: full-width scrollable page.
+  if (metrics.scrollContainerHeight) {
+    return (
+      <ScrollView
+        style={{
+          width: metrics.screenWidth,
+          height: metrics.scrollContainerHeight,
+          backgroundColor: spreadBg,
+        }}
+        contentContainerStyle={{height: metrics.screenHeight}}
+        showsVerticalScrollIndicator={false}
+        bounces={false}>
+        <DKPageView
+          pageNumber={pageNumber}
+          textColor={textColor}
+          surahLabel={getSurahNamesForPage(pageNumber)}
+          juzLabel={`Juz ${getJuzForPage(pageNumber)}`}
+          pageLabel={String(pageNumber)}
+          labelColor={labelColor}
+          borderColor={borderColor}
+          cardColor={cardColor}
+          bgColor={bgColor}
+          isBookLayout={isBookLayout}
+          metrics={metrics}
+          onTap={onTap}
+        />
+      </ScrollView>
+    );
+  }
 
   // Fast-path for phones: width === screenWidth + offset === 0 means the
   // outer wrapper is a no-op, matching the pre-iPad layout byte-for-byte.
@@ -1103,6 +1134,8 @@ export default function MushafViewer({
                 overlayAnimatedStyle,
                 {
                   paddingTop: insets.top + moderateScale(8),
+                  paddingLeft: Math.max(insets.left, moderateScale(12)),
+                  paddingRight: Math.max(insets.right, moderateScale(12)),
                   backgroundColor: theme.colors.background,
                   borderBottomWidth: StyleSheet.hairlineWidth,
                   borderBottomColor: theme.colors.border,
@@ -1188,6 +1221,8 @@ export default function MushafViewer({
                 overlayAnimatedStyle,
                 {
                   paddingBottom: insets.bottom + 8,
+                  paddingLeft: insets.left,
+                  paddingRight: insets.right,
                   backgroundColor: theme.colors.background,
                   borderTopWidth: StyleSheet.hairlineWidth,
                   borderTopColor: theme.colors.border,
