@@ -36,8 +36,10 @@ export function FeaturedBanner({
           </Text>
         </View>
       )}
-      <View style={styles.scrimLeft} />
-      <View style={styles.scrimBottom} />
+      <View style={styles.scrimBase} />
+      <View style={styles.scrimStep1} />
+      <View style={styles.scrimStep2} />
+      <View style={styles.scrimStep3} />
       <View style={styles.inner}>
         <Text style={styles.kicker}>FEATURED RECITER</Text>
         <Text style={styles.title} numberOfLines={2}>
@@ -79,17 +81,33 @@ const styles = StyleSheet.create({
     opacity: 0.22,
     lineHeight: 260,
   },
-  scrimLeft: {
+  scrimBase: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.15)',
   },
-  scrimBottom: {
+  scrimStep1: {
     position: 'absolute',
     left: 0,
-    right: '40%',
+    right: '50%',
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.20)',
+  },
+  scrimStep2: {
+    position: 'absolute',
+    left: 0,
+    right: '65%',
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.28)',
+  },
+  scrimStep3: {
+    position: 'absolute',
+    left: 0,
+    right: '78%',
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.30)',
   },
   inner: {
     position: 'absolute',

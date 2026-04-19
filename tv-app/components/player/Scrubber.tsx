@@ -1,5 +1,6 @@
-import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import React, {useEffect, useMemo, useRef} from 'react';
+import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
+import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
 
@@ -19,13 +20,44 @@ export function Scrubber({
   positionSeconds,
   durationSeconds,
 }: Props): React.ReactElement {
-  const progress =
-    durationSeconds > 0 ? Math.min(1, positionSeconds / durationSeconds) : 0;
+  const status = useTVPlayerStore(s => s.status);
+  const speed = useTVPlayerStore(s => s.speed);
+  const anim = useRef(new Animated.Value(positionSeconds)).current;
+
+  useEffect(() => {
+    anim.stopAnimation();
+    anim.setValue(positionSeconds);
+    if (
+      status === 'playing' &&
+      durationSeconds > 0 &&
+      speed > 0 &&
+      positionSeconds < durationSeconds
+    ) {
+      const remainingMs = ((durationSeconds - positionSeconds) / speed) * 1000;
+      Animated.timing(anim, {
+        toValue: durationSeconds,
+        duration: remainingMs,
+        easing: Easing.linear,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [anim, positionSeconds, durationSeconds, status, speed]);
+
+  const maxRange = useMemo(
+    () => Math.max(durationSeconds, 1),
+    [durationSeconds],
+  );
+  const widthPct = anim.interpolate({
+    inputRange: [0, maxRange],
+    outputRange: ['0%', '100%'],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={styles.wrap}>
       <View style={styles.track}>
-        <View style={[styles.fill, {width: `${progress * 100}%`}]} />
-        <View style={[styles.thumb, {left: `${progress * 100}%`}]} />
+        <Animated.View style={[styles.fill, {width: widthPct}]} />
+        <Animated.View style={[styles.thumb, {left: widthPct}]} />
       </View>
       <View style={styles.row}>
         <Text style={styles.time}>{fmt(positionSeconds)}</Text>
