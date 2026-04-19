@@ -28,6 +28,12 @@ import {
   SearchPerformedProps,
   TranslationViewedProps,
   AppBackgroundedProps,
+  InstagramStoryOpenedProps,
+  InstagramStoryTemplateSwitchedProps,
+  InstagramStoryShareProps,
+  InstagramStoryCancelledProps,
+  InstagramStoryFailedProps,
+  InstagramStorySavedProps,
 } from './events';
 import {localAggregationStore} from './LocalAggregationStore';
 import {MeaningfulListenTracker} from './MeaningfulListenTracker';
@@ -260,28 +266,26 @@ class AnalyticsServiceImpl {
     });
   }
 
-  // TEMP: replaced in Task 24 with real PostHog capture calls.
-  trackInstagramStoryOpened(_props: {verse_range: string}): void {}
-  trackInstagramStoryTemplateSwitched(_props: {
-    from: string;
-    to: string;
-  }): void {}
-  trackInstagramStoryShare(_props: {
-    template: string;
-    translation_shown: boolean;
-    content_type: 'verse';
-    surah_id: number;
-    verse_range: string;
-  }): void {}
-  trackInstagramStoryCancelled(_props: {template: string}): void {}
-  trackInstagramStoryFailed(_props: {
-    template: string;
-    reason: 'not-installed' | 'render-failed' | 'share-error' | 'cancelled';
-  }): void {}
-  trackInstagramStorySaved(_props: {
-    template: string;
-    translation_shown: boolean;
-  }): void {}
+  trackInstagramStoryOpened(props: InstagramStoryOpenedProps): void {
+    this.capture(ANALYTICS_EVENTS.INSTAGRAM_STORY_OPENED, {...props});
+  }
+  trackInstagramStoryTemplateSwitched(
+    props: InstagramStoryTemplateSwitchedProps,
+  ): void {
+    this.capture(ANALYTICS_EVENTS.INSTAGRAM_STORY_TEMPLATE_SWITCHED, {...props});
+  }
+  trackInstagramStoryShare(props: InstagramStoryShareProps): void {
+    this.capture(ANALYTICS_EVENTS.INSTAGRAM_STORY_SHARE, {...props});
+  }
+  trackInstagramStoryCancelled(props: InstagramStoryCancelledProps): void {
+    this.capture(ANALYTICS_EVENTS.INSTAGRAM_STORY_CANCELLED, {...props});
+  }
+  trackInstagramStoryFailed(props: InstagramStoryFailedProps): void {
+    this.capture(ANALYTICS_EVENTS.INSTAGRAM_STORY_FAILED, {...props});
+  }
+  trackInstagramStorySaved(props: InstagramStorySavedProps): void {
+    this.capture(ANALYTICS_EVENTS.INSTAGRAM_STORY_SAVED, {...props});
+  }
 }
 
 export const analyticsService = new AnalyticsServiceImpl();

@@ -28,6 +28,13 @@ export const ANALYTICS_EVENTS = {
   SHARE_CREATED: 'share_created',
   SEARCH_PERFORMED: 'search_performed',
   TRANSLATION_VIEWED: 'translation_viewed',
+  // Instagram Story sharing
+  INSTAGRAM_STORY_OPENED: 'instagram_story_opened',
+  INSTAGRAM_STORY_TEMPLATE_SWITCHED: 'instagram_story_template_switched',
+  INSTAGRAM_STORY_SHARE: 'instagram_story_share',
+  INSTAGRAM_STORY_CANCELLED: 'instagram_story_cancelled',
+  INSTAGRAM_STORY_FAILED: 'instagram_story_failed',
+  INSTAGRAM_STORY_SAVED: 'instagram_story_saved',
   // Lifecycle
   APP_OPENED: 'app_opened',
   APP_BACKGROUNDED: 'app_backgrounded',
@@ -181,4 +188,35 @@ export interface TranslationViewedProps {
 export interface AppBackgroundedProps {
   session_duration_ms: number;
   total_listen_ms: number;
+}
+
+export interface InstagramStoryOpenedProps {
+  verse_range: string;
+}
+
+export interface InstagramStoryTemplateSwitchedProps {
+  from: string;
+  to: string;
+}
+
+export interface InstagramStoryShareProps {
+  template: string;
+  translation_shown: boolean;
+  content_type: 'verse';
+  surah_id: number;
+  verse_range: string;
+}
+
+export interface InstagramStoryCancelledProps {
+  template: string;
+}
+
+export interface InstagramStoryFailedProps {
+  template: string;
+  reason: 'not-installed' | 'render-failed' | 'share-error' | 'cancelled';
+}
+
+export interface InstagramStorySavedProps {
+  template: string;
+  translation_shown: boolean;
 }
