@@ -12,8 +12,11 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
+import {
+  SurahGradientMesh,
+  paletteForSurah,
+} from '@/components/hero/SurahGradientMesh';
 import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
 import {Ionicons, Feather} from '@expo/vector-icons';
 import Animated, {
@@ -161,12 +164,10 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     onPress();
   };
 
-  const gradientColors = React.useMemo((): [string, string] => {
-    const baseColor = Color(color);
-    const gradientStart = baseColor.alpha(0.15).toString();
-    const gradientEnd = baseColor.alpha(0.05).toString();
-    return [gradientStart, gradientEnd];
-  }, [color]);
+  // Match the surah hero's gradient-mesh treatment so card and hero
+  // share the same visual vocabulary. Palette rotates deterministically
+  // per surah id, so a card always shows the same colors.
+  const meshPalette = React.useMemo(() => paletteForSurah(id), [id]);
   const styles = StyleSheet.create({
     container: {
       width: moderateScale(120),
@@ -329,11 +330,11 @@ export const SurahCard: React.FC<SurahCardProps> = ({
 
   const cardContent = (
     <>
-      <LinearGradient
-        colors={gradientColors as [string, string]}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={StyleSheet.absoluteFill}
+      <SurahGradientMesh
+        palette={meshPalette}
+        isDark={theme.isDarkMode}
+        viewBoxWidth={120}
+        viewBoxHeight={120}
       />
       <View style={styles.placeIcon}>
         {revelationPlace.toLowerCase() === 'makkah' ? (
