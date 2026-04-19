@@ -12,6 +12,7 @@ import {Feather} from '@expo/vector-icons';
 import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
 import {useCanvasRef} from '@shopify/react-native-skia';
 import * as Burnt from 'burnt';
+import * as MediaLibrary from 'expo-media-library';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {verseShareUrl} from '@/utils/shareUtils';
@@ -177,16 +178,50 @@ export const InstagramStoryModal = (
     translationEnabled,
   ]);
 
-  const previewWidth = Math.min(
-    moderateScale(260),
-    screenWidth - moderateScale(48),
-  );
-
   const tooLong = useMemo(() => {
     if (!ctx) return false;
     const {height} = template.getStickerDimensions(ctx);
     return height > MAX_STICKER_HEIGHT;
   }, [ctx, template, MAX_STICKER_HEIGHT]);
+
+  const handleSaveToPhotos = useCallback(async (): Promise<void> => {
+    if (!ctx || captureLocked || isSharing || tooLong) return;
+    mediumHaptics();
+    try {
+      const {status} = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Burnt.toast({title: 'Photos permission denied', preset: 'error'});
+        return;
+      }
+      const {backgroundUri} = await captureStoryImages({
+        backgroundRef: bgRef,
+        stickerRef,
+      });
+      await MediaLibrary.saveToLibraryAsync(backgroundUri);
+      Burnt.toast({title: 'Saved to Photos', preset: 'done'});
+      analyticsService.trackInstagramStorySaved({
+        template: templateId,
+        translation_shown: translationEnabled,
+      });
+    } catch {
+      heavyHaptics();
+      Burnt.toast({title: 'Couldn’t save image', preset: 'error'});
+    }
+  }, [
+    ctx,
+    captureLocked,
+    isSharing,
+    tooLong,
+    bgRef,
+    stickerRef,
+    templateId,
+    translationEnabled,
+  ]);
+
+  const previewWidth = Math.min(
+    moderateScale(260),
+    screenWidth - moderateScale(48),
+  );
 
   return (
     <ActionSheet
@@ -237,24 +272,39 @@ export const InstagramStoryModal = (
             </Text>
           )}
 
-          <Pressable
-            style={[
-              styles.shareBtn,
-              (captureLocked || isSharing || tooLong) && styles.shareBtnDisabled,
-            ]}
-            onPress={handleShare}
-            disabled={captureLocked || isSharing || tooLong}
-            accessibilityRole="button"
-            accessibilityLabel="Share to Instagram Story">
-            {isSharing ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Feather name="instagram" size={18} color="#fff" />
-                <Text style={styles.shareBtnText}>Share to Story</Text>
-              </>
-            )}
-          </Pressable>
+          <View style={styles.shareRow}>
+            <Pressable
+              style={[
+                styles.shareBtn,
+                (captureLocked || isSharing || tooLong) &&
+                  styles.shareBtnDisabled,
+              ]}
+              onPress={handleShare}
+              disabled={captureLocked || isSharing || tooLong}
+              accessibilityRole="button"
+              accessibilityLabel="Share to Instagram Story">
+              {isSharing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Feather name="instagram" size={18} color="#fff" />
+                  <Text style={styles.shareBtnText}>Share to Story</Text>
+                </>
+              )}
+            </Pressable>
+            <Pressable
+              style={[
+                styles.saveBtn,
+                (captureLocked || isSharing || tooLong) &&
+                  styles.shareBtnDisabled,
+              ]}
+              onPress={handleSaveToPhotos}
+              disabled={captureLocked || isSharing || tooLong}
+              accessibilityRole="button"
+              accessibilityLabel="Save story image to photos">
+              <Feather name="download" size={18} color="#fff" />
+            </Pressable>
+          </View>
 
           {/* Hidden off-screen capture canvases — pre-mounted for fast capture */}
           <StoryBackgroundCanvas ref={bgRef} template={template} ctx={ctx} />
@@ -299,9 +349,14 @@ const styles = ScaledSheet.create({
     backgroundColor: '#2a3340',
   },
   toggleDotOn: {backgroundColor: '#38bdf8'},
-  shareBtn: {
+  shareRow: {
+    flexDirection: 'row',
     marginHorizontal: '16@ms',
     marginTop: '12@ms',
+    gap: '10@ms',
+  },
+  shareBtn: {
+    flex: 1,
     paddingVertical: '14@ms',
     borderRadius: '14@ms',
     flexDirection: 'row',
@@ -309,6 +364,14 @@ const styles = ScaledSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#dc2743',
+  },
+  saveBtn: {
+    width: '48@ms',
+    paddingVertical: '14@ms',
+    borderRadius: '14@ms',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2a3340',
   },
   shareBtnDisabled: {opacity: 0.5},
   shareBtnText: {color: '#fff', fontSize: '14@ms', fontWeight: '600'},

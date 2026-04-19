@@ -44,7 +44,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>696</string>
+	<string>712</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSApplicationQueriesSchemes</key>
@@ -76,11 +76,11 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app uses the microphone to play audio.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to save photos</string>
+	<string>Save Instagram Story images to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your photos</string>
 	<key>NSPrivacyPolicyURL</key>
-	<string>https://osmansaeday.github.io/bayaan-privacy-policy</string>
+	<string>https://thebayaan.com/privacy</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

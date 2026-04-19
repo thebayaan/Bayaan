@@ -278,6 +278,10 @@ class AnalyticsServiceImpl {
     template: string;
     reason: 'not-installed' | 'render-failed' | 'share-error' | 'cancelled';
   }): void {}
+  trackInstagramStorySaved(_props: {
+    template: string;
+    translation_shown: boolean;
+  }): void {}
 }
 
 export const analyticsService = new AnalyticsServiceImpl();

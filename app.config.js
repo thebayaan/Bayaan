@@ -34,6 +34,8 @@ module.exports = {
         UIRequiresFullScreen: true,
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription: 'This app does not use the camera.',
+        NSPhotoLibraryAddUsageDescription:
+          'Save Instagram Story images to your photo library.',
         LSApplicationQueriesSchemes: ['instagram-stories', 'instagram'],
         BGTaskSchedulerPermittedIdentifiers: ['com.bayaan.app.audio'],
         UIBackgroundModes: ['audio', 'remote-notification'],
