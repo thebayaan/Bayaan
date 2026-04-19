@@ -48,6 +48,10 @@ export function FocusableButton({
     ? {
         borderWidth: 3,
         borderColor: colors.focusRing,
+        shadowColor: colors.focusRing,
+        shadowOpacity: 0.55,
+        shadowRadius: 14,
+        shadowOffset: {width: 0, height: 0},
       }
     : {
         borderWidth: 3,
