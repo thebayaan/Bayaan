@@ -35,7 +35,9 @@ export function Router(): React.ReactElement {
   if (top) {
     if (top.screen === 'nowPlaying') return <NowPlayingScreen />;
     if (top.screen === 'reciterDetail')
-      return <ReciterDetailScreen reciterId={top.reciterId} />;
+      return (
+        <ReciterDetailScreen key={top.reciterId} reciterId={top.reciterId} />
+      );
     if (top.screen === 'catalogGrid') return <CatalogGridScreen />;
   }
 
