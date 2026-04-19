@@ -19,18 +19,16 @@ import {
 } from '../../../components/Icons';
 
 export function TransportRow(): React.ReactElement {
-  const {
-    status,
-    shuffle,
-    repeat,
-    speed,
-    toggle,
-    next,
-    prev,
-    seekBy,
-    setShuffle,
-    setRepeat,
-  } = useTVPlayerStore();
+  const status = useTVPlayerStore(s => s.status);
+  const shuffle = useTVPlayerStore(s => s.shuffle);
+  const repeat = useTVPlayerStore(s => s.repeat);
+  const speed = useTVPlayerStore(s => s.speed);
+  const toggle = useTVPlayerStore(s => s.toggle);
+  const next = useTVPlayerStore(s => s.next);
+  const prev = useTVPlayerStore(s => s.prev);
+  const seekBy = useTVPlayerStore(s => s.seekBy);
+  const setShuffle = useTVPlayerStore(s => s.setShuffle);
+  const setRepeat = useTVPlayerStore(s => s.setRepeat);
 
   const isPlaying = status === 'playing';
   const activeTint = colors.text;

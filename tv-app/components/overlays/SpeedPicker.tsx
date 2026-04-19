@@ -9,7 +9,8 @@ import {spacing} from '../../theme/spacing';
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export function SpeedPicker(): React.ReactElement {
-  const {speed, setSpeed} = useTVPlayerStore();
+  const speed = useTVPlayerStore(s => s.speed);
+  const setSpeed = useTVPlayerStore(s => s.setSpeed);
   const close = useOverlayStore(s => s.close);
   return (
     <View style={styles.wrap}>

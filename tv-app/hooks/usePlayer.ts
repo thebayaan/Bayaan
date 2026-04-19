@@ -1,6 +1,6 @@
 import {SURAHS} from '../../data/surahData';
 import {buildAudioUrl} from '../services/tvDataService';
-import {useTVPlayerStore, type RepeatMode} from '../store/tvPlayerStore';
+import {useTVPlayerStore} from '../store/tvPlayerStore';
 import type {QueueItem} from '../types/player';
 import type {Rewayah} from '../types/reciter';
 
@@ -23,7 +23,7 @@ function buildQueue(
     }));
 }
 
-export type UsePlayerReturn = ReturnType<typeof useTVPlayerStore> & {
+export type UsePlayerReturn = {
   playRewayah: (
     reciterId: string,
     reciterName: string,
@@ -33,7 +33,7 @@ export type UsePlayerReturn = ReturnType<typeof useTVPlayerStore> & {
 };
 
 export function usePlayer(): UsePlayerReturn {
-  const store = useTVPlayerStore();
+  const loadQueue = useTVPlayerStore(s => s.loadQueue);
 
   const playRewayah = async (
     reciterId: string,
@@ -43,8 +43,8 @@ export function usePlayer(): UsePlayerReturn {
   ): Promise<void> => {
     const queue = buildQueue(reciterId, reciterName, rewayah);
     const idx = queue.findIndex(q => q.surahNumber === startSurahNumber);
-    await store.loadQueue(queue, idx >= 0 ? idx : 0);
+    await loadQueue(queue, idx >= 0 ? idx : 0);
   };
 
-  return {...store, playRewayah};
+  return {playRewayah};
 }
