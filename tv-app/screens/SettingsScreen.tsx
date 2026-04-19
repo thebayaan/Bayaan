@@ -18,9 +18,10 @@ export function SettingsScreen(): React.ReactElement {
     <View style={styles.container}>
       <TopTabBar />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.kicker}>PROFILE</Text>
         <Text style={styles.pageTitle}>Settings</Text>
 
-        <Text style={styles.sectionLabel}>DEFAULT RECITER</Text>
+        <Text style={styles.sectionLabel}>Default Reciter</Text>
         <Text style={styles.currentValue}>
           {current?.name ?? 'Not set — pick one below'}
         </Text>
@@ -34,8 +35,16 @@ export function SettingsScreen(): React.ReactElement {
                 onPress={() => setDefaultReciter(r.id)}
                 hasTVPreferredFocus={i === 0}>
                 <View style={styles.chipInner}>
-                  {selected && <CheckIcon color={colors.text} size={16} />}
-                  <Text style={styles.chipText}>{r.name}</Text>
+                  {selected && (
+                    <CheckIcon color={colors.background} size={16} />
+                  )}
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selected && styles.chipTextActive,
+                    ]}>
+                    {r.name}
+                  </Text>
                 </View>
               </FocusableCard>
             );
@@ -43,7 +52,7 @@ export function SettingsScreen(): React.ReactElement {
         </View>
 
         <Text style={[styles.sectionLabel, {marginTop: spacing.xxl}]}>
-          ABOUT
+          About
         </Text>
         <Text style={styles.aboutText}>Bayaan TV · v0.1.0</Text>
         <Text style={styles.aboutSub}>
@@ -56,37 +65,51 @@ export function SettingsScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
-  scroll: {padding: spacing.xl, gap: 4, paddingBottom: spacing.xxl},
+  scroll: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
+    gap: 4,
+  },
+  kicker: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2.2,
+    opacity: 0.55,
+    marginBottom: 6,
+  },
   pageTitle: {
     color: colors.text,
     ...typography.title,
+    letterSpacing: -0.5,
     marginBottom: spacing.lg,
   },
   sectionLabel: {
-    color: colors.textSecondary,
-    fontSize: 14,
+    color: colors.text,
+    fontSize: 22,
     fontWeight: '700',
-    letterSpacing: 2,
-    opacity: 0.8,
-    marginBottom: 8,
+    letterSpacing: -0.3,
+    marginBottom: 10,
   },
   currentValue: {
     color: colors.text,
     fontSize: 18,
     fontWeight: '500',
     marginBottom: spacing.md,
-    opacity: 0.85,
+    opacity: 0.75,
   },
   grid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
   chip: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 22,
   },
-  chipActive: {backgroundColor: colors.surfaceElevated},
+  chipActive: {backgroundColor: colors.text},
   chipInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  chipText: {color: colors.text, fontSize: 15, fontWeight: '500'},
+  chipText: {color: colors.text, fontSize: 15, fontWeight: '600'},
+  chipTextActive: {color: colors.background},
   aboutText: {color: colors.text, fontSize: 18, fontWeight: '500'},
   aboutSub: {
     color: colors.textSecondary,

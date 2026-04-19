@@ -133,7 +133,8 @@ const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xxl,
+    gap: spacing.md,
   },
 });

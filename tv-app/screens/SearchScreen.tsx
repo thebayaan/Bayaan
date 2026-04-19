@@ -25,13 +25,15 @@ export function SearchScreen(): React.ReactElement {
     <View style={styles.container}>
       <TopTabBar />
       <View style={styles.body}>
+        <Text style={styles.kicker}>CATALOG</Text>
+        <Text style={styles.pageTitle}>Search</Text>
         <View style={styles.inputRow}>
-          <SearchIcon color={colors.textSecondary} size={28} />
+          <SearchIcon color={colors.text} size={32} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Search reciters"
-            placeholderTextColor={colors.textTertiary}
+            placeholderTextColor="rgba(255,255,255,0.35)"
             style={styles.input}
           />
         </View>
@@ -64,21 +66,36 @@ export function SearchScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
-  body: {padding: spacing.xl, gap: spacing.lg},
+  body: {paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: 6},
+  kicker: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2.2,
+    opacity: 0.55,
+  },
+  pageTitle: {
+    color: colors.text,
+    ...typography.title,
+    letterSpacing: -0.5,
+    marginBottom: spacing.md,
+  },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 16,
     borderBottomWidth: 2,
-    borderColor: colors.surface,
-    paddingVertical: 10,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 14,
+    marginBottom: spacing.md,
   },
   input: {
     flex: 1,
     color: colors.text,
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '500',
     paddingVertical: 6,
+    letterSpacing: -0.5,
   },
   emptyWrap: {paddingTop: spacing.xxl, alignItems: 'center'},
   hint: {color: colors.textSecondary, ...typography.body, opacity: 0.7},
