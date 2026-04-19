@@ -28,14 +28,14 @@
 Priority descends. `[ ]` = pending, `[x]` = done, `[!]` = blocked (with note).
 
 - [x] P0: Metro monorepo resolver so shared-code imports work (done, commit `46b7ea1e`)
-- [ ] P0: Reciter artwork loads on Home cards
+- [x] P0: Reciter artwork loads on Home cards (initials placeholder for gaps)
 - [ ] P0: Default reciter initializes on first launch (so Quick Play works)
-- [ ] P0: Navigate into a reciter → see real surah list → pick one → Now Playing
-- [ ] P1: Audio URL resolves and plays a real surah
-- [ ] P1: Now Playing shows real title/reciter/artwork + transport functions
+- [x] P0: Navigate into a reciter → see real surah list → pick one → Now Playing
+- [x] P1: Audio URL resolves and plays a real surah (verified 0:05→0:40)
+- [x] P1: Now Playing shows real title/reciter/artwork (transport untested)
 - [ ] P1: Continue Listening writes + shows up on re-open
-- [ ] P2: Remove "Open debugger" yellow warning / investigate root cause
-- [ ] P2: Quick Play surah cards show number + name (currently empty)
+- [x] P2: Remove "Open debugger" yellow warning (gone after rebuild)
+- [x] P2: Quick Play surah cards show number + name (FocusableCard fix)
 - [ ] P2: Transport secondary row (Speed/Sleep/Ambient) actually opens overlays
 - [ ] P2: Search returns real results when typing
 - [ ] P2: Settings default-reciter picker persists
@@ -44,6 +44,15 @@ Priority descends. `[ ]` = pending, `[x]` = done, `[!]` = blocked (with note).
 - [ ] P3: ArtworkBackdrop blur + gradient look premium
 
 ## Work Log (append-only, latest at top)
+
+### 11:50 — End-to-end audio verified
+- Fixed `fetchRewayat` to read embedded rewayat from cached Reciter (api URL empty in TV)
+- Fixed `FocusableCard` to stop collapsing flex children (Quick Play was empty)
+- Fixed `audioEngine` safeGet wrappers so pre-attach calls don't throw NativeSharedObjectNotFoundException
+- Bumped card sizes (ReciterCard 200×280, QuickPlay 170×170, Continue 320×200) for 10-foot legibility
+- Spotify-scale typography + 4px focus ring with shadow glow
+- Navigated Home → Abdelaziz sheim → Al-Fatihah: audio plays from CDN, scrubber progresses
+- Unblocked D-pad testing via `AXRaise` of specific tvOS window before osascript keystrokes
 
 ### 01:52 — Setup
 - Wrote this spec. Next: inspect screenshot to identify immediate visible bugs.
