@@ -7,9 +7,12 @@ type Props = {positionSeconds: number; durationSeconds: number};
 
 function fmt(t: number): string {
   if (!Number.isFinite(t) || t < 0) return '0:00';
-  const m = Math.floor(t / 60);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
   const s = Math.floor(t % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
+  const mm = String(m).padStart(h > 0 ? 2 : 1, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 export function Scrubber({
