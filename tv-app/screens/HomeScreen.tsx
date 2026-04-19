@@ -96,9 +96,7 @@ export function HomeScreen(): React.ReactElement {
   const warshReciters = useMemo(
     () =>
       reciters
-        .filter(r =>
-          r.rewayat?.some(rew => /warsh/i.test(rew.name)),
-        )
+        .filter(r => r.rewayat?.some(rew => /warsh/i.test(rew.name)))
         .slice(0, 14),
     [reciters],
   );
@@ -106,16 +104,13 @@ export function HomeScreen(): React.ReactElement {
   const qalunReciters = useMemo(
     () =>
       reciters
-        .filter(r =>
-          r.rewayat?.some(rew => /qalon|qalun/i.test(rew.name)),
-        )
+        .filter(r => r.rewayat?.some(rew => /qalon|qalun/i.test(rew.name)))
         .slice(0, 14),
     [reciters],
   );
 
   const multiRewayahReciters = useMemo(
-    () =>
-      reciters.filter(r => (r.rewayat?.length ?? 0) > 1).slice(0, 12),
+    () => reciters.filter(r => (r.rewayat?.length ?? 0) > 1).slice(0, 12),
     [reciters],
   );
 
