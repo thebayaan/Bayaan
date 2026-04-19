@@ -1,5 +1,5 @@
 import React, {useRef, useState} from 'react';
-import {Animated, Pressable, StyleProp, View, ViewStyle} from 'react-native';
+import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
 import {colors} from '../../theme/colors';
 
 type Props = {
@@ -45,11 +45,11 @@ export function FocusableCard({
         hasTVPreferredFocus={hasTVPreferredFocus}
         accessibilityLabel={accessibilityLabel}
         style={[
-          {borderRadius: 12, borderWidth: 3, borderColor: 'transparent'},
+          {borderRadius: 12, borderWidth: 3, borderColor: 'transparent', overflow: 'hidden'},
           focused && {borderColor: colors.focusRing},
           style,
         ]}>
-        <View>{children}</View>
+        {children}
       </Pressable>
     </Animated.View>
   );

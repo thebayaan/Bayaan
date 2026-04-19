@@ -67,11 +67,26 @@ export function createAudioEngine(): AudioEngine {
   const listeners = new Set<(e: EngineEvent) => void>();
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
+  function safeGet<T>(fn: () => T, fallback: T): T {
+    try {
+      return fn();
+    } catch {
+      return fallback;
+    }
+  }
+
+  function snapshot(): EngineEvent {
+    const status = safeGet<EngineStatus>(
+      () => mapPlaybackState(expoAudioService.getPlaybackState()),
+      'idle',
+    );
+    const positionSeconds = safeGet(() => expoAudioService.getCurrentTime(), 0);
+    const durationSeconds = safeGet(() => expoAudioService.getDuration(), 0);
+    return {status, positionSeconds, durationSeconds};
+  }
+
   function emit(): void {
-    const status = mapPlaybackState(expoAudioService.getPlaybackState());
-    const positionSeconds = expoAudioService.getCurrentTime();
-    const durationSeconds = expoAudioService.getDuration();
-    const event: EngineEvent = {status, positionSeconds, durationSeconds};
+    const event = snapshot();
     listeners.forEach(cb => cb(event));
   }
 
@@ -90,7 +105,10 @@ export function createAudioEngine(): AudioEngine {
   // Listen to ExpoAudioService state changes (play/pause/error transitions)
   const removeStateListener = expoAudioService.addStateListener(() => {
     emit();
-    const current = mapPlaybackState(expoAudioService.getPlaybackState());
+    const current = safeGet<EngineStatus>(
+      () => mapPlaybackState(expoAudioService.getPlaybackState()),
+      'idle',
+    );
     if (current === 'playing') {
       startPolling();
     } else {
@@ -123,11 +141,7 @@ export function createAudioEngine(): AudioEngine {
 
     subscribe: (cb: (e: EngineEvent) => void): (() => void) => {
       listeners.add(cb);
-      // Emit current state immediately so subscriber gets initial snapshot
-      const status = mapPlaybackState(expoAudioService.getPlaybackState());
-      const positionSeconds = expoAudioService.getCurrentTime();
-      const durationSeconds = expoAudioService.getDuration();
-      cb({status, positionSeconds, durationSeconds});
+      cb(snapshot());
 
       return (): void => {
         listeners.delete(cb);
