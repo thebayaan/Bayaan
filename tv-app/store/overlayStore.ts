@@ -1,7 +1,7 @@
 // tv-app/store/overlayStore.ts
 import {create} from 'zustand';
 
-export type OverlayKey = 'speed' | 'sleep' | 'ambient' | null;
+export type OverlayKey = 'speed' | 'sleep' | 'ambient' | 'queue' | null;
 
 type State = {
   active: OverlayKey;

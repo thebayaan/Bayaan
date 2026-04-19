@@ -5,6 +5,7 @@ import {useOverlayStore} from '../../store/overlayStore';
 import {SpeedPicker} from '../overlays/SpeedPicker';
 import {SleepTimer} from '../overlays/SleepTimer';
 import {AmbientPicker} from '../overlays/AmbientPicker';
+import {QueueOverlay} from '../overlays/QueueOverlay';
 
 export function SecondaryOverlay(): React.ReactElement | null {
   const active = useOverlayStore(s => s.active);
@@ -14,6 +15,7 @@ export function SecondaryOverlay(): React.ReactElement | null {
       {active === 'speed' && <SpeedPicker />}
       {active === 'sleep' && <SleepTimer />}
       {active === 'ambient' && <AmbientPicker />}
+      {active === 'queue' && <QueueOverlay />}
     </View>
   );
 }

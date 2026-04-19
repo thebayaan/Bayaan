@@ -10,6 +10,7 @@ import {
   PauseIcon,
   PlayIcon,
   PreviousIcon,
+  QueueIcon,
   RepeatAllIcon,
   RepeatOneIcon,
   SeekBackward15Icon,
@@ -43,6 +44,12 @@ export function TransportRow(): React.ReactElement {
           <Text style={styles.sText}>{speed}x</Text>
         </FocusableButton>
         <SleepTimerButton />
+        <FocusableButton
+          onPress={() => useOverlayStore.getState().open('queue')}
+          style={styles.sBtn}
+          accessibilityLabel="Queue">
+          <QueueIcon color={colors.text} size={20} />
+        </FocusableButton>
       </View>
       <View style={styles.row}>
         <FocusableButton

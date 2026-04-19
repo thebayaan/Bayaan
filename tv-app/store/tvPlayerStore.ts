@@ -38,6 +38,7 @@ type TVPlayerState = {
   setRepeat: (mode: RepeatMode) => void;
   setSleep: (minutes: number) => void;
   retry: () => Promise<void>;
+  jumpToIndex: (index: number) => Promise<void>;
   reset: () => void;
 };
 
@@ -199,6 +200,24 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
     set({status: 'loading', lastError: null});
     try {
       await engine.load(queue[currentIndex].audioUrl);
+      await engine.play();
+    } catch (err) {
+      set({status: 'error', lastError: describeError(err)});
+    }
+  },
+
+  jumpToIndex: async (index: number): Promise<void> => {
+    const {engine, queue, currentIndex} = get();
+    if (!engine || queue.length === 0) return;
+    if (index < 0 || index >= queue.length) return;
+    if (index === currentIndex) {
+      engine.seek(0);
+      void engine.play();
+      return;
+    }
+    set({currentIndex: index, status: 'loading', lastError: null});
+    try {
+      await engine.load(queue[index].audioUrl);
       await engine.play();
     } catch (err) {
       set({status: 'error', lastError: describeError(err)});
