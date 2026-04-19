@@ -57,12 +57,16 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
         positionSeconds: e.positionSeconds,
         durationSeconds: e.durationSeconds,
       });
-      if (
+      const ended =
         e.status === 'idle' &&
         current.status === 'playing' &&
         current.positionSeconds > 0 &&
-        e.positionSeconds >= e.durationSeconds - 0.5
-      ) {
+        e.positionSeconds >= e.durationSeconds - 0.5;
+      if (!ended) return;
+      if (current.repeat === 'one') {
+        engine.seek(0);
+        void engine.play();
+      } else {
         void get().next();
       }
     });
@@ -89,14 +93,21 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   },
 
   next: async (): Promise<void> => {
-    const {engine, queue, currentIndex, repeat} = get();
+    const {engine, queue, currentIndex, repeat, shuffle} = get();
     if (!engine || queue.length === 0) return;
-    let nextIndex = currentIndex + 1;
-    if (nextIndex >= queue.length) {
-      if (repeat === 'all') {
-        nextIndex = 0;
-      } else {
-        return;
+    let nextIndex: number;
+    if (shuffle && queue.length > 1) {
+      do {
+        nextIndex = Math.floor(Math.random() * queue.length);
+      } while (nextIndex === currentIndex);
+    } else {
+      nextIndex = currentIndex + 1;
+      if (nextIndex >= queue.length) {
+        if (repeat === 'all') {
+          nextIndex = 0;
+        } else {
+          return;
+        }
       }
     }
     set({currentIndex: nextIndex, status: 'loading'});
@@ -105,13 +116,20 @@ export const useTVPlayerStore = create<TVPlayerState>((set, get) => ({
   },
 
   prev: async (): Promise<void> => {
-    const {engine, queue, currentIndex, positionSeconds} = get();
+    const {engine, queue, currentIndex, positionSeconds, shuffle} = get();
     if (!engine || queue.length === 0) return;
     if (positionSeconds > 3) {
       engine.seek(0);
       return;
     }
-    const prevIndex = Math.max(0, currentIndex - 1);
+    let prevIndex: number;
+    if (shuffle && queue.length > 1) {
+      do {
+        prevIndex = Math.floor(Math.random() * queue.length);
+      } while (prevIndex === currentIndex);
+    } else {
+      prevIndex = Math.max(0, currentIndex - 1);
+    }
     set({currentIndex: prevIndex, status: 'loading'});
     await engine.load(queue[prevIndex].audioUrl);
     await engine.play();
