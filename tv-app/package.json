@@ -10,6 +10,7 @@
     "tvos": "EXPO_TV=1 expo run:ios --device \"Apple TV 4K (3rd generation)\""
   },
   "dependencies": {
+    "@shopify/flash-list": "^2.3.1",
     "expo": "~55.0.4",
     "expo-audio": "~55.0.8",
     "expo-image": "~3.0.5",
