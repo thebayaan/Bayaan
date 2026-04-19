@@ -35,6 +35,9 @@ export function SearchScreen(): React.ReactElement {
             placeholder="Search reciters"
             placeholderTextColor="rgba(255,255,255,0.35)"
             style={styles.input}
+            autoCorrect={false}
+            autoCapitalize="none"
+            hasTVPreferredFocus
           />
         </View>
         {filtered.length > 0 ? (
@@ -42,14 +45,13 @@ export function SearchScreen(): React.ReactElement {
             title={`${filtered.length} ${
               filtered.length === 1 ? 'reciter' : 'reciters'
             }`}>
-            {filtered.map((r, i) => (
+            {filtered.map(r => (
               <ReciterCard
                 key={r.id}
                 reciter={r}
                 onSelect={() =>
                   push({screen: 'reciterDetail', reciterId: r.id})
                 }
-                hasTVPreferredFocus={i === 0}
               />
             ))}
           </Rail>
