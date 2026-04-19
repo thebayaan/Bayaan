@@ -1,6 +1,7 @@
 import React, {useEffect} from 'react';
 import {StatusBar} from 'expo-status-bar';
 import {LogBox, StyleSheet, View} from 'react-native';
+import {ErrorBoundary} from './components/ErrorBoundary';
 import {Router} from './components/nav/Router';
 import {TVAudioProvider} from './components/providers/TVAudioProvider';
 import {createAudioEngine} from './services/audioEngine';
@@ -20,9 +21,11 @@ export default function App(): React.ReactElement {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <TVAudioProvider>
-        <Router />
-      </TVAudioProvider>
+      <ErrorBoundary>
+        <TVAudioProvider>
+          <Router />
+        </TVAudioProvider>
+      </ErrorBoundary>
     </View>
   );
 }
