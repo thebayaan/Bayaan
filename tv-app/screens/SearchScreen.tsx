@@ -38,7 +38,10 @@ export function SearchScreen(): React.ReactElement {
           />
         </View>
         {filtered.length > 0 ? (
-          <Rail title={`${filtered.length} reciters`}>
+          <Rail
+            title={`${filtered.length} ${
+              filtered.length === 1 ? 'reciter' : 'reciters'
+            }`}>
             {filtered.map((r, i) => (
               <ReciterCard
                 key={r.id}

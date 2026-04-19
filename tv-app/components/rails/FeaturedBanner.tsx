@@ -39,7 +39,7 @@ export function FeaturedBanner({
       <View style={styles.scrimLeft} />
       <View style={styles.scrimBottom} />
       <View style={styles.inner}>
-        <Text style={styles.kicker}>SPOTLIGHT · FEATURED</Text>
+        <Text style={styles.kicker}>FEATURED RECITER</Text>
         <Text style={styles.title} numberOfLines={2}>
           {reciter.name}
         </Text>
