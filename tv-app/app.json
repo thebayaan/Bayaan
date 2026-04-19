@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "tv-smoke",
+    "slug": "tv-smoke",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.bayaan.tvsmoke"
+    },
+    "android": {
+      "package": "com.bayaan.tvsmoke",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      [
+        "@react-native-tvos/config-tv",
+        {
+          "isTV": true,
+          "tvosDeploymentTarget": "17.0",
+          "removeFlipperOnAndroid": true
+        }
+      ],
+      ["expo-audio", { "enableBackgroundPlayback": true }]
+    ]
+  }
+}

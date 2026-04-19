@@ -1,0 +1,32 @@
+{
+  "name": "tv-smoke",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "prebuild:tv": "EXPO_TV=1 expo prebuild --clean",
+    "tvos": "EXPO_TV=1 expo run:ios --device \"Apple TV 4K (3rd generation)\""
+  },
+  "dependencies": {
+    "expo": "~55.0.4",
+    "expo-audio": "~55.0.8",
+    "expo-image": "~3.0.5",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.2.0",
+    "react-native": "npm:react-native-tvos@0.83.2-0",
+    "react-native-mmkv": "^4.3.1"
+  },
+  "devDependencies": {
+    "@react-native-tvos/config-tv": "^0.1.6",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
+    "@types/react": "~19.1.0",
+    "jest": "^30.3.0",
+    "jest-expo": "^55.0.16",
+    "ts-jest": "^29.4.9",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
