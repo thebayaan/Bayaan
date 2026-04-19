@@ -93,6 +93,32 @@ export function HomeScreen(): React.ReactElement {
     return featured ?? reciters.find(r => r.image_url) ?? reciters[0] ?? null;
   }, [reciters]);
 
+  const warshReciters = useMemo(
+    () =>
+      reciters
+        .filter(r =>
+          r.rewayat?.some(rew => /warsh/i.test(rew.name)),
+        )
+        .slice(0, 14),
+    [reciters],
+  );
+
+  const qalunReciters = useMemo(
+    () =>
+      reciters
+        .filter(r =>
+          r.rewayat?.some(rew => /qalon|qalun/i.test(rew.name)),
+        )
+        .slice(0, 14),
+    [reciters],
+  );
+
+  const multiRewayahReciters = useMemo(
+    () =>
+      reciters.filter(r => (r.rewayat?.length ?? 0) > 1).slice(0, 12),
+    [reciters],
+  );
+
   async function handleReciterSelect(reciter: Reciter): Promise<void> {
     push({screen: 'reciterDetail', reciterId: reciter.id});
   }
@@ -195,6 +221,42 @@ export function HomeScreen(): React.ReactElement {
         {featuredReciters.length > 0 && (
           <Rail title="Featured Reciters">
             {featuredReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+          </Rail>
+        )}
+
+        {warshReciters.length >= 5 && (
+          <Rail title="Warsh A'n Nafi'">
+            {warshReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+          </Rail>
+        )}
+
+        {qalunReciters.length >= 5 && (
+          <Rail title="Qalun A'n Nafi'">
+            {qalunReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+          </Rail>
+        )}
+
+        {multiRewayahReciters.length >= 5 && (
+          <Rail title="Multiple Rewayat">
+            {multiRewayahReciters.map(r => (
               <ReciterCard
                 key={r.id}
                 reciter={r}
