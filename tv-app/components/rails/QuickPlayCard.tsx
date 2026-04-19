@@ -31,8 +31,8 @@ export function QuickPlayCard({
 }
 
 const styles = StyleSheet.create({
-  card: {width: 120, height: 120, backgroundColor: colors.surface},
-  inner: {flex: 1, padding: 12, justifyContent: 'space-between'},
-  num: {color: colors.text, fontSize: 36, fontWeight: '300', opacity: 0.5},
-  name: {color: colors.text, ...typography.caption},
+  card: {width: 170, height: 170, backgroundColor: colors.surface},
+  inner: {flex: 1, padding: 18, justifyContent: 'space-between'},
+  num: {color: colors.text, fontSize: 56, fontWeight: '200', opacity: 0.6},
+  name: {color: colors.text, fontSize: 16, fontWeight: '600'},
 });

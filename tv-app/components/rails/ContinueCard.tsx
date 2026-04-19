@@ -65,21 +65,21 @@ export function ContinueCard({
 
 const styles = StyleSheet.create({
   card: {
-    width: 220,
-    height: 140,
+    width: 320,
+    height: 200,
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
   img: {...StyleSheet.absoluteFillObject},
-  scrim: {backgroundColor: 'rgba(0,0,0,0.45)'},
-  meta: {position: 'absolute', left: 10, right: 10, bottom: 10},
-  title: {color: colors.text, ...typography.caption, fontWeight: '700'},
-  sub: {color: colors.text, fontSize: 11, opacity: 0.75, marginTop: 2},
+  scrim: {backgroundColor: 'rgba(0,0,0,0.5)'},
+  meta: {position: 'absolute', left: 16, right: 16, bottom: 14},
+  title: {color: colors.text, fontSize: 18, fontWeight: '700'},
+  sub: {color: colors.text, fontSize: 13, opacity: 0.8, marginTop: 3},
   track: {
-    marginTop: 6,
-    height: 2,
+    marginTop: 10,
+    height: 3,
     backgroundColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 1,
+    borderRadius: 2,
   },
-  fill: {height: '100%', backgroundColor: colors.text, borderRadius: 1},
+  fill: {height: '100%', backgroundColor: colors.text, borderRadius: 2},
 });

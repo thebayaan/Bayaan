@@ -32,7 +32,11 @@ export function ReciterCard({
             cachePolicy="memory-disk"
           />
         ) : (
-          <View style={styles.placeholder} />
+          <View style={styles.placeholder}>
+            <Text style={styles.initial}>
+              {reciter.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
         )}
       </View>
       <Text style={styles.name} numberOfLines={2}>
@@ -42,8 +46,8 @@ export function ReciterCard({
   );
 }
 
-const CARD_WIDTH = 140;
-const CARD_HEIGHT = 180;
+const CARD_WIDTH = 200;
+const CARD_HEIGHT = 280;
 
 const styles = StyleSheet.create({
   card: {
@@ -54,6 +58,18 @@ const styles = StyleSheet.create({
   },
   artwork: {flex: 1, backgroundColor: colors.surfaceElevated},
   img: {width: '100%', height: '100%'},
-  placeholder: {flex: 1, backgroundColor: colors.surfaceElevated},
-  name: {color: colors.text, ...typography.caption, padding: 10},
+  placeholder: {
+    flex: 1,
+    backgroundColor: colors.surfaceElevated,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  initial: {color: colors.text, fontSize: 64, fontWeight: '300', opacity: 0.4},
+  name: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
 });

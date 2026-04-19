@@ -8,8 +8,8 @@ type Props = {onSelect: () => void; height?: number; width?: number};
 
 export function SeeAllCard({
   onSelect,
-  height = 180,
-  width = 140,
+  height = 280,
+  width = 200,
 }: Props): React.ReactElement {
   return (
     <FocusableCard

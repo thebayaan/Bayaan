@@ -45,8 +45,19 @@ export function FocusableCard({
         hasTVPreferredFocus={hasTVPreferredFocus}
         accessibilityLabel={accessibilityLabel}
         style={[
-          {borderRadius: 12, borderWidth: 3, borderColor: 'transparent', overflow: 'hidden'},
-          focused && {borderColor: colors.focusRing},
+          {
+            borderRadius: 12,
+            borderWidth: 4,
+            borderColor: 'transparent',
+            overflow: 'hidden',
+          },
+          focused && {
+            borderColor: colors.focusRing,
+            shadowColor: colors.focusRing,
+            shadowOpacity: 0.6,
+            shadowRadius: 18,
+            shadowOffset: {width: 0, height: 0},
+          },
           style,
         ]}>
         {children}

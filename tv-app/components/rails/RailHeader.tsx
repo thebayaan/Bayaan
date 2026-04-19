@@ -12,7 +12,11 @@ export function RailHeader({title}: Props): React.ReactElement {
 const styles = StyleSheet.create({
   label: {
     color: colors.textSecondary,
-    ...typography.label,
-    marginBottom: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 14,
+    opacity: 0.85,
   },
 });
