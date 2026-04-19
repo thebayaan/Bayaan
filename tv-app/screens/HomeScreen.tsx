@@ -1,22 +1,139 @@
-import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import React, {useMemo} from 'react';
+import {ScrollView, StyleSheet, View} from 'react-native';
+import {TopTabBar} from '../components/nav/TopTabBar';
+import {Rail} from '../components/rails/Rail';
+import {ReciterCard} from '../components/rails/ReciterCard';
+import {ContinueCard} from '../components/rails/ContinueCard';
+import {QuickPlayCard} from '../components/rails/QuickPlayCard';
+import {SeeAllCard} from '../components/rails/SeeAllCard';
+import {useReciters} from '../hooks/useReciters';
+import {useContinueListening} from '../hooks/useContinueListening';
+import {useDefaultReciter} from '../hooks/useDefaultReciter';
+import {usePlayer} from '../hooks/usePlayer';
+import {useNavStore} from '../store/navStore';
+import {fetchRewayat} from '../services/tvDataService';
+import type {Reciter} from '../types/reciter';
+import type {ContinueEntry} from '../services/continueListeningStore';
+import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
-import {typography} from '../theme/typography';
+import {spacing} from '../theme/spacing';
+
+const QUICK_PLAY_SURAHS = [1, 18, 67, 55, 36, 112];
+
+type SurahMeta = {id: number; name: string};
 
 export function HomeScreen(): React.ReactElement {
+  const {reciters} = useReciters();
+  const continueEntries = useContinueListening();
+  const {defaultReciterId} = useDefaultReciter();
+  const {playRewayah} = usePlayer();
+  const push = useNavStore(s => s.push);
+
+  const surahByNumber = useMemo(() => {
+    const map = new Map<number, string>();
+    (SURAHS as SurahMeta[]).forEach(s => map.set(s.id, s.name));
+    return map;
+  }, []);
+
+  const reciterById = useMemo(() => {
+    const map = new Map<string, Reciter>();
+    reciters.forEach(r => map.set(r.id, r));
+    return map;
+  }, [reciters]);
+
+  const featured = reciters.slice(0, 8);
+  const all = reciters.slice(0, 12);
+
+  async function handleReciterSelect(reciter: Reciter): Promise<void> {
+    push({screen: 'reciterDetail', reciterId: reciter.id});
+  }
+
+  async function handleContinueSelect(entry: ContinueEntry): Promise<void> {
+    const reciter = reciterById.get(entry.reciterId);
+    if (!reciter) return;
+    const rewayat = await fetchRewayat(entry.reciterId);
+    const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
+    if (!rewayah) return;
+    await playRewayah(reciter.id, reciter.name, rewayah, entry.surahNumber);
+    push({screen: 'nowPlaying'});
+  }
+
+  async function handleQuickPlay(surahNumber: number): Promise<void> {
+    if (!defaultReciterId) return;
+    const reciter = reciterById.get(defaultReciterId);
+    if (!reciter) return;
+    const rewayat = await fetchRewayat(defaultReciterId);
+    const rewayah = rewayat[0];
+    if (!rewayah) return;
+    await playRewayah(reciter.id, reciter.name, rewayah, surahNumber);
+    push({screen: 'nowPlaying'});
+  }
+
+  const hasContinue = continueEntries.length > 0;
+
   return (
-    <View style={styles.c}>
-      <Text style={styles.t}>HomeScreen</Text>
+    <View style={styles.container}>
+      <TopTabBar />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {hasContinue && (
+          <Rail title="Continue Listening">
+            {continueEntries.map((e, i) => (
+              <ContinueCard
+                key={`${e.reciterId}:${e.surahNumber}`}
+                entry={e}
+                reciter={reciterById.get(e.reciterId) ?? null}
+                surahName={
+                  surahByNumber.get(e.surahNumber) ?? `Surah ${e.surahNumber}`
+                }
+                onSelect={handleContinueSelect}
+                hasTVPreferredFocus={i === 0}
+              />
+            ))}
+          </Rail>
+        )}
+
+        <Rail title="Featured Reciters">
+          {featured.map((r, i) => (
+            <ReciterCard
+              key={r.id}
+              reciter={r}
+              onSelect={handleReciterSelect}
+              hasTVPreferredFocus={!hasContinue && i === 0}
+            />
+          ))}
+        </Rail>
+
+        <Rail title="All Reciters">
+          {all.map(r => (
+            <ReciterCard
+              key={r.id}
+              reciter={r}
+              onSelect={handleReciterSelect}
+            />
+          ))}
+          <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
+        </Rail>
+
+        <Rail title="Quick Play">
+          {QUICK_PLAY_SURAHS.map(n => (
+            <QuickPlayCard
+              key={n}
+              surahNumber={n}
+              surahName={surahByNumber.get(n) ?? `Surah ${n}`}
+              onSelect={handleQuickPlay}
+            />
+          ))}
+        </Rail>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  c: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
+  container: {flex: 1, backgroundColor: colors.background},
+  scroll: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
   },
-  t: {color: colors.text, ...typography.heading},
 });
