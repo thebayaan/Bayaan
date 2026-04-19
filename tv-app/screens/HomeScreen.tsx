@@ -11,6 +11,7 @@ import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
 import {useFavorites} from '../hooks/useFavorites';
+import {useRecentlyPlayed} from '../hooks/useRecentlyPlayed';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import {fetchRewayat} from '../services/tvDataService';
@@ -36,6 +37,7 @@ export function HomeScreen(): React.ReactElement {
   const {reciters} = useReciters();
   const continueEntries = useContinueListening();
   const favorites = useFavorites();
+  const recent = useRecentlyPlayed();
   const {defaultReciterId} = useDefaultReciter();
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
@@ -52,9 +54,6 @@ export function HomeScreen(): React.ReactElement {
     return map;
   }, [reciters]);
 
-  const spotlight = reciters[0] ?? null;
-  const featured = reciters.slice(1, 9);
-  const all = reciters.slice(0, 12);
   const favoriteReciters = useMemo(
     () =>
       favorites
@@ -62,6 +61,37 @@ export function HomeScreen(): React.ReactElement {
         .filter((r): r is Reciter => !!r),
     [favorites, reciterById],
   );
+
+  const recentReciters = useMemo(
+    () =>
+      recent
+        .map(e => reciterById.get(e.reciterId))
+        .filter((r): r is Reciter => !!r)
+        .slice(0, 10),
+    [recent, reciterById],
+  );
+
+  const featuredReciters = useMemo(
+    () => reciters.filter(r => r.is_featured).slice(0, 10),
+    [reciters],
+  );
+
+  const excludeIds = useMemo(() => {
+    const set = new Set<string>();
+    favorites.forEach(f => set.add(f.reciterId));
+    recent.forEach(r => set.add(r.reciterId));
+    return set;
+  }, [favorites, recent]);
+
+  const discoverReciters = useMemo(
+    () => reciters.filter(r => !excludeIds.has(r.id)).slice(0, 12),
+    [reciters, excludeIds],
+  );
+
+  const spotlight = useMemo(() => {
+    const featured = reciters.find(r => r.is_featured && r.image_url);
+    return featured ?? reciters.find(r => r.image_url) ?? reciters[0] ?? null;
+  }, [reciters]);
 
   async function handleReciterSelect(reciter: Reciter): Promise<void> {
     push({screen: 'reciterDetail', reciterId: reciter.id});
@@ -125,6 +155,18 @@ export function HomeScreen(): React.ReactElement {
           </Rail>
         )}
 
+        {recentReciters.length > 0 && (
+          <Rail title="Jump Back In">
+            {recentReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+          </Rail>
+        )}
+
         {favoriteReciters.length > 0 && (
           <Rail title="Your Favorites">
             {favoriteReciters.map(r => (
@@ -134,31 +176,6 @@ export function HomeScreen(): React.ReactElement {
                 onSelect={handleReciterSelect}
               />
             ))}
-          </Rail>
-        )}
-
-        {featured.length > 0 && (
-          <Rail title="Featured Reciters">
-            {featured.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
-
-        {all.length > 0 && (
-          <Rail title="All Reciters">
-            {all.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-            <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
           </Rail>
         )}
 
@@ -172,6 +189,31 @@ export function HomeScreen(): React.ReactElement {
                 onSelect={handleQuickPlay}
               />
             ))}
+          </Rail>
+        )}
+
+        {featuredReciters.length > 0 && (
+          <Rail title="Featured Reciters">
+            {featuredReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+          </Rail>
+        )}
+
+        {discoverReciters.length > 0 && (
+          <Rail title="Discover">
+            {discoverReciters.map(r => (
+              <ReciterCard
+                key={r.id}
+                reciter={r}
+                onSelect={handleReciterSelect}
+              />
+            ))}
+            <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
           </Rail>
         )}
       </ScrollView>
