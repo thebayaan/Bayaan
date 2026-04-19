@@ -39,9 +39,11 @@ export async function fetchReciters(opts?: {
     if (cached) return cached;
   }
 
-  const enabled = await isBackendEnabled();
+  const enabled = API_URL ? await isBackendEnabled() : false;
   if (!enabled) {
-    return fallbackReciters as Reciter[];
+    const data = fallbackReciters as Reciter[];
+    writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
+    return data;
   }
 
   try {
@@ -55,16 +57,31 @@ export async function fetchReciters(opts?: {
   } catch {
     const cached = getCachedReciters();
     if (cached) return cached;
-    return fallbackReciters as Reciter[];
+    const data = fallbackReciters as Reciter[];
+    writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
+    return data;
   }
 }
 
 export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
   const key = `${SERVERS_KEY}_${reciterId}`;
   const cached = readJSON<Cached<Rewayah[]>>(key);
-  if (cached && cached.version === DATA_VERSION) return cached.data;
+  if (cached && cached.version === DATA_VERSION && cached.data.length > 0) {
+    return cached.data;
+  }
 
-  if (!API_URL) return [];
+  const embedded = getCachedReciters()?.find(r => r.id === reciterId)?.rewayat;
+  if (embedded && embedded.length > 0) {
+    writeJSON<Cached<Rewayah[]>>(key, {version: DATA_VERSION, data: embedded});
+    return embedded;
+  }
+
+  if (!API_URL) {
+    const fromFallback = (fallbackReciters as Reciter[]).find(
+      r => r.id === reciterId,
+    )?.rewayat;
+    return fromFallback ?? [];
+  }
   try {
     const res = await fetch(`${API_URL}/reciters/${reciterId}/rewayat`, {
       headers: API_KEY ? {Authorization: `Bearer ${API_KEY}`} : {},
