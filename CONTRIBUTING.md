@@ -66,6 +66,8 @@ cp .env.example .env
 
 The app works out of the box with bundled reciter data — no API key required for most development work. Leave `EXPO_PUBLIC_BAYAAN_API_KEY` blank and the app will use the fallback data under `data/reciters-fallback.json`.
 
+The bundled fallback ships **224 reciters sourced from public CDNs** (`mp3quran.net`, `quranicaudio.com`). It is a curated subset of the full catalogue — reciters that were only available via private hosts (R2, Supabase) are excluded, and reciter images are omitted. Live verse-sync timestamps are also unavailable for fallback reciters. This is intentional: forks can build and demo without depending on the maintainer's infrastructure.
+
 If you are working on a feature that needs the live reciter catalogue, timestamp service, or other backend-only data, request a rate-limited **community key** by opening an issue titled "Community API key request". Then set:
 
 ```
