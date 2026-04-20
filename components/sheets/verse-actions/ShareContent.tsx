@@ -92,8 +92,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
 
   const previewWidth = screenWidth - moderateScale(48);
   const captureLogicalWidth = 1080 / PixelRatio.get();

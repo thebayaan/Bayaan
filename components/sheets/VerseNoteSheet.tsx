@@ -95,9 +95,8 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const handleDelete = useCallback(async () => {
     if (!noteId) return;
     await verseAnnotationService.deleteNoteById(noteId);
-    const remaining = await verseAnnotationService.getNotesCountForVerse(
-      verseKey,
-    );
+    const remaining =
+      await verseAnnotationService.getNotesCountForVerse(verseKey);
     if (remaining === 0) {
       useVerseAnnotationsStore.getState().removeNote(verseKey);
     }

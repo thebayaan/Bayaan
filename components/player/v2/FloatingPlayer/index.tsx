@@ -121,7 +121,10 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
           {isLoadingNewTrack ? (
             <LoadingIndicator color={theme.colors.text} />
           ) : playbackState === 'playing' ? (
-            <PauseIcon color={theme.colors.text} size={moderateScale(20, 0.2)} />
+            <PauseIcon
+              color={theme.colors.text}
+              size={moderateScale(20, 0.2)}
+            />
           ) : (
             <PlayIcon color={theme.colors.text} size={moderateScale(20, 0.2)} />
           )}

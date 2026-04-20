@@ -1,11 +1,12 @@
-import React, {useEffect, useCallback, useRef, useState, useMemo, useLayoutEffect} from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Dimensions,
-  ViewToken,
-} from 'react-native';
+import React, {
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  useMemo,
+  useLayoutEffect,
+} from 'react';
+import {View, Text, FlatList, Dimensions, ViewToken} from 'react-native';
 import {useLocalSearchParams, useRouter, useNavigation} from 'expo-router';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
@@ -263,7 +264,11 @@ const SavedDhikrReaderScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.listContainer, {paddingTop: headerHeight, paddingBottom: insets.bottom}]}>
+      <View
+        style={[
+          styles.listContainer,
+          {paddingTop: headerHeight, paddingBottom: insets.bottom},
+        ]}>
         <FlatList
           ref={flatListRef}
           data={adhkarList}

@@ -76,8 +76,8 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
 
   // Preview width (sheet padding = 16*2, small inset = 8*2)
   const previewWidth = screenWidth - moderateScale(48);

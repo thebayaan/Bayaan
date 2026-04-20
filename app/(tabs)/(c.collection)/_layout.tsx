@@ -6,19 +6,18 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 export default function CollectionLayout() {
   const {theme} = useTheme();
 
-  const collectionScreenOptions =
-    USE_GLASS
-      ? {
-          headerShown: true,
-          headerTransparent: true,
-          headerStyle: {backgroundColor: 'transparent'},
-          headerShadowVisible: false,
-          headerTitle: '',
-          headerBackTitle: ' ',
-          headerBackButtonDisplayMode: 'minimal' as const,
-          headerTintColor: theme.colors.text,
-        }
-      : undefined;
+  const collectionScreenOptions = USE_GLASS
+    ? {
+        headerShown: true,
+        headerTransparent: true,
+        headerStyle: {backgroundColor: 'transparent'},
+        headerShadowVisible: false,
+        headerTitle: '',
+        headerBackTitle: ' ',
+        headerBackButtonDisplayMode: 'minimal' as const,
+        headerTintColor: theme.colors.text,
+      }
+    : undefined;
 
   return (
     <Stack
@@ -28,11 +27,7 @@ export default function CollectionLayout() {
       }}>
       <Stack.Screen
         name="index"
-        options={
-          USE_GLASS
-            ? {title: '', headerBackTitle: ' '}
-            : undefined
-        }
+        options={USE_GLASS ? {title: '', headerBackTitle: ' '} : undefined}
       />
       <Stack.Screen
         name="reciter/[id]"
@@ -51,10 +46,7 @@ export default function CollectionLayout() {
             : {headerShown: false}),
         }}
       />
-      <Stack.Screen
-        name="collection/loved"
-        options={collectionScreenOptions}
-      />
+      <Stack.Screen name="collection/loved" options={collectionScreenOptions} />
       <Stack.Screen
         name="collection/favorite-reciters"
         options={collectionScreenOptions}
@@ -75,18 +67,12 @@ export default function CollectionLayout() {
         name="collection/bookmarks"
         options={collectionScreenOptions}
       />
-      <Stack.Screen
-        name="collection/notes"
-        options={collectionScreenOptions}
-      />
+      <Stack.Screen name="collection/notes" options={collectionScreenOptions} />
       <Stack.Screen
         name="collection/reciter-downloads/[reciterId]"
         options={collectionScreenOptions}
       />
-      <Stack.Screen
-        name="playlist/[id]"
-        options={collectionScreenOptions}
-      />
+      <Stack.Screen name="playlist/[id]" options={collectionScreenOptions} />
     </Stack>
   );
 }
