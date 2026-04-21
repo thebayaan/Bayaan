@@ -763,9 +763,7 @@ const LovedScreen = () => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       />
-      {!USE_GLASS && (
-        <CollectionStickyHeader title="Loved" scrollY={scrollY} />
-      )}
+      {!USE_GLASS && <CollectionStickyHeader title="Loved" scrollY={scrollY} />}
     </View>
   );
 };

@@ -148,15 +148,12 @@ export default function CollectionScreen() {
         style={styles.content}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior={
-          USE_GLASS ? 'automatic' : 'never'
-        }
+        contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          paddingTop:
-            USE_GLASS
-              ? moderateScale(16)
-              : insets.top + moderateScale(16),
+          paddingTop: USE_GLASS
+            ? moderateScale(16)
+            : insets.top + moderateScale(16),
         }}>
         {/* Add to Collection Bar */}
         <Pressable style={styles.addBar} onPress={handleAddPress}>

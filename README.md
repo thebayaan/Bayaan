@@ -4,10 +4,10 @@
 
 Bayaan lets you listen to Quran recitations from 200+ reciters with background audio support, a full Uthmani Mushaf, Adhkar, offline downloads, playlists, and ambient sounds.
 
-[React Native](https://reactnative.dev)
-[Expo](https://expo.dev)
-[TypeScript](https://www.typescriptlang.org)
-[License](LICENSE)
+[![React Native](https://img.shields.io/badge/React_Native-0.83-61DAFB?logo=react)](https://reactnative.dev)
+[![Expo](https://img.shields.io/badge/Expo_SDK-55-000020?logo=expo)](https://expo.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript)](https://www.typescriptlang.org)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 
 ---
 
@@ -31,19 +31,23 @@ Bayaan lets you listen to Quran recitations from 200+ reciters with background a
 ## Tech Stack
 
 
-| Layer            | Technology                          |
-| ---------------- | ----------------------------------- |
-| Framework        | React Native 0.83 + Expo SDK 55     |
-| Navigation       | Expo Router v4 (file-based)         |
-| Audio            | expo-audio with background playback |
-| Mushaf rendering | @shopify/react-native-skia          |
-| State management | Zustand                             |
-| Database         | expo-sqlite                         |
-| Fast storage     | react-native-mmkv                   |
-| Lists            | @shopify/flash-list                 |
-| Animations       | react-native-reanimated 4           |
-| Images           | expo-image                          |
-| Backend          | Supabase + custom REST API          |
+| Layer                  | Technology                                                |
+| ---------------------- | --------------------------------------------------------- |
+| Runtime                | React 19 + React Native 0.83 + Expo SDK 55                |
+| Language               | TypeScript 5.9 (strict)                                   |
+| Navigation             | Expo Router (file-based, v55)                             |
+| Audio                  | expo-audio with background playback                       |
+| Mushaf rendering       | @shopify/react-native-skia 2.2 (Digital Khatt)            |
+| State management       | Zustand                                                   |
+| Local database         | expo-sqlite (SQLite + FTS5)                               |
+| Fast key-value storage | react-native-mmkv                                         |
+| Lists                  | @shopify/flash-list                                       |
+| Animations             | react-native-reanimated 4 + react-native-worklets         |
+| Images                 | expo-image                                                |
+| Search                 | fuse.js (client-side fuzzy search)                        |
+| i18n                   | react-i18next with RTL support                            |
+| Backend (optional)     | Bayaan REST API (Hono/Bun on Railway); Supabase is legacy |
+| Observability (opt-in) | Sentry + PostHog (both disabled when env keys absent)     |
 
 
 ---
@@ -84,10 +88,11 @@ For a full architecture walkthrough see [docs/architecture/current-state.md](doc
 
 ### Prerequisites
 
-- Node.js 18+
-- [Expo CLI](https://docs.expo.dev/get-started/installation/): `npm install -g expo-cli`
-- For iOS: macOS with Xcode 15+
-- For Android: Android Studio with an emulator
+- Node.js 20+
+- For iOS: macOS with Xcode 15+ and Ruby (for CocoaPods, ships with macOS)
+- For Android: Android Studio with an emulator, JDK 17+
+
+Expo CLI is bundled with the project — invoke it via `npx expo` rather than installing globally.
 
 ### Install
 
@@ -103,12 +108,7 @@ npm install
 cp .env.example .env
 ```
 
-Open `.env` and set your API key. For local development, use the **community key** (see [CONTRIBUTING.md](CONTRIBUTING.md#api-key-for-development) or ask in a pinned GitHub issue):
-
-```
-EXPO_PUBLIC_BAYAAN_API_URL=https://api.thebayaan.com
-EXPO_PUBLIC_BAYAAN_API_KEY=<community key>
-```
+The app runs out of the box with bundled reciter data — no keys required. See [CONTRIBUTING.md](CONTRIBUTING.md#environment-variables) for the full list of optional variables (backend API, analytics, Sentry, deep links, OTA updates).
 
 ### Run
 
@@ -191,7 +191,7 @@ In plain English:
 - You are free to use, study, modify, and redistribute this code.
 - If you run a modified version as a network service, you must make your modified source code available to users of that service.
 - Any fork or derivative must be licensed under AGPL-3.0-or-later as well.
-- "Bayaan" and the Bayaan logo are trademarks and are **not** licensed under AGPL. Forks must rebrand before distribution. See [TRADEMARKS.md](TRADEMARKS.md) once published.
+- "Bayaan" and the Bayaan logo are trademarks and are **not** licensed under AGPL. Forks must rebrand before distribution. See [TRADEMARKS.md](TRADEMARKS.md) for details.
 
 See [LICENSE](LICENSE) for the full terms.
 

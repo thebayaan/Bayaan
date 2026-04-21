@@ -1,12 +1,5 @@
 import React, {useMemo, useCallback} from 'react';
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  Text,
-  ScrollView,
-
-} from 'react-native';
+import {View, StyleSheet, Pressable, Text, ScrollView} from 'react-native';
 import {Link} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -318,10 +311,9 @@ export const ExploreView = React.memo(
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop:
-                USE_GLASS
-                  ? insets.top + moderateScale(16)
-                  : moderateScale(16),
+              paddingTop: USE_GLASS
+                ? insets.top + moderateScale(16)
+                : moderateScale(16),
               paddingHorizontal: horizontalPadding,
               paddingBottom: bottomInset,
             },

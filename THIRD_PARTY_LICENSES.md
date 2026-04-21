@@ -6,6 +6,7 @@ along with their licenses.
 
 Additional licensing:
 - **Fonts:** See attribution below.
+- **Adhkar content & audio:** See attribution below.
 - **iOS/Android native dependencies:** See `ios/Podfile.lock` and
   `android/app/build.gradle` for the full list. All are MIT / Apache-2.0 / BSD.
 
@@ -40,7 +41,22 @@ Additional licensing:
 - **Manrope** — Apache-2.0 (https://github.com/sharanda/manrope)
 - **Scheherazade New** — SIL Open Font License 1.1 (https://software.sil.org/scheherazade/)
 - **UthmanicHafs** / **Uthmani** — King Fahd Glorious Qur’an Printing Complex (used with permission)
+- **Digital Khatt** (`data/mushaf/digitalkhatt/DigitalKhattFont.otf`) — SIL Open Font License 1.1, © Amine Anane and contributors (https://github.com/DigitalKhatt/DigitalKhatt). The companion SQLite layout/word databases (`digital-khatt-*.db`, `dk_words_*.db`) and diff JSON files in the same directory are derivative works generated from the Digital Khatt project and are distributed under the same license.
 - **surah_names / surah_names_2** — Custom glyphs bundled with this project
+
+## Adhkar content & audio
+
+The Arabic adhkar text, English translations, and accompanying MP3 recitations
+bundled in `assets/audio/adhkar/` and referenced in `data/adhkar.json` are
+sourced from **Hisn al-Muslim** (https://www.hisnmuslim.com) — the compilation
+"Fortress of the Muslim" by Sa'id bin Ali bin Wahf al-Qahtani. Audio recitations
+are from the publicly available HisnMuslim archive. Bayaan redistributes this
+content for non-commercial Islamic use and attributes the source here and in
+the app's About screen.
+
+If you are the content owner and have concerns about redistribution, please
+open an issue at https://github.com/thebayaan/Bayaan/issues so we can address
+it promptly.
 
 ## npm production dependencies
 

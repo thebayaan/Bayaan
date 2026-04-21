@@ -44,27 +44,46 @@ Copy the example file:
 cp .env.example .env
 ```
 
+`.env.example` documents every variable with inline context. The table below is the quick reference:
 
-| Variable                     | Required | Description                                                    |
-| ---------------------------- | -------- | -------------------------------------------------------------- |
-| `EXPO_PUBLIC_BAYAAN_API_URL` | Yes      | Bayaan backend base URL                                        |
-| `EXPO_PUBLIC_BAYAAN_API_KEY` | Yes      | API key for reciter data, timestamps, etc.                     |
-| `SUPABASE_URL`               | No       | Legacy — only needed if working on Supabase-dependent features |
-| `SUPABASE_ANON_KEY`          | No       | Legacy — same as above                                         |
+| Variable                          | Required | Description                                                                        |
+| --------------------------------- | -------- | ---------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_BAYAAN_API_URL`      | No       | Bayaan backend base URL. Blank = bundled reciter data only (no API calls).         |
+| `EXPO_PUBLIC_BAYAAN_API_KEY`      | No       | API key for reciter data, timestamps, etc. Blank = bundled data.                   |
+| `EXPO_PUBLIC_KILLSWITCH_URL`      | No       | Backend-disable check on launch. Blank = skipped (no network call on start).       |
+| `APPLE_TEAM_ID`                   | iOS      | Apple Developer Team ID for code signing. Required to build iOS for a device.     |
+| `EXPO_PUBLIC_EAS_PROJECT_ID`      | OTA      | EAS project UUID. Blank = OTA updates disabled (no phone-home on launch).          |
+| `EXPO_PUBLIC_ASSOCIATED_DOMAIN`   | No       | Universal-link / deep-link host. Blank = no deep-link registration.                |
+| `EXPO_PUBLIC_PRIVACY_POLICY_URL`  | Submit   | Shown in the app and required by App Store / Play Store submissions.               |
+| `EXPO_PUBLIC_POSTHOG_API_KEY`     | No       | PostHog analytics. Blank = analytics disabled.                                     |
+| `EXPO_PUBLIC_SENTRY_DSN`          | No       | Sentry crash reporting. Blank = Sentry skipped entirely, including build plugin.   |
+| `EXPO_PUBLIC_ANALYTICS_ENABLED`   | No       | `false` to disable all analytics/crash reporting. Defaults to enabled.             |
+| `SUPABASE_URL`                    | No       | Legacy — only needed if working on Supabase-dependent features.                    |
+| `SUPABASE_ANON_KEY`               | No       | Legacy — same as above.                                                            |
 
 
 ### API key for development
 
-The official app uses a private key. For contributors, use the **community key** which has its own rate limit but is sufficient for building and testing:
+The app works out of the box with bundled reciter data — no API key required for most development work. Leave `EXPO_PUBLIC_BAYAAN_API_KEY` blank and the app will use the fallback data under `data/reciters-fallback.json`.
+
+The bundled fallback ships **224 reciters sourced from public CDNs** (`mp3quran.net`, `quranicaudio.com`). It is a curated subset of the full catalogue — reciters that were only available via private hosts (R2, Supabase) are excluded, and reciter images are omitted. Live verse-sync timestamps are also unavailable for fallback reciters. This is intentional: forks can build and demo without depending on the maintainer's infrastructure.
+
+If you are working on a feature that needs the live reciter catalogue, timestamp service, or other backend-only data, request a rate-limited **community key** by opening an issue titled "Community API key request". Then set:
 
 ```
 EXPO_PUBLIC_BAYAAN_API_URL=https://api.thebayaan.com
 EXPO_PUBLIC_BAYAAN_API_KEY=<community key>
 ```
 
-Get the community key from the pinned issue or pinned discussion on GitHub. If you cannot find it, open an issue asking for access.
+### Running your own fork
 
-If no key is set, the app will start but the reciter list will be empty because all reciter and audio data comes from the API.
+The app is designed to run with zero setup against bundled data. To run your own fork against your own infrastructure:
+
+1. **Apple / iOS signing** — set `APPLE_TEAM_ID` to your own Apple Developer Team ID, then run `npx expo prebuild --clean` to regenerate the Xcode project with your team baked in.
+2. **EAS Build / OTA** — create your own EAS project (`eas init`), then set `EXPO_PUBLIC_EAS_PROJECT_ID` to the UUID. Leaving this blank disables OTA entirely so your users don't phone home anywhere.
+3. **Deep links** — set `EXPO_PUBLIC_ASSOCIATED_DOMAIN` to a domain you control and host the corresponding `.well-known/apple-app-site-association` / `assetlinks.json`. Leave blank to skip deep-link registration.
+4. **Privacy policy** — `EXPO_PUBLIC_PRIVACY_POLICY_URL` must point at a page you publish before submitting to either store.
+5. **Bundle identifier** — rename `com.bayaan.app` in `app.config.js` and `android/app/build.gradle` to something you own.
 
 ---
 
@@ -99,6 +118,25 @@ npm run version:patch      # Bump patch version (1.0.0 → 1.0.1)
 npm run version:minor      # Bump minor version (1.0.0 → 1.1.0)
 npm run version:major      # Bump major version (1.0.0 → 2.0.0)
 ```
+
+### How versioning works (for forks)
+
+The version displayed in `app.config.js` is derived at build time by `scripts/generate-version.js` from Git metadata:
+
+- **Semantic version** = the latest `v*.*.*` Git tag reachable from HEAD (falls back to `package.json.version`, then `1.0.0`)
+- **Build number / Android `versionCode`** = `git rev-list --count HEAD` (total commit count, overridable via the `BUILD_NUMBER` env var for CI)
+- **Git hash & branch** = embedded for in-app diagnostics
+
+**If you are forking the repo**, be aware:
+
+1. Cloning inherits the full tag history, so your first build will show the last upstream version (e.g. `2.1.2`). To start your own version line:
+   ```bash
+   git tag -l 'v*' | xargs git tag -d   # remove upstream tags locally
+   git tag v1.0.0                       # or whatever starting version makes sense
+   ```
+2. `npm run version:patch/minor/major` computes the next version from the current tag and creates a new `vX.Y.Z` tag. It does **not** push — run `git push origin vX.Y.Z` when you're ready.
+3. Your Android `versionCode` will diverge from upstream because your commit count differs. That's fine for a separate Play Store listing; just don't try to upload to the same store listing as upstream.
+4. Shallow CI clones (the default for `actions/checkout@v4`) may miss tags; pass `fetch-depth: 0` or set the `BUILD_NUMBER` env var to get deterministic values.
 
 ---
 

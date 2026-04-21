@@ -713,8 +713,8 @@ export default function MushafViewer({
           backgroundColor: isVertical
             ? readingColors.background
             : isBookLayout
-            ? edgeBg
-            : readingColors.card,
+              ? edgeBg
+              : readingColors.card,
         },
       ]}>
       {/* Content area: horizontal FlatList or vertical continuous view */}

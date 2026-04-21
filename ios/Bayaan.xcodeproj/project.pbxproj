@@ -7,38 +7,38 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		11242F104D0FDF1974DF5FEF /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51DCBA0F6D3D5D464E0EF521 /* ExpoModulesProvider.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		238CEB7FE7EF4E9FB205B79C /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = CE5A766E74D8474891181D9E /* ShareExtensionPreprocessor.js */; };
+		2C0A630403A24FB2A5669D42 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6235A4512F954221BAEE5FB2 /* PrivacyInfo.xcprivacy */; };
+		312DFCD785436BF4D45D2765 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6235A4512F954221BAEE5FB2 /* PrivacyInfo.xcprivacy */; };
+		36B30B98690E4614A5D19161 /* ShareExtensionPreprocessor.js in Resources */ = {isa = PBXBuildFile; fileRef = 3CA97EA8BD334900BD5A7EDF /* ShareExtensionPreprocessor.js */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		467E13AF496A4DA9A570B6F8 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3CD3FF912D3249D6A60C92F2 /* MainInterface.storyboard */; };
-		5247EF04C5A14DD495C0E76A /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = 706797E30A024C459FC4D76E /* ShareExtension.appex */; };
-		6D71D968BC5D3BA64262BB41 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E848DFDA485E4071B6F2BAD1 /* PrivacyInfo.xcprivacy */; };
-		AEA8F096C6074E95A99E4765 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3388EA08D249218F382E31 /* ShareViewController.swift */; };
-		B28731218959089DC39FFFE9 /* libPods-Bayaan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C51E28C49D1B4DD6834D32F /* libPods-Bayaan.a */; };
+		473D2E9A88E349F88BC9D616 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FED6E047654E9BA298F99C /* ShareViewController.swift */; };
+		A3E8964AF81A43F1BEEB97E5 /* ShareExtension.appex in Copy Files */ = {isa = PBXBuildFile; fileRef = B674B1E3AFD9412DBA105D80 /* ShareExtension.appex */; };
+		AC391543B38968CC9FD1DA0F /* libPods-Bayaan.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D2761034759DDE2471699C0C /* libPods-Bayaan.a */; };
+		BB170965D90948F5AE38A5B1 /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 08676E8EA490481A84A5E811 /* MainInterface.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		ED8BA6987FDF4000B48550D7 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E848DFDA485E4071B6F2BAD1 /* PrivacyInfo.xcprivacy */; };
+		EBCCAF53388426B59365802A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A80EB146942F9EBA147653E /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		06A1EBEC5D3E485EA6343D8F /* PBXContainerItemProxy */ = {
+		DE6CDC817A4B4EFD829B60C8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 11D37DD38A314E38A78CFFCA;
+			remoteGlobalIDString = 63B7AD14D53E40DDBCBDDCFB;
 			remoteInfo = ShareExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		FA7834BF163041339986ECE5 /* Copy Files */ = {
+		3355BF13824D4BD48273BA57 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				5247EF04C5A14DD495C0E76A /* ShareExtension.appex in Copy Files */,
+				A3E8964AF81A43F1BEEB97E5 /* ShareExtension.appex in Copy Files */,
 			);
 			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -46,25 +46,25 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0C2DC29F953243A0BD616B35 /* ShareExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtension.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		08676E8EA490481A84A5E811 /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* Bayaan.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bayaan.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Bayaan/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Bayaan/Info.plist; sourceTree = "<group>"; };
-		3C3388EA08D249218F382E31 /* ShareViewController.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareViewController.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
-		3CD3FF912D3249D6A60C92F2 /* MainInterface.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = MainInterface.storyboard; path = MainInterface.storyboard; sourceTree = "<group>"; };
-		4C51E28C49D1B4DD6834D32F /* libPods-Bayaan.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Bayaan.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		51DCBA0F6D3D5D464E0EF521 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Bayaan/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		706797E30A024C459FC4D76E /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ShareExtension.appex; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A80EB146942F9EBA147653E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Bayaan/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		3CA97EA8BD334900BD5A7EDF /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtensionPreprocessor.js; path = ShareExtensionPreprocessor.js; sourceTree = "<group>"; };
+		452A863BBDF94B81A15693EF /* ShareExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
+		6235A4512F954221BAEE5FB2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		76FB5558E40F32C9BD282821 /* Pods-Bayaan.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.release.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.release.xcconfig"; sourceTree = "<group>"; };
+		7D3463C1A2A64387BE58A214 /* ShareExtension.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtension.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
+		91FED6E047654E9BA298F99C /* ShareViewController.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ShareViewController.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Bayaan/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B14EA119CD6C9B617725094A /* Pods-Bayaan.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.release.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.release.xcconfig"; sourceTree = "<group>"; };
+		B674B1E3AFD9412DBA105D80 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ShareExtension.appex; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C404E336A39D400A9DBFA624 /* ShareExtension-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "ShareExtension-Info.plist"; path = "ShareExtension-Info.plist"; sourceTree = "<group>"; };
-		CE5A766E74D8474891181D9E /* ShareExtensionPreprocessor.js */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ShareExtensionPreprocessor.js; path = ShareExtensionPreprocessor.js; sourceTree = "<group>"; };
-		DB46675F7D70FA473047532F /* Pods-Bayaan.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.debug.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.debug.xcconfig"; sourceTree = "<group>"; };
-		E848DFDA485E4071B6F2BAD1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = PrivacyInfo.xcprivacy; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		D2761034759DDE2471699C0C /* libPods-Bayaan.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Bayaan.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Bayaan/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Bayaan-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Bayaan-Bridging-Header.h"; path = "Bayaan/Bayaan-Bridging-Header.h"; sourceTree = "<group>"; };
+		FA31D73A80470CE01CAD8763 /* Pods-Bayaan.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.debug.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,11 +72,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B28731218959089DC39FFFE9 /* libPods-Bayaan.a in Frameworks */,
+				AC391543B38968CC9FD1DA0F /* libPods-Bayaan.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		84BB8D05A1624772AC7B6FBE /* Frameworks */ = {
+		5DBFED2F39F6454E892889EA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -86,6 +86,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0822B67F93AE242A7D6397F2 /* Bayaan */ = {
+			isa = PBXGroup;
+			children = (
+				1A80EB146942F9EBA147653E /* ExpoModulesProvider.swift */,
+			);
+			name = Bayaan;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* Bayaan */ = {
 			isa = PBXGroup;
 			children = (
@@ -99,20 +107,28 @@
 			name = Bayaan;
 			sourceTree = "<group>";
 		};
+		2CAF4EB815DA4E5598FB085C /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				0822B67F93AE242A7D6397F2 /* Bayaan */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				4C51E28C49D1B4DD6834D32F /* libPods-Bayaan.a */,
+				D2761034759DDE2471699C0C /* libPods-Bayaan.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		439ADFE3CEED74691427F9E3 /* Pods */ = {
+		6A4A6CC8F0BD530D8A61F4B0 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				DB46675F7D70FA473047532F /* Pods-Bayaan.debug.xcconfig */,
-				B14EA119CD6C9B617725094A /* Pods-Bayaan.release.xcconfig */,
+				FA31D73A80470CE01CAD8763 /* Pods-Bayaan.debug.xcconfig */,
+				76FB5558E40F32C9BD282821 /* Pods-Bayaan.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
@@ -132,9 +148,9 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				8AC0D700800F4F569D42F0F6 /* ShareExtension */,
-				439ADFE3CEED74691427F9E3 /* Pods */,
-				AD93256E81A175F5C27C1075 /* ExpoModulesProviders */,
+				C0E7835B38B34313B4134894 /* ShareExtension */,
+				6A4A6CC8F0BD530D8A61F4B0 /* Pods */,
+				2CAF4EB815DA4E5598FB085C /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -145,39 +161,9 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* Bayaan.app */,
-				706797E30A024C459FC4D76E /* ShareExtension.appex */,
+				B674B1E3AFD9412DBA105D80 /* ShareExtension.appex */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		8AC0D700800F4F569D42F0F6 /* ShareExtension */ = {
-			isa = PBXGroup;
-			children = (
-				3C3388EA08D249218F382E31 /* ShareViewController.swift */,
-				3CD3FF912D3249D6A60C92F2 /* MainInterface.storyboard */,
-				CE5A766E74D8474891181D9E /* ShareExtensionPreprocessor.js */,
-				E848DFDA485E4071B6F2BAD1 /* PrivacyInfo.xcprivacy */,
-				C404E336A39D400A9DBFA624 /* ShareExtension-Info.plist */,
-				0C2DC29F953243A0BD616B35 /* ShareExtension.entitlements */,
-			);
-			name = ShareExtension;
-			path = ShareExtension;
-			sourceTree = "<group>";
-		};
-		AD93256E81A175F5C27C1075 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				B6FB48CA90236F20EA6E6857 /* Bayaan */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		B6FB48CA90236F20EA6E6857 /* Bayaan */ = {
-			isa = PBXGroup;
-			children = (
-				51DCBA0F6D3D5D464E0EF521 /* ExpoModulesProvider.swift */,
-			);
-			name = Bayaan;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -189,16 +175,56 @@
 			path = Bayaan/Supporting;
 			sourceTree = "<group>";
 		};
+		C0E7835B38B34313B4134894 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				91FED6E047654E9BA298F99C /* ShareViewController.swift */,
+				08676E8EA490481A84A5E811 /* MainInterface.storyboard */,
+				3CA97EA8BD334900BD5A7EDF /* ShareExtensionPreprocessor.js */,
+				6235A4512F954221BAEE5FB2 /* PrivacyInfo.xcprivacy */,
+				452A863BBDF94B81A15693EF /* ShareExtension-Info.plist */,
+				7D3463C1A2A64387BE58A214 /* ShareExtension.entitlements */,
+			);
+			name = ShareExtension;
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		11D37DD38A314E38A78CFFCA /* ShareExtension */ = {
+		13B07F861A680F5B00A75B9A /* Bayaan */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 2545C44F097E424BB22107AF /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Bayaan" */;
 			buildPhases = (
-				259AAFA7B2BB44FBAE5E1880 /* Sources */,
-				FF81335396EB4BE998711465 /* Resources */,
-				84BB8D05A1624772AC7B6FBE /* Frameworks */,
+				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				15C7479892B8D29546D8FC7C /* [Expo] Configure project */,
+				13B07F871A680F5B00A75B9A /* Sources */,
+				13B07F8C1A680F5B00A75B9A /* Frameworks */,
+				13B07F8E1A680F5B00A75B9A /* Resources */,
+				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
+				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
+				538CC7A950A14AC48D73479C /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
+				26E5B019E0CA4DA48C16E51C /* Upload Debug Symbols to Sentry */,
+				3355BF13824D4BD48273BA57 /* Copy Files */,
+				2F753FD4817565513DB9FA30 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2E948DFE50604DE4A4549D5E /* PBXTargetDependency */,
+			);
+			name = Bayaan;
+			productName = Bayaan;
+			productReference = 13B07F961A680F5B00A75B9A /* Bayaan.app */;
+			productType = "com.apple.product-type.application";
+		};
+		63B7AD14D53E40DDBCBDDCFB /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7131BBEDBEFB4BE880F71B98 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				FCB646C12C14426BAC15C761 /* Sources */,
+				FE4DBC4DB00C48FAB599DED4 /* Resources */,
+				5DBFED2F39F6454E892889EA /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -206,34 +232,8 @@
 			);
 			name = ShareExtension;
 			productName = ShareExtension;
-			productReference = 706797E30A024C459FC4D76E /* ShareExtension.appex */;
+			productReference = B674B1E3AFD9412DBA105D80 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
-		};
-		13B07F861A680F5B00A75B9A /* Bayaan */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Bayaan" */;
-			buildPhases = (
-				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				D766694337E5865CA62DB815 /* [Expo] Configure project */,
-				13B07F871A680F5B00A75B9A /* Sources */,
-				13B07F8C1A680F5B00A75B9A /* Frameworks */,
-				13B07F8E1A680F5B00A75B9A /* Resources */,
-				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				2BD5DB4BC0AD4BEFA0ADF77B /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
-				2756E14C4B6842D8A79A3F45 /* Upload Debug Symbols to Sentry */,
-				FA7834BF163041339986ECE5 /* Copy Files */,
-				8B040CF5CF2C2C7AC7607DF9 /* [CP] Embed Pods Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				C3598FA5402348D992D5DBD6 /* PBXTargetDependency */,
-			);
-			name = Bayaan;
-			productName = Bayaan;
-			productReference = 13B07F961A680F5B00A75B9A /* Bayaan.app */;
-			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
@@ -263,7 +263,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* Bayaan */,
-				11D37DD38A314E38A78CFFCA /* ShareExtension */,
+				63B7AD14D53E40DDBCBDDCFB /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -276,17 +276,17 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				6D71D968BC5D3BA64262BB41 /* PrivacyInfo.xcprivacy in Resources */,
+				312DFCD785436BF4D45D2765 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FF81335396EB4BE998711465 /* Resources */ = {
+		FE4DBC4DB00C48FAB599DED4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				467E13AF496A4DA9A570B6F8 /* MainInterface.storyboard in Resources */,
-				238CEB7FE7EF4E9FB205B79C /* ShareExtensionPreprocessor.js in Resources */,
-				ED8BA6987FDF4000B48550D7 /* PrivacyInfo.xcprivacy in Resources */,
+				BB170965D90948F5AE38A5B1 /* MainInterface.storyboard in Resources */,
+				36B30B98690E4614A5D19161 /* ShareExtensionPreprocessor.js in Resources */,
+				2C0A630403A24FB2A5669D42 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -332,7 +332,31 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		2756E14C4B6842D8A79A3F45 /* Upload Debug Symbols to Sentry */ = {
+		15C7479892B8D29546D8FC7C /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/Bayaan/Bayaan.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-Bayaan/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Pods/Target Support Files/Pods-Bayaan/ExpoModulesProvider.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Bayaan/expo-configure-project.sh\"\n";
+		};
+		26E5B019E0CA4DA48C16E51C /* Upload Debug Symbols to Sentry */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -346,7 +370,29 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh `${NODE_BINARY:-node} --print \"require('path').dirname(require.resolve('@sentry/react-native/package.json')) + '/scripts/sentry-xcode-debug-files.sh'\"`";
 		};
-		2BD5DB4BC0AD4BEFA0ADF77B /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
+		2F753FD4817565513DB9FA30 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermesvm.framework/hermesvm",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		538CC7A950A14AC48D73479C /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -414,52 +460,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8B040CF5CF2C2C7AC7607DF9 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermesvm.framework/hermesvm",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermesvm.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		D766694337E5865CA62DB815 /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/Bayaan/Bayaan.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-Bayaan/expo-configure-project.sh",
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-Bayaan/ExpoModulesProvider.swift",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Bayaan/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -468,58 +468,32 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				11242F104D0FDF1974DF5FEF /* ExpoModulesProvider.swift in Sources */,
+				EBCCAF53388426B59365802A /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		259AAFA7B2BB44FBAE5E1880 /* Sources */ = {
+		FCB646C12C14426BAC15C761 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AEA8F096C6074E95A99E4765 /* ShareViewController.swift in Sources */,
+				473D2E9A88E349F88BC9D616 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		C3598FA5402348D992D5DBD6 /* PBXTargetDependency */ = {
+		2E948DFE50604DE4A4549D5E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 11D37DD38A314E38A78CFFCA /* ShareExtension */;
-			targetProxy = 06A1EBEC5D3E485EA6343D8F /* PBXContainerItemProxy */;
+			target = 63B7AD14D53E40DDBCBDDCFB /* ShareExtension */;
+			targetProxy = DE6CDC817A4B4EFD829B60C8 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		02DDFE96BA0B4360A3E56A0D /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 657;
-				DEVELOPMENT_TEAM = S4W5Q2L53W;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "ShareExtension/ShareExtension-Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 2.1.2;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.bayaan.app.share-extension";
-				PRODUCT_NAME = ShareExtension;
-				SKIP_INSTALL = YES;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = DB46675F7D70FA473047532F /* Pods-Bayaan.debug.xcconfig */;
+			baseConfigurationReference = FA31D73A80470CE01CAD8763 /* Pods-Bayaan.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -556,7 +530,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = B14EA119CD6C9B617725094A /* Pods-Bayaan.release.xcconfig */;
+			baseConfigurationReference = 76FB5558E40F32C9BD282821 /* Pods-Bayaan.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -707,13 +681,13 @@
 			};
 			name = Release;
 		};
-		AAB553A1F43E41949AED30DC /* Debug */ = {
+		A6B11B4B306442A2ABE28D21 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 657;
+				CURRENT_PROJECT_VERSION = 695;
 				DEVELOPMENT_TEAM = S4W5Q2L53W;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
@@ -737,6 +711,32 @@
 			};
 			name = Debug;
 		};
+		E916B0A154B0431E96F23963 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 695;
+				DEVELOPMENT_TEAM = S4W5Q2L53W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "ShareExtension/ShareExtension-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2.1.2;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.bayaan.app.share-extension";
+				PRODUCT_NAME = ShareExtension;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -749,11 +749,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		2545C44F097E424BB22107AF /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+		7131BBEDBEFB4BE880F71B98 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				AAB553A1F43E41949AED30DC /* Debug */,
-				02DDFE96BA0B4360A3E56A0D /* Release */,
+				A6B11B4B306442A2ABE28D21 /* Debug */,
+				E916B0A154B0431E96F23963 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
