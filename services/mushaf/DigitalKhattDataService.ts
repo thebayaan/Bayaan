@@ -126,6 +126,7 @@ export interface DKWordInfo {
 }
 
 type RewayahChangeListener = (rewayah: RewayahId) => void;
+type CacheChangeListener = () => void;
 
 class DigitalKhattDataService {
   private wordsById: Map<number, string> = new Map();
@@ -137,6 +138,12 @@ class DigitalKhattDataService {
   private verseToPage: Map<string, number> | null = null;
   private currentRewayah: RewayahId = 'hafs';
   private rewayahListeners: Set<RewayahChangeListener> = new Set();
+  // Monotonic version for reactive consumers (useRewayahWords via
+  // useSyncExternalStore). Bumped whenever the main or a side cache
+  // transitions — after initial load, after switchRewayah's loadWords,
+  // after _loadSideRewayah, after resetDatabases.
+  private cacheVersion = 0;
+  private cacheListeners: Set<CacheChangeListener> = new Set();
   // Side cache for rewayat OTHER than the currently-active mushaf rewayah.
   // Lets the player render text from a reciter's rewayah without mutating
   // currentRewayah (which the mushaf page follows). Populated lazily via
@@ -159,6 +166,23 @@ class DigitalKhattDataService {
     return () => this.rewayahListeners.delete(listener);
   }
 
+  // Bound to the instance so useSyncExternalStore receives a stable reference.
+  subscribeCacheChanges = (listener: CacheChangeListener): (() => void) => {
+    this.cacheListeners.add(listener);
+    return () => {
+      this.cacheListeners.delete(listener);
+    };
+  };
+
+  // Referentially stable snapshot getter — returns a number, so
+  // useSyncExternalStore's default shallow compare is correct.
+  getCacheVersion = (): number => this.cacheVersion;
+
+  private notifyCacheChange(): void {
+    this.cacheVersion += 1;
+    for (const cb of this.cacheListeners) cb();
+  }
+
   async initialize(): Promise<void> {
     if (this._initialized) return;
     if (this._initializing) return this._initializing;
@@ -175,6 +199,9 @@ class DigitalKhattDataService {
       await this.loadWords();
       await this.loadLayout();
       this._initialized = true;
+      // Main cache is now populated for currentRewayah — wake any subscribers
+      // (useRewayahWords) so they re-read getVerseWords.
+      this.notifyCacheChange();
     } catch (error) {
       console.error('[DigitalKhattDataService] Initialization failed:', error);
       this._initializing = null;
@@ -215,6 +242,10 @@ class DigitalKhattDataService {
         // DB may not exist yet — ignore
       }
     }
+    // Caches wiped — surface that to consumers so they don't hold onto stale
+    // word arrays. (Dev-only path; in production the service is re-initialized
+    // immediately afterwards, triggering another notify via _doInit.)
+    this.notifyCacheChange();
   }
 
   async switchRewayah(rewayah: RewayahId): Promise<void> {
@@ -239,6 +270,11 @@ class DigitalKhattDataService {
       this.pageToSurah = {};
       await this.loadLayout();
     }
+    // Main cache rebuilt + side cache for the new rewayah evicted — notify
+    // reactive consumers (useRewayahWords) before the rewayahListeners fire,
+    // since those listeners (e.g. MushafPreloadService) also react to the
+    // transition and should see a consistent cache.
+    this.notifyCacheChange();
     for (const listener of this.rewayahListeners) listener(rewayah);
   }
 
@@ -489,6 +525,11 @@ class DigitalKhattDataService {
       words.sort((a, b) => a.wordPositionInVerse - b.wordPositionInVerse);
     }
     this.sideVerseWords.set(rewayah, byVerse);
+    // Side cache for this rewayah is now ready — wake any consumer reading
+    // it (e.g. SkiaVerseText on the player screen rendering a non-mushaf
+    // rewayah). Without this, useRewayahWords would sit on a stale empty
+    // result until some unrelated render cycle pulled it back.
+    this.notifyCacheChange();
   }
 
   getPageForVerse(verseKey: string): number | undefined {

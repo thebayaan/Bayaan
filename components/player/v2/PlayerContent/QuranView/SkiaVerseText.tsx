@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useReducer} from 'react';
+import React, {useMemo} from 'react';
 import {
   Canvas,
   Paragraph,
@@ -8,11 +8,12 @@ import {
   type SkTypefaceFontProvider,
   type SkTextStyle,
 } from '@shopify/react-native-skia';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {useRewayahText} from '@/hooks/useRewayahWords';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -29,9 +30,9 @@ interface SkiaVerseTextProps {
   showTajweed: boolean;
   width: number;
   indexedTajweedData: IndexedTajweedData | null;
-  /** Render text from this rewayah's DK words DB instead of the active
-   *  mushaf one. Used by the player to show text matching the currently
-   *  playing reciter's rewayah. Ignored if `text` prop is provided. */
+  /** Rewayah the Arabic text is rendered in. If omitted, falls back to the
+   *  mushaf settings store's active rewayah. Ignored if `text` prop is
+   *  provided (which short-circuits the lookup entirely). */
   rewayah?: RewayahId;
 }
 
@@ -47,24 +48,18 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   indexedTajweedData,
   rewayah,
 }) => {
-  const [, bump] = useReducer(x => x + 1, 0);
-  useEffect(() => {
-    if (!rewayah || rewayah === digitalKhattDataService.rewayah) return;
-    let cancelled = false;
-    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(() => {
-      if (!cancelled) bump();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [rewayah]);
+  // When no explicit prop, follow the mushaf setting. This is the mushaf
+  // list-mode / preview case; the player passes an explicit prop.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const effectiveRewayah: RewayahId = rewayah ?? mushafRewayah;
 
-  const verseText = useMemo(
-    () =>
-      text ??
-      (verseKey ? digitalKhattDataService.getVerseText(verseKey, rewayah) : ''),
-    [text, verseKey, rewayah],
+  // Reactive read — re-renders when the requested rewayah's cache transitions
+  // from loading → ready. Only queried when `text` isn't provided directly.
+  const {text: resolvedText} = useRewayahText(
+    text !== undefined ? null : (verseKey ?? null),
+    effectiveRewayah,
   );
+  const verseText = text ?? resolvedText;
 
   const charToRule = useMemo(() => {
     if (!verseKey || !showTajweed || !indexedTajweedData) return null;
