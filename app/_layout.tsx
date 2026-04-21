@@ -48,6 +48,10 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {
+  refreshIosWidgets,
+  subscribePlayerToIosWidgets,
+} from '@/services/widgets/refreshIosWidgets';
 import * as Sentry from '@sentry/react-native';
 
 // Configure Reanimated logger
@@ -298,6 +302,22 @@ function RootLayout() {
 
     setupNavigationBar();
   }, [theme.colors.background, isDarkMode]);
+
+  // iOS home screen widgets (expo-widgets): ayah of the day, now playing, shortcuts
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !appIsReady || !isPlayerReady) return;
+
+    refreshIosWidgets();
+    const unsubPlayer = subscribePlayerToIosWidgets();
+    const sub = AppState.addEventListener('change', next => {
+      if (next === 'active') refreshIosWidgets();
+    });
+
+    return () => {
+      unsubPlayer();
+      sub.remove();
+    };
+  }, [appIsReady, isPlayerReady]);
 
   // Handle share intent (uploads from other apps)
   useEffect(() => {

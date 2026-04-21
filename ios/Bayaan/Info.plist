@@ -45,6 +45,10 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>695</string>
+	<key>ExpoWidgetsAppGroupIdentifier</key>
+	<string>group.com.bayaan.app</string>
+	<key>ExpoWidgets_EnablePushNotifications</key>
+	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSMinimumSystemVersion</key>
@@ -76,6 +80,10 @@
 	<string>Allow $(PRODUCT_NAME) to access your photos</string>
 	<key>NSPrivacyPolicyURL</key>
 	<string>https://thebayaan.com/privacy</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<false/>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

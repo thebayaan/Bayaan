@@ -19,6 +19,15 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		EBCCAF53388426B59365802A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A80EB146942F9EBA147653E /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		2E47EFA9ED994A099C49C15A /* NowPlaying.swift in Sources */ = {isa = PBXBuildFile; fileRef = D780BCC4111846939C4E8CB5 /* NowPlaying.swift */; };
+		331C12D725CC60F00CA969BF /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA626DF967ED72C782A26C1F /* ExpoModulesProvider.swift */; };
+		73130CD9D03C40D2B161F6E1 /* AyahOfTheDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 882C7A29C6BC47ACB31C5C3A /* AyahOfTheDay.swift */; };
+		7509202A6F354F2382BF8B39 /* index.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9AC88E12D224D43877EF807 /* index.swift */; };
+		9D2C6936C16444F0891F23A9 /* ExpoWidgetsTarget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */; };
+		A1B2C3D4E5F64A01AAAA0001 /* LastRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64A01BBBB0001 /* LastRead.swift */; };
+		A1B2C3D4E5F64A01AAAA0003 /* ListeningStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64A01BBBB0003 /* ListeningStats.swift */; };
+		A1B2C3D4E5F64A01AAAA0004 /* Favorites.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64A01BBBB0004 /* Favorites.swift */; };
+		C1F72412C1883E49DDA935A0 /* libPods-ExpoWidgetsTarget.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2CC4A66C4F9B29EB5F95F3F5 /* libPods-ExpoWidgetsTarget.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +37,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 63B7AD14D53E40DDBCBDDCFB;
 			remoteInfo = ShareExtension;
+		};
+		FEBCE89F3E4740E6BBFD5351 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78CADDCB9F9644469F6EDB8D;
+			remoteInfo = ExpoWidgetsTarget;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -41,6 +57,17 @@
 				A3E8964AF81A43F1BEEB97E5 /* ShareExtension.appex in Copy Files */,
 			);
 			name = "Copy Files";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F1B4BF45BF5148EDA0417505 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				9D2C6936C16444F0891F23A9 /* ExpoWidgetsTarget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -65,6 +92,20 @@
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Bayaan/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Bayaan-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Bayaan-Bridging-Header.h"; path = "Bayaan/Bayaan-Bridging-Header.h"; sourceTree = "<group>"; };
 		FA31D73A80470CE01CAD8763 /* Pods-Bayaan.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Bayaan.debug.xcconfig"; path = "Target Support Files/Pods-Bayaan/Pods-Bayaan.debug.xcconfig"; sourceTree = "<group>"; };
+		2B34D16D4E1D470187785220 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = ExpoWidgetsTarget.entitlements; sourceTree = "<group>"; };
+		2CC4A66C4F9B29EB5F95F3F5 /* libPods-ExpoWidgetsTarget.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ExpoWidgetsTarget.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D34C99E9D249E905B920121 /* Pods-ExpoWidgetsTarget.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.release.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.release.xcconfig"; sourceTree = "<group>"; };
+		43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = undefined; name = ExpoWidgetsTarget.appex; path = ExpoWidgetsTarget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		47A60A272A224C29AF885979 /* ExpoWidgetsTarget.entitlements */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = ExpoWidgetsTarget.entitlements; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements"; sourceTree = "<group>"; };
+		7AC382E733D64BD3B12BE8DC /* Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = Info.plist; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/Info.plist"; sourceTree = "<group>"; };
+		882C7A29C6BC47ACB31C5C3A /* AyahOfTheDay.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = AyahOfTheDay.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/AyahOfTheDay.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F64A01BBBB0001 /* LastRead.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = LastRead.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/LastRead.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F64A01BBBB0003 /* ListeningStats.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = ListeningStats.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/ListeningStats.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F64A01BBBB0004 /* Favorites.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = Favorites.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/Favorites.swift"; sourceTree = "<group>"; };
+		D780BCC4111846939C4E8CB5 /* NowPlaying.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = NowPlaying.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/NowPlaying.swift"; sourceTree = "<group>"; };
+		D9AC88E12D224D43877EF807 /* index.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = index.swift; path = "/Users/omarkhalil/Documents/Work-programming/Bayaan/ios/ExpoWidgetsTarget/index.swift"; sourceTree = "<group>"; };
+		E703A9B776164B55FFF532AE /* Pods-ExpoWidgetsTarget.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ExpoWidgetsTarget.debug.xcconfig"; path = "Target Support Files/Pods-ExpoWidgetsTarget/Pods-ExpoWidgetsTarget.debug.xcconfig"; sourceTree = "<group>"; };
+		EA626DF967ED72C782A26C1F /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-ExpoWidgetsTarget/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +121,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E5F97D47EBE941CDB1BECB22 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C1F72412C1883E49DDA935A0 /* libPods-ExpoWidgetsTarget.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,6 +160,7 @@
 			isa = PBXGroup;
 			children = (
 				0822B67F93AE242A7D6397F2 /* Bayaan */,
+				6D5425D876903F1E43BB7336 /* ExpoWidgetsTarget */,
 			);
 			name = ExpoModulesProviders;
 			sourceTree = "<group>";
@@ -120,15 +170,18 @@
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				D2761034759DDE2471699C0C /* libPods-Bayaan.a */,
+				2CC4A66C4F9B29EB5F95F3F5 /* libPods-ExpoWidgetsTarget.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		6A4A6CC8F0BD530D8A61F4B0 /* Pods */ = {
+		8C19F9A1232F973531E0A0A4 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
 				FA31D73A80470CE01CAD8763 /* Pods-Bayaan.debug.xcconfig */,
 				76FB5558E40F32C9BD282821 /* Pods-Bayaan.release.xcconfig */,
+				E703A9B776164B55FFF532AE /* Pods-ExpoWidgetsTarget.debug.xcconfig */,
+				3D34C99E9D249E905B920121 /* Pods-ExpoWidgetsTarget.release.xcconfig */,
 			);
 			name = Pods;
 			path = Pods;
@@ -149,7 +202,8 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				C0E7835B38B34313B4134894 /* ShareExtension */,
-				6A4A6CC8F0BD530D8A61F4B0 /* Pods */,
+				80324F52D6F24A808A996A97 /* ExpoWidgetsTarget */,
+				8C19F9A1232F973531E0A0A4 /* Pods */,
 				2CAF4EB815DA4E5598FB085C /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
@@ -162,6 +216,7 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* Bayaan.app */,
 				B674B1E3AFD9412DBA105D80 /* ShareExtension.appex */,
+				43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -189,6 +244,31 @@
 			path = ShareExtension;
 			sourceTree = "<group>";
 		};
+		6D5425D876903F1E43BB7336 /* ExpoWidgetsTarget */ = {
+			isa = PBXGroup;
+			children = (
+				EA626DF967ED72C782A26C1F /* ExpoModulesProvider.swift */,
+			);
+			name = ExpoWidgetsTarget;
+			sourceTree = "<group>";
+		};
+		80324F52D6F24A808A996A97 /* ExpoWidgetsTarget */ = {
+			isa = PBXGroup;
+			children = (
+				47A60A272A224C29AF885979 /* ExpoWidgetsTarget.entitlements */,
+				7AC382E733D64BD3B12BE8DC /* Info.plist */,
+				D9AC88E12D224D43877EF807 /* index.swift */,
+				882C7A29C6BC47ACB31C5C3A /* AyahOfTheDay.swift */,
+				D780BCC4111846939C4E8CB5 /* NowPlaying.swift */,
+				A1B2C3D4E5F64A01BBBB0001 /* LastRead.swift */,
+				A1B2C3D4E5F64A01BBBB0003 /* ListeningStats.swift */,
+				A1B2C3D4E5F64A01BBBB0004 /* Favorites.swift */,
+				2B34D16D4E1D470187785220 /* ExpoWidgetsTarget.entitlements */,
+			);
+			name = ExpoWidgetsTarget;
+			path = ExpoWidgetsTarget;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -206,12 +286,14 @@
 				538CC7A950A14AC48D73479C /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
 				26E5B019E0CA4DA48C16E51C /* Upload Debug Symbols to Sentry */,
 				3355BF13824D4BD48273BA57 /* Copy Files */,
+				F1B4BF45BF5148EDA0417505 /* Embed Foundation Extensions */,
 				2F753FD4817565513DB9FA30 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				2E948DFE50604DE4A4549D5E /* PBXTargetDependency */,
+				B0E77E44EC4046FFB145DCA5 /* PBXTargetDependency */,
 			);
 			name = Bayaan;
 			productName = Bayaan;
@@ -235,6 +317,25 @@
 			productReference = B674B1E3AFD9412DBA105D80 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		78CADDCB9F9644469F6EDB8D /* ExpoWidgetsTarget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A2EE7102DB3A4CF59196B2C2 /* Build configuration list for PBXNativeTarget "ExpoWidgetsTarget" */;
+			buildPhases = (
+				63D8E7FC2BBF10BF2184DF24 /* [CP] Check Pods Manifest.lock */,
+				C9D03EA27D1F5F4775D07F17 /* [Expo] Configure project */,
+				2B09B339F59541E2AE613D7B /* Sources */,
+				E5F97D47EBE941CDB1BECB22 /* Frameworks */,
+				E6F2D216495B3C47C6D1CFCD /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ExpoWidgetsTarget;
+			productName = ExpoWidgetsTarget;
+			productReference = 43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -245,6 +346,9 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						DevelopmentTeam = S4W5Q2L53W;
+						LastSwiftMigration = 1250;
+					};
+					78CADDCB9F9644469F6EDB8D = {
 						LastSwiftMigration = 1250;
 					};
 				};
@@ -264,6 +368,7 @@
 			targets = (
 				13B07F861A680F5B00A75B9A /* Bayaan */,
 				63B7AD14D53E40DDBCBDDCFB /* ShareExtension */,
+				78CADDCB9F9644469F6EDB8D /* ExpoWidgetsTarget */,
 			);
 		};
 /* End PBXProject section */
@@ -430,6 +535,7 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/Sentry/Sentry.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoWidgets/ExpoWidgets.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-menu/EXDevMenu.bundle",
 			);
@@ -452,6 +558,7 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Sentry.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoWidgets.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevMenu.bundle",
 			);
@@ -460,6 +567,97 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Bayaan/Pods-Bayaan-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		63D8E7FC2BBF10BF2184DF24 /* [CP] Check Pods Manifest.lock */,
+				C9D03EA27D1F5F4775D07F17 /* [Expo] Configure project */,
+				2B09B339F59541E2AE613D7B /* Sources */,
+				E5F97D47EBE941CDB1BECB22 /* Frameworks */,
+				E6F2D216495B3C47C6D1CFCD /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ExpoWidgetsTarget;
+			productName = ExpoWidgetsTarget;
+			productReference = 43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		83CBB9F71A601CBA00E9B192 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1130;
+				TargetAttributes = {
+					13B07F861A680F5B00A75B9A = {
+						DevelopmentTeam = S4W5Q2L53W;
+						LastSwiftMigration = 1250;
+					};
+					78CADDCB9F9644469F6EDB8D = {
+						LastSwiftMigration = 1250;
+					};
+				};
+			};
+		C9D03EA27D1F5F4775D07F17 /* [Expo] Configure project */,
+				2B09B339F59541E2AE613D7B /* Sources */,
+				E5F97D47EBE941CDB1BECB22 /* Frameworks */,
+				E6F2D216495B3C47C6D1CFCD /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ExpoWidgetsTarget;
+			productName = ExpoWidgetsTarget;
+			productReference = 43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		83CBB9F71A601CBA00E9B192 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1130;
+				TargetAttributes = {
+					13B07F861A680F5B00A75B9A = {
+						DevelopmentTeam = S4W5Q2L53W;
+						LastSwiftMigration = 1250;
+					};
+					78CADDCB9F9644469F6EDB8D = {
+						LastSwiftMigration = 1250;
+					};
+				};
+			};
+		E6F2D216495B3C47C6D1CFCD /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ExpoWidgetsTarget;
+			productName = ExpoWidgetsTarget;
+			productReference = 43474006604749FFBEDB9955 /* ExpoWidgetsTarget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		83CBB9F71A601CBA00E9B192 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1130;
+				TargetAttributes = {
+					13B07F861A680F5B00A75B9A = {
+						DevelopmentTeam = S4W5Q2L53W;
+						LastSwiftMigration = 1250;
+					};
+					78CADDCB9F9644469F6EDB8D = {
+						LastSwiftMigration = 1250;
+					};
+				};
+			};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -480,6 +678,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2B09B339F59541E2AE613D7B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7509202A6F354F2382BF8B39 /* index.swift in Sources */,
+				73130CD9D03C40D2B161F6E1 /* AyahOfTheDay.swift in Sources */,
+				2E47EFA9ED994A099C49C15A /* NowPlaying.swift in Sources */,
+				A1B2C3D4E5F64A01AAAA0001 /* LastRead.swift in Sources */,
+				A1B2C3D4E5F64A01AAAA0003 /* ListeningStats.swift in Sources */,
+				A1B2C3D4E5F64A01AAAA0004 /* Favorites.swift in Sources */,
+				331C12D725CC60F00CA969BF /* ExpoModulesProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -487,6 +699,11 @@
 			isa = PBXTargetDependency;
 			target = 63B7AD14D53E40DDBCBDDCFB /* ShareExtension */;
 			targetProxy = DE6CDC817A4B4EFD829B60C8 /* PBXContainerItemProxy */;
+		};
+		B0E77E44EC4046FFB145DCA5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78CADDCB9F9644469F6EDB8D /* ExpoWidgetsTarget */;
+			targetProxy = FEBCE89F3E4740E6BBFD5351 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -737,6 +954,50 @@
 			};
 			name = Release;
 		};
+		09A1FEA303F949B0AFD7537A /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3D34C99E9D249E905B920121 /* Pods-ExpoWidgetsTarget.release.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements;
+				CURRENT_PROJECT_VERSION = 598;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ExpoWidgetsTarget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ExpoWidgetsTarget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 2.1.1;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
+				PRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.ExpoWidgetsTarget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		5524D5D69F844CD2A7ECC64C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E703A9B776164B55FFF532AE /* Pods-ExpoWidgetsTarget.debug.xcconfig */;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements;
+				CURRENT_PROJECT_VERSION = 598;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ExpoWidgetsTarget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ExpoWidgetsTarget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 2.1.1;
+				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
+				PRODUCT_BUNDLE_IDENTIFIER = com.bayaan.app.ExpoWidgetsTarget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -763,6 +1024,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A2EE7102DB3A4CF59196B2C2 /* Build configuration list for PBXNativeTarget "ExpoWidgetsTarget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5524D5D69F844CD2A7ECC64C /* Debug */,
+				09A1FEA303F949B0AFD7537A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

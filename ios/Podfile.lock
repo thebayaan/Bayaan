@@ -227,7 +227,7 @@ PODS:
   - ExpoMediaLibrary (55.0.9):
     - ExpoModulesCore
     - React-Core
-  - ExpoModulesCore (55.0.13):
+  - ExpoModulesCore (55.0.17):
     - ExpoModulesJSI
     - hermes-engine
     - RCTRequired
@@ -252,7 +252,7 @@ PODS:
     - ReactNativeDependencies
     - RNWorklets
     - Yoga
-  - ExpoModulesJSI (55.0.13):
+  - ExpoModulesJSI (55.0.17):
     - hermes-engine
     - React-Core
     - React-runtimescheduler
@@ -276,8 +276,14 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (55.0.9):
     - ExpoModulesCore
+  - ExpoUI (55.0.5):
+    - ExpoModulesCore
+    - React-RCTFabric
   - ExpoWebBrowser (55.0.9):
     - ExpoModulesCore
+  - ExpoWidgets (55.0.7):
+    - ExpoModulesCore
+    - ExpoUI
   - EXStructuredHeaders (55.0.0)
   - EXUpdates (55.0.12):
     - EASClient
@@ -2731,7 +2737,9 @@ DEPENDENCIES:
   - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
   - ExpoSymbols (from `../node_modules/expo-symbols/ios`)
   - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
+  - "ExpoUI (from `../node_modules/@expo/ui/ios`)"
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
+  - ExpoWidgets (from `../node_modules/expo-widgets/ios`)
   - EXStructuredHeaders (from `../node_modules/expo-structured-headers/ios`)
   - EXUpdates (from `../node_modules/expo-updates/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
@@ -2925,8 +2933,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-symbols/ios"
   ExpoSystemUI:
     :path: "../node_modules/expo-system-ui/ios"
+  ExpoUI:
+    :path: "../node_modules/@expo/ui/ios"
   ExpoWebBrowser:
     :path: "../node_modules/expo-web-browser/ios"
+  ExpoWidgets:
+    :path: "../node_modules/expo-widgets/ios"
   EXStructuredHeaders:
     :path: "../node_modules/expo-structured-headers/ios"
   EXUpdates:
@@ -3149,8 +3161,8 @@ SPEC CHECKSUMS:
   ExpoLinking: 88ba36a28c83525e564b8229e02d451347accb70
   ExpoLogBox: 89b634d5a8a64c4a6a7caad8f9985a28463c7002
   ExpoMediaLibrary: f8e720ddfc229477f09ac94174b6e4a00b4a91ee
-  ExpoModulesCore: 8934d83ba557344022eff47658dd43d197cb481e
-  ExpoModulesJSI: 59a126dc51164e603242ee9a38c19339c5c79da0
+  ExpoModulesCore: 1c43431035ab7ea1492b0537bc4a60390480ea25
+  ExpoModulesJSI: 7345645083e98be9c33c10027601aff2e445ba72
   ExpoNotifications: fa5cf77a46c8ea6bfc93bdbad9805c4f8d8a81fb
   ExpoRouter: 9f071f8eb7b03e684302a845d78b1fb8e08118ed
   ExpoShareIntentModule: dab8f0838318ae97a7d1aff095da20de7d7070f5
@@ -3160,12 +3172,14 @@ SPEC CHECKSUMS:
   ExpoStoreReview: 9c2691ba892a818f17b80787c5b3163df0598e1b
   ExpoSymbols: 3d67a96643245a5d933ce7fbf535f95eb541f617
   ExpoSystemUI: ae936ff8f78ca3d6c13884704beb7705fe26d136
+  ExpoUI: 4115369b63e2907e878fc6fd36a4498c40ebc268
   ExpoWebBrowser: f13a6e46e44049bbb8ce49ff8aaa4d819c87d1fe
+  ExpoWidgets: 87deecb78f8f89d0ff78cc8414cadb75ab731c41
   EXStructuredHeaders: aa49a5557fa24aa61dda4ac665f3987bf3e9e35d
   EXUpdates: daa019c52cf123eacb3f99a84575b3f520c55a86
   EXUpdatesInterface: d48f288b92900bd95a27c6cf92a7b9aff826d49a
   FBLazyVector: 32e9ed0301d0fcbc1b2b341dd7fcbf291f51eb83
-  hermes-engine: b34be87b703f2b7e5c6f6884b8551156fdebee3b
+  hermes-engine: e554f48b71b06ec900e324d6334448874ec405cc
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
@@ -3181,7 +3195,7 @@ SPEC CHECKSUMS:
   React: f4edc7518ccb0b54a6f580d89dd91471844b4990
   React-callinvoker: 79ef4e3f1c021571f6d2dafbe45ca432b2f3a146
   React-Core: c19ad4660fd48bc8abc060d979f8ee37f1fc4a5a
-  React-Core-prebuilt: 13aa7579561657034d8c646abda84f5046bdfcb6
+  React-Core-prebuilt: db397f6ff43f0e63dabf9c0a8372e46108420c9c
   React-CoreModules: f94ec3ee2bac588d033ad15a2377af746284f8c8
   React-cxxreact: de66364f2d5fb77d3da3cfa927b2fd960892c711
   React-debug: 4f6739c820d7da9c20f48caa985573b6a847e5f5
@@ -3249,7 +3263,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: d69159b417e8c9d82b8fe4d0a27def4c3e8f767f
   ReactCodegen: e67cb698a2107da1da9efa55174861d724666a3e
   ReactCommon: 8868269b67561136a7970be188b40738135af077
-  ReactNativeDependencies: f01f4818880e60005f6b81ff2e2e67b01a854d4d
+  ReactNativeDependencies: b024bde7586085a865c1834369a746cae3360520
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNCMaskedView: d2578d41c59b936db122b2798ba37e4722d21035
   RNDeviceInfo: bcce8752b5043a623fe3c26789679b473f705d3c
@@ -3269,6 +3283,6 @@ SPEC CHECKSUMS:
   SPIndicator: 93e0a4fb23de51294ac48e874c0f081a5e293e4f
   Yoga: dd994d8c85dca5cc9b10f5df8c01f9ef1d0da191
 
-PODFILE CHECKSUM: 61d9add2fc1bd17b129ab443ac0c639da62ddcac
+PODFILE CHECKSUM: 35150be4274b1342db4d2c2a145324fc71bf1f3d
 
 COCOAPODS: 1.16.2
