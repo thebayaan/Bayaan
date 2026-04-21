@@ -1,4 +1,8 @@
-import {digitalKhattDataService, type DKLine} from './DigitalKhattDataService';
+import {
+  digitalKhattDataService,
+  type DKLine,
+  type DKWordInfo,
+} from './DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 
 export interface DiffRange {
@@ -202,33 +206,29 @@ class RewayahDiffService {
   }
 
   /**
-   * Background-highlight ranges for whole-word content variants. Merges
-   * 'major' (close rewayat: Shu'bah/Al-Bazzi/Qunbul) and 'mukhtalif' (far
-   * rewayat: Warsh/Qalun/Al-Duri/Al-Susi) — both semantically mean "this
-   * word differs from Hafs" and render as a unified background tint.
+   * Background-highlight ranges over a flat word-sequence joined by single
+   * spaces (the shape both SkiaPage lines and SkiaVerseText verse-text
+   * produce). Merges 'major' (close rewayat: Shu'bah/Al-Bazzi/Qunbul) and
+   * 'mukhtalif' (far rewayat: Warsh/Qalun/Al-Duri/Al-Susi) — both
+   * semantically mean "this word differs from Hafs" and render as a
+   * unified background tint.
+   *
+   * Pure function of the passed word list; returns EMPTY_RANGES if neither
+   * category has any entries. Used directly by the verse-level renderer
+   * (SkiaVerseText) and indirectly by getDiffRangesForLine for per-line
+   * rendering.
    */
-  getDiffRangesForLine(pageNumber: number, lineIndex: number): DiffRange[] {
+  getDiffRangesForWords(words: readonly DKWordInfo[]): DiffRange[] {
     const majorByVerse = this.byCategory.get('major');
     const mukhtalifByVerse = this.byCategory.get('mukhtalif');
     const hasMajor = majorByVerse && majorByVerse.size > 0;
     const hasMukhtalif = mukhtalifByVerse && mukhtalifByVerse.size > 0;
     if (!hasMajor && !hasMukhtalif) return EMPTY_RANGES;
-    const cacheKey = `${pageNumber}:${lineIndex}`;
-    const cached = this.rangeCache.get(cacheKey);
-    if (cached) return cached;
-
-    const lines = digitalKhattDataService.getPageLines(pageNumber);
-    const line: DKLine | undefined = lines[lineIndex];
-    if (!line || line.line_type !== 'ayah') {
-      this.rangeCache.set(cacheKey, EMPTY_RANGES);
-      return EMPTY_RANGES;
-    }
 
     const ranges: DiffRange[] = [];
     let offset = 0;
-    for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
-      const info = digitalKhattDataService.getWordInfo(wid);
-      if (!info) continue;
+    for (let i = 0; i < words.length; i++) {
+      const info = words[i];
       const wordLen = info.text.length;
       const inMajor =
         majorByVerse?.get(info.verseKey)?.has(info.wordPositionInVerse) ??
@@ -240,8 +240,36 @@ class RewayahDiffService {
         ranges.push({start: offset, end: offset + wordLen - 1});
       }
       offset += wordLen;
-      if (wid < line.last_word_id) offset += 1;
+      if (i < words.length - 1) offset += 1;
     }
+    return ranges;
+  }
+
+  /**
+   * Per-line variant — resolves the DK words for the given page line, then
+   * delegates to getDiffRangesForWords. Cached by page+line because both
+   * the word lookup and the subsequent iteration are hot paths during
+   * mushaf page rendering.
+   */
+  getDiffRangesForLine(pageNumber: number, lineIndex: number): DiffRange[] {
+    if (!this.hasDiffs) return EMPTY_RANGES;
+    const cacheKey = `${pageNumber}:${lineIndex}`;
+    const cached = this.rangeCache.get(cacheKey);
+    if (cached) return cached;
+
+    const lines = digitalKhattDataService.getPageLines(pageNumber);
+    const line: DKLine | undefined = lines[lineIndex];
+    if (!line || line.line_type !== 'ayah') {
+      this.rangeCache.set(cacheKey, EMPTY_RANGES);
+      return EMPTY_RANGES;
+    }
+
+    const words: DKWordInfo[] = [];
+    for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
+      const info = digitalKhattDataService.getWordInfo(wid);
+      if (info) words.push(info);
+    }
+    const ranges = this.getDiffRangesForWords(words);
     this.rangeCache.set(cacheKey, ranges);
     return ranges;
   }
