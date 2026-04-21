@@ -15,7 +15,7 @@
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const {execFileSync} = require('child_process');
 
 // ── Config ──────────────────────────────────────────────────────────
 
@@ -37,18 +37,20 @@ function sleep(ms) {
 
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, res => {
-      let data = '';
-      res.on('data', chunk => (data += chunk));
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error(`Failed to parse JSON from ${url}: ${e.message}`));
-        }
-      });
-      res.on('error', reject);
-    }).on('error', reject);
+    https
+      .get(url, res => {
+        let data = '';
+        res.on('data', chunk => (data += chunk));
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(new Error(`Failed to parse JSON from ${url}: ${e.message}`));
+          }
+        });
+        res.on('error', reject);
+      })
+      .on('error', reject);
   });
 }
 
@@ -100,7 +102,7 @@ async function main() {
 
   // Ensure output directory exists
   if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    fs.mkdirSync(OUTPUT_DIR, {recursive: true});
   }
 
   const allWords = [];

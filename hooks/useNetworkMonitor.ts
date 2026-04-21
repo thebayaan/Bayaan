@@ -17,7 +17,8 @@ export function useNetworkMonitor() {
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
-      const online = state.isConnected === true && state.isInternetReachable !== false;
+      const online =
+        state.isConnected === true && state.isInternetReachable !== false;
       const wasOnline = useNetworkStore.getState().isOnline;
 
       setOnline(online);

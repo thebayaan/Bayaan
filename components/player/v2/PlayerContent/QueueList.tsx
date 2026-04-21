@@ -237,7 +237,11 @@ export const QueueList: React.FC<QueueListProps> = ({
     ({item}: ListRenderItemInfo<IndexedTrack>) => {
       const index = item._queueIndex;
       return (
-        <View style={[styles.trackItemContainer, {backgroundColor: theme.colors.card}]}>
+        <View
+          style={[
+            styles.trackItemContainer,
+            {backgroundColor: theme.colors.card},
+          ]}>
           {item.isUserUpload ? (
             <UploadQueueItem
               track={item}

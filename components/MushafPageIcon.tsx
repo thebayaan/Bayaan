@@ -57,8 +57,8 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : uthmaniFont === 'v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
 
   // Icon canvas dimensions (slightly taller than square)
   const canvasWidth = size;
@@ -282,7 +282,10 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
               const char = lineText.charAt(i);
               const justInfo = justResult.fontFeatures.get(i);
               if (justInfo) {
-                paragraphBuilder.pushStyle({...textStyle, fontFeatures: justInfo});
+                paragraphBuilder.pushStyle({
+                  ...textStyle,
+                  fontFeatures: justInfo,
+                });
                 paragraphBuilder.addText(char);
                 paragraphBuilder.pop();
               } else {
@@ -296,7 +299,10 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
                 spaceType === SpaceType.Aya
                   ? (justResult.ayaSpacing - SPACEWIDTH) * scale
                   : (justResult.simpleSpacing - SPACEWIDTH) * scale;
-              paragraphBuilder.pushStyle({...textStyle, letterSpacing: spacing});
+              paragraphBuilder.pushStyle({
+                ...textStyle,
+                letterSpacing: spacing,
+              });
               paragraphBuilder.addText(' ');
               paragraphBuilder.pop();
             }
@@ -310,7 +316,11 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
           const currLineWidth = paragraph.getLongestLine();
           let xPos: number;
           if (lineInfo.lineType === 1 || lineInfo.lineType === 2) {
-            xPos = -(maxWidth - contentWidth + (contentWidth - currLineWidth) / 2);
+            xPos = -(
+              maxWidth -
+              contentWidth +
+              (contentWidth - currLineWidth) / 2
+            );
           } else {
             xPos = -(maxWidth - contentWidth + lineMargin);
           }

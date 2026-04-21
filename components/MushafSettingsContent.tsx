@@ -4,7 +4,6 @@ import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
 import {Feather} from '@expo/vector-icons';
 import {
   MushafPagePillIcon,
@@ -252,9 +251,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
                 styles.fontSizeButtonDisabled,
               pressed && styles.fontSizeButtonPressed,
             ]}>
-            <Icon
+            <Feather
               name="minus"
-              type="feather"
               size={moderateScale(16)}
               color={
                 currentDisplayValue <= DISPLAY_MIN
@@ -274,9 +272,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
                 styles.fontSizeButtonDisabled,
               pressed && styles.fontSizeButtonPressed,
             ]}>
-            <Icon
+            <Feather
               name="plus"
-              type="feather"
               size={moderateScale(16)}
               color={
                 currentDisplayValue >= DISPLAY_MAX
@@ -452,8 +449,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const fontMgr =
     mushafPreloadService.initialized && digitalKhattDataService.initialized
       ? mushafPreloadService.fontMgr
@@ -680,9 +677,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.settingRowLabel}>
             {themeMode === 'system'
               ? 'System'
-              : getReadingThemeById(
+              : (getReadingThemeById(
                   themeMode === 'light' ? lightThemeId : darkThemeId,
-                )?.name ?? 'System'}
+                )?.name ?? 'System')}
           </Text>
           <Feather
             name="chevron-right"

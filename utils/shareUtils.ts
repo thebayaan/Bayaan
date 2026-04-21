@@ -1,28 +1,29 @@
 import {Share, Platform} from 'react-native';
-import rewayatSlugs from '@/data/rewayat-slugs.json';
-import type {Reciter, Rewayat} from '@/data/reciterData';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const BASE_URL = 'https://app.thebayaan.com';
 
 export function reciterShareUrl(slug: string): string {
-  return `${BASE_URL}/share/reciter/${slug}`;
+  return `${BASE_URL}/reciter/${slug}`;
 }
 
 export function recitationShareUrl(
   reciterSlug: string,
-  rewayatSlug: string,
-  styleSlug: string,
   surahNum: number,
+  rewayahId?: string,
   timestampSec?: number,
 ): string {
-  const base = `${BASE_URL}/share/reciter/${reciterSlug}/${rewayatSlug}/${styleSlug}/surah/${surahNum}`;
-  return timestampSec ? `${base}?t=${timestampSec}` : base;
+  const params = new URLSearchParams();
+  if (rewayahId) params.set('rewayah', rewayahId);
+  if (timestampSec) params.set('t', String(timestampSec));
+  const q = params.toString();
+  return `${BASE_URL}/reciter/${reciterSlug}/${surahNum}${q ? `?${q}` : ''}`;
 }
 
-export function mushafShareUrl(page: number, theme?: 'dark' | 'light'): string {
-  const base = `${BASE_URL}/share/mushaf/${page}`;
-  return theme === 'light' ? `${base}?theme=light` : base;
+export function surahShareUrl(surah: number, ayah?: number): string {
+  return ayah
+    ? `${BASE_URL}/quran/${surah}?v=${ayah}`
+    : `${BASE_URL}/quran/${surah}`;
 }
 
 export function verseShareUrl(
@@ -31,58 +32,42 @@ export function verseShareUrl(
   theme?: 'dark' | 'light',
   rewayah?: string,
 ): string {
-  const base = `${BASE_URL}/share/verse/${surah}/${ayah}`;
   const params: string[] = [];
   if (theme === 'light') params.push('theme=light');
   if (rewayah && rewayah !== 'hafs') params.push(`rewayah=${rewayah}`);
-  return params.length > 0 ? `${base}?${params.join('&')}` : base;
+  return params.length
+    ? `${BASE_URL}/quran/${surah}/${ayah}?${params.join('&')}`
+    : `${BASE_URL}/quran/${surah}/${ayah}`;
+}
+
+export function mushafShareUrl(page: number, theme?: 'dark' | 'light'): string {
+  return theme === 'light'
+    ? `${BASE_URL}/mushaf/${page}?theme=light`
+    : `${BASE_URL}/mushaf/${page}`;
 }
 
 export function adhkarShareUrl(superId: string): string {
-  return `${BASE_URL}/share/adhkar/${superId}`;
+  return `${BASE_URL}/adhkar/${superId}`;
 }
 
 export function dhikrShareUrl(superId: string, dhikrId: string): string {
-  return `${BASE_URL}/share/dhikr/${superId}/${dhikrId}`;
-}
-
-export function getRewayatSlug(rewayat: Rewayat): string | null {
-  return (rewayatSlugs.rewayat as Record<string, string>)[rewayat.name] ?? null;
-}
-
-export function getStyleSlug(rewayat: Rewayat): string {
-  return (
-    (rewayatSlugs.styles as Record<string, string>)[rewayat.style] ?? 'murattal'
-  );
-}
-
-export function resolveRewayat(
-  reciter: Reciter,
-  rewayatSlug: string,
-  styleSlug: string,
-): Rewayat | undefined {
-  return reciter.rewayat.find(rw => {
-    const nameSlug = (rewayatSlugs.rewayat as Record<string, string>)[rw.name];
-    const stSlug =
-      (rewayatSlugs.styles as Record<string, string>)[rw.style] ?? 'murattal';
-    return nameSlug === rewayatSlug && stSlug === styleSlug;
-  });
+  return `${BASE_URL}/adhkar/${superId}/${dhikrId}`;
 }
 
 function inferShareContentType(
   url: string,
 ): 'verse' | 'surah' | 'mushaf' | 'reciter' | 'adhkar' {
-  if (url.includes('/share/verse/')) return 'verse';
-  if (url.includes('/surah/')) return 'surah';
-  if (url.includes('/share/mushaf/')) return 'mushaf';
-  if (url.includes('/share/adhkar/') || url.includes('/share/dhikr/'))
-    return 'adhkar';
+  if (/\/quran\/\d+\/\d+/.test(url)) return 'verse';
+  if (/\/quran\/\d+/.test(url)) return 'surah';
+  if (url.includes('/mushaf/')) return 'mushaf';
+  if (url.includes('/adhkar/')) return 'adhkar';
   return 'reciter';
 }
 
 function extractSurahIdFromUrl(url: string): number | undefined {
-  const match = /\/surah\/(\d+)/.exec(url);
-  return match ? parseInt(match[1], 10) : undefined;
+  // Matches /quran/{surah} and /reciter/{slug}/{surah}
+  const m = /(?:\/quran\/|\/reciter\/[^/]+\/)(\d+)/.exec(url);
+  return m ? parseInt(m[1], 10) : undefined;
 }
 
 export async function shareUrl(url: string, message: string): Promise<void> {

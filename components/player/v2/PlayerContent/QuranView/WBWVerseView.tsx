@@ -400,7 +400,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     const tajweedWords = useMemo(
       () =>
         showTajweed && indexedTajweedData
-          ? indexedTajweedData[verseKey] ?? null
+          ? (indexedTajweedData[verseKey] ?? null)
           : null,
       [showTajweed, indexedTajweedData, verseKey],
     );

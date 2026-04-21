@@ -116,7 +116,9 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
+      paddingTop: USE_GLASS
+        ? moderateScale(16)
+        : insets.top + moderateScale(40),
       paddingBottom: moderateScale(10),
       overflow: 'hidden',
       backgroundColor: theme.colors.background,

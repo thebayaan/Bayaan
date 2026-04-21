@@ -148,8 +148,8 @@ export const QuranView: React.FC<QuranViewProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
 
   // Tajweed data for DK Skia rendering (verse-level indexed)

@@ -953,10 +953,14 @@ export default function MushafViewer({
   // Vertical mode callbacks — update the same state as horizontal FlatList
   const handleContinuousPageChange = useCallback(
     (page: number) => {
+      // Record last-read unconditionally so "Continue Reading" resumes
+      // correctly even when the viewer mounts on a fresh page (e.g.
+      // opened via a surah tap) and the user never scrolls away. The
+      // horizontal onViewableItemsChanged handler does the same.
+      mushafSessionStore.setLastReadPage(page);
       if (page !== currentPage) {
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
-        mushafSessionStore.setLastReadPage(page);
         trackPageChange(page);
         const surahId = pageToSurah[page];
         if (surahId) {
@@ -997,8 +1001,8 @@ export default function MushafViewer({
           backgroundColor: isVertical
             ? readingColors.background
             : isBookLayout
-            ? edgeBg
-            : readingColors.card,
+              ? edgeBg
+              : readingColors.card,
         },
       ]}>
       {/* Content area: horizontal FlatList or vertical continuous view */}

@@ -341,10 +341,9 @@ export const ExploreView = React.memo(
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop:
-                USE_GLASS
-                  ? insets.top + moderateScale(16)
-                  : moderateScale(16),
+              paddingTop: USE_GLASS
+                ? insets.top + moderateScale(16)
+                : moderateScale(16),
               paddingHorizontal: horizontalPadding,
               paddingBottom: bottomInset,
             },

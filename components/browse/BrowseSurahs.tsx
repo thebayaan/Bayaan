@@ -469,7 +469,9 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {/* Android: custom header | iOS: native header via layout */}
-      {!isGlass && <Header title="All Surahs" onBack={onBack} showBlur={true} />}
+      {!isGlass && (
+        <Header title="All Surahs" onBack={onBack} showBlur={true} />
+      )}
 
       <View
         style={[

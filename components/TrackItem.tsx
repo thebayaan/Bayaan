@@ -53,7 +53,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     const rewayat = useMemo(
       () =>
         rewayatId
-          ? reciter?.rewayat?.find(r => r.id === rewayatId) ?? null
+          ? (reciter?.rewayat?.find(r => r.id === rewayatId) ?? null)
           : null,
       [reciter, rewayatId],
     );
@@ -129,8 +129,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
     };
 
     return (
-      <View
-        style={[styles.trackItem, {backgroundColor: theme.colors.card}]}>
+      <View style={[styles.trackItem, {backgroundColor: theme.colors.card}]}>
         {/* Play zone */}
         <Pressable
           style={styles.playZone}

@@ -11,31 +11,14 @@ import {SurahOfTheDay} from './SurahOfTheDay';
 import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
-import Svg, {
-  Defs,
-  RadialGradient as SvgRadialGradient,
-  Stop,
-  Rect,
-} from 'react-native-svg';
 import {SESSION_SEED, pickHeroTheme} from '@/components/hero/heroThemes';
+import {
+  MESH_PALETTES,
+  SurahGradientMesh,
+} from '@/components/hero/SurahGradientMesh';
 
 // Same SECTION_HEIGHT as ScrollingHero for consistency
 const SECTION_HEIGHT = moderateScale(150);
-
-const MESH_PALETTES = [
-  // Purple dream
-  ['#e879f9', '#a78bfa', '#38bdf8', '#34d399'],
-  // Ocean depths
-  ['#38bdf8', '#818cf8', '#5eead4', '#a78bfa'],
-  // Golden hour
-  ['#fbbf24', '#fb923c', '#f87171', '#e879f9'],
-  // Rose garden
-  ['#f9a8d4', '#fb7185', '#a78bfa', '#38bdf8'],
-  // Emerald forest
-  ['#34d399', '#86efac', '#38bdf8', '#a78bfa'],
-  // Twilight
-  ['#a5b4fc', '#c4b5fd', '#f9a8d4', '#5eead4'],
-];
 
 interface SurahHeroSectionProps {
   surah: Surah;
@@ -43,6 +26,10 @@ interface SurahHeroSectionProps {
   title?: string;
   isCompact?: boolean;
   style?: ViewStyle | ViewStyle[];
+  // When provided, tapping the hero opens the mushaf at this exact
+  // page (e.g. where the user last stopped). Without it the link
+  // falls back to the surah's first page.
+  resumePage?: number;
 }
 
 /**
@@ -54,6 +41,7 @@ export const SurahHeroSection = ({
   onLongPress,
   title = 'SURAH OF THE DAY',
   style,
+  resumePage,
 }: SurahHeroSectionProps) => {
   const {theme} = useTheme();
   const glassColorScheme = useGlassColorScheme();
@@ -86,42 +74,8 @@ export const SurahHeroSection = ({
     <>
       {/* Solid background behind mesh */}
       <View style={[StyleSheet.absoluteFill, {backgroundColor: baseBg}]} />
-      {/* SVG gradient mesh blobs */}
-      <Svg
-        style={StyleSheet.absoluteFill}
-        viewBox="0 0 400 155"
-        preserveAspectRatio="xMidYMid slice">
-        <Defs>
-          <SvgRadialGradient id="blob1" cx="0.2" cy="0.3" r="0.35">
-            <Stop offset="0" stopColor={palette[0]} stopOpacity={mainOpacity} />
-            <Stop offset="1" stopColor={palette[0]} stopOpacity={0} />
-          </SvgRadialGradient>
-          <SvgRadialGradient id="blob2" cx="0.75" cy="0.7" r="0.3">
-            <Stop offset="0" stopColor={palette[1]} stopOpacity={mainOpacity} />
-            <Stop offset="1" stopColor={palette[1]} stopOpacity={0} />
-          </SvgRadialGradient>
-          <SvgRadialGradient id="blob3" cx="0.55" cy="0.2" r="0.25">
-            <Stop
-              offset="0"
-              stopColor={palette[2]}
-              stopOpacity={isDark ? 0.08 : 0.1}
-            />
-            <Stop offset="1" stopColor={palette[2]} stopOpacity={0} />
-          </SvgRadialGradient>
-          <SvgRadialGradient id="blob4" cx="0.35" cy="0.8" r="0.2">
-            <Stop
-              offset="0"
-              stopColor={palette[3]}
-              stopOpacity={isDark ? 0.06 : 0.08}
-            />
-            <Stop offset="1" stopColor={palette[3]} stopOpacity={0} />
-          </SvgRadialGradient>
-        </Defs>
-        <Rect x="0" y="0" width="400" height="155" fill="url(#blob1)" />
-        <Rect x="0" y="0" width="400" height="155" fill="url(#blob2)" />
-        <Rect x="0" y="0" width="400" height="155" fill="url(#blob3)" />
-        <Rect x="0" y="0" width="400" height="155" fill="url(#blob4)" />
-      </Svg>
+      <SurahGradientMesh palette={palette} isDark={isDark} />
+
       <View style={styles.content}>
         <View style={styles.topSection}>
           <View style={styles.topRow}>
@@ -163,7 +117,12 @@ export const SurahHeroSection = ({
   const linkProps = {
     href: {
       pathname: '/mushaf' as const,
-      params: {surah: surah.id.toString()},
+      // Prefer the resume page when we have one — that's what makes
+      // the hero a true "Continue reading" shortcut instead of just
+      // "open this surah at page 1".
+      params: resumePage
+        ? {page: resumePage.toString()}
+        : {surah: surah.id.toString()},
     },
     asChild: true as const,
   };
