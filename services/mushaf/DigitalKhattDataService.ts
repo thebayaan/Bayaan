@@ -14,16 +14,24 @@ const TOTAL_PAGES = 604;
 // for narration-specific marks (silah, imalah, etc.).
 const DK_HAFS_LAYOUT_ASSET = require('../../data/mushaf/digitalkhatt/digital-khatt-15-lines.db');
 
-const REWAYAH_DATA: Record<
-  RewayahId,
-  {
-    wordsDbName: string;
-    wordsAsset: number;
-    layoutDbName: string;
-    layoutAsset: number;
-    fontFamily: string | null;
-  }
-> = {
+interface RewayahAssetConfig {
+  wordsDbName: string;
+  wordsAsset: number;
+  layoutDbName: string;
+  layoutAsset: number;
+  fontFamily: string | null;
+}
+
+// Partial by design: only the 8 canonical slugs with DK data bundled today
+// have entries. The other 12 in RewayahId are taxonomy-only for now.
+// Callers that need an entry must go through requireRewayahAssets() which
+// throws a helpful error if data is absent; use RewayahIdentity.hasTextData
+// to branch ahead of time.
+//
+// DB filenames on disk (dk_words_shouba.db etc.) keep the pre-canonical
+// spellings to avoid renaming bundled assets in this PR — the RewayahId
+// keys change, the asset paths don't.
+const REWAYAH_DATA: Partial<Record<RewayahId, RewayahAssetConfig>> = {
   hafs: {
     wordsDbName: 'dk_words.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/digital-khatt-v2.db'),
@@ -31,21 +39,21 @@ const REWAYAH_DATA: Record<
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null, // defer to user's uthmaniFont/mushafRenderer choice
   },
-  shouba: {
+  shubah: {
     wordsDbName: 'dk_words_shouba.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_shouba.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  bazzi: {
+  'al-bazzi': {
     wordsDbName: 'dk_words_bazzi.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_bazzi.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null, // render with DK font — sibling of Hafs, shares layout
   },
-  qumbul: {
+  qunbul: {
     wordsDbName: 'dk_words_qumbul.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_qumbul.db'),
     layoutDbName: 'dk_layout.db',
@@ -59,21 +67,21 @@ const REWAYAH_DATA: Record<
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  qaloon: {
+  qalun: {
     wordsDbName: 'dk_words_qaloon.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_qaloon.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  doori: {
+  'al-duri-abi-amr': {
     wordsDbName: 'dk_words_doori.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_doori.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  soosi: {
+  'al-susi': {
     wordsDbName: 'dk_words_soosi.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_soosi.db'),
     layoutDbName: 'dk_layout.db',
@@ -81,6 +89,17 @@ const REWAYAH_DATA: Record<
     fontFamily: null,
   },
 };
+
+function requireRewayahAssets(rewayah: RewayahId): RewayahAssetConfig {
+  const cfg = REWAYAH_DATA[rewayah];
+  if (!cfg) {
+    throw new Error(
+      `[DigitalKhatt] No text data bundled for rewayah "${rewayah}". ` +
+        `Check RewayahIdentity.hasTextData before calling.`,
+    );
+  }
+  return cfg;
+}
 
 export function getRewayahFontFamily(rewayah: RewayahId): string | null {
   return REWAYAH_DATA[rewayah]?.fontFamily ?? null;
@@ -185,6 +204,7 @@ class DigitalKhattDataService {
 
     const dbNames = new Set<string>();
     for (const cfg of Object.values(REWAYAH_DATA)) {
+      if (!cfg) continue;
       dbNames.add(cfg.wordsDbName);
       dbNames.add(cfg.layoutDbName);
     }
@@ -199,8 +219,8 @@ class DigitalKhattDataService {
 
   async switchRewayah(rewayah: RewayahId): Promise<void> {
     if (rewayah === this.currentRewayah) return;
-    const prevCfg = REWAYAH_DATA[this.currentRewayah];
-    const nextCfg = REWAYAH_DATA[rewayah];
+    const prevCfg = requireRewayahAssets(this.currentRewayah);
+    const nextCfg = requireRewayahAssets(rewayah);
     this.currentRewayah = rewayah;
     this.wordsById.clear();
     this.wordInfoById.clear();
@@ -211,7 +231,8 @@ class DigitalKhattDataService {
     this.sideVerseWords.delete(rewayah);
     await this.loadWords();
     // Layout only reloads if the new rewayah uses a different layout DB
-    // (e.g., hafs ↔ shouba share one; hafs ↔ bazzi do not).
+    // (all 8 currently bundled rewayat share the Hafs layout DB; kept the
+    // check because rewayat added in the future may bring their own layout).
     if (prevCfg.layoutDbName !== nextCfg.layoutDbName) {
       this.pageLines.clear();
       this.surahStartPages = {};
@@ -222,7 +243,7 @@ class DigitalKhattDataService {
   }
 
   private async loadWords(): Promise<void> {
-    const cfg = REWAYAH_DATA[this.currentRewayah];
+    const cfg = requireRewayahAssets(this.currentRewayah);
     const dbName = cfg.wordsDbName;
     let db = await SQLite.openDatabaseAsync(dbName);
 
@@ -280,7 +301,7 @@ class DigitalKhattDataService {
   }
 
   private async loadLayout(): Promise<void> {
-    const cfg = REWAYAH_DATA[this.currentRewayah];
+    const cfg = requireRewayahAssets(this.currentRewayah);
     const dbName = cfg.layoutDbName;
     let db = await SQLite.openDatabaseAsync(dbName);
 
@@ -427,7 +448,7 @@ class DigitalKhattDataService {
   }
 
   private async _loadSideRewayah(rewayah: RewayahId): Promise<void> {
-    const cfg = REWAYAH_DATA[rewayah];
+    const cfg = requireRewayahAssets(rewayah);
     const dbName = cfg.wordsDbName;
     let db = await SQLite.openDatabaseAsync(dbName);
     const tableCheck = await db

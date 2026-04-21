@@ -2,6 +2,14 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {
+  migratePersistedId,
+  type RewayahId,
+} from '@/services/rewayah/RewayahIdentity';
+
+// Re-exported for backward compat with existing imports across the app.
+// RewayahIdentity is the canonical source; do not redefine the union here.
+export type {RewayahId};
 
 // Constants for font sizing
 export const DISPLAY_MIN = 1;
@@ -25,15 +33,6 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
-export type RewayahId =
-  | 'hafs'
-  | 'shouba'
-  | 'bazzi'
-  | 'qumbul'
-  | 'warsh'
-  | 'qaloon'
-  | 'doori'
-  | 'soosi';
 export interface RecentRead {
   surahId: number;
   page: number;
@@ -218,7 +217,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 12,
+      version: 13,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -278,6 +277,17 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         if (version < 12) {
           state.rewayah = 'hafs';
           state.showRewayahDiffs = true;
+        }
+        if (version < 13) {
+          // Canonical rewayah slugs — see RewayahIdentity.PERSISTED_ID_MIGRATIONS.
+          // Pre-canonical slugs (qumbul, shouba, qaloon, doori, soosi, bazzi)
+          // shipped only in TestFlight; remap to the canonical forms. Unknown
+          // values fall back to 'hafs'.
+          if (typeof state.rewayah === 'string') {
+            state.rewayah = migratePersistedId(state.rewayah);
+          } else {
+            state.rewayah = 'hafs';
+          }
         }
         return state as unknown as MushafSettingsState;
       },

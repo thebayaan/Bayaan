@@ -1,5 +1,5 @@
 import {digitalKhattDataService, type DKLine} from './DigitalKhattDataService';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 
 export interface DiffRange {
   start: number;
@@ -54,13 +54,13 @@ class RewayahDiffService {
   }
 
   get hasSilahColoring(): boolean {
-    // Silah-heavy rewayat: Ibn Kathir pair always; Warsh/Qaloon use silah
+    // Silah-heavy rewayat: Ibn Kathir pair always; Warsh/Qalun use silah
     // less pervasively but still benefit from the mark-level coloring.
     return (
-      this.currentRewayah === 'bazzi' ||
-      this.currentRewayah === 'qumbul' ||
+      this.currentRewayah === 'al-bazzi' ||
+      this.currentRewayah === 'qunbul' ||
       this.currentRewayah === 'warsh' ||
-      this.currentRewayah === 'qaloon'
+      this.currentRewayah === 'qalun'
     );
   }
 
@@ -203,8 +203,8 @@ class RewayahDiffService {
 
   /**
    * Background-highlight ranges for whole-word content variants. Merges
-   * 'major' (close rewayat: Shouba/Bazzi/Qumbul) and 'mukhtalif' (far
-   * rewayat: Warsh/Qaloon/Doori/Soosi) — both semantically mean "this
+   * 'major' (close rewayat: Shu'bah/Al-Bazzi/Qunbul) and 'mukhtalif' (far
+   * rewayat: Warsh/Qalun/Al-Duri/Al-Susi) — both semantically mean "this
    * word differs from Hafs" and render as a unified background tint.
    */
   getDiffRangesForLine(pageNumber: number, lineIndex: number): DiffRange[] {
@@ -295,29 +295,27 @@ const EMPTY_INDICES: number[] = [];
 type CategoryEntries = number[] | [number, number[]][];
 type DiffAsset = Record<string, number[] | Record<string, CategoryEntries>>;
 
+// Diff JSON files on disk keep the pre-canonical filenames to avoid asset
+// churn; only the RewayahId key we switch on is canonical.
 function loadDiffAsset(rewayah: RewayahId): DiffAsset | null {
-  if (rewayah === 'shouba') {
-    return require('@/data/mushaf/digitalkhatt/shouba-diff.json') as DiffAsset;
+  switch (rewayah) {
+    case 'shubah':
+      return require('@/data/mushaf/digitalkhatt/shouba-diff.json') as DiffAsset;
+    case 'al-bazzi':
+      return require('@/data/mushaf/digitalkhatt/bazzi-diff.json') as DiffAsset;
+    case 'qunbul':
+      return require('@/data/mushaf/digitalkhatt/qumbul-diff.json') as DiffAsset;
+    case 'warsh':
+      return require('@/data/mushaf/digitalkhatt/warsh-diff.json') as DiffAsset;
+    case 'qalun':
+      return require('@/data/mushaf/digitalkhatt/qaloon-diff.json') as DiffAsset;
+    case 'al-duri-abi-amr':
+      return require('@/data/mushaf/digitalkhatt/doori-diff.json') as DiffAsset;
+    case 'al-susi':
+      return require('@/data/mushaf/digitalkhatt/soosi-diff.json') as DiffAsset;
+    default:
+      return null;
   }
-  if (rewayah === 'bazzi') {
-    return require('@/data/mushaf/digitalkhatt/bazzi-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'qumbul') {
-    return require('@/data/mushaf/digitalkhatt/qumbul-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'warsh') {
-    return require('@/data/mushaf/digitalkhatt/warsh-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'qaloon') {
-    return require('@/data/mushaf/digitalkhatt/qaloon-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'doori') {
-    return require('@/data/mushaf/digitalkhatt/doori-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'soosi') {
-    return require('@/data/mushaf/digitalkhatt/soosi-diff.json') as DiffAsset;
-  }
-  return null;
 }
 
 export const rewayahDiffService = new RewayahDiffService();
