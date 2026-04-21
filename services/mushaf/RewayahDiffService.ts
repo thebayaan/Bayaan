@@ -4,6 +4,13 @@ import {
   type DKWordInfo,
 } from './DigitalKhattDataService';
 import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
+
+export interface PageDiffHighlight {
+  start: number;
+  end: number;
+  color: string;
+}
 
 export interface DiffRange {
   start: number;
@@ -275,6 +282,41 @@ class RewayahDiffService {
   }
 
   /**
+   * Page-level rewayah-diff highlights grouped by line index, pre-stamped
+   * with REWAYAH_DIFF_BACKGROUND. Single source of truth for the page-
+   * renderer pipelines (SkiaPage, ContinuousMushafView) — each used to
+   * inline the same per-line loop plus its own local copy of the tint
+   * color constant.
+   *
+   * Returns EMPTY_HIGHLIGHTS_MAP when no diffs are loaded so callers can
+   * reference-check the result to skip all downstream merging work. Does
+   * NOT gate on the user's showRewayahDiffs toggle — callers apply that
+   * gate themselves (they already combine it with annotations/playback/
+   * theme gates, so pushing one more boolean into this service wouldn't
+   * buy anything).
+   */
+  getPageDiffHighlightsByLine(
+    pageNumber: number,
+  ): ReadonlyMap<number, readonly Readonly<PageDiffHighlight>[]> {
+    if (!this.hasDiffs) return EMPTY_HIGHLIGHTS_MAP;
+    const lineCount = digitalKhattDataService.getPageLines(pageNumber).length;
+    if (lineCount === 0) return EMPTY_HIGHLIGHTS_MAP;
+
+    const map = new Map<number, Readonly<PageDiffHighlight>[]>();
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+      const ranges = this.getDiffRangesForLine(pageNumber, lineIndex);
+      if (ranges.length === 0) continue;
+      const entries: Readonly<PageDiffHighlight>[] = ranges.map(r => ({
+        start: r.start,
+        end: r.end,
+        color: REWAYAH_DIFF_BACKGROUND,
+      }));
+      map.set(lineIndex, entries);
+    }
+    return map.size > 0 ? map : EMPTY_HIGHLIGHTS_MAP;
+  }
+
+  /**
    * Silah char indices (U+06E5/U+06E6 + preceding damma/kasra), scanned
    * from stored text at render time rather than from the diff JSON since
    * silah marks are already in the words DB.
@@ -317,6 +359,10 @@ class RewayahDiffService {
 
 const EMPTY_RANGES: DiffRange[] = [];
 const EMPTY_INDICES: number[] = [];
+const EMPTY_HIGHLIGHTS_MAP: ReadonlyMap<
+  number,
+  readonly Readonly<PageDiffHighlight>[]
+> = new Map();
 
 // Diff JSON supports legacy (number[]) and new ([wordPos, charIdx[]][]) entries.
 // Legacy flat arrays at the verse level are treated as whole-word 'major'.
