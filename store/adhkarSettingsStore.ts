@@ -44,9 +44,9 @@ export const useAdhkarSettingsStore = create<AdhkarSettingsState>()(
       // Default values
       showTranslation: true,
       showTransliteration: true,
-      arabicFontSize: getActualFontSize(7), // Default: larger Arabic text
-      translationFontSize: getActualFontSize(4),
-      transliterationFontSize: getActualFontSize(4),
+      arabicFontSize: getActualFontSize(5), // Default: larger Arabic text
+      translationFontSize: getActualFontSize(3),
+      transliterationFontSize: getActualFontSize(2),
 
       // Actions
       toggleTranslation: () =>

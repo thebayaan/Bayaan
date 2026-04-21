@@ -6,12 +6,16 @@
  * Play/pause, repeat toggle, and action buttons (copy, bookmark, share, settings).
  */
 
-import React, {useMemo} from 'react';
+import React, {useMemo, useState, useCallback} from 'react';
 import {View, TouchableOpacity} from 'react-native';
-import {Icon} from '@rneui/themed';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import Animated, {useAnimatedStyle, withSpring} from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
 import {useAdhkarAudio} from '@/hooks/useAdhkarAudio';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
@@ -23,6 +27,7 @@ import Color from 'color';
 // Pre-compute scaled values outside component to avoid worklet issues
 const PROGRESS_BAR_HEIGHT = moderateScale(40);
 const PROGRESS_BAR_MARGIN = moderateScale(8);
+const TIMING_CONFIG = {duration: 300, easing: Easing.out(Easing.cubic)};
 
 interface AdhkarAudioControlsProps {
   audioFile: string | null;
@@ -80,34 +85,42 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
         singleToggle();
       };
 
+      // Seeking state for thumb visibility
+      const [isSeeking, setIsSeeking] = useState(false);
+
       // Show progress bar once user has interacted (pressed play) and player is loaded
       const showProgressBar = hasInteracted && duration > 0;
 
       // Active background color for repeat button
       const activeBackgroundColor = `${theme.colors.text}20`;
 
-      // Animated style for progress bar row (slides down from top)
+      // Animated style for progress bar row (slides in smoothly)
       const progressRowAnimatedStyle = useAnimatedStyle(() => {
         return {
-          height: withSpring(showProgressBar ? PROGRESS_BAR_HEIGHT : 0, {
-            damping: 15,
-            stiffness: 150,
-          }),
-          opacity: withSpring(showProgressBar ? 1 : 0, {
-            damping: 20,
-            stiffness: 200,
-          }),
-          marginBottom: withSpring(showProgressBar ? PROGRESS_BAR_MARGIN : 0, {
-            damping: 15,
-            stiffness: 150,
-          }),
+          height: withTiming(
+            showProgressBar ? PROGRESS_BAR_HEIGHT : 0,
+            TIMING_CONFIG,
+          ),
+          opacity: withTiming(showProgressBar ? 1 : 0, TIMING_CONFIG),
+          marginBottom: withTiming(
+            showProgressBar ? PROGRESS_BAR_MARGIN : 0,
+            TIMING_CONFIG,
+          ),
         };
       }, [showProgressBar]);
 
-      // Handle slider value change
-      const handleSliderChange = (value: number) => {
-        seekToProgress(value);
-      };
+      // Handle slider interactions
+      const handleSliderStart = useCallback(() => {
+        setIsSeeking(true);
+      }, []);
+
+      const handleSlidingComplete = useCallback(
+        (value: number) => {
+          seekToProgress(value);
+          setIsSeeking(false);
+        },
+        [seekToProgress],
+      );
 
       // No audio available - show placeholder and action buttons
       if (!audioFile) {
@@ -115,9 +128,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
           <View style={styles.container}>
             <View style={styles.buttonsRow}>
               <View style={styles.noAudioPlaceholder}>
-                <Icon
+                <Feather
                   name="volume-x"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />
@@ -141,9 +153,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel="Copy Arabic text">
-                  <Icon
+                  <Feather
                     name="copy"
-                    type="feather"
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -158,9 +169,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                     isBookmarked ? 'Remove bookmark' : 'Add bookmark'
                   }
                   accessibilityState={{selected: isBookmarked}}>
-                  <Icon
+                  <Ionicons
                     name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                    type="ionicon"
                     size={moderateScale(18)}
                     color={
                       isBookmarked
@@ -176,9 +186,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel="Share dhikr">
-                  <Icon
+                  <Feather
                     name="share"
-                    type="feather"
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -190,9 +199,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                   accessibilityRole="button"
                   accessibilityLabel="Layout settings">
-                  <Icon
+                  <Feather
                     name="sliders"
-                    type="feather"
                     size={moderateScale(18)}
                     color={theme.colors.textSecondary}
                   />
@@ -210,14 +218,14 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
             <Slider
               style={styles.slider}
               value={progress}
-              onSlidingComplete={handleSliderChange}
+              onSlidingStart={handleSliderStart}
+              onSlidingComplete={handleSlidingComplete}
               minimumValue={0}
               maximumValue={1}
+              tapToSeek
               minimumTrackTintColor={theme.colors.text}
-              maximumTrackTintColor={Color(theme.colors.textSecondary)
-                .alpha(0.3)
-                .toString()}
-              thumbTintColor={theme.colors.text}
+              maximumTrackTintColor={`${theme.colors.text}4D`}
+              thumbTintColor={isSeeking ? theme.colors.text : 'transparent'}
             />
           </Animated.View>
 
@@ -273,9 +281,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel="Copy Arabic text">
-                <Icon
+                <Feather
                   name="copy"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />
@@ -291,9 +298,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                   isBookmarked ? 'Remove bookmark' : 'Add bookmark'
                 }
                 accessibilityState={{selected: isBookmarked}}>
-                <Icon
+                <Ionicons
                   name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
-                  type="ionicon"
                   size={moderateScale(18)}
                   color={
                     isBookmarked
@@ -310,9 +316,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel="Share dhikr">
-                <Icon
+                <Feather
                   name="share"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />
@@ -325,9 +330,8 @@ export const AdhkarAudioControls: React.FC<AdhkarAudioControlsProps> =
                 hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
                 accessibilityRole="button"
                 accessibilityLabel="Layout settings">
-                <Icon
+                <Feather
                   name="sliders"
-                  type="feather"
                   size={moderateScale(18)}
                   color={theme.colors.textSecondary}
                 />

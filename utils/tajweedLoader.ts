@@ -32,8 +32,10 @@ function processTajweedWord(wordText: string): TajweedSegment[] {
   const ruleStack: string[] = [];
   let currentIndex = 0;
 
-  // Regex to find opening or closing rule tags
-  const tagRegex = /<rule class=([^>]+)>|<\/rule>/g;
+  // Regex to find opening or closing rule tags.
+  // Handles both clean tags (<rule class=ham_wasl>) and corrupted tags with
+  // extra HTML attributes (<rule class="ikhafa_shafawi" data-bs-...>).
+  const tagRegex = /<rule class="?([a-z_-]+)"?[^>]*>|<\/rule>/g;
   let match: RegExpExecArray | null;
 
   while (currentIndex < wordText.length) {
@@ -106,11 +108,10 @@ function createIndexedTajweedData(
 }
 
 /**
- * Preloads tajweed data in the background.
- * This function should be called early in the app lifecycle.
- * @returns Promise that resolves when data is loaded
+ * Preloads and processes tajweed data synchronously.
+ * The caller is responsible for deferral (e.g. InteractionManager.runAfterInteractions).
  */
-export const preloadTajweedData = async (): Promise<void> => {
+export const preloadTajweedData = (): void => {
   const {
     setTajweedData,
     setProcessedTajweedData,
@@ -119,17 +120,15 @@ export const preloadTajweedData = async (): Promise<void> => {
     setError,
   } = useTajweedStore.getState();
 
-  try {
-    setIsLoading(true);
-    console.log('[TajweedLoader] Starting tajweed data load...');
+  setIsLoading(true);
+  if (__DEV__) console.log('[TajweedLoader] Starting tajweed data load...');
 
-    // Using dynamic import instead of require to avoid blocking UI thread
-    // Note: For React Native, you may need to ensure this works with your bundler
-    const tajweedModule = await import('@/data/QPC Hafs Tajweed 2.json');
-    const rawTajweedData = tajweedModule.default as TajweedData;
+  try {
+    const rawTajweedData =
+      require('@/data/QPC Hafs Tajweed 2.json') as TajweedData;
 
     // Process the data to pre-parse the tajweed words
-    console.log('[TajweedLoader] Pre-processing tajweed data...');
+    if (__DEV__) console.log('[TajweedLoader] Pre-processing tajweed data...');
     const processed: ProcessedTajweedData = {};
 
     Object.entries(rawTajweedData).forEach(([key, word]) => {
@@ -141,7 +140,7 @@ export const preloadTajweedData = async (): Promise<void> => {
     });
 
     // Create indexed lookup table for O(1) verse access
-    console.log('[TajweedLoader] Creating indexed lookup...');
+    if (__DEV__) console.log('[TajweedLoader] Creating indexed lookup...');
     const indexedData = createIndexedTajweedData(processed);
 
     // Store all data forms
@@ -149,9 +148,10 @@ export const preloadTajweedData = async (): Promise<void> => {
     setProcessedTajweedData(processed);
     setIndexedTajweedData(indexedData);
 
-    console.log(
-      '[TajweedLoader] Tajweed data preloaded and processed successfully',
-    );
+    if (__DEV__)
+      console.log(
+        '[TajweedLoader] Tajweed data preloaded and processed successfully',
+      );
   } catch (error) {
     console.error('[TajweedLoader] Error preloading tajweed data:', error);
     setError(
@@ -162,64 +162,4 @@ export const preloadTajweedData = async (): Promise<void> => {
   } finally {
     setIsLoading(false);
   }
-};
-
-/**
- * Alternative implementation using a separate thread with setTimeout
- * Use this if dynamic import doesn't work well in React Native
- */
-export const preloadTajweedDataWithTimeout = (): void => {
-  const {
-    setTajweedData,
-    setProcessedTajweedData,
-    setIndexedTajweedData,
-    setIsLoading,
-    setError,
-  } = useTajweedStore.getState();
-
-  setIsLoading(true);
-  console.log('[TajweedLoader] Starting tajweed data load with timeout...');
-
-  // Use setTimeout to move the heavy loading off the main thread
-  setTimeout(() => {
-    try {
-      // This still blocks, but at least it's deferred
-      const rawTajweedData =
-        require('@/data/QPC Hafs Tajweed 2.json') as TajweedData;
-
-      // Process the data to pre-parse the tajweed words
-      console.log('[TajweedLoader] Pre-processing tajweed data...');
-      const processed: ProcessedTajweedData = {};
-
-      Object.entries(rawTajweedData).forEach(([key, word]) => {
-        processed[key] = {
-          word_index: word.word_index,
-          location: word.location,
-          segments: processTajweedWord(word.text),
-        };
-      });
-
-      // Create indexed lookup table for O(1) verse access
-      console.log('[TajweedLoader] Creating indexed lookup...');
-      const indexedData = createIndexedTajweedData(processed);
-
-      // Store all data forms
-      setTajweedData(rawTajweedData);
-      setProcessedTajweedData(processed);
-      setIndexedTajweedData(indexedData);
-
-      console.log(
-        '[TajweedLoader] Tajweed data preloaded and processed successfully',
-      );
-    } catch (error) {
-      console.error('[TajweedLoader] Error preloading tajweed data:', error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'Unknown error loading tajweed data',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, 100); // Small delay to let the UI render first
 };

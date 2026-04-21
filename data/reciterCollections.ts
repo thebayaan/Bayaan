@@ -1,4 +1,5 @@
 import {RECITERS, Reciter} from './reciterData';
+import {useTimestampStore} from '@/store/timestampStore';
 
 // Featured Reciters - Spotlight reciters chosen by Bayaan
 const FEATURED_RECITER_NAMES = [
@@ -172,6 +173,15 @@ export function getDiverseRewayatReciters(count?: number): Reciter[] {
   const reciters = DIVERSE_REWAYAT_RECITER_NAMES.map(findReciterByName).filter(
     (reciter): reciter is Reciter => reciter !== undefined,
   );
+  return count ? reciters.slice(0, count) : reciters;
+}
+
+/**
+ * Gets reciters that support Follow Along (ayah-level timestamps)
+ */
+export function getFollowAlongReciters(count?: number): Reciter[] {
+  const {supportedReciterIds} = useTimestampStore.getState();
+  const reciters = RECITERS.filter(r => supportedReciterIds.has(r.id));
   return count ? reciters.slice(0, count) : reciters;
 }
 

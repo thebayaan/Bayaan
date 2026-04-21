@@ -10,7 +10,7 @@ import {
   UIManager,
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useTheme} from '@/hooks/useTheme';
@@ -169,9 +169,8 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
                 showInstruction ? 'Hide instruction' : 'Show instruction'
               }>
               <View style={styles.instructionToggleContent}>
-                <Icon
+                <Feather
                   name="info"
-                  type="feather"
                   size={moderateScale(16)}
                   color={theme.colors.textSecondary}
                 />
@@ -179,9 +178,8 @@ export const DhikrReader: React.FC<DhikrReaderProps> = ({
                   {showInstruction ? 'Hide Info' : 'Show Info'}
                 </Text>
               </View>
-              <Icon
+              <Feather
                 name={showInstruction ? 'chevron-up' : 'chevron-down'}
-                type="feather"
                 size={moderateScale(18)}
                 color={theme.colors.textSecondary}
               />

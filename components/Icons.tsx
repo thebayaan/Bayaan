@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, {Path, G, Circle, Rect} from 'react-native-svg';
+import Svg, {Path, G, Circle, Rect, Line} from 'react-native-svg';
 
 export interface IconProps {
   color: string;
@@ -585,18 +585,71 @@ export const RewayatIcon: React.FC<IconProps> = ({color, size}) => (
   </Svg>
 );
 
-export const QuranIcon: React.FC<IconProps> = ({color, size}) => (
-  <Svg width={size} height={size} viewBox="0 0 636 442" fill="none">
-    <Path
-      d="M330.01 256.23Q330.25 256.23 330.26 256.23Q444.91 208.98 549.89 165.56A0.47 0.45 80.6 0 0 550.16 165.17Q550.39 159.59 546.08 156.21C540.88 152.13 536.02 155.01 530.19 157.07A0.38 0.38 0.0 0 1 529.69 156.73Q529.67 156.32 529.71 111.97Q529.71 107.13 528.83 105.12C526.43 99.66 519.98 97.60 514.65 100.13Q486.95 113.24 460.74 122.49C454.17 124.81 444.60 127.73 438.55 128.66C394.25 135.45 349.05 149.83 330.13 194.95A0.08 0.07 -78.6 0 1 330.06 195.00Q330.04 195.00 330.01 195.00Q329.99 195.00 329.96 195.00A0.08 0.07 78.6 0 1 329.90 194.95C310.98 149.83 265.78 135.44 221.49 128.65C215.44 127.72 205.87 124.79 199.30 122.47Q173.09 113.22 145.39 100.11C140.06 97.58 133.61 99.64 131.21 105.10Q130.33 107.11 130.33 111.95Q130.36 156.30 130.34 156.71A0.38 0.38 0.0 0 1 129.84 157.05C124.01 154.98 119.15 152.10 113.95 156.18Q109.64 159.56 109.87 165.14A0.47 0.45 -80.6 0 0 110.14 165.53Q215.12 208.97 329.76 256.23Q329.77 256.23 330.01 256.23"
-      fill={color}
-    />
-    <Path
-      d="M330.02 292.74Q330.21 292.74 330.26 292.77Q434.40 347.12 443.47 351.81Q447.86 354.08 452.99 354.08Q491.30 354.07 505.17 354.07A0.76 0.54 28.4 0 0 505.34 354.05C509.91 353.07 511.72 347.00 507.38 344.60Q433.49 303.82 378.00 273.21A0.22 0.22 0.0 0 1 378.02 272.81Q540.62 205.68 558.86 198.11Q564.61 195.72 565.30 190.09Q566.02 184.14 565.04 181.92Q562.24 175.57 556.29 174.85Q553.97 174.57 545.31 178.15Q447.92 218.44 330.23 266.91Q330.13 266.95 330.02 266.95Q329.90 266.95 329.80 266.91Q212.12 218.43 114.73 178.13Q106.07 174.55 103.75 174.83Q97.80 175.55 95.00 181.90Q94.02 184.12 94.74 190.07Q95.43 195.70 101.18 198.09Q119.42 205.66 282.01 272.81A0.22 0.22 0.0 0 1 282.03 273.21Q226.54 303.81 152.65 344.59C148.31 346.99 150.12 353.06 154.69 354.04A0.76 0.54 -28.4 0 0 154.86 354.06Q168.73 354.06 207.04 354.07Q212.17 354.07 216.56 351.80Q225.63 347.11 329.77 292.77Q329.82 292.74 330.02 292.74"
-      fill={color}
-    />
-  </Svg>
-);
+export const QuranIcon: React.FC<IconProps> = ({color, size, filled}) =>
+  filled ? (
+    <Svg width={size} height={size} viewBox="0 0 77 75" fill="none">
+      <Path
+        fillRule="evenodd"
+        fill={color}
+        d="M 16.00,16.25 L 16.00,16.50 L 15.50,17.00 L 14.00,17.25 L 14.25,40.75 L 15.50,40.75 L 16.00,41.25 L 16.00,41.50 L 17.50,41.75 L 18.00,42.25 L 18.00,42.50 L 19.50,42.75 L 20.00,43.25 L 20.00,43.50 L 21.50,43.75 L 22.00,44.50 L 24.50,44.75 L 25.00,45.25 L 25.00,45.50 L 26.50,45.75 L 27.00,46.50 L 29.50,46.75 L 30.00,47.25 L 30.50,47.75 L 31.00,48.50 L 30.50,49.00 L 29.00,49.25 L 29.00,49.50 L 28.50,50.00 L 26.00,50.25 L 26.00,50.50 L 25.50,51.00 L 23.00,51.25 L 22.50,52.00 L 21.00,52.25 L 21.00,52.50 L 20.50,53.00 L 18.00,53.25 L 18.25,58.75 L 19.75,58.50 L 20.25,57.75 L 21.75,57.50 L 21.75,57.25 L 22.25,56.75 L 24.75,56.50 L 25.25,55.75 L 26.75,55.50 L 26.75,55.25 L 27.25,54.75 L 28.75,54.50 L 28.75,54.25 L 29.25,53.75 L 31.75,53.50 L 32.25,52.75 L 33.75,52.50 L 33.75,52.25 L 34.25,51.75 L 36.75,51.50 L 36.75,51.25 L 37.25,50.75 L 38.50,50.75 L 39.00,51.25 L 39.00,51.50 L 41.50,51.75 L 42.00,52.25 L 42.00,52.50 L 43.50,52.75 L 44.00,53.25 L 44.00,53.50 L 45.50,53.75 L 46.00,54.50 L 48.50,54.75 L 49.00,55.25 L 49.00,55.50 L 50.50,55.75 L 51.00,56.25 L 51.00,56.50 L 52.50,56.75 L 53.00,57.50 L 55.50,57.75 L 56.00,58.50 L 57.75,58.50 L 57.50,53.00 L 55.25,53.00 L 54.75,52.50 L 54.75,52.25 L 53.25,52.00 L 52.75,51.25 L 50.25,51.00 L 49.75,50.50 L 49.75,50.25 L 47.25,50.00 L 46.75,49.50 L 46.75,49.25 L 45.25,49.00 L 44.75,48.25 L 45.25,47.75 L 45.75,47.25 L 46.25,46.75 L 48.75,46.50 L 49.25,45.75 L 50.75,45.50 L 50.75,45.25 L 51.25,44.75 L 52.75,44.50 L 52.75,44.25 L 53.25,43.75 L 55.75,43.50 L 56.25,42.75 L 57.75,42.50 L 57.75,42.25 L 58.25,41.75 L 59.75,41.50 L 59.75,41.25 L 60.25,40.75 L 61.75,40.50 L 61.50,17.00 L 60.25,17.00 L 59.75,16.50 L 59.75,16.25 L 59.00,16.25 L 59.00,36.50 L 58.50,37.00 L 57.00,37.25 L 57.00,37.50 L 56.50,38.00 L 55.00,38.25 L 55.00,38.50 L 54.50,39.00 L 53.00,39.25 L 53.00,39.50 L 52.50,40.00 L 50.00,40.25 L 49.50,41.00 L 48.00,41.25 L 48.00,41.50 L 47.50,42.00 L 46.00,42.25 L 46.00,42.50 L 45.50,43.00 L 43.00,43.25 L 42.50,44.00 L 41.00,44.25 L 41.00,44.50 L 40.50,45.00 L 38.00,45.25 L 38.00,45.50 L 37.25,46.00 L 36.75,45.50 L 36.75,45.25 L 35.25,45.00 L 34.75,44.50 L 34.75,44.25 L 33.25,44.00 L 32.75,43.25 L 30.25,43.00 L 29.75,42.50 L 29.75,42.25 L 28.25,42.00 L 27.75,41.50 L 27.75,41.25 L 26.25,41.00 L 25.75,40.25 L 23.25,40.00 L 22.75,39.50 L 22.75,39.25 L 21.25,39.00 L 20.75,38.50 L 20.75,38.25 L 19.25,38.00 L 18.75,37.50 L 18.75,37.25 L 17.25,37.00 L 16.75,36.50 L 16.50,16.00 Z M 19.00,14.25 L 19.25,34.75 L 20.50,34.75 L 21.00,35.25 L 21.00,35.50 L 22.50,35.75 L 23.00,36.50 L 25.50,36.75 L 26.00,37.50 L 29.50,37.75 L 30.00,38.25 L 30.00,38.50 L 31.50,38.75 L 32.00,39.25 L 32.00,39.50 L 33.50,39.75 L 34.00,40.25 L 35.00,41.25 L 35.00,41.50 L 35.25,41.75 L 37.00,43.50 L 37.75,43.50 L 38.50,42.75 L 38.75,42.50 L 39.50,41.75 L 39.75,41.50 L 40.75,40.25 L 41.25,39.75 L 42.75,39.50 L 42.75,39.25 L 43.25,38.75 L 45.75,38.50 L 45.75,38.25 L 46.25,37.75 L 48.75,37.50 L 48.75,37.25 L 49.25,36.75 L 51.75,36.50 L 52.25,35.75 L 53.75,35.50 L 53.75,35.25 L 54.25,34.75 L 55.75,34.50 L 55.50,14.00 L 53.00,14.25 L 52.50,15.00 L 51.00,15.25 L 51.00,15.50 L 50.50,16.00 L 48.00,16.25 L 48.00,16.50 L 47.50,17.00 L 43.00,17.25 L 42.50,18.00 L 40.00,18.25 L 40.00,18.50 L 38.50,20.00 L 38.25,20.00 L 38.00,21.50 L 37.25,22.00 L 36.75,21.50 L 36.25,21.00 L 35.75,20.50 L 35.50,19.00 L 34.25,19.00 L 33.75,18.25 L 31.25,18.00 L 30.75,17.25 L 26.25,17.00 L 25.75,16.50 L 25.75,16.25 L 23.25,16.00 L 22.75,15.50 L 21.75,14.50 L 21.75,14.25 Z"
+      />
+    </Svg>
+  ) : (
+    <Svg width={size} height={size} viewBox="0 0 77 75" fill="none">
+      {/* Left cover spine + page edge + bottom fold */}
+      <Path
+        d="M 21 14 L 16 16 L 14 17 L 14 41 L 31 48.5 L 18 53 L 18 59 L 38 51"
+        stroke={color}
+        strokeWidth={2.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Right cover spine + page edge + bottom fold */}
+      <Path
+        d="M 55 14 L 60 16 L 62 17 L 62 41 L 45 48.5 L 58 53 L 58 59 L 38 51"
+        stroke={color}
+        strokeWidth={2.5}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Left inner cover border */}
+      <Path
+        d="M 17 16 L 17 37 L 38 46"
+        stroke={color}
+        strokeWidth={2}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Right inner cover border */}
+      <Path
+        d="M 59 16 L 59 37 L 38 46"
+        stroke={color}
+        strokeWidth={2}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Left inner page */}
+      <Path
+        d="M 22 14 L 19 14 L 19 35 L 37 44 L 37 22 L 22 14"
+        stroke={color}
+        strokeWidth={2}
+        fill="none"
+        strokeLinejoin="round"
+      />
+      {/* Right inner page */}
+      <Path
+        d="M 54 14 L 57 14 L 57 35 L 39 44 L 39 22 L 54 14"
+        stroke={color}
+        strokeWidth={2}
+        fill="none"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
 
 export const MushafiIcon: React.FC<IconProps> = ({color, size}) => (
   <Svg width={size} height={size} viewBox="0 0 1024 1024" fill="none">
@@ -707,6 +760,1548 @@ export const TrashIcon: React.FC<IconProps> = ({color, size}) => (
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const MicrophoneIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 1C10.34 1 9 2.34 9 4V12C9 13.66 10.34 15 12 15C13.66 15 15 13.66 15 12V4C15 2.34 13.66 1 12 1Z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M19 10V12C19 15.866 15.866 19 12 19C8.13401 19 5 15.866 5 12V10"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 19V23M8 23H16"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const TafseerIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M2 7C2 7 3.5 5 7 5C10.5 5 12 7 12 7V20C12 20 10.5 18.5 7 18.5C3.5 18.5 2 20 2 20V7Z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 7C12 7 13.5 5 17 5C20.5 5 22 7 22 7V20C22 20 20.5 18.5 17 18.5C13.5 18.5 12 20 12 20V7Z"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="19" cy="3.5" r="2.5" stroke={color} strokeWidth="1.3" />
+    <Circle cx="19" cy="3.5" r="0.6" fill={color} />
+  </Svg>
+);
+
+export const AmbientIcon: React.FC<IconProps> = ({color, size, filled}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {filled ? (
+      <>
+        <Circle cx="12" cy="12" r="3" fill={color} />
+        <Path
+          d="M12 5a7 7 0 017 7"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          opacity={0.7}
+        />
+        <Path
+          d="M12 2a10 10 0 0110 10"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          opacity={0.4}
+        />
+        <Path
+          d="M12 19a7 7 0 01-7-7"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          opacity={0.7}
+        />
+        <Path
+          d="M12 22a10 10 0 01-10-10"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          opacity={0.4}
+        />
+      </>
+    ) : (
+      <>
+        <Circle cx="12" cy="12" r="3" stroke={color} strokeWidth={1.5} />
+        <Path
+          d="M12 5a7 7 0 017 7"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          opacity={0.6}
+        />
+        <Path
+          d="M12 2a10 10 0 0110 10"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          opacity={0.3}
+        />
+        <Path
+          d="M12 19a7 7 0 01-7-7"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          opacity={0.6}
+        />
+        <Path
+          d="M12 22a10 10 0 01-10-10"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          opacity={0.3}
+        />
+      </>
+    )}
+  </Svg>
+);
+
+// Tafseer — Stacked Volumes
+export const StackedVolumesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="4"
+      width="13"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.35}
+    />
+    <Rect
+      x="5"
+      y="2.5"
+      width="13"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.6}
+    />
+    <Rect
+      x="8"
+      y="1"
+      width="13"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+  </Svg>
+);
+
+// Notes — Page + Quill
+export const PageQuillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="2"
+      width="14"
+      height="20"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="6"
+      y1="6"
+      x2="14"
+      y2="6"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1="6"
+      y1="8.5"
+      x2="14"
+      y2="8.5"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1="6"
+      y1="11"
+      x2="12"
+      y2="11"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Path
+      d="M21 2C21 2 18 5 16 9C15 11 14.5 13 14 15L15 15.5C16.5 13.5 18 11 19.5 8C21 5 22 3 21 2Z"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinejoin="round"
+      fill={color}
+      opacity={0.15}
+    />
+    <Path
+      d="M14 15L13 19L15 15.5"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Similar Verses — Mirror Waves
+export const MirrorWavesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M10 4L4 8L10 12L4 16L10 20"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M14 4L20 8L14 12L20 16L14 20"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Highlight — Text Highlight Bar
+export const HighlightIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="4"
+      y="8"
+      width="16"
+      height="6"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.5}
+      opacity={0.35}
+      fill={color}
+    />
+    <Path d="M6 8V5" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path d="M10 8V6" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path
+      d="M14 8V5.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 8V6.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path d="M6 14V18" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path
+      d="M10 14V17"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M14 14V18"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 14V16.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+// Mushaf Mode — Mushaf Page (pill icon)
+export const MushafPagePillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="1.5"
+      width="18"
+      height="21"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    {/* Divider 1 */}
+    <Line
+      x1="6"
+      y1="4"
+      x2="18"
+      y2="4"
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      opacity={0.9}
+    />
+    {/* Surah 1 */}
+    <Line
+      x1="7"
+      y1="5.8"
+      x2="17"
+      y2="5.8"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="8"
+      y1="7.2"
+      x2="16"
+      y2="7.2"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    {/* Divider 2 */}
+    <Line
+      x1="6"
+      y1="9"
+      x2="18"
+      y2="9"
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      opacity={0.9}
+    />
+    {/* Surah 2 */}
+    <Line
+      x1="7"
+      y1="10.8"
+      x2="17"
+      y2="10.8"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="7.5"
+      y1="12.2"
+      x2="16.5"
+      y2="12.2"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="9"
+      y1="13.6"
+      x2="15"
+      y2="13.6"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    {/* Divider 3 */}
+    <Line
+      x1="6"
+      y1="15.4"
+      x2="18"
+      y2="15.4"
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      opacity={0.9}
+    />
+    {/* Surah 3 */}
+    <Line
+      x1="7"
+      y1="17.2"
+      x2="17"
+      y2="17.2"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="8"
+      y1="18.6"
+      x2="16"
+      y2="18.6"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+    <Line
+      x1="9"
+      y1="20"
+      x2="15"
+      y2="20"
+      stroke={color}
+      strokeWidth={0.7}
+      strokeLinecap="round"
+      opacity={0.45}
+    />
+  </Svg>
+);
+
+// Scroll Mode — Page + Arrow (pill icon)
+export const ScrollModePillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="4"
+      y="2"
+      width="16"
+      height="20"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="8"
+      y1="6"
+      x2="16"
+      y2="6"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="9"
+      x2="16"
+      y2="9"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="12"
+      x2="16"
+      y2="12"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="15"
+      x2="14"
+      y2="15"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M12 18V22M10 20L12 22L14 20"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// List View — Flowing text lines (no page border)
+export const ListViewPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={10}
+      y={2.5}
+      width={11}
+      height={3}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
+      stroke={color}
+      strokeWidth={0.8}
+    />
+    <Rect
+      x={3}
+      y={7.5}
+      width={12}
+      height={3}
+      rx={1.5}
+      fill={color}
+      stroke={color}
+      strokeWidth={0.8}
+      opacity={0.5}
+    />
+    <Rect
+      x={9}
+      y={12.5}
+      width={12}
+      height={3}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
+      stroke={color}
+      strokeWidth={0.8}
+    />
+    <Rect
+      x={3}
+      y={17.5}
+      width={11}
+      height={3}
+      rx={1.5}
+      fill={color}
+      stroke={color}
+      strokeWidth={0.8}
+      opacity={0.5}
+    />
+  </Svg>
+);
+
+// Horizontal Scroll — Two pages with horizontal arrow
+export const HorizontalScrollPillIcon: React.FC<IconProps> = ({
+  color,
+  size,
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="4"
+      width="8"
+      height="12"
+      rx={1.2}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Line
+      x1="4"
+      y1="7"
+      x2="8"
+      y2="7"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="4"
+      y1="9.5"
+      x2="8"
+      y2="9.5"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="4"
+      y1="12"
+      x2="7"
+      y2="12"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Rect
+      x="14"
+      y="4"
+      width="8"
+      height="12"
+      rx={1.2}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Line
+      x1="16"
+      y1="7"
+      x2="20"
+      y2="7"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="16"
+      y1="9.5"
+      x2="20"
+      y2="9.5"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="16"
+      y1="12"
+      x2="19"
+      y2="12"
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M10.5 20H13.5M12 18.5L13.5 20L12 21.5"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Vertical Scroll — Page with downward arrow
+export const VerticalScrollPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="4"
+      y="2"
+      width="16"
+      height="20"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="8"
+      y1="6"
+      x2="16"
+      y2="6"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="9"
+      x2="16"
+      y2="9"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="12"
+      x2="16"
+      y2="12"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Line
+      x1="8"
+      y1="15"
+      x2="14"
+      y2="15"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M12 18V22M10 20L12 22L14 20"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Book Layout — Landscape Book (pill icon)
+export const BookLayoutPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="3"
+      width="20"
+      height="17"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Line
+      x1="12"
+      y1="3"
+      x2="12"
+      y2="20"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeDasharray="2 2"
+      opacity={0.4}
+    />
+    <Path
+      d="M8 21L12 20L16 21"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Fullscreen Layout — Expand Arrows (pill icon)
+export const FullscreenPillIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="3"
+      width="18"
+      height="18"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+    <Path
+      d="M3 3L9 9M21 3L15 9M3 21L9 15M21 21L15 15"
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+  </Svg>
+);
+
+// Shared Phrases — Chain Links
+export const ChainLinksIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M9 12H15" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Rect
+      x="3"
+      y="8"
+      width="8"
+      height="8"
+      rx={4}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Rect
+      x="13"
+      y="8"
+      width="8"
+      height="8"
+      rx={4}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+// --- Settings Screen Icons ---
+
+export const DualPagesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="2"
+      y="4"
+      width="9"
+      height="16"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Rect
+      x="13"
+      y="4"
+      width="9"
+      height="16"
+      rx={2}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Line
+      x1="5"
+      y1="8"
+      x2="8"
+      y2="8"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="5"
+      y1="10.5"
+      x2="8"
+      y2="10.5"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="5"
+      y1="13"
+      x2="7"
+      y2="13"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="16"
+      y1="8"
+      x2="19"
+      y2="8"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="16"
+      y1="10.5"
+      x2="19"
+      y2="10.5"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+    <Line
+      x1="16"
+      y1="13"
+      x2="18"
+      y2="13"
+      stroke={color}
+      strokeWidth={1}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const PersonAudioIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="9" cy="7" r="4" stroke={color} strokeWidth={1.5} />
+    <Path
+      d="M2 21C2 17.134 5.13401 14 9 14C10.074 14 11.089 14.247 12 14.69"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M18 14V20"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M15.5 16C15.5 14.619 16.619 13.5 18 13.5C19.381 13.5 20.5 14.619 20.5 16V16.5C20.5 17.052 20.052 17.5 19.5 17.5H16.5C15.948 17.5 15.5 17.052 15.5 16.5V16Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M15.5 20C15.5 20.552 15.948 21 16.5 21H19.5C20.052 21 20.5 20.552 20.5 20V19.5C20.5 18.119 19.381 17 18 17C16.619 17 15.5 18.119 15.5 19.5V20Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+export const SelectionListIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="4"
+      width="18"
+      height="4.5"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Rect
+      x="3"
+      y="10"
+      width="18"
+      height="4.5"
+      rx={1.5}
+      fill={color}
+      fillOpacity={0.15}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M17 11.5L18.5 13L20.5 10.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Rect
+      x="3"
+      y="16"
+      width="18"
+      height="4.5"
+      rx={1.5}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+export const DatabaseIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3C7.582 3 4 4.343 4 6C4 7.657 7.582 9 12 9C16.418 9 20 7.657 20 6C20 4.343 16.418 3 12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M4 6V12C4 13.657 7.582 15 12 15C16.418 15 20 13.657 20 12V6"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M4 12V18C4 19.657 7.582 21 12 21C16.418 21 20 19.657 20 18V12"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+  </Svg>
+);
+
+export const LightbulbIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M9 21H15" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    <Path
+      d="M12 3C8.134 3 5 6.134 5 10C5 12.386 6.21 14.478 8.062 15.68C8.621 16.042 9 16.669 9 17.333V18H15V17.333C15 16.669 15.379 16.042 15.938 15.68C17.79 14.478 19 12.386 19 10C19 6.134 15.866 3 12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Line
+      x1="9"
+      y1="18"
+      x2="15"
+      y2="18"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const ChatBubbleIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3C7.029 3 3 6.582 3 11C3 13.245 4.093 15.266 5.858 16.677C5.965 17.549 5.558 18.656 4.858 19.564C6.487 19.415 8.108 18.837 9.177 18.147C10.065 18.37 11.015 18.5 12 18.5C16.971 18.5 21 14.918 21 10.75C21 6.582 16.971 3 12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Circle cx="8.5" cy="11" r={1} fill={color} />
+    <Circle cx="12" cy="11" r={1} fill={color} />
+    <Circle cx="15.5" cy="11" r={1} fill={color} />
+  </Svg>
+);
+
+export const GiftBoxIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x="3"
+      y="8"
+      width="18"
+      height="4"
+      rx={1}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M5 12V20C5 20.552 5.448 21 6 21H18C18.552 21 19 20.552 19 20V12"
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Line x1="12" y1="8" x2="12" y2="21" stroke={color} strokeWidth={1.5} />
+    <Path
+      d="M12 8C12 8 12 5 9.5 4C7 3 7 5.5 8.5 6.5C10 7.5 12 8 12 8Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 8C12 8 12 5 14.5 4C17 3 17 5.5 15.5 6.5C14 7.5 12 8 12 8Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const InfoRoundedIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={1.5} />
+    <Line
+      x1="12"
+      y1="11"
+      x2="12"
+      y2="17"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Circle cx="12" cy="8" r={1} fill={color} />
+  </Svg>
+);
+
+export const MedalIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx="12" cy="9" r="6" stroke={color} strokeWidth={1.5} />
+    <Circle cx="12" cy="9" r="3" stroke={color} strokeWidth={1.5} />
+    <Path
+      d="M7.5 13.5L5 21L8.5 19L12 21L15.5 19L19 21L16.5 13.5"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const DocCheckIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M6 2C4.895 2 4 2.895 4 4V20C4 21.105 4.895 22 6 22H18C19.105 22 20 21.105 20 20V8L14 2H6Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M14 2V8H20"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M9 14L11 16L15 12"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const ShieldLockIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 3L4 7V12C4 16.418 7.582 20.5 12 21.5C16.418 20.5 20 16.418 20 12V7L12 3Z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    />
+    <Rect
+      x="9.5"
+      y="11"
+      width="5"
+      height="4"
+      rx={1}
+      stroke={color}
+      strokeWidth={1.5}
+    />
+    <Path
+      d="M10.5 11V9.5C10.5 8.672 11.172 8 12 8C12.828 8 13.5 8.672 13.5 9.5V11"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const SettingsIcon: React.FC<IconProps> = ({color, size, filled}) => (
+  <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    {filled ? (
+      <Path
+        d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"
+        fill={color}
+      />
+    ) : (
+      <>
+        <Path
+          d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"
+          fill={color}
+        />
+        <Path
+          d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"
+          fill={color}
+        />
+      </>
+    )}
+  </Svg>
+);
+
+export const GroupedLinesIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={3}
+      y={2}
+      width={3}
+      height={8}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
+    />
+    <Line
+      x1={9}
+      y1={4}
+      x2={20}
+      y2={4}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={9}
+      y1={8}
+      x2={17}
+      y2={8}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Rect
+      x={3}
+      y={14}
+      width={3}
+      height={8}
+      rx={1.5}
+      fill={color}
+      opacity={0.15}
+    />
+    <Line
+      x1={9}
+      y1={16}
+      x2={20}
+      y2={16}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={9}
+      y1={20}
+      x2={15}
+      y2={20}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const BreakdownIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={3}
+      y={2}
+      width={18}
+      height={6}
+      rx={2}
+      stroke={color}
+      strokeWidth={1.4}
+    />
+    <Line
+      x1={7}
+      y1={5}
+      x2={17}
+      y2={5}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={8}
+      y1={8}
+      x2={8}
+      y2={11}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.4}
+    />
+    <Line
+      x1={16}
+      y1={8}
+      x2={16}
+      y2={11}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.4}
+    />
+    <Line
+      x1={12}
+      y1={8}
+      x2={12}
+      y2={11}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.4}
+    />
+    <Rect
+      x={2}
+      y={11}
+      width={5.5}
+      height={5}
+      rx={1.5}
+      fill={color}
+      opacity={0.1}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Rect
+      x={9.25}
+      y={11}
+      width={5.5}
+      height={5}
+      rx={1.5}
+      fill={color}
+      opacity={0.1}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Rect
+      x={16.5}
+      y={11}
+      width={5.5}
+      height={5}
+      rx={1.5}
+      fill={color}
+      opacity={0.1}
+      stroke={color}
+      strokeWidth={1.2}
+    />
+    <Line
+      x1={3}
+      y1={19}
+      x2={6.5}
+      y2={19}
+      stroke={color}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1={10.25}
+      y1={19}
+      x2={13.75}
+      y2={19}
+      stroke={color}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+    <Line
+      x1={17.5}
+      y1={19}
+      x2={21}
+      y2={19}
+      stroke={color}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+      opacity={0.4}
+    />
+  </Svg>
+);
+
+export const QuranBookIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 77 75" fill="none">
+    <Path
+      fillRule="evenodd"
+      fill={color}
+      d="M 16.00,16.25 L 16.00,16.50 L 15.50,17.00 L 14.00,17.25 L 14.25,40.75 L 15.50,40.75 L 16.00,41.25 L 16.00,41.50 L 17.50,41.75 L 18.00,42.25 L 18.00,42.50 L 19.50,42.75 L 20.00,43.25 L 20.00,43.50 L 21.50,43.75 L 22.00,44.50 L 24.50,44.75 L 25.00,45.25 L 25.00,45.50 L 26.50,45.75 L 27.00,46.50 L 29.50,46.75 L 30.00,47.25 L 30.50,47.75 L 31.00,48.50 L 30.50,49.00 L 29.00,49.25 L 29.00,49.50 L 28.50,50.00 L 26.00,50.25 L 26.00,50.50 L 25.50,51.00 L 23.00,51.25 L 22.50,52.00 L 21.00,52.25 L 21.00,52.50 L 20.50,53.00 L 18.00,53.25 L 18.25,58.75 L 19.75,58.50 L 20.25,57.75 L 21.75,57.50 L 21.75,57.25 L 22.25,56.75 L 24.75,56.50 L 25.25,55.75 L 26.75,55.50 L 26.75,55.25 L 27.25,54.75 L 28.75,54.50 L 28.75,54.25 L 29.25,53.75 L 31.75,53.50 L 32.25,52.75 L 33.75,52.50 L 33.75,52.25 L 34.25,51.75 L 36.75,51.50 L 36.75,51.25 L 37.25,50.75 L 38.50,50.75 L 39.00,51.25 L 39.00,51.50 L 41.50,51.75 L 42.00,52.25 L 42.00,52.50 L 43.50,52.75 L 44.00,53.25 L 44.00,53.50 L 45.50,53.75 L 46.00,54.50 L 48.50,54.75 L 49.00,55.25 L 49.00,55.50 L 50.50,55.75 L 51.00,56.25 L 51.00,56.50 L 52.50,56.75 L 53.00,57.50 L 55.50,57.75 L 56.00,58.50 L 57.75,58.50 L 57.50,53.00 L 55.25,53.00 L 54.75,52.50 L 54.75,52.25 L 53.25,52.00 L 52.75,51.25 L 50.25,51.00 L 49.75,50.50 L 49.75,50.25 L 47.25,50.00 L 46.75,49.50 L 46.75,49.25 L 45.25,49.00 L 44.75,48.25 L 45.25,47.75 L 45.75,47.25 L 46.25,46.75 L 48.75,46.50 L 49.25,45.75 L 50.75,45.50 L 50.75,45.25 L 51.25,44.75 L 52.75,44.50 L 52.75,44.25 L 53.25,43.75 L 55.75,43.50 L 56.25,42.75 L 57.75,42.50 L 57.75,42.25 L 58.25,41.75 L 59.75,41.50 L 59.75,41.25 L 60.25,40.75 L 61.75,40.50 L 61.50,17.00 L 60.25,17.00 L 59.75,16.50 L 59.75,16.25 L 59.00,16.25 L 59.00,36.50 L 58.50,37.00 L 57.00,37.25 L 57.00,37.50 L 56.50,38.00 L 55.00,38.25 L 55.00,38.50 L 54.50,39.00 L 53.00,39.25 L 53.00,39.50 L 52.50,40.00 L 50.00,40.25 L 49.50,41.00 L 48.00,41.25 L 48.00,41.50 L 47.50,42.00 L 46.00,42.25 L 46.00,42.50 L 45.50,43.00 L 43.00,43.25 L 42.50,44.00 L 41.00,44.25 L 41.00,44.50 L 40.50,45.00 L 38.00,45.25 L 38.00,45.50 L 37.25,46.00 L 36.75,45.50 L 36.75,45.25 L 35.25,45.00 L 34.75,44.50 L 34.75,44.25 L 33.25,44.00 L 32.75,43.25 L 30.25,43.00 L 29.75,42.50 L 29.75,42.25 L 28.25,42.00 L 27.75,41.50 L 27.75,41.25 L 26.25,41.00 L 25.75,40.25 L 23.25,40.00 L 22.75,39.50 L 22.75,39.25 L 21.25,39.00 L 20.75,38.50 L 20.75,38.25 L 19.25,38.00 L 18.75,37.50 L 18.75,37.25 L 17.25,37.00 L 16.75,36.50 L 16.50,16.00 Z M 19.00,14.25 L 19.25,34.75 L 20.50,34.75 L 21.00,35.25 L 21.00,35.50 L 22.50,35.75 L 23.00,36.50 L 25.50,36.75 L 26.00,37.50 L 29.50,37.75 L 30.00,38.25 L 30.00,38.50 L 31.50,38.75 L 32.00,39.25 L 32.00,39.50 L 33.50,39.75 L 34.00,40.25 L 35.00,41.25 L 35.00,41.50 L 35.25,41.75 L 37.00,43.50 L 37.75,43.50 L 38.50,42.75 L 38.75,42.50 L 39.50,41.75 L 39.75,41.50 L 40.75,40.25 L 41.25,39.75 L 42.75,39.50 L 42.75,39.25 L 43.25,38.75 L 45.75,38.50 L 45.75,38.25 L 46.25,37.75 L 48.75,37.50 L 48.75,37.25 L 49.25,36.75 L 51.75,36.50 L 52.25,35.75 L 53.75,35.50 L 53.75,35.25 L 54.25,34.75 L 55.75,34.50 L 55.50,14.00 L 53.00,14.25 L 52.50,15.00 L 51.00,15.25 L 51.00,15.50 L 50.50,16.00 L 48.00,16.25 L 48.00,16.50 L 47.50,17.00 L 43.00,17.25 L 42.50,18.00 L 40.00,18.25 L 40.00,18.50 L 38.50,20.00 L 38.25,20.00 L 38.00,21.50 L 37.25,22.00 L 36.75,21.50 L 36.25,21.00 L 35.75,20.50 L 35.50,19.00 L 34.25,19.00 L 33.75,18.25 L 31.25,18.00 L 30.75,17.25 L 26.25,17.00 L 25.75,16.50 L 25.75,16.25 L 23.25,16.00 L 22.75,15.50 L 21.75,14.50 L 21.75,14.25 Z"
+    />
+  </Svg>
+);
+
+export const TasbihIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Beads forming an oval loop */}
+    <Circle cx={12} cy={2} r={1.4} fill={color} />
+    <Circle cx={7.5} cy={3.8} r={1.4} fill={color} />
+    <Circle cx={16.5} cy={3.8} r={1.4} fill={color} />
+    <Circle cx={5} cy={7} r={1.4} fill={color} />
+    <Circle cx={19} cy={7} r={1.4} fill={color} />
+    <Circle cx={5} cy={10.5} r={1.4} fill={color} />
+    <Circle cx={19} cy={10.5} r={1.4} fill={color} />
+    <Circle cx={7.5} cy={13.2} r={1.4} fill={color} />
+    <Circle cx={16.5} cy={13.2} r={1.4} fill={color} />
+    {/* Imam bead (larger) */}
+    <Circle cx={12} cy={15} r={1.9} fill={color} />
+    {/* Tassel */}
+    <Line
+      x1={12}
+      y1={17}
+      x2={12}
+      y2={22}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const SunIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx={12} cy={12} r={4.5} stroke={color} strokeWidth={1.5} />
+    <Line
+      x1={12}
+      y1={2.5}
+      x2={12}
+      y2={5}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={12}
+      y1={19}
+      x2={12}
+      y2={21.5}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={2.5}
+      y1={12}
+      x2={5}
+      y2={12}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={19}
+      y1={12}
+      x2={21.5}
+      y2={12}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={5.28}
+      y1={5.28}
+      x2={7.05}
+      y2={7.05}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={16.95}
+      y1={16.95}
+      x2={18.72}
+      y2={18.72}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={5.28}
+      y1={18.72}
+      x2={7.05}
+      y2={16.95}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={16.95}
+      y1={7.05}
+      x2={18.72}
+      y2={5.28}
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const MoonIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M20.5 12.5c-.67 4.44-4.64 7.5-9.11 7.5C6.48 20 2.5 16.48 2.5 11.5c0-4.47 3.06-8.44 7.5-9.11a8 8 0 0010.5 10.11z"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const AutoThemeIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    {/* Circle split in half — left light, right dark */}
+    <Circle cx={12} cy={12} r={8.5} stroke={color} strokeWidth={1.5} />
+    {/* Right half filled (dark side) */}
+    <Path d="M12 3.5a8.5 8.5 0 010 17V3.5z" fill={color} opacity={0.85} />
+    {/* Small star on the dark side */}
+    <Circle cx={14.5} cy={10} r={1} fill="white" opacity={0.9} />
+    <Circle cx={16} cy={13.5} r={0.6} fill="white" opacity={0.7} />
+  </Svg>
+);
+
+export const ThreeStarsReviewIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M5 10L5.8 12.5H8.3L6.3 14L7 16.5L5 15L3 16.5L3.7 14L1.7 12.5H4.2Z"
+      stroke={color}
+      strokeWidth={1}
+      fill={color}
+      opacity={0.15}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M12 4L13.2 7.5H16.7L13.8 9.5L14.8 13L12 11L9.2 13L10.2 9.5L7.3 7.5H10.8Z"
+      stroke={color}
+      strokeWidth={1.2}
+      fill={color}
+      opacity={0.2}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M19 10L19.8 12.5H22.3L20.3 14L21 16.5L19 15L17 16.5L17.7 14L15.7 12.5H18.2Z"
+      stroke={color}
+      strokeWidth={1}
+      fill={color}
+      opacity={0.15}
+      strokeLinejoin="round"
+    />
+    <Line
+      x1={5}
+      y1={20}
+      x2={19}
+      y2={20}
+      stroke={color}
+      strokeWidth={0.8}
+      strokeLinecap="round"
+      opacity={0.2}
+    />
+  </Svg>
+);
+
+export const CopyIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect
+      x={2}
+      y={6}
+      width={13}
+      height={15}
+      rx={2}
+      stroke={color}
+      strokeWidth={1.2}
+      opacity={0.35}
+    />
+    <Rect
+      x={7}
+      y={3}
+      width={13}
+      height={15}
+      rx={2}
+      stroke={color}
+      strokeWidth={1.3}
+    />
+  </Svg>
+);
+
+export const ShareIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Line
+      x1={12}
+      y1={3}
+      x2={12}
+      y2={15}
+      stroke={color}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+    />
+    <Path
+      d="M8 7L12 3L16 7"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M5 12V19C5 19.55 5.45 20 6 20H18C18.55 20 19 19.55 19 19V12"
+      stroke={color}
+      strokeWidth={1.3}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
+export const LearnAboutIcon: React.FC<IconProps> = ({color, size}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 2C8 2 5 5 5 9C5 12 7 14 8 15.5V18C8 18.55 8.45 19 9 19H15C15.55 19 16 18.55 16 18V15.5C17 14 19 12 19 9C19 5 16 2 12 2Z"
+      stroke={color}
+      strokeWidth={1.3}
+      fill={color}
+      opacity={0.06}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Line
+      x1={9}
+      y1={21}
+      x2={15}
+      y2={21}
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+    />
+    <Line
+      x1={10}
+      y1={23}
+      x2={14}
+      y2={23}
+      stroke={color}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      opacity={0.5}
+    />
+    <Path
+      d="M10 12C10 12 11 10 12 10C13 10 14 12 14 12"
+      stroke={color}
+      strokeWidth={0.8}
+      opacity={0.3}
+      strokeLinecap="round"
     />
   </Svg>
 );

@@ -1,9 +1,14 @@
-import {Reciter} from '@/data/reciterData';
+import {Reciter, RECITERS} from '@/data/reciterData';
+import {SURAHS} from '@/data/surahData';
 import {Track} from '@/types/audio';
 import {Surah} from '@/data/surahData';
 import {generateSmartAudioUrl} from './audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
 import {resolveFilePath} from '@/services/downloadService';
+import type {UploadedRecitation} from '@/types/uploads';
+import {resolveRecitationPath} from '@/services/uploads/UploadsService';
+import {getSurahById, getReciterName} from '@/services/dataService';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 /**
  * Filters and returns available surahs for a given rewayat
@@ -45,8 +50,7 @@ export async function createTrack(
     surahId: String(surah.id),
     reciterId: reciter.id,
     reciterName: reciter.name,
-    duration: 0, // Will be set by TrackPlayer
-    description: `${surah.translated_name_english} - ${surah.name}`,
+    duration: 0, // Will be set by expo-audio
     rewayatId: rewayatId || reciter.rewayat[0].id,
   };
 }
@@ -133,9 +137,133 @@ export function createDownloadedTrack(
     reciterId: reciter.id,
     reciterName: reciter.name,
     rewayatId: rewayatId || reciter.rewayat[0].id,
-    duration: 0, // Will be set by TrackPlayer
-    description: `${surah.translated_name_english} - ${surah.name}`,
+    duration: 0, // Will be set by expo-audio
   };
+}
+
+/**
+ * Creates a Track object from an uploaded recitation
+ */
+export function createUserUploadTrack(recitation: UploadedRecitation): Track {
+  const url = resolveRecitationPath(recitation.filePath);
+
+  // Map category to display label
+  const categoryLabels: Record<string, string> = {
+    dua: 'Dua',
+    lecture: 'Lecture',
+    tafsir: 'Tafsir',
+    other: 'Recitation',
+  };
+  const uploadCategory =
+    recitation.type === 'other' && recitation.category
+      ? categoryLabels[recitation.category] || recitation.category
+      : undefined;
+
+  // Build title from tags, fallback to original filename
+  let title = recitation.originalFilename;
+  if (recitation.type === 'surah' && recitation.surahNumber) {
+    const surah = getSurahById(recitation.surahNumber);
+    if (surah) title = surah.name;
+  } else if (recitation.type === 'other' && recitation.title) {
+    title = recitation.title;
+  }
+
+  // Build artist from reciter tags, fallback to 'My Recitations'
+  let artist = 'My Recitations';
+  let resolvedRewayatId: string | undefined;
+  let artwork = '';
+  if (recitation.reciterId) {
+    const reciter = RECITERS.find(r => r.id === recitation.reciterId);
+    const name = getReciterName(recitation.reciterId);
+    if (name) artist = name;
+    if (reciter) artwork = getReciterArtwork(reciter);
+
+    // Resolve rewayah name to rewayat UUID so the player can look it up
+    if (recitation.rewayah && reciter) {
+      const match = reciter.rewayat.find(
+        rw =>
+          rw.name === recitation.rewayah &&
+          (!recitation.style || rw.style === recitation.style),
+      );
+      if (match) resolvedRewayatId = match.id;
+    }
+  }
+
+  return {
+    id: `upload-${recitation.id}`,
+    url,
+    title,
+    artist,
+    artwork,
+    surahId: recitation.surahNumber
+      ? String(recitation.surahNumber)
+      : undefined,
+    reciterId: recitation.reciterId || '',
+    reciterName: artist,
+    rewayatId: resolvedRewayatId,
+    duration: recitation.duration || 0,
+    isUserUpload: true,
+    userRecitationId: recitation.id,
+    uploadCategory,
+    rewayahName: recitation.rewayah || undefined,
+  };
+}
+
+/**
+ * Placeholder Reciter used for uploads that aren't tagged to a system reciter.
+ * Uses the first system reciter as a shell — the card will show uploadArtist/uploadTitle instead.
+ */
+const UPLOAD_PLACEHOLDER_RECITER: Reciter = {
+  ...RECITERS[0],
+  id: '__uploads__',
+  name: 'My Recitations',
+};
+
+const UPLOAD_PLACEHOLDER_SURAH: Surah = {
+  ...SURAHS[0],
+  id: 0,
+  name: 'Upload',
+};
+
+/**
+ * Registers an uploaded recitation with recentlyPlayedStore so it appears
+ * in the "Continue Listening" section on the home screen.
+ */
+export function addUploadToRecentlyPlayed(
+  recitation: UploadedRecitation,
+): void {
+  const reciter = recitation.reciterId
+    ? RECITERS.find(r => r.id === recitation.reciterId) ||
+      UPLOAD_PLACEHOLDER_RECITER
+    : UPLOAD_PLACEHOLDER_RECITER;
+
+  const surah = recitation.surahNumber
+    ? getSurahById(recitation.surahNumber) || UPLOAD_PLACEHOLDER_SURAH
+    : UPLOAD_PLACEHOLDER_SURAH;
+
+  // Build display title
+  let title = recitation.originalFilename;
+  if (recitation.type === 'surah' && recitation.surahNumber) {
+    const s = getSurahById(recitation.surahNumber);
+    if (s) title = s.name;
+  } else if (recitation.type === 'other' && recitation.title) {
+    title = recitation.title;
+  }
+
+  // Build display artist
+  let artist = 'My Recitations';
+  if (recitation.reciterId) {
+    const name = getReciterName(recitation.reciterId);
+    if (name) artist = name;
+  }
+
+  useRecentlyPlayedStore
+    .getState()
+    .startUploadChain(reciter, surah, 0, recitation.duration || 0, '', {
+      userRecitationId: recitation.id,
+      uploadTitle: title,
+      uploadArtist: artist,
+    });
 }
 
 /**

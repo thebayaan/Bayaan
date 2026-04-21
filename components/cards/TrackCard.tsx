@@ -7,7 +7,7 @@ import {getSurahById, getReciterById} from '@/services/dataService';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {
   useDownloadProgress,
@@ -203,8 +203,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
           <View style={styles.nowPlayingOverlay}>
             <NowPlayingIndicator
               isPlaying={
-                playbackStatus === TrackPlayerState.Playing ||
-                playbackStatus === TrackPlayerState.Buffering
+                playbackStatus === 'playing' || playbackStatus === 'buffering'
               }
               surahId={surah.id}
               barCount={3}

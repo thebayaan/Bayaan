@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   StyleProp,
   ViewStyle,
@@ -11,11 +12,13 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {LinearGradient} from 'expo-linear-gradient';
 import Color from 'color';
+import {
+  SurahGradientMesh,
+  paletteForSurah,
+} from '@/components/hero/SurahGradientMesh';
 import {MakkahIcon, MadinahIcon, HeartIcon} from '@/components/Icons';
-import {Icon} from '@rneui/themed';
-import {Ionicons} from '@expo/vector-icons';
+import {Ionicons, Feather} from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -23,7 +26,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+import {Link} from 'expo-router';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+
 import {NowPlayingIndicator} from '@/components/NowPlayingIndicator';
 import {GradientText} from '@/components/GradientText';
 import {
@@ -39,6 +44,7 @@ interface SurahCardProps {
   revelationPlace: string;
   color: string;
   onPress: () => void;
+  onLongPress?: () => void;
   onOptionsPress?: () => void;
   style?: StyleProp<ViewStyle>;
   isLoved?: boolean;
@@ -48,6 +54,7 @@ interface SurahCardProps {
   enableAnimation?: boolean;
   reciterId?: string;
   rewayatId?: string;
+  mushafLink?: boolean;
 }
 
 const AnimatedTouchableOpacity =
@@ -60,6 +67,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   revelationPlace,
   color,
   onPress,
+  onLongPress,
   onOptionsPress,
   style,
   isLoved = false,
@@ -68,6 +76,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
   enableAnimation = false,
   reciterId,
   rewayatId,
+  mushafLink = false,
 }) => {
   const {theme} = useTheme();
 
@@ -153,20 +162,16 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     onPress();
   };
 
-  const gradientColors = React.useMemo((): [string, string] => {
-    const baseColor = Color(color);
-    const gradientStart = baseColor.alpha(0.15).toString();
-    const gradientEnd = baseColor.alpha(0.05).toString();
-    return [gradientStart, gradientEnd];
-  }, [color]);
+  // Match the surah hero's gradient-mesh treatment so card and hero
+  // share the same visual vocabulary. Palette rotates deterministically
+  // per surah id, so a card always shows the same colors.
+  const meshPalette = React.useMemo(() => paletteForSurah(id), [id]);
   const styles = StyleSheet.create({
     container: {
       width: moderateScale(120),
       height: moderateScale(120),
-      borderRadius: moderateScale(12),
+      borderRadius: moderateScale(20),
       overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: Color(color).alpha(0.15).toString(),
     },
     content: {
       flex: 1,
@@ -299,7 +304,11 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     if (enableHaptics) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    onOptionsPress?.();
+    if (onLongPress) {
+      onLongPress();
+    } else {
+      onOptionsPress?.();
+    }
   };
 
   // Choose Touchable component based on animation prop
@@ -307,26 +316,13 @@ export const SurahCard: React.FC<SurahCardProps> = ({
     ? AnimatedTouchableOpacity
     : TouchableOpacity;
 
-  return (
-    <TouchableComponent
-      activeOpacity={1}
-      // Apply animated style only if animation enabled
-      style={
-        enableAnimation
-          ? [styles.container, animatedStyle, style]
-          : [styles.container, style]
-      }
-      onPress={handleCardPress}
-      onLongPress={onOptionsPress ? handleLongPressWrapper : undefined}
-      delayLongPress={500}
-      // Conditionally add animation handlers
-      onPressIn={enableAnimation ? handlePressIn : undefined}
-      onPressOut={enableAnimation ? handlePressOut : undefined}>
-      <LinearGradient
-        colors={gradientColors as [string, string]}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={StyleSheet.absoluteFill}
+  const cardContent = (
+    <>
+      <SurahGradientMesh
+        palette={meshPalette}
+        isDark={theme.isDarkMode}
+        viewBoxWidth={120}
+        viewBoxHeight={120}
       />
       <View style={styles.placeIcon}>
         {revelationPlace.toLowerCase() === 'makkah' ? (
@@ -394,8 +390,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           activeOpacity={0.7}>
           <NowPlayingIndicator
             isPlaying={
-              playbackStatus === TrackPlayerState.Playing ||
-              playbackStatus === TrackPlayerState.Buffering
+              playbackStatus === 'playing' || playbackStatus === 'buffering'
             }
             barCount={3}
             surahId={id}
@@ -407,15 +402,87 @@ export const SurahCard: React.FC<SurahCardProps> = ({
             style={styles.optionsButton}
             onPress={handleOptionsPressWrapper}
             activeOpacity={0.7}>
-            <Icon
+            <Feather
               name="more-horizontal"
-              type="feather"
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />
           </TouchableOpacity>
         )
       )}
+    </>
+  );
+
+  if (mushafLink && USE_GLASS) {
+    return (
+      <Link
+        href={{
+          pathname: '/mushaf',
+          params: {surah: id.toString()},
+        }}
+        asChild>
+        <Pressable
+          onLongPress={
+            onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+          }
+          delayLongPress={500}
+          style={StyleSheet.flatten([styles.container, style])}>
+          <Link.AppleZoom>{cardContent}</Link.AppleZoom>
+        </Pressable>
+      </Link>
+    );
+  }
+
+  if (mushafLink) {
+    return (
+      <Link
+        href={{
+          pathname: '/mushaf',
+          params: {surah: id.toString()},
+        }}
+        asChild>
+        <Pressable
+          onLongPress={
+            onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+          }
+          delayLongPress={500}
+          style={StyleSheet.flatten([styles.container, style])}>
+          {cardContent}
+        </Pressable>
+      </Link>
+    );
+  }
+
+  if (USE_GLASS) {
+    return (
+      <Pressable
+        onPress={handleCardPress}
+        onLongPress={
+          onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+        }
+        delayLongPress={500}
+        style={StyleSheet.flatten([styles.container, style])}>
+        {cardContent}
+      </Pressable>
+    );
+  }
+
+  return (
+    <TouchableComponent
+      activeOpacity={1}
+      style={
+        enableAnimation
+          ? [styles.container, animatedStyle, style]
+          : [styles.container, style]
+      }
+      onPress={handleCardPress}
+      onLongPress={
+        onLongPress || onOptionsPress ? handleLongPressWrapper : undefined
+      }
+      delayLongPress={500}
+      onPressIn={enableAnimation ? handlePressIn : undefined}
+      onPressOut={enableAnimation ? handlePressOut : undefined}>
+      {cardContent}
     </TouchableComponent>
   );
 };

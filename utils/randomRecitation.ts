@@ -10,7 +10,30 @@ function getRandomReciter(): Reciter {
 }
 
 /**
- * Gets a random surah that is available for the given reciter
+ * Picks a random index using weights that favor lower-numbered surahs (longer).
+ * Weight = 1 / sqrt(surahId) for a moderate bias (~7.5x ratio between surah 2 and 114).
+ * Al-Fatihah (id 1) is de-weighted to match a mid-range surah since it's very short.
+ */
+function weightedRandomIndex(surahs: Surah[]): number {
+  const MID_SURAH_WEIGHT = 1 / Math.sqrt(50);
+  let totalWeight = 0;
+  const weights = surahs.map(s => {
+    const w = s.id === 1 ? MID_SURAH_WEIGHT : 1 / Math.sqrt(s.id);
+    totalWeight += w;
+    return w;
+  });
+
+  let roll = Math.random() * totalWeight;
+  for (let i = 0; i < weights.length; i++) {
+    roll -= weights[i];
+    if (roll <= 0) return i;
+  }
+  return weights.length - 1;
+}
+
+/**
+ * Gets a random surah that is available for the given reciter.
+ * Biased toward lower-numbered (longer) surahs.
  */
 function getRandomAvailableSurah(reciter: Reciter): Surah {
   // Get the rewayat with the most surahs
@@ -31,9 +54,7 @@ function getRandomAvailableSurah(reciter: Reciter): Surah {
     return SURAHS[0];
   }
 
-  // Select a random surah from available ones
-  const randomIndex = Math.floor(Math.random() * availableSurahs.length);
-  return availableSurahs[randomIndex];
+  return availableSurahs[weightedRandomIndex(availableSurahs)];
 }
 
 /**

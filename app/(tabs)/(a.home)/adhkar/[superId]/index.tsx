@@ -1,15 +1,29 @@
-import React, {useMemo, useCallback, useEffect, useState} from 'react';
+import React, {
+  useMemo,
+  useCallback,
+  useEffect,
+  useState,
+  useLayoutEffect,
+  useRef,
+} from 'react';
 import {
   View,
   SectionList,
   FlatList,
   Text,
-  TouchableOpacity,
+  ViewToken,
+  Pressable,
+  StyleSheet,
 } from 'react-native';
-import {useLocalSearchParams, useRouter} from 'expo-router';
+import {
+  useLocalSearchParams,
+  useRouter,
+  useNavigation,
+  Link,
+} from 'expo-router';
+import {Ionicons, Feather} from '@expo/vector-icons';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {Icon} from '@rneui/themed';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -21,6 +35,9 @@ import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
+import {useHeaderHeight} from '@react-navigation/elements';
+import {adhkarShareUrl, shareUrl} from '@/utils/shareUtils';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -45,8 +62,10 @@ interface CategoryGroup {
 const SuperCategoryListScreen: React.FC = () => {
   const {superId} = useLocalSearchParams<{superId: string}>();
   const router = useRouter();
+  const navigation = useNavigation();
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const headerHeight = useHeaderHeight();
 
   const {getSuperCategoryById} = useAdhkar();
 
@@ -64,6 +83,9 @@ const SuperCategoryListScreen: React.FC = () => {
   );
   const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentSectionTitle, setCurrentSectionTitle] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     async function loadData() {
@@ -75,6 +97,9 @@ const SuperCategoryListScreen: React.FC = () => {
         if (data) {
           setSuperCategory(data.superCategory);
           setCategoryGroups(data.categoryGroups);
+          analyticsService.trackAdhkarSessionStarted({
+            category: data.superCategory.title || superId,
+          });
         }
       } catch (error) {
         console.error('Failed to load super category data:', error);
@@ -144,9 +169,11 @@ const SuperCategoryListScreen: React.FC = () => {
     return categoryGroups.flatMap(group => group.adhkar);
   }, [categoryGroups]);
 
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  const handleShare = useCallback(() => {
+    if (!superId) return;
+    const url = adhkarShareUrl(superId);
+    shareUrl(url, `Check out ${displayTitle} on Bayaan`);
+  }, [superId, displayTitle]);
 
   // Play All handler
   const handlePlayAll = useCallback(() => {
@@ -199,39 +226,141 @@ const SuperCategoryListScreen: React.FC = () => {
     router,
   ]);
 
-  const handleDhikrPress = useCallback(
-    (item: DhikrItem) => {
-      router.push({
-        pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
-        params: {
-          superId: superId,
-          dhikrId: item.dhikr.id,
-          globalIndex: item.globalIndex.toString(),
-          categoryShortTitle: item.categoryShortTitle,
-          superCategoryTitle: superCategory?.title,
-        },
-      });
-    },
-    [router, superId, superCategory?.title],
-  );
+  // Set native header options dynamically
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      headerTransparent: true,
+      headerStyle: {backgroundColor: 'transparent'},
+      headerTintColor: theme.colors.text,
+      headerShadowVisible: false,
+      title: '',
+      headerBackTitle: '',
+      headerTitleAlign: 'center',
+      headerLeft: () => (
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          style={{padding: moderateScale(4)}}>
+          <Ionicons
+            name="chevron-back"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ),
+      headerTitle: () => (
+        <View style={{alignItems: 'center'}}>
+          <Text
+            style={{
+              fontSize: moderateScale(16),
+              fontFamily: theme.fonts.semiBold,
+              color: theme.colors.text,
+            }}
+            numberOfLines={1}>
+            {displayTitle}
+          </Text>
+          {currentSectionTitle && !isSingleCategory && (
+            <Text
+              style={{
+                fontSize: moderateScale(12),
+                fontFamily: theme.fonts.regular,
+                color: theme.colors.textSecondary,
+                marginTop: moderateScale(2),
+              }}
+              numberOfLines={1}>
+              {currentSectionTitle}
+            </Text>
+          )}
+        </View>
+      ),
+      headerRight: () => (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: moderateScale(20),
+            paddingHorizontal: moderateScale(6),
+          }}>
+          <Pressable onPress={handleShare} hitSlop={8}>
+            <Feather
+              name="share"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+          <PlayAllButton
+            onPress={handlePlayAll}
+            isPlaying={isThisCategoryPlaying}
+            disabled={loading || allAdhkarForPlayAll.length === 0}
+          />
+        </View>
+      ),
+    });
+  }, [
+    navigation,
+    displayTitle,
+    currentSectionTitle,
+    isSingleCategory,
+    handleShare,
+    handlePlayAll,
+    isThisCategoryPlaying,
+    loading,
+    allAdhkarForPlayAll.length,
+    theme,
+  ]);
 
   const renderItem = useCallback(
     ({item}: {item: DhikrItem}) => (
-      <DhikrListItem
-        dhikr={item.dhikr}
-        index={item.index}
-        onPress={() => handleDhikrPress(item)}
-      />
+      <Link
+        href={{
+          pathname: '/(tabs)/(a.home)/adhkar/[superId]/[dhikrId]',
+          params: {
+            superId: superId,
+            dhikrId: item.dhikr.id,
+            globalIndex: item.globalIndex.toString(),
+            categoryShortTitle: item.categoryShortTitle,
+            superCategoryTitle: superCategory?.title,
+          },
+        }}
+        asChild>
+        <Pressable style={StyleSheet.flatten([{flex: 1}])}>
+          {USE_GLASS ? (
+            <Link.AppleZoom>
+              <DhikrListItem dhikr={item.dhikr} index={item.index} />
+            </Link.AppleZoom>
+          ) : (
+            <DhikrListItem dhikr={item.dhikr} index={item.index} />
+          )}
+        </Pressable>
+      </Link>
     ),
-    [handleDhikrPress],
+    [superId, superCategory?.title],
   );
 
   const renderSectionHeader = useCallback(({section}: {section: Section}) => {
     return <CategorySectionHeader title={section.shortTitle} />;
   }, []);
 
+  // Track current visible section for the subtitle
+  const onViewableItemsChanged = useCallback(
+    ({viewableItems}: {viewableItems: ViewToken[]}) => {
+      if (viewableItems.length > 0) {
+        const firstItem = viewableItems[0];
+        if (firstItem.section) {
+          setCurrentSectionTitle((firstItem.section as Section).shortTitle);
+        }
+      }
+    },
+    [],
+  );
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
+
   const keyExtractor = useCallback(
-    (item: DhikrItem) => `dhikr-${item.dhikr.id}`,
+    (item: DhikrItem) => `dhikr-${item?.dhikr?.id ?? 'unknown'}`,
     [],
   );
 
@@ -248,42 +377,10 @@ const SuperCategoryListScreen: React.FC = () => {
     return null;
   }
 
-  const InlineHeader = (
-    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerSide}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-            activeOpacity={1}
-            hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {displayTitle}
-        </Text>
-        <View style={styles.headerSide}>
-          <PlayAllButton
-            onPress={handlePlayAll}
-            isPlaying={isThisCategoryPlaying}
-            disabled={loading || allAdhkarForPlayAll.length === 0}
-          />
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-
   if (loading) {
     return (
       <View style={styles.container}>
-        {InlineHeader}
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
           <LoadingIndicator />
         </View>
       </View>
@@ -292,14 +389,16 @@ const SuperCategoryListScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {InlineHeader}
-
       {isSingleCategory ? (
         <FlatList
           data={flatAdhkarList}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
+          contentInset={USE_GLASS ? {top: headerHeight} : undefined}
+          contentOffset={USE_GLASS ? {x: 0, y: -headerHeight} : undefined}
+          scrollIndicatorInsets={USE_GLASS ? {top: headerHeight} : undefined}
+          style={!USE_GLASS ? {marginTop: headerHeight} : undefined}
           showsVerticalScrollIndicator={false}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
@@ -313,12 +412,18 @@ const SuperCategoryListScreen: React.FC = () => {
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={keyExtractor}
-          stickySectionHeadersEnabled={true}
+          stickySectionHeadersEnabled={false}
           contentContainerStyle={styles.listContent}
+          contentInset={USE_GLASS ? {top: headerHeight} : undefined}
+          contentOffset={USE_GLASS ? {x: 0, y: -headerHeight} : undefined}
+          scrollIndicatorInsets={USE_GLASS ? {top: headerHeight} : undefined}
+          style={!USE_GLASS ? {marginTop: headerHeight} : undefined}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
           maxToRenderPerBatch={15}
           windowSize={7}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           ListEmptyComponent={ListEmptyComponent}
         />
       )}
@@ -331,30 +436,6 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
-    },
-    headerSafeArea: {
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(8),
-    },
-    headerSide: {
-      width: moderateScale(80),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    backButton: {
-      padding: moderateScale(8),
-    },
-    headerTitle: {
-      flex: 1,
-      fontSize: moderateScale(18),
-      fontFamily: theme.fonts.semiBold,
-      color: theme.colors.text,
-      textAlign: 'center',
     },
     loadingContainer: {
       flex: 1,

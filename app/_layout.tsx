@@ -1,24 +1,30 @@
-import React, {useEffect, useState, useRef, useCallback} from 'react';
+import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
 import {Stack, useRouter} from 'expo-router';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useFonts} from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import TrackPlayer from 'react-native-track-player';
-import playbackService from '@/services/player/events/playbackService';
+import * as SystemUI from 'expo-system-ui';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {setupTrackPlayer} from '@/services/player/utils/setup';
-import {setupEventBridge} from '@/services/player/events/bridge';
 import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import {View, Text, Platform, StatusBar as RNStatusBar} from 'react-native';
+import {
+  AppState,
+  View,
+  Text,
+  Platform,
+  StatusBar as RNStatusBar,
+  Appearance,
+  InteractionManager,
+  type AppStateStatus,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {ThemeProvider} from '@react-navigation/native';
 import {PlayerSheet} from '@/components/player/v2/PlayerSheet';
-import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {
   WhatsNewModal,
   WhatsNewModalRef,
-} from '@/components/modals/WhatsNewModal';
+} from '@/components/modals/WhatsNewOnboarding';
 import {DevMenu} from '@/components/DevMenu';
 import {SheetProvider} from 'react-native-actions-sheet';
 import '@/components/sheets/sheets'; // Register action sheets
@@ -26,8 +32,23 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from 'react-native-reanimated';
-import {preloadTajweedDataWithTimeout} from '@/utils/tajweedLoader';
+import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
+import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
+import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
+import {PostHogProvider, usePostHog} from 'posthog-react-native';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {ExpoAudioProvider} from '@/services/audio';
+import {expoAudioService} from '@/services/audio/ExpoAudioService';
+import {restoreSession} from '@/services/player/utils/restoreSession';
+import {getAllReciters} from '@/services/dataService';
+import {useShareIntent} from 'expo-share-intent';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {SheetManager} from 'react-native-actions-sheet';
+import {showToast} from '@/utils/toastUtils';
+import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import * as Sentry from '@sentry/react-native';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -35,30 +56,95 @@ configureReanimatedLogger({
   strict: false,
 });
 
+// Cache for expo-navigation-bar module (Android only)
+let NavigationBarModule: any = null;
+
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* reloading the app might trigger some race conditions, ignore them */
 });
 
-// Register playback service
-TrackPlayer.registerPlaybackService(() => playbackService);
+// Set native root view background immediately (before any component renders)
+// This prevents the white flash between splash screen and first frame
+SystemUI.setBackgroundColorAsync(
+  Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
+);
 
-// Track initialization attempts to prevent loops
-let initializationAttempts = 0;
-const MAX_INITIALIZATION_ATTEMPTS = 3;
-const RETRY_DELAY = 1000;
+const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
 
-export default function RootLayout() {
+if (analyticsEnabled) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+    tracesSampleRate: 0.2,
+    enableAutoSessionTracking: true,
+  });
+}
+
+/** Connects PostHog SDK to our analytics service and tracks app lifecycle. */
+function AnalyticsConnector(): null {
+  const posthog = usePostHog();
+
+  // Connect PostHog instance to analytics service
+  useEffect(() => {
+    if (posthog) {
+      analyticsService.setPostHogInstance(posthog);
+      analyticsService.trackAppOpened();
+    }
+  }, [posthog]);
+
+  // Track app foreground/background transitions
+  useEffect(() => {
+    function handleAppStateChange(nextState: AppStateStatus): void {
+      if (nextState === 'background' || nextState === 'inactive') {
+        analyticsService.trackAppBackgrounded();
+      } else if (nextState === 'active') {
+        analyticsService.trackAppOpened();
+      }
+    }
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
+    );
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
+function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const [isTajweedLoading, setIsTajweedLoading] = useState(false);
+  const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
   const [setupError, setSetupError] = useState<Error | null>(null);
   const router = useRouter();
-  const store = usePlayerStore();
   const initializationRef = useRef(false);
   const whatsNewModalRef = useRef<WhatsNewModalRef>(null);
   const {theme, isDarkMode} = useTheme();
+  useNetworkMonitor();
 
+  // Build React Navigation theme so card/background colors match during transitions
+  const navigationTheme = useMemo(
+    () => ({
+      dark: isDarkMode,
+      colors: {
+        primary: theme.colors.text,
+        background: theme.colors.background,
+        card: theme.colors.background,
+        text: theme.colors.text,
+        border: theme.colors.border,
+        notification: theme.colors.error,
+      },
+      fonts: {
+        regular: {fontFamily: 'Manrope-Regular', fontWeight: '400' as const},
+        medium: {fontFamily: 'Manrope-Medium', fontWeight: '500' as const},
+        bold: {fontFamily: 'Manrope-Bold', fontWeight: '700' as const},
+        heavy: {fontFamily: 'Manrope-ExtraBold', fontWeight: '800' as const},
+      },
+    }),
+    [isDarkMode, theme.colors],
+  );
+
+  // Critical fonts — block splash screen on these only
   const [fontsLoaded, fontError] = useFonts({
     'Manrope-Regular': require('@/assets/fonts/Manrope-Regular.ttf'),
     'Manrope-Bold': require('@/assets/fonts/Manrope-Bold.ttf'),
@@ -69,56 +155,45 @@ export default function RootLayout() {
     'Manrope-ExtraBold': require('@/assets/fonts/Manrope-ExtraBold.ttf'),
     SurahNames: require('@/assets/fonts/surah_names.ttf'),
     SurahNames2: require('@/assets/fonts/surah_names_2.ttf'),
-    'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
-    'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
-    'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
-    'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
-    Uthmani: require('@/assets/fonts/Uthmani.otf'),
-    QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
-    Indopak: require('@/assets/fonts/Indopak.ttf'),
   });
 
-  // Preload Tajweed data once when the app starts
-  useEffect(() => {
-    if (!isTajweedLoading) {
-      setIsTajweedLoading(true);
-      console.log('[App] Preloading tajweed data...');
-      // Start preloading tajweed data in the background
-      preloadTajweedDataWithTimeout();
-      // We don't need to wait for tajweed data to load to continue app initialization
-      // This will load asynchronously while other resources are being prepared
-    }
-  }, [isTajweedLoading]);
+  // Handle share intents from other apps
+  const {hasShareIntent, shareIntent, resetShareIntent} = useShareIntent({
+    debug: __DEV__,
+    resetOnBackground: true,
+  });
 
-  // Initialize all SQLite-based services in the background
+  // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
-    const initializeServices = async () => {
-      try {
-        console.log('[App] Initializing SQLite services...');
-        await appInitializer.initialize();
-        console.log('[App] SQLite services initialized successfully');
-      } catch (error) {
-        console.error('[App] Failed to initialize SQLite services:', error);
-        // Critical services will prevent app startup via setupError
-        // Non-critical services will just log errors and continue
-      }
-    };
-
-    initializeServices();
+    InteractionManager.runAfterInteractions(() => {
+      if (__DEV__) console.log('[App] Preloading tajweed data...');
+      preloadTajweedData();
+    });
   }, []);
 
   const onLayoutRootView = useCallback(async () => {
     try {
-      if (appIsReady && fontsLoaded && isPlayerReady) {
-        // Only hide the splash screen after everything is ready
+      if (
+        appIsReady &&
+        fontsLoaded &&
+        isPlayerReady &&
+        !hasShareIntent &&
+        mushafRestoreHandled
+      ) {
         await SplashScreen.hideAsync();
       }
     } catch (e) {
-      console.warn('Error hiding splash screen:', e);
+      if (__DEV__) console.warn('Error hiding splash screen:', e);
     }
-  }, [appIsReady, fontsLoaded, isPlayerReady]);
+  }, [
+    appIsReady,
+    fontsLoaded,
+    isPlayerReady,
+    hasShareIntent,
+    mushafRestoreHandled,
+  ]);
 
-  // Initialize app
+  // Initialize app with expo-audio
   useEffect(() => {
     if (initializationRef.current) {
       return;
@@ -126,91 +201,59 @@ export default function RootLayout() {
 
     async function prepare() {
       try {
-        // Prevent multiple initialization attempts
-        if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS) {
-          console.error('[App] Max initialization attempts reached');
-          setSetupError(new Error('Max initialization attempts reached'));
-          return;
-        }
-        initializationAttempts++;
+        if (__DEV__)
+          console.log('[App] Starting initialization with expo-audio...');
 
-        console.log(
-          '[App] Starting initialization attempt:',
-          initializationAttempts,
-        );
+        // Initialize expo-audio service
+        await expoAudioService.initialize();
+        if (__DEV__) console.log('[App] expo-audio service initialized');
 
-        // Setup player with error handling and retry
-        console.log('[App] Setting up player...');
-        let setupStatus = await setupTrackPlayer();
+        // Fetch reciter data from backend API (or fallback if killswitch active)
+        await getAllReciters();
+        if (__DEV__) console.log('[App] Reciter data loaded');
 
-        // If setup fails, retry after delay
-        if (
-          !setupStatus.isInitialized &&
-          initializationAttempts < MAX_INITIALIZATION_ATTEMPTS
-        ) {
-          console.log('[App] Setup failed, retrying after delay...');
-          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-          setupStatus = await setupTrackPlayer();
-        }
-
-        console.log('[App] Player setup status:', setupStatus);
-
-        if (!setupStatus.isInitialized) {
-          if (setupStatus.error) {
-            console.error('[App] Player setup error:', setupStatus.error);
-            store.setError('system', setupStatus.error);
-            setSetupError(setupStatus.error);
-          }
-          return;
-        }
-
-        console.log('[App] Player setup complete');
+        // Initialize all SQLite services, adhkar, playlists, mushaf, fonts, stores, etc.
+        // This blocks splash screen so everything is ready when the user sees the app
+        await appInitializer.initialize();
+        if (__DEV__) console.log('[App] AppInitializer complete');
 
         // PRE-WARM: Initialize stores BEFORE first play to prevent cold start lag
-        // Zustand persist stores hydrate from AsyncStorage on first access
-        // Pre-warming ensures hydration happens here (during app init) not during first play
         try {
-          // Pre-warm download store (used by generateSmartAudioUrl)
-          // Calling getState() triggers hydration if not already done
           useDownloadStore.getState();
-          console.log('[App] Download store pre-warmed');
+          if (__DEV__) console.log('[App] Download store pre-warmed');
 
-          // Pre-warm player store (used by playback)
           usePlayerStore.getState();
-          console.log('[App] Player store pre-warmed');
-
-          // Small delay to allow hydration to complete (Zustand persist is async)
-          // This ensures stores are fully hydrated before first play
-          await new Promise(resolve => setTimeout(resolve, 50));
-          console.log('[App] Store hydration complete');
+          if (__DEV__) console.log('[App] Player store pre-warmed');
         } catch (error) {
           console.debug('[App] Failed to pre-warm stores:', error);
         }
 
-        // Mark app as ready without state restoration
+        // Restore last session so floating player + lock screen show last track
+        try {
+          await restoreSession();
+          if (__DEV__) console.log('[App] Session restored');
+        } catch (error) {
+          console.debug('[App] Failed to restore session:', error);
+        }
+
+        // Mark app as ready
         setIsPlayerReady(true);
         setAppIsReady(true);
         initializationRef.current = true;
-        console.log('[App] Initialization complete');
+        if (__DEV__) console.log('[App] Initialization complete');
       } catch (error) {
         console.error('[App] Preparation error:', error);
-
-        // Clear any partial initialization
-        try {
-          await TrackPlayer.reset();
-        } catch (resetError) {
-          console.error('[App] Reset after error failed:', resetError);
-        }
 
         setSetupError(
           error instanceof Error ? error : new Error('Setup failed'),
         );
-        store.setError(
-          'system',
-          error instanceof Error ? error : new Error('Setup failed'),
-        );
+        usePlayerStore
+          .getState()
+          .setError(
+            'system',
+            error instanceof Error ? error : new Error('Setup failed'),
+          );
 
-        // Reset initialization state
         setIsPlayerReady(false);
         setAppIsReady(false);
         initializationRef.current = false;
@@ -219,78 +262,147 @@ export default function RootLayout() {
 
     prepare();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, []);
 
-  // Setup event listeners
+  // Set native root view background + configure Android navigation bar to match theme
   useEffect(() => {
-    if (!isPlayerReady) {
-      return;
-    }
+    SystemUI.setBackgroundColorAsync(theme.colors.background);
 
-    const handleSetupError = (error: Error) => {
-      console.error('[App] Player setup error:', error);
-      setSetupError(error);
-      store.setError('system', error);
-    };
-
-    setupEventBridge.on('setupError', handleSetupError);
-
-    return () => {
-      setupEventBridge.off('setupError', handleSetupError);
-    };
-  }, [isPlayerReady, store]);
-
-  // Handle navigation after initialization
-  useEffect(() => {
-    if (!appIsReady || !fontsLoaded || !isPlayerReady || fontError) {
-      return;
-    }
-  }, [appIsReady, fontsLoaded, fontError, isPlayerReady, router]);
-
-  // Configure Android navigation bar to match theme
-  useEffect(() => {
     async function setupNavigationBar() {
       if (Platform.OS === 'android') {
         try {
-          const NavigationBar = await import('expo-navigation-bar').then(
-            module => module.default,
-          );
+          if (!NavigationBarModule) {
+            NavigationBarModule = await import('expo-navigation-bar').then(
+              module => module.default,
+            );
+            RNStatusBar.setTranslucent(true);
+          }
 
-          console.log(
-            '[NavBar Debug] theme.colors.background:',
-            theme.colors.background,
-          );
-          console.log('[NavBar Debug] isDarkMode:', isDarkMode);
-
-          if (NavigationBar) {
-            await NavigationBar.setBackgroundColorAsync(
+          if (NavigationBarModule) {
+            await NavigationBarModule.setBackgroundColorAsync(
               theme.colors.background,
             );
-            await NavigationBar.setButtonStyleAsync(
+            await NavigationBarModule.setButtonStyleAsync(
               isDarkMode ? 'light' : 'dark',
             );
-            console.log(
-              '[NavBar Debug] NavigationBar color and style set successfully',
-            );
-          } else {
-            console.warn('[NavBar Debug] NavigationBar module not found');
           }
-          RNStatusBar.setTranslucent(true);
         } catch (error) {
-          console.warn(
-            '[NavBar Debug] Failed to configure navigation bar:',
-            error,
-          );
+          if (__DEV__)
+            console.warn(
+              '[NavBar Debug] Failed to configure navigation bar:',
+              error,
+            );
         }
-      } else {
-        console.log(
-          '[NavBar Debug] Not Android, skipping navigation bar setup',
-        );
       }
     }
 
     setupNavigationBar();
   }, [theme.colors.background, isDarkMode]);
+
+  // Handle share intent (uploads from other apps)
+  useEffect(() => {
+    if (!hasShareIntent || !appIsReady || !isPlayerReady) return;
+
+    const handleShareIntent = async () => {
+      try {
+        const files = shareIntent.files;
+        if (!files || files.length === 0) {
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          return;
+        }
+
+        const audioFiles = files.filter(f => f.mimeType?.startsWith('audio/'));
+
+        if (audioFiles.length === 0) {
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          return;
+        }
+
+        const {importFile, importFiles} = useUploadsStore.getState();
+
+        if (audioFiles.length === 1) {
+          const file = audioFiles[0];
+          const recitation = await importFile(
+            file.path,
+            file.fileName || 'Shared Audio',
+          );
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          showToast('File imported');
+          SheetManager.show('organize-recitation', {
+            payload: {recitation},
+          });
+        } else {
+          const mapped = audioFiles.map(f => ({
+            uri: f.path,
+            name: f.fileName || 'Shared Audio',
+          }));
+          await importFiles(mapped);
+          resetShareIntent();
+          await SplashScreen.hideAsync();
+          showToast(`${audioFiles.length} files imported`);
+          router.push('/collection/uploads');
+        }
+      } catch (error) {
+        console.error('[ShareIntent] Import failed:', error);
+        resetShareIntent();
+        await SplashScreen.hideAsync();
+      }
+    };
+
+    handleShareIntent();
+  }, [
+    hasShareIntent,
+    appIsReady,
+    isPlayerReady,
+    shareIntent,
+    resetShareIntent,
+  ]);
+
+  // Restore mushaf screen if it was open when the app was killed.
+  // MMKV reads are synchronous — no hydration wait needed.
+  useEffect(() => {
+    if (!appIsReady || !isPlayerReady || hasShareIntent) return;
+
+    const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
+    const lastReadPage = mushafSessionStore.getLastReadPage();
+
+    if (lastScreenWasMushaf) {
+      router.push({
+        pathname: '/mushaf',
+        params: lastReadPage ? {page: String(lastReadPage)} : undefined,
+      });
+      // Let the navigation animation finish behind the splash before revealing
+      InteractionManager.runAfterInteractions(() => {
+        setMushafRestoreHandled(true);
+      });
+    } else {
+      setMushafRestoreHandled(true);
+    }
+  }, [appIsReady, isPlayerReady, hasShareIntent]);
+
+  // Hide splash once mushaf restore (if any) has settled.
+  // onLayout only fires once, so this effect covers the case where
+  // mushafRestoreHandled flips after the initial layout.
+  useEffect(() => {
+    if (
+      appIsReady &&
+      fontsLoaded &&
+      isPlayerReady &&
+      !hasShareIntent &&
+      mushafRestoreHandled
+    ) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [
+    appIsReady,
+    fontsLoaded,
+    isPlayerReady,
+    hasShareIntent,
+    mushafRestoreHandled,
+  ]);
 
   if (fontError) {
     SplashScreen.hideAsync();
@@ -316,26 +428,66 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <GestureHandlerRootView style={{flex: 1}} onLayout={onLayoutRootView}>
-          <SheetProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: {
-                  paddingTop: 0,
-                },
-                animation: 'fade',
-              }}>
-              <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-            </Stack>
-            <FloatingPlayer />
-            <PlayerSheet />
-            <WhatsNewModal ref={whatsNewModalRef} />
-            <DevMenu whatsNewModalRef={whatsNewModalRef} />
-          </SheetProvider>
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
+      <PostHogProvider
+        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? ''}
+        options={{
+          host: 'https://us.i.posthog.com',
+          flushAt: 20,
+          flushInterval: 30000,
+        }}
+        autocapture={{
+          captureScreens: true,
+        }}>
+        <AnalyticsConnector />
+        <ThemeProvider value={navigationTheme}>
+          <SafeAreaProvider>
+            <ExpoAudioProvider>
+              <GestureHandlerRootView
+                style={{flex: 1, backgroundColor: theme.colors.background}}
+                // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
+                overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                onLayout={onLayoutRootView}>
+                <ApiDisruptionBanner />
+                <SheetProvider>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: {
+                        paddingTop: 0,
+                        backgroundColor: theme.colors.background,
+                      },
+                      animation: 'fade',
+                    }}>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{headerShown: false}}
+                    />
+                    <Stack.Screen
+                      name="mushaf"
+                      options={{
+                        headerShown: USE_GLASS,
+                        headerTransparent: true,
+                        headerStyle: {backgroundColor: 'transparent'},
+                        headerShadowVisible: false,
+                        headerTitle: '',
+                        headerTitleAlign: 'center',
+                        headerBackButtonDisplayMode: 'minimal',
+                        animation: 'slide_from_right',
+                        fullScreenGestureEnabled: false,
+                      }}
+                    />
+                  </Stack>
+                  <PlayerSheet />
+                  <WhatsNewModal ref={whatsNewModalRef} />
+                  <DevMenu whatsNewModalRef={whatsNewModalRef} />
+                </SheetProvider>
+              </GestureHandlerRootView>
+            </ExpoAudioProvider>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </PostHogProvider>
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

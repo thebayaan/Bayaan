@@ -1,5 +1,3 @@
-import {IconProps} from '@rneui/themed';
-
 export interface Surah {
   id: number;
   name: string;
@@ -14,12 +12,17 @@ export interface Category {
   surahs: Surah[];
 }
 
+export interface BrowseCategoryIcon {
+  name: string;
+  type: string;
+}
+
 export interface BrowseCategory {
   id: string;
   title: string;
   description?: string;
   backgroundColor: string;
-  icon: Pick<IconProps, 'name' | 'type'>;
+  icon: BrowseCategoryIcon;
   route: string;
   featured?: boolean;
 }

@@ -3,17 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
+  Pressable,
   TouchableOpacity,
   InteractionManager,
-  ViewStyle,
-  ImageStyle,
-  TextStyle,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withRepeat,
   withTiming,
   Easing,
@@ -24,11 +21,13 @@ import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {reciterImages} from '@/utils/reciterImages';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/base';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
-import {useRouter} from 'expo-router';
+import {Link} from 'expo-router';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getRandomColors} from '@/utils/gradientColors';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 // Error Boundary for ScrollingHero
 class ScrollingHeroErrorBoundary extends React.Component<{
@@ -126,7 +125,7 @@ function useDistributedReciters(reciters: Reciter[]) {
 
     shuffled.forEach((reciter, index) => {
       const columnIndex = index % 5;
-      if (columns[columnIndex].length < 10) {
+      if (columns[columnIndex].length < 7) {
         columns[columnIndex].push(reciter);
       }
     });
@@ -141,21 +140,7 @@ interface ColumnProps {
   theme: Theme;
 }
 
-interface StylesType {
-  wrapper: ViewStyle;
-  container: ViewStyle;
-  columnsContainer: ViewStyle;
-  column: ViewStyle;
-  imageContainer: ViewStyle;
-  image: ImageStyle;
-  overlay: ViewStyle;
-  contentOverlay: ViewStyle;
-  browseButton: ViewStyle;
-  buttonText: TextStyle;
-  buttonIcon: ImageStyle;
-  buttonWrapper: ViewStyle;
-  buttonInnerWrapper: ViewStyle;
-}
+type StylesType = ReturnType<typeof createStyles>;
 
 interface BrowseButtonProps {
   onPress?: () => void;
@@ -182,9 +167,8 @@ const BrowseButton = React.memo(
         onPress={onPress}
         activeOpacity={0.8}>
         <Text style={styles.buttonText}>Browse All</Text>
-        <Icon
+        <Feather
           name="arrow-right"
-          type="feather"
           size={moderateScale(18)}
           color={theme.colors.text}
           style={styles.buttonIcon}
@@ -256,7 +240,7 @@ const Column = React.memo(
     // Create duplicated array for seamless looping
     const duplicatedReciters = useMemo(() => {
       if (config.reciters.length === 0) return [];
-      return [...config.reciters, ...config.reciters, ...config.reciters];
+      return [...config.reciters, ...config.reciters];
     }, [config.reciters]);
 
     // Calculate content height for a single set of items
@@ -370,6 +354,14 @@ function createStyles(theme: Theme) {
       backgroundColor: theme.colors.card,
       borderRadius: moderateScale(20),
     },
+    glassWrapper: {
+      height: SECTION_HEIGHT,
+    },
+    glassInner: {
+      flex: 1,
+      borderRadius: moderateScale(20),
+      overflow: 'hidden' as const,
+    },
     columnsContainer: {
       flexDirection: 'row',
       flex: 1,
@@ -429,37 +421,11 @@ function createStyles(theme: Theme) {
   });
 }
 
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
-
 export const ScrollingHero = React.memo(
   () => {
     const {theme} = useTheme();
-    const router = useRouter();
+    const glassColorScheme = useGlassColorScheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
-
-    // Animation values
-    const scale = useSharedValue(1);
-
-    const animatedStyle = useAnimatedStyle(() => {
-      return {
-        transform: [{scale: scale.value}],
-      };
-    });
-
-    const handlePressIn = () => {
-      scale.value = withSpring(0.98, {
-        damping: 15,
-        stiffness: 300,
-      });
-    };
-
-    const handlePressOut = () => {
-      scale.value = withSpring(1, {
-        damping: 15,
-        stiffness: 300,
-      });
-    };
 
     const distributedReciters = useDistributedReciters(RECITERS);
     const columnConfigs = useMemo(
@@ -471,30 +437,29 @@ export const ScrollingHero = React.memo(
       [distributedReciters],
     );
 
-    const handleBrowseAllPress = useCallback(() => {
-      router.push('/(tabs)/(a.home)/browse-all');
-    }, [router]);
-
-    return (
-      <ScrollingHeroErrorBoundary>
-        <AnimatedTouchableOpacity
-          activeOpacity={1}
-          style={[styles.container, animatedStyle]}
-          onPress={handleBrowseAllPress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}>
-          <View style={styles.columnsContainer}>
-            {columnConfigs.map((config, index) => (
-              <Column
-                key={index}
-                config={config}
-                styles={styles}
-                theme={theme}
+    const scrollingContent = (
+      <>
+        <View style={styles.columnsContainer}>
+          {columnConfigs.map((config, index) => (
+            <Column key={index} config={config} styles={styles} theme={theme} />
+          ))}
+        </View>
+        <Overlay isRevealed={false} theme={theme} styles={styles} />
+        <View style={styles.contentOverlay} pointerEvents="none">
+          {USE_GLASS ? (
+            <GlassView
+              style={[styles.browseButton, {borderRadius: moderateScale(25)}]}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
+              <Text style={styles.buttonText}>Browse All</Text>
+              <Feather
+                name="arrow-right"
+                size={moderateScale(16)}
+                color={theme.colors.text}
+                style={styles.buttonIcon}
               />
-            ))}
-          </View>
-          <Overlay isRevealed={false} theme={theme} styles={styles} />
-          <View style={styles.contentOverlay} pointerEvents="none">
+            </GlassView>
+          ) : (
             <View
               style={[
                 styles.browseButton,
@@ -508,16 +473,44 @@ export const ScrollingHero = React.memo(
                 },
               ]}>
               <Text style={styles.buttonText}>Browse All</Text>
-              <Icon
+              <Feather
                 name="arrow-right"
-                type="feather"
                 size={moderateScale(16)}
                 color={theme.colors.text}
                 style={styles.buttonIcon}
               />
             </View>
-          </View>
-        </AnimatedTouchableOpacity>
+          )}
+        </View>
+      </>
+    );
+
+    if (USE_GLASS) {
+      return (
+        <ScrollingHeroErrorBoundary>
+          <Link href="/(tabs)/(a.home)/browse-all" asChild>
+            <Pressable style={StyleSheet.flatten([styles.glassWrapper])}>
+              <Link.AppleZoom>
+                <GlassView
+                  style={styles.glassInner}
+                  glassEffectStyle="regular"
+                  colorScheme={glassColorScheme}>
+                  {scrollingContent}
+                </GlassView>
+              </Link.AppleZoom>
+            </Pressable>
+          </Link>
+        </ScrollingHeroErrorBoundary>
+      );
+    }
+
+    return (
+      <ScrollingHeroErrorBoundary>
+        <Link href="/(tabs)/(a.home)/browse-all" asChild>
+          <Pressable style={StyleSheet.flatten([styles.container])}>
+            {scrollingContent}
+          </Pressable>
+        </Link>
       </ScrollingHeroErrorBoundary>
     );
   },

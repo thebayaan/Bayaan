@@ -1,351 +1,172 @@
-import React, {useCallback, useEffect, useMemo} from 'react';
-import {View, Text, Pressable, StyleSheet, Platform} from 'react-native';
+import React, {useCallback, useMemo, useRef} from 'react';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
+import {usePathname} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
-import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {State as TrackPlayerState} from 'react-native-track-player';
-import Animated, {
-  useSharedValue,
-  withTiming,
-  withSpring,
-  useAnimatedStyle,
-} from 'react-native-reanimated';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import {PlayButton} from './PlayButton';
-import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {useLoved} from '@/hooks/useLoved';
-import {HeartIcon} from '@/components/Icons';
-import {TouchableOpacity} from 'react-native';
+import {moderateScale} from 'react-native-size-matters';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {expandPlayerSheet} from '@/services/player/sheetRef';
+import {PlayIcon, PauseIcon} from '@/components/Icons';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
-import {BlurView} from '@react-native-community/blur';
+import {ReciterImage} from '@/components/ReciterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {getFloatingPlayerBottomPosition} from '@/utils/constants';
-
-// Create styles as a function that takes insets
-const createStyles = (bottomInset: number) =>
-  ScaledSheet.create({
-    container: {
-      position: 'absolute',
-      bottom: getFloatingPlayerBottomPosition(bottomInset),
-      left: moderateScale(10),
-      right: moderateScale(10),
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 10,
-    },
-    background: {
-      borderRadius: moderateScale(12),
-      overflow: 'hidden',
-      borderWidth: 0.1,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    overlay: {
-      ...StyleSheet.absoluteFillObject,
-      opacity: 0.85,
-    },
-    content: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginVertical: moderateScale(10),
-      paddingHorizontal: moderateScale(15),
-    },
-    playButtonContainer: {
-      width: moderateScale(10),
-      height: moderateScale(10),
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginLeft: moderateScale(10),
-    },
-    trackInfo: {
-      flex: 1,
-      marginHorizontal: moderateScale(20),
-    },
-    title: {
-      fontSize: moderateScale(14),
-      fontFamily: 'Manrope-Bold',
-    },
-    subtitle: {
-      fontSize: moderateScale(12),
-      fontFamily: 'Manrope-Medium',
-      opacity: 0.85,
-    },
-    rightControls: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    loveButton: {
-      padding: moderateScale(4),
-    },
-    surahGlyph: {
-      fontFamily: 'SurahNames',
-      fontSize: moderateScale(20),
-      textAlign: 'center',
-    },
-    surahGlyphContainer: {
-      width: moderateScale(55),
-      height: moderateScale(30),
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden',
-    },
-    androidBackground: {
-      elevation: 10,
-      borderWidth: 0.5,
-      borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-  });
+import Color from 'color';
+import {
+  getFloatingPlayerBottomPosition,
+  FLOATING_UI_HORIZONTAL_MARGIN,
+} from '@/utils/constants';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
-  const {playback, queue, loading, play, pause, setSheetMode} =
-    useUnifiedPlayer();
-  const {isTrackLoved, toggleTrackLoved} = useLoved();
-  const scale = useSharedValue(1);
-  const heartScale = useSharedValue(1);
+  const glassColorScheme = useGlassColorScheme();
+  const {play, pause} = usePlayerActions();
+  const playbackState = usePlayerStore(state => state.playback.state);
+  const queueTracks = usePlayerStore(state => state.queue.tracks);
+  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
+  const trackLoading = usePlayerStore(state => state.loading.trackLoading);
+  const stateRestoring = usePlayerStore(state => state.loading.stateRestoring);
   const insets = useSafeAreaInsets();
-  // Create styles using insets
-  const styles = useMemo(() => createStyles(insets.bottom), [insets.bottom]);
+  const pathname = usePathname();
+  const isMushafActive = pathname === '/mushaf';
+  const prevTrackIdRef = useRef<string | null>(null);
 
   const currentTrack = useMemo(
-    () => queue?.tracks?.[queue.currentIndex],
-    [queue?.tracks, queue.currentIndex],
+    () => queueTracks?.[currentIndex],
+    [queueTracks, currentIndex],
   );
 
-  const prevTrackIdRef = React.useRef<string | null>(null);
-
-  // Show loading only when loading a new track, not during play/pause
   const isLoadingNewTrack = useMemo(() => {
     const isTrackChanging = currentTrack?.id !== prevTrackIdRef.current;
     if (currentTrack?.id) {
       prevTrackIdRef.current = currentTrack.id;
     }
+    return (trackLoading && isTrackChanging) || playbackState === 'buffering';
+  }, [trackLoading, playbackState, currentTrack?.id]);
 
-    // Only show loading when:
-    // 1. A track is being loaded (trackLoading) AND it's a new track
-    // 2. OR when in the initial buffering state (but not during play/pause)
-    return (
-      (loading.trackLoading && isTrackChanging) ||
-      playback.state === TrackPlayerState.Buffering
-    );
-  }, [loading.trackLoading, playback.state, currentTrack?.id]);
-
-  const shouldShow = useMemo(
-    () => !loading?.stateRestoring && !!currentTrack,
-    [loading?.stateRestoring, currentTrack],
-  );
-
-  const surahNumber = useMemo(() => {
-    if (!currentTrack?.surahId) return undefined;
-    return parseInt(currentTrack.surahId, 10);
-  }, [currentTrack?.surahId]);
-
-  const surahGlyph = useMemo(() => {
-    if (!surahNumber) return '';
-    return surahGlyphMap[surahNumber];
-  }, [surahNumber]);
-
-  // Animation values
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{translateY: translateY.value}, {scale: scale.value}],
-    opacity: opacity.value,
-  }));
-
-  // Animation handlers
-  const showPlayer = useCallback(() => {
-    'worklet';
-    translateY.value = withSpring(0, {
-      damping: 15,
-      stiffness: 150,
-    });
-    opacity.value = withTiming(1, {
-      duration: 200,
-    });
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 150,
-    });
-  }, [translateY, opacity, scale]);
-
-  const hidePlayer = useCallback(() => {
-    'worklet';
-    translateY.value = withSpring(100, {
-      damping: 15,
-      stiffness: 150,
-    });
-    opacity.value = withTiming(0, {
-      duration: 200,
-    });
-    scale.value = withSpring(0.95, {
-      damping: 15,
-      stiffness: 150,
-    });
-  }, [translateY, opacity, scale]);
-
-  // Handle visibility
-  useEffect(() => {
-    if (shouldShow) {
-      showPlayer();
-    } else {
-      hidePlayer();
-    }
-  }, [shouldShow, showPlayer, hidePlayer]);
+  const shouldShow = !stateRestoring && !!currentTrack && !isMushafActive;
 
   const handlePress = useCallback(() => {
-    setSheetMode('full');
-  }, [setSheetMode]);
+    expandPlayerSheet();
+  }, []);
 
   const handlePlayPause = useCallback(async () => {
-    if (playback.state === TrackPlayerState.Playing) {
+    if (playbackState === 'playing') {
       await pause();
     } else {
       await play();
     }
-  }, [playback.state, pause, play]);
+  }, [playbackState, pause, play]);
 
-  const handleLovePress = useCallback(() => {
-    if (currentTrack) {
-      // Animate the heart
-      heartScale.value = withSpring(1.2, {}, () => {
-        heartScale.value = withSpring(1);
-      });
+  const containerStyle = useMemo(
+    () => ({
+      position: 'absolute' as const,
+      bottom: getFloatingPlayerBottomPosition(insets.bottom),
+      left: FLOATING_UI_HORIZONTAL_MARGIN,
+      right: FLOATING_UI_HORIZONTAL_MARGIN,
+      borderRadius: moderateScale(100),
+      overflow: 'hidden' as const,
+      borderWidth: USE_GLASS ? 0 : 1,
+      borderColor: USE_GLASS
+        ? undefined
+        : Color(theme.colors.text).alpha(0.1).toString(),
+      shadowColor: '#000',
+      shadowOffset: {width: 0, height: 2},
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 8,
+    }),
+    [theme.colors.text, insets.bottom],
+  );
 
-      toggleTrackLoved(currentTrack);
-    }
-  }, [currentTrack, toggleTrackLoved, heartScale]);
+  if (!shouldShow) return null;
 
-  const heartAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: heartScale.value}],
-  }));
+  const textColor = Color(theme.colors.text).alpha(0.85).toString();
+  const subtitleColor = Color(theme.colors.textSecondary)
+    .alpha(0.45)
+    .toString();
 
-  if (!currentTrack) {
-    return null;
-  }
-
-  const textColor = theme.colors.text;
+  const Container = USE_GLASS ? GlassView : FrostedView;
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          blurAmount={80}
-          blurType={theme.isDarkMode ? 'dark' : 'light'}
-          style={styles.background}>
-          <View
-            style={[styles.overlay, {backgroundColor: theme.colors.card}]}
-          />
-          <Pressable
-            onPress={handlePress}
-            style={styles.content}
-            android_ripple={{color: 'rgba(0, 0, 0, 0.1)'}}
-            unstable_pressDelay={0}>
-            <View style={styles.playButtonContainer}>
-              {isLoadingNewTrack ? (
-                <LoadingIndicator color={textColor} />
-              ) : (
-                <PlayButton
-                  isPlaying={playback.state === TrackPlayerState.Playing}
-                  onPlayPause={handlePlayPause}
-                  disabled={isLoadingNewTrack}
-                />
-              )}
-            </View>
-            <View style={styles.trackInfo}>
-              <Text
-                style={[styles.title, {color: textColor}]}
-                numberOfLines={1}>
-                {currentTrack.title}
-              </Text>
-              <Text
-                style={[styles.subtitle, {color: textColor}]}
-                numberOfLines={1}>
-                {currentTrack.artist}
-              </Text>
-            </View>
-            <View style={styles.rightControls}>
-              <TouchableOpacity
-                onPress={handleLovePress}
-                style={styles.loveButton}
-                activeOpacity={0.7}>
-                <Animated.View style={heartAnimatedStyle}>
-                  <HeartIcon
-                    color={isTrackLoved(currentTrack) ? 'red' : textColor}
-                    size={moderateScale(24)}
-                    filled={isTrackLoved(currentTrack)}
-                  />
-                </Animated.View>
-              </TouchableOpacity>
-              <View style={styles.surahGlyphContainer}>
-                <Text style={[styles.surahGlyph, {color: textColor}]}>
-                  {surahGlyph}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
-        </BlurView>
-      ) : (
-        <View
-          style={[
-            styles.background,
-            styles.androidBackground,
-            {backgroundColor: theme.colors.card},
-          ]}>
-          <Pressable
-            onPress={handlePress}
-            style={styles.content}
-            android_ripple={{color: 'rgba(0, 0, 0, 0.1)'}}
-            unstable_pressDelay={0}>
-            <View style={styles.playButtonContainer}>
-              {isLoadingNewTrack ? (
-                <LoadingIndicator color={textColor} />
-              ) : (
-                <PlayButton
-                  isPlaying={playback.state === TrackPlayerState.Playing}
-                  onPlayPause={handlePlayPause}
-                  disabled={isLoadingNewTrack}
-                />
-              )}
-            </View>
-            <View style={styles.trackInfo}>
-              <Text
-                style={[styles.title, {color: textColor}]}
-                numberOfLines={1}>
-                {currentTrack.title}
-              </Text>
-              <Text
-                style={[styles.subtitle, {color: textColor}]}
-                numberOfLines={1}>
-                {currentTrack.artist}
-              </Text>
-            </View>
-            <View style={styles.rightControls}>
-              <TouchableOpacity
-                onPress={handleLovePress}
-                style={styles.loveButton}
-                activeOpacity={0.7}>
-                <Animated.View style={heartAnimatedStyle}>
-                  <HeartIcon
-                    color={isTrackLoved(currentTrack) ? 'red' : textColor}
-                    size={moderateScale(24)}
-                    filled={isTrackLoved(currentTrack)}
-                  />
-                </Animated.View>
-              </TouchableOpacity>
-              <View style={styles.surahGlyphContainer}>
-                <Text style={[styles.surahGlyph, {color: textColor}]}>
-                  {surahGlyph}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
+    <Container
+      style={containerStyle}
+      {...(USE_GLASS
+        ? {glassEffectStyle: 'regular' as const, colorScheme: glassColorScheme}
+        : {})}>
+      <Pressable
+        onPress={handlePress}
+        style={styles.content}
+        android_ripple={{color: 'rgba(0, 0, 0, 0.1)', borderless: false}}>
+        <ReciterImage
+          reciterName={currentTrack.reciterName}
+          style={styles.artwork}
+        />
+        <View style={styles.trackInfo}>
+          <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
+            {currentTrack.title}
+          </Text>
+          <Text
+            style={[styles.subtitle, {color: subtitleColor}]}
+            numberOfLines={1}>
+            {currentTrack.artist}
+          </Text>
         </View>
-      )}
-    </Animated.View>
+        <Pressable
+          onPress={handlePlayPause}
+          style={styles.playButton}
+          hitSlop={10}>
+          {isLoadingNewTrack ? (
+            <LoadingIndicator color={theme.colors.text} />
+          ) : playbackState === 'playing' ? (
+            <PauseIcon
+              color={theme.colors.text}
+              size={moderateScale(20, 0.2)}
+            />
+          ) : (
+            <PlayIcon color={theme.colors.text} size={moderateScale(20, 0.2)} />
+          )}
+        </Pressable>
+      </Pressable>
+    </Container>
   );
+});
+
+const styles = StyleSheet.create({
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(14, 0.2),
+    paddingVertical: moderateScale(7, 0.2),
+    gap: moderateScale(10, 0.2),
+  },
+  artwork: {
+    width: moderateScale(36, 0.2),
+    height: moderateScale(36, 0.2),
+    borderRadius: moderateScale(8, 0.2),
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  trackInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  title: {
+    fontSize: moderateScale(13, 0.2),
+    fontFamily: 'Manrope-SemiBold',
+  },
+  subtitle: {
+    fontSize: moderateScale(11, 0.2),
+    fontFamily: 'Manrope-Medium',
+  },
+  playButton: {
+    width: moderateScale(34, 0.2),
+    height: moderateScale(34, 0.2),
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
 });

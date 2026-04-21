@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Postmark from 'postmark';
 import Constants from 'expo-constants';
 

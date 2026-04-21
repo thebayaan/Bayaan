@@ -4,7 +4,7 @@ import {useRouter} from 'expo-router';
 import {Category} from '@/data/categories';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {TouchableOpacity} from 'react-native-gesture-handler';
 import Animated, {FadeInDown} from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -72,9 +72,8 @@ export function CategoryScreen({
             </Text>
           )}
         </View>
-        <Icon
+        <Feather
           name="chevron-right"
-          type="feather"
           size={20}
           color={theme.colors.textSecondary}
         />
@@ -97,26 +96,21 @@ export function CategoryScreen({
           style={styles.backButton}
           activeOpacity={0.7}
           onPress={() => router.back()}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={24}
-            color={theme.colors.white}
-          />
+          <Feather name="arrow-left" size={24} color={'#FFFFFF'} />
         </TouchableOpacity>
         <View style={styles.titleContainer}>
-          <Icon
-            {...icon}
+          <Feather
+            name={icon.name as any}
             size={24}
-            color={theme.colors.white}
+            color={'#FFFFFF'}
             style={styles.titleIcon}
           />
-          <Text style={[styles.title, {color: theme.colors.white}]}>
+          <Text style={[styles.title, {color: '#FFFFFF'}]}>
             {category.title}
           </Text>
         </View>
         {category.description && (
-          <Text style={[styles.description, {color: theme.colors.white}]}>
+          <Text style={[styles.description, {color: '#FFFFFF'}]}>
             {category.description}
           </Text>
         )}

@@ -1,5 +1,5 @@
 import React, {useState, useMemo, useCallback} from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {
   ScaledSheet,
   moderateScale,
@@ -12,7 +12,7 @@ import ActionSheet, {
   SheetManager,
 } from 'react-native-actions-sheet';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import {Dhikr} from '@/types/adhkar';
 
@@ -34,10 +34,13 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
   styles,
 }) => {
   return (
-    <TouchableOpacity
-      style={[styles.checkboxRow, disabled && styles.checkboxRowDisabled]}
+    <Pressable
+      style={({pressed}) => [
+        styles.checkboxRow,
+        disabled && styles.checkboxRowDisabled,
+        pressed && !disabled && styles.checkboxRowPressed,
+      ]}
       onPress={onToggle}
-      activeOpacity={1}
       disabled={disabled}>
       <View
         style={[
@@ -46,9 +49,8 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
           disabled && styles.checkboxDisabled,
         ]}>
         {checked ? (
-          <Icon
+          <Feather
             name="check"
-            type="feather"
             size={moderateScale(14)}
             color={theme.colors.background}
           />
@@ -61,7 +63,7 @@ const CheckboxRow: React.FC<CheckboxRowProps> = ({
         ]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -123,6 +125,7 @@ export const AdhkarCopyOptionsSheet = (
             theme={theme}
             styles={styles}
           />
+          <View style={styles.divider} />
           <CheckboxRow
             label="Translation"
             checked={copyTranslation}
@@ -131,6 +134,7 @@ export const AdhkarCopyOptionsSheet = (
             theme={theme}
             styles={styles}
           />
+          <View style={styles.divider} />
           <CheckboxRow
             label="Transliteration"
             checked={copyTransliteration}
@@ -141,14 +145,16 @@ export const AdhkarCopyOptionsSheet = (
           />
         </View>
 
-        <TouchableOpacity
-          style={[styles.copyButton, !canCopy && styles.copyButtonDisabled]}
+        <Pressable
+          style={({pressed}) => [
+            styles.copyButton,
+            !canCopy && styles.copyButtonDisabled,
+            pressed && canCopy && styles.copyButtonPressed,
+          ]}
           onPress={handleCopy}
-          activeOpacity={1}
           disabled={!canCopy}>
-          <Icon
+          <Feather
             name="copy"
-            type="feather"
             size={moderateScale(18)}
             color={
               canCopy ? theme.colors.background : theme.colors.textSecondary
@@ -161,7 +167,7 @@ export const AdhkarCopyOptionsSheet = (
             ]}>
             Copy to Clipboard
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </ActionSheet>
   );
@@ -170,14 +176,19 @@ export const AdhkarCopyOptionsSheet = (
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       padding: moderateScale(16),
@@ -198,11 +209,17 @@ const createStyles = (theme: Theme) =>
       marginBottom: verticalScale(16),
     },
     optionsContainer: {
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       paddingHorizontal: moderateScale(14),
-      paddingVertical: verticalScale(8),
+      overflow: 'hidden',
       marginBottom: verticalScale(16),
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     checkboxRow: {
       flexDirection: 'row',
@@ -212,12 +229,15 @@ const createStyles = (theme: Theme) =>
     checkboxRowDisabled: {
       opacity: 0.4,
     },
+    checkboxRowPressed: {
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+    },
     checkbox: {
       width: moderateScale(24),
       height: moderateScale(24),
       borderRadius: moderateScale(6),
       borderWidth: 2,
-      borderColor: theme.colors.border,
+      borderColor: Color(theme.colors.text).alpha(0.2).toString(),
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: moderateScale(12),
@@ -227,12 +247,12 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.colors.text,
     },
     checkboxDisabled: {
-      borderColor: Color(theme.colors.border).alpha(0.5).toString(),
+      borderColor: Color(theme.colors.text).alpha(0.1).toString(),
     },
     checkboxLabel: {
-      fontSize: moderateScale(15),
-      fontFamily: theme.fonts.medium,
-      color: theme.colors.text,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
     },
     checkboxLabelDisabled: {
       color: theme.colors.textSecondary,
@@ -249,9 +269,12 @@ const createStyles = (theme: Theme) =>
     copyButtonDisabled: {
       backgroundColor: Color(theme.colors.textSecondary).alpha(0.2).toString(),
     },
+    copyButtonPressed: {
+      opacity: 0.9,
+    },
     copyButtonText: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.semiBold,
+      fontSize: moderateScale(15),
+      fontFamily: 'Manrope-SemiBold',
       color: theme.colors.background,
     },
     copyButtonTextDisabled: {

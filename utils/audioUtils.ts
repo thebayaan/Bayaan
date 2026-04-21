@@ -18,12 +18,6 @@ export function generateAudioUrl(
     throw new Error('No rewayat found for reciter');
   }
 
-  // If the server URL is a Supabase storage URL
-  if (rewayat.server.includes('supabase.co')) {
-    return `${rewayat.server}/${paddedSurahId}.mp3`;
-  }
-
-  // Default mp3quran.net URL
   return `${rewayat.server}/${paddedSurahId}.mp3`;
 }
 
@@ -49,8 +43,6 @@ export function generateSmartAudioUrl(
       rewayatId,
     );
     if (download) {
-      // Resolve the relative path to absolute path at runtime
-      // This ensures paths remain valid after iOS app updates
       const absolutePath = resolveFilePath(download.filePath);
       console.log(
         `Using local file for ${reciter.name} - Surah ${surahId} (Rewayat: ${rewayatId}): ${absolutePath}`,
@@ -58,7 +50,6 @@ export function generateSmartAudioUrl(
       return absolutePath;
     }
   } else {
-    // Check without rewayat (legacy downloads without rewayatId)
     const download = downloadStore.getDownload(reciter.id, surahId);
     if (download && download.status === 'completed') {
       const absolutePath = resolveFilePath(download.filePath);
@@ -69,7 +60,6 @@ export function generateSmartAudioUrl(
     }
   }
 
-  // Fall back to remote URL if not downloaded
   console.log(
     `Using remote URL for ${reciter.name} - Surah ${surahId}${
       rewayatId ? ` (Rewayat: ${rewayatId})` : ''

@@ -1,5 +1,12 @@
-import React, {useMemo, useEffect, useRef} from 'react';
-import {View, Text, ScrollView, StyleSheet, FlatList} from 'react-native';
+import React, {useMemo, useEffect, useRef, useCallback} from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  FlatList,
+  Pressable,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {Reciter, RECITERS} from '@/data/reciterData';
@@ -24,11 +31,21 @@ import {
   getBeginnerFriendlyReciters,
   getFeaturedReciters,
   getBayaanOriginalsReciters,
+  getFollowAlongReciters,
 } from '@/data/reciterCollections';
+import {useTimestampStore} from '@/store/timestampStore';
 import {getAllRewayatTypes, RewayatInfo} from '@/data/rewayatCollections';
 import RewayatCard from '@/components/cards/RewayatCard';
 import {useSettings} from '@/hooks/useSettings';
 import {useRouter} from 'expo-router';
+import Color from 'color';
+import {useReciterFollowAlong} from '@/hooks/useFollowAlong';
+import {useBottomInset} from '@/hooks/useBottomInset';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useAdhkarStore} from '@/store/adhkarStore';
+import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
+import {SuperCategory} from '@/types/adhkar';
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
@@ -60,10 +77,11 @@ const MemoizedFlatList = React.memo(
   }) => (
     <FlatList
       data={data}
-      renderItem={({item}) => (
+      renderItem={({item, index}) => (
         <RenderSectionItem
           item={item}
           variant={variant}
+          index={index}
           onReciterPress={onReciterPress}
           onRewayatPress={onRewayatPress}
           onPlaylistPress={onPlaylistPress}
@@ -71,7 +89,9 @@ const MemoizedFlatList = React.memo(
       )}
       keyExtractor={item =>
         'timestamp' in item
-          ? `${item.reciter?.id ?? 'unknown'}-${item.surah?.id ?? 'unknown'}-${item.timestamp}`
+          ? `${item.reciter?.id ?? 'unknown'}-${item.surah?.id ?? 'unknown'}-${
+              item.timestamp
+            }`
           : 'displayName' in item
             ? item.id
             : 'itemCount' in item && 'color' in item
@@ -129,6 +149,7 @@ const RenderSectionItem = React.memo(
   ({
     item,
     variant,
+    index,
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
@@ -141,24 +162,45 @@ const RenderSectionItem = React.memo(
       | 'featured'
       | 'rewayat'
       | 'playlist';
+    index: number;
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
   }) => {
     const {theme} = useTheme();
-    const progress = useRecentlyPlayedStore(state =>
-      'timestamp' in item && item.reciter?.id && item.surah?.id
-        ? state.getProgress(item.reciter.id, item.surah.id)
-        : 0,
-    );
 
-    const duration = useRecentlyPlayedStore(state =>
-      'timestamp' in item && item.reciter?.id && item.surah?.id
-        ? state.getDuration(item.reciter.id, item.surah.id)
-        : 0,
-    );
+    // Derive reciter ID for follow-along badge
+    const reciterId =
+      'timestamp' in item
+        ? (item as RecentlyPlayedTrack).reciter?.id
+        : 'rewayat' in item
+          ? (item as Reciter).id
+          : undefined;
+    const showFollowAlong = useReciterFollowAlong(reciterId);
 
     if (variant === 'recent' && 'timestamp' in item) {
+      if (item.isUserUpload) {
+        return (
+          <RecentReciterCard
+            imageUrl={
+              item.reciter?.id !== '__uploads__'
+                ? (item.reciter?.image_url ?? undefined)
+                : undefined
+            }
+            reciterName={item.uploadArtist || 'My Recitations'}
+            surahName={item.uploadTitle || 'Upload'}
+            trackId={`upload:${item.userRecitationId}`}
+            reciterId={item.reciter?.id || '__uploads__'}
+            surahId={item.surah?.id || 0}
+            duration={item.duration}
+            progress={item.progress}
+            index={index}
+            isUserUpload
+            userRecitationId={item.userRecitationId}
+          />
+        );
+      }
+
       if (!item.reciter?.name || !item.surah?.name) {
         return null;
       }
@@ -171,9 +213,10 @@ const RenderSectionItem = React.memo(
           trackId={`${item.reciter.id}:${item.surah.id}`}
           reciterId={item.reciter.id}
           surahId={item.surah.id}
-          duration={duration}
-          progress={progress}
+          duration={item.duration}
+          progress={item.progress}
           rewayatId={item.rewayatId}
+          index={index}
         />
       );
     }
@@ -185,6 +228,7 @@ const RenderSectionItem = React.memo(
           imageUrl={reciter.image_url ?? undefined}
           name={reciter.name}
           onPress={() => onReciterPress(reciter)}
+          showFollowAlong={showFollowAlong}
         />
       );
     }
@@ -198,6 +242,7 @@ const RenderSectionItem = React.memo(
           width={moderateScale(140)}
           height={moderateScale(160)}
           theme={theme}
+          showFollowAlong={showFollowAlong}
         />
       );
     }
@@ -221,6 +266,7 @@ const RenderSectionItem = React.memo(
           name={playlist.name}
           itemCount={playlist.itemCount}
           color={playlist.color}
+          playlistId={playlist.id}
           onPress={() => onPlaylistPress?.(playlist)}
           width={moderateScale(110)}
           height={moderateScale(110)}
@@ -236,6 +282,7 @@ const RenderSectionItem = React.memo(
         width={moderateScale(120)}
         height={moderateScale(140)}
         theme={theme}
+        showFollowAlong={showFollowAlong}
       />
     );
   },
@@ -252,6 +299,7 @@ const Section = React.memo(
     onReciterPress,
     onRewayatPress,
     onPlaylistPress,
+    onClear,
     theme,
   }: {
     title: string;
@@ -266,15 +314,33 @@ const Section = React.memo(
     onReciterPress: (reciter: Reciter) => void;
     onRewayatPress?: (rewayat: RewayatInfo) => void;
     onPlaylistPress?: (playlist: UserPlaylist) => void;
+    onClear?: () => void;
     theme: Theme;
   }) => {
     if (!data.length) return null;
 
     return (
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-          {title}
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+            {title}
+          </Text>
+          {onClear && (
+            <Pressable onPress={onClear} hitSlop={8}>
+              <Text
+                style={[
+                  styles.clearButton,
+                  {
+                    color: Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString(),
+                  },
+                ]}>
+                Clear
+              </Text>
+            </Pressable>
+          )}
+        </View>
         <MemoizedFlatList
           data={data}
           variant={variant}
@@ -292,6 +358,7 @@ const Section = React.memo(
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.onRewayatPress === nextProps.onRewayatPress &&
     prevProps.onPlaylistPress === nextProps.onPlaylistPress &&
+    prevProps.onClear === nextProps.onClear &&
     prevProps.theme === nextProps.theme,
 );
 
@@ -317,6 +384,8 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
 
 function RecitersView({onReciterPress}: RecitersViewProps) {
   const {theme} = useTheme();
+  const bottomInset = useBottomInset();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {recentTracks} = useRecentlyPlayedStore();
   const {favoriteReciters} = useFavoriteReciters();
@@ -330,14 +399,16 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
   const sessionSeed = useRef(Date.now()).current;
 
   // Filter out any corrupted recent tracks (missing reciter or surah data)
+  // Upload tracks are valid if they have userRecitationId
   const validRecentTracks = useMemo(
     () =>
-      recentTracks.filter(
-        track =>
-          track.reciter?.id &&
-          track.reciter?.name &&
-          track.surah?.id &&
-          track.surah?.name,
+      recentTracks.filter(track =>
+        track.isUserUpload
+          ? !!track.userRecitationId
+          : track.reciter?.id &&
+            track.reciter?.name &&
+            track.surah?.id &&
+            track.surah?.name,
       ),
     [recentTracks],
   );
@@ -400,24 +471,23 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     () => seededShuffle(getMemorizationReciters(10), sessionSeed + 6),
     [sessionSeed],
   );
-  const rewayatTypes = useMemo(
-    () => seededShuffle(getAllRewayatTypes(), sessionSeed + 7),
-    [sessionSeed],
+  const registryLoaded = useTimestampStore(s => s.registryLoaded);
+  const followAlongReciters = useMemo(
+    () =>
+      registryLoaded
+        ? seededShuffle(getFollowAlongReciters(), sessionSeed + 9)
+        : [],
+    [sessionSeed, registryLoaded],
   );
+  const rewayatTypes = useMemo(() => getAllRewayatTypes(), []);
 
   // Handler for rewayat card press
   const handleRewayatPress = (rewayat: RewayatInfo) => {
-    // Parse the rewayat name to extract teacher and student
-    // Format is typically "Student A'n Teacher"
-    const parts = rewayat.name.split("A'n");
-    const student = parts.length > 1 ? parts[0].trim() : '';
-    const teacher = parts.length > 1 ? parts[1].trim() : rewayat.name;
-
     router.push({
       pathname: '/(tabs)/(a.home)/reciter/browse',
       params: {
-        teacher,
-        student,
+        teacher: rewayat.teacher,
+        student: rewayat.student,
         rewayatName: rewayat.displayName,
       },
     });
@@ -431,16 +501,44 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     });
   };
 
+  const handleClearRecentTracks = useCallback(() => {
+    useRecentlyPlayedStore.getState().clearRecentTracks();
+  }, []);
+
   const showNewToQuran = shouldShowNewToQuran();
 
-  // Get random gradient colors from the utility
+  // Adhkar data for the section at the bottom
+  const mainSuperCategories = useAdhkarStore(
+    state => state.mainSuperCategories,
+  );
+  const adhkarLoaded = useAdhkarStore(state => state.superCategoriesLoaded);
+
+  // Interleave adhkar categories for consistent display order
+  const adhkarCategories = useMemo(() => {
+    const left = mainSuperCategories
+      .filter(c => c.column === 'left')
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const right = mainSuperCategories
+      .filter(c => c.column === 'right')
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const result: SuperCategory[] = [];
+    const maxLen = Math.max(left.length, right.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (i < left.length) result.push(left[i]);
+      if (i < right.length) result.push(right[i]);
+    }
+    return result;
+  }, [mainSuperCategories]);
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{
-        paddingBottom: verticalScale(32),
-      }}
+      contentContainerStyle={
+        USE_GLASS
+          ? undefined
+          : {paddingTop: insets.top, paddingBottom: bottomInset}
+      }
+      contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}>
       {/* Use the unified RecitersHero component */}
@@ -453,6 +551,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           data={validRecentTracks}
           variant="recent"
           onReciterPress={onReciterPress}
+          onClear={handleClearRecentTracks}
           theme={theme}
         />
       )}
@@ -484,6 +583,57 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
         <Section
           title="Featured Reciters"
           data={featuredReciters}
+          variant="default"
+          onReciterPress={onReciterPress}
+          theme={theme}
+        />
+      )}
+
+      {/* Adhkar section */}
+      {adhkarLoaded && adhkarCategories.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
+              Adhkar
+            </Text>
+            <Pressable
+              onPress={() => router.push('/(tabs)/(a.home)/adhkar')}
+              hitSlop={8}>
+              <Text
+                style={[
+                  styles.seeMoreButton,
+                  {
+                    color: Color(theme.colors.textSecondary)
+                      .alpha(0.5)
+                      .toString(),
+                  },
+                ]}>
+                See More
+              </Text>
+            </Pressable>
+          </View>
+          <FlatList
+            data={adhkarCategories}
+            renderItem={({item}) => (
+              <AdhkarBentoCard
+                category={item}
+                width={moderateScale(140)}
+                height={moderateScale(100)}
+              />
+            )}
+            keyExtractor={item => item.id}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sectionContent}
+          />
+        </View>
+      )}
+
+      {/* Follow Along - reciters with verse-by-verse tracking */}
+      {followAlongReciters.length > 0 && (
+        <Section
+          title="Follow Along"
+          data={followAlongReciters}
           variant="default"
           onReciterPress={onReciterPress}
           theme={theme}
@@ -537,7 +687,7 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       {/* Rewayat collection - Browse by different narration styles */}
       {rewayatTypes.length > 0 && (
         <Section
-          title="Explore by Rewayat"
+          title="Explore by Rewayah"
           data={rewayatTypes}
           variant="rewayat"
           onReciterPress={onReciterPress}
@@ -567,11 +717,24 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: moderateScale(24),
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: moderateScale(16),
+    marginBottom: moderateScale(16),
+  },
   sectionTitle: {
     fontSize: moderateScale(18),
     fontFamily: 'Manrope-SemiBold',
-    marginBottom: moderateScale(16),
-    paddingHorizontal: moderateScale(16),
+  },
+  clearButton: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Medium',
+  },
+  seeMoreButton: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-Medium',
   },
   sectionContent: {
     paddingHorizontal: moderateScale(16),

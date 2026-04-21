@@ -2,10 +2,10 @@ import React, {useMemo} from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Dimensions,
   Switch,
-  TouchableOpacity,
+  Pressable,
+  StyleSheet,
 } from 'react-native';
 import {
   ScaledSheet,
@@ -14,9 +14,9 @@ import {
 } from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import ActionSheet, {SheetProps} from 'react-native-actions-sheet';
+import ActionSheet, {SheetProps, ScrollView} from 'react-native-actions-sheet';
 import Color from 'color';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {
   useAdhkarSettingsStore,
   getActualFontSize,
@@ -74,14 +74,12 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
       <View style={styles.fontSizeControlRow}>
         <Text style={styles.optionLabel}>{label}</Text>
         <View style={styles.fontSizeAdjuster}>
-          <TouchableOpacity
+          <Pressable
             onPress={handleDecrement}
-            activeOpacity={1}
             hitSlop={10}
             disabled={currentDisplayValue <= DISPLAY_MIN}>
-            <Icon
+            <Feather
               name="minus"
-              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue <= DISPLAY_MIN
@@ -89,16 +87,14 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
                   : theme.colors.text
               }
             />
-          </TouchableOpacity>
+          </Pressable>
           <Text style={styles.fontSizeValue}>{currentDisplayValue}</Text>
-          <TouchableOpacity
+          <Pressable
             onPress={handleIncrement}
-            activeOpacity={1}
             hitSlop={10}
             disabled={currentDisplayValue >= DISPLAY_MAX}>
-            <Icon
+            <Feather
               name="plus"
-              type="feather"
               size={moderateScale(18)}
               color={
                 currentDisplayValue >= DISPLAY_MAX
@@ -106,7 +102,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
                   : theme.colors.text
               }
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
       <View
@@ -145,8 +141,8 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
   } = useAdhkarSettingsStore();
 
   const trackColor = {
-    false: Color(theme.colors.textSecondary).alpha(0.3).toString(),
-    true: theme.colors.text,
+    false: Color(theme.colors.text).alpha(0.1).toString(),
+    true: Color(theme.colors.text).alpha(0.65).toString(),
   };
 
   return (
@@ -172,7 +168,7 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
               theme={theme}
               styles={styles}
               sampleText="بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
-              sampleFontFamily="QPC"
+              sampleFontFamily="Uthmani"
               isArabic={true}
             />
           </View>
@@ -243,15 +239,20 @@ export const AdhkarLayoutSheet = (props: SheetProps<'adhkar-layout'>) => {
 const createStyles = (theme: Theme) =>
   ScaledSheet.create({
     sheetContainer: {
-      backgroundColor: theme.colors.backgroundSecondary,
+      backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
       paddingTop: moderateScale(8),
       height: SCREEN_HEIGHT * 0.6,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
     },
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     scrollView: {
       flex: 1,
@@ -270,18 +271,23 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
     },
     sectionHeader: {
-      fontSize: moderateScale(14),
-      fontFamily: theme.fonts.semiBold,
-      color: theme.colors.textSecondary,
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       marginBottom: verticalScale(8),
       marginLeft: moderateScale(4),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
     },
     card: {
-      backgroundColor: theme.colors.card,
-      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderRadius: moderateScale(14),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
       paddingHorizontal: moderateScale(14),
       paddingVertical: verticalScale(5),
       marginBottom: verticalScale(16),
+      overflow: 'hidden',
     },
     optionRow: {
       flexDirection: 'row',
@@ -290,14 +296,14 @@ const createStyles = (theme: Theme) =>
       paddingVertical: verticalScale(8),
     },
     optionLabel: {
-      fontSize: moderateScale(13),
-      fontFamily: theme.fonts.medium,
-      color: theme.colors.text,
+      fontSize: moderateScale(13.5),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.85).toString(),
       marginRight: moderateScale(10),
     },
     divider: {
-      height: 1,
-      backgroundColor: theme.colors.border,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
       marginVertical: verticalScale(8),
     },
     switchStyle: {

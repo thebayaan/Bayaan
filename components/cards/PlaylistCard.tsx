@@ -1,16 +1,20 @@
-import React from 'react';
-import {Text, TouchableOpacity, View, StyleSheet} from 'react-native';
+import React, {useMemo} from 'react';
+import {Text, Pressable, View, StyleSheet} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale} from 'react-native-size-matters';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
+import {Link} from 'expo-router';
+import {LinearGradient} from 'expo-linear-gradient';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface PlaylistCardProps {
   name: string;
   itemCount: number;
   color?: string;
-  onPress: () => void;
+  onPress?: () => void;
   onLongPress?: () => void;
+  playlistId?: string;
   width?: number;
   height?: number;
 }
@@ -21,64 +25,115 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({
   color,
   onPress,
   onLongPress,
+  playlistId,
   width,
   height,
 }) => {
   const {theme} = useTheme();
 
-  const playlistColor = color || theme.colors.primary;
-  const backgroundColor = Color(playlistColor).alpha(0.15).toString();
-  const borderColor = Color(playlistColor).alpha(0.3).toString();
+  const playlistColor = color || theme.colors.text;
 
-  // Use provided dimensions or fall back to default
-  const cardWidth = width || moderateScale(120);
-  const cardHeight = height || moderateScale(120);
-  const iconSize = cardWidth * 0.4; // 40% of card width
+  const cardWidth = width || moderateScale(100);
+  const cardHeight = height || moderateScale(100);
+  const iconSize = cardWidth * 0.28;
 
-  const styles = StyleSheet.create({
-    container: {
-      width: cardWidth,
-    },
-    iconContainer: {
-      width: cardWidth,
-      height: cardHeight,
-      marginBottom: verticalScale(5),
-      overflow: 'hidden',
-      borderRadius: moderateScale(15),
-      backgroundColor,
-      borderWidth: 1,
-      borderColor,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    name: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.text,
-      marginBottom: verticalScale(2),
-    },
-    subtitle: {
-      fontSize: moderateScale(10),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-    },
-  });
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        card: {
+          width: cardWidth,
+          height: cardHeight,
+          overflow: 'hidden',
+          borderRadius: moderateScale(14),
+          backgroundColor: Color(playlistColor).alpha(0.06).toString(),
+          borderWidth: 1,
+          borderColor: Color(playlistColor).alpha(0.1).toString(),
+        },
+        cardPressed: {
+          backgroundColor: Color(playlistColor).alpha(0.12).toString(),
+        },
+        iconArea: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        iconAccent: {
+          width: moderateScale(36),
+          height: moderateScale(36),
+          borderRadius: moderateScale(18),
+          backgroundColor: Color(playlistColor).alpha(0.1).toString(),
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        gradient: {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingHorizontal: moderateScale(8),
+          paddingBottom: moderateScale(8),
+          paddingTop: moderateScale(20),
+        },
+        name: {
+          fontSize: moderateScale(10),
+          fontFamily: 'Manrope-SemiBold',
+          color: theme.colors.text,
+        },
+        subtitle: {
+          fontSize: moderateScale(8.5),
+          fontFamily: 'Manrope-Regular',
+          color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+          marginTop: moderateScale(1),
+        },
+      }),
+    [theme, cardWidth, cardHeight, playlistColor],
+  );
+
+  const cardContent = (
+    <View style={styles.card}>
+      {/* Centered icon */}
+      <View style={styles.iconArea}>
+        <View style={styles.iconAccent}>
+          <PlaylistIcon color={playlistColor} size={iconSize} />
+        </View>
+      </View>
+
+      {/* Title overlay at bottom */}
+      <LinearGradient
+        colors={['transparent', Color(playlistColor).alpha(0.08).toString()]}
+        style={styles.gradient}>
+        <Text style={styles.name} numberOfLines={1}>
+          {name}
+        </Text>
+        <Text style={styles.subtitle} numberOfLines={1}>
+          {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
+        </Text>
+      </LinearGradient>
+    </View>
+  );
+
+  if (playlistId) {
+    return (
+      <Link
+        href={{
+          pathname: '/(tabs)/(a.home)/playlist/[id]',
+          params: {id: playlistId},
+        }}
+        asChild>
+        <Pressable onLongPress={onLongPress}>
+          {USE_GLASS ? (
+            <Link.AppleZoom>{cardContent}</Link.AppleZoom>
+          ) : (
+            cardContent
+          )}
+        </Pressable>
+      </Link>
+    );
+  }
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.99}
-      style={styles.container}
-      onPress={onPress}
-      onLongPress={onLongPress}>
-      <View style={styles.iconContainer}>
-        <PlaylistIcon color={playlistColor} size={iconSize} />
-      </View>
-      <Text style={styles.name} numberOfLines={1}>
-        {name}
-      </Text>
-      <Text style={styles.subtitle} numberOfLines={1}>
-        {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
-      </Text>
-    </TouchableOpacity>
+    <Pressable onPress={onPress} onLongPress={onLongPress}>
+      {cardContent}
+    </Pressable>
   );
 };

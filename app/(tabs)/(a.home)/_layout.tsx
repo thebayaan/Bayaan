@@ -1,31 +1,58 @@
 import {Stack} from 'expo-router';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 export default function HomeLayout() {
   return (
-    <Stack screenOptions={{headerShown: false}}>
-      <Stack.Screen name="index" options={{headerShown: false}} />
-      <Stack.Screen name="reciter/[id]" options={{headerShown: false}} />
-      <Stack.Screen name="reciter/browse" options={{headerShown: false}} />
-      <Stack.Screen name="playlist/[id]" options={{headerShown: false}} />
+    <Stack
+      screenOptions={{
+        headerShown: true,
+        freezeOnBlur: true,
+        headerTransparent: true,
+        headerShadowVisible: false,
+      }}>
+      <Stack.Screen
+        name="index"
+        options={{
+          title: '',
+        }}
+      />
+      <Stack.Screen
+        name="reciter/[id]"
+        options={{
+          title: '',
+          // Non-glass devices use custom NavigationButtons; hide native header to avoid clash
+          headerShown: USE_GLASS,
+        }}
+      />
+      <Stack.Screen
+        name="reciter/browse"
+        options={{
+          // Non-glass devices use custom Header component inside BrowseReciters
+          headerShown: USE_GLASS,
+        }}
+      />
+      <Stack.Screen name="playlist/[id]" options={{title: ''}} />
       <Stack.Screen name="adhkar" options={{headerShown: false}} />
-      <Stack.Screen name="settings/index" options={{headerShown: false}} />
-      <Stack.Screen name="settings/storage" options={{headerShown: false}} />
-      <Stack.Screen name="settings/about" options={{headerShown: false}} />
-      <Stack.Screen name="settings/credits" options={{headerShown: false}} />
+      <Stack.Screen name="settings/index" options={{}} />
+      <Stack.Screen name="settings/storage" options={{}} />
+      <Stack.Screen name="settings/about" options={{}} />
+      <Stack.Screen name="settings/credits" options={{}} />
+      <Stack.Screen name="settings/mushaf-settings" options={{}} />
+      <Stack.Screen name="settings/default-reciter" options={{}} />
+      <Stack.Screen name="settings/reciter-choice" options={{}} />
+      <Stack.Screen name="settings/account" options={{}} />
       <Stack.Screen
-        name="settings/mushaf-settings"
-        options={{headerShown: false}}
+        name="translations"
+        options={{title: 'Translations & Tafaseer'}}
       />
       <Stack.Screen
-        name="settings/default-reciter"
-        options={{headerShown: false}}
+        name="browse-all"
+        options={{
+          title: 'Browse All',
+          // Non-glass devices use custom Header component; hide native header to avoid clash
+          headerShown: USE_GLASS,
+        }}
       />
-      <Stack.Screen
-        name="settings/reciter-choice"
-        options={{headerShown: false}}
-      />
-      <Stack.Screen name="settings/account" options={{headerShown: false}} />
-      <Stack.Screen name="browse-all" options={{headerShown: false}} />
     </Stack>
   );
 }

@@ -1,16 +1,23 @@
-import React, {useEffect, useCallback, useRef, useState, useMemo} from 'react';
+import React, {
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+  useMemo,
+  useLayoutEffect,
+} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   FlatList,
   Dimensions,
   ViewToken,
+  Pressable,
 } from 'react-native';
-import {useLocalSearchParams, useRouter} from 'expo-router';
-import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useLocalSearchParams, useRouter, useNavigation} from 'expo-router';
+import {Feather} from '@expo/vector-icons';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -21,6 +28,8 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
+import {useHeaderHeight} from '@react-navigation/elements';
+import {dhikrShareUrl, shareUrl} from '@/utils/shareUtils';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -64,9 +73,11 @@ const DhikrReaderScreen: React.FC = () => {
   }>();
 
   const router = useRouter();
+  const navigation = useNavigation();
   const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const headerHeight = useHeaderHeight();
   const flatListRef = useRef<FlatList<Dhikr>>(null);
 
   const initialIndex = globalIndexParam ? parseInt(globalIndexParam, 10) : 0;
@@ -172,9 +183,64 @@ const DhikrReaderScreen: React.FC = () => {
     return initialCategoryTitle || superCategoryTitle || 'Dhikr';
   }, [currentDhikr, categoryTitles, initialCategoryTitle, superCategoryTitle]);
 
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  const handleShareDhikr = useCallback(() => {
+    if (!superId || !currentDhikr) return;
+    const url = dhikrShareUrl(superId, currentDhikr.id);
+    shareUrl(url, `Check out this dhikr on Bayaan`);
+  }, [superId, currentDhikr]);
+
+  // Set native header with title + position subtitle
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitleAlign: 'center',
+      headerTitle: () => (
+        <View style={{alignItems: 'center'}}>
+          <Text
+            style={{
+              fontSize: moderateScale(16),
+              fontFamily: theme.fonts.semiBold,
+              color: theme.colors.text,
+            }}
+            numberOfLines={1}>
+            {displayTitle}
+          </Text>
+          {adhkarList.length > 1 && (
+            <Text
+              style={{
+                fontSize: moderateScale(12),
+                fontFamily: theme.fonts.regular,
+                color: theme.colors.textSecondary,
+                marginTop: moderateScale(2),
+              }}>
+              {currentIndex + 1} of {adhkarList.length}
+            </Text>
+          )}
+        </View>
+      ),
+      headerRight: () => (
+        <Pressable
+          onPress={handleShareDhikr}
+          hitSlop={8}
+          style={{
+            padding: moderateScale(4),
+            paddingHorizontal: moderateScale(8),
+          }}>
+          <Feather
+            name="share"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ),
+    });
+  }, [
+    navigation,
+    displayTitle,
+    currentIndex,
+    adhkarList.length,
+    handleShareDhikr,
+    theme,
+  ]);
 
   const handleSaveToggle = useCallback(
     (dhikr: Dhikr) => {
@@ -234,43 +300,10 @@ const DhikrReaderScreen: React.FC = () => {
     return null;
   }
 
-  const totalAdhkar = adhkarList.length;
-
-  const Header = (
-    <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={1}
-          hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color={theme.colors.text}
-          />
-        </TouchableOpacity>
-        <View style={styles.titleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {displayTitle}
-          </Text>
-          {totalAdhkar > 1 && (
-            <Text style={styles.positionText}>
-              {currentIndex + 1} of {totalAdhkar}
-            </Text>
-          )}
-        </View>
-        <View style={styles.headerPlaceholder} />
-      </View>
-    </SafeAreaView>
-  );
-
   if (!isDataLoaded) {
     return (
       <View style={styles.container}>
-        {Header}
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
           <LoadingIndicator />
         </View>
       </View>
@@ -280,8 +313,7 @@ const DhikrReaderScreen: React.FC = () => {
   if (adhkarList.length === 0) {
     return (
       <View style={styles.container}>
-        {Header}
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, {paddingTop: headerHeight}]}>
           <Text style={styles.emptyText}>No adhkar found</Text>
         </View>
       </View>
@@ -290,9 +322,11 @@ const DhikrReaderScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {Header}
-
-      <View style={[styles.listContainer, {paddingBottom: insets.bottom}]}>
+      <View
+        style={[
+          styles.listContainer,
+          {paddingTop: headerHeight, paddingBottom: insets.bottom},
+        ]}>
         <FlatList
           ref={flatListRef}
           data={adhkarList}
@@ -328,36 +362,6 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-    },
-    headerSafeArea: {
-      backgroundColor: theme.colors.background,
-    },
-    header: {
-      height: moderateScale(56),
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(16),
-    },
-    backButton: {
-      padding: moderateScale(8),
-    },
-    titleContainer: {
-      flex: 1,
-      alignItems: 'center',
-    },
-    headerTitle: {
-      fontSize: moderateScale(16),
-      fontFamily: theme.fonts.semiBold,
-      color: theme.colors.text,
-    },
-    positionText: {
-      fontSize: moderateScale(12),
-      fontFamily: theme.fonts.regular,
-      color: theme.colors.textSecondary,
-      marginTop: moderateScale(2),
-    },
-    headerPlaceholder: {
-      width: moderateScale(40),
     },
     listContainer: {
       flex: 1,

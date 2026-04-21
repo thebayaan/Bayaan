@@ -1,24 +1,22 @@
 import React, {useMemo, useCallback} from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  ScrollView,
-} from 'react-native';
-import {useRouter} from 'expo-router';
+import {View, StyleSheet, Pressable, Text, ScrollView} from 'react-native';
+import {Link} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
-import {SearchInput} from '@/components/SearchInput';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {noop} from 'lodash';
 import {useWindowDimensions} from 'react-native';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
+import {useBottomInset} from '@/hooks/useBottomInset';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
+
+// Gap between cards (must match marginBottom on tiles)
+const CARD_GAP = moderateScale(8);
 
 interface BentoTile {
   id: string;
@@ -81,7 +79,8 @@ function getAllTiles(): BentoTile[] {
 }
 
 interface ExploreViewProps {
-  onSearchPress: () => void;
+  /** Skip the built-in safe-area top padding (when the parent already handles it) */
+  skipTopInset?: boolean;
 }
 
 interface ColumnLayout {
@@ -102,227 +101,239 @@ function createExplicitLayout(): ColumnLayout {
   return {leftColumn, rightColumn};
 }
 
-// BentoTile component
+// BentoTile component — matches AdhkarBentoCard styling
 const BentoTileComponent = React.memo(
   ({
     tile,
     dimensions,
-    onPress,
   }: {
     tile: BentoTile;
     dimensions: {width: number; height: number};
-    onPress: () => void;
   }) => {
     const {theme} = useTheme();
+    const glassColorScheme = useGlassColorScheme();
 
-    // Subtle gradient incorporating the tile's unique color - more apparent
+    // Subtle gradient incorporating the tile's unique color
     const baseColor = Color(tile.backgroundColor);
     const gradientColors = [
-      baseColor.alpha(0.15).toString(), // Tile color at higher opacity
-      // Color(theme.colors.background).alpha(0.05).toString(), // Theme background
-      baseColor.alpha(0.25).toString(), // Tile color at much higher opacity
+      baseColor.alpha(0.15).toString(),
+      baseColor.alpha(0.25).toString(),
     ] as const;
 
-    const titleSize =
-      tile.heightMultiplier >= 2 ? moderateScale(16) : moderateScale(14);
+    const isLargeCard = tile.heightMultiplier >= 2;
+    const titleSize = isLargeCard ? moderateScale(16) : moderateScale(14);
     const subtitleSize = moderateScale(12);
 
-    const tileStyles = createStyles(theme);
+    const tileContent = (
+      <>
+        <LinearGradient
+          colors={gradientColors}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 1}}
+          style={tileInnerStyles.gradient}>
+          <View style={tileInnerStyles.content}>
+            <View
+              style={[
+                tileInnerStyles.textContainer,
+                isLargeCard
+                  ? tileInnerStyles.topLeftContainer
+                  : tileInnerStyles.centerLeftContainer,
+              ]}>
+              <Text
+                style={[
+                  tileInnerStyles.title,
+                  {fontSize: titleSize, color: theme.colors.text},
+                ]}
+                numberOfLines={2}>
+                {tile.title}
+              </Text>
+              {tile.subtitle && (
+                <Text
+                  style={[
+                    tileInnerStyles.subtitle,
+                    {fontSize: subtitleSize, color: theme.colors.textSecondary},
+                  ]}
+                  numberOfLines={1}>
+                  {tile.subtitle}
+                </Text>
+              )}
+            </View>
+          </View>
+        </LinearGradient>
+      </>
+    );
+
+    const containerStyle = {
+      width: dimensions.width,
+      height: dimensions.height,
+      marginBottom: moderateScale(8),
+    };
+
+    if (USE_GLASS) {
+      return (
+        <Link href={tile.route as any} asChild>
+          <Pressable style={containerStyle}>
+            <Link.AppleZoom>
+              <GlassView
+                style={tileInnerStyles.glassInner}
+                glassEffectStyle="regular"
+                colorScheme={glassColorScheme}>
+                {tileContent}
+              </GlassView>
+            </Link.AppleZoom>
+          </Pressable>
+        </Link>
+      );
+    }
 
     return (
-      <View
-        style={[
-          tileStyles.bentoTile,
-          {
-            width: dimensions.width,
-            height: dimensions.height,
-            marginBottom: moderateScale(8),
-            // Border architecture from RecentReciterCard
-            borderWidth: 0.5,
-            borderColor: Color(theme.colors.border).alpha(0.15).toString(),
-          },
-        ]}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onPress}
-          style={tileStyles.tileButton}>
-          <LinearGradient
-            colors={gradientColors}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 1}}
-            style={tileStyles.tileGradient}>
-            <View style={tileStyles.tileContent}>
-              <View
-                style={[
-                  tileStyles.tileTextContainer,
-                  tile.heightMultiplier === 1
-                    ? tileStyles.centerLeftContainer
-                    : tileStyles.topLeftContainer,
-                ]}>
-                <Text
-                  style={[tileStyles.tileTitle, {fontSize: titleSize}]}
-                  numberOfLines={tile.heightMultiplier >= 2 ? 2 : 2}>
-                  {tile.title}
-                </Text>
-                {tile.subtitle && (
-                  <Text
-                    style={[tileStyles.tileSubtitle, {fontSize: subtitleSize}]}
-                    numberOfLines={1}>
-                    {tile.subtitle}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      <Link href={tile.route as any} asChild>
+        <Pressable
+          style={StyleSheet.flatten([
+            containerStyle,
+            {
+              borderRadius: moderateScale(20),
+              overflow: 'hidden' as const,
+            },
+          ])}>
+          {tileContent}
+        </Pressable>
+      </Link>
     );
   },
 );
 
 BentoTileComponent.displayName = 'BentoTileComponent';
 
-export const ExploreView = React.memo(function ExploreView({
-  onSearchPress,
-}: ExploreViewProps) {
-  const router = useRouter();
-  const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
-  const {width} = useWindowDimensions();
-
-  const handleCategoryPress = useCallback(
-    (route: string) => {
-      router.push(route);
-    },
-    [router],
-  );
-
-  // Calculate tile dimensions based on screen width - strict two-column grid
-  const tileDimensions = useMemo(() => {
-    const horizontalPadding = scale(width < 375 ? 12 : 16);
-    const gap = moderateScale(8);
-    const availableWidth = width - horizontalPadding * 2;
-
-    // Column width - exactly half the available width minus half the gap
-    const columnWidth = (availableWidth - gap) / 2;
-
-    return {
-      columnWidth,
-      baseHeight: moderateScale(ROW_HEIGHT_UNIT),
-    };
-  }, [width]);
-
-  // Calculate responsive horizontal padding
-  const horizontalPadding = scale(width < 375 ? 12 : 16);
-
-  // Create balanced layout
-  const layout = useMemo(() => createExplicitLayout(), []);
-
-  // Memoize theme-dependent styles
-  const styles = useMemo(() => createStyles(theme), [theme]);
-
-  // Render a column of tiles - memoized with useCallback
-  const renderColumn = useCallback(
-    (tiles: BentoTile[], columnKey: string) => {
-      return (
-        <View key={columnKey} style={styles.column}>
-          {tiles.map(tile => (
-            <BentoTileComponent
-              key={tile.id}
-              tile={tile}
-              dimensions={{
-                width: tileDimensions.columnWidth,
-                height: tileDimensions.baseHeight * tile.heightMultiplier,
-              }}
-              onPress={() => handleCategoryPress(tile.route)}
-            />
-          ))}
-        </View>
-      );
-    },
-    [
-      styles.column,
-      tileDimensions.columnWidth,
-      tileDimensions.baseHeight,
-      handleCategoryPress,
-    ],
-  );
-
-  return (
-    <View style={styles.content}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + moderateScale(48),
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: moderateScale(35),
-          },
-        ]}>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={onSearchPress}
-          style={styles.searchButton}>
-          <SearchInput
-            placeholder="Search surahs, reciters, or keywords"
-            value=""
-            onChangeText={noop}
-            iconColor={theme.colors.text}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.background)
-              .alpha(0.5)
-              .toString()}
-            borderColor={Color(theme.colors.border).alpha(0.2).toString()}
-            pointerEvents="none"
-            containerStyle={styles.searchInputContainer}
-            style={styles.searchInput}
-            editable={false}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingHorizontal: horizontalPadding,
-            paddingBottom: insets.bottom + moderateScale(20),
-            paddingTop: moderateScale(8),
-          },
-        ]}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.masonryContainer}>
-          {renderColumn(layout.leftColumn, 'left')}
-          {renderColumn(layout.rightColumn, 'right')}
-        </View>
-      </ScrollView>
-    </View>
-  );
+// Static inner styles for BentoTileComponent (no theme dependency)
+const tileInnerStyles = StyleSheet.create({
+  glassInner: {
+    flex: 1,
+    borderRadius: moderateScale(20),
+    overflow: 'hidden',
+  },
+  gradient: {
+    flex: 1,
+    padding: moderateScale(16),
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  textContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  centerLeftContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  topLeftContainer: {
+    justifyContent: 'flex-start',
+  },
+  title: {
+    fontFamily: 'Manrope-SemiBold',
+    lineHeight: moderateScale(22),
+    textAlign: 'left',
+  },
+  subtitle: {
+    fontFamily: 'Manrope-Medium',
+    marginTop: moderateScale(2),
+    lineHeight: moderateScale(16),
+    textAlign: 'left',
+  },
 });
+
+export const ExploreView = React.memo(
+  function ExploreView({}: ExploreViewProps) {
+    const {theme} = useTheme();
+    const {width} = useWindowDimensions();
+    const insets = useSafeAreaInsets();
+    const bottomInset = useBottomInset();
+
+    // Calculate tile dimensions based on screen width - strict two-column grid
+    const tileDimensions = useMemo(() => {
+      const horizontalPadding = scale(width < 375 ? 12 : 16);
+      const gap = moderateScale(8);
+      const availableWidth = width - horizontalPadding * 2;
+
+      // Column width - exactly half the available width minus half the gap
+      const columnWidth = (availableWidth - gap) / 2;
+
+      return {
+        columnWidth,
+        baseHeight: moderateScale(ROW_HEIGHT_UNIT),
+      };
+    }, [width]);
+
+    // Calculate responsive horizontal padding
+    const horizontalPadding = scale(width < 375 ? 12 : 16);
+
+    // Create balanced layout
+    const layout = useMemo(() => createExplicitLayout(), []);
+
+    // Memoize theme-dependent styles
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
+    // Render a column of tiles - memoized with useCallback
+    const renderColumn = useCallback(
+      (tiles: BentoTile[], columnKey: string) => {
+        return (
+          <View key={columnKey} style={styles.column}>
+            {tiles.map(tile => {
+              // Account for the gap between stacked 1x cards
+              // A 2x card = two 1x cards + the gap between them
+              const gapAdjustment = CARD_GAP * (tile.heightMultiplier - 1);
+              const cardHeight =
+                tileDimensions.baseHeight * tile.heightMultiplier +
+                gapAdjustment;
+
+              return (
+                <BentoTileComponent
+                  key={tile.id}
+                  tile={tile}
+                  dimensions={{
+                    width: tileDimensions.columnWidth,
+                    height: cardHeight,
+                  }}
+                />
+              );
+            })}
+          </View>
+        );
+      },
+      [styles.column, tileDimensions.columnWidth, tileDimensions.baseHeight],
+    );
+
+    return (
+      <View style={styles.content}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: USE_GLASS
+                ? insets.top + moderateScale(16)
+                : moderateScale(16),
+              paddingHorizontal: horizontalPadding,
+              paddingBottom: bottomInset,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.masonryContainer}>
+            {renderColumn(layout.leftColumn, 'left')}
+            {renderColumn(layout.rightColumn, 'right')}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  },
+);
 
 const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
   StyleSheet.create({
     content: {
       flex: 1,
       width: '100%',
-    },
-    header: {
-      paddingBottom: moderateScale(8),
-      width: '100%',
-    },
-    searchButton: {
-      flex: 1,
-    },
-    searchInputContainer: {
-      paddingHorizontal: 0,
-    },
-    searchInput: {
-      height: moderateScale(50),
-      fontSize: moderateScale(16),
-    },
-    scrollView: {
-      flex: 1,
     },
     scrollContent: {
       flexGrow: 1,
@@ -334,52 +345,5 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     },
     column: {
       flex: 1,
-    },
-    bentoTile: {
-      borderRadius: moderateScale(10),
-      overflow: 'hidden',
-      elevation: 3,
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    },
-    tileButton: {
-      flex: 1,
-    },
-    tileGradient: {
-      flex: 1,
-      padding: moderateScale(16),
-    },
-    tileContent: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    tileTextContainer: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    tileTitle: {
-      color: theme.colors.text,
-      fontFamily: 'Manrope-SemiBold',
-      lineHeight: moderateScale(22),
-      textAlign: 'left',
-    },
-    tileSubtitle: {
-      color: theme.colors.textSecondary,
-      fontFamily: 'Manrope-Medium',
-      marginTop: moderateScale(2),
-      lineHeight: moderateScale(16),
-      textAlign: 'left',
-    },
-    centerLeftContainer: {
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-    },
-    topLeftContainer: {
-      justifyContent: 'flex-start',
     },
   });

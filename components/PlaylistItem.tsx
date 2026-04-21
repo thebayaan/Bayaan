@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
+import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {PlaylistIcon} from '@/components/Icons';
 import Color from 'color';
 
@@ -14,11 +14,20 @@ interface PlaylistItemProps {
   color?: string;
   onPress: () => void;
   onLongPress?: () => void;
+  onOptionsPress?: () => void;
   isSelected?: boolean;
 }
 
 export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
-  ({name, itemCount, color, onPress, onLongPress, isSelected}) => {
+  ({
+    name,
+    itemCount,
+    color,
+    onPress,
+    onLongPress,
+    onOptionsPress,
+    isSelected,
+  }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(), [onPress]);
@@ -32,8 +41,7 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
     const borderColor = Color(playlistColor).alpha(0.3).toString();
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.99}
+      <Pressable
         style={[styles.playlistItem, isSelected && styles.selectedPlaylistItem]}
         onPress={handlePress}
         onLongPress={handleLongPress}>
@@ -51,17 +59,28 @@ export const PlaylistItem: React.FC<PlaylistItemProps> = React.memo(
             Playlist • {itemCount} {itemCount === 1 ? 'surah' : 'surahs'}
           </Text>
         </View>
+        {onOptionsPress && !isSelected && (
+          <Pressable
+            style={styles.optionsButton}
+            onPress={onOptionsPress}
+            hitSlop={8}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
         {isSelected && (
           <View style={styles.checkmarkContainer}>
-            <Icon
+            <MaterialIcons
               name="check"
-              type="material"
               size={moderateScale(24)}
               color={theme.colors.primary}
             />
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   },
 );
@@ -106,6 +125,9 @@ const createStyles = (theme: Theme) =>
     },
     selectedIconContainer: {
       borderWidth: moderateScale(2),
+    },
+    optionsButton: {
+      padding: moderateScale(8),
     },
     checkmarkContainer: {
       marginLeft: moderateScale(8),

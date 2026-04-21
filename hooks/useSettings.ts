@@ -8,8 +8,6 @@ type BrowseSortOption = 'asc' | 'desc' | 'revelation';
 type ReciterProfileViewMode = 'card' | 'list';
 type ReciterProfileSortOption = 'asc' | 'desc' | 'revelation'; // Add revelation option
 
-type CollectionViewMode = 'grid' | 'list';
-
 interface SettingsState {
   askEveryTime: boolean;
   setAskEveryTime: (value: boolean) => void;
@@ -28,9 +26,6 @@ interface SettingsState {
   setReciterProfileViewMode: (mode: ReciterProfileViewMode) => void;
   reciterProfileSortOption: ReciterProfileSortOption;
   setReciterProfileSortOption: (option: ReciterProfileSortOption) => void;
-  // Collection settings
-  collectionViewMode: CollectionViewMode;
-  setCollectionViewMode: (mode: CollectionViewMode) => void;
   // Onboarding tracking
   recitersViewOpenCount: number;
   incrementRecitersViewOpenCount: () => void;
@@ -60,15 +55,12 @@ export const useSettings = create<SettingsState>()(
       browseSortOption: 'asc' as BrowseSortOption, // Default to ascending sort
       setBrowseSortOption: (option: BrowseSortOption) =>
         set({browseSortOption: option}),
-      reciterProfileViewMode: 'card' as ReciterProfileViewMode, // Default to card view
+      reciterProfileViewMode: 'list' as ReciterProfileViewMode, // Default to list view
       setReciterProfileViewMode: (mode: ReciterProfileViewMode) =>
         set({reciterProfileViewMode: mode}),
       reciterProfileSortOption: 'asc' as ReciterProfileSortOption, // Default to ascending sort
       setReciterProfileSortOption: (option: ReciterProfileSortOption) =>
         set({reciterProfileSortOption: option}),
-      collectionViewMode: 'grid' as CollectionViewMode, // Default to grid view
-      setCollectionViewMode: (mode: CollectionViewMode) =>
-        set({collectionViewMode: mode}),
       recitersViewOpenCount: 0,
       incrementRecitersViewOpenCount: () =>
         set(state => ({

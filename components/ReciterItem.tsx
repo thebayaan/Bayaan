@@ -1,30 +1,46 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
+import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
+import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 
 interface ReciterItemProps {
   item: Reciter;
   onPress: (item: Reciter) => void;
   isSelected?: boolean;
   secondaryText?: string;
+  onOptionsPress?: (item: Reciter) => void;
+  onLongPress?: (item: Reciter) => void;
+  showFollowAlong?: boolean;
 }
 
 export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
-  ({item, onPress, isSelected, secondaryText}) => {
+  ({
+    item,
+    onPress,
+    isSelected,
+    secondaryText,
+    onOptionsPress,
+    onLongPress,
+    showFollowAlong,
+  }) => {
     const {theme} = useTheme();
     const styles = createStyles(theme);
     const handlePress = React.useCallback(() => onPress(item), [item, onPress]);
+    const handleLongPress = React.useCallback(
+      () => onLongPress?.(item),
+      [item, onLongPress],
+    );
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.99}
+      <Pressable
         style={[styles.reciterItem, isSelected && styles.selectedReciterItem]}
-        onPress={handlePress}>
+        onPress={handlePress}
+        onLongPress={onLongPress ? handleLongPress : undefined}>
         <View
           style={[
             styles.imageContainer,
@@ -39,24 +55,38 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
         </View>
         <View style={styles.reciterInfo}>
           <Text style={styles.reciterName}>{item.name}</Text>
-          <Text style={styles.reciterRewayat} numberOfLines={1}>
-            {secondaryText ||
-              (item.rewayat.length > 1
-                ? `${item.rewayat.length} rewayat available`
-                : item.rewayat[0]?.name || '')}
-          </Text>
+          <View style={styles.secondaryRow}>
+            <Text style={styles.reciterRewayat} numberOfLines={1}>
+              {secondaryText ||
+                (item.rewayat.length > 1
+                  ? `${item.rewayat.length} rewayat available`
+                  : item.rewayat[0]?.name || '')}
+            </Text>
+            {showFollowAlong && <FollowAlongBadge />}
+          </View>
         </View>
-        {isSelected && (
+        {!onOptionsPress && isSelected && (
           <View style={styles.checkmarkContainer}>
-            <Icon
+            <MaterialIcons
               name="check"
-              type="material"
               size={moderateScale(24)}
               color={theme.colors.primary}
             />
           </View>
         )}
-      </TouchableOpacity>
+        {onOptionsPress && (
+          <Pressable
+            style={styles.optionsZone}
+            onPress={() => onOptionsPress(item)}
+            hitSlop={8}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
+      </Pressable>
     );
   },
 );
@@ -101,6 +131,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       color: theme.colors.textSecondary,
     },
+    secondaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(6),
+    },
     selectedReciterItem: {
       borderRadius: moderateScale(10),
     },
@@ -109,5 +144,11 @@ const createStyles = (theme: Theme) =>
     },
     checkmarkContainer: {
       marginLeft: moderateScale(8),
+    },
+    optionsZone: {
+      width: moderateScale(44),
+      alignItems: 'center',
+      justifyContent: 'center',
+      alignSelf: 'stretch',
     },
   });

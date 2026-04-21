@@ -1,4 +1,6 @@
-# Playback Migration Planning Document
+> **ARCHIVED — Historical document.** This was the planning doc for migrating from react-native-track-player to expo-audio. The migration is complete. The current architecture is documented in [docs/architecture/current-state.md](current-state.md) and [docs/features/player.md](../features/player.md).
+
+# Playback Migration Planning Document (Historical)
 
 ## Core Principle
 - Immediate playback of first track, followed by background batch loading

@@ -11,17 +11,17 @@ import {useTheme} from '@/hooks/useTheme';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
-import {TOTAL_BOTTOM_PADDING} from '@/utils/constants';
+import {useBottomInset} from '@/hooks/useBottomInset';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {SavedAdhkarHero} from '@/components/hero/SavedAdhkarHero';
 
-// Base height unit for bento cards (Spotify-style proportions)
-// 1x cards are short/wide, 2x cards span two 1x cards + gap
-const ROW_HEIGHT_UNIT = 62;
+// Gap between cards
+const CARD_GAP = moderateScale(8);
 
 interface AdhkarViewProps {
   onCategoryPress: (superCategory: SuperCategory) => void;
   onSavedPress: () => void;
+  headerHeight: number;
 }
 
 // Memoized section header
@@ -39,66 +39,58 @@ const SectionHeader = React.memo(function SectionHeader({
   );
 });
 
-// Gap between cards (must match marginBottom in AdhkarBentoCard)
-const CARD_GAP = moderateScale(8);
+// Interleave categories from left/right columns into row-major order
+// so the visual order is: row1-left, row1-right, row2-left, row2-right, ...
+function interleaveCategories(categories: SuperCategory[]): SuperCategory[] {
+  const left = categories
+    .filter(c => c.column === 'left')
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const right = categories
+    .filter(c => c.column === 'right')
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const result: SuperCategory[] = [];
+  const maxLen = Math.max(left.length, right.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < left.length) result.push(left[i]);
+    if (i < right.length) result.push(right[i]);
+  }
+  return result;
+}
 
-// Memoized bento column (matches ExploreView pattern)
-const BentoColumn = React.memo(function BentoColumn({
+// Memoized grid of uniform cards
+const CategoryGrid = React.memo(function CategoryGrid({
   categories,
   columnWidth,
-  baseHeight,
+  cardHeight,
   onPress,
 }: {
   categories: SuperCategory[];
   columnWidth: number;
-  baseHeight: number;
+  cardHeight: number;
   onPress: (category: SuperCategory) => void;
 }) {
   return (
-    <View style={styles.column}>
-      {categories.map(category => {
-        // Account for the gap that would exist between stacked 1x cards
-        // A 2x card should equal two 1x cards + the gap between them
-        // Formula: height = baseHeight * multiplier + gap * (multiplier - 1)
-        const gapAdjustment = CARD_GAP * (category.heightMultiplier - 1);
-        const cardHeight =
-          baseHeight * category.heightMultiplier + gapAdjustment;
-
-        return (
-          <AdhkarBentoCard
-            key={category.id}
-            category={category}
-            onPress={() => onPress(category)}
-            width={columnWidth}
-            height={cardHeight}
-          />
-        );
-      })}
+    <View style={styles.grid}>
+      {categories.map(category => (
+        <AdhkarBentoCard
+          key={category.id}
+          category={category}
+          onPress={() => onPress(category)}
+          width={columnWidth}
+          height={cardHeight}
+        />
+      ))}
     </View>
   );
 });
 
-// Helper function to organize categories by column
-function organizeByColumn(categories: SuperCategory[]): {
-  leftColumn: SuperCategory[];
-  rightColumn: SuperCategory[];
-} {
-  const leftColumn = categories
-    .filter(cat => cat.column === 'left')
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-
-  const rightColumn = categories
-    .filter(cat => cat.column === 'right')
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-
-  return {leftColumn, rightColumn};
-}
-
 export const AdhkarView: React.FC<AdhkarViewProps> = ({
   onCategoryPress,
   onSavedPress,
+  headerHeight,
 }) => {
   const {theme} = useTheme();
+  const bottomInset = useBottomInset();
   const {
     error,
     mainSuperCategories,
@@ -111,24 +103,26 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
   // Calculate column dimensions
   const tileDimensions = useMemo(() => {
     const horizontalPadding = scale(width < 375 ? 12 : 16);
-    const gap = moderateScale(8);
+    const gap = CARD_GAP;
     const availableWidth = width - horizontalPadding * 2;
     const columnWidth = (availableWidth - gap) / 2;
+    // 3:2 aspect ratio — cards are wider than tall
+    const cardHeight = columnWidth * (2 / 3);
 
     return {
       columnWidth,
-      baseHeight: moderateScale(ROW_HEIGHT_UNIT),
+      cardHeight,
       horizontalPadding,
     };
   }, [width]);
 
-  // Organize categories into columns (from database)
-  const mainLayout = useMemo(
-    () => organizeByColumn(mainSuperCategories),
+  // Interleave categories for row-major grid order
+  const mainCategories = useMemo(
+    () => interleaveCategories(mainSuperCategories),
     [mainSuperCategories],
   );
-  const otherLayout = useMemo(
-    () => organizeByColumn(otherSuperCategories),
+  const otherCategories = useMemo(
+    () => interleaveCategories(otherSuperCategories),
     [otherSuperCategories],
   );
 
@@ -158,32 +152,25 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
       contentContainerStyle={[
         styles.scrollContent,
         {
-          paddingBottom: TOTAL_BOTTOM_PADDING,
+          paddingTop: headerHeight,
+          paddingBottom: bottomInset,
         },
       ]}
+      contentInsetAdjustmentBehavior="never"
       showsVerticalScrollIndicator={false}>
       {/* Saved Hero Section - only shows when there are saved adhkar */}
-      <SavedAdhkarHero savedCount={savedIds.size} onPress={onSavedPress} />
+      <SavedAdhkarHero savedCount={savedIds.size} />
 
       {/* Main Section */}
       <View
-        style={[
-          styles.bentoGrid,
-          {
-            paddingHorizontal: tileDimensions.horizontalPadding,
-            marginTop: savedIds.size > 0 ? moderateScale(8) : 0,
-          },
-        ]}>
-        <BentoColumn
-          categories={mainLayout.leftColumn}
+        style={{
+          paddingHorizontal: tileDimensions.horizontalPadding,
+          marginTop: savedIds.size > 0 ? moderateScale(8) : 0,
+        }}>
+        <CategoryGrid
+          categories={mainCategories}
           columnWidth={tileDimensions.columnWidth}
-          baseHeight={tileDimensions.baseHeight}
-          onPress={onCategoryPress}
-        />
-        <BentoColumn
-          categories={mainLayout.rightColumn}
-          columnWidth={tileDimensions.columnWidth}
-          baseHeight={tileDimensions.baseHeight}
+          cardHeight={tileDimensions.cardHeight}
           onPress={onCategoryPress}
         />
       </View>
@@ -191,22 +178,10 @@ export const AdhkarView: React.FC<AdhkarViewProps> = ({
       {/* Other Section */}
       <View style={{paddingHorizontal: tileDimensions.horizontalPadding}}>
         <SectionHeader title="Other" theme={theme} />
-      </View>
-      <View
-        style={[
-          styles.bentoGrid,
-          {paddingHorizontal: tileDimensions.horizontalPadding},
-        ]}>
-        <BentoColumn
-          categories={otherLayout.leftColumn}
+        <CategoryGrid
+          categories={otherCategories}
           columnWidth={tileDimensions.columnWidth}
-          baseHeight={tileDimensions.baseHeight}
-          onPress={onCategoryPress}
-        />
-        <BentoColumn
-          categories={otherLayout.rightColumn}
-          columnWidth={tileDimensions.columnWidth}
-          baseHeight={tileDimensions.baseHeight}
+          cardHeight={tileDimensions.cardHeight}
           onPress={onCategoryPress}
         />
       </View>
@@ -232,12 +207,10 @@ const styles = StyleSheet.create({
     marginBottom: moderateScale(16),
     marginTop: moderateScale(16),
   },
-  bentoGrid: {
+  grid: {
     flexDirection: 'row',
-    gap: moderateScale(8),
-  },
-  column: {
-    flex: 1,
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
   },
   errorText: {
     fontSize: moderateScale(14),

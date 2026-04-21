@@ -2,8 +2,8 @@ import React, {useCallback, useState, useMemo} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
+  Pressable,
+  StyleSheet,
   useWindowDimensions,
   Dimensions,
 } from 'react-native';
@@ -14,8 +14,9 @@ import {CheckIcon, ProfileIcon, HeartIcon} from '@/components/Icons';
 import ActionSheet, {
   SheetProps,
   SheetManager,
+  ScrollView,
 } from 'react-native-actions-sheet';
-import {Icon} from '@rneui/themed';
+import {Feather, FontAwesome5, Ionicons} from '@expo/vector-icons';
 import {useLoved} from '@/hooks/useLoved';
 import {
   useDownloadActions,
@@ -25,14 +26,18 @@ import {
   useIsDownloading,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
+import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
-import {Ionicons} from '@expo/vector-icons';
+import {usePlayerStore} from '@/services/player/store/playerStore';
+import {getReciterByIdSync} from '@/services/dataService';
+import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
   defaultSystemFonts,
 } from 'react-native-render-html';
+import {useUploadsStore} from '@/store/uploadsStore';
 
 // Import surah info data
 const surahInfo = require('@/data/surahInfo.json');
@@ -62,7 +67,6 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
   const {width} = useWindowDimensions();
-  const [pressedOption, setPressedOption] = useState<string | null>(null);
   const [showSurahInfo, setShowSurahInfo] = useState(false);
 
   // Extract payload
@@ -71,9 +75,30 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const reciterId = payload?.reciterId ?? '';
   const rewayatId = payload?.rewayatId;
   const onGoToReciter = payload?.onGoToReciter;
+  const isUserUpload = payload?.isUserUpload ?? false;
+  const userRecitationId = payload?.userRecitationId;
 
   const surahId = surah?.id?.toString() ?? '';
   const currentSurahInfo = surah ? surahInfo[surah.id] : null;
+
+  // Get recitation data for upload header
+  const recitation = userRecitationId
+    ? useUploadsStore.getState().getRecitationById(userRecitationId)
+    : undefined;
+
+  const uploadHeaderTitle = useMemo(() => {
+    if (!isUserUpload) return '';
+    if (surah) return surah.name;
+    if (recitation?.title) return recitation.title;
+    if (recitation?.originalFilename) return recitation.originalFilename;
+    return 'Uploaded Audio';
+  }, [isUserUpload, surah, recitation]);
+
+  const uploadHeaderSubtitle = useMemo(() => {
+    if (!isUserUpload) return '';
+    if (surah) return surah.translated_name_english;
+    return 'Upload';
+  }, [isUserUpload, surah]);
 
   const downloadId = React.useMemo(
     () =>
@@ -99,10 +124,13 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
   const {setDownloading, addDownload, clearDownloading, setDownloadProgress} =
     useDownloadActions();
 
-  // Calculate loved state
-  const isLovedState = rewayatId
-    ? isLovedWithRewayat(reciterId, surahId, rewayatId)
-    : isLoved(reciterId, surahId);
+  // Calculate loved state — only meaningful when reciterId + surahId exist
+  const canLove = !!reciterId && !!surahId;
+  const isLovedState = canLove
+    ? rewayatId
+      ? isLovedWithRewayat(reciterId, surahId, rewayatId)
+      : isLoved(reciterId, surahId)
+    : false;
 
   const tagsStyles = useMemo(
     () => ({
@@ -219,14 +247,222 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
     }
   }, [handleClose, onGoToReciter]);
 
+  const handleEditDetails = useCallback(() => {
+    if (!userRecitationId) return;
+    const rec = useUploadsStore.getState().getRecitationById(userRecitationId);
+    if (!rec) return;
+    handleClose();
+    setTimeout(() => {
+      SheetManager.show('organize-recitation', {
+        payload: {recitation: rec},
+      });
+    }, 300);
+  }, [userRecitationId, handleClose]);
+
+  const handleShare = useCallback(() => {
+    if (!reciterId || !rewayatId || !surah) return;
+    const reciter = getReciterByIdSync(reciterId);
+    if (!reciter?.slug) return;
+    const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
+    if (!rewayat) return;
+    const surahNum = surah.id;
+    const position = usePlayerStore.getState().playback.position;
+    const timestampSec = position > 0 ? Math.floor(position) : undefined;
+    const url = recitationShareUrl(
+      reciter.slug,
+      surahNum,
+      rewayat.id,
+      timestampSec,
+    );
+    shareUrl(url, `Listen to Surah ${surahNum} on Bayaan`);
+  }, [reciterId, rewayatId, surah]);
+
   const handleSheetChange = useCallback((index: number) => {
     if (index === -1) {
       setShowSurahInfo(false);
     }
   }, []);
 
-  if (!surah) {
+  // Guard: need either a surah (system track) or upload flag
+  if (!surah && !isUserUpload) {
     return null;
+  }
+
+  // Determine which options to show
+  const showEditDetails = isUserUpload;
+  const showDownload = !isUserUpload;
+  const showAddToCollection = !!surah && !!reciterId;
+  const showLove = canLove;
+  const showGoToReciter = !!onGoToReciter;
+  const showLearnAboutSurah = !!surah;
+
+  // Build option entries for the card
+  const optionEntries: {key: string; render: () => React.ReactNode}[] = [];
+
+  if (showEditDetails) {
+    optionEntries.push({
+      key: 'edit',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleEditDetails}>
+          <FontAwesome5
+            name="sliders-h"
+            size={moderateScale(16)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Edit Details</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showDownload) {
+    optionEntries.push({
+      key: 'download',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleDownload}>
+          {isCurrentlyDownloading ? (
+            <CircularProgress
+              progress={downloadProgress}
+              size={moderateScale(18)}
+              strokeWidth={moderateScale(2.5)}
+              color={theme.colors.text}
+            />
+          ) : isTrackDownloaded ? (
+            <CheckIcon color={theme.colors.text} size={moderateScale(18)} />
+          ) : (
+            <Ionicons
+              name="arrow-down"
+              size={moderateScale(18)}
+              color={theme.colors.text}
+            />
+          )}
+          <Text style={styles.optionText}>
+            {isCurrentlyDownloading
+              ? `Downloading ${Math.round(downloadProgress * 100)}%`
+              : isTrackDownloaded
+                ? 'Downloaded'
+                : 'Download'}
+          </Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showAddToCollection) {
+    optionEntries.push({
+      key: 'collection',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleAddToPlaylist}>
+          <Feather
+            name="plus-circle"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Add to Collection</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showLove) {
+    optionEntries.push({
+      key: 'love',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleToggleLove}>
+          <HeartIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={isLovedState}
+          />
+          <Text style={styles.optionText}>
+            {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
+          </Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (!!reciterId && !!rewayatId && !!surah) {
+    optionEntries.push({
+      key: 'share',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleShare}>
+          <Feather
+            name="share"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Share</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showGoToReciter) {
+    optionEntries.push({
+      key: 'reciter',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleGoToReciter}>
+          <ProfileIcon
+            color={theme.colors.text}
+            size={moderateScale(18)}
+            filled={false}
+          />
+          <Text style={styles.optionText}>Go to Reciter</Text>
+        </Pressable>
+      ),
+    });
+  }
+
+  if (showLearnAboutSurah) {
+    optionEntries.push({
+      key: 'info',
+      render: () => (
+        <Pressable
+          style={({pressed}) => [
+            styles.option,
+            pressed && styles.optionPressed,
+          ]}
+          onPress={handleViewInfo}>
+          <Feather
+            name="info"
+            size={moderateScale(18)}
+            color={theme.colors.text}
+          />
+          <Text style={styles.optionText}>Learn About Surah</Text>
+        </Pressable>
+      ),
+    });
   }
 
   return (
@@ -242,7 +478,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       {showSurahInfo ? (
         <>
           <View style={styles.headerContainer}>
-            <Text style={styles.headerTitle}>About {surah.name}</Text>
+            <Text style={styles.headerTitle}>About {surah!.name}</Text>
           </View>
           <ScrollView
             style={styles.scrollView}
@@ -250,9 +486,9 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
             bounces={true}>
             <View style={styles.infoContent}>
               <View style={styles.surahInfoHeader}>
-                <Text style={styles.surahInfoName}>{surah.name}</Text>
+                <Text style={styles.surahInfoName}>{surah!.name}</Text>
                 <Text style={styles.surahInfoTranslation}>
-                  {surah.translated_name_english}
+                  {surah!.translated_name_english}
                 </Text>
               </View>
               {currentSurahInfo && (
@@ -269,118 +505,24 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       ) : (
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.surahName}>{surah.name}</Text>
-            <Text style={styles.surahTranslation}>
-              {surah.translated_name_english}
+            <Text style={styles.surahName} numberOfLines={1}>
+              {isUserUpload ? uploadHeaderTitle : surah!.name}
+            </Text>
+            <Text style={styles.surahTranslation} numberOfLines={1}>
+              {isUserUpload
+                ? uploadHeaderSubtitle
+                : (reciterId && getReciterName(reciterId)) ||
+                  surah!.translated_name_english}
             </Text>
           </View>
 
-          <View style={styles.optionsGrid}>
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'download' && styles.optionPressed,
-              ]}
-              onPress={handleDownload}
-              onPressIn={() => setPressedOption('download')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              {isCurrentlyDownloading ? (
-                <CircularProgress
-                  progress={downloadProgress}
-                  size={moderateScale(20)}
-                  strokeWidth={moderateScale(2.5)}
-                  color={theme.colors.text}
-                />
-              ) : isTrackDownloaded ? (
-                <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
-              ) : (
-                <Ionicons
-                  name="arrow-down"
-                  size={moderateScale(20)}
-                  color={theme.colors.text}
-                />
-              )}
-              <Text style={[styles.optionText]}>
-                {isCurrentlyDownloading
-                  ? `Downloading ${Math.round(downloadProgress * 100)}%`
-                  : isTrackDownloaded
-                    ? 'Downloaded'
-                    : 'Download'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'collection' && styles.optionPressed,
-              ]}
-              onPress={handleAddToPlaylist}
-              onPressIn={() => setPressedOption('collection')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <Icon
-                name="plus-circle"
-                type="feather"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={[styles.optionText]}>Add to Collection</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'loved' && styles.optionPressed,
-              ]}
-              onPress={handleToggleLove}
-              onPressIn={() => setPressedOption('loved')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <HeartIcon
-                color={theme.colors.text}
-                size={moderateScale(20)}
-                filled={isLovedState}
-              />
-              <Text style={[styles.optionText]}>
-                {isLovedState ? 'Remove from Loved' : 'Add to Loved'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'reciter' && styles.optionPressed,
-              ]}
-              onPress={handleGoToReciter}
-              onPressIn={() => setPressedOption('reciter')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <ProfileIcon
-                color={theme.colors.text}
-                size={moderateScale(20)}
-                filled={false}
-              />
-              <Text style={[styles.optionText]}>Go to Reciter</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.option,
-                pressedOption === 'info' && styles.optionPressed,
-              ]}
-              onPress={handleViewInfo}
-              onPressIn={() => setPressedOption('info')}
-              onPressOut={() => setPressedOption(null)}
-              activeOpacity={1}>
-              <Icon
-                name="info"
-                type="feather"
-                size={moderateScale(20)}
-                color={theme.colors.text}
-              />
-              <Text style={styles.optionText}>Learn About Surah</Text>
-            </TouchableOpacity>
+          <View style={styles.card}>
+            {optionEntries.map((entry, idx) => (
+              <React.Fragment key={entry.key}>
+                {idx > 0 && <View style={styles.divider} />}
+                {entry.render()}
+              </React.Fragment>
+            ))}
           </View>
         </View>
       )}
@@ -394,6 +536,10 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopLeftRadius: moderateScale(20),
       borderTopRightRadius: moderateScale(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderLeftWidth: StyleSheet.hairlineWidth,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.08).toString(),
       paddingTop: moderateScale(8),
     },
     sheetContainerExpanded: {
@@ -402,6 +548,7 @@ const createStyles = (theme: Theme) =>
     indicator: {
       backgroundColor: Color(theme.colors.text).alpha(0.3).toString(),
       width: moderateScale(40),
+      height: 2.5,
     },
     container: {
       paddingHorizontal: moderateScale(20),
@@ -409,49 +556,57 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       alignItems: 'center',
-      marginTop: moderateScale(8),
-      marginBottom: moderateScale(20),
-      gap: moderateScale(4),
+      marginTop: moderateScale(4),
+      marginBottom: moderateScale(14),
+      gap: moderateScale(2),
     },
     surahName: {
-      fontSize: moderateScale(20),
+      fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
       color: theme.colors.text,
       textAlign: 'center',
     },
     surahTranslation: {
-      fontSize: moderateScale(14),
+      fontSize: moderateScale(13),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       textAlign: 'center',
     },
-    optionsGrid: {
-      gap: moderateScale(8),
+    card: {
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      borderWidth: 1,
+      borderColor: Color(theme.colors.text).alpha(0.06).toString(),
+      borderRadius: moderateScale(12),
+      overflow: 'hidden',
+      marginBottom: moderateScale(8),
+    },
+    divider: {
+      height: 1,
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
+      marginHorizontal: moderateScale(14),
     },
     option: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: moderateScale(16),
-      paddingHorizontal: moderateScale(16),
-      backgroundColor: Color(theme.colors.card).alpha(0.5).toString(),
-      borderRadius: moderateScale(12),
+      paddingVertical: moderateScale(11),
+      paddingHorizontal: moderateScale(14),
     },
     optionPressed: {
-      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     optionText: {
       flex: 1,
-      fontSize: moderateScale(15),
+      fontSize: moderateScale(14),
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      marginLeft: moderateScale(12),
+      marginLeft: moderateScale(10),
     },
     // Surah Info styles
     headerContainer: {
       alignItems: 'center',
       paddingVertical: moderateScale(16),
       borderBottomWidth: 1,
-      borderBottomColor: Color(theme.colors.border).alpha(0.1).toString(),
+      borderBottomColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
     headerTitle: {
       fontSize: moderateScale(18),

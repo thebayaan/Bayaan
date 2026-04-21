@@ -2,21 +2,28 @@ import React, {useCallback} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {
   TimerIcon,
   RepeatIcon,
   RepeatOneIcon,
   QueueIcon,
-  QuranIcon,
+  AmbientIcon,
 } from '@/components/Icons';
+import {Ionicons} from '@expo/vector-icons';
+import {useAmbientStore} from '@/store/ambientStore';
+import Color from 'color';
 
 interface ControlButtonsProps {
   onSpeedPress: () => void;
@@ -24,25 +31,18 @@ interface ControlButtonsProps {
   onQueuePress: () => void;
   showQueue: boolean;
   onMushafLayoutPress?: () => void;
+  onAmbientPress: () => void;
+  onFollowAlongPress: () => void;
+  followAlongActive: boolean;
+  followAlongAvailable: boolean;
 }
 
 interface Styles {
   wrapper: ViewStyle;
   button: ViewStyle;
-  speedButton: ViewStyle;
-  sleepButton: ViewStyle;
-  middleButton: ViewStyle;
-  activeButton: ViewStyle;
+  glassButton: ViewStyle;
+  glassButtonInner: ViewStyle;
   speedButtonText: TextStyle;
-  activeText: TextStyle;
-  speedX: TextStyle;
-  mediumButton: ViewStyle;
-  expandedButton: ViewStyle;
-  queueButton: ViewStyle;
-  mushafLayoutButton: ViewStyle;
-  sideButtonsContainer: ViewStyle;
-  controlsContainer: ViewStyle;
-  sideButton: ViewStyle;
 }
 
 export const ControlButtons: React.FC<ControlButtonsProps> = ({
@@ -51,9 +51,17 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   onQueuePress,
   showQueue,
   onMushafLayoutPress,
+  onAmbientPress,
+  onFollowAlongPress,
+  followAlongActive,
+  followAlongAvailable,
 }) => {
   const {theme} = useTheme();
-  const {playback, settings, updateSettings} = useUnifiedPlayer();
+  const glassColorScheme = useGlassColorScheme();
+  const {updateSettings} = usePlayerActions();
+  const playbackRate = usePlayerStore(s => s.playback.rate);
+  const settings = usePlayerStore(s => s.settings);
+  const ambientEnabled = useAmbientStore(s => s.isEnabled);
 
   const handleMushafLayoutPress = useCallback(() => {
     if (onMushafLayoutPress) {
@@ -75,110 +83,127 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
   const isTimerActive =
     settings.sleepTimerEnd !== null && settings.sleepTimerEnd > Date.now();
 
-  // Create subtle active background color with opacity
-  const activeBackgroundColor = `${theme.colors.text}20`; // 20% opacity
+  const activeBackgroundColor = Color(theme.colors.text).alpha(0.08).toString();
+  const defaultIconColor = theme.colors.text;
+  const activeIconColor = theme.colors.text;
+
+  const PillWrapper = USE_GLASS ? GlassView : FrostedView;
+  const pillProps = USE_GLASS
+    ? {
+        glassEffectStyle: 'regular' as const,
+        colorScheme: glassColorScheme,
+        isInteractive: true,
+      }
+    : {};
 
   return (
     <View style={styles.wrapper}>
       {onMushafLayoutPress && (
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleMushafLayoutPress}
-          style={[styles.sideButton, styles.mushafLayoutButton]}>
-          <QuranIcon size={moderateScale(28)} color={theme.colors.text} />
-        </TouchableOpacity>
+        <PillWrapper style={styles.glassButton} {...pillProps}>
+          <Pressable
+            onPress={handleMushafLayoutPress}
+            style={styles.glassButtonInner}>
+            <Ionicons
+              name="options-outline"
+              size={moderateScale(20)}
+              color={defaultIconColor}
+            />
+          </Pressable>
+        </PillWrapper>
       )}
 
-      <View
+      <Pressable
+        onPress={onSpeedPress}
         style={[
-          styles.controlsContainer,
-          {
-            backgroundColor: theme.colors.card,
-            shadowColor: theme.colors.shadow,
+          styles.button,
+          playbackRate !== 1 && {backgroundColor: activeBackgroundColor},
+        ]}>
+        <Text
+          style={[
+            styles.speedButtonText,
+            {
+              color: playbackRate !== 1 ? activeIconColor : defaultIconColor,
+            },
+          ]}>
+          {`${playbackRate}x`}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={handleRepeatPress}
+        style={[
+          styles.button,
+          settings.repeatMode !== 'none' && {
+            backgroundColor: activeBackgroundColor,
           },
         ]}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={onSpeedPress}
-          style={[
-            styles.button,
-            styles.speedButton,
-            playback.rate !== 1 && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-            (playback.rate === 0.5 || playback.rate === 1.5) &&
-              styles.mediumButton,
-            (playback.rate === 0.75 ||
-              playback.rate === 1.25 ||
-              playback.rate === 1.75) &&
-              styles.expandedButton,
-          ]}>
-          <Text
-            style={[
-              styles.speedButtonText,
-              {color: theme.colors.text},
-              playback.rate !== 1 && {fontWeight: '700'},
-            ]}>
-            {`${playback.rate}`}
-            <Text style={styles.speedX}>x</Text>
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={handleRepeatPress}
-          style={[
-            styles.button,
-            styles.middleButton,
-            settings.repeatMode !== 'none' && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-          ]}>
-          {settings.repeatMode === 'none' && (
-            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
-          )}
-          {settings.repeatMode === 'queue' && (
-            <RepeatIcon size={moderateScale(24)} color={theme.colors.text} />
-          )}
-          {settings.repeatMode === 'track' && (
-            <RepeatOneIcon size={moderateScale(24)} color={theme.colors.text} />
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={onSleepTimerPress}
-          style={[
-            styles.button,
-            styles.sleepButton,
-            isTimerActive && [
-              styles.activeButton,
-              {backgroundColor: activeBackgroundColor},
-            ],
-          ]}>
-          <TimerIcon
-            color={theme.colors.text}
-            size={moderateScale(22)}
-            filled={!!isTimerActive}
+        {settings.repeatMode === 'track' ? (
+          <RepeatOneIcon size={moderateScale(20)} color={activeIconColor} />
+        ) : (
+          <RepeatIcon
+            size={moderateScale(20)}
+            color={
+              settings.repeatMode === 'queue'
+                ? activeIconColor
+                : defaultIconColor
+            }
           />
-        </TouchableOpacity>
-      </View>
+        )}
+      </Pressable>
 
-      <TouchableOpacity
-        activeOpacity={0.9}
-        onPress={onQueuePress}
+      <Pressable
+        onPress={onSleepTimerPress}
         style={[
-          styles.sideButton,
-          styles.queueButton,
-          showQueue && [
-            styles.activeButton,
-            {backgroundColor: activeBackgroundColor},
-          ],
+          styles.button,
+          isTimerActive && {backgroundColor: activeBackgroundColor},
         ]}>
-        <QueueIcon size={moderateScale(24)} color={theme.colors.text} />
-      </TouchableOpacity>
+        <TimerIcon
+          color={isTimerActive ? activeIconColor : defaultIconColor}
+          size={moderateScale(20)}
+          filled={!!isTimerActive}
+        />
+      </Pressable>
+
+      <Pressable
+        onPress={onAmbientPress}
+        style={[
+          styles.button,
+          ambientEnabled && {backgroundColor: activeBackgroundColor},
+        ]}>
+        <AmbientIcon
+          color={ambientEnabled ? activeIconColor : defaultIconColor}
+          size={moderateScale(20)}
+          filled={ambientEnabled}
+        />
+      </Pressable>
+
+      <Pressable
+        onPress={onFollowAlongPress}
+        style={[
+          styles.button,
+          followAlongAvailable &&
+            followAlongActive && {backgroundColor: activeBackgroundColor},
+          !followAlongAvailable && {opacity: 0.35},
+        ]}>
+        <Ionicons
+          name="locate-outline"
+          size={moderateScale(20)}
+          color={
+            followAlongAvailable && followAlongActive
+              ? activeIconColor
+              : defaultIconColor
+          }
+        />
+      </Pressable>
+
+      <PillWrapper style={styles.glassButton} {...pillProps}>
+        <Pressable onPress={onQueuePress} style={styles.glassButtonInner}>
+          <QueueIcon
+            size={moderateScale(20)}
+            color={showQueue ? activeIconColor : defaultIconColor}
+          />
+        </Pressable>
+      </PillWrapper>
     </View>
   );
 };
@@ -186,96 +211,32 @@ export const ControlButtons: React.FC<ControlButtonsProps> = ({
 const styles = StyleSheet.create<Styles>({
   wrapper: {
     flexDirection: 'row',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: moderateScale(10),
-    paddingHorizontal: moderateScale(16),
     width: '100%',
-    position: 'relative',
-  },
-  controlsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(8),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(16),
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  mushafLayoutButton: {
-    position: 'absolute',
-    left: moderateScale(16),
-    paddingHorizontal: moderateScale(6),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(12),
-  },
-  queueButton: {
-    position: 'absolute',
-    right: moderateScale(16),
-    paddingHorizontal: moderateScale(6),
-    paddingVertical: moderateScale(6),
-    borderRadius: moderateScale(12),
   },
   button: {
-    width: moderateScale(32),
-    height: moderateScale(32),
-    borderRadius: moderateScale(12),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: moderateScale(14),
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  speedButton: {
-    borderRadius: moderateScale(12),
-  },
-  middleButton: {
-    borderRadius: moderateScale(12),
-    marginHorizontal: moderateScale(6),
-  },
-  activeButton: {
-    // No specific style needed here anymore, background applied inline
-  },
-  speedButtonText: {
-    fontSize: moderateScale(16),
-    fontWeight: '600',
-  },
-  activeText: {
-    // No longer needed as we're not changing text color
-  },
-  speedX: {
-    fontSize: moderateScale(14),
-  },
-  mediumButton: {
-    width: moderateScale(42),
-    paddingHorizontal: moderateScale(3),
-  },
-  expandedButton: {
-    width: moderateScale(48),
-    paddingHorizontal: moderateScale(4),
-  },
-  sleepButton: {
-    marginLeft: 0,
-    borderRadius: moderateScale(12),
-  },
-  sideButtonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sideButton: {
-    position: 'absolute',
-    top: moderateScale(10),
-    bottom: moderateScale(10),
+  glassButton: {
     width: moderateScale(44),
     height: moderateScale(44),
-    borderRadius: moderateScale(14),
+    borderRadius: moderateScale(22),
+    overflow: 'hidden',
+  },
+  glassButtonInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(128, 128, 128, 0.05)',
+  },
+  speedButtonText: {
+    fontSize: moderateScale(13),
+    fontFamily: 'Manrope-SemiBold',
   },
 });

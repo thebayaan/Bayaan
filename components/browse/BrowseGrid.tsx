@@ -17,6 +17,7 @@ interface BrowseGridProps {
   theme: Theme;
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
   onScrollBeginDrag?: () => void;
+  getRewayatIdForReciter?: (reciter: Reciter) => string | undefined;
 }
 
 function createStyles(_theme: Theme) {
@@ -54,7 +55,13 @@ const createItemRows = (
 };
 
 const BrowseGrid = React.memo(
-  ({reciters, onReciterPress, theme, onScrollBeginDrag}: BrowseGridProps) => {
+  ({
+    reciters,
+    onReciterPress,
+    theme,
+    onScrollBeginDrag,
+    getRewayatIdForReciter,
+  }: BrowseGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
     const [isLoading] = useState(false);
 
@@ -97,6 +104,7 @@ const BrowseGrid = React.memo(
               width={itemDimensions.width}
               height={itemDimensions.height}
               theme={theme}
+              rewayatId={getRewayatIdForReciter?.(reciter)}
             />
           ))}
           {/* Add empty placeholders for the last row if needed */}
@@ -111,7 +119,14 @@ const BrowseGrid = React.memo(
               ))}
         </View>
       ),
-      [itemDimensions, onReciterPress, theme, numColumns, styles.row],
+      [
+        itemDimensions,
+        onReciterPress,
+        theme,
+        numColumns,
+        styles.row,
+        getRewayatIdForReciter,
+      ],
     );
 
     const keyExtractor = useCallback(
@@ -153,7 +168,8 @@ const BrowseGrid = React.memo(
   (prevProps, nextProps) =>
     prevProps.theme === nextProps.theme &&
     prevProps.onReciterPress === nextProps.onReciterPress &&
-    prevProps.reciters.length === nextProps.reciters.length,
+    prevProps.reciters.length === nextProps.reciters.length &&
+    prevProps.getRewayatIdForReciter === nextProps.getRewayatIdForReciter,
 );
 
 BrowseGrid.displayName = 'BrowseGrid';

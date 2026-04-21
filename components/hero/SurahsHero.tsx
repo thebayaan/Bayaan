@@ -1,107 +1,81 @@
 import React, {useCallback, useMemo} from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  ViewStyle,
-} from 'react-native';
+import {StyleSheet, Text, View, Pressable, ViewStyle} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {Surah} from '@/data/surahData';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
-import {LinearGradient} from 'expo-linear-gradient';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
-import {getRandomColors, getThemedGradientColors} from '@/utils/gradientColors';
 import {HeroSection} from './HeroSection';
 import {SurahOfTheDay} from './SurahOfTheDay';
-
-// Create the AnimatedTouchableOpacity component once, outside of render functions
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import {Link} from 'expo-router';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {SESSION_SEED, pickHeroTheme} from '@/components/hero/heroThemes';
+import {
+  MESH_PALETTES,
+  SurahGradientMesh,
+} from '@/components/hero/SurahGradientMesh';
 
 // Same SECTION_HEIGHT as ScrollingHero for consistency
 const SECTION_HEIGHT = moderateScale(150);
 
 interface SurahHeroSectionProps {
   surah: Surah;
-  onPress: (surah: Surah) => void;
+  onLongPress?: (surah: Surah) => void;
   title?: string;
   isCompact?: boolean;
   style?: ViewStyle | ViewStyle[];
-  gradientColors?: string[];
+  // When provided, tapping the hero opens the mushaf at this exact
+  // page (e.g. where the user last stopped). Without it the link
+  // falls back to the surah's first page.
+  resumePage?: number;
 }
 
 /**
  * Individual Surah hero section component that displays surah information
- * with animation and gradient background.
+ * with zoom transition to mushaf.
  */
 export const SurahHeroSection = ({
   surah,
-  onPress,
+  onLongPress,
   title = 'SURAH OF THE DAY',
   style,
-  gradientColors,
+  resumePage,
 }: SurahHeroSectionProps) => {
   const {theme} = useTheme();
-  const handlePress = useCallback(() => onPress(surah), [surah, onPress]);
+  const glassColorScheme = useGlassColorScheme();
+  const heroTheme = useMemo(() => pickHeroTheme(), []);
+  const handleLongPress = useCallback(() => {
+    onLongPress?.(surah);
+  }, [surah, onLongPress]);
 
-  // Animation values
-  const scale = useSharedValue(1);
+  // Pick a mesh palette that cycles per session
+  const palette = useMemo(() => {
+    const index = Math.abs(SESSION_SEED + 2) % MESH_PALETTES.length;
+    return MESH_PALETTES[index];
+  }, []);
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{scale: scale.value}],
-    };
-  });
+  const isDark = theme.isDarkMode;
+  const baseBg = isDark ? heroTheme.bg[0] : heroTheme.bgLight[0];
+  const mainOpacity = isDark ? 0.12 : 0.15;
 
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  // Use provided gradientColors if available, otherwise generate them
-  const colors = useMemo(() => {
-    if (gradientColors && gradientColors.length >= 2) {
-      return gradientColors as [string, string, ...string[]];
-    }
-    const randomColors = getRandomColors(surah.id);
-    return getThemedGradientColors(randomColors, theme.isDarkMode);
-  }, [gradientColors, theme.isDarkMode, surah.id]);
+  const iconColor = isDark ? heroTheme.accentLight : heroTheme.accentDark;
 
   // Use the styles
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(
+    () => createStyles(theme, heroTheme, isDark),
+    [theme, heroTheme, isDark],
+  );
 
   const revelationPlace = surah.revelation_place.toLowerCase();
 
-  return (
-    <AnimatedTouchableOpacity
-      activeOpacity={1}
-      style={[styles.hero, animatedStyle, style]}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}>
-      <LinearGradient
-        colors={colors}
-        start={{x: 0, y: 0.8}}
-        end={{x: 1, y: 0.2}}
-        style={StyleSheet.absoluteFill}
-      />
+  const cardContent = (
+    <>
+      {/* Solid background behind mesh */}
+      <View style={[StyleSheet.absoluteFill, {backgroundColor: baseBg}]} />
+      <SurahGradientMesh palette={palette} isDark={isDark} />
+
       <View style={styles.content}>
         <View style={styles.topSection}>
           <View style={styles.topRow}>
@@ -110,14 +84,11 @@ export const SurahHeroSection = ({
               {revelationPlace === 'makkah' ? (
                 <MakkahIcon
                   size={moderateScale(20)}
-                  color={theme.colors.text}
-                  secondaryColor={theme.colors.background}
+                  color={iconColor}
+                  secondaryColor={baseBg}
                 />
               ) : (
-                <MadinahIcon
-                  size={moderateScale(12)}
-                  color={theme.colors.text}
-                />
+                <MadinahIcon size={moderateScale(12)} color={iconColor} />
               )}
             </View>
           </View>
@@ -140,17 +111,77 @@ export const SurahHeroSection = ({
           </View>
         </View>
       </View>
-    </AnimatedTouchableOpacity>
+    </>
+  );
+
+  const linkProps = {
+    href: {
+      pathname: '/mushaf' as const,
+      // Prefer the resume page when we have one — that's what makes
+      // the hero a true "Continue reading" shortcut instead of just
+      // "open this surah at page 1".
+      params: resumePage
+        ? {page: resumePage.toString()}
+        : {surah: surah.id.toString()},
+    },
+    asChild: true as const,
+  };
+
+  const pressableProps = {
+    onLongPress: onLongPress ? handleLongPress : undefined,
+    delayLongPress: 500,
+  };
+
+  if (USE_GLASS) {
+    return (
+      <Link {...linkProps}>
+        <Pressable
+          {...pressableProps}
+          style={StyleSheet.flatten([styles.glassWrapper, style])}>
+          <Link.AppleZoom>
+            <GlassView
+              style={styles.glassInner}
+              glassEffectStyle="regular"
+              colorScheme={glassColorScheme}>
+              {cardContent}
+            </GlassView>
+          </Link.AppleZoom>
+        </Pressable>
+      </Link>
+    );
+  }
+
+  return (
+    <Link {...linkProps}>
+      <Pressable
+        {...pressableProps}
+        style={StyleSheet.flatten([styles.hero, style])}>
+        {cardContent}
+      </Pressable>
+    </Link>
   );
 };
 
 // Styles for the SurahHeroSection component
-const createStyles = (theme: Theme) =>
+const createStyles = (
+  theme: Theme,
+  heroTheme: import('@/components/hero/heroThemes').HeroColorTheme,
+  isDark: boolean,
+) =>
   StyleSheet.create({
     hero: {
       borderRadius: moderateScale(20),
       overflow: 'hidden',
       flex: 1,
+    },
+    glassWrapper: {
+      height: moderateScale(150),
+      width: '100%' as const,
+    },
+    glassInner: {
+      flex: 1,
+      borderRadius: moderateScale(20),
+      overflow: 'hidden' as const,
     },
     content: {
       padding: moderateScale(10),
@@ -158,21 +189,21 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     topSection: {
-      marginBottom: moderateScale(6),
+      marginBottom: moderateScale(3),
       alignItems: 'center',
     },
     bottomSection: {
       alignItems: 'center',
     },
     heroGlyph: {
-      fontSize: moderateScale(36),
+      fontSize: moderateScale(30),
       fontFamily: 'SurahNames',
-      color: theme.colors.text,
+      color: isDark ? heroTheme.accentLight : heroTheme.accentDark,
       textShadowColor: 'rgba(0, 0, 0, 0.2)',
       textShadowOffset: {width: 0, height: 1},
       textShadowRadius: 4,
       textAlign: 'center',
-      marginTop: moderateScale(2),
+      marginTop: 0,
     },
     topRow: {
       flexDirection: 'row',
@@ -185,7 +216,7 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-Bold',
       letterSpacing: moderateScale(0.8),
-      color: theme.colors.textSecondary,
+      color: isDark ? heroTheme.accentDim : heroTheme.accentDark,
     },
     revelationPlace: {
       flexDirection: 'row',
@@ -194,15 +225,15 @@ const createStyles = (theme: Theme) =>
     heroSurahName: {
       fontSize: moderateScale(18),
       fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
+      color: isDark ? heroTheme.accentLight : heroTheme.accentDark,
       marginBottom: moderateScale(1),
       textAlign: 'center',
     },
     translatedName: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
-      marginBottom: moderateScale(6),
+      color: isDark ? heroTheme.accent : heroTheme.accentDark,
+      marginBottom: moderateScale(3),
       textAlign: 'center',
     },
     statsRow: {
@@ -217,27 +248,27 @@ const createStyles = (theme: Theme) =>
     statValue: {
       fontSize: moderateScale(10),
       fontFamily: 'Manrope-Bold',
-      color: theme.colors.text,
+      color: isDark ? heroTheme.accentLight : heroTheme.accentDark,
       marginRight: moderateScale(4),
     },
     statLabel: {
       fontSize: moderateScale(8),
       fontFamily: 'Manrope-Medium',
-      color: theme.colors.textSecondary,
+      color: isDark ? heroTheme.accentDim : heroTheme.accentDark,
       textTransform: 'uppercase',
     },
   });
 
 interface SurahsHeroProps {
   surahOfTheDay: Surah;
-  onSurahPress: (surah: Surah) => void;
+  onSurahLongPress?: (surah: Surah) => void;
 }
 
 /**
  * The main hero component for the SurahsView.
  * Displays the Surah of the Day in full width.
  */
-export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
+export function SurahsHero({surahOfTheDay, onSurahLongPress}: SurahsHeroProps) {
   // Create card style for full-width display
   const cardStyle: ViewStyle = useMemo(() => {
     return {
@@ -255,7 +286,7 @@ export function SurahsHero({surahOfTheDay, onSurahPress}: SurahsHeroProps) {
           }}>
           <SurahOfTheDay
             surah={surahOfTheDay}
-            onPress={onSurahPress}
+            onLongPress={onSurahLongPress}
             style={cardStyle}
           />
         </View>

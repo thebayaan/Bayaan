@@ -1,5 +1,6 @@
 import React, {useMemo} from 'react';
-import {View, StyleSheet, ViewStyle, StyleProp, Image} from 'react-native';
+import {View, StyleSheet, ViewStyle, StyleProp} from 'react-native';
+import {Image} from 'expo-image';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
 import {ProfileIcon} from '@/components/Icons';
@@ -10,10 +11,11 @@ interface ReciterImageProps {
   reciterName: string;
   style?: StyleProp<ViewStyle>;
   profileIconSize?: number;
+  blurRadius?: number;
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({reciterName = '', style, profileIconSize}) => {
+  ({reciterName = '', style, profileIconSize, blurRadius}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
@@ -60,7 +62,10 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
           <Image
             source={localImageSource}
             style={styles.image}
-            resizeMode="cover"
+            contentFit="cover"
+            recyclingKey={formattedName}
+            transition={100}
+            {...(blurRadius ? {blurRadius} : {})}
           />
         ) : (
           <ProfileIcon

@@ -18,6 +18,7 @@ export interface PlaylistItem {
   rewayatId?: string;
   orderIndex: number;
   addedAt: number;
+  userRecitationId?: string;
 }
 
 // Database row types
@@ -39,6 +40,7 @@ interface PlaylistItemRow {
   rewayat_id: string | null;
   order_index: number;
   added_at: number;
+  user_recitation_id: string | null;
 }
 
 interface MaxOrderRow {
@@ -107,9 +109,18 @@ class DatabaseService {
       );
     `);
 
+    // Migration: add user_recitation_id column if it doesn't exist
+    try {
+      await this.db.execAsync(
+        `ALTER TABLE playlist_items ADD COLUMN user_recitation_id TEXT;`,
+      );
+    } catch {
+      // Column already exists
+    }
+
     // Create indexes for better performance
     await this.db.execAsync(`
-      CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist_id 
+      CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist_id
       ON playlist_items(playlist_id);
     `);
 
@@ -274,8 +285,8 @@ class DatabaseService {
     const db = this.db;
     await db.withTransactionAsync(async () => {
       await db.runAsync(
-        `INSERT INTO playlist_items (id, playlist_id, surah_id, reciter_id, rewayat_id, order_index, added_at) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO playlist_items (id, playlist_id, surah_id, reciter_id, rewayat_id, order_index, added_at, user_recitation_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           item.id,
           item.playlistId,
@@ -284,6 +295,7 @@ class DatabaseService {
           item.rewayatId || null,
           item.orderIndex,
           item.addedAt,
+          item.userRecitationId || null,
         ],
       );
     });
@@ -305,6 +317,7 @@ class DatabaseService {
       rewayatId: item.rewayat_id || undefined,
       orderIndex: item.order_index,
       addedAt: item.added_at,
+      userRecitationId: item.user_recitation_id || undefined,
     }));
   }
 

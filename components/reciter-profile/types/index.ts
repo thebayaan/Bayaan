@@ -24,10 +24,6 @@ export interface ReciterProfileProps {
 export interface ReciterHeaderProps {
   /** The reciter object containing all reciter information */
   reciter: Reciter;
-  /** The currently selected rewayat ID */
-  selectedRewayatId?: string;
-  /** Handler for when the rewayat info button is pressed */
-  onRewayatInfoPress: () => void;
   /** Whether the search bar is visible */
   showSearch: boolean;
   /** Safe area insets for proper padding */
@@ -36,6 +32,7 @@ export interface ReciterHeaderProps {
     bottom: number;
     left: number;
     right: number;
+    iosHeaderHeight?: number;
   };
 }
 
@@ -50,11 +47,6 @@ export interface StickyHeaderProps {
   /** Safe area insets for proper padding */
   insets: {
     top: number;
-  };
-  /** Dominant colors for gradient effect */
-  dominantColors: {
-    primary: string;
-    secondary: string;
   };
   /** Current theme mode */
   isDarkMode: boolean;
@@ -93,11 +85,13 @@ export interface SurahListProps {
   /** Handler for surah options button press */
   onOptionsPress: (surah: Surah) => void;
   /** Scroll event handler */
-  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   /** List header component */
-  ListHeaderComponent: React.ReactElement;
+  ListHeaderComponent?: React.ReactElement;
   /** Style for the list container */
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** List footer component */
+  ListFooterComponent?: React.ReactElement | null;
 }
 
 /**

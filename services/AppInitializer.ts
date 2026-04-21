@@ -1,9 +1,32 @@
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {databaseService} from '@/services/database/DatabaseService';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {playlistService} from '@/services/playlist/PlaylistService';
+import {uploadsService} from '@/services/uploads/UploadsService';
+import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {qulDataService} from '@/services/mushaf/QulDataService';
+import {translationDbService} from '@/services/translation/TranslationDbService';
+import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {useTafseerStore} from '@/store/tafseerStore';
+import {wbwDataService} from '@/services/wbw/WBWDataService';
+import {warmBookmarkCache} from '@/components/mushaf/BookmarkChips';
+import {timestampService} from '@/services/timestamps/TimestampService';
+import {themeDataService} from '@/services/mushaf/ThemeDataService';
+import {useTimestampStore} from '@/store/timestampStore';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {usePlaylistsStore} from '@/store/playlistsStore';
-import {setAudioModeAsync} from 'expo-audio';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {useReciterStore} from '@/store/reciterStore';
+import {useAmbientStore} from '@/store/ambientStore';
+import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useThemeStore} from '@/store/themeStore';
+import {usePlayCountStore} from '@/store/playCountStore';
+import {useLovedStore} from '@/services/player/store/lovedStore';
+import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
+import {useFavoriteRecitersStore} from '@/services/player/store/favoriteRecitersStore';
+import * as Font from 'expo-font';
 
 interface ServiceInitializer {
   name: string;
@@ -79,34 +102,46 @@ class AppInitializer {
         console.log('[AppInitializer] Starting initialization...');
         const startTime = Date.now();
 
-        for (const service of this.services) {
-          try {
-            const serviceStartTime = Date.now();
-            console.log(`[AppInitializer] Initializing ${service.name}...`);
+        // Split into critical (sequential) and non-critical (parallel)
+        const critical = this.services.filter(s => s.critical);
+        const nonCritical = this.services.filter(s => !s.critical);
 
-            await service.initialize();
+        // Run critical services sequentially (order matters)
+        for (const service of critical) {
+          const serviceStartTime = Date.now();
+          console.log(`[AppInitializer] Initializing ${service.name}...`);
+          await service.initialize();
+          const serviceTime = Date.now() - serviceStartTime;
+          console.log(
+            `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
+          );
+        }
 
-            const serviceTime = Date.now() - serviceStartTime;
-            console.log(
-              `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
-            );
-          } catch (error) {
-            console.error(`[AppInitializer] ✗ ${service.name} failed:`, error);
+        // Run non-critical services in parallel
+        if (nonCritical.length > 0) {
+          console.log(
+            `[AppInitializer] Running ${nonCritical.length} non-critical services in parallel...`,
+          );
+          const results = await Promise.allSettled(
+            nonCritical.map(async service => {
+              const serviceStartTime = Date.now();
+              console.log(`[AppInitializer] Initializing ${service.name}...`);
+              await service.initialize();
+              const serviceTime = Date.now() - serviceStartTime;
+              console.log(
+                `[AppInitializer] ✓ ${service.name} initialized (${serviceTime}ms)`,
+              );
+            }),
+          );
 
-            // If this is a critical service, throw the error
-            if (service.critical) {
-              throw new Error(
-                `Critical service ${service.name} failed: ${
-                  error instanceof Error ? error.message : 'Unknown error'
-                }`,
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              console.warn(
+                `[AppInitializer] Non-critical service ${nonCritical[index].name} failed, continuing...`,
+                result.reason,
               );
             }
-
-            // Non-critical services log but don't break initialization
-            console.warn(
-              `[AppInitializer] Non-critical service ${service.name} failed, continuing...`,
-            );
-          }
+          });
         }
 
         this.initialized = true;
@@ -159,21 +194,16 @@ export const appInitializer = new AppInitializer();
 // ============================================================================
 
 /**
- * Audio Configuration (Priority 0)
- * Configures expo-audio for background playback support
- * Non-critical - app can function without background audio
+ * Analytics Service (Priority 0)
+ * Initializes device ID and session tracking for analytics
+ * Non-critical - app functions without analytics
  */
 appInitializer.registerService({
-  name: 'Audio Configuration',
+  name: 'Analytics',
   priority: 0,
   critical: false,
   initialize: async () => {
-    await setAudioModeAsync({
-      shouldPlayInBackground: true,
-      playsInSilentMode: true,
-      interruptionModeAndroid: 'duckOthers',
-      interruptionMode: 'duckOthers',
-    });
+    await analyticsService.initialize();
   },
 });
 
@@ -234,62 +264,199 @@ appInitializer.registerService({
 });
 
 /**
- * Adhkar Store Data (Priority 5)
+ * Mushaf Preload (Priority 5)
+ * Loads DigitalKhatt data, Skia typefaces (V1+V2), and surah header font.
+ * Eliminates loading screens in the Mushaf tab by having everything ready
+ * before the user navigates there.
+ * Non-critical - Mushaf tab will render empty frames until ready (rare race).
+ */
+appInitializer.registerService({
+  name: 'Mushaf Preload',
+  priority: 5,
+  critical: false,
+  initialize: async () => {
+    await mushafPreloadService.initialize();
+  },
+});
+
+/**
+ * Adhkar Store Data (Priority 6)
  * Loads adhkar categories from database into Zustand store
  * Non-critical - can be loaded later if fails
  */
 appInitializer.registerService({
   name: 'Adhkar Store Data',
-  priority: 5,
+  priority: 6,
   critical: false,
   initialize: async () => {
     await useAdhkarStore.getState().loadCategories();
   },
 });
 
-// ============================================================================
-// FUTURE SERVICES
-// Add new services below as your app grows
-// ============================================================================
-
-/*
- * Example: Bookmarks Service
- *
- * appInitializer.registerService({
- *   name: 'Bookmarks',
- *   priority: 4,
- *   critical: false,
- *   initialize: async () => {
- *     await bookmarksService.initialize();
- *     await useBookmarksStore.getState().loadBookmarks();
- *   },
- * });
+/**
+ * Uploads Service (Priority 7)
+ * Initializes the uploads database and loads recitations into store
+ * Non-critical - app can function without uploads
  */
+appInitializer.registerService({
+  name: 'Uploads Service',
+  priority: 6,
+  critical: false,
+  initialize: async () => {
+    await uploadsService.initialize();
+    await useUploadsStore.getState().loadRecitations();
+    await useUploadsStore.getState().loadCustomReciters();
+    await uploadsService.maybeRunOrphanCleanup();
+  },
+});
 
-/*
- * Example: Notes Service
- *
- * appInitializer.registerService({
- *   name: 'Notes',
- *   priority: 5,
- *   critical: false,
- *   initialize: async () => {
- *     await notesService.initialize();
- *     await useNotesStore.getState().loadNotes();
- *   },
- * });
+/**
+ * Verse Annotations Service (Priority 7)
+ * Initializes the verse annotations database for bookmarks, notes, highlights
+ * Non-critical - app can function without verse annotations
  */
+appInitializer.registerService({
+  name: 'Verse Annotations',
+  priority: 7,
+  critical: false,
+  initialize: async () => {
+    await verseAnnotationService.initialize();
+    await warmBookmarkCache();
+  },
+});
 
-/*
- * Example: Reading History Service
- *
- * appInitializer.registerService({
- *   name: 'Reading History',
- *   priority: 6,
- *   critical: false,
- *   initialize: async () => {
- *     await historyService.initialize();
- *     await useHistoryStore.getState().loadHistory();
- *   },
- * });
+/**
+ * Timestamp Service (Priority 9)
+ * Opens/creates local timestamp cache DB
+ * Non-critical - app can function without ayah timestamps
  */
+appInitializer.registerService({
+  name: 'Timestamps',
+  priority: 9,
+  critical: false,
+  initialize: async () => {
+    await timestampService.initialize();
+    useTimestampStore.getState().loadFollowAlongRegistry();
+  },
+});
+
+/**
+ * Theme Data (Priority 10)
+ * Pre-builds verse→theme lookup map for thematic highlighting.
+ * Non-critical - lazy init on first access if this fails.
+ */
+appInitializer.registerService({
+  name: 'Theme Data',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    themeDataService.init();
+  },
+});
+
+/**
+ * Arabic Fonts (Priority 10)
+ * Loads Arabic/Quran fonts during initialization (while splash is showing)
+ * instead of after splash hides, preventing text flashes.
+ * Non-critical - fonts can still be loaded lazily if this fails.
+ */
+appInitializer.registerService({
+  name: 'Arabic Fonts',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await Font.loadAsync({
+      'ScheherazadeNew-Regular': require('@/assets/fonts/ScheherazadeNew-Regular.ttf'),
+      'ScheherazadeNew-Medium': require('@/assets/fonts/ScheherazadeNew-Medium.ttf'),
+      'ScheherazadeNew-Bold': require('@/assets/fonts/ScheherazadeNew-Bold.ttf'),
+      'ScheherazadeNew-SemiBold': require('@/assets/fonts/ScheherazadeNew-SemiBold.ttf'),
+      Uthmani: require('@/assets/fonts/Uthmani.otf'),
+      QPC: require('@/assets/fonts/UthmanicHafs1Ver18.ttf'),
+      DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
+      DigitalKhattV2: require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
+    });
+  },
+});
+
+/**
+ * QUL Data Service (Priority 10)
+ * Opens ayah-themes, matching-ayah, and mutashabihat SQLite databases.
+ * Used for verse themes, similar ayahs, and shared phrases in mushaf sheets.
+ * Non-critical - similar verses features degrade gracefully without it.
+ */
+appInitializer.registerService({
+  name: 'QUL Data',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await qulDataService.initialize();
+  },
+});
+
+/**
+ * Translation DB Service (Priority 10)
+ * Opens translations.db for downloaded remote translations.
+ * Non-critical — bundled translations work without it.
+ */
+appInitializer.registerService({
+  name: 'Translation DB',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await translationDbService.initialize();
+  },
+});
+
+/**
+ * Tafseer DB Service (Priority 10)
+ * Opens tafaseer.db for downloaded tafaseer.
+ * Non-critical — tafseer features degrade gracefully without it.
+ */
+appInitializer.registerService({
+  name: 'Tafseer DB',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await tafseerDbService.initialize();
+    await tafseerDbService.importBundledIbnKathir();
+    await useTafseerStore.getState().loadDownloadedMeta();
+  },
+});
+
+/**
+ * WBW Data Service (Priority 10)
+ * Opens wbw-en.db for word-by-word translations.
+ * Non-critical — WBW features degrade gracefully without it.
+ */
+appInitializer.registerService({
+  name: 'WBW Data',
+  priority: 10,
+  critical: false,
+  initialize: async () => {
+    await wbwDataService.initialize();
+  },
+});
+
+/**
+ * Store Hydration (Priority 3)
+ * Pre-warms all persisted Zustand stores so AsyncStorage reads complete
+ * before the user interacts with the app.
+ * Non-critical - stores will hydrate lazily on first access if this fails.
+ * Note: useDownloadStore and usePlayerStore are already pre-warmed in prepare().
+ */
+appInitializer.registerService({
+  name: 'Store Hydration',
+  priority: 3,
+  critical: false,
+  initialize: async () => {
+    useReciterStore.getState();
+    useAmbientStore.getState();
+    useAdhkarSettingsStore.getState();
+    useMushafSettingsStore.getState();
+    useThemeStore.getState();
+    usePlayCountStore.getState();
+    useLovedStore.getState();
+    useRecentlyPlayedStore.getState();
+    useFavoriteRecitersStore.getState();
+  },
+});

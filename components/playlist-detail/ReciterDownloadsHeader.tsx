@@ -1,23 +1,15 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, Pressable} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
+import {Feather} from '@expo/vector-icons';
 import {PlayIcon, ShuffleIcon} from '@/components/Icons';
 import {ReciterImage} from '@/components/ReciterImage';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
 import Color from 'color';
-
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface ReciterDownloadsHeaderProps {
   reciterId: string;
@@ -26,6 +18,7 @@ interface ReciterDownloadsHeaderProps {
   subtitle: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
+  onOptionsPress?: () => void;
   theme: Theme;
 }
 
@@ -36,6 +29,7 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
   subtitle,
   onPlayPress,
   onShufflePress,
+  onOptionsPress,
   theme,
 }) => {
   const insets = useSafeAreaInsets();
@@ -46,51 +40,22 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
     router.push(`/reciter/${reciterId}`);
   };
 
-  // Animation values for button press feedback
-  const shuffleScale = useSharedValue(1);
-  const playScale = useSharedValue(1);
-
-  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: shuffleScale.value}],
-  }));
-
-  const playAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: playScale.value}],
-  }));
-
-  const handlePressIn = (button: 'shuffle' | 'play') => {
-    const scale = button === 'shuffle' ? shuffleScale : playScale;
-    scale.value = withSpring(0.92, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = (button: 'shuffle' | 'play') => {
-    const scale = button === 'shuffle' ? shuffleScale : playScale;
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
   return (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={['#10B981', theme.colors.background]}
-        style={styles.gradientContainer}>
+      <View style={styles.contentArea}>
         {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color="white"
-          />
-        </TouchableOpacity>
+        {!USE_GLASS && (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
@@ -111,43 +76,32 @@ export const ReciterDownloadsHeader: React.FC<ReciterDownloadsHeaderProps> = ({
           </Pressable>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Action Buttons */}
-      <View style={styles.contentWrapper}>
-        <View style={styles.actionButtons}>
-          {/* Spacer for alignment */}
-          <View style={styles.spacer} />
-
-          {/* Right side buttons */}
-          <View style={styles.rightAlignedButtons}>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.circleButton, shuffleAnimatedStyle]}
-              onPress={onShufflePress}
-              onPressIn={() => handlePressIn('shuffle')}
-              onPressOut={() => handlePressOut('shuffle')}>
-              <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-            </AnimatedTouchableOpacity>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.circleButton,
-                styles.playButton,
-                playAnimatedStyle,
-              ]}
-              onPress={onPlayPress}
-              onPressIn={() => handlePressIn('play')}
-              onPressOut={() => handlePressOut('play')}>
-              <View style={styles.playIconContainer}>
-                <PlayIcon
-                  color={theme.colors.background}
-                  size={moderateScale(16)}
-                />
-              </View>
-            </AnimatedTouchableOpacity>
+      <View style={styles.actionButtons}>
+        {!USE_GLASS && onOptionsPress && (
+          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
+        <Pressable
+          style={[styles.circleButton, styles.playButton]}
+          onPress={onPlayPress}>
+          <View style={styles.playIconContainer}>
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(16)}
+            />
           </View>
-        </View>
+        </Pressable>
+        <Pressable style={styles.circleButton} onPress={onShufflePress}>
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+        </Pressable>
       </View>
     </View>
   );
@@ -159,16 +113,19 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(20),
-      paddingBottom: moderateScale(30),
+      paddingTop: USE_GLASS
+        ? moderateScale(16)
+        : insets.top + moderateScale(40),
+      paddingBottom: moderateScale(10),
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',
-      top: insets.top + moderateScale(10),
+      top: USE_GLASS ? moderateScale(10) : insets.top + moderateScale(10),
       left: moderateScale(15),
       zIndex: 10,
       padding: moderateScale(8),
@@ -202,23 +159,14 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       textAlign: 'center',
       marginBottom: moderateScale(8),
     },
-    contentWrapper: {
-      paddingHorizontal: moderateScale(16),
-    },
     actionButtons: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(5),
-    },
-    spacer: {
-      width: moderateScale(40),
-    },
-    rightAlignedButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(8),
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      gap: moderateScale(16),
     },
     circleButton: {
       width: moderateScale(42),

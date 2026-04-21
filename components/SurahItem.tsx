@@ -1,23 +1,17 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  GestureResponderEvent,
-} from 'react-native';
+import {View, Text, Pressable, GestureResponderEvent} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
 import {surahGlyphMap} from '@/utils/surahGlyphMap';
 import {Surah} from '@/data/surahData';
 import {HeartIcon} from '@/components/Icons';
-import {Icon} from '@rneui/themed';
-import {Ionicons} from '@expo/vector-icons';
+import {Feather, Ionicons} from '@expo/vector-icons';
 import Color from 'color';
 import {MakkahIcon, MadinahIcon} from '@/components/Icons';
 import * as Haptics from 'expo-haptics';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {State as TrackPlayerState} from 'react-native-track-player';
+
 import {NowPlayingIndicator} from './NowPlayingIndicator';
 import {
   useDownloadProgress,
@@ -31,6 +25,7 @@ import {GradientText} from '@/components/GradientText';
 interface SurahItemProps {
   item: Surah;
   onPress: (item: Surah) => void;
+  onLongPress?: (item: Surah) => void;
   reciterId?: string;
   isLoved?: boolean;
   isDownloaded?: boolean;
@@ -44,6 +39,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
   ({
     item,
     onPress,
+    onLongPress,
     reciterId,
     isLoved = false,
     onOptionsPress,
@@ -92,8 +88,7 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     const isCurrentlyPlaying = React.useMemo(() => {
       // Check if playback is active
       const isActive =
-        playbackStatus === TrackPlayerState.Playing ||
-        playbackStatus === TrackPlayerState.Buffering;
+        playbackStatus === 'playing' || playbackStatus === 'buffering';
 
       // Ensure valid index and track exists
       const currentTrack =
@@ -139,6 +134,13 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
       onPress(item);
     }, [item, onPress, enableHaptics]);
 
+    const handleLongPress = React.useCallback(() => {
+      if (enableHaptics) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      onLongPress?.(item);
+    }, [item, onLongPress, enableHaptics]);
+
     const handleOptionsPress = React.useCallback(
       (e?: GestureResponderEvent) => {
         e?.stopPropagation();
@@ -161,11 +163,10 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
     return (
       <View style={styles.surahItem}>
         {/* Left zone - Play action */}
-        <TouchableOpacity
-          activeOpacity={1}
+        <Pressable
           style={styles.playZone}
           onPress={handlePress}
-          onLongPress={handlePress}
+          onLongPress={onLongPress ? handleLongPress : undefined}
           accessibilityRole="button"
           accessibilityLabel={`Surah ${item.name}, ${
             item.translated_name_english
@@ -258,12 +259,11 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
               </View>
             )}
           </View>
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Right zone - Options action */}
         {onOptionsPress && (
-          <TouchableOpacity
-            activeOpacity={1}
+          <Pressable
             style={styles.optionsZone}
             onPress={handleOptionsPress}
             accessibilityRole="button"
@@ -272,21 +272,19 @@ export const SurahItem: React.FC<SurahItemProps> = React.memo(
             {isCurrentTrack ? (
               <NowPlayingIndicator
                 isPlaying={
-                  playbackStatus === TrackPlayerState.Playing ||
-                  playbackStatus === TrackPlayerState.Buffering
+                  playbackStatus === 'playing' || playbackStatus === 'buffering'
                 }
                 barCount={3}
                 surahId={Number(item.id)}
               />
             ) : (
-              <Icon
+              <Feather
                 name="more-horizontal"
-                type="feather"
                 size={moderateScale(18)}
                 color={theme.colors.text}
               />
             )}
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
     );

@@ -1,55 +1,30 @@
-import React, {memo, useCallback, useState, useEffect, useRef} from 'react';
-import {StyleSheet, TouchableOpacity, Text, View} from 'react-native';
+import React, {memo, useCallback, useEffect, useMemo, useState} from 'react';
+import {
+  StyleSheet,
+  Pressable,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import {Verse} from '@/types/quran';
 import Color from 'color';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
-import {Ionicons} from '@expo/vector-icons';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-
-// ---> Load Indopak JSON data
-interface IndopakNastaleeqData {
-  [verseKey: string]: {text: string};
-}
-let indopakNastaleeqDataCache: IndopakNastaleeqData | null = null;
-try {
-  indopakNastaleeqDataCache = require('@/data/IndopakNastaleeq.json');
-  console.log('[VerseItem] IndopakNastaleeq data pre-cached');
-} catch (error) {
-  console.error('[VerseItem] Error pre-caching Indopak data:', error);
-}
-// <--- End Load Indopak JSON data
-
-// Define colors for Tajweed rules (adjust these as needed)
-const tajweedColors: {[key: string]: string} = {
-  // Red - Necessary Prolongation (Madd: 6)
-  madda_necessary: '#DD0000',
-  // Pink - Obligatory Prolongation (Madd: 4 or 5)
-  madda_obligatory_mottasel: '#FF00FF',
-  madda_obligatory_monfasel: '#FF00FF',
-  // Orange - Permissible Prolongation (Madd: 2, 4, or 6)
-  madda_permissible: '#FF7F00',
-  // Gold/Yellow - Normal Prolongation (Madd: 2)
-  madda_normal: '#DDAA00',
-  'custom-alef-maksora': '#DDAA00',
-  // Green - Nasalization (Ghunnah)
-  ghunnah: '#00CC00',
-  idgham_ghunnah: '#00CC00',
-  idgham_shafawi: '#00CC00',
-  ikhafa: '#00CC00',
-  ikhafa_shafawi: '#00CC00',
-  iqlab: '#00CC00',
-  // Light Blue - Qalqala (Echoing Sound)
-  qalaqah: '#66CCFF',
-  // Dark Blue - Tafkhim (Emphatic Pronunciation)
-  idgham_mutajanisayn: '#0066FF',
-  idgham_mutaqaribayn: '#0066FF',
-  idgham_wo_ghunnah: '#0066FF',
-  // Gray - Silent (Unannounced Pronunciation)
-  slnt: '#AAAAAA',
-  ham_wasl: '#AAAAAA',
-  laam_shamsiyah: '#AAAAAA',
-};
+import {Feather, Ionicons} from '@expo/vector-icons';
+import {useTajweedStore} from '@/store/tajweedStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {useVerseSelectionStore} from '@/store/verseSelectionStore';
+import {SheetManager} from 'react-native-actions-sheet';
+import {mediumHaptics} from '@/utils/haptics';
+import {tajweedColors} from '@/constants/tajweedColors';
+import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import SkiaVerseText from './SkiaVerseText';
+import {WBWVerseView} from './WBWVerseView';
+import {
+  isBundledTranslation,
+  getBundledFootnotes,
+} from '@/utils/translationLookup';
 
 // Type for processed word data from store
 interface ProcessedTajweedWord {
@@ -78,18 +53,36 @@ interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
 
+// Load Saheeh data at module scope (require() is cached — zero cost since QuranView already loaded it)
+const saheehDataForFootnotes =
+  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as SaheehData;
+
 interface VerseItemProps {
-  verse: Verse & {processedTajweedAyahData?: ProcessedTajweedWord[]}; // Combine Verse and optional processed data
-  onPress: () => void;
+  verse: Verse & {translation?: string; transliteration?: string};
+  onVersePress: (verseKey: string) => void;
   textColor: string;
   borderColor: string;
   showTranslation?: boolean;
   showTransliteration?: boolean;
+  showTajweed: boolean;
+  arabicFontFamily: 'Uthmani';
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
-  // Remove legacy tajweedAyahData prop if it exists
-  processedTajweedAyahData?: ProcessedTajweedWord[]; // Keep this prop as it's now passed from QuranView
+  fontMgr: SkTypefaceFontProvider | null;
+  dkFontFamily: string;
+  indexedTajweedData: IndexedTajweedData | null;
+  isActive?: boolean;
+  translationName?: string;
+  translationId?: string;
+  source?: 'player' | 'mushaf';
+  showWBW?: boolean;
+  wbwShowTranslation?: boolean;
+  wbwShowTransliteration?: boolean;
+  /** Rewayah the Arabic text is rendered in. Player context: passes the
+   *  currently-playing track's rewayah. Mushaf context: can be omitted to
+   *  follow the active mushaf rewayah automatically. */
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
 }
 
 /**
@@ -103,76 +96,88 @@ TajweedSegment.displayName = 'TajweedSegment';
 
 export const VerseItem = memo<VerseItemProps>(
   ({
-    verse, // Contains processedTajweedAyahData if available
-    onPress,
+    verse,
+    onVersePress,
     textColor,
     borderColor,
-    showTranslation: propShowTranslation,
-    showTransliteration: propShowTransliteration,
-    transliterationFontSize: propTransliterationFontSize,
-    translationFontSize: propTranslationFontSize,
-    arabicFontSize: propArabicFontSize,
-    // processedTajweedAyahData prop is now part of the verse object
+    showTranslation,
+    showTransliteration,
+    showTajweed,
+    arabicFontFamily,
+    transliterationFontSize,
+    translationFontSize,
+    arabicFontSize,
+    fontMgr,
+    dkFontFamily,
+    indexedTajweedData,
+    isActive,
+    translationName,
+    translationId,
+    source,
+    showWBW,
+    wbwShowTranslation,
+    wbwShowTransliteration,
+    rewayah,
   }) => {
-    // Get settings from the store
-    const {
-      showTranslation: storeShowTranslation,
-      showTransliteration: storeShowTransliteration,
-      showTajweed, // Used for conditional coloring
-      arabicFontSize: storeArabicFontSize,
-      translationFontSize: storeTranslationFontSize,
-      transliterationFontSize: storeTransliterationFontSize,
-      arabicFontFamily,
-    } = useMushafSettingsStore();
+    const verseKey = verse.verse_key;
 
-    // Use prop values if provided, otherwise use store values
-    const showTranslation =
-      propShowTranslation !== undefined
-        ? propShowTranslation
-        : storeShowTranslation;
-    const showTransliteration =
-      propShowTransliteration !== undefined
-        ? propShowTransliteration
-        : storeShowTransliteration;
+    // Per-verse-key annotation selectors — Zustand skips re-render when
+    // THIS verse's specific value didn't change
+    const isSelected = useVerseSelectionStore(
+      useCallback(s => s.selectedVerseKey === verseKey, [verseKey]),
+    );
+    const selectVerse = useVerseSelectionStore(s => s.selectVerse);
 
-    const transliterationFontSize =
-      propTransliterationFontSize || storeTransliterationFontSize;
+    const isBookmarked = useVerseAnnotationsStore(
+      useCallback(s => s.bookmarkedVerseKeys.has(verseKey), [verseKey]),
+    );
+    const hasNote = useVerseAnnotationsStore(
+      useCallback(s => s.notedVerseKeys.has(verseKey), [verseKey]),
+    );
+    // Fetch tajweed data directly from store — granular selector means only
+    // the ~10 visible VerseItems re-render when tajweed finishes loading
+    const processedTajweedAyahData = useTajweedStore(
+      s => s.indexedTajweedData?.[verseKey],
+    );
 
-    const translationFontSize =
-      propTranslationFontSize || storeTranslationFontSize;
-    const arabicFontSize = propArabicFontSize || storeArabicFontSize;
-
-    // Determine font selection
-    const isIndopakSelected = arabicFontFamily === 'Indopak';
-    const isQPCSelected = arabicFontFamily === 'QPC';
+    const isQPCSelected = true;
 
     const [activeFootnote, setActiveFootnote] = useState<FootnoteData | null>(
       null,
     );
-    // Cache for the Saheeh International data
-    const saheehDataCache = useRef<SaheehData | null>(null);
-    const [isSaheehDataLoaded, setIsSaheehDataLoaded] = useState(false);
 
-    // Load Saheeh International data once
-    useEffect(() => {
-      if (!saheehDataCache.current) {
-        try {
-          saheehDataCache.current = require('@/data/SaheehInternational.translation-with-footnote-tags.json');
-          setIsSaheehDataLoaded(true);
-          console.log('[VerseItem] Saheeh International data loaded.');
-        } catch (error) {
-          console.error(
-            '[VerseItem] Failed to load Saheeh International data:',
-            error,
-          );
-        }
-      }
+    // Width for Skia canvas (measured via onLayout)
+    const [arabicContainerWidth, setArabicContainerWidth] = useState(0);
+    const handleArabicLayout = useCallback((e: LayoutChangeEvent) => {
+      const w = e.nativeEvent.layout.width;
+      setArabicContainerWidth(prev => (Math.abs(prev - w) > 1 ? w : prev));
     }, []);
 
-    const bgColor = Color(textColor).alpha(0.08).toString();
-    const footnoteBgColor = Color(textColor).alpha(0.1).toString();
+    // Track which WBW word is highlighted (cleared when sheet closes)
+    const [selectedWordPosition, setSelectedWordPosition] = useState<
+      number | null
+    >(null);
 
-    // Handle footnote press - now uses cached data
+    // Reset footnote and word highlight when cell is recycled by FlashList
+    useEffect(() => {
+      setActiveFootnote(null);
+      setSelectedWordPosition(null);
+    }, [verseKey]);
+
+    // Batch all Color() derivations — only recomputed on theme or highlight change
+    const derivedColors = useMemo(
+      () => ({
+        bg: Color(textColor).alpha(0.08).toString(),
+        footnoteBg: Color(textColor).alpha(0.1).toString(),
+        selectedBg: Color(textColor).alpha(0.06).toString(),
+        optionsIcon: Color(textColor).alpha(0.5).toString(),
+        translationSource: Color(textColor).alpha(0.6).toString(),
+        activeBg: Color(textColor).alpha(0.12).toString(),
+      }),
+      [textColor],
+    );
+
+    // Handle footnote press - uses module-scope cached data or translationLookup
     const handleFootnotePress = useCallback(
       (footnoteId: string, footnoteNumber: string) => {
         // If tapping the same footnote again, close it
@@ -180,74 +185,29 @@ export const VerseItem = memo<VerseItemProps>(
           setActiveFootnote(null);
           return;
         }
-        console.log(
-          `[Footnote Press] Verse Key: ${verse.verse_key}, Footnote ID: ${footnoteId}, Number: ${footnoteNumber}`,
-        );
 
-        if (!isSaheehDataLoaded || !saheehDataCache.current) {
-          console.error(
-            '[VerseItem] Saheeh data not loaded yet when trying to access footnote.',
-          );
+        // For bundled translations, use translationLookup; for remote, no footnotes
+        const effectiveId = translationId ?? 'saheeh';
+        const footnotes = isBundledTranslation(effectiveId)
+          ? getBundledFootnotes(verseKey, effectiveId)
+          : undefined;
+
+        if (footnotes) {
+          const footnoteContent = footnotes[footnoteId];
           setActiveFootnote({
             id: footnoteId,
             number: footnoteNumber,
-            content: 'Error: Footnote data not ready',
+            content: footnoteContent ?? 'Footnote content not available',
           });
-          return;
-        }
-
-        const verseData = saheehDataCache.current[verse.verse_key];
-        console.log(
-          '[Footnote Press] Found verseData:',
-          verseData ? 'Yes' : 'No',
-        );
-
-        // --- Start: Additional Logging ---
-        if (verseData) {
-          console.log('[Footnote Press] Inspecting verseData:', verseData);
-          console.log('[Footnote Press] Inspecting verseData.f:', verseData.f);
-          console.log(
-            `[Footnote Press] Keys in verseData.f: ${
-              verseData.f ? Object.keys(verseData.f).join(', ') : 'N/A'
-            }`,
-          );
-        }
-        // --- End: Additional Logging ---
-        if (verseData && verseData.f) {
-          const footnoteContent = verseData.f[footnoteId];
-          console.log(
-            `[Footnote Press] Found footnoteContent for ID ${footnoteId}:`,
-            footnoteContent ? 'Yes' : 'No',
-          );
-
-          if (footnoteContent) {
-            setActiveFootnote({
-              id: footnoteId,
-              number: footnoteNumber,
-              content: footnoteContent,
-            });
-          } else {
-            console.warn(
-              `Footnote content for ID ${footnoteId} in verse ${verse.verse_key} not found in footnotes object.`,
-            );
-            setActiveFootnote({
-              id: footnoteId,
-              number: footnoteNumber,
-              content: 'Footnote content not available',
-            });
-          }
         } else {
-          console.warn(
-            `Footnotes object (f) not found for verse ${verse.verse_key}.`,
-          );
           setActiveFootnote({
             id: footnoteId,
             number: footnoteNumber,
-            content: 'Footnote data structure issue',
+            content: 'Footnote data not available',
           });
         }
       },
-      [verse.verse_key, isSaheehDataLoaded, activeFootnote],
+      [verseKey, activeFootnote, translationId],
     );
 
     // Close the footnote display
@@ -255,131 +215,269 @@ export const VerseItem = memo<VerseItemProps>(
       setActiveFootnote(null);
     }, []);
 
-    // Access processed data from the verse object
-    const processedTajweedAyahData = verse.processedTajweedAyahData;
+    // Long press → open verse actions sheet
+    const handleLongPress = useCallback(() => {
+      mediumHaptics();
+      selectVerse(verseKey, verse.surah_number, verse.ayah_number);
+      SheetManager.show('verse-actions', {
+        payload: {
+          verseKey,
+          surahNumber: verse.surah_number,
+          ayahNumber: verse.ayah_number,
+          // arabicText omitted — the sheet reads from DK so it always
+          // matches the current rewayah instead of the static Hafs
+          // text on this VerseItem prop.
+          translation: verse.translation || '',
+          transliteration: verse.transliteration || '',
+          source: source ?? 'player',
+          rewayah,
+        },
+      });
+    }, [verseKey, verse, selectVerse, source, rewayah]);
+
+    // Options button → same as long press
+    const handleOptionsPress = useCallback(() => {
+      selectVerse(verseKey, verse.surah_number, verse.ayah_number);
+      SheetManager.show('verse-actions', {
+        payload: {
+          verseKey,
+          surahNumber: verse.surah_number,
+          ayahNumber: verse.ayah_number,
+          // arabicText omitted — the sheet reads from DK so it always
+          // matches the current rewayah instead of the static Hafs
+          // text on this VerseItem prop.
+          translation: verse.translation || '',
+          transliteration: verse.transliteration || '',
+          source: source ?? 'player',
+          rewayah,
+        },
+      });
+    }, [verseKey, verse, selectVerse, source, rewayah]);
+
+    const handleWordPress = useCallback(
+      (position: number) => {
+        setSelectedWordPosition(position);
+        SheetManager.show('word-detail', {
+          payload: {verseKey, position},
+        }).then(() => {
+          setSelectedWordPosition(null);
+        });
+      },
+      [verseKey],
+    );
+
+    const handlePress = useCallback(() => {
+      onVersePress(verseKey);
+    }, [onVersePress, verseKey]);
 
     // --- Build Tajweed Nodes (Only if QPC and data available) ---
-    const tajweedNodes =
-      isQPCSelected && processedTajweedAyahData
-        ? processedTajweedAyahData.flatMap((wordData, wordIndex) => {
-            const segments = wordData.segments.map((segment, segIndex) => {
-              // Apply color based on showTajweed state from store
-              const color =
-                showTajweed && segment.rule
-                  ? tajweedColors[segment.rule] || textColor // Tajweed color or default
-                  : textColor; // Default color if tajweed off or no rule
-              return (
-                <TajweedSegment
-                  key={`${wordData.location}-${wordIndex}-${segIndex}`}
-                  text={segment.text}
-                  color={color}
-                />
-              );
-            });
-            // Add space between words
-            if (wordIndex < processedTajweedAyahData.length - 1) {
-              segments.push(<Text key={`${wordData.location}-space`}> </Text>);
-            }
-            return segments;
-          })
-        : null;
+    const tajweedNodes = useMemo(() => {
+      if (!isQPCSelected || !processedTajweedAyahData) return null;
+      return (processedTajweedAyahData as ProcessedTajweedWord[]).flatMap(
+        (wordData, wordIndex) => {
+          const segments = wordData.segments.map((segment, segIndex) => {
+            // Apply color based on showTajweed state from store
+            const color =
+              showTajweed && segment.rule
+                ? tajweedColors[segment.rule] || textColor // Tajweed color or default
+                : textColor; // Default color if tajweed off or no rule
+            return (
+              <TajweedSegment
+                key={`${wordData.location}-${wordIndex}-${segIndex}`}
+                text={segment.text}
+                color={color}
+              />
+            );
+          });
+          // Add space between words
+          if (
+            wordIndex <
+            (processedTajweedAyahData as ProcessedTajweedWord[]).length - 1
+          ) {
+            segments.push(<Text key={`${wordData.location}-space`}> </Text>);
+          }
+          return segments;
+        },
+      );
+    }, [isQPCSelected, processedTajweedAyahData, showTajweed, textColor]);
     // --- End Building Nodes ---
 
-    // ---> Get Indopak text if applicable
-    const indopakText =
-      isIndopakSelected && indopakNastaleeqDataCache
-        ? indopakNastaleeqDataCache[verse.verse_key]?.text
-        : null;
-    // <--- End Get Indopak text
+    // Memoize container style — avoids Pressable function-form re-evaluation every frame
+    const containerStyle = useMemo(
+      () => [
+        styles.container,
+        {borderBottomColor: borderColor},
+        isActive && {
+          backgroundColor: derivedColors.activeBg,
+          borderRadius: moderateScale(8),
+        },
+        isSelected && {
+          backgroundColor: derivedColors.selectedBg,
+          borderRadius: moderateScale(8),
+        },
+      ],
+      [
+        borderColor,
+        isActive,
+        derivedColors.activeBg,
+        isSelected,
+        derivedColors.selectedBg,
+      ],
+    );
+
+    // Memoize inline text styles — only change on theme/settings switch, never during scroll
+    const arabicStyle = useMemo(
+      () => [
+        styles.arabicText,
+        {
+          color: textColor,
+          fontSize: moderateScale(arabicFontSize),
+          fontFamily: arabicFontFamily,
+        },
+      ],
+      [textColor, arabicFontSize, arabicFontFamily],
+    );
+
+    const arabicStyleNoColor = useMemo(
+      () => [
+        styles.arabicText,
+        {
+          fontSize: moderateScale(arabicFontSize),
+          fontFamily: arabicFontFamily,
+        },
+      ],
+      [arabicFontSize, arabicFontFamily],
+    );
+
+    const transliterationStyle = useMemo(
+      () => [
+        styles.transliterationText,
+        {color: textColor, fontSize: moderateScale(transliterationFontSize)},
+      ],
+      [textColor, transliterationFontSize],
+    );
+
+    const translationStyle = useMemo(
+      () => [
+        styles.translationText,
+        {color: textColor, fontSize: moderateScale(translationFontSize)},
+      ],
+      [textColor, translationFontSize],
+    );
+
+    const translationSourceStyle = useMemo(
+      () => [
+        styles.translationSource,
+        {color: derivedColors.translationSource},
+      ],
+      [derivedColors.translationSource],
+    );
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={[styles.container, {borderBottomColor: borderColor}]}
-        onPress={onPress}>
+      <Pressable
+        style={containerStyle}
+        onPress={handlePress}
+        onLongPress={handleLongPress}>
         <View style={styles.verseInfoContainer}>
-          <View style={[styles.verseInfoPill, {backgroundColor: bgColor}]}>
-            <Text style={[styles.verseInfo, {color: textColor}]}>
-              {verse.surah_number}:{verse.ayah_number}
-            </Text>
+          <View style={styles.verseInfoRow}>
+            <View
+              style={[
+                styles.verseInfoPill,
+                {backgroundColor: derivedColors.bg},
+              ]}>
+              <Text style={[styles.verseInfo, {color: textColor}]}>
+                {verse.surah_number}:{verse.ayah_number}
+              </Text>
+            </View>
+            {isBookmarked && (
+              <Feather
+                name="bookmark"
+                size={moderateScale(12)}
+                color={textColor}
+                style={styles.annotationIcon}
+              />
+            )}
+            {hasNote && (
+              <Feather
+                name="file-text"
+                size={moderateScale(12)}
+                color={textColor}
+                style={styles.annotationIcon}
+              />
+            )}
+            <Pressable
+              onPress={handleOptionsPress}
+              hitSlop={8}
+              style={styles.optionsButton}>
+              <Feather
+                name="more-horizontal"
+                size={moderateScale(18)}
+                color={derivedColors.optionsIcon}
+              />
+            </Pressable>
           </View>
         </View>
-        {/* ---> Simplified Arabic Text Rendering <-- */}
-        {isIndopakSelected ? (
-          // Indopak Rendering
-          <Text
-            style={[
-              styles.arabicText,
-              {
-                color: textColor,
-                fontSize: moderateScale(arabicFontSize),
-                fontFamily: arabicFontFamily, // 'Indopak'
-              },
-            ]}>
-            {indopakText || 'Loading Indopak...'}
-          </Text>
-        ) : isQPCSelected && tajweedNodes ? (
-          // QPC Rendering: Always use generated tajweedNodes
-          <Text
-            style={[
-              styles.arabicText,
-              {
-                fontSize: moderateScale(arabicFontSize),
-                fontFamily: arabicFontFamily, // 'QPC'
-              },
-            ]}>
-            {tajweedNodes}
-          </Text>
+        {/* ---> Arabic Text Rendering <-- */}
+        {showWBW ? (
+          <WBWVerseView
+            verseKey={verseKey}
+            textColor={textColor}
+            arabicFontSize={arabicFontSize}
+            dkFontFamily={dkFontFamily}
+            fontMgr={fontMgr}
+            showTranslation={wbwShowTranslation ?? true}
+            showTransliteration={wbwShowTransliteration ?? false}
+            onWordPress={handleWordPress}
+            selectedWordPosition={selectedWordPosition}
+            showTajweed={showTajweed}
+            indexedTajweedData={indexedTajweedData}
+            onTap={handlePress}
+            onLongPress={handleLongPress}
+            rewayah={rewayah}
+          />
         ) : (
-          // Fallback (e.g., QPC selected but data is loading/missing)
-          <Text
-            style={[
-              styles.arabicText,
-              {
-                color: textColor,
-                fontSize: moderateScale(arabicFontSize),
-                fontFamily: arabicFontFamily, // Should be QPC here ideally
-              },
-            ]}>
-            {/* Display plain text or loading indicator */}
-            {verse.text || 'Loading...'}
-          </Text>
+          <View onLayout={handleArabicLayout}>
+            {fontMgr && arabicContainerWidth > 0 ? (
+              // DK Skia Rendering (Uthmani with Digital Khatt font)
+              <SkiaVerseText
+                verseKey={verseKey}
+                fontMgr={fontMgr}
+                fontFamily={dkFontFamily}
+                fontSize={moderateScale(arabicFontSize)}
+                textColor={textColor}
+                showTajweed={showTajweed}
+                width={arabicContainerWidth}
+                indexedTajweedData={indexedTajweedData}
+                rewayah={rewayah}
+              />
+            ) : isQPCSelected && tajweedNodes ? (
+              // QPC Rendering: Always use generated tajweedNodes
+              <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
+            ) : (
+              // Fallback (e.g., data is loading/missing)
+              <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
+            )}
+          </View>
         )}
         {/* ---> End Conditional Rendering <--- */}
         {showTransliteration && verse.transliteration && (
           <FormattedTextRenderer
             text={verse.transliteration}
-            baseStyle={[
-              styles.transliterationText,
-              {
-                color: textColor,
-                fontSize: moderateScale(transliterationFontSize),
-              },
-            ]}
+            baseStyle={transliterationStyle}
           />
         )}
         {showTranslation && verse.translation && (
           <View>
             <FormattedTextRenderer
               text={verse.translation}
-              baseStyle={[
-                styles.translationText,
-                {
-                  color: textColor,
-                  fontSize: moderateScale(translationFontSize),
-                },
-              ]}
+              baseStyle={translationStyle}
               onFootnotePress={handleFootnotePress}
             />
 
             {/* Display Translation Source */}
             {verse.translation && (
-              <Text
-                style={[
-                  styles.translationSource,
-                  {color: Color(textColor).alpha(0.6).toString()},
-                ]}>
-                Saheeh International
+              <Text style={translationSourceStyle}>
+                {translationName ?? 'Saheeh International'}
               </Text>
             )}
           </View>
@@ -390,24 +488,27 @@ export const VerseItem = memo<VerseItemProps>(
           <View
             style={[
               styles.footnoteContainer,
-              {backgroundColor: footnoteBgColor},
+              {backgroundColor: derivedColors.footnoteBg},
             ]}>
             <View style={styles.footnoteHeader}>
               <Text style={[styles.footnoteTitle, {color: textColor}]}>
                 Footnote
               </Text>
-              <TouchableOpacity
+              <Pressable
                 onPress={closeFootnote}
-                style={styles.closeButton}>
+                style={({pressed}) => [
+                  styles.closeButton,
+                  {opacity: pressed ? 0.7 : 1},
+                ]}>
                 <Ionicons name="close" size={20} color={textColor} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
             <Text style={[styles.footnoteContent, {color: textColor}]}>
               {activeFootnote.content}
             </Text>
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   },
 );
@@ -417,16 +518,29 @@ VerseItem.displayName = 'VerseItem';
 const styles = StyleSheet.create({
   container: {
     paddingVertical: verticalScale(12),
+    paddingHorizontal: moderateScale(8),
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: moderateScale(8),
+  },
+  optionsButton: {
+    marginLeft: 'auto',
+    padding: moderateScale(4),
   },
   verseInfoContainer: {
-    alignSelf: 'flex-start',
     marginBottom: verticalScale(6),
+  },
+  verseInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: moderateScale(4),
   },
   verseInfoPill: {
     paddingHorizontal: moderateScale(4),
     paddingVertical: moderateScale(3),
     borderRadius: moderateScale(6),
+  },
+  annotationIcon: {
+    opacity: 0.7,
   },
   verseInfo: {
     fontSize: moderateScale(12),

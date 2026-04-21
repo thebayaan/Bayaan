@@ -1,12 +1,16 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated as RNAnimated,
+  Pressable,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {SurahItem} from '@/components/SurahItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
-import {FlatList, ListRenderItem} from 'react-native';
-import {Swipeable} from 'react-native-gesture-handler';
+import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {DownloadedSurah} from '@/services/player/store/downloadStore';
@@ -14,14 +18,17 @@ import {
   useDownloadActions,
   useDownloads,
 } from '@/services/player/store/downloadSelectors';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {shuffleArray} from '@/utils/arrayUtils';
-import TrackPlayer from 'react-native-track-player';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {ReciterDownloadsHeader} from '@/components/playlist-detail/ReciterDownloadsHeader';
 import {createDownloadedTrack} from '@/utils/track';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+import {SheetManager} from 'react-native-actions-sheet';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
+import {Feather} from '@expo/vector-icons';
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface DownloadTrackData {
   download: DownloadedSurah;
@@ -40,16 +47,16 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
   const {theme} = useTheme();
   const downloads = useDownloads();
   const {removeDownload} = useDownloadActions();
-  const queueContext = QueueContext.getInstance();
-  const {addRecentTrack} = useRecentlyPlayedStore();
-  const playerStore = usePlayerStore();
+  const {startNewChain} = useRecentlyPlayedStore();
+  const {addToQueue, updateQueue, toggleShuffle} = usePlayerActions();
+  const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
 
   const [reciter, setReciter] = useState<Reciter | null>(null);
   const [downloadData, setDownloadData] = useState<DownloadTrackData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Track current operation to prevent race conditions
-  const currentOperationRef = useRef<string | null>(null);
+  // Scroll tracking for sticky header
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   // Filter downloads for this reciter
   const reciterDownloads = useMemo(() => {
@@ -73,25 +80,6 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     },
     listItem: {
       marginVertical: moderateScale(2),
-    },
-    rightAction: {
-      flex: 1,
-      backgroundColor: '#ff4444',
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-      paddingRight: moderateScale(20),
-    },
-    deleteButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: moderateScale(15),
-      paddingVertical: moderateScale(10),
-    },
-    deleteText: {
-      color: 'white',
-      fontSize: moderateScale(14),
-      fontWeight: '600',
-      marginLeft: moderateScale(8),
     },
   });
 
@@ -141,7 +129,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
               // Capitalize style
               const capitalizedStyle =
                 rewayat.style.charAt(0).toUpperCase() + rewayat.style.slice(1);
-              rewayatName = `${rewayat.name} • ${capitalizedStyle}`;
+              rewayatName = `${rewayat.name} \u2022 ${capitalizedStyle}`;
             }
           }
 
@@ -181,7 +169,6 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
           return;
         }
 
-        // Find the index of the selected track
         const selectedIndex = downloadData.findIndex(
           item =>
             item.download.reciterId === download.reciterId &&
@@ -194,134 +181,14 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
           return;
         }
 
-        // Generate unique operation ID
-        const operationId = `${Date.now()}-${loadedReciter.id}-${surah.id}`;
-        currentOperationRef.current = operationId;
-
-        // Ensure download store is hydrated
-        useDownloadStore.getState();
-
-        // Create first track using downloaded file
-        const firstTrack = createDownloadedTrack(
-          loadedReciter,
-          surah,
-          download.filePath,
-          download.rewayatId,
-        );
-
-        // Reset and play immediately
-        await TrackPlayer.reset();
-        currentOperationRef.current = operationId;
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
-
-        // Update store immediately
-        if (currentOperationRef.current === operationId) {
-          const store = usePlayerStore.getState();
-          store.updateQueueState({
-            tracks: [firstTrack],
-            currentIndex: 0,
-            total: 1,
-            loading: false,
-            endReached: false,
-          });
-        }
-
-        // Get remaining items (reordered so selected is first)
-        const remainingItems = [
+        // Build all tracks with selected first
+        const reorderedItems = [
+          downloadData[selectedIndex],
           ...downloadData.slice(selectedIndex + 1),
           ...downloadData.slice(0, selectedIndex),
         ];
 
-        // Create remaining tracks in background
-        if (remainingItems.length > 0) {
-          const remainingTracks = remainingItems
-            .filter(
-              (
-                item,
-              ): item is DownloadTrackData & {reciter: Reciter; surah: Surah} =>
-                item.reciter !== null && item.surah !== null,
-            )
-            .map(item =>
-              createDownloadedTrack(
-                item.reciter,
-                item.surah,
-                item.download.filePath,
-                item.download.rewayatId,
-              ),
-            );
-
-          if (currentOperationRef.current === operationId) {
-            await TrackPlayer.add(remainingTracks);
-
-            if (currentOperationRef.current === operationId) {
-              const completeQueue = [firstTrack, ...remainingTracks];
-              const store = usePlayerStore.getState();
-              store.updateQueueState({
-                tracks: completeQueue,
-                total: completeQueue.length,
-              });
-            }
-          }
-        }
-
-        // Add to recently played
-        addRecentTrack(loadedReciter, surah, 0, 0, download.rewayatId);
-        queueContext.setCurrentReciter(loadedReciter);
-      } catch (error) {
-        console.error('Error playing track:', error);
-        currentOperationRef.current = null;
-      }
-    },
-    [downloadData, queueContext, addRecentTrack],
-  );
-
-  // Play all tracks
-  const handlePlayAll = useCallback(async () => {
-    if (downloadData.length === 0) return;
-
-    try {
-      const firstItem = downloadData.find(item => item.reciter && item.surah);
-      if (!firstItem?.reciter || !firstItem?.surah) return;
-
-      const operationId = `${Date.now()}-${firstItem.reciter.id}-play-all`;
-      currentOperationRef.current = operationId;
-
-      useDownloadStore.getState();
-
-      const firstTrack = createDownloadedTrack(
-        firstItem.reciter,
-        firstItem.surah,
-        firstItem.download.filePath,
-        firstItem.download.rewayatId,
-      );
-
-      try {
-        await TrackPlayer.reset();
-        currentOperationRef.current = operationId;
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
-
-        if (currentOperationRef.current === operationId) {
-          const store = usePlayerStore.getState();
-          store.updateQueueState({
-            tracks: [firstTrack],
-            currentIndex: 0,
-            total: 1,
-            loading: false,
-            endReached: false,
-          });
-        }
-      } catch (error) {
-        console.error('Error starting playback:', error);
-        currentOperationRef.current = null;
-        throw error;
-      }
-
-      // Create remaining tracks
-      const remainingItems = downloadData.slice(1);
-      if (remainingItems.length > 0) {
-        const remainingTracks = remainingItems
+        const allTracks = reorderedItems
           .filter(
             (
               item,
@@ -337,33 +204,56 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
             ),
           );
 
-        if (currentOperationRef.current === operationId) {
-          await TrackPlayer.add(remainingTracks);
+        if (allTracks.length === 0) return;
 
-          if (currentOperationRef.current === operationId) {
-            const completeQueue = [firstTrack, ...remainingTracks];
-            const store = usePlayerStore.getState();
-            store.updateQueueState({
-              tracks: completeQueue,
-              total: completeQueue.length,
-            });
-          }
-        }
+        await updateQueue(allTracks, 0);
+        startNewChain(loadedReciter, surah, 0, 0, download.rewayatId);
+      } catch (error) {
+        console.error('Error playing track:', error);
       }
+    },
+    [downloadData, startNewChain, updateQueue],
+  );
 
-      addRecentTrack(
-        firstItem.reciter,
-        firstItem.surah,
-        0,
-        0,
-        firstItem.download.rewayatId,
-      );
-      queueContext.setCurrentReciter(firstItem.reciter);
+  // Play all tracks
+  const handlePlayAll = useCallback(async () => {
+    if (downloadData.length === 0) return;
+
+    try {
+      const allTracks = downloadData
+        .filter(
+          (
+            item,
+          ): item is DownloadTrackData & {reciter: Reciter; surah: Surah} =>
+            item.reciter !== null && item.surah !== null,
+        )
+        .map(item =>
+          createDownloadedTrack(
+            item.reciter,
+            item.surah,
+            item.download.filePath,
+            item.download.rewayatId,
+          ),
+        );
+
+      if (allTracks.length === 0) return;
+
+      await updateQueue(allTracks, 0);
+
+      const firstItem = downloadData.find(item => item.reciter && item.surah);
+      if (firstItem?.reciter && firstItem?.surah) {
+        startNewChain(
+          firstItem.reciter,
+          firstItem.surah,
+          0,
+          0,
+          firstItem.download.rewayatId,
+        );
+      }
     } catch (error) {
       console.error('Error playing all tracks:', error);
-      currentOperationRef.current = null;
     }
-  }, [downloadData, queueContext, addRecentTrack]);
+  }, [downloadData, startNewChain, updateQueue]);
 
   // Shuffle all tracks
   const handleShuffle = useCallback(async () => {
@@ -377,93 +267,34 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 
       if (shuffledItems.length === 0) return;
 
-      const firstItem = shuffledItems[0];
-
-      const operationId = `${Date.now()}-${firstItem.reciter.id}-shuffle-all`;
-      currentOperationRef.current = operationId;
-
-      useDownloadStore.getState();
-
-      const firstTrack = createDownloadedTrack(
-        firstItem.reciter,
-        firstItem.surah,
-        firstItem.download.filePath,
-        firstItem.download.rewayatId,
-      );
-
       // Enable shuffle mode
-      if (!playerStore.settings.shuffle) {
-        playerStore.toggleShuffle();
+      if (!shuffleEnabled) {
+        toggleShuffle();
       }
 
-      try {
-        await TrackPlayer.reset();
-        currentOperationRef.current = operationId;
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
+      const allTracks = shuffledItems.map(item =>
+        createDownloadedTrack(
+          item.reciter,
+          item.surah,
+          item.download.filePath,
+          item.download.rewayatId,
+        ),
+      );
 
-        if (currentOperationRef.current === operationId) {
-          const store = usePlayerStore.getState();
-          store.updateQueueState({
-            tracks: [firstTrack],
-            currentIndex: 0,
-            total: 1,
-            loading: false,
-            endReached: false,
-          });
-        }
-      } catch (error) {
-        console.error('Error starting playback:', error);
-        currentOperationRef.current = null;
-        throw error;
-      }
+      await updateQueue(allTracks, 0);
 
-      // Create remaining tracks
-      const remainingItems = shuffledItems.slice(1);
-      if (remainingItems.length > 0) {
-        const remainingTracks = remainingItems
-          .filter(
-            (
-              item,
-            ): item is DownloadTrackData & {reciter: Reciter; surah: Surah} =>
-              item.reciter !== null && item.surah !== null,
-          )
-          .map(item =>
-            createDownloadedTrack(
-              item.reciter,
-              item.surah,
-              item.download.filePath,
-              item.download.rewayatId,
-            ),
-          );
-
-        if (currentOperationRef.current === operationId) {
-          await TrackPlayer.add(remainingTracks);
-
-          if (currentOperationRef.current === operationId) {
-            const completeQueue = [firstTrack, ...remainingTracks];
-            const store = usePlayerStore.getState();
-            store.updateQueueState({
-              tracks: completeQueue,
-              total: completeQueue.length,
-            });
-          }
-        }
-      }
-
-      addRecentTrack(
+      const firstItem = shuffledItems[0];
+      startNewChain(
         firstItem.reciter,
         firstItem.surah,
         0,
         0,
         firstItem.download.rewayatId,
       );
-      queueContext.setCurrentReciter(firstItem.reciter);
     } catch (error) {
       console.error('Error shuffling tracks:', error);
-      currentOperationRef.current = null;
     }
-  }, [downloadData, queueContext, addRecentTrack, playerStore]);
+  }, [downloadData, startNewChain, updateQueue, shuffleEnabled, toggleShuffle]);
 
   // Handle remove download
   const handleRemoveDownload = useCallback(
@@ -481,6 +312,80 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     [removeDownload],
   );
 
+  // Handle show options for a download
+  const handleShowOptions = useCallback(
+    (download: DownloadedSurah, itemReciter: Reciter, surah: Surah) => {
+      const track = createDownloadedTrack(
+        itemReciter,
+        surah,
+        download.filePath,
+        download.rewayatId,
+      );
+
+      SheetManager.show('download-options', {
+        payload: {
+          download,
+          surah,
+          reciterId: download.reciterId,
+          rewayatId: download.rewayatId,
+          onPlay: () => handleTrackPress(download, itemReciter, surah),
+          onAddToQueue: () => {
+            addToQueue([track]);
+          },
+          onRemoveDownload: () => handleRemoveDownload(download),
+        },
+      });
+    },
+    [handleTrackPress, addToQueue, handleRemoveDownload],
+  );
+
+  const handleRemoveAllDownloads = useCallback(() => {
+    SheetManager.show('collection-options', {
+      payload: {
+        title: reciter?.name || 'Downloads',
+        subtitle: `${reciterDownloads.length} ${
+          reciterDownloads.length === 1 ? 'surah' : 'surahs'
+        } downloaded`,
+        options: [
+          {
+            label: 'Remove All Downloads',
+            icon: 'trash-2',
+            destructive: true,
+            onPress: async () => {
+              for (const d of reciterDownloads) {
+                await removeDownload(
+                  d.reciterId,
+                  d.surahId,
+                  d.rewayatId || undefined,
+                );
+              }
+            },
+          },
+        ],
+      },
+    });
+  }, [reciterDownloads, reciter?.name, removeDownload]);
+
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleRemoveAllDownloads} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleRemoveAllDownloads, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: reciter?.name || 'Downloads',
+    scrollY,
+    hasContent: downloadData.length > 0 && !loading,
+    headerRight: downloadData.length > 0 ? renderHeaderRight : undefined,
+  });
+
   const ListHeaderComponent = useCallback(() => {
     return (
       <ReciterDownloadsHeader
@@ -492,6 +397,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
         } downloaded`}
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
+        onOptionsPress={USE_GLASS ? undefined : handleRemoveAllDownloads}
         theme={theme}
       />
     );
@@ -501,6 +407,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
     downloadData.length,
     handlePlayAll,
     handleShuffle,
+    handleRemoveAllDownloads,
     theme,
   ]);
 
@@ -511,34 +418,17 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
       return null;
     }
 
-    const renderRightActions = () => (
-      <View style={styles.rightAction}>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleRemoveDownload(download)}>
-          <Icon
-            name="trash-2"
-            type="feather"
-            size={moderateScale(20)}
-            color="white"
-          />
-          <Text style={styles.deleteText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
     return (
-      <Swipeable renderRightActions={renderRightActions}>
-        <View style={styles.listItem}>
-          <SurahItem
-            item={surah}
-            onPress={() => handleTrackPress(download, itemReciter, surah)}
-            reciterId={download.reciterId}
-            rewayatId={download.rewayatId}
-            rewayatName={rewayatName}
-          />
-        </View>
-      </Swipeable>
+      <View style={styles.listItem}>
+        <SurahItem
+          item={surah}
+          onPress={() => handleTrackPress(download, itemReciter, surah)}
+          reciterId={download.reciterId}
+          rewayatId={download.rewayatId}
+          rewayatName={rewayatName}
+          onOptionsPress={() => handleShowOptions(download, itemReciter, surah)}
+        />
+      </View>
     );
   };
 
@@ -557,17 +447,29 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <RNAnimated.FlatList
         data={downloadData}
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
+        contentInsetAdjustmentBehavior="automatic"
         ListEmptyComponent={
           <Text style={styles.emptyText}>No downloads for this reciter</Text>
         }
-        bounces={false}
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
+      {!USE_GLASS && (
+        <CollectionStickyHeader
+          title={reciter?.name || 'Downloads'}
+          scrollY={scrollY}
+        />
+      )}
     </View>
   );
 };

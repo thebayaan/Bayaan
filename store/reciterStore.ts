@@ -3,47 +3,70 @@ import {persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Reciter} from '@/data/reciterData';
 import {RECITERS} from '@/data/reciterData';
+import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 
 // Helper function to get the Hafs A'n Assem rewayat from a reciter
 function getHafsRewayat(reciter: Reciter) {
-  return reciter.rewayat.find(r => r.name === "Hafs A'n Assem");
+  return reciter.rewayat.find(r => r.name === HAFS_REWAYAT_NAME);
 }
 
-// Default reciter - Mishary Alafasi with Hafs A'n Assem recitation
-const misharyAlafasi = RECITERS.find(
-  reciter =>
-    reciter.name === 'Mishary Alafasi' &&
-    reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
-);
+// Lazy-computed default reciter — avoids .find() scans at module load time
+let _defaultReciter: Reciter | null = null;
+function getDefaultReciter(): Reciter {
+  if (_defaultReciter) return _defaultReciter;
 
-const anyHafsReciter = RECITERS.find(reciter =>
-  reciter.rewayat.some(r => r.name === "Hafs A'n Assem"),
-);
-
-const DEFAULT_RECITER = misharyAlafasi || anyHafsReciter || RECITERS[0];
-
-// Ensure the default rewayat is Hafs A'n Assem if available
-if (DEFAULT_RECITER) {
-  const hafsRewayat = getHafsRewayat(DEFAULT_RECITER);
-  if (hafsRewayat) {
-    DEFAULT_RECITER.rewayat = [
-      hafsRewayat,
-      ...DEFAULT_RECITER.rewayat.filter(r => r.id !== hafsRewayat.id),
-    ];
+  // RECITERS is empty on first launch before API data loads — return placeholder
+  if (RECITERS.length === 0) {
+    return {id: '', name: '', date: null, image_url: null, rewayat: []};
   }
+
+  const misharyAlafasi = RECITERS.find(
+    reciter =>
+      reciter.name === 'Mishary Alafasi' &&
+      reciter.rewayat.some(r => r.name === HAFS_REWAYAT_NAME),
+  );
+
+  const anyHafsReciter = RECITERS.find(reciter =>
+    reciter.rewayat.some(r => r.name === HAFS_REWAYAT_NAME),
+  );
+
+  const reciter = misharyAlafasi || anyHafsReciter || RECITERS[0];
+
+  // Ensure the default rewayat is Hafs if available
+  const hafsRewayat = getHafsRewayat(reciter);
+  if (hafsRewayat) {
+    _defaultReciter = {
+      ...reciter,
+      rewayat: [
+        hafsRewayat,
+        ...reciter.rewayat.filter(r => r.id !== hafsRewayat.id),
+      ],
+    };
+  } else {
+    _defaultReciter = reciter;
+  }
+
+  return _defaultReciter;
 }
 
 interface ReciterState {
   defaultReciter: Reciter;
+  isInitialized: boolean;
   setDefaultReciter: (reciter: Reciter) => void;
+  refreshDefaultReciter: () => void;
 }
 
 export const useReciterStore = create<ReciterState>()(
   persist(
     set => ({
-      defaultReciter: DEFAULT_RECITER,
+      defaultReciter: getDefaultReciter(),
+      isInitialized: false,
+      refreshDefaultReciter: () => {
+        _defaultReciter = null;
+        set({defaultReciter: getDefaultReciter()});
+      },
       setDefaultReciter: reciter => {
-        // When setting a new default reciter, ensure Hafs A'n Assem is the first rewayat if available
+        // When setting a new default reciter, ensure Hafs is the first rewayat if available
         const hafsRewayat = getHafsRewayat(reciter);
         if (hafsRewayat) {
           reciter = {
@@ -59,6 +82,7 @@ export const useReciterStore = create<ReciterState>()(
     }),
     {
       name: 'reciter-storage',
+      partialize: state => ({defaultReciter: state.defaultReciter}),
       storage: {
         getItem: async name => {
           const value = await AsyncStorage.getItem(name);

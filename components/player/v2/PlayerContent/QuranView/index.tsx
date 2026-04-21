@@ -1,73 +1,88 @@
 import React, {useCallback, useRef, useEffect, useState} from 'react';
-import {View, Text, Platform, StyleSheet} from 'react-native';
+import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
-import {Surah, QuranData, Verse} from '@/types/quran';
+import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
+import {Surah} from '@/types/quran';
 import {VerseItem} from './VerseItem';
+import BasmalaHeader from './BasmalaHeader';
+import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
+import {FlashList, type FlashListRef} from '@shopify/flash-list';
+import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
+import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
+import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {useTimestampStore} from '@/store/timestampStore';
 import {
-  LegendList,
-  LegendListRef,
-  LegendListRenderItemProps,
-} from '@legendapp/list';
+  enhancedVersesBySurah,
+  rebuildEnhancedVerses,
+  type EnhancedVerse,
+} from '@/utils/enhancedVerseData';
+import {getTranslationName} from '@/utils/translationLookup';
+import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 
-// Import data with type safety - move outside component to load only once
-const quranData = require('@/data/quran.json') as QuranData;
 const surahData = require('@/data/surahData.json') as Surah[];
 
-// Define Saheeh International translation data entry
-interface SaheehEntry {
-  t: string;
-  f?: Record<string, string>;
-}
-// Load Saheeh translation and transliteration data
-const saheehDataCache =
-  require('@/data/SaheehInternational.translation-with-footnote-tags.json') as Record<
-    string,
-    SaheehEntry
-  >;
-const transliterationDataCache =
-  require('@/data/transliteration.json') as TransliterationData;
-
-// Define transliteration data type
-interface TransliterationVerse {
-  t: string; // Transliteration text
+// Module-scope header — stable component identity prevents FlashList unmount/remount
+interface QuranListHeaderProps {
+  surahNumber: number;
+  showBismillah: boolean;
+  width: number;
+  textColor: string;
+  nameColor: string;
+  showTajweed: boolean;
+  fontMgr: SkTypefaceFontProvider | null;
+  dkFontFamily: string;
+  indexedTajweedData: IndexedTajweedData | null;
 }
 
-interface TransliterationData {
-  [verseKey: string]: TransliterationVerse;
-}
-
-// Enhanced verse type including translations and transliterations
-interface EnhancedVerse extends Verse {
-  translation?: string;
-  transliteration?: string;
-}
-
-// Type for processed tajweed data
-interface ProcessedTajweedWord {
-  word_index: number;
-  location: string;
-  segments: {
-    text: string;
-    rule: string | null;
-  }[];
-}
-
-// Verse type including tajweed data
-type VerseWithTajweed = EnhancedVerse & {
-  processedTajweedAyahData?: ProcessedTajweedWord[];
-};
+const QuranListHeader = React.memo<QuranListHeaderProps>(
+  ({
+    surahNumber,
+    showBismillah,
+    width,
+    textColor,
+    nameColor,
+    showTajweed,
+    fontMgr,
+    dkFontFamily,
+    indexedTajweedData,
+  }) => (
+    <>
+      <SurahDivider
+        width={width}
+        surahNumber={surahNumber}
+        textColor={textColor}
+        nameColor={nameColor}
+      />
+      <BasmalaHeader
+        visible={showBismillah}
+        width={width}
+        textColor={nameColor}
+        showTajweed={showTajweed}
+        fontMgr={fontMgr}
+        dkFontFamily={dkFontFamily}
+        indexedTajweedData={indexedTajweedData}
+      />
+    </>
+  ),
+);
 
 interface QuranViewProps {
   currentSurah: number;
   onVersePress: (verseKey: string) => void;
   showTranslation?: boolean;
   showTransliteration?: boolean;
-  showTajweed?: boolean;
   transliterationFontSize: number;
   translationFontSize: number;
   arabicFontSize: number;
+  contentPaddingTop?: number;
+  contentPaddingBottom?: number;
 }
 
 export const QuranView: React.FC<QuranViewProps> = ({
@@ -78,121 +93,160 @@ export const QuranView: React.FC<QuranViewProps> = ({
   transliterationFontSize,
   translationFontSize,
   arabicFontSize,
+  contentPaddingTop,
+  contentPaddingBottom,
 }) => {
   const {theme} = useTheme();
-  const listRef = useRef<LegendListRef>(null);
+  const readingColors = useReadingThemeColors();
+  const {width: screenWidth} = useWindowDimensions();
+  const contentWidth = screenWidth - 2 * moderateScale(20);
+  const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
+  const renderScrollComponent = useBottomSheetScrollableCreator();
+  const trackRewayah = useCurrentTrackRewayah();
   const surah = surahData.find(s => s.id === currentSurah);
-  const [transliterationMap] = useState(transliterationDataCache || {});
-  const [isTransliterationLoaded] = useState(!!transliterationDataCache);
 
-  // Use the tajweed store with indexed data for O(1) lookups
-  const {indexedTajweedData} = useTajweedStore();
+  // Ayah timestamp tracking
+  const currentVerseKey = useTimestampStore(s => s.currentAyah?.verseKey);
+  const isLocked = useTimestampStore(s => s.isLocked);
+  const setIsLocked = useTimestampStore(s => s.setIsLocked);
 
-  // Memoize the getVersesForSurah function to avoid useMemo dependency issues
-  const getVersesForSurahMemo = useCallback(() => {
-    if (!quranData) {
-      console.error('Quran data is not properly loaded');
-      return [];
-    }
+  // Granular mushaf settings selectors (avoid full-store subscription)
+  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const selectedTranslationId = useMushafSettingsStore(
+    s => s.selectedTranslationId,
+  );
+  const showWBW = useMushafSettingsStore(s => s.showWBW);
+  const wbwShowTranslation = useMushafSettingsStore(s => s.wbwShowTranslation);
+  const wbwShowTransliteration = useMushafSettingsStore(
+    s => s.wbwShowTransliteration,
+  );
+  const translationName = getTranslationName(selectedTranslationId);
 
-    try {
-      const verses = Object.values(quranData)
-        .filter(verse => verse.surah_number === currentSurah)
-        .sort((a, b) => a.ayah_number - b.ayah_number);
+  // Counter to force re-render when enhanced verses are rebuilt (async)
+  const [, setRebuildCounter] = useState(0);
 
-      // Map verses and attach translation/transliteration if loaded
-      return verses.map(verse => {
-        const verseKey = `${verse.surah_number}:${verse.ayah_number}`;
-        // Always use Saheeh translation (with footnote tags)
-        let translationText = '';
-        if (saheehDataCache && saheehDataCache[verseKey]?.t) {
-          translationText = saheehDataCache[verseKey].t;
-        }
-        let transliterationText = '';
+  // DK Skia rendering: derive font family and fontMgr from mushafRenderer
+  const isDK =
+    (mushafRenderer === 'dk_v1' ||
+      mushafRenderer === 'dk_v2' ||
+      mushafRenderer === 'dk_indopak') &&
+    mushafPreloadService.initialized &&
+    digitalKhattDataService.initialized;
+  const dkFontFamily =
+    mushafRenderer === 'dk_indopak'
+      ? 'DigitalKhattIndoPak'
+      : mushafRenderer === 'dk_v1'
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
+  const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
 
-        // Add transliteration if data is loaded
-        if (isTransliterationLoaded && transliterationMap[verseKey]) {
-          transliterationText = transliterationMap[verseKey].t;
-        }
+  // Tajweed data for DK Skia rendering (verse-level indexed)
+  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
-        // --- Attach pre-processed tajweed data directly ---
-        const processedTajweedAyahData = indexedTajweedData
-          ? indexedTajweedData[verseKey]
-          : undefined;
+  // Only need the loader — VerseItem subscribes to its own annotation data
+  const loadAnnotationsForSurah = useVerseAnnotationsStore(
+    s => s.loadAnnotationsForSurah,
+  );
 
-        return {
-          ...verse,
-          translation: translationText,
-          transliteration: transliterationText,
-          processedTajweedAyahData,
-        };
-      });
-    } catch (error) {
-      console.error('Error processing verses:', error);
-      return [];
-    }
-  }, [
-    currentSurah,
-    transliterationMap,
-    isTransliterationLoaded,
-    indexedTajweedData,
-  ]);
+  // Load annotations when surah changes
+  useEffect(() => {
+    loadAnnotationsForSurah(currentSurah);
+  }, [currentSurah, loadAnnotationsForSurah]);
 
-  // Get verses data
-  const verses = getVersesForSurahMemo();
+  // Rebuild enhanced verse data when translation changes
+  useEffect(() => {
+    rebuildEnhancedVerses(selectedTranslationId).then(rebuilt => {
+      if (rebuilt) setRebuildCounter(c => c + 1);
+    });
+  }, [selectedTranslationId]);
+
+  // Direct lookup from module-scope pre-built arrays — zero computation per surah change
+  const verses = enhancedVersesBySurah[currentSurah] ?? [];
 
   // Reset scroll position when currentSurah changes
   useEffect(() => {
     if (listRef.current) {
       listRef.current.scrollToOffset({offset: 0, animated: false});
     }
-  }, [currentSurah]);
+    setIsLocked(true);
+  }, [currentSurah, setIsLocked]);
 
-  // Render the bismillah header (to be used as list header)
-  const renderHeader = useCallback(() => {
-    if (!surah?.bismillah_pre) return null;
-    return (
-      <View style={styles.bismillahContainer}>
-        <Text style={[styles.bismillah, {color: theme.colors.text}]}>﷽</Text>
-      </View>
-    );
-  }, [surah?.bismillah_pre, theme.colors.text]);
+  // Auto-scroll to active ayah (only when locked)
+  useEffect(() => {
+    if (!currentVerseKey || !isLocked || !listRef.current) return;
 
-  // Render the verse items (optimized with LegendList)
+    const index = verses.findIndex(v => v.verse_key === currentVerseKey);
+    if (index === -1) return;
+
+    try {
+      listRef.current.scrollToIndex({index, animated: true, viewPosition: 0.3});
+    } catch {
+      // Index may be out of range during recycling — ignore
+    }
+  }, [currentVerseKey, verses, isLocked]);
+
+  // Render verse items — annotations handled inside VerseItem via per-key selectors
   const renderItem = useCallback(
-    ({item}: LegendListRenderItemProps<VerseWithTajweed>) => {
-      return (
-        <VerseItem
-          verse={item}
-          onPress={() => onVersePress(item.verse_key)}
-          textColor={theme.colors.text}
-          borderColor={theme.colors.border}
-          showTranslation={showTranslation}
-          showTransliteration={showTransliteration}
-          transliterationFontSize={transliterationFontSize}
-          translationFontSize={translationFontSize}
-          arabicFontSize={arabicFontSize}
-          processedTajweedAyahData={item.processedTajweedAyahData}
-        />
-      );
-    },
+    ({item}: {item: EnhancedVerse}) => (
+      <VerseItem
+        verse={item}
+        onVersePress={onVersePress}
+        textColor={readingColors.text}
+        borderColor={theme.colors.border}
+        showTranslation={showTranslation}
+        showTransliteration={showTransliteration}
+        showTajweed={showTajweed}
+        arabicFontFamily={'Uthmani'}
+        transliterationFontSize={transliterationFontSize}
+        translationFontSize={translationFontSize}
+        arabicFontSize={arabicFontSize}
+        fontMgr={fontMgr}
+        dkFontFamily={dkFontFamily}
+        indexedTajweedData={indexedTajweedData}
+        isActive={isLocked && item.verse_key === currentVerseKey}
+        translationName={translationName}
+        translationId={selectedTranslationId}
+        showWBW={showWBW}
+        wbwShowTranslation={wbwShowTranslation}
+        wbwShowTransliteration={wbwShowTransliteration}
+        rewayah={trackRewayah}
+      />
+    ),
     [
       onVersePress,
-      theme.colors.text,
+      readingColors.text,
       theme.colors.border,
       showTranslation,
       showTransliteration,
+      showTajweed,
       transliterationFontSize,
       translationFontSize,
       arabicFontSize,
+      fontMgr,
+      dkFontFamily,
+      indexedTajweedData,
+      currentVerseKey,
+      isLocked,
+      translationName,
+      selectedTranslationId,
+      showWBW,
+      wbwShowTranslation,
+      wbwShowTransliteration,
+      trackRewayah,
     ],
   );
 
   // Key extractor for items
-  const keyExtractor = useCallback(
-    (item: VerseWithTajweed) => item.verse_key,
-    [],
+  const keyExtractor = useCallback((item: EnhancedVerse) => item.verse_key, []);
+
+  const effectivePaddingTop = Math.max(
+    0,
+    (contentPaddingTop || 0) - computeDividerTotalHeight(contentWidth),
   );
+
+  const effectivePaddingBottom =
+    (contentPaddingBottom || 0) + verticalScale(60);
 
   if (!surah || !verses.length) {
     return null;
@@ -200,22 +254,59 @@ export const QuranView: React.FC<QuranViewProps> = ({
 
   return (
     <View style={styles.container}>
-      <LegendList
+      <FlashList
         ref={listRef}
         data={verses}
         renderItem={renderItem}
+        extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${showTranslation}-${showTransliteration}`}
         keyExtractor={keyExtractor}
-        ListHeaderComponent={renderHeader}
-        style={styles.list}
-        contentContainerStyle={styles.scrollContent}
+        ListHeaderComponent={
+          <QuranListHeader
+            surahNumber={currentSurah}
+            showBismillah={!!surah?.bismillah_pre}
+            width={contentWidth}
+            textColor={readingColors.textSecondary}
+            nameColor={readingColors.text}
+            showTajweed={showTajweed}
+            fontMgr={fontMgr}
+            dkFontFamily={dkFontFamily}
+            indexedTajweedData={indexedTajweedData}
+          />
+        }
+        contentContainerStyle={{
+          paddingTop: effectivePaddingTop,
+          paddingBottom: effectivePaddingBottom,
+        }}
+        renderScrollComponent={renderScrollComponent}
         showsVerticalScrollIndicator={false}
         bounces={true}
         overScrollMode="never"
-        nestedScrollEnabled={Platform.OS === 'android'}
-        disableScrollViewPanResponder={Platform.OS === 'android'}
-        recycleItems={true} // Enable item recycling for better performance
-        estimatedItemSize={150} // Estimate average item height for better initial rendering
+        drawDistance={1500}
+        onScrollBeginDrag={() => {
+          if (currentVerseKey) {
+            setIsLocked(false);
+          }
+        }}
       />
+      {!isLocked && currentVerseKey && (
+        <Pressable
+          style={[styles.recenterButton, {backgroundColor: theme.colors.card}]}
+          onPress={() => {
+            setIsLocked(true);
+            const index = verses.findIndex(
+              v => v.verse_key === currentVerseKey,
+            );
+            if (index !== -1 && listRef.current) {
+              listRef.current.scrollToIndex({
+                index,
+                animated: true,
+                viewPosition: 0.3,
+              });
+            }
+          }}>
+          <Ionicons name="locate-outline" size={20} color={theme.colors.text} />
+        </Pressable>
+      )}
     </View>
   );
 };
@@ -225,23 +316,21 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
-  list: {
-    flex: 1,
-    borderRadius: moderateScale(15),
-  },
-  scrollContent: {
-    paddingBottom: verticalScale(20),
-  },
-  bismillahContainer: {
-    width: '100%',
-    paddingVertical: verticalScale(20),
+  recenterButton: {
+    position: 'absolute',
+    bottom: verticalScale(16),
+    right: moderateScale(16),
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: moderateScale(20),
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bismillah: {
-    fontSize: moderateScale(30),
-    fontFamily: 'QPC',
-    textAlign: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

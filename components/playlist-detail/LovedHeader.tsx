@@ -1,135 +1,45 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
-import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
-import {PlayIcon, ShuffleIcon, HeartIcon, CheckIcon} from '@/components/Icons';
-import {Ionicons} from '@expo/vector-icons';
+import {PlayIcon, ShuffleIcon, HeartIcon} from '@/components/Icons';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
-
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface LovedHeaderProps {
   title: string;
   subtitle: string;
-  backgroundColor: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
-  onDownloadPress: () => void;
+  onOptionsPress?: () => void;
   theme: Theme;
-  allDownloaded: boolean;
-  hasNoTracks: boolean;
 }
 
 export const LovedHeader: React.FC<LovedHeaderProps> = ({
   title,
   subtitle,
-  backgroundColor,
   onPlayPress,
   onShufflePress,
-  onDownloadPress,
+  onOptionsPress,
   theme,
-  allDownloaded,
-  hasNoTracks,
 }) => {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const styles = createStyles(theme, insets);
-
-  // Animation values for button press feedback
-  const downloadScale = useSharedValue(1);
-  const shuffleScale = useSharedValue(1);
-  const playScale = useSharedValue(1);
-
-  const downloadAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: downloadScale.value}],
-  }));
-
-  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: shuffleScale.value}],
-  }));
-
-  const playAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: playScale.value}],
-  }));
-
-  const handlePressIn = (button: 'download' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'download'
-        ? downloadScale
-        : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
-    scale.value = withSpring(0.92, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = (button: 'download' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'download'
-        ? downloadScale
-        : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
 
   return (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={[backgroundColor, theme.colors.background]}
-        style={styles.gradientContainer}>
-        {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color="white"
-          />
-        </TouchableOpacity>
-
+      <View style={styles.contentArea}>
         {/* Header Content */}
         <View style={styles.contentContainer}>
           {/* Hero Icon Container */}
-          <View
-            style={[
-              styles.heroIconContainer,
-              {
-                backgroundColor: Color(backgroundColor).alpha(0.2).toString(),
-                shadowColor: backgroundColor,
-              },
-            ]}>
-            <View
-              style={[
-                styles.heroIconInner,
-                {
-                  backgroundColor: Color(backgroundColor)
-                    .alpha(0.15)
-                    .toString(),
-                },
-              ]}>
+          <View style={styles.heroIconContainer}>
+            <View style={styles.heroIconInner}>
               <View style={{marginTop: moderateScale(6)}}>
                 <HeartIcon
-                  color="white"
+                  color={theme.colors.text}
                   size={moderateScale(30)}
                   filled={true}
                 />
@@ -141,74 +51,32 @@ export const LovedHeader: React.FC<LovedHeaderProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Action Buttons */}
-      <View style={styles.contentWrapper}>
-        <View style={styles.actionButtons}>
-          {/* Download button on the left */}
-          <AnimatedTouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              styles.downloadButton,
-              downloadAnimatedStyle,
-              hasNoTracks && styles.disabledButton,
-            ]}
-            onPress={hasNoTracks ? undefined : onDownloadPress}
-            onPressIn={
-              hasNoTracks ? undefined : () => handlePressIn('download')
-            }
-            onPressOut={
-              hasNoTracks ? undefined : () => handlePressOut('download')
-            }
-            disabled={hasNoTracks}>
-            {allDownloaded && !hasNoTracks ? (
-              <CheckIcon
-                color={
-                  hasNoTracks ? theme.colors.textSecondary : theme.colors.text
-                }
-                size={moderateScale(20)}
-              />
-            ) : (
-              <Ionicons
-                name="arrow-down"
-                size={moderateScale(20)}
-                color={
-                  hasNoTracks ? theme.colors.textSecondary : theme.colors.text
-                }
-              />
-            )}
-          </AnimatedTouchableOpacity>
-
-          {/* Right side buttons */}
-          <View style={styles.rightAlignedButtons}>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.circleButton, shuffleAnimatedStyle]}
-              onPress={onShufflePress}
-              onPressIn={() => handlePressIn('shuffle')}
-              onPressOut={() => handlePressOut('shuffle')}>
-              <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-            </AnimatedTouchableOpacity>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.circleButton,
-                styles.playButton,
-                playAnimatedStyle,
-              ]}
-              onPress={onPlayPress}
-              onPressIn={() => handlePressIn('play')}
-              onPressOut={() => handlePressOut('play')}>
-              <View style={styles.playIconContainer}>
-                <PlayIcon
-                  color={theme.colors.background}
-                  size={moderateScale(16)}
-                />
-              </View>
-            </AnimatedTouchableOpacity>
+      <View style={styles.actionButtons}>
+        {!USE_GLASS && onOptionsPress && (
+          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+            <Feather
+              name="more-horizontal"
+              size={moderateScale(20)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
+        <Pressable
+          style={[styles.circleButton, styles.playButton]}
+          onPress={onPlayPress}>
+          <View style={styles.playIconContainer}>
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(16)}
+            />
           </View>
-        </View>
+        </Pressable>
+        <Pressable style={styles.circleButton} onPress={onShufflePress}>
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+        </Pressable>
       </View>
     </View>
   );
@@ -220,19 +88,15 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(20),
-      paddingBottom: moderateScale(30),
+      paddingTop: USE_GLASS
+        ? moderateScale(16)
+        : insets.top + moderateScale(40),
+      paddingBottom: moderateScale(10),
       overflow: 'hidden',
-    },
-    backButton: {
-      position: 'absolute',
-      top: insets.top + moderateScale(10),
-      left: moderateScale(15),
-      zIndex: 10,
-      padding: moderateScale(8),
+      backgroundColor: theme.colors.background,
     },
     contentContainer: {
       alignItems: 'center',
@@ -245,13 +109,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: moderateScale(12),
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 4,
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
     },
     heroIconInner: {
       width: moderateScale(56),
@@ -259,6 +117,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       borderRadius: moderateScale(28),
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
     title: {
       fontSize: moderateScale(17),
@@ -275,29 +134,14 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       textAlign: 'center',
       marginBottom: moderateScale(8),
     },
-    contentWrapper: {
-      paddingHorizontal: moderateScale(16),
-    },
     actionButtons: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(5),
-    },
-    downloadButton: {
-      width: moderateScale(40),
-      height: moderateScale(40),
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
-      padding: moderateScale(8),
-    },
-    rightAlignedButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(8),
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      gap: moderateScale(16),
     },
     circleButton: {
       width: moderateScale(42),
@@ -315,8 +159,5 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
     },
     playIconContainer: {
       paddingLeft: moderateScale(4),
-    },
-    disabledButton: {
-      opacity: 0.4,
     },
   });

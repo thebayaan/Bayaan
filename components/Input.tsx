@@ -9,7 +9,7 @@ import {
   TextStyle,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import Color from 'color';
 
@@ -17,7 +17,6 @@ interface InputProps extends TextInputProps {
   label?: string;
   showIcon?: boolean;
   iconName?: string;
-  iconType?: string;
   error?: string;
   helperText?: string;
   showCharacterCount?: boolean;
@@ -30,7 +29,6 @@ export const Input: React.FC<InputProps> = ({
   label,
   showIcon = false,
   iconName = 'edit-3',
-  iconType = 'feather',
   error,
   helperText,
   showCharacterCount = false,
@@ -49,9 +47,8 @@ export const Input: React.FC<InputProps> = ({
       {label && (
         <View style={styles.labelRow}>
           {showIcon && (
-            <Icon
-              name={iconName}
-              type={iconType}
+            <Feather
+              name={iconName as any}
               size={moderateScale(16)}
               color={theme.colors.textSecondary}
             />
@@ -74,10 +71,10 @@ export const Input: React.FC<InputProps> = ({
         style={[
           styles.inputContainer,
           {
-            backgroundColor: theme.colors.card,
+            backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
             borderColor: error
               ? '#EF4444'
-              : Color(theme.colors.border).alpha(0.3).toString(),
+              : Color(theme.colors.text).alpha(0.06).toString(),
           },
           inputContainerStyle,
         ]}>
@@ -135,31 +132,31 @@ export const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: moderateScale(24),
+    marginBottom: moderateScale(16),
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: moderateScale(12),
+    marginBottom: moderateScale(8),
   },
   label: {
-    fontSize: moderateScale(15),
+    fontSize: moderateScale(13.5),
     fontFamily: 'Manrope-SemiBold',
     letterSpacing: 0.2,
   },
   inputContainer: {
-    borderWidth: 1.5,
-    borderRadius: moderateScale(16),
+    borderWidth: 1,
+    borderRadius: moderateScale(12),
     overflow: 'hidden',
   },
   input: {
-    paddingHorizontal: moderateScale(20),
-    paddingVertical: moderateScale(16),
-    fontSize: moderateScale(16),
+    paddingHorizontal: moderateScale(16),
+    paddingVertical: moderateScale(10),
+    fontSize: moderateScale(14),
     fontFamily: 'Manrope-Medium',
   },
   footer: {
-    marginTop: moderateScale(8),
+    marginTop: moderateScale(6),
     paddingHorizontal: moderateScale(4),
     flexDirection: 'row',
     justifyContent: 'space-between',

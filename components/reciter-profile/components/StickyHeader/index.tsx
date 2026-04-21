@@ -1,11 +1,9 @@
 import React from 'react';
-import {Animated, StyleSheet, Text, Platform, View} from 'react-native';
+import {Animated, StyleSheet, Text, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
 import {useTheme} from '@/hooks/useTheme';
-import {BlurView} from '@react-native-community/blur';
-import {LinearGradient} from 'expo-linear-gradient';
 import {StickyHeaderProps} from '@/components/reciter-profile/types';
 
 /**
@@ -20,7 +18,6 @@ export const StickyHeader: React.FC<StickyHeaderProps> = ({
   reciterName,
   headerOpacity,
   insets,
-  dominantColors,
   isDarkMode,
 }) => {
   const {theme} = useTheme();
@@ -35,31 +32,15 @@ export const StickyHeader: React.FC<StickyHeaderProps> = ({
           paddingTop: insets.top,
         },
       ]}>
-      {Platform.OS === 'ios' ? (
-        <BlurView
-          blurAmount={100}
-          blurType={isDarkMode ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-      ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: isDarkMode
-                ? 'rgba(0,0,0,0.75)'
-                : 'rgba(255,255,255,0.85)',
-            },
-          ]}
-        />
-      )}
-      <LinearGradient
-        colors={[dominantColors.primary, dominantColors.secondary]}
-        style={[StyleSheet.absoluteFill, styles.headerGradient]}
-        start={{x: 0, y: 0}}
-        end={{x: 0, y: 1}}
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: theme.colors.background,
+          },
+        ]}
       />
-      <Text style={[styles.stickyHeaderTitle, {color: 'white'}]}>
+      <Text style={[styles.stickyHeaderTitle, {color: theme.colors.text}]}>
         {reciterName}
       </Text>
     </Animated.View>
@@ -80,9 +61,6 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateScale(15),
       paddingHorizontal: moderateScale(20),
       overflow: 'hidden',
-    },
-    headerGradient: {
-      opacity: 0.9,
     },
     stickyHeaderTitle: {
       fontSize: moderateScale(18),

@@ -2,7 +2,7 @@ import React, {forwardRef} from 'react';
 import {
   View,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   Text,
   ViewStyle,
   TextStyle,
@@ -11,7 +11,7 @@ import {
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 
 export interface SearchInputProps extends TextInputProps {
@@ -65,6 +65,7 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
       style,
       keyboardAppearance,
       autoCorrect = false,
+      autoFocus = false,
       autoCapitalize = 'none',
       ...props
     },
@@ -85,9 +86,8 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             style,
           ]}>
           <View style={styles.searchIconContainer}>
-            <Icon
+            <Feather
               name="search"
-              type="feather"
               size={iconSize}
               color={iconColor}
               style={{opacity: iconOpacity}}
@@ -115,13 +115,19 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
             autoCorrect={autoCorrect}
             autoCapitalize={autoCapitalize}
             {...props}
-            autoFocus={false}
+            autoFocus={autoFocus}
           />
+          {value.length > 0 && (
+            <Pressable
+              onPress={() => onChangeText('')}
+              style={styles.clearButton}>
+              <Feather name="x" size={moderateScale(16)} color={iconColor} />
+            </Pressable>
+          )}
         </View>
         {showCancelButton && onCancel && (
-          <TouchableOpacity
+          <Pressable
             onPress={onCancel}
-            activeOpacity={0.7}
             style={[styles.cancelButton, cancelButtonStyle]}>
             <Text
               style={[
@@ -131,20 +137,12 @@ export const SearchInput = forwardRef<TextInput, SearchInputProps>(
               ]}>
               {cancelButtonText}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
         {onClose && (
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            activeOpacity={0.7}>
-            <Icon
-              name="x"
-              type="feather"
-              size={moderateScale(24)}
-              color={iconColor}
-            />
-          </TouchableOpacity>
+          <Pressable onPress={onClose} style={styles.closeButton}>
+            <Feather name="x" size={moderateScale(24)} color={iconColor} />
+          </Pressable>
         )}
       </View>
     );
@@ -189,6 +187,11 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(14),
       fontFamily: theme.fonts.medium,
       opacity: 0.8,
+    },
+    clearButton: {
+      paddingLeft: moderateScale(8),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     closeButton: {
       marginLeft: moderateScale(12),

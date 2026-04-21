@@ -1,5 +1,5 @@
 import React, {useState, useCallback, useEffect, useMemo} from 'react';
-import {View, Text, TouchableOpacity, FlatList} from 'react-native';
+import {View, Text, Pressable, FlatList} from 'react-native';
 import {useRouter} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {
@@ -7,7 +7,7 @@ import {
   moderateScale,
   verticalScale,
 } from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import SearchBar from '@/components/SearchBar';
 import {RECITERS, Reciter} from '@/data/reciterData';
 import {ReciterItem} from '@/components/ReciterItem';
@@ -15,9 +15,8 @@ import {Theme} from '@/utils/themeUtils';
 import {getSurahById} from '@/services/dataService';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {createTracksForReciter} from '@/utils/track';
-import {QueueContext} from '@/services/queue/QueueContext';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 
 interface ReciterBrowseProps {
@@ -33,9 +32,8 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
   const {isFavoriteReciter} = useFavoriteReciters();
   const insets = useSafeAreaInsets();
   const [_surahName, setSurahName] = useState<string>('');
-  const {updateQueue, play} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
-  const {addRecentTrack} = useRecentlyPlayedStore();
+  const {updateQueue, play} = usePlayerActions();
+  const {startNewChain} = useRecentlyPlayedStore();
 
   const filteredReciters = useMemo(() => {
     let filtered = RECITERS;
@@ -129,22 +127,17 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
           rewayatId,
         );
 
-        // Update queue and start playing
+        startNewChain(reciter, surah, 0, 0, rewayatId);
+
         await updateQueue(tracks, 0);
         await play();
-
-        // Add to recently played list with the rewayatId
-        await addRecentTrack(reciter, surah, 0, 0, rewayatId);
-
-        // Set current reciter for batch loading
-        queueContext.setCurrentReciter(reciter);
 
         router.back();
       } catch (error) {
         console.error('Error playing surah:', error);
       }
     },
-    [surahId, updateQueue, play, queueContext, router, addRecentTrack],
+    [surahId, updateQueue, play, router, startNewChain],
   );
 
   return (
@@ -157,17 +150,15 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         },
       ]}>
       <View style={createStyles(theme).header}>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        <Pressable
           onPress={() => router.back()}
           style={createStyles(theme).backButton}>
-          <Icon
+          <Feather
             name="arrow-left"
-            type="feather"
             size={moderateScale(24)}
             color={theme.colors.text}
           />
-        </TouchableOpacity>
+        </Pressable>
         <Text
           style={[createStyles(theme).headerTitle, {color: theme.colors.text}]}>
           Browse Reciters
@@ -185,8 +176,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
         />
       </View>
       <View style={createStyles(theme).toggleContainer}>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        <Pressable
           style={[
             createStyles(theme).toggleButton,
             activeView === 'all' && createStyles(theme).activeToggleButton,
@@ -200,9 +190,8 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
             ]}>
             All Reciters
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          activeOpacity={0.99}
+        </Pressable>
+        <Pressable
           style={[
             createStyles(theme).toggleButton,
             activeView === 'favorites' &&
@@ -217,7 +206,7 @@ const ReciterBrowse = ({surahId, initialView = 'all'}: ReciterBrowseProps) => {
             ]}>
             Favorites
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
       <FlatList
         data={filteredReciters}

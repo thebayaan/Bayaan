@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {Icon} from '@rneui/base';
+import {Ionicons} from '@expo/vector-icons';
 import {ChangelogEntry} from '@/types/changelog';
 import changelogData from '@/data/changelog.json';
 import {
@@ -140,7 +140,9 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
 
             <Text style={[styles.version, {color: theme.colors.textSecondary}]}>
               {hasMultipleVersions
-                ? `Versions ${changelogs[changelogs.length - 1]?.version} - ${latestVersion}`
+                ? `Versions ${
+                    changelogs[changelogs.length - 1]?.version
+                  } - ${latestVersion}`
                 : `Version ${latestVersion}`}
             </Text>
 
@@ -177,9 +179,8 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((props, ref) => {
                   <View style={styles.highlightsContainer}>
                     {changelog.highlights.map((highlight, index) => (
                       <View key={index} style={styles.highlightCard}>
-                        <Icon
-                          name={highlight.icon}
-                          type="ionicon"
+                        <Ionicons
+                          name={highlight.icon as any}
                           size={moderateScale(26)}
                           color={theme.colors.text}
                         />

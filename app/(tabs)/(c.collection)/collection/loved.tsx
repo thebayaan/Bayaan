@@ -2,43 +2,49 @@ import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
   StatusBar,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
+import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useRouter} from 'expo-router';
 import {TrackItem} from '@/components/TrackItem';
 import {getReciterById, getSurahById} from '@/services/dataService';
 import {moderateScale} from 'react-native-size-matters';
-import {Icon} from '@rneui/themed';
-import {FlatList, ListRenderItem} from 'react-native';
-import {Swipeable} from 'react-native-gesture-handler';
+import {Feather} from '@expo/vector-icons';
+import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
 import {useLoved} from '@/hooks/useLoved';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
-import {QueueContext} from '@/services/queue/QueueContext';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {shuffleArray} from '@/utils/arrayUtils';
-import {State as TrackPlayerState} from 'react-native-track-player';
-import TrackPlayer from 'react-native-track-player';
 import {generateSmartAudioUrl} from '@/utils/audioUtils';
 import {getReciterArtwork} from '@/utils/artworkUtils';
+import {useUploadsStore} from '@/store/uploadsStore';
+import {createUserUploadTrack} from '@/utils/track';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {useDownloadStore} from '@/services/player/store/downloadStore';
 import {LovedHeader} from '@/components/playlist-detail/LovedHeader';
+import {HeartIcon, CheckIcon} from '@/components/Icons';
 import {
   useDownloadActions,
   useDownloadQueries,
 } from '@/services/player/store/downloadSelectors';
 import {downloadSurah} from '@/services/downloadService';
 import {useCollectionDownloadState} from '@/hooks/useCollectionDownloadState';
+import {CollectionStickyHeader} from '@/components/collection/CollectionStickyHeader';
+import {SheetManager} from 'react-native-actions-sheet';
+import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 
 interface LovedTrack {
   reciterId: string;
   surahId: string;
   rewayatId?: string;
+  userRecitationId?: string;
 }
 
 interface LovedTrackData {
@@ -49,11 +55,12 @@ interface LovedTrackData {
 
 const LovedScreen = () => {
   const {theme} = useTheme();
-  const {lovedTracks, toggleLoved} = useLoved();
-  const {pause, playback} = useUnifiedPlayer();
-  const queueContext = QueueContext.getInstance();
-  const {addRecentTrack} = useRecentlyPlayedStore();
-  const playerStore = usePlayerStore();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const {lovedTracks, toggleLoved, unloveAll} = useLoved();
+  const {addToQueue, updateQueue, play, toggleShuffle} = usePlayerActions();
+  const shuffleEnabled = usePlayerStore(state => state.settings.shuffle);
+  const {startNewChain} = useRecentlyPlayedStore();
   const {
     isDownloaded,
     isDownloadedWithRewayat,
@@ -69,8 +76,8 @@ const LovedScreen = () => {
   const [loading, setLoading] = useState(true);
   const [isDownloadingBulk, setIsDownloadingBulk] = useState(false);
 
-  // Track current operation to prevent race conditions
-  const currentOperationRef = useRef<string | null>(null);
+  // Scroll tracking for sticky header
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   const styles = StyleSheet.create({
     container: {
@@ -81,33 +88,64 @@ const LovedScreen = () => {
       flexGrow: 1,
       paddingBottom: moderateScale(65),
     },
-    emptyText: {
-      fontSize: moderateScale(16),
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginTop: moderateScale(32),
-    },
     listItem: {
       marginVertical: moderateScale(2),
     },
-    rightAction: {
-      flex: 1,
-      backgroundColor: '#ff4444',
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-      paddingRight: moderateScale(20),
+    fixedBackButton: {
+      position: 'absolute',
+      top: insets.top + moderateScale(10),
+      left: moderateScale(15),
+      zIndex: 5,
+      padding: moderateScale(8),
     },
-    deleteButton: {
+    emptyHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: moderateScale(15),
-      paddingVertical: moderateScale(10),
+      justifyContent: 'space-between',
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(16),
     },
-    deleteText: {
-      color: 'white',
-      fontSize: moderateScale(14),
-      fontWeight: '600',
-      marginLeft: moderateScale(8),
+    emptyHeaderBack: {
+      width: moderateScale(36),
+      height: moderateScale(36),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyHeaderTitle: {
+      flex: 1,
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      textAlign: 'center',
+    },
+    emptyContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: moderateScale(32),
+      paddingBottom: moderateScale(60),
+    },
+    emptyIcon: {
+      marginBottom: moderateScale(16),
+    },
+    emptyTitle: {
+      fontSize: moderateScale(17),
+      fontFamily: theme.fonts.bold,
+      color: theme.colors.text,
+      textAlign: 'center',
+      marginBottom: moderateScale(8),
+    },
+    emptySubtitle: {
+      fontSize: moderateScale(13),
+      fontFamily: theme.fonts.regular,
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: moderateScale(20),
+    },
+    loadingText: {
+      fontSize: moderateScale(16),
+      color: theme.colors.textSecondary,
+      textAlign: 'center',
     },
   });
 
@@ -131,6 +169,7 @@ const LovedScreen = () => {
               reciterId: track.reciterId,
               surahId: track.surahId,
               rewayatId: track.rewayatId,
+              userRecitationId: track.userRecitationId,
             },
             reciter: reciter || null,
             surah: surah || null,
@@ -164,13 +203,11 @@ const LovedScreen = () => {
   const handleSurahPress = useCallback(
     async (track: LovedTrack, reciter: Reciter, surah: Surah) => {
       try {
-        // Safety check: ensure we have data loaded
         if (lovedData.length === 0) {
           console.warn('No loved tracks data loaded yet');
           return;
         }
 
-        // Find the index of the selected track in lovedData
         const selectedIndex = lovedData.findIndex(
           item =>
             item.reciter?.id === reciter.id &&
@@ -183,131 +220,56 @@ const LovedScreen = () => {
           return;
         }
 
-        // Generate unique operation ID to prevent race conditions
-        const operationId = `${Date.now()}-${reciter.id}-${surah.id}`;
-        currentOperationRef.current = operationId;
-
-        // OPTIMIZATION: Ensure download store is "warm" (hydrated) before checking
-        useDownloadStore.getState();
-
-        // Get artwork once (same for all tracks)
         const artwork = getReciterArtwork(reciter);
 
-        // Create ONLY first track (instant!)
-        const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
-        const firstTrack = {
-          id: `${reciter.id}:${surah.id}`,
-          url: generateSmartAudioUrl(reciter, surah.id.toString(), rewayatId),
-          title: surah.name,
-          artist: reciter.name,
-          reciterId: reciter.id,
-          artwork,
-          surahId: surah.id.toString(),
-          reciterName: reciter.name,
-          rewayatId,
-        };
-
-        // Add first track and play IMMEDIATELY
-        const resetPromise = TrackPlayer.reset();
-        currentOperationRef.current = operationId;
-
-        await resetPromise;
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
-
-        // CRITICAL: Update store IMMEDIATELY and synchronously
-        if (currentOperationRef.current === operationId) {
-          const store = usePlayerStore.getState();
-          store.updateQueueState({
-            tracks: [firstTrack],
-            currentIndex: 0,
-            total: 1,
-            loading: false,
-            endReached: false,
-          });
-        }
-
-        // Get remaining items (reordered so selected is first)
-        const remainingItems = [
+        // Build all tracks with selected surah first
+        const reorderedItems = [
+          lovedData[selectedIndex],
           ...lovedData.slice(selectedIndex + 1),
           ...lovedData.slice(0, selectedIndex),
         ];
 
-        // Create remaining tracks in parallel (background - doesn't block playback!)
-        if (remainingItems.length > 0) {
-          Promise.all(
-            remainingItems.map(async item => {
-              if (!item.reciter || !item.surah) return null;
-              const itemRewayatId =
-                item.track.rewayatId || item.reciter.rewayat[0]?.id;
-              const url = generateSmartAudioUrl(
-                item.reciter,
-                item.surah.id.toString(),
+        const allTracks = reorderedItems
+          .filter(item => item.reciter && item.surah)
+          .map(item => {
+            if (item.track.userRecitationId) {
+              const upload = useUploadsStore
+                .getState()
+                .recitations.find(r => r.id === item.track.userRecitationId);
+              if (upload) return createUserUploadTrack(upload);
+              return null;
+            }
+            const itemRewayatId =
+              item.track.rewayatId || item.reciter!.rewayat[0]?.id;
+            return {
+              id: `${item.reciter!.id}:${item.surah!.id}`,
+              url: generateSmartAudioUrl(
+                item.reciter!,
+                item.surah!.id.toString(),
                 itemRewayatId,
-              );
-              return {
-                id: `${item.reciter.id}:${item.surah.id}`,
-                url,
-                title: item.surah.name,
-                artist: item.reciter.name,
-                reciterId: item.reciter.id,
-                artwork: getReciterArtwork(item.reciter),
-                surahId: item.surah.id.toString(),
-                reciterName: item.reciter.name,
-                rewayatId: itemRewayatId,
-              };
-            }),
-          )
-            .then(remainingTracks => {
-              const validRemainingTracks = remainingTracks.filter(
-                (t): t is NonNullable<typeof t> => t !== null,
-              );
+              ),
+              title: item.surah!.name,
+              artist: item.reciter!.name,
+              reciterId: item.reciter!.id,
+              artwork: getReciterArtwork(item.reciter!),
+              surahId: item.surah!.id.toString(),
+              reciterName: item.reciter!.name,
+              rewayatId: itemRewayatId,
+            };
+          })
+          .filter((t): t is NonNullable<typeof t> => t !== null);
 
-              // Check if operation is still valid
-              if (currentOperationRef.current !== operationId) {
-                console.log(
-                  '[LovedScreen] Operation cancelled, skipping track addition',
-                );
-                return;
-              }
+        if (allTracks.length === 0) return;
 
-              // Add remaining tracks to TrackPlayer (non-blocking)
-              TrackPlayer.add(validRemainingTracks)
-                .then(() => {
-                  // Double-check operation is still valid before updating store
-                  if (currentOperationRef.current !== operationId) {
-                    console.log(
-                      '[LovedScreen] Operation cancelled, skipping store update',
-                    );
-                    return;
-                  }
+        await updateQueue(allTracks, 0);
 
-                  // Update store with complete queue (non-blocking)
-                  const completeQueue = [firstTrack, ...validRemainingTracks];
-                  const store = usePlayerStore.getState();
-                  store.updateQueueState({
-                    tracks: completeQueue,
-                    total: completeQueue.length,
-                  });
-                })
-                .catch(error => {
-                  console.error('Error adding tracks to TrackPlayer:', error);
-                });
-            })
-            .catch(error => {
-              console.error('Error creating remaining tracks:', error);
-            });
-        }
-
-        // Add to recently played AFTER playback starts (non-blocking)
-        addRecentTrack(reciter, surah, 0, 0, rewayatId);
-        queueContext.setCurrentReciter(reciter);
+        const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
+        startNewChain(reciter, surah, 0, 0, rewayatId);
       } catch (error) {
         console.error('Error playing track:', error);
-        currentOperationRef.current = null;
       }
     },
-    [lovedData, queueContext, addRecentTrack],
+    [lovedData, startNewChain, updateQueue],
   );
 
   // Play all tracks
@@ -315,284 +277,108 @@ const LovedScreen = () => {
     if (lovedData.length === 0) return;
 
     try {
-      // If currently playing, pause
-      if (playback.state === TrackPlayerState.Playing) {
-        await pause();
-        return;
-      }
+      const allTracks = lovedData
+        .filter(item => item.reciter && item.surah)
+        .map(item => {
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            if (upload) return createUserUploadTrack(upload);
+            return null;
+          }
+          const itemRewayatId =
+            item.track.rewayatId || item.reciter!.rewayat[0]?.id;
+          return {
+            id: `${item.reciter!.id}:${item.surah!.id}`,
+            url: generateSmartAudioUrl(
+              item.reciter!,
+              item.surah!.id.toString(),
+              itemRewayatId,
+            ),
+            title: item.surah!.name,
+            artist: item.reciter!.name,
+            reciterId: item.reciter!.id,
+            artwork: getReciterArtwork(item.reciter!),
+            surahId: item.surah!.id.toString(),
+            reciterName: item.reciter!.name,
+            rewayatId: itemRewayatId,
+          };
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
+
+      if (allTracks.length === 0) return;
+
+      await updateQueue(allTracks, 0);
 
       const firstItem = lovedData.find(item => item.reciter && item.surah);
-      if (!firstItem?.reciter || !firstItem?.surah) return;
-
-      // Generate unique operation ID
-      const operationId = `${Date.now()}-${firstItem.reciter.id}-play-all`;
-      currentOperationRef.current = operationId;
-
-      // Get artwork once
-      const artwork = getReciterArtwork(firstItem.reciter);
-
-      // OPTIMIZATION: Ensure download store is "warm"
-      useDownloadStore.getState();
-
-      // Create ONLY first track (instant!)
-      const rewayatId =
-        firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
-      const firstTrack = {
-        id: `${firstItem.reciter.id}:${firstItem.surah.id}`,
-        url: generateSmartAudioUrl(
-          firstItem.reciter,
-          firstItem.surah.id.toString(),
-          rewayatId,
-        ),
-        title: firstItem.surah.name,
-        artist: firstItem.reciter.name,
-        reciterId: firstItem.reciter.id,
-        artwork,
-        surahId: firstItem.surah.id.toString(),
-        reciterName: firstItem.reciter.name,
-        rewayatId,
-      };
-
-      // Add first track and play IMMEDIATELY
-      try {
-        await TrackPlayer.reset();
-        currentOperationRef.current = operationId;
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
-
-        // CRITICAL: Update store IMMEDIATELY and synchronously
-        if (currentOperationRef.current === operationId) {
-          const store = usePlayerStore.getState();
-          store.updateQueueState({
-            tracks: [firstTrack],
-            currentIndex: 0,
-            total: 1,
-            loading: false,
-            endReached: false,
-          });
-        }
-      } catch (error) {
-        console.error('Error starting playback:', error);
-        currentOperationRef.current = null;
-        throw error;
+      if (firstItem?.reciter && firstItem?.surah) {
+        const rewayatId =
+          firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
+        startNewChain(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
       }
-
-      // Create remaining tracks in parallel (background)
-      const remainingItems = lovedData.slice(1);
-      if (remainingItems.length > 0) {
-        Promise.all(
-          remainingItems.map(async item => {
-            if (!item.reciter || !item.surah) return null;
-            const itemRewayatId =
-              item.track.rewayatId || item.reciter.rewayat[0]?.id;
-            const url = generateSmartAudioUrl(
-              item.reciter,
-              item.surah.id.toString(),
-              itemRewayatId,
-            );
-            return {
-              id: `${item.reciter.id}:${item.surah.id}`,
-              url,
-              title: item.surah.name,
-              artist: item.reciter.name,
-              reciterId: item.reciter.id,
-              artwork: getReciterArtwork(item.reciter),
-              surahId: item.surah.id.toString(),
-              reciterName: item.reciter.name,
-              rewayatId: itemRewayatId,
-            };
-          }),
-        )
-          .then(remainingTracks => {
-            const validRemainingTracks = remainingTracks.filter(
-              (t): t is NonNullable<typeof t> => t !== null,
-            );
-
-            if (currentOperationRef.current !== operationId) {
-              console.log(
-                '[LovedScreen] Operation cancelled, skipping track addition',
-              );
-              return;
-            }
-
-            TrackPlayer.add(validRemainingTracks)
-              .then(() => {
-                if (currentOperationRef.current !== operationId) {
-                  console.log(
-                    '[LovedScreen] Operation cancelled, skipping store update',
-                  );
-                  return;
-                }
-
-                const completeQueue = [firstTrack, ...validRemainingTracks];
-                const store = usePlayerStore.getState();
-                store.updateQueueState({
-                  tracks: completeQueue,
-                  total: completeQueue.length,
-                });
-              })
-              .catch(error => {
-                console.error('Error adding tracks to TrackPlayer:', error);
-              });
-          })
-          .catch(error => {
-            console.error('Error creating remaining tracks:', error);
-          });
-      }
-
-      // Add to recently played AFTER playback starts (non-blocking)
-      addRecentTrack(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
-      queueContext.setCurrentReciter(firstItem.reciter);
     } catch (error) {
       console.error('Error playing all tracks:', error);
-      currentOperationRef.current = null;
     }
-  }, [lovedData, pause, playback.state, queueContext, addRecentTrack]);
+  }, [lovedData, startNewChain, updateQueue]);
 
   // Shuffle all tracks
   const handleShuffle = useCallback(async () => {
     if (lovedData.length === 0) return;
 
     try {
-      // Shuffle items first
       const shuffledItems = shuffleArray([...lovedData]).filter(
         item => item.reciter && item.surah,
       );
 
       if (shuffledItems.length === 0) return;
 
-      const firstItem = shuffledItems[0];
-      if (!firstItem.reciter || !firstItem.surah) return;
-
-      // Generate unique operation ID
-      const operationId = `${Date.now()}-${firstItem.reciter.id}-shuffle-all`;
-      currentOperationRef.current = operationId;
-
-      // Get artwork once
-      const artwork = getReciterArtwork(firstItem.reciter);
-
-      // OPTIMIZATION: Ensure download store is "warm"
-      useDownloadStore.getState();
-
-      // Create ONLY first track (instant!)
-      const rewayatId =
-        firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
-      const firstTrack = {
-        id: `${firstItem.reciter.id}:${firstItem.surah.id}`,
-        url: generateSmartAudioUrl(
-          firstItem.reciter,
-          firstItem.surah.id.toString(),
-          rewayatId,
-        ),
-        title: firstItem.surah.name,
-        artist: firstItem.reciter.name,
-        reciterId: firstItem.reciter.id,
-        artwork,
-        surahId: firstItem.surah.id.toString(),
-        reciterName: firstItem.reciter.name,
-        rewayatId,
-      };
-
-      // Enable shuffle mode in player settings
-      if (!playerStore.settings.shuffle) {
-        playerStore.toggleShuffle();
+      // Enable shuffle mode
+      if (!shuffleEnabled) {
+        toggleShuffle();
       }
 
-      // Add first track and play IMMEDIATELY
-      try {
-        await TrackPlayer.reset();
-        currentOperationRef.current = operationId;
-        await TrackPlayer.add(firstTrack);
-        await TrackPlayer.play();
-
-        // CRITICAL: Update store IMMEDIATELY and synchronously
-        if (currentOperationRef.current === operationId) {
-          const store = usePlayerStore.getState();
-          store.updateQueueState({
-            tracks: [firstTrack],
-            currentIndex: 0,
-            total: 1,
-            loading: false,
-            endReached: false,
-          });
-        }
-      } catch (error) {
-        console.error('Error starting playback:', error);
-        currentOperationRef.current = null;
-        throw error;
-      }
-
-      // Create remaining tracks in parallel (background)
-      const remainingItems = shuffledItems.slice(1);
-      if (remainingItems.length > 0) {
-        Promise.all(
-          remainingItems.map(async item => {
-            if (!item.reciter || !item.surah) return null;
-            const itemRewayatId =
-              item.track.rewayatId || item.reciter.rewayat[0]?.id;
-            const url = generateSmartAudioUrl(
-              item.reciter,
-              item.surah.id.toString(),
+      const allTracks = shuffledItems
+        .map(item => {
+          if (item.track.userRecitationId) {
+            const upload = useUploadsStore
+              .getState()
+              .recitations.find(r => r.id === item.track.userRecitationId);
+            if (upload) return createUserUploadTrack(upload);
+            return null;
+          }
+          const itemRewayatId =
+            item.track.rewayatId || item.reciter!.rewayat[0]?.id;
+          return {
+            id: `${item.reciter!.id}:${item.surah!.id}`,
+            url: generateSmartAudioUrl(
+              item.reciter!,
+              item.surah!.id.toString(),
               itemRewayatId,
-            );
-            return {
-              id: `${item.reciter.id}:${item.surah.id}`,
-              url,
-              title: item.surah.name,
-              artist: item.reciter.name,
-              reciterId: item.reciter.id,
-              artwork: getReciterArtwork(item.reciter),
-              surahId: item.surah.id.toString(),
-              reciterName: item.reciter.name,
-              rewayatId: itemRewayatId,
-            };
-          }),
-        )
-          .then(remainingTracks => {
-            const validRemainingTracks = remainingTracks.filter(
-              (t): t is NonNullable<typeof t> => t !== null,
-            );
+            ),
+            title: item.surah!.name,
+            artist: item.reciter!.name,
+            reciterId: item.reciter!.id,
+            artwork: getReciterArtwork(item.reciter!),
+            surahId: item.surah!.id.toString(),
+            reciterName: item.reciter!.name,
+            rewayatId: itemRewayatId,
+          };
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
 
-            if (currentOperationRef.current !== operationId) {
-              console.log(
-                '[LovedScreen] Operation cancelled, skipping track addition',
-              );
-              return;
-            }
+      await updateQueue(allTracks, 0);
 
-            TrackPlayer.add(validRemainingTracks)
-              .then(() => {
-                if (currentOperationRef.current !== operationId) {
-                  console.log(
-                    '[LovedScreen] Operation cancelled, skipping store update',
-                  );
-                  return;
-                }
-
-                const completeQueue = [firstTrack, ...validRemainingTracks];
-                const store = usePlayerStore.getState();
-                store.updateQueueState({
-                  tracks: completeQueue,
-                  total: completeQueue.length,
-                });
-              })
-              .catch(error => {
-                console.error('Error adding tracks to TrackPlayer:', error);
-              });
-          })
-          .catch(error => {
-            console.error('Error creating remaining tracks:', error);
-          });
+      const firstItem = shuffledItems[0];
+      if (firstItem.reciter && firstItem.surah) {
+        const rewayatId =
+          firstItem.track.rewayatId || firstItem.reciter.rewayat[0]?.id;
+        startNewChain(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
       }
-
-      // Add to recently played AFTER playback starts (non-blocking)
-      addRecentTrack(firstItem.reciter, firstItem.surah, 0, 0, rewayatId);
-      queueContext.setCurrentReciter(firstItem.reciter);
     } catch (error) {
       console.error('Error shuffling tracks:', error);
-      currentOperationRef.current = null;
     }
-  }, [lovedData, queueContext, addRecentTrack, playerStore]);
+  }, [lovedData, startNewChain, updateQueue, shuffleEnabled, toggleShuffle]);
 
   // Handle bulk download
   const handleBulkDownload = useCallback(async () => {
@@ -721,41 +507,132 @@ const LovedScreen = () => {
     setDownloadProgress,
   ]);
 
-  // Handle remove from loved
-  const handleRemoveFromLoved = useCallback(
-    (track: LovedTrack) => {
-      toggleLoved(track.reciterId, track.surahId, track.rewayatId || '');
-    },
-    [toggleLoved],
-  );
-
   // Calculate download state for all loved tracks using custom hook
   const downloadState = useCollectionDownloadState(lovedData);
+
+  // Handle options menu
+  const handleOptionsMenu = useCallback(() => {
+    SheetManager.show('collection-options', {
+      payload: {
+        title: 'Loved',
+        subtitle: `${lovedData.length} ${
+          lovedData.length === 1 ? 'surah' : 'surahs'
+        }`,
+        options: [
+          {
+            label: downloadState.allDownloaded
+              ? 'All Downloaded'
+              : 'Download All',
+            icon: 'download',
+            onPress: handleBulkDownload,
+            disabled: downloadState.allDownloaded || downloadState.hasNoTracks,
+            customIcon:
+              downloadState.allDownloaded && !downloadState.hasNoTracks ? (
+                <CheckIcon color={theme.colors.text} size={moderateScale(20)} />
+              ) : undefined,
+          },
+          {
+            label: 'Unlove All Surahs',
+            icon: 'heart',
+            destructive: true,
+            customIcon: (
+              <HeartIcon
+                color="#ff4444"
+                size={moderateScale(20)}
+                filled={true}
+              />
+            ),
+            onPress: () => unloveAll(),
+          },
+        ],
+      },
+    });
+  }, [
+    lovedData.length,
+    downloadState,
+    handleBulkDownload,
+    unloveAll,
+    theme.colors.text,
+  ]);
+
+  const renderHeaderRight = useCallback(
+    () => (
+      <Pressable onPress={handleOptionsMenu} hitSlop={8}>
+        <Feather
+          name="more-horizontal"
+          size={moderateScale(20)}
+          color={theme.colors.text}
+        />
+      </Pressable>
+    ),
+    [handleOptionsMenu, theme.colors.text],
+  );
+
+  useCollectionNativeHeader({
+    title: 'Loved',
+    scrollY,
+    hasContent: lovedData.length > 0 && !loading,
+    headerRight: lovedData.length > 0 ? renderHeaderRight : undefined,
+  });
+
+  // Handle show options for a track
+  const handleShowOptions = useCallback(
+    (track: LovedTrack, reciter: Reciter, surah: Surah) => {
+      SheetManager.show('surah-options', {
+        payload: {
+          surah,
+          reciterId: track.reciterId,
+          rewayatId: track.rewayatId,
+          onAddToQueue: async (s: Surah) => {
+            if (track.userRecitationId) {
+              const upload = useUploadsStore
+                .getState()
+                .recitations.find(r => r.id === track.userRecitationId);
+              if (upload) {
+                await addToQueue([createUserUploadTrack(upload)]);
+                return;
+              }
+            }
+            const rewayatId = track.rewayatId || reciter.rewayat[0]?.id;
+            const artwork = getReciterArtwork(reciter);
+            const queueTrack = {
+              id: `${reciter.id}:${s.id}`,
+              url: generateSmartAudioUrl(reciter, s.id.toString(), rewayatId),
+              title: s.name,
+              artist: reciter.name,
+              reciterId: reciter.id,
+              artwork,
+              surahId: s.id.toString(),
+              reciterName: reciter.name,
+              rewayatId,
+            };
+            await addToQueue([queueTrack]);
+          },
+        },
+      });
+    },
+    [addToQueue],
+  );
 
   const ListHeaderComponent = useCallback(() => {
     return (
       <LovedHeader
-        title="Loved Surahs"
+        title="Loved"
         subtitle={`${lovedData.length} ${
           lovedData.length === 1 ? 'surah' : 'surahs'
         }`}
-        backgroundColor="#FF6B6B"
         onPlayPress={handlePlayAll}
         onShufflePress={handleShuffle}
-        onDownloadPress={handleBulkDownload}
+        onOptionsPress={USE_GLASS ? undefined : handleOptionsMenu}
         theme={theme}
-        allDownloaded={downloadState.allDownloaded}
-        hasNoTracks={downloadState.hasNoTracks}
       />
     );
   }, [
     lovedData.length,
     handlePlayAll,
     handleShuffle,
-    handleBulkDownload,
+    handleOptionsMenu,
     theme,
-    downloadState.allDownloaded,
-    downloadState.hasNoTracks,
   ]);
 
   const renderItem: ListRenderItem<LovedTrackData> = ({item}) => {
@@ -765,34 +642,19 @@ const LovedScreen = () => {
       return null;
     }
 
-    const renderRightActions = () => (
-      <View style={styles.rightAction}>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleRemoveFromLoved(track)}>
-          <Icon
-            name="trash-2"
-            type="feather"
-            size={moderateScale(20)}
-            color="white"
-          />
-          <Text style={styles.deleteText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
     return (
-      <Swipeable renderRightActions={renderRightActions}>
-        <View style={styles.listItem}>
-          <TrackItem
-            reciterId={track.reciterId}
-            surahId={track.surahId}
-            rewayatId={track.rewayatId}
-            onPress={() => handleSurahPress(track, reciter, surah)}
-            onPlayPress={() => handleSurahPress(track, reciter, surah)}
-          />
-        </View>
-      </Swipeable>
+      <View style={styles.listItem}>
+        <TrackItem
+          reciterId={track.reciterId}
+          surahId={track.surahId}
+          rewayatId={track.rewayatId}
+          userRecitationId={track.userRecitationId}
+          onPress={() => handleSurahPress(track, reciter, surah)}
+          onPlayPress={() => handleSurahPress(track, reciter, surah)}
+          onOptionsPress={() => handleShowOptions(track, reciter, surah)}
+          onLongPress={() => handleShowOptions(track, reciter, surah)}
+        />
+      </View>
     );
   };
 
@@ -804,25 +666,104 @@ const LovedScreen = () => {
   if (loading) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Loading...</Text>
+        {!USE_GLASS && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Loved</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
+        <View style={styles.emptyContent}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (lovedData.length === 0) {
+    return (
+      <View style={styles.container}>
+        {!USE_GLASS && (
+          <View style={[styles.emptyHeader, {paddingTop: insets.top}]}>
+            <Pressable
+              style={styles.emptyHeaderBack}
+              onPress={() => router.back()}
+              hitSlop={8}>
+              <Feather
+                name="arrow-left"
+                size={moderateScale(22)}
+                color={theme.colors.text}
+              />
+            </Pressable>
+            <Text style={styles.emptyHeaderTitle}>Loved</Text>
+            <View style={styles.emptyHeaderBack} />
+          </View>
+        )}
+        <View style={styles.emptyContent}>
+          <View style={styles.emptyIcon}>
+            <HeartIcon
+              color={theme.colors.textSecondary}
+              size={moderateScale(48)}
+              filled={true}
+            />
+          </View>
+          <Text style={styles.emptyTitle}>No loved surahs yet</Text>
+          <Text style={styles.emptySubtitle}>Love surahs to see them here</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <FlatList
+      <StatusBar barStyle="default" />
+
+      {!USE_GLASS && (
+        <RNAnimated.View
+          style={[
+            styles.fixedBackButton,
+            {
+              opacity: scrollY.interpolate({
+                inputRange: [80, 120],
+                outputRange: [1, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ]}>
+          <Pressable onPress={() => router.back()} hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        </RNAnimated.View>
+      )}
+
+      <RNAnimated.FlatList
         data={lovedData}
         renderItem={renderItem}
         keyExtractor={getItemKey}
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContentContainer}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>No loved surahs yet</Text>
-        }
-        bounces={false}
+        contentInsetAdjustmentBehavior="automatic"
+        onScroll={RNAnimated.event(
+          [{nativeEvent: {contentOffset: {y: scrollY}}}],
+          {useNativeDriver: true},
+        )}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
       />
+      {!USE_GLASS && <CollectionStickyHeader title="Loved" scrollY={scrollY} />}
     </View>
   );
 };

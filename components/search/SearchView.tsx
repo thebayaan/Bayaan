@@ -2,12 +2,12 @@ import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   FlatList,
-  TextInput,
   Keyboard,
   Platform,
+  Animated as RNAnimated,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,7 +15,7 @@ import {getAllReciters, getAllSurahs} from '@/services/dataService';
 import {Surah} from '@/data/surahData';
 import {Reciter} from '@/data/reciterData';
 import Fuse from 'fuse.js';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {ReciterItem} from '@/components/ReciterItem';
 import {SurahItem} from '@/components/SurahItem';
 import {useTheme} from '@/hooks/useTheme';
@@ -23,13 +23,13 @@ import {moderateScale} from 'react-native-size-matters';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useSettings} from '@/hooks/useSettings';
 import {useReciterStore} from '@/store/reciterStore';
-import {BlurView} from '@react-native-community/blur';
-import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import Color from 'color';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
+import {useBottomInset} from '@/hooks/useBottomInset';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -50,63 +50,115 @@ interface SearchResult {
 interface SearchViewProps {
   onClose: () => void;
   visible: boolean;
+  /** Query text driven by the native Stack.SearchBar */
+  query: string;
+  /** True when the native search bar is focused / active */
+  isSearchActive: boolean;
+  /** Skip the built-in safe-area top padding (when the parent already handles it) */
+  skipTopInset?: boolean;
 }
 
-export function SearchView({onClose, visible}: SearchViewProps) {
-  const [query, setQuery] = useState('');
+export function SearchView({
+  onClose,
+  visible,
+  query,
+  isSearchActive,
+  skipTopInset,
+}: SearchViewProps) {
+  const bottomInset = useBottomInset();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([]);
-  const [isSearchMode, setIsSearchMode] = useState(false);
-  const searchInputRef = useRef<TextInput>(null);
   const router = useRouter();
   const [reciterFuse, setReciterFuse] = useState<Fuse<Reciter> | null>(null);
   const [surahFuse, setSurahFuse] = useState<Fuse<Surah> | null>(null);
+
+  // Fade animation — both views always mounted
+  const browseOpacity = useRef(new RNAnimated.Value(1)).current;
+  const searchOpacity = useRef(new RNAnimated.Value(0)).current;
 
   const {theme} = useTheme();
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // Clear query and exit search mode when closing
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Drive the mode transition from external state
+  const isSearchMode = isSearchActive || query.length > 0;
+
+  useEffect(() => {
+    if (isSearchMode) {
+      RNAnimated.parallel([
+        RNAnimated.timing(browseOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(searchOpacity, {
+          toValue: 1,
+          duration: 200,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      RNAnimated.parallel([
+        RNAnimated.timing(searchOpacity, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(browseOpacity, {
+          toValue: 1,
+          duration: 200,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [isSearchMode, browseOpacity, searchOpacity]);
+
+  // Reset when closed
   useEffect(() => {
     if (!visible) {
-      setQuery('');
-      setIsSearchMode(false);
+      browseOpacity.setValue(1);
+      searchOpacity.setValue(0);
     }
-  }, [visible]);
+  }, [visible, browseOpacity, searchOpacity]);
 
-  // Debounce search query
+  // Debounce the incoming query
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query);
     }, SEARCH_DEBOUNCE_MS);
-
     return () => clearTimeout(handler);
   }, [query]);
 
-  // Handle search input focus - enter search mode
-  const handleSearchFocus = useCallback(() => {
-    setIsSearchMode(true);
-    // Focus the input after a slight delay to ensure the component is rendered
-    setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
-  }, []);
-
-  // Handle search cancel - return to explore mode
-  const handleSearchCancel = useCallback(() => {
-    Keyboard.dismiss();
-    setQuery('');
-    setIsSearchMode(false);
-    searchInputRef.current?.blur();
-    onClose();
-  }, [onClose]);
-
-  // Initialize search engines and load initial data
+  // Lazy-init Fuse.js when user first activates search
+  const fuseInitialized = useRef(false);
   useEffect(() => {
+    if (!visible || !isSearchMode || fuseInitialized.current) return;
+    fuseInitialized.current = true;
+
     const fetchData = async () => {
       try {
         const [reciterData, surahData] = await Promise.all([
@@ -155,17 +207,14 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         const storedSearches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
         if (storedSearches) {
           const parsed = JSON.parse(storedSearches);
-          // Check if it's the old format (string[]) and clear it
           if (
             Array.isArray(parsed) &&
             parsed.length > 0 &&
             typeof parsed[0] === 'string'
           ) {
-            // Old format, clear it
             await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify([]));
             setRecentSearches([]);
           } else {
-            // New format
             setRecentSearches(parsed);
           }
         }
@@ -177,7 +226,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       }
     };
     fetchData();
-  }, []);
+  }, [visible, isSearchMode]);
 
   const performSearch = useCallback(() => {
     if (!reciterFuse || !surahFuse || !debouncedQuery.trim()) {
@@ -206,6 +255,14 @@ export function SearchView({onClose, visible}: SearchViewProps) {
       );
 
       setSearchResults(combinedResults);
+
+      // Fire analytics after search completes (already debounced via debouncedQuery)
+      if (debouncedQuery.trim().length > 0) {
+        analyticsService.trackSearchPerformed({
+          query: debouncedQuery.trim(),
+          results_count: combinedResults.length,
+        });
+      }
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
@@ -226,7 +283,6 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         timestamp: Date.now(),
       };
 
-      // Remove duplicate if exists (same type and id)
       const filteredSearches = recentSearches.filter(search => {
         if (search.type !== result.type) return true;
         if (search.type === 'surah') {
@@ -263,43 +319,57 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         });
       } else {
         const surah = result.item as Surah;
-        if (askEveryTime) {
-          SheetManager.show('select-reciter', {
-            payload: {surahId: surah.id.toString(), source: 'search'},
-          });
-          return;
-        }
+        router.push({
+          pathname: '/mushaf',
+          params: {surah: surah.id.toString()},
+        });
+      }
+    },
+    [router, addToRecentSearches],
+  );
 
-        switch (defaultReciterSelection) {
-          case 'browseAll':
+  const handleSurahLongPress = useCallback(
+    async (result: SearchResult) => {
+      Keyboard.dismiss();
+      await addToRecentSearches(result);
+
+      const surah = result.item as Surah;
+      if (askEveryTime) {
+        SheetManager.show('select-reciter', {
+          payload: {surahId: surah.id.toString(), source: 'search'},
+        });
+        return;
+      }
+
+      switch (defaultReciterSelection) {
+        case 'browseAll':
+          router.push({
+            pathname: '/(tabs)/(b.search)/reciter/browse',
+            params: {view: 'all', surahId: surah.id},
+          });
+          break;
+        case 'searchFavorites':
+          router.push({
+            pathname: '/(tabs)/(b.search)/reciter/browse',
+            params: {view: 'favorites', surahId: surah.id},
+          });
+          break;
+        case 'useDefault':
+          if (defaultReciter) {
             router.push({
-              pathname: '/(tabs)/(b.search)/reciter/browse',
-              params: {view: 'all', surahId: surah.id},
+              pathname: '/player',
+              params: {reciterImageUrl: defaultReciter.image_url},
             });
-            break;
-          case 'searchFavorites':
-            router.push({
-              pathname: '/(tabs)/(b.search)/reciter/browse',
-              params: {view: 'favorites', surahId: surah.id},
-            });
-            break;
-          case 'useDefault':
-            if (defaultReciter) {
-              router.push({
-                pathname: '/player',
-                params: {reciterImageUrl: defaultReciter.image_url},
-              });
-            } else {
-              SheetManager.show('select-reciter', {
-                payload: {surahId: surah.id.toString(), source: 'search'},
-              });
-            }
-            break;
-          default:
+          } else {
             SheetManager.show('select-reciter', {
               payload: {surahId: surah.id.toString(), source: 'search'},
             });
-        }
+          }
+          break;
+        default:
+          SheetManager.show('select-reciter', {
+            payload: {surahId: surah.id.toString(), source: 'search'},
+          });
       }
     },
     [
@@ -318,6 +388,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
           <SurahItem
             item={item.item as Surah}
             onPress={() => handleResultPress(item)}
+            onLongPress={() => handleSurahLongPress(item)}
           />
         );
       } else {
@@ -329,7 +400,7 @@ export function SearchView({onClose, visible}: SearchViewProps) {
         );
       }
     },
-    [handleResultPress],
+    [handleResultPress, handleSurahLongPress],
   );
 
   const renderRecentSearch = useCallback(
@@ -365,176 +436,188 @@ export function SearchView({onClose, visible}: SearchViewProps) {
 
   if (!visible) return null;
 
-  // Show ExploreView when not in search mode
-  if (!isSearchMode) {
-    return <ExploreView onSearchPress={handleSearchFocus} />;
-  }
-
   return (
-    <View
-      style={[styles.container, {backgroundColor: theme.colors.background}]}>
-      <View style={[styles.headerContainer, {paddingTop: insets.top}]}>
-        {Platform.OS === 'ios' ? (
-          <BlurView
-            blurAmount={80}
-            blurType={theme.isDarkMode ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}>
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                {
-                  backgroundColor: Color(theme.colors.card)
-                    .alpha(0.7)
-                    .toString(),
-                },
-              ]}
-            />
-          </BlurView>
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: theme.colors.card,
-                opacity: 0.95,
-              },
-            ]}
-          />
-        )}
-        <View style={styles.searchBoxContainer}>
-          <SearchInput
-            ref={searchInputRef}
-            placeholder="Search surahs or reciters"
-            value={query}
-            onChangeText={setQuery}
-            onCancel={handleSearchCancel}
-            iconColor={theme.colors.text}
-            textColor={theme.colors.text}
-            backgroundColor={Color(theme.colors.card).alpha(0.5).toString()}
-            borderColor={Color(theme.colors.border).alpha(0.2).toString()}
-            keyboardAppearance={theme.isDarkMode ? 'dark' : 'light'}
-            autoCorrect={false}
-            autoComplete="off"
-            autoCapitalize="none"
-            autoFocus={true}
-          />
-        </View>
-      </View>
+    <View style={styles.container}>
+      {/* Browse Mode — always mounted, hidden via opacity */}
+      <RNAnimated.View
+        style={[styles.modeContainer, {opacity: browseOpacity}]}
+        pointerEvents={isSearchMode ? 'none' : 'auto'}>
+        <ExploreView skipTopInset={skipTopInset} />
+      </RNAnimated.View>
 
-      {query.length === 0 ? (
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled">
-          {recentSearches.length > 0 ? (
-            <View>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
-                  Recent searches
-                </Text>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={clearRecentSearches}>
+      {/* Search Mode — always mounted, hidden via opacity */}
+      <RNAnimated.View
+        style={[
+          styles.modeContainer,
+          styles.modeOverlay,
+          {
+            opacity: searchOpacity,
+            backgroundColor: theme.colors.background,
+            paddingTop: skipTopInset ? 0 : insets.top,
+          },
+        ]}
+        pointerEvents={isSearchMode ? 'auto' : 'none'}>
+        {query.length === 0 ? (
+          <ScrollView
+            style={styles.flexFill}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {paddingBottom: Math.max(keyboardHeight, bottomInset)},
+            ]}
+            keyboardShouldPersistTaps="handled">
+            {recentSearches.length > 0 ? (
+              <View>
+                <View style={styles.sectionHeader}>
                   <Text
-                    style={[styles.clearButton, {color: theme.colors.text}]}>
-                    Clear
+                    style={[
+                      styles.sectionTitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.5)
+                          .toString(),
+                      },
+                    ]}>
+                    Recent searches
                   </Text>
-                </TouchableOpacity>
+                  <Pressable onPress={clearRecentSearches}>
+                    <Text
+                      style={[
+                        styles.clearButton,
+                        {
+                          color: Color(theme.colors.textSecondary)
+                            .alpha(0.5)
+                            .toString(),
+                        },
+                      ]}>
+                      Clear
+                    </Text>
+                  </Pressable>
+                </View>
+                <FlatList
+                  data={recentSearches}
+                  renderItem={renderRecentSearch}
+                  keyExtractor={(item, index) =>
+                    `${item.type}-${
+                      item.type === 'surah'
+                        ? (item.item as Surah).id
+                        : (item.item as Reciter).id
+                    }-${index}`
+                  }
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                />
               </View>
-              <FlatList
-                data={recentSearches}
-                renderItem={renderRecentSearch}
-                keyExtractor={(item, index) =>
-                  `${item.type}-${
-                    item.type === 'surah'
-                      ? (item.item as Surah).id
-                      : (item.item as Reciter).id
-                  }-${index}`
-                }
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-              />
-            </View>
-          ) : (
-            <View style={styles.emptyRecentContainer}>
-              <Icon
-                name="search"
-                type="feather"
-                size={moderateScale(48)}
-                color={theme.colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.emptyRecentText,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                No recent searches
-              </Text>
-              <Text
-                style={[
-                  styles.emptyRecentSubtext,
-                  {color: theme.colors.textSecondary},
-                ]}>
-                Your search history will appear here
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={searchResults}
-          renderItem={renderSearchResult}
-          keyExtractor={(item, index) => `${item.type}-${index}`}
-          contentContainerStyle={styles.resultsContainer}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onScrollBeginDrag={() => Keyboard.dismiss()}
-          ListHeaderComponent={
-            searching ? (
-              <View style={styles.loadingContainer}>
-                <LoadingIndicator size={24} />
-              </View>
-            ) : searchResults.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyText, {color: theme.colors.text}]}>
-                  No results found
+            ) : (
+              <View style={styles.emptyState}>
+                <Feather
+                  name="search"
+                  size={moderateScale(36)}
+                  color={Color(theme.colors.textSecondary)
+                    .alpha(0.12)
+                    .toString()}
+                />
+                <Text
+                  style={[
+                    styles.emptyTitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.35)
+                        .toString(),
+                    },
+                  ]}>
+                  No recent searches
                 </Text>
                 <Text
                   style={[
-                    styles.emptySubtext,
-                    {color: theme.colors.textSecondary},
+                    styles.emptySubtitle,
+                    {
+                      color: Color(theme.colors.textSecondary)
+                        .alpha(0.2)
+                        .toString(),
+                    },
                   ]}>
-                  Try different keywords or check the spelling
+                  Your search history will appear here
                 </Text>
               </View>
-            ) : null
-          }
-          ListFooterComponent={<View style={styles.footer} />}
-        />
-      )}
+            )}
+          </ScrollView>
+        ) : (
+          <FlatList
+            style={styles.flexFill}
+            data={searchResults}
+            renderItem={renderSearchResult}
+            keyExtractor={(item, index) => `${item.type}-${index}`}
+            contentContainerStyle={[
+              styles.resultsContent,
+              {paddingBottom: Math.max(keyboardHeight, bottomInset)},
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={() => Keyboard.dismiss()}
+            ListHeaderComponent={
+              searching ? (
+                <View style={styles.loadingContainer}>
+                  <LoadingIndicator size={24} />
+                </View>
+              ) : searchResults.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Feather
+                    name="search"
+                    size={moderateScale(36)}
+                    color={Color(theme.colors.textSecondary)
+                      .alpha(0.12)
+                      .toString()}
+                  />
+                  <Text
+                    style={[
+                      styles.emptyTitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.35)
+                          .toString(),
+                      },
+                    ]}>
+                    No results found
+                  </Text>
+                  <Text
+                    style={[
+                      styles.emptySubtitle,
+                      {
+                        color: Color(theme.colors.textSecondary)
+                          .alpha(0.2)
+                          .toString(),
+                      },
+                    ]}>
+                    Try different keywords or check the spelling
+                  </Text>
+                </View>
+              ) : null
+            }
+            ListFooterComponent={<View style={styles.footer} />}
+          />
+        )}
+      </RNAnimated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-  },
-  headerContainer: {
-    paddingTop: moderateScale(8),
-  },
-  searchBoxContainer: {
-    paddingBottom: moderateScale(8),
-  },
-  content: {
     flex: 1,
   },
-  contentContainer: {
-    paddingVertical: moderateScale(20),
+  modeContainer: {
+    flex: 1,
   },
+  modeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  flexFill: {
+    flex: 1,
+  },
+  scrollContent: {},
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -543,50 +626,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(16),
   },
   sectionTitle: {
-    fontSize: moderateScale(18),
-    fontFamily: 'Manrope-Bold',
+    fontSize: moderateScale(10.5),
+    fontFamily: 'Manrope-SemiBold',
+    letterSpacing: 1.0,
+    textTransform: 'uppercase',
   },
   clearButton: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-SemiBold',
+    fontSize: moderateScale(11),
+    fontFamily: 'Manrope-Medium',
   },
-  resultsContainer: {
+  resultsContent: {
     paddingTop: moderateScale(8),
   },
   loadingContainer: {
     paddingVertical: moderateScale(20),
     alignItems: 'center',
   },
-  emptyContainer: {
-    paddingVertical: moderateScale(20),
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: moderateScale(16),
-    fontFamily: 'Manrope-Bold',
-    marginBottom: moderateScale(4),
-  },
-  emptySubtext: {
-    fontSize: moderateScale(14),
-    fontFamily: 'Manrope-Medium',
-  },
   footer: {
     height: moderateScale(20),
   },
-  emptyRecentContainer: {
-    paddingVertical: moderateScale(60),
-    paddingHorizontal: moderateScale(16),
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: '35%',
+    gap: moderateScale(5),
   },
-  emptyRecentText: {
-    fontSize: moderateScale(16),
+  emptyTitle: {
+    fontSize: moderateScale(15),
     fontFamily: 'Manrope-SemiBold',
-    marginTop: moderateScale(16),
+    marginTop: moderateScale(14),
   },
-  emptyRecentSubtext: {
-    fontSize: moderateScale(14),
+  emptySubtitle: {
+    fontSize: moderateScale(12.5),
     fontFamily: 'Manrope-Medium',
-    marginTop: moderateScale(4),
   },
 });

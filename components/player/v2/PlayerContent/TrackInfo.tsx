@@ -1,14 +1,19 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
+import {GlassView} from 'expo-glass-effect';
+import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {FrostedView} from '@/components/FrostedView';
+import {SymbolView} from 'expo-symbols';
+import {Pressable} from 'react-native-gesture-handler';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {ReciterImage} from '@/components/ReciterImage';
 import {getReciterById} from '@/services/dataService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
-import {HeartIcon} from '@/components/Icons';
+import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -17,15 +22,20 @@ import Animated, {
 
 export const TrackInfo = () => {
   const {theme} = useTheme();
-  const {queue, setSheetMode} = useUnifiedPlayer();
+  const glassColorScheme = useGlassColorScheme();
+  const queue = usePlayerStore(s => s.queue);
   const {navigateToReciterProfile} = useReciterNavigation();
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const [, setReciter] = useState<Reciter | null>(null);
   const [rewayat, setRewayat] = useState<Rewayat | null>(null);
   const {isTrackLoved, toggleTrackLoved} = useLoved();
-  const scale = useSharedValue(1);
+  const loveScale = useSharedValue(1);
+  const loveAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{scale: loveScale.value}],
+  }));
 
   useEffect(() => {
+    setRewayat(null);
     let mounted = true;
     const loadReciter = async () => {
       if (!currentTrack?.reciterId) return;
@@ -53,46 +63,57 @@ export const TrackInfo = () => {
     };
   }, [currentTrack]);
 
+  const isUploadWithoutReciter =
+    currentTrack?.isUserUpload && !currentTrack?.reciterId;
+  const isUploadWithoutArtwork =
+    currentTrack?.isUserUpload && !currentTrack?.artwork;
+
   const handleReciterPress = useCallback(() => {
-    if (currentTrack) {
-      setSheetMode('hidden');
-      setTimeout(() => {
-        navigateToReciterProfile(currentTrack.reciterId);
-      }, 100);
+    if (currentTrack && !isUploadWithoutReciter) {
+      navigateToReciterProfile(currentTrack.reciterId);
     }
-  }, [currentTrack, setSheetMode, navigateToReciterProfile]);
+  }, [currentTrack, isUploadWithoutReciter, navigateToReciterProfile]);
 
   const handleToggleLoved = useCallback(() => {
     if (currentTrack) {
-      // Animate the heart
-      scale.value = withSpring(1.2, {}, () => {
-        scale.value = withSpring(1);
-      });
-
+      if (!USE_GLASS) {
+        loveScale.value = withSpring(1.2, {}, () => {
+          loveScale.value = withSpring(1);
+        });
+      }
       toggleTrackLoved(currentTrack);
     }
-  }, [currentTrack, scale, toggleTrackLoved]);
+  }, [currentTrack, loveScale, toggleTrackLoved]);
 
   const isLoved = currentTrack ? isTrackLoved(currentTrack) : false;
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: scale.value}],
-  }));
 
   return (
     <View style={styles.container}>
       <View style={styles.trackContainer}>
-        <TouchableOpacity
+        <Pressable
           style={styles.trackInfoTouchable}
-          activeOpacity={0.7}
           onPress={handleReciterPress}>
           <View style={styles.imageContainer}>
-            <ReciterImage
-              imageUrl={currentTrack?.artwork}
-              reciterName={currentTrack?.artist || ''}
-              style={styles.reciterImage}
-              profileIconSize={moderateScale(20)}
-            />
+            {isUploadWithoutArtwork ? (
+              <View
+                style={[
+                  styles.reciterImage,
+                  styles.uploadArtwork,
+                  {backgroundColor: theme.colors.card},
+                ]}>
+                <MicrophoneIcon
+                  size={moderateScale(20)}
+                  color={theme.colors.textSecondary}
+                />
+              </View>
+            ) : (
+              <ReciterImage
+                imageUrl={currentTrack?.artwork}
+                reciterName={currentTrack?.artist || ''}
+                style={styles.reciterImage}
+                profileIconSize={moderateScale(20)}
+              />
+            )}
           </View>
           <View style={styles.trackInfoTextContainer}>
             <Text
@@ -105,33 +126,58 @@ export const TrackInfo = () => {
               numberOfLines={1}>
               {currentTrack?.artist || ''}
             </Text>
-            {rewayat && (
+            {(rewayat || currentTrack?.rewayahName) && (
               <Text
                 style={[
                   styles.rewayatText,
                   {color: theme.colors.textSecondary},
                 ]}>
-                {rewayat.name}
-                {rewayat.style ? ` • ${rewayat.style}` : ''}
+                {rewayat
+                  ? `${rewayat.name}${rewayat.style ? ` • ${rewayat.style}` : ''}`
+                  : currentTrack?.rewayahName}
               </Text>
             )}
           </View>
-        </TouchableOpacity>
+        </Pressable>
 
-        <View style={styles.spacer} />
-
-        <TouchableOpacity
-          style={styles.loveButton}
-          onPress={handleToggleLoved}
-          activeOpacity={0.7}>
-          <Animated.View style={animatedStyle}>
-            <HeartIcon
-              size={moderateScale(32)}
-              color={isLoved ? 'red' : theme.colors.text}
-              filled={isLoved}
-            />
-          </Animated.View>
-        </TouchableOpacity>
+        {USE_GLASS ? (
+          <GlassView
+            style={styles.loveButton}
+            glassEffectStyle="regular"
+            colorScheme={glassColorScheme}
+            isInteractive>
+            <Pressable
+              style={({pressed}) => [
+                styles.loveButtonInner,
+                {opacity: pressed ? 0.7 : 1},
+              ]}
+              onPress={handleToggleLoved}>
+              <SymbolView
+                name={isLoved ? 'heart.fill' : 'heart'}
+                size={moderateScale(22)}
+                tintColor={isLoved ? 'red' : theme.colors.text}
+                weight="medium"
+              />
+            </Pressable>
+          </GlassView>
+        ) : (
+          <FrostedView style={styles.loveButton}>
+            <Pressable
+              style={({pressed}) => [
+                styles.loveButtonInner,
+                {opacity: pressed ? 0.7 : 1},
+              ]}
+              onPress={handleToggleLoved}>
+              <Animated.View style={loveAnimatedStyle}>
+                <HeartIcon
+                  size={moderateScale(22)}
+                  color={isLoved ? 'red' : theme.colors.text}
+                  filled={isLoved}
+                />
+              </Animated.View>
+            </Pressable>
+          </FrostedView>
+        )}
       </View>
     </View>
   );
@@ -146,11 +192,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: moderateScale(8),
   },
   trackInfoTouchable: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   imageContainer: {
     marginRight: moderateScale(12),
@@ -158,7 +204,11 @@ const styles = StyleSheet.create({
   reciterImage: {
     width: moderateScale(50),
     height: moderateScale(50),
-    borderRadius: moderateScale(6),
+    borderRadius: moderateScale(25),
+  },
+  uploadArtwork: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   trackInfoTextContainer: {
     flexShrink: 1,
@@ -181,11 +231,15 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     opacity: 0.7,
   },
-  spacer: {
-    flex: 1,
-  },
   loveButton: {
-    paddingLeft: moderateScale(8),
+    marginLeft: moderateScale(8),
+    width: moderateScale(50),
+    height: moderateScale(50),
+    borderRadius: moderateScale(25),
+    overflow: 'hidden',
+  },
+  loveButtonInner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },

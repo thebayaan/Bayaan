@@ -1,37 +1,27 @@
 import React from 'react';
-import {View, Text, TouchableOpacity} from 'react-native';
+import {View, Text, Pressable} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useSafeAreaInsets, EdgeInsets} from 'react-native-safe-area-context';
 import {useRouter} from 'expo-router';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistIcon, PlayIcon, ShuffleIcon} from '@/components/Icons';
 import Color from 'color';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
-
-const AnimatedTouchableOpacity =
-  Animated.createAnimatedComponent(TouchableOpacity);
+import {USE_GLASS} from '@/hooks/useGlassProps';
 
 interface PlaylistHeaderProps {
   title: string;
   subtitle: string;
-  backgroundColor: string;
   onPlayPress: () => void;
   onShufflePress: () => void;
-  onOptionsPress: () => void;
+  onOptionsPress?: () => void;
   theme: Theme;
 }
 
 export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   title,
   subtitle,
-  backgroundColor,
   onPlayPress,
   onShufflePress,
   onOptionsPress,
@@ -41,88 +31,32 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
   const router = useRouter();
   const styles = createStyles(theme, insets);
 
-  // Animation values for button press feedback
-  const optionsScale = useSharedValue(1);
-  const shuffleScale = useSharedValue(1);
-  const playScale = useSharedValue(1);
-
-  const optionsAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: optionsScale.value}],
-  }));
-
-  const shuffleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: shuffleScale.value}],
-  }));
-
-  const playAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{scale: playScale.value}],
-  }));
-
-  const handlePressIn = (button: 'options' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'options'
-        ? optionsScale
-        : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
-    scale.value = withSpring(0.92, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
-  const handlePressOut = (button: 'options' | 'shuffle' | 'play') => {
-    const scale =
-      button === 'options'
-        ? optionsScale
-        : button === 'shuffle'
-          ? shuffleScale
-          : playScale;
-    scale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 300,
-    });
-  };
-
   return (
     <View style={styles.headerContainer}>
-      <LinearGradient
-        colors={[backgroundColor, theme.colors.background]}
-        style={styles.gradientContainer}>
+      <View style={styles.contentArea}>
         {/* Back Button */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.7}>
-          <Icon
-            name="arrow-left"
-            type="feather"
-            size={moderateScale(24)}
-            color="white"
-          />
-        </TouchableOpacity>
+        {!USE_GLASS && (
+          <Pressable
+            style={styles.backButton}
+            onPress={() => router.back()}
+            hitSlop={8}>
+            <Feather
+              name="arrow-left"
+              size={moderateScale(24)}
+              color={theme.colors.text}
+            />
+          </Pressable>
+        )}
 
         {/* Header Content */}
         <View style={styles.contentContainer}>
-          {/* Hero Icon Container - matching CreatePlaylistModal */}
-          <View
-            style={[
-              styles.heroIconContainer,
-              {
-                backgroundColor: Color(backgroundColor).alpha(0.2).toString(),
-                shadowColor: backgroundColor,
-              },
-            ]}>
-            <View
-              style={[
-                styles.heroIconInner,
-                {
-                  backgroundColor: Color(backgroundColor)
-                    .alpha(0.15)
-                    .toString(),
-                },
-              ]}>
-              <PlaylistIcon color="white" size={moderateScale(30)} />
+          {/* Hero Icon Container */}
+          <View style={styles.heroIconContainer}>
+            <View style={styles.heroIconInner}>
+              <PlaylistIcon
+                color={theme.colors.text}
+                size={moderateScale(30)}
+              />
             </View>
           </View>
 
@@ -130,55 +64,32 @@ export const PlaylistHeader: React.FC<PlaylistHeaderProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
-      {/* Action Buttons - Matching Reciter Profile Style */}
-      <View style={styles.contentWrapper}>
-        <View style={styles.actionButtons}>
-          {/* Options button on the left */}
-          <AnimatedTouchableOpacity
-            activeOpacity={0.7}
-            style={[styles.optionsButton, optionsAnimatedStyle]}
-            onPress={onOptionsPress}
-            onPressIn={() => handlePressIn('options')}
-            onPressOut={() => handlePressOut('options')}>
-            <Icon
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        {!USE_GLASS && onOptionsPress && (
+          <Pressable style={styles.circleButton} onPress={onOptionsPress}>
+            <Feather
               name="more-horizontal"
-              type="feather"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-          </AnimatedTouchableOpacity>
-
-          {/* Right side buttons */}
-          <View style={styles.rightAlignedButtons}>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.circleButton, shuffleAnimatedStyle]}
-              onPress={onShufflePress}
-              onPressIn={() => handlePressIn('shuffle')}
-              onPressOut={() => handlePressOut('shuffle')}>
-              <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
-            </AnimatedTouchableOpacity>
-            <AnimatedTouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.circleButton,
-                styles.playButton,
-                playAnimatedStyle,
-              ]}
-              onPress={onPlayPress}
-              onPressIn={() => handlePressIn('play')}
-              onPressOut={() => handlePressOut('play')}>
-              <View style={styles.playIconContainer}>
-                <PlayIcon
-                  color={theme.colors.background}
-                  size={moderateScale(16)}
-                />
-              </View>
-            </AnimatedTouchableOpacity>
+          </Pressable>
+        )}
+        <Pressable
+          style={[styles.circleButton, styles.playButton]}
+          onPress={onPlayPress}>
+          <View style={styles.playIconContainer}>
+            <PlayIcon
+              color={theme.colors.background}
+              size={moderateScale(16)}
+            />
           </View>
-        </View>
+        </Pressable>
+        <Pressable style={styles.circleButton} onPress={onShufflePress}>
+          <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
+        </Pressable>
       </View>
     </View>
   );
@@ -190,16 +101,19 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       width: '100%',
       overflow: 'hidden',
     },
-    gradientContainer: {
+    contentArea: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: insets.top + moderateScale(20),
-      paddingBottom: moderateScale(30),
+      paddingTop: USE_GLASS
+        ? moderateScale(16)
+        : insets.top + moderateScale(40),
+      paddingBottom: moderateScale(10),
       overflow: 'hidden',
+      backgroundColor: theme.colors.background,
     },
     backButton: {
       position: 'absolute',
-      top: insets.top + moderateScale(10),
+      top: USE_GLASS ? moderateScale(10) : insets.top + moderateScale(10),
       left: moderateScale(15),
       zIndex: 10,
       padding: moderateScale(8),
@@ -215,13 +129,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: moderateScale(12),
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 4,
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.1).toString(),
     },
     heroIconInner: {
       width: moderateScale(56),
@@ -229,6 +137,7 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       borderRadius: moderateScale(28),
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
     },
     title: {
       fontSize: moderateScale(17),
@@ -245,29 +154,14 @@ const createStyles = (theme: Theme, insets: EdgeInsets) =>
       textAlign: 'center',
       marginBottom: moderateScale(8),
     },
-    contentWrapper: {
-      paddingHorizontal: moderateScale(16),
-    },
     actionButtons: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: moderateScale(5),
-      paddingHorizontal: moderateScale(5),
-    },
-    optionsButton: {
-      width: moderateScale(40),
-      height: moderateScale(40),
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: moderateScale(12),
-      backgroundColor: Color(theme.colors.textSecondary).alpha(0.08).toString(),
-      padding: moderateScale(8),
-    },
-    rightAlignedButtons: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: moderateScale(8),
+      paddingTop: moderateScale(4),
+      paddingBottom: moderateScale(12),
+      paddingHorizontal: moderateScale(20),
+      gap: moderateScale(16),
     },
     circleButton: {
       width: moderateScale(42),

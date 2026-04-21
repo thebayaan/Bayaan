@@ -5,33 +5,20 @@ import BottomSheet, {
   BottomSheetBackdropProps,
   BottomSheetHandleProps,
 } from '@gorhom/bottom-sheet';
-import {useUnifiedPlayer} from '@/hooks/useUnifiedPlayer';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
+import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
 import Color from 'color';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
-
-// Import surah info data
-const surahInfo = require('@/data/surahInfo.json');
-
-// Custom handle component for the bottom sheet
-const CustomHandle = (_props: BottomSheetHandleProps) => {
-  const {theme} = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={[styles.handleContainer, {paddingTop: insets.top + 12}]}>
-      <View
-        style={[
-          styles.handle,
-          {backgroundColor: Color(theme.colors.text).alpha(0.2).toString()},
-        ]}
-      />
-    </View>
-  );
-};
+import {useTimestampStore} from '@/store/timestampStore';
+import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
+import {
+  registerPlayerSheetRef,
+  unregisterPlayerSheetRef,
+} from '@/services/player/sheetRef';
 
 export const PlayerSheet = () => {
   const {theme} = useTheme();
@@ -39,16 +26,20 @@ export const PlayerSheet = () => {
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
 
-  const {
-    queue,
-    loading,
-    sheetMode,
-    setSheetMode,
-    playback,
-    setRate,
-    settings,
-    updateSettings,
-  } = useUnifiedPlayer();
+  const {setSheetMode, setRate, updateSettings, setImmersive} =
+    usePlayerActions();
+  const queue = usePlayerStore(s => s.queue);
+  const loading = usePlayerStore(s => s.loading);
+  const sheetMode = usePlayerStore(s => s.sheetMode);
+  const isImmersive = usePlayerStore(s => s.isImmersive);
+  const playbackRate = usePlayerStore(s => s.playback.rate);
+  const settings = usePlayerStore(s => s.settings);
+
+  // Register ref so MiniPlayer/FloatingPlayer can call expand() directly
+  useEffect(() => {
+    registerPlayerSheetRef(bottomSheetRef);
+    return () => unregisterPlayerSheetRef();
+  }, []);
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -56,10 +47,14 @@ export const PlayerSheet = () => {
 
     const handleBackPress = () => {
       if (sheetMode === 'full') {
+        if (isImmersive) {
+          setImmersive(false);
+          return true;
+        }
         setSheetMode('hidden');
-        return true; // Prevent default behavior
+        return true;
       }
-      return false; // Let default behavior happen
+      return false;
     };
 
     const subscription = BackHandler.addEventListener(
@@ -68,7 +63,7 @@ export const PlayerSheet = () => {
     );
 
     return () => subscription.remove();
-  }, [sheetMode, setSheetMode]);
+  }, [sheetMode, isImmersive, setSheetMode, setImmersive]);
 
   // Effect to handle sleep timer remaining time
   useEffect(() => {
@@ -111,11 +106,12 @@ export const PlayerSheet = () => {
 
     const sheet = bottomSheetRef.current;
     if (sheetMode === 'hidden') {
+      setImmersive(false);
       sheet.close();
     } else if (sheetMode === 'full') {
       sheet.expand();
     }
-  }, [sheetMode]);
+  }, [sheetMode, setImmersive]);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const shouldShow = !loading?.stateRestoring && !!currentTrack;
@@ -175,11 +171,11 @@ export const PlayerSheet = () => {
   const handleShowSpeedSheet = useCallback(() => {
     SheetManager.show('playback-speed', {
       payload: {
-        currentSpeed: playback.rate,
+        currentSpeed: playbackRate,
         onSpeedChange: handleSpeedChange,
       },
     });
-  }, [playback.rate, handleSpeedChange]);
+  }, [playbackRate, handleSpeedChange]);
 
   const handleShowSleepTimerSheet = useCallback(() => {
     SheetManager.show('sleep-timer', {
@@ -193,33 +189,64 @@ export const PlayerSheet = () => {
   }, [remainingTime, handleSleepTimerChange, handleTurnOffTimer]);
 
   const handleShowMushafLayoutSheet = useCallback(() => {
-    SheetManager.show('mushaf-layout');
+    SheetManager.show('mushaf-layout', {payload: {context: 'player'}});
   }, []);
 
-  const handleShowSummarySheet = useCallback(() => {
-    const surahNumber = currentTrack?.surahId
-      ? parseInt(currentTrack.surahId, 10)
-      : undefined;
-    const currentSurahInfo = surahNumber ? surahInfo[surahNumber] : undefined;
+  const handleShowAmbientSheet = useCallback(() => {
+    SheetManager.show('ambient-sounds');
+  }, []);
 
-    if (currentSurahInfo) {
-      SheetManager.show('extended-summary', {
-        payload: {
-          surahInfo: currentSurahInfo,
-        },
-      });
+  const followAlongAvailable = useRewayatFollowAlong(currentTrack?.rewayatId);
+
+  const handleFollowAlongPress = useCallback(() => {
+    if (!followAlongAvailable) {
+      SheetManager.show('follow-along');
+      return;
     }
-  }, [currentTrack?.surahId]);
+
+    const state = useTimestampStore.getState();
+
+    // If follow along is enabled but user scrolled away (not locked), re-lock
+    if (state.followAlongEnabled && !state.isLocked) {
+      state.setIsLocked(true);
+      return;
+    }
+
+    // Otherwise toggle follow along on/off
+    state.toggleFollowAlong();
+    // When enabling, also lock
+    if (!state.followAlongEnabled) {
+      state.setIsLocked(true);
+    }
+  }, [followAlongAvailable]);
 
   const handleShowOptionsSheet = useCallback(() => {
-    const surahNumber = currentTrack?.surahId
+    if (!currentTrack) return;
+
+    const surahNumber = currentTrack.surahId
       ? parseInt(currentTrack.surahId, 10)
       : undefined;
     const currentSurahData = surahNumber
       ? SURAHS.find(s => s.id === surahNumber)
       : undefined;
 
-    if (currentSurahData && currentTrack?.reciterId) {
+    // Upload tracks — always show options
+    if (currentTrack.isUserUpload) {
+      SheetManager.show('player-options', {
+        payload: {
+          surah: currentSurahData,
+          reciterId: currentTrack.reciterId || undefined,
+          rewayatId: currentTrack.rewayatId,
+          onGoToReciter: currentTrack.reciterId ? handleGoToReciter : undefined,
+          isUserUpload: true,
+          userRecitationId: currentTrack.userRecitationId,
+        },
+      });
+      return;
+    }
+
+    // System tracks — existing behavior
+    if (currentSurahData && currentTrack.reciterId) {
       SheetManager.show('player-options', {
         payload: {
           surah: currentSurahData,
@@ -231,19 +258,27 @@ export const PlayerSheet = () => {
     }
   }, [currentTrack, handleGoToReciter]);
 
+  const renderHandleComponent = useCallback(
+    (_props: BottomSheetHandleProps) => <View />,
+    [],
+  );
+
   // Only render modals once settings are loaded to prevent hydration issues
   if (!shouldShow) {
     return null;
   }
 
-  const currentIndex = sheetMode === 'full' ? 0 : -1;
   const textColor = Color(theme.colors.text);
   const isLightText = textColor.isLight();
 
   return (
     <>
       {sheetMode === 'full' && (
-        <StatusBar barStyle={isLightText ? 'light-content' : 'dark-content'} />
+        <StatusBar
+          barStyle={isLightText ? 'light-content' : 'dark-content'}
+          hidden={isImmersive}
+          animated
+        />
       )}
       <BottomSheet
         ref={bottomSheetRef}
@@ -252,21 +287,20 @@ export const PlayerSheet = () => {
         enablePanDownToClose
         enableDynamicSizing={false}
         backdropComponent={renderBackdrop}
-        index={currentIndex}
+        index={-1}
         animateOnMount={false}
-        handleComponent={CustomHandle}
-        enableContentPanningGesture={Platform.OS === 'ios'}
+        handleComponent={renderHandleComponent}
+        enableContentPanningGesture
+        enableOverDrag={false}
         style={styles.sheet}
-        backgroundStyle={[
-          styles.background,
-          {backgroundColor: theme.colors.background},
-        ]}>
+        backgroundStyle={[styles.background, {backgroundColor: 'transparent'}]}>
         <PlayerContent
           onSpeedPress={handleShowSpeedSheet}
           onSleepTimerPress={handleShowSleepTimerSheet}
           onMushafLayoutPress={handleShowMushafLayoutSheet}
-          onSummaryPress={handleShowSummarySheet}
+          onAmbientPress={handleShowAmbientSheet}
           onOptionsPress={handleShowOptionsSheet}
+          onFollowAlongPress={handleFollowAlongPress}
         />
       </BottomSheet>
     </>
@@ -279,15 +313,7 @@ const styles = StyleSheet.create({
     elevation: 20,
   },
   background: {
-    borderTopLeftRadius: 45,
-    borderTopRightRadius: 45,
-  },
-  handleContainer: {
-    alignItems: 'center',
-  },
-  handle: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
 });

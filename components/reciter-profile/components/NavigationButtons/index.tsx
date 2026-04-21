@@ -1,9 +1,9 @@
 import React from 'react';
-import {Animated, TouchableOpacity} from 'react-native';
+import {Animated, Pressable, View} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {Icon} from '@rneui/themed';
+import {Feather} from '@expo/vector-icons';
 import {useRouter} from 'expo-router';
 
 interface NavigationButtonsProps {
@@ -12,34 +12,19 @@ interface NavigationButtonsProps {
   };
   iconsOpacity: Animated.Value;
   iconsZIndex: Animated.Value;
-  scrollY: Animated.Value;
   onSearchPress: () => void;
+  onSharePress?: () => void;
 }
 
-/**
- * NavigationButtons component for the ReciterProfile
- *
- * This component displays the back and search buttons that appear
- * at the top of the ReciterProfile screen.
- *
- * @component
- */
 export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
   insets,
   iconsOpacity,
   iconsZIndex,
-  scrollY,
   onSearchPress,
+  onSharePress,
 }) => {
   const router = useRouter();
   const {theme} = useTheme();
-
-  // Create a header opacity animation similar to the loved.tsx screen
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [100, 200],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
 
   return (
     <>
@@ -53,73 +38,43 @@ export const NavigationButtons: React.FC<NavigationButtonsProps> = ({
             zIndex: iconsZIndex,
           },
         ]}>
-        <TouchableOpacity activeOpacity={0.99} onPress={() => router.back()}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color={theme.colors.text}
-            />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Icon
-              name="arrow-left"
-              type="feather"
-              size={moderateScale(24)}
-              color="white"
-            />
-          </Animated.View>
-        </TouchableOpacity>
+        <Pressable onPress={() => router.back()}>
+          <Feather
+            name="arrow-left"
+            size={moderateScale(24)}
+            color={theme.colors.text}
+          />
+        </Pressable>
       </Animated.View>
       <Animated.View
         style={[
-          styles.searchButton,
+          styles.rightButtons,
           {
             top: insets.top,
-            right: moderateScale(20),
+            right: moderateScale(15),
             opacity: iconsOpacity,
             zIndex: iconsZIndex,
           },
         ]}>
-        <TouchableOpacity activeOpacity={0.99} onPress={onSearchPress}>
-          <Animated.View
-            style={{
-              opacity: headerOpacity.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-            }}>
-            <Icon
-              name="search"
-              type="feather"
+        {onSharePress && (
+          <Pressable
+            onPress={onSharePress}
+            hitSlop={8}
+            style={{marginRight: moderateScale(16)}}>
+            <Feather
+              name="share"
               size={moderateScale(20)}
               color={theme.colors.text}
             />
-          </Animated.View>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              opacity: headerOpacity,
-            }}>
-            <Icon
-              name="search"
-              type="feather"
-              size={moderateScale(20)}
-              color="white"
-            />
-          </Animated.View>
-        </TouchableOpacity>
+          </Pressable>
+        )}
+        <Pressable onPress={onSearchPress} hitSlop={8}>
+          <Feather
+            name="search"
+            size={moderateScale(20)}
+            color={theme.colors.text}
+          />
+        </Pressable>
       </Animated.View>
     </>
   );
@@ -130,8 +85,10 @@ const styles = ScaledSheet.create({
     position: 'absolute',
     zIndex: 10,
   },
-  searchButton: {
+  rightButtons: {
     position: 'absolute',
     zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
