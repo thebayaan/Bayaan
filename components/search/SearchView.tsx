@@ -6,6 +6,7 @@ import {
   ScrollView,
   FlatList,
   Keyboard,
+  Platform,
   Animated as RNAnimated,
 } from 'react-native';
 import {useRouter} from 'expo-router';
@@ -28,6 +29,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SheetManager} from 'react-native-actions-sheet';
 import {ExploreView} from '@/components/search/ExploreView';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const RECENT_SEARCHES_KEY = 'recentSearches';
 const MAX_RECENT_SEARCHES = 10;
@@ -81,6 +83,24 @@ export function SearchView({
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Drive the mode transition from external state
   const isSearchMode = isSearchActive || query.length > 0;
@@ -235,6 +255,14 @@ export function SearchView({
       );
 
       setSearchResults(combinedResults);
+
+      // Fire analytics after search completes (already debounced via debouncedQuery)
+      if (debouncedQuery.trim().length > 0) {
+        analyticsService.trackSearchPerformed({
+          query: debouncedQuery.trim(),
+          results_count: combinedResults.length,
+        });
+      }
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
@@ -433,7 +461,10 @@ export function SearchView({
           <ScrollView
             style={styles.flexFill}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, {paddingBottom: bottomInset}]}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {paddingBottom: Math.max(keyboardHeight, bottomInset)},
+            ]}
             keyboardShouldPersistTaps="handled">
             {recentSearches.length > 0 ? (
               <View>
@@ -518,7 +549,10 @@ export function SearchView({
             data={searchResults}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) => `${item.type}-${index}`}
-            contentContainerStyle={styles.resultsContent}
+            contentContainerStyle={[
+              styles.resultsContent,
+              {paddingBottom: Math.max(keyboardHeight, bottomInset)},
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={() => Keyboard.dismiss()}

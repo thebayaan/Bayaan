@@ -15,6 +15,7 @@ import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AmbientSoundType, DEFAULT_AMBIENT_VOLUME} from '@/types/ambient';
 import {ambientAudioService} from '@/services/audio/AmbientAudioService';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const STORAGE_KEY = 'ambient-store';
 
@@ -58,6 +59,11 @@ export const useAmbientStore = create<AmbientStoreState>()(
         }
 
         set({isEnabled: enabled});
+
+        analyticsService.trackAmbientToggled({
+          sound_type: currentSound ?? 'unknown',
+          enabled,
+        });
       },
 
       toggle: () => {

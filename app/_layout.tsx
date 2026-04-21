@@ -9,13 +9,14 @@ import {useDownloadStore} from '@/services/player/store/downloadStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {
+  AppState,
   View,
   Text,
   Platform,
   StatusBar as RNStatusBar,
   Appearance,
   InteractionManager,
-  AppState,
+  type AppStateStatus,
 } from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {ThemeProvider} from '@react-navigation/native';
@@ -35,6 +36,8 @@ import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
 import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
+import {PostHogProvider, usePostHog} from 'posthog-react-native';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {ExpoAudioProvider} from '@/services/audio';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {restoreSession} from '@/services/player/utils/restoreSession';
@@ -49,6 +52,7 @@ import {
   refreshIosWidgets,
   subscribePlayerToIosWidgets,
 } from '@/services/widgets/refreshIosWidgets';
+import * as Sentry from '@sentry/react-native';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -70,7 +74,48 @@ SystemUI.setBackgroundColorAsync(
   Appearance.getColorScheme() === 'dark' ? '#07121a' : '#f4f3ec',
 );
 
-export default function RootLayout() {
+const analyticsEnabled = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED !== 'false';
+
+if (analyticsEnabled) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+    tracesSampleRate: 0.2,
+    enableAutoSessionTracking: true,
+  });
+}
+
+/** Connects PostHog SDK to our analytics service and tracks app lifecycle. */
+function AnalyticsConnector(): null {
+  const posthog = usePostHog();
+
+  // Connect PostHog instance to analytics service
+  useEffect(() => {
+    if (posthog) {
+      analyticsService.setPostHogInstance(posthog);
+      analyticsService.trackAppOpened();
+    }
+  }, [posthog]);
+
+  // Track app foreground/background transitions
+  useEffect(() => {
+    function handleAppStateChange(nextState: AppStateStatus): void {
+      if (nextState === 'background' || nextState === 'inactive') {
+        analyticsService.trackAppBackgrounded();
+      } else if (nextState === 'active') {
+        analyticsService.trackAppOpened();
+      }
+    }
+    const subscription = AppState.addEventListener(
+      'change',
+      handleAppStateChange,
+    );
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
+function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [mushafRestoreHandled, setMushafRestoreHandled] = useState(false);
@@ -403,49 +448,66 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider value={navigationTheme}>
-        <SafeAreaProvider>
-          <ExpoAudioProvider>
-            <GestureHandlerRootView
-              style={{flex: 1, backgroundColor: theme.colors.background}}
-              // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
-              overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
-              onLayout={onLayoutRootView}>
-              <ApiDisruptionBanner />
-              <SheetProvider>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: {
-                      paddingTop: 0,
-                      backgroundColor: theme.colors.background,
-                    },
-                    animation: 'fade',
-                  }}>
-                  <Stack.Screen name="(tabs)" options={{headerShown: false}} />
-                  <Stack.Screen
-                    name="mushaf"
-                    options={{
-                      headerShown: USE_GLASS,
-                      headerTransparent: true,
-                      headerStyle: {backgroundColor: 'transparent'},
-                      headerShadowVisible: false,
-                      headerTitle: '',
-                      headerTitleAlign: 'center',
-                      headerBackButtonDisplayMode: 'minimal',
-                      animation: 'slide_from_right',
-                      fullScreenGestureEnabled: false,
-                    }}
-                  />
-                </Stack>
-                <PlayerSheet />
-                <WhatsNewModal ref={whatsNewModalRef} />
-                <DevMenu whatsNewModalRef={whatsNewModalRef} />
-              </SheetProvider>
-            </GestureHandlerRootView>
-          </ExpoAudioProvider>
-        </SafeAreaProvider>
-      </ThemeProvider>
+      <PostHogProvider
+        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? ''}
+        options={{
+          host: 'https://us.i.posthog.com',
+          flushAt: 20,
+          flushInterval: 30000,
+        }}
+        autocapture={{
+          captureScreens: true,
+        }}>
+        <AnalyticsConnector />
+        <ThemeProvider value={navigationTheme}>
+          <SafeAreaProvider>
+            <ExpoAudioProvider>
+              <GestureHandlerRootView
+                style={{flex: 1, backgroundColor: theme.colors.background}}
+                // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
+                overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                onLayout={onLayoutRootView}>
+                <ApiDisruptionBanner />
+                <SheetProvider>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: {
+                        paddingTop: 0,
+                        backgroundColor: theme.colors.background,
+                      },
+                      animation: 'fade',
+                    }}>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{headerShown: false}}
+                    />
+                    <Stack.Screen
+                      name="mushaf"
+                      options={{
+                        headerShown: USE_GLASS,
+                        headerTransparent: true,
+                        headerStyle: {backgroundColor: 'transparent'},
+                        headerShadowVisible: false,
+                        headerTitle: '',
+                        headerTitleAlign: 'center',
+                        headerBackButtonDisplayMode: 'minimal',
+                        animation: 'slide_from_right',
+                        fullScreenGestureEnabled: false,
+                      }}
+                    />
+                  </Stack>
+                  <PlayerSheet />
+                  <WhatsNewModal ref={whatsNewModalRef} />
+                  <DevMenu whatsNewModalRef={whatsNewModalRef} />
+                </SheetProvider>
+              </GestureHandlerRootView>
+            </ExpoAudioProvider>
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </PostHogProvider>
     </ErrorBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

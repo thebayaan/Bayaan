@@ -64,12 +64,14 @@ for (let i = 0; i < allVerses.length; i++) {
 interface TafseerContentProps {
   surahNumber: number;
   ayahNumber: number;
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onBack: () => void;
 }
 
 export const TafseerContent: React.FC<TafseerContentProps> = ({
   surahNumber,
   ayahNumber,
+  rewayah,
   onBack,
 }) => {
   const {theme} = useTheme();
@@ -161,7 +163,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
         </View>
 
         {/* Arabic text */}
-        <SkiaVersePreview verseKey={verse.verseKey} />
+        <SkiaVersePreview verseKey={verse.verseKey} rewayah={rewayah} />
 
         {/* Divider */}
         <View style={styles.divider} />

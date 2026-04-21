@@ -419,8 +419,12 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const searchInputRef = useRef<TextInput>(null);
 
   // Fade animation refs — if autoFocusSearch, start in search mode immediately
-  const browseOpacity = useRef(new RNAnimated.Value(autoFocusSearch ? 0 : 1)).current;
-  const searchOpacity = useRef(new RNAnimated.Value(autoFocusSearch ? 1 : 0)).current;
+  const browseOpacity = useRef(
+    new RNAnimated.Value(autoFocusSearch ? 0 : 1),
+  ).current;
+  const searchOpacity = useRef(
+    new RNAnimated.Value(autoFocusSearch ? 1 : 0),
+  ).current;
 
   // Auto-focus search input on mount when autoFocusSearch is true
   useEffect(() => {
@@ -721,7 +725,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   const getItemType = useCallback((item: BrowseItem) => item.type, []);
 
-
   const SortBar = useMemo(
     () => (
       <View style={styles.sortBar}>
@@ -732,8 +735,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               option === 'asc'
                 ? 'arrow-up'
                 : option === 'desc'
-                ? 'arrow-down'
-                : 'calendar';
+                  ? 'arrow-down'
+                  : 'calendar';
             const label =
               option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
             return (

@@ -43,6 +43,7 @@ import {
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {SURAHS} from '@/data/surahData';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
@@ -59,6 +60,7 @@ import PageEdgeDecoration, {
   EDGE_BORDER_RADIUS,
   EDGE_HORIZONTAL_INSET,
 } from './PageEdgeDecoration';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
@@ -281,6 +283,7 @@ export default function MushafViewer({
   const pageLayout = useMushafSettingsStore(s => s.pageLayout);
   const viewMode = useMushafSettingsStore(s => s.viewMode);
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
   const isVertical = scrollDirection === 'vertical';
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : readingColors.card;
@@ -329,6 +332,63 @@ export default function MushafViewer({
     : {};
 
   const currentSurahId = pageToSurah[currentPage] || 1;
+
+  // --- Analytics: mushaf page tracking ---
+  const pageReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageVisibleSinceRef = useRef<number>(Date.now());
+  const sessionStartRef = useRef<number>(Date.now());
+  const pagesOpenedRef = useRef<number>(1);
+  const pagesReadRef = useRef<number>(0);
+
+  const trackPageChange = useCallback(
+    (page: number) => {
+      const surahId = pageToSurah[page] || 1;
+      const juzNumber = getJuzForPage(page);
+
+      // Fire page_opened
+      analyticsService.trackMushafPageOpened({
+        page_number: page,
+        surah_id: surahId,
+        juz_number: juzNumber,
+      });
+      pagesOpenedRef.current += 1;
+
+      // Clear existing page_read timer
+      if (pageReadTimerRef.current) {
+        clearTimeout(pageReadTimerRef.current);
+      }
+
+      // Start new 15s timer for page_read
+      pageVisibleSinceRef.current = Date.now();
+      pageReadTimerRef.current = setTimeout(() => {
+        const durationMs = Date.now() - pageVisibleSinceRef.current;
+        analyticsService.trackMushafPageRead({
+          page_number: page,
+          duration_ms: durationMs,
+          surah_id: surahId,
+        });
+        pagesReadRef.current += 1;
+      }, 15_000);
+    },
+    [pageToSurah],
+  );
+
+  // Track initial page + start page_read timer on mount
+  useEffect(() => {
+    trackPageChange(initialPage);
+    return () => {
+      // Session ended on unmount
+      if (pageReadTimerRef.current) {
+        clearTimeout(pageReadTimerRef.current);
+      }
+      analyticsService.trackMushafSessionEnded({
+        pages_opened: pagesOpenedRef.current,
+        pages_read: pagesReadRef.current,
+        total_duration_ms: Date.now() - sessionStartRef.current,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSharePage = useCallback(() => {
     const url = mushafShareUrl(currentPage, isDarkMode ? 'dark' : 'light');
@@ -402,7 +462,8 @@ export default function MushafViewer({
                 fontFamily: 'Manrope-Regular',
                 color: theme.colors.textSecondary,
               }}>
-              Page {currentPage} · Juz {getJuzForPage(currentPage)}
+              Page {currentPage} · Juz {getJuzForPage(currentPage)} ·{' '}
+              {getRewayahShortLabel(rewayah)}
             </Text>
           </Pressable>
         </TitleWrapper>
@@ -444,6 +505,7 @@ export default function MushafViewer({
     isSearchMode,
     currentPage,
     currentSurahId,
+    rewayah,
     handleSharePage,
     theme,
     isDarkMode,
@@ -457,6 +519,7 @@ export default function MushafViewer({
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
         mushafSessionStore.setLastReadPage(page);
+        trackPageChange(page);
         // Update the active reading chain (swipe = same chain, even across surah boundaries)
         const surahId = digitalKhattDataService.initialized
           ? digitalKhattDataService.getPageToSurah()[page]
@@ -466,7 +529,7 @@ export default function MushafViewer({
         }
       }
     },
-    [],
+    [trackPageChange],
   );
 
   const viewabilityConfig = useMemo(
@@ -603,17 +666,22 @@ export default function MushafViewer({
   // Vertical mode callbacks — update the same state as horizontal FlatList
   const handleContinuousPageChange = useCallback(
     (page: number) => {
+      // Record last-read unconditionally so "Continue Reading" resumes
+      // correctly even when the viewer mounts on a fresh page (e.g.
+      // opened via a surah tap) and the user never scrolls away. The
+      // horizontal onViewableItemsChanged handler does the same.
+      mushafSessionStore.setLastReadPage(page);
       if (page !== currentPage) {
         setCurrentPage(page);
         useMushafPlayerStore.setState({currentPage: page});
-        mushafSessionStore.setLastReadPage(page);
+        trackPageChange(page);
         const surahId = pageToSurah[page];
         if (surahId) {
           useMushafSettingsStore.getState().updateActiveChain(surahId, page);
         }
       }
     },
-    [currentPage, pageToSurah],
+    [currentPage, pageToSurah, trackPageChange],
   );
 
   // Mushaf player state
@@ -775,7 +843,8 @@ export default function MushafViewer({
                         styles.headerMeta,
                         {color: theme.colors.textSecondary},
                       ]}>
-                      Page {currentPage} · Juz {getJuzForPage(currentPage)}
+                      Page {currentPage} · Juz {getJuzForPage(currentPage)} ·{' '}
+                      {getRewayahShortLabel(rewayah)}
                     </Text>
                   </View>
                 </Pressable>

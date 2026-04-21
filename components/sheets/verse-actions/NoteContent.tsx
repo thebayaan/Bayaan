@@ -19,6 +19,7 @@ interface NoteContentProps {
   surahNumber: number;
   ayahNumber: number;
   verseKeys?: string[];
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onDone: () => void;
 }
 
@@ -27,6 +28,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
   surahNumber,
   ayahNumber,
   verseKeys,
+  rewayah,
   onDone,
 }) => {
   const {theme} = useTheme();
@@ -44,13 +46,23 @@ export const NoteContent: React.FC<NoteContentProps> = ({
       ayahNumber,
       noteText.trim(),
       isRange ? verseKeys : undefined,
+      rewayah,
     );
     const store = useVerseAnnotationsStore.getState();
     for (const vk of allKeys) {
       store.addNote(vk);
     }
     onDone();
-  }, [verseKey, verseKeys, isRange, surahNumber, ayahNumber, noteText, onDone]);
+  }, [
+    verseKey,
+    verseKeys,
+    isRange,
+    surahNumber,
+    ayahNumber,
+    noteText,
+    onDone,
+    rewayah,
+  ]);
 
   const canSave = noteText.trim().length > 0;
 
@@ -63,6 +75,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
           verseKey={verseKey}
           verseKeys={verseKeys}
           numberOfLines={isRange ? 3 : 2}
+          rewayah={rewayah}
         />
       </View>
 

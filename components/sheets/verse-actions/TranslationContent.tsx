@@ -23,6 +23,7 @@ import {
   BUNDLED_TRANSLATIONS,
   type BundledTranslationId,
 } from '@/types/translation';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 // ─── Data loading (module scope, runs once) ───────────────────────────────
 const quranData = require('@/data/quran.json') as QuranData;
@@ -65,12 +66,14 @@ const bundledIds = Object.keys(BUNDLED_TRANSLATIONS) as BundledTranslationId[];
 interface TranslationContentProps {
   surahNumber: number;
   ayahNumber: number;
+  rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onBack: () => void;
 }
 
 export const TranslationContent: React.FC<TranslationContentProps> = ({
   surahNumber,
   ayahNumber,
+  rewayah,
   onBack,
 }) => {
   const {theme} = useTheme();
@@ -133,6 +136,17 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
     ? stripHtml(getTranslationText(verse.verseKey, selectedTranslationId))
     : stripHtml(downloadedTexts[selectedTranslationId] ?? '');
 
+  // Track translation viewed when the selected translation changes
+  useEffect(() => {
+    const language = isBundledTranslation(selectedTranslationId)
+      ? BUNDLED_TRANSLATIONS[selectedTranslationId].language
+      : selectedTranslationId.split('.')[0] || 'unknown';
+    analyticsService.trackTranslationViewed({
+      translation_id: selectedTranslationId,
+      language,
+    });
+  }, [selectedTranslationId]);
+
   // All other translation IDs (bundled + downloaded, excluding active)
   const otherTranslationIds = useMemo(() => {
     const ids: string[] = [];
@@ -178,7 +192,7 @@ export const TranslationContent: React.FC<TranslationContentProps> = ({
         </View>
 
         {/* Arabic text */}
-        <SkiaVersePreview verseKey={verse.verseKey} />
+        <SkiaVersePreview verseKey={verse.verseKey} rewayah={rewayah} />
 
         {/* Divider */}
         <View style={styles.divider} />

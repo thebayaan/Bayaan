@@ -29,6 +29,9 @@ import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import {verseShareUrl, shareUrl as nativeShareUrl} from '@/utils/shareUtils';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import type {RewayahId} from '@/store/mushafSettingsStore';
 
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
@@ -53,6 +56,7 @@ interface ShareContentProps {
   verseKeys?: string[];
   arabicText: string;
   translation: string;
+  rewayah?: RewayahId;
   onDone: () => void;
 }
 
@@ -61,6 +65,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   surahNumber,
   ayahNumber,
   verseKeys: verseKeysProp,
+  rewayah: rewayahProp,
   onDone,
 }) => {
   const {theme, isDarkMode} = useTheme();
@@ -80,6 +85,9 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const rewayah: RewayahId = rewayahProp ?? mushafRewayah;
+  const rewayahLabel = getRewayahShortLabel(rewayah);
   const fontFamily =
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
@@ -94,7 +102,8 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     const arabicParts: string[] = [];
     const translationParts: string[] = [];
     for (const vk of verseKeys) {
-      const arabic = textByKey[vk];
+      const arabic =
+        digitalKhattDataService.getVerseText(vk, rewayah) || textByKey[vk];
       if (arabic) arabicParts.push(arabic);
       const trans = getTranslationTextRaw(vk, selectedTranslationId);
       if (trans) translationParts.push(trans);
@@ -122,7 +131,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       translation: translationParts.join('\n'),
       verseRefText: `${surahName} ${ref}`,
     };
-  }, [verseKeys, selectedTranslationId]);
+  }, [verseKeys, selectedTranslationId, rewayah]);
 
   const handleShareAsImage = useCallback(async () => {
     if (isCapturing) return;
@@ -144,10 +153,14 @@ export const ShareContent: React.FC<ShareContentProps> = ({
 
   const handleShareAsText = useCallback(async () => {
     lightHaptics();
-    const message = `${arabicText}\n\n${translation}\n\n-- Quran ${verseRefText}`;
+    const ref =
+      rewayah === 'hafs'
+        ? `Quran ${verseRefText}`
+        : `Quran ${verseRefText} · ${rewayahLabel}`;
+    const message = `${arabicText}\n\n${translation}\n\n-- ${ref}`;
     await Share.share({message});
     SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText]);
+  }, [arabicText, translation, verseRefText, rewayah, rewayahLabel]);
 
   const handleShareLink = useCallback(async () => {
     lightHaptics();
@@ -155,10 +168,11 @@ export const ShareContent: React.FC<ShareContentProps> = ({
       surahNumber,
       ayahNumber,
       isDarkMode ? 'dark' : 'light',
+      rewayah,
     );
     await nativeShareUrl(url, `Quran ${verseRefText}`);
     SheetManager.hideAll();
-  }, [surahNumber, ayahNumber, verseRefText]);
+  }, [surahNumber, ayahNumber, verseRefText, isDarkMode, rewayah]);
 
   if (!fontMgr) return null;
 
@@ -175,6 +189,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
           quranCommonTypeface={quranCommonTypeface}
           fontFamily={fontFamily}
           width={previewWidth}
+          rewayah={rewayah}
         />
       </View>
 
@@ -190,6 +205,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
           quranCommonTypeface={quranCommonTypeface}
           fontFamily={fontFamily}
           width={captureLogicalWidth}
+          rewayah={rewayah}
         />
       </View>
 

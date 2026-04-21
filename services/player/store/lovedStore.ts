@@ -1,6 +1,7 @@
 import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const STORAGE_KEY = 'loved-tracks-store';
 
@@ -59,6 +60,23 @@ export const useLovedStore = create<LovedTracksState>()(
         rewayatId: string,
         userRecitationId?: string,
       ) => {
+        // Determine current loved state before toggling
+        const isCurrentlyLoved = get().tracks.some(
+          t =>
+            (t.reciterId === reciterId &&
+              t.surahId === surahId &&
+              t.rewayatId === rewayatId) ||
+            (t.reciterId === reciterId &&
+              t.surahId === surahId &&
+              !t.rewayatId),
+        );
+
+        analyticsService.trackFavoriteToggled({
+          surah_id: parseInt(surahId ?? '0', 10),
+          reciter_id: reciterId,
+          action: isCurrentlyLoved ? 'remove' : 'add',
+        });
+
         set(state => {
           // Check if a track exists with either the new format (with rewayatId)
           // or the old format (without rewayatId)

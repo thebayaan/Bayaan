@@ -31,6 +31,8 @@ import {
 } from '@/services/mushaf/TajweedAlignmentService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import type {RewayahId} from '@/store/mushafSettingsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 
 // --- Constants ---
 
@@ -70,6 +72,10 @@ interface WBWVerseViewProps {
   indexedTajweedData: IndexedTajweedData | null;
   onTap?: () => void;
   onLongPress?: () => void;
+  /** Context rewayah (player track or mushaf setting). Word-by-word data
+   *  is Hafs-only, so the Arabic here is always rendered in Hafs — this
+   *  prop only drives the "Showing Hafs" disclosure label. */
+  rewayah?: RewayahId;
 }
 
 interface MatchedWord {
@@ -271,9 +277,29 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     indexedTajweedData,
     onTap,
     onLongPress,
+    rewayah: rewayahProp,
   }) => {
     const {theme} = useTheme();
     const [containerWidth, setContainerWidth] = useState(0);
+    const activeRewayah = useMushafSettingsStore(s => s.rewayah);
+    const contextRewayah = rewayahProp ?? activeRewayah;
+    const showingHafsFallback = contextRewayah !== 'hafs';
+
+    // Word-by-word data is Hafs-aligned — always fetch Hafs DK words so
+    // word boundaries match the translation/transliteration payload.
+    // Lazy-load Hafs into the side cache if the mushaf is currently on a
+    // non-Hafs rewayah, then re-render.
+    const [, bumpHafsLoaded] = React.useReducer(x => x + 1, 0);
+    useEffect(() => {
+      if (digitalKhattDataService.rewayah === 'hafs') return;
+      let cancelled = false;
+      digitalKhattDataService.ensureRewayahLoaded('hafs').then(() => {
+        if (!cancelled) bumpHafsLoaded();
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, []);
 
     // Try sync cache first, fall back to async
     const cachedWords = useMemo(
@@ -296,9 +322,9 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
 
     const wbwWords = cachedWords ?? asyncWords;
 
-    // Get DK words synchronously
+    // Always read Hafs DK words — WBW word indexing is Hafs-aligned.
     const dkWords = useMemo(
-      () => digitalKhattDataService.getVerseWords(verseKey),
+      () => digitalKhattDataService.getVerseWords(verseKey, 'hafs'),
       [verseKey],
     );
 
@@ -374,7 +400,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     const tajweedWords = useMemo(
       () =>
         showTajweed && indexedTajweedData
-          ? indexedTajweedData[verseKey] ?? null
+          ? (indexedTajweedData[verseKey] ?? null)
           : null,
       [showTajweed, indexedTajweedData, verseKey],
     );
@@ -568,98 +594,113 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
 
     if (!wbwWords) return null;
 
+    // Small disclosure when the active context rewayah isn't Hafs —
+    // WBW data is Hafs-aligned, so the word grid here is always Hafs.
+    const hafsNotice = showingHafsFallback ? (
+      <Text
+        style={[
+          styles.hafsNotice,
+          {color: Color(textColor).alpha(0.5).toString()},
+        ]}>
+        Word-by-word shown in Hafs
+      </Text>
+    ) : null;
+
     // Optimized single-canvas render when Skia is available and width is measured
     if (fontMgr && computedLayout) {
       return (
-        <Pressable
-          onLayout={handleLayout}
-          onPress={onTap}
-          onLongPress={handleWordPress}
-          style={[
-            styles.singleCanvasContainer,
-            {height: computedLayout.totalHeight + PADDING_VERTICAL * 2},
-          ]}>
-          {/* Word highlight boxes (rendered before Canvas so text sits on top) */}
-          {selectedItems.map(item => (
-            <View
-              key={`hl-${item.dkPosition}`}
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: item.x - HIGHLIGHT_PADDING,
-                top: PADDING_VERTICAL + item.y - HIGHLIGHT_PADDING,
-                width: item.columnWidth + HIGHLIGHT_PADDING * 2,
-                height: item.totalItemHeight + HIGHLIGHT_PADDING * 2,
-                borderRadius: HIGHLIGHT_RADIUS,
-                backgroundColor: highlightColor,
-              }}
-            />
-          ))}
-          {/* Canvas chunks — split to stay within Metal texture size limits */}
-          {canvasChunks.map((chunk, idx) => (
-            <Canvas
-              key={idx}
-              pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: PADDING_VERTICAL + chunk.startY,
-                left: 0,
-                width: containerWidth,
-                height: chunk.height,
-              }}>
-              {chunk.items.map(item => (
-                <Paragraph
-                  key={item.dkPosition}
-                  paragraph={item.paragraph}
-                  x={item.x + (item.columnWidth - item.arabicWidth) / 2}
-                  y={item.y - chunk.startY}
-                  width={item.arabicWidth}
-                />
-              ))}
-            </Canvas>
-          ))}
-          {/* Dividers + translation/transliteration overlays */}
-          {computedLayout.items.map(item => {
-            if (item.isEndMarker) return null;
-            return (
+        <View>
+          {hafsNotice}
+          <Pressable
+            onLayout={handleLayout}
+            onPress={onTap}
+            onLongPress={handleWordPress}
+            style={[
+              styles.singleCanvasContainer,
+              {height: computedLayout.totalHeight + PADDING_VERTICAL * 2},
+            ]}>
+            {/* Word highlight boxes (rendered before Canvas so text sits on top) */}
+            {selectedItems.map(item => (
               <View
-                key={`sub-${item.dkPosition}`}
-                style={[
-                  styles.subTextOverlay,
-                  {
-                    left: item.x,
-                    top: PADDING_VERTICAL + item.y + item.arabicHeight,
-                    width: item.columnWidth,
-                  },
-                ]}>
+                key={`hl-${item.dkPosition}`}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: item.x - HIGHLIGHT_PADDING,
+                  top: PADDING_VERTICAL + item.y - HIGHLIGHT_PADDING,
+                  width: item.columnWidth + HIGHLIGHT_PADDING * 2,
+                  height: item.totalItemHeight + HIGHLIGHT_PADDING * 2,
+                  borderRadius: HIGHLIGHT_RADIUS,
+                  backgroundColor: highlightColor,
+                }}
+              />
+            ))}
+            {/* Canvas chunks — split to stay within Metal texture size limits */}
+            {canvasChunks.map((chunk, idx) => (
+              <Canvas
+                key={idx}
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: PADDING_VERTICAL + chunk.startY,
+                  left: 0,
+                  width: containerWidth,
+                  height: chunk.height,
+                }}>
+                {chunk.items.map(item => (
+                  <Paragraph
+                    key={item.dkPosition}
+                    paragraph={item.paragraph}
+                    x={item.x + (item.columnWidth - item.arabicWidth) / 2}
+                    y={item.y - chunk.startY}
+                    width={item.arabicWidth}
+                  />
+                ))}
+              </Canvas>
+            ))}
+            {/* Dividers + translation/transliteration overlays */}
+            {computedLayout.items.map(item => {
+              if (item.isEndMarker) return null;
+              return (
                 <View
+                  key={`sub-${item.dkPosition}`}
                   style={[
-                    styles.divider,
-                    {backgroundColor: derivedColors.divider},
-                  ]}
-                />
-                {showTransliteration && (
-                  <Text
+                    styles.subTextOverlay,
+                    {
+                      left: item.x,
+                      top: PADDING_VERTICAL + item.y + item.arabicHeight,
+                      width: item.columnWidth,
+                    },
+                  ]}>
+                  <View
                     style={[
-                      styles.transliterationText,
-                      {color: derivedColors.transliteration},
-                    ]}>
-                    {item.transliteration}
-                  </Text>
-                )}
-                {showTranslation && (
-                  <Text
-                    style={[
-                      styles.translationText,
-                      {color: derivedColors.translation},
-                    ]}>
-                    {item.translation}
-                  </Text>
-                )}
-              </View>
-            );
-          })}
-        </Pressable>
+                      styles.divider,
+                      {backgroundColor: derivedColors.divider},
+                    ]}
+                  />
+                  {showTransliteration && (
+                    <Text
+                      style={[
+                        styles.transliterationText,
+                        {color: derivedColors.transliteration},
+                      ]}>
+                      {item.transliteration}
+                    </Text>
+                  )}
+                  {showTranslation && (
+                    <Text
+                      style={[
+                        styles.translationText,
+                        {color: derivedColors.translation},
+                      ]}>
+                      {item.translation}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </Pressable>
+        </View>
       );
     }
 
@@ -667,6 +708,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     // Used when: fontMgr not ready, or containerWidth not measured yet
     return (
       <View onLayout={handleLayout} style={styles.fallbackContainer}>
+        {hafsNotice}
         {matchedWords.map(({dkWord, wbwWord}) => (
           <Pressable
             key={dkWord.wordPositionInVerse}
@@ -739,6 +781,12 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
 WBWVerseView.displayName = 'WBWVerseView';
 
 const styles = StyleSheet.create({
+  hafsNotice: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: moderateScale(10.5),
+    textAlign: 'center',
+    marginBottom: verticalScale(4),
+  },
   // --- Optimized single-canvas layout ---
   singleCanvasContainer: {
     position: 'relative',

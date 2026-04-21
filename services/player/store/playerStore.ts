@@ -14,6 +14,7 @@ import {
 import {createDefaultUnifiedPlayerState} from './validation';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {audioCoordinator} from '@/services/audio/AudioCoordinator';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
 
 const STORAGE_KEY = 'player-store';
 
@@ -218,6 +219,18 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {tracks, currentIndex} = state.queue;
         const {repeatMode} = state.settings;
 
+        // Fire analytics before advancing
+        const currentTrack = tracks[currentIndex];
+        if (currentTrack?.surahId && !currentTrack.isUserUpload) {
+          analyticsService.trackPlaybackSkipped({
+            surah_id: parseInt(currentTrack.surahId, 10),
+            reciter_id: currentTrack.reciterId,
+            position_ms: Math.round(state.playback.position * 1000),
+            listened_ms: Math.round(state.playback.position * 1000),
+            direction: 'next',
+          });
+        }
+
         try {
           let nextIndex = currentIndex + 1;
 
@@ -277,6 +290,18 @@ export const usePlayerStore = create<PlayerStoreState>()(
         const {tracks, currentIndex} = state.queue;
         const {repeatMode} = state.settings;
         const position = expoAudioService.getPosition();
+
+        // Fire analytics before going back
+        const currentTrack = tracks[currentIndex];
+        if (currentTrack?.surahId && !currentTrack.isUserUpload) {
+          analyticsService.trackPlaybackSkipped({
+            surah_id: parseInt(currentTrack.surahId, 10),
+            reciter_id: currentTrack.reciterId,
+            position_ms: Math.round(state.playback.position * 1000),
+            listened_ms: Math.round(state.playback.position * 1000),
+            direction: 'prev',
+          });
+        }
 
         try {
           // If more than 3 seconds into the track, restart it (no index change needed)
@@ -348,6 +373,15 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       seekTo: async (position: number) => {
         try {
+          const currentTrack = get().queue.tracks[get().queue.currentIndex];
+          if (currentTrack?.surahId && !currentTrack.isUserUpload) {
+            analyticsService.trackPlaybackSeeked({
+              surah_id: parseInt(currentTrack.surahId, 10),
+              from_ms: Math.round(get().playback.position * 1000),
+              to_ms: Math.round(position * 1000),
+            });
+          }
+
           await expoAudioService.seekTo(position);
           set(state => ({
             playback: {...state.playback, position},
@@ -364,6 +398,11 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       setRate: async (rate: number) => {
         try {
+          analyticsService.trackRateChanged({
+            old_rate: get().playback.rate,
+            new_rate: rate,
+          });
+
           expoAudioService.setRate(rate);
           set(state => ({
             playback: {...state.playback, rate},

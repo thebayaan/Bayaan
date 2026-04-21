@@ -30,6 +30,8 @@ import ShareCardPreview from '@/components/share/ShareCardPreview';
 import {captureShareCard} from '@/components/share/captureShareCard';
 import {lightHaptics} from '@/utils/haptics';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
@@ -74,8 +76,8 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
 
   // Preview width (sheet padding = 16*2, small inset = 8*2)
   const previewWidth = screenWidth - moderateScale(48);
@@ -84,11 +86,15 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
   const captureLogicalWidth = 1080 / PixelRatio.get();
 
   // Build text for "Share as Text" fallback
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const rewayah = mushafRewayah;
+
   const {arabicText, translation, verseRefText} = useMemo(() => {
     const arabicParts: string[] = [];
     const translationParts: string[] = [];
     for (const vk of verseKeys) {
-      const arabic = textByKey[vk];
+      const arabic =
+        digitalKhattDataService.getVerseText(vk, rewayah) || textByKey[vk];
       if (arabic) arabicParts.push(arabic);
       const trans = saheehData[vk]?.t;
       if (trans) translationParts.push(trans);
@@ -116,7 +122,7 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
       translation: translationParts.join('\n'),
       verseRefText: `${surahName} ${ref}`,
     };
-  }, [verseKeys]);
+  }, [verseKeys, rewayah]);
 
   const handleShareAsImage = useCallback(async () => {
     if (isCapturing) return;
@@ -138,10 +144,14 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
 
   const handleShareAsText = useCallback(async () => {
     lightHaptics();
-    const message = `${arabicText}\n\n${translation}\n\n-- Quran ${verseRefText}`;
+    const ref =
+      rewayah === 'hafs'
+        ? `Quran ${verseRefText}`
+        : `Quran ${verseRefText} · ${getRewayahShortLabel(rewayah)}`;
+    const message = `${arabicText}\n\n${translation}\n\n-- ${ref}`;
     await Share.share({message});
     SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText]);
+  }, [arabicText, translation, verseRefText, rewayah]);
 
   if (!payload || !fontMgr) return null;
 
@@ -168,6 +178,7 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
             quranCommonTypeface={quranCommonTypeface}
             fontFamily={fontFamily}
             width={previewWidth}
+            rewayah={rewayah}
           />
         </View>
 
@@ -183,6 +194,7 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
             quranCommonTypeface={quranCommonTypeface}
             fontFamily={fontFamily}
             width={captureLogicalWidth}
+            rewayah={rewayah}
           />
         </View>
 

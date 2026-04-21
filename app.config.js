@@ -4,6 +4,23 @@ const versionInfo = require('./scripts/generate-version');
 // Get version string
 const getVersionString = () => versionInfo.semanticVersion;
 
+// ─── Fork-configurable identifiers ───────────────────────────────────────────
+// Defaults are the maintainer's values so local builds work with no extra
+// setup. Forks override via environment variables documented in .env.example.
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID ?? 'S4W5Q2L53W';
+const EAS_PROJECT_ID_FROM_ENV = process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+const EAS_PROJECT_ID =
+  EAS_PROJECT_ID_FROM_ENV ?? 'e31ace41-2d1b-4777-8230-8c8264277d59';
+// Only enable Expo OTA updates when the EAS project ID is explicitly set via
+// env. Forks that don't set it get no update checks (no phone-home to the
+// maintainer's Expo project).
+const OTA_UPDATES_ENABLED = Boolean(EAS_PROJECT_ID_FROM_ENV);
+// Associated/deep-link domain. Forks must set their own; leaving unset means
+// no universal-link registration, avoiding conflicts with the maintainer's app.
+const ASSOCIATED_DOMAIN = process.env.EXPO_PUBLIC_ASSOCIATED_DOMAIN;
+const PRIVACY_POLICY_URL =
+  process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? 'https://thebayaan.com/privacy';
+
 module.exports = {
   expo: {
     name: 'Bayaan',
@@ -22,8 +39,10 @@ module.exports = {
       config: {
         usesNonExemptEncryption: false,
       },
-      teamId: 'S4W5Q2L53W',
-      associatedDomains: ['applinks:app.thebayaan.com'],
+      teamId: APPLE_TEAM_ID,
+      ...(ASSOCIATED_DOMAIN
+        ? {associatedDomains: [`applinks:${ASSOCIATED_DOMAIN}`]}
+        : {}),
       infoPlist: {
         NSMicrophoneUsageDescription:
           'This app uses the microphone to play audio.',
@@ -41,8 +60,7 @@ module.exports = {
             CFBundleURLSchemes: ['bayaan'],
           },
         ],
-        NSPrivacyPolicyURL:
-          'https://osmansaeday.github.io/bayaan-privacy-policy',
+        NSPrivacyPolicyURL: PRIVACY_POLICY_URL,
         UISupportedInterfaceOrientations: ['UIInterfaceOrientationPortrait'],
         'UISupportedInterfaceOrientations~ipad': [
           'UIInterfaceOrientationPortrait',
@@ -72,7 +90,7 @@ module.exports = {
     extra: {
       // Add your environment variables here
       eas: {
-        projectId: 'e31ace41-2d1b-4777-8230-8c8264277d59',
+        projectId: EAS_PROJECT_ID,
       },
       isDevelopmentMode: false,
       // Add version information for runtime access
@@ -94,31 +112,52 @@ module.exports = {
         backgroundColor: '#8dc9d6',
       },
       screenOrientation: 'portrait',
-      intentFilters: [
-        {
-          action: 'VIEW',
-          autoVerify: true,
-          data: [
-            {
-              scheme: 'https',
-              host: 'app.thebayaan.com',
-              pathPrefix: '/share',
-            },
-          ],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
-      ],
+      ...(ASSOCIATED_DOMAIN
+        ? {
+            intentFilters: [
+              {
+                action: 'VIEW',
+                autoVerify: true,
+                data: [
+                  {
+                    scheme: 'https',
+                    host: ASSOCIATED_DOMAIN,
+                    pathPrefix: '/quran',
+                  },
+                  {
+                    scheme: 'https',
+                    host: ASSOCIATED_DOMAIN,
+                    pathPrefix: '/reciter',
+                  },
+                  {
+                    scheme: 'https',
+                    host: ASSOCIATED_DOMAIN,
+                    pathPrefix: '/mushaf',
+                  },
+                  {
+                    scheme: 'https',
+                    host: ASSOCIATED_DOMAIN,
+                    pathPrefix: '/adhkar',
+                  },
+                ],
+                category: ['BROWSABLE', 'DEFAULT'],
+              },
+            ],
+          }
+        : {}),
     },
     // React Compiler disabled - causes performance issues with Zustand subscriptions
     // experiments: {
     //   reactCompiler: true,
     // },
-    updates: {
-      enabled: true,
-      checkAutomatically: 'ON_LOAD',
-      fallbackToCacheTimeout: 2000,
-      url: 'https://u.expo.dev/e31ace41-2d1b-4777-8230-8c8264277d59',
-    },
+    updates: OTA_UPDATES_ENABLED
+      ? {
+          enabled: true,
+          checkAutomatically: 'ON_LOAD',
+          fallbackToCacheTimeout: 2000,
+          url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+        }
+      : {enabled: false},
     plugins: [
       'expo-router',
       [
@@ -189,6 +228,21 @@ module.exports = {
           androidMultiIntentFilters: ['audio/*'],
         },
       ],
+      // Only wire up the Sentry Expo plugin (adds the source-map + debug-symbol
+      // upload build phases) when a DSN is configured. Forks/contributors
+      // without Sentry credentials can build and archive without running the
+      // upload scripts.
+      ...(process.env.EXPO_PUBLIC_SENTRY_DSN
+        ? [
+            [
+              '@sentry/react-native/expo',
+              {
+                organization: process.env.SENTRY_ORG ?? 'bayaan',
+                project: process.env.SENTRY_PROJECT ?? 'bayaan',
+              },
+            ],
+          ]
+        : []),
       './withAndroidSigning.js',
       './withLargeHeap.js',
       './withIOSTeam.js',

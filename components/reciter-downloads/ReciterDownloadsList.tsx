@@ -1,5 +1,11 @@
 import React, {useState, useEffect, useCallback, useRef, useMemo} from 'react';
-import {View, Text, StyleSheet, Animated as RNAnimated, Pressable} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated as RNAnimated,
+  Pressable,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {SurahItem} from '@/components/SurahItem';
 import {getReciterById, getSurahById} from '@/services/dataService';

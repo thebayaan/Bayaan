@@ -213,6 +213,9 @@ declare module 'react-native-actions-sheet' {
         translation?: string;
         transliteration?: string;
         source?: 'player' | 'mushaf';
+        // Override the rewayah used for Arabic text resolution and share
+        // disclosure. Defaults to the mushaf's active rewayah.
+        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-copy': SheetDefinition<{
@@ -232,6 +235,7 @@ declare module 'react-native-actions-sheet' {
         surahNumber: number;
         ayahNumber: number;
         verseKeys?: string[];
+        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-note': SheetDefinition<{
@@ -241,6 +245,7 @@ declare module 'react-native-actions-sheet' {
         ayahNumber: number;
         verseKeys?: string[];
         noteId?: string;
+        rewayah?: import('@/store/mushafSettingsStore').RewayahId;
       };
     }>;
     'verse-share': SheetDefinition<{

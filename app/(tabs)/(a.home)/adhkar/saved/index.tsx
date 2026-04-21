@@ -5,13 +5,7 @@ import React, {
   useMemo,
   useLayoutEffect,
 } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
+import {View, Text, FlatList, Pressable, StyleSheet} from 'react-native';
 import {useRouter, useNavigation, Link} from 'expo-router';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Ionicons} from '@expo/vector-icons';
@@ -217,15 +211,9 @@ const SavedAdhkarScreen: React.FC = () => {
           {paddingBottom: bottomInset},
         ]}
         contentInset={USE_GLASS ? {top: headerHeight} : undefined}
-        contentOffset={
-          USE_GLASS ? {x: 0, y: -headerHeight} : undefined
-        }
-        scrollIndicatorInsets={
-          USE_GLASS ? {top: headerHeight} : undefined
-        }
-        style={
-          !USE_GLASS ? {marginTop: headerHeight} : undefined
-        }
+        contentOffset={USE_GLASS ? {x: 0, y: -headerHeight} : undefined}
+        scrollIndicatorInsets={USE_GLASS ? {top: headerHeight} : undefined}
+        style={!USE_GLASS ? {marginTop: headerHeight} : undefined}
         showsVerticalScrollIndicator={false}
         initialNumToRender={10}
         maxToRenderPerBatch={10}

@@ -49,8 +49,28 @@ CODEPOINT_MAP = {
     "\u0657": "\u08F0",  # open fathatan
     "\u0656": "\u08F2",  # open kasratan
     "\u065E": "\u08F1",  # open dammatan
+    # Purely visual KFGQPC glyph variants the DK font doesn't have — remap
+    # to the nearest DK-supported equivalent. These do NOT carry tajweed
+    # classification signal so substituting loses nothing.
+    "\u06D2": "\u0649",  # yeh barree -> alef maksura (same dotless final form)
+    "\u200F": "",  # RTL mark (invisible) -> drop; Skia handles RTL from buffer
 }
 _TRANSLATE_TABLE = str.maketrans({k: v for k, v in CODEPOINT_MAP.items()})
+
+# KFGQPC Warsh/Qaloon markers that the DK font can't render BUT carry
+# tajweed classification signal:
+#   U+06E4 ۤ SMALL HIGH MADDA   — Madd al-Badal / Madd al-Lin (green)
+#   U+06EA ۪ EMPTY CENTRE LOW STOP — Tashil / imalah hint (light blue/dark green)
+# Preserve them through normalization so the classifier can read them,
+# then strip just before DB insert via strip_for_render() below.
+_CLASSIFICATION_MARKERS = set("\u06E4\u06EA")
+
+
+def strip_for_render(text: str) -> str:
+    """Remove classification-signal codepoints that DK can't render so the
+    stored DB text renders cleanly. Called AFTER classification decisions
+    have been recorded in the diff JSON."""
+    return "".join(c for c in text if c not in _CLASSIFICATION_MARKERS)
 
 HAMZA_DECOMPOSE = {
     "\u0623": "\u0627" + HAMZA_ABOVE,  # alef-above
@@ -96,11 +116,20 @@ def wrap_ayah_marker(text: str) -> str:
     return TRAIL_AYAH_NUM.sub(f" {END_OF_AYAH}" + r"\1", text)
 
 
-def normalize_verse(kfgqpc_text: str) -> str:
-    """Full normalization pipeline: KFGQPC conventions -> Bayaan conventions."""
+def normalize_verse(kfgqpc_text: str, *, wrap_ayah: bool = True) -> str:
+    """Full normalization pipeline: KFGQPC conventions -> Bayaan conventions.
+
+    `wrap_ayah=True` (default) prefixes the trailing ayah digit with U+06DD
+    (Bayaan's DigitalKhatt font expects '۝N'). For rewayat that render with
+    a KFGQPC per-qiraat font, set `wrap_ayah=False` — KFGQPC fonts have an
+    OpenType feature that turns a bare Arabic digit into the ornamental
+    ayah marker, and the U+06DD prefix would render as a SECOND empty marker
+    in front of the numbered one.
+    """
     t = substitute_codepoints(kfgqpc_text)
     t = attach_ruku(t)
-    t = wrap_ayah_marker(t)
+    if wrap_ayah:
+        t = wrap_ayah_marker(t)
     return t
 
 

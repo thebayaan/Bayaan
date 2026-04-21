@@ -1,0 +1,53 @@
+name: Lint & Typecheck
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Prettier, ESLint, TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # Prettier and ESLint are non-blocking while we work down pre-existing
+      # formatting and lint debt. Both steps surface issues but don't fail the
+      # job. TODO: once the codebase is clean, flip `continue-on-error: false`.
+      #
+      # Prettier specifically shows a ~44-file discrepancy between CI and
+      # local runs even with matched node/prettier versions — root cause
+      # unknown, tracked separately from the OSS-readiness work.
+      - name: Prettier
+        if: success() || failure()
+        continue-on-error: true
+        run: npx prettier --check .
+
+      - name: ESLint
+        if: success() || failure()
+        continue-on-error: true
+        run: npm run lint
+
+      - name: TypeScript
+        if: success() || failure()
+        # The full-project typecheck needs >2GB heap; bump from the default
+        # ~1.7GB to avoid OOM on GitHub-hosted runners.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npx tsc --noEmit

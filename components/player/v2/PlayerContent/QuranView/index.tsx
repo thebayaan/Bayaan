@@ -24,6 +24,7 @@ import {
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
 import {getTranslationName} from '@/utils/translationLookup';
+import {useCurrentTrackRewayah} from '@/hooks/useCurrentTrackRewayah';
 
 const surahData = require('@/data/surahData.json') as Surah[];
 
@@ -101,6 +102,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const contentWidth = screenWidth - 2 * moderateScale(20);
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
+  const trackRewayah = useCurrentTrackRewayah();
   const surah = surahData.find(s => s.id === currentSurah);
 
   // Ayah timestamp tracking
@@ -208,6 +210,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         showWBW={showWBW}
         wbwShowTranslation={wbwShowTranslation}
         wbwShowTransliteration={wbwShowTransliteration}
+        rewayah={trackRewayah}
       />
     ),
     [
@@ -230,6 +233,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       showWBW,
       wbwShowTranslation,
       wbwShowTransliteration,
+      trackRewayah,
     ],
   );
 
