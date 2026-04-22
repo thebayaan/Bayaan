@@ -14,7 +14,18 @@ export interface RewayatInfo extends RewayatEntry {
   reciterCount: number;
 }
 
-// Canonical rewayat registry — ordered by Qira'at teacher
+// Canonical rewayat registry — ordered by Qira'at teacher.
+//
+// `name` and `aliases` mirror the exact strings stored in the Postgres
+// `rewayat.name` column — they must match the API payload verbatim so
+// resolveRewayatName() can look up an entry from whatever the backend sends.
+// Those fields retain pre-canonical spellings ("Aldori A'n Abi Amr" etc.).
+//
+// `displayName`, `teacher`, `student`, and `description` are user-facing
+// display fields — they carry the canonical transliterations used by the
+// RewayahIdentity module (Al-Duri, Qalun, Ibn Dhakwan, Hisham, Asim, Abu
+// Amr, Ibn Amir, al-Kisa'i, Abu Ja'far, Ya'qub, etc.) so every UI consumer
+// renders the same spelling.
 const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
   // Nafi'
   {
@@ -32,76 +43,76 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
   {
     id: 'qalon-an-nafi',
     name: "Qalon A'n Nafi'",
-    displayName: 'Qalon',
-    description: "Narration of Qalon from Imam Nafi'",
+    displayName: 'Qalun',
+    description: "Narration of Qalun from Imam Nafi'",
     teacher: "Nafi'",
-    student: 'Qalon',
+    student: 'Qalun',
     aliases: ["Qalon A'n Nafi' Men Tariq Abi Nasheet"],
   },
-  // Ibn Katheer
+  // Ibn Kathir
   {
     id: 'albizi-an-ibn-katheer',
     name: "Albizi A'n Ibn Katheer",
     displayName: 'Al-Bazzi',
-    description: 'Narration of Al-Bazzi from Ibn Katheer',
-    teacher: 'Ibn Katheer',
-    student: 'Albizi',
+    description: 'Narration of Al-Bazzi from Ibn Kathir',
+    teacher: 'Ibn Kathir',
+    student: 'Al-Bazzi',
     aliases: ["Albizi and Qunbol A'n Ibn Katheer"],
   },
   {
     id: 'qunbol-an-ibn-katheer',
     name: "Qunbol A'n Ibn Katheer",
-    displayName: 'Qunbol',
-    description: 'Narration of Qunbol from Ibn Katheer',
-    teacher: 'Ibn Katheer',
-    student: 'Qunbol',
+    displayName: 'Qunbul',
+    description: 'Narration of Qunbul from Ibn Kathir',
+    teacher: 'Ibn Kathir',
+    student: 'Qunbul',
     aliases: [],
   },
-  // Abi Amr
+  // Abu Amr
   {
     id: 'aldori-an-abi-amr',
     name: "Aldori A'n Abi Amr",
-    displayName: 'Al-Dori (Abi Amr)',
-    description: 'Narration of Al-Dori from Abi Amr',
-    teacher: 'Abi Amr',
-    student: 'Aldori',
+    displayName: 'Al-Duri (Abu Amr)',
+    description: 'Narration of Al-Duri from Abu Amr',
+    teacher: 'Abu Amr',
+    student: 'Al-Duri',
     aliases: [],
   },
   {
     id: 'assosi-an-abi-amr',
     name: "Assosi A'n Abi Amr",
-    displayName: 'Al-Sosi',
-    description: 'Narration of Al-Sosi from Abi Amr',
-    teacher: 'Abi Amr',
-    student: 'Assosi',
+    displayName: 'Al-Susi',
+    description: 'Narration of Al-Susi from Abu Amr',
+    teacher: 'Abu Amr',
+    student: 'Al-Susi',
     aliases: [],
   },
-  // Ibn Amer
+  // Ibn Amir
   {
     id: 'ibn-thakwan-an-ibn-amer',
     name: "Ibn Thakwan A'n Ibn Amer",
-    displayName: 'Ibn Thakwan',
-    description: 'Narration of Ibn Thakwan from Ibn Amer',
-    teacher: 'Ibn Amer',
-    student: 'Ibn Thakwan',
+    displayName: 'Ibn Dhakwan',
+    description: 'Narration of Ibn Dhakwan from Ibn Amir',
+    teacher: 'Ibn Amir',
+    student: 'Ibn Dhakwan',
     aliases: [],
   },
   {
     id: 'hesham-an-ibn-amer',
     name: "Hesham A'n Ibn Amer",
-    displayName: 'Hesham',
-    description: 'Narration of Hesham from Ibn Amer',
-    teacher: 'Ibn Amer',
-    student: 'Hesham',
+    displayName: 'Hisham',
+    description: 'Narration of Hisham from Ibn Amir',
+    teacher: 'Ibn Amir',
+    student: 'Hisham',
     aliases: [],
   },
-  // Assem
+  // Asim
   {
     id: 'hafs-an-assem',
     name: "Hafs A'n Assem",
     displayName: 'Hafs',
-    description: 'Narration of Hafs from Imam Assem',
-    teacher: 'Assem',
+    description: 'Narration of Hafs from Imam Asim',
+    teacher: 'Asim',
     student: 'Hafs',
     aliases: [],
   },
@@ -109,8 +120,8 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
     id: 'shubah-an-assem',
     name: "Shu'bah A'n Assem",
     displayName: "Shu'bah",
-    description: "Narration of Shu'bah from Imam Assem",
-    teacher: 'Assem',
+    description: "Narration of Shu'bah from Imam Asim",
+    teacher: 'Asim',
     student: "Shu'bah",
     aliases: [],
   },
@@ -118,7 +129,7 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
   {
     id: 'khalaf-an-hamzah',
     name: "Khalaf A'n Hamzah",
-    displayName: 'Khalaf',
+    displayName: 'Khalaf (Hamzah)',
     description: 'Narration of Khalaf from Hamzah',
     teacher: 'Hamzah',
     student: 'Khalaf',
@@ -133,32 +144,32 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
     student: 'Khallad',
     aliases: [],
   },
-  // Al-Kisa'ai
+  // al-Kisa'i
   {
     id: 'aldorai-an-alkisaai',
     name: "AlDorai A'n Al-Kisa'ai",
-    displayName: 'Al-Dorai',
-    description: "Narration of Al-Dorai from Al-Kisa'ai",
-    teacher: "Al-Kisa'ai",
-    student: 'AlDorai',
+    displayName: "Al-Duri (al-Kisa'i)",
+    description: "Narration of Al-Duri from al-Kisa'i",
+    teacher: "al-Kisa'i",
+    student: 'Al-Duri',
     aliases: [],
   },
   {
     id: 'abu-al-harith-an-alkisai',
     name: "Abu Al-Harith A'n Al-Kisa'i",
-    displayName: 'Abu Al-Harith',
-    description: "Narration of Abu Al-Harith from Al-Kisa'ai",
-    teacher: "Al-Kisa'ai",
-    student: 'Abu Al-Harith',
+    displayName: 'Abu al-Harith',
+    description: "Narration of Abu al-Harith from al-Kisa'i",
+    teacher: "al-Kisa'i",
+    student: 'Abu al-Harith',
     aliases: [],
   },
-  // Abi Ja'far
+  // Abu Ja'far
   {
     id: 'ibn-jammaz-an-abi-jafar',
     name: "Ibn Jammaz A'n Abi Ja'far",
     displayName: 'Ibn Jammaz',
-    description: "Narration of Ibn Jammaz from Abi Ja'far",
-    teacher: "Abi Ja'far",
+    description: "Narration of Ibn Jammaz from Abu Ja'far",
+    teacher: "Abu Ja'far",
     student: 'Ibn Jammaz',
     aliases: [],
   },
@@ -166,27 +177,27 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
     id: 'ibn-wardan-an-abi-jafar',
     name: "Ibn Wardan A'n Abi Ja'far",
     displayName: 'Ibn Wardan',
-    description: "Narration of Ibn Wardan from Abi Ja'far",
-    teacher: "Abi Ja'far",
+    description: "Narration of Ibn Wardan from Abu Ja'far",
+    teacher: "Abu Ja'far",
     student: 'Ibn Wardan',
     aliases: [],
   },
-  // Yakoob
+  // Ya'qub
   {
     id: 'rowis-rawh-an-yakoob',
     name: "Rowis and Rawh A'n Yakoob Al Hadrami",
-    displayName: 'Rowis & Rawh',
-    description: "Narration of Rowis and Rawh from Ya'qub Al-Hadrami",
-    teacher: 'Yakoob',
-    student: 'Rowis and Rawh',
+    displayName: 'Ruwais & Rawh',
+    description: "Narration of Ruwais and Rawh from Ya'qub al-Hadrami",
+    teacher: "Ya'qub",
+    student: 'Ruwais and Rawh',
     aliases: [],
   },
   {
     id: 'rawh-an-yaqub',
     name: "Rawh A'n Ya'qub",
     displayName: 'Rawh',
-    description: "Narration of Rawh from Ya'qub Al-Hadrami",
-    teacher: 'Yakoob',
+    description: "Narration of Rawh from Ya'qub al-Hadrami",
+    teacher: "Ya'qub",
     student: 'Rawh',
     aliases: [],
   },
@@ -194,18 +205,18 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
     id: 'ruwais-an-yaqub',
     name: "Ruwais A'n Ya'qub",
     displayName: 'Ruwais',
-    description: "Narration of Ruwais from Ya'qub Al-Hadrami",
-    teacher: 'Yakoob',
+    description: "Narration of Ruwais from Ya'qub al-Hadrami",
+    teacher: "Ya'qub",
     student: 'Ruwais',
     aliases: [],
   },
-  // Khalaf (as Qari, 10th Qira'ah)
+  // Khalaf al-Bazzar (as Qari, 10th Qira'ah)
   {
     id: 'idris-an-khalaf',
     name: "Idris A'n Khalaf Al-Bazzar",
     displayName: 'Idris',
-    description: 'Narration of Idris from Khalaf Al-Bazzar',
-    teacher: 'Khalaf',
+    description: 'Narration of Idris from Khalaf al-Bazzar',
+    teacher: 'Khalaf al-Bazzar',
     student: 'Idris',
     aliases: [],
   },
@@ -213,8 +224,8 @@ const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
     id: 'ishaq-an-khalaf',
     name: "Ishaq A'n Khalaf Al-Bazzar",
     displayName: 'Ishaq',
-    description: 'Narration of Ishaq from Khalaf Al-Bazzar',
-    teacher: 'Khalaf',
+    description: 'Narration of Ishaq from Khalaf al-Bazzar',
+    teacher: 'Khalaf al-Bazzar',
     student: 'Ishaq',
     aliases: [],
   },
@@ -225,15 +236,15 @@ export const DEFAULT_REWAYAH = "Hafs A'n Assem";
 
 export const QIRAAT_TEACHERS: readonly string[] = [
   "Nafi'",
-  'Ibn Katheer',
-  'Abi Amr',
-  'Ibn Amer',
-  'Assem',
+  'Ibn Kathir',
+  'Abu Amr',
+  'Ibn Amir',
+  'Asim',
   'Hamzah',
-  "Al-Kisa'ai",
-  "Abi Ja'far",
-  'Yakoob',
-  'Khalaf',
+  "al-Kisa'i",
+  "Abu Ja'far",
+  "Ya'qub",
+  'Khalaf al-Bazzar',
 ];
 
 // Lazy-built lookup map: DB name (or alias) -> RewayatEntry

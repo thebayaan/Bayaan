@@ -169,7 +169,7 @@ const SHORT_LABELS: Readonly<Record<RewayahId, string>> = {
   qunbul: 'Qunbul',
   warsh: 'Warsh',
   qalun: 'Qalun',
-  'al-duri-abi-amr': 'Al-Duri (Abi Amr)',
+  'al-duri-abi-amr': 'Al-Duri (Abu Amr)',
   'al-susi': 'Al-Susi',
   hisham: 'Hisham',
   'ibn-dhakwan': 'Ibn Dhakwan',

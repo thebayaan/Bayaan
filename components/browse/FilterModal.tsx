@@ -13,9 +13,12 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
 import {RECITERS} from '@/data/reciterData';
-import {resolveRewayatName, getRewayahNames} from '@/data/rewayat';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
+import {
+  ALL_REWAYAH_IDS,
+  getShortLabel,
+  resolveRewayahFromName,
+} from '@/services/rewayah/RewayahIdentity';
 
 interface FilterModalProps {
   visible: boolean;
@@ -38,42 +41,52 @@ const STYLE_OPTIONS = [
   {label: 'Murattal', value: 'murattal'},
 ];
 
-// Get rewayat names available in the reciter data, ordered by canonical Qira'at teacher order.
-// Groups DB names (including aliases) under their canonical registry entry, then returns
-// them in registry order so the UI follows the traditional Qira'at sequence.
-const getAvailableRewayatNames = (): string[] => {
-  // Collect all unique DB names from reciters
-  const dbNames = new Set<string>();
+// One chip per rewayah present in the reciter data, keyed by canonical
+// RewayahId slug (or the raw DB name when unresolvable). Dedups tariq
+// aliases — "Warsh A'n Nafi'", "Warsh … Tariq Alazraq", and
+// "Warsh … Tariq Abi Baker" all collapse to a single "Warsh" chip.
+// Ordered by the canonical Qira'at sequence (ALL_REWAYAH_IDS order),
+// with any unresolved entries appended at the end.
+interface RewayahChip {
+  // Stable identity the filter list stores. A RewayahId slug when the
+  // rewayat resolves to canonical, otherwise the raw DB name. Match
+  // against `resolveRewayahFromName(rewaya.name) ?? rewaya.name` when
+  // filtering reciters.
+  key: string;
+  label: string;
+}
+
+const getAvailableRewayahChips = (): RewayahChip[] => {
+  const seen = new Set<string>();
+  const resolved: Array<{key: string; label: string; order: number}> = [];
+  const unresolved: Array<{key: string; label: string}> = [];
+
   for (const reciter of RECITERS) {
     for (const r of reciter.rewayat) {
-      if (r.name) dbNames.add(r.name);
-    }
-  }
+      if (!r.name) continue;
+      const canonicalId = resolveRewayahFromName(r.name);
+      const key = canonicalId ?? r.name;
+      if (seen.has(key)) continue;
+      seen.add(key);
 
-  // Build ordered list: for each canonical entry, include matching DB names in registry order
-  const canonicalNames = getRewayahNames();
-  const ordered: string[] = [];
-  const placed = new Set<string>();
-
-  for (const primaryName of canonicalNames) {
-    for (const dbName of dbNames) {
-      if (placed.has(dbName)) continue;
-      const resolved = resolveRewayatName(dbName);
-      if (resolved && resolved.name === primaryName) {
-        ordered.push(dbName);
-        placed.add(dbName);
+      if (canonicalId) {
+        resolved.push({
+          key: canonicalId,
+          label: getShortLabel(canonicalId),
+          order: ALL_REWAYAH_IDS.indexOf(canonicalId),
+        });
+      } else {
+        unresolved.push({key: r.name, label: r.name});
       }
     }
   }
 
-  // Append any unresolved DB names at the end
-  for (const dbName of dbNames) {
-    if (!placed.has(dbName)) {
-      ordered.push(dbName);
-    }
-  }
-
-  return ordered;
+  return [
+    ...resolved
+      .sort((a, b) => a.order - b.order)
+      .map(({key, label}) => ({key, label})),
+    ...unresolved,
+  ];
 };
 
 function createStyles(theme: Theme) {
@@ -217,7 +230,7 @@ export default function FilterModal({
 }: FilterModalProps) {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const rewayatNames = useMemo(() => getAvailableRewayatNames(), []);
+  const rewayahChips = useMemo(() => getAvailableRewayahChips(), []);
 
   const defaultFilters: FilterOptions = {
     styles: [],
@@ -259,18 +272,18 @@ export default function FilterModal({
     });
   };
 
-  const toggleRewaya = (rewayaName: string) => {
+  const toggleRewaya = (chipKey: string) => {
     setFilters(prev => {
-      const isSelected = prev.rewayat.includes(rewayaName);
+      const isSelected = prev.rewayat.includes(chipKey);
       if (isSelected) {
         return {
           ...prev,
-          rewayat: prev.rewayat.filter(r => r !== rewayaName),
+          rewayat: prev.rewayat.filter(r => r !== chipKey),
         };
       } else {
         return {
           ...prev,
-          rewayat: [...prev.rewayat, rewayaName],
+          rewayat: [...prev.rewayat, chipKey],
         };
       }
     });
@@ -357,23 +370,23 @@ export default function FilterModal({
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Rewayat Types</Text>
                   <View style={styles.optionsContainer}>
-                    {rewayatNames.map(name => (
+                    {rewayahChips.map(({key, label}) => (
                       <TouchableOpacity
-                        key={name}
+                        key={key}
                         style={[
                           styles.optionChip,
-                          filters.rewayat.includes(name) &&
+                          filters.rewayat.includes(key) &&
                             styles.optionChipSelected,
                         ]}
-                        onPress={() => toggleRewaya(name)}
+                        onPress={() => toggleRewaya(key)}
                         activeOpacity={0.7}>
                         <Text
                           style={[
                             styles.optionText,
-                            filters.rewayat.includes(name) &&
+                            filters.rewayat.includes(key) &&
                               styles.optionTextSelected,
                           ]}>
-                          {getDisplayLabelFromName(name)}
+                          {label}
                         </Text>
                       </TouchableOpacity>
                     ))}
