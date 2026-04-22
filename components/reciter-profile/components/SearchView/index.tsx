@@ -13,6 +13,7 @@ import {SearchInput} from '@/components/SearchInput';
 import {StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
 import {SurahCard} from '@/components/cards/SurahCard';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 // Define view mode type
 type ReciterProfileViewMode = 'card' | 'list';
@@ -130,7 +131,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                   selectedRewayatId === item.id &&
                     styles.selectedRewayatButtonText,
                 ]}>
-                {item.name}
+                {getDisplayLabelFromName(item.name)}
               </Text>
               <Text
                 style={[

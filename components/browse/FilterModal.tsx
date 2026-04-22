@@ -15,6 +15,7 @@ import {Theme} from '@/utils/themeUtils';
 import {RECITERS} from '@/data/reciterData';
 import {resolveRewayatName, getRewayahNames} from '@/data/rewayat';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 interface FilterModalProps {
   visible: boolean;
@@ -372,7 +373,7 @@ export default function FilterModal({
                             filters.rewayat.includes(name) &&
                               styles.optionTextSelected,
                           ]}>
-                          {name}
+                          {getDisplayLabelFromName(name)}
                         </Text>
                       </TouchableOpacity>
                     ))}
