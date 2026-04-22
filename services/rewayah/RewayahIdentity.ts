@@ -189,6 +189,22 @@ export function getShortLabel(id: RewayahId): string {
   return SHORT_LABELS[id];
 }
 
+// Convenience for display sites that hold an API `rewayat` record: maps
+// the record's free-form `name` through the canonical resolver and
+// returns our short label when we recognize it. Falls back to the raw
+// name when we don't — so rewayat not yet in the canonical registry
+// (forward-compat with the server adding new ones, or reciter profile
+// picker showing tariq-aliased variants we want to pass through) still
+// render something sensible instead of disappearing. Prefer this
+// helper over reading `rewayat.name` directly in any UI display path.
+export function getDisplayLabelFromName(
+  dbName: string | null | undefined,
+): string {
+  if (!dbName) return '';
+  const canonical = resolveRewayahFromName(dbName);
+  return canonical ? getShortLabel(canonical) : dbName;
+}
+
 // ── Persisted-id migration ───────────────────────────────────────────────────
 
 // One-shot rename from the pre-canonical slugs (shipped only in TestFlight) to
