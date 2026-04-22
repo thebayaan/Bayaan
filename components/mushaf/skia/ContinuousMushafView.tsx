@@ -173,9 +173,6 @@ interface MushafPageContentProps {
   render: RenderConstants;
 }
 
-// Background tint for rewayah-diff words — matches SkiaPage.
-const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
-
 const EMPTY_BG_MAP = new Map<
   number,
   Array<{start: number; end: number; color: string}>
@@ -503,21 +500,18 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         Array<{start: number; end: number; color: string}>
       >();
 
+      // Shared pipeline with SkiaPage — both consume the same per-line
+      // diff-highlight map produced by rewayahDiffService.
       if (hasRewayahDiffs) {
-        for (let lineIndex = 0; lineIndex < pageLines.length; lineIndex++) {
-          const ranges = rewayahDiffService.getDiffRangesForLine(
-            pageNumber,
-            lineIndex,
-          );
-          if (ranges.length === 0) continue;
+        const diffHighlights =
+          rewayahDiffService.getPageDiffHighlightsByLine(pageNumber);
+        for (const [lineIndex, entries] of diffHighlights) {
           let arr = map.get(lineIndex);
           if (!arr) {
             arr = [];
             map.set(lineIndex, arr);
           }
-          for (const r of ranges) {
-            arr.push({start: r.start, end: r.end, color: REWAYAH_DIFF_COLOR});
-          }
+          for (const entry of entries) arr.push(entry);
         }
       }
 

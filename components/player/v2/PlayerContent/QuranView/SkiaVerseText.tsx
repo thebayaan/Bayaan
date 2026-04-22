@@ -1,23 +1,34 @@
-import React, {useEffect, useMemo, useReducer} from 'react';
+import React, {useMemo} from 'react';
 import {
   Canvas,
   Paragraph,
+  Group,
+  RoundedRect,
   Skia,
   TextHeightBehavior,
   TextDirection,
   type SkTypefaceFontProvider,
   type SkTextStyle,
 } from '@shopify/react-native-skia';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
-import {tajweedColors} from '@/constants/tajweedColors';
+import {
+  tajweedColors,
+  REWAYAH_DIFF_BACKGROUND,
+} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {useRewayahWords} from '@/hooks/useRewayahWords';
+import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
   textDirection: TextDirection.RTL,
 };
+
+// Corner radius for the rewayah-diff background tint — matches SkiaLine's
+// 4px so list-mode and page-mode highlights look identical.
+const DIFF_BG_RADIUS = 4;
 
 interface SkiaVerseTextProps {
   verseKey?: string;
@@ -29,9 +40,9 @@ interface SkiaVerseTextProps {
   showTajweed: boolean;
   width: number;
   indexedTajweedData: IndexedTajweedData | null;
-  /** Render text from this rewayah's DK words DB instead of the active
-   *  mushaf one. Used by the player to show text matching the currently
-   *  playing reciter's rewayah. Ignored if `text` prop is provided. */
+  /** Rewayah the Arabic text is rendered in. If omitted, falls back to the
+   *  mushaf settings store's active rewayah. Ignored if `text` prop is
+   *  provided (which short-circuits the lookup entirely). */
   rewayah?: RewayahId;
 }
 
@@ -47,24 +58,19 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   indexedTajweedData,
   rewayah,
 }) => {
-  const [, bump] = useReducer(x => x + 1, 0);
-  useEffect(() => {
-    if (!rewayah || rewayah === digitalKhattDataService.rewayah) return;
-    let cancelled = false;
-    digitalKhattDataService.ensureRewayahLoaded(rewayah).then(() => {
-      if (!cancelled) bump();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [rewayah]);
+  // When no explicit prop, follow the mushaf setting. This is the mushaf
+  // list-mode / preview case; the player passes an explicit prop.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const effectiveRewayah: RewayahId = rewayah ?? mushafRewayah;
 
-  const verseText = useMemo(
-    () =>
-      text ??
-      (verseKey ? digitalKhattDataService.getVerseText(verseKey, rewayah) : ''),
-    [text, verseKey, rewayah],
+  // Reactive read — re-renders when the requested rewayah's cache transitions
+  // from loading → ready. Only queried when `text` isn't provided directly.
+  const {words, status} = useRewayahWords(
+    text !== undefined ? null : (verseKey ?? null),
+    effectiveRewayah,
   );
+  const verseText =
+    text ?? (status === 'ready' ? words.map(w => w.text).join(' ') : '');
 
   const charToRule = useMemo(() => {
     if (!verseKey || !showTajweed || !indexedTajweedData) return null;
@@ -107,11 +113,102 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return {paragraph: p, height: p.getHeight()};
   }, [verseText, width, textColor, fontFamily, fontSize, fontMgr, charToRule]);
 
+  // Rewayah diff backgrounds — highlights words that differ from Hafs.
+  // Mirrors the SkiaPage pipeline (which uses getDiffRangesForLine) but
+  // operates on the verse-level word list that useRewayahWords returned.
+  //
+  // Silently no-op when any of these are true:
+  //   - the caller provided pre-built `text` (share previews, similar-
+  //     verse snippets) — we have no per-word metadata in that path.
+  //   - Hafs (no baseline-vs-baseline diff exists).
+  //   - user has toggled diffs off.
+  //   - the diff service hasn't loaded any diff data yet.
+  //   - the effective rewayah isn't the mushaf-setting rewayah. This is
+  //     a deliberate limitation: rewayahDiffService carries only one
+  //     rewayah's diffs at a time (loaded in reaction to the mushaf
+  //     setting via MushafPreloadService.onRewayahChange), so player-
+  //     screen rendering against a track rewayah that differs from the
+  //     mushaf setting won't highlight. Fixing that cleanly means adding
+  //     a side-cache to RewayahDiffService — tracked as follow-up.
+  //
+  // Using `mushafRewayah` (the store value) instead of reading
+  // `rewayahDiffService.rewayah` directly keeps this memo's deps
+  // reactive: rewayahDiffService is a singleton whose internal
+  // `currentRewayah` isn't tracked by React, but the store value is and
+  // they are invariantly equal post-init (MushafPreloadService ensures
+  // rewayahDiffService.loadForRewayah fires for every mushaf switch).
+  const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
+  const textProvided = text !== undefined;
+  const diffBgRects = useMemo(() => {
+    if (
+      !paragraph ||
+      textProvided ||
+      !showRewayahDiffs ||
+      effectiveRewayah === 'hafs' ||
+      effectiveRewayah !== mushafRewayah ||
+      !rewayahDiffService.hasDiffs ||
+      words.length === 0
+    ) {
+      return null;
+    }
+    const ranges = rewayahDiffService.getDiffRangesForWords(words);
+    if (ranges.length === 0) return null;
+
+    const rects: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }> = [];
+    for (const r of ranges) {
+      try {
+        // getRectsForRange uses a half-open range [start, end).
+        const skRects = paragraph.getRectsForRange(r.start, r.end + 1);
+        for (const rect of skRects) {
+          rects.push({
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+      } catch {
+        // Ignore per-range failures — don't want one bad range to wipe
+        // the whole set of highlights on this verse.
+      }
+    }
+    return rects.length > 0 ? rects : null;
+  }, [
+    paragraph,
+    textProvided,
+    showRewayahDiffs,
+    effectiveRewayah,
+    mushafRewayah,
+    words,
+  ]);
+
   if (!paragraph || width <= 0) return null;
 
   return (
     <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>
-      <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
+      {diffBgRects ? (
+        <Group>
+          {diffBgRects.map((rect, i) => (
+            <RoundedRect
+              key={i}
+              x={rect.x}
+              y={rect.y}
+              width={rect.width}
+              height={rect.height}
+              r={DIFF_BG_RADIUS}
+              color={REWAYAH_DIFF_BACKGROUND}
+            />
+          ))}
+          <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
+        </Group>
+      ) : (
+        <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
+      )}
     </Canvas>
   );
 };
