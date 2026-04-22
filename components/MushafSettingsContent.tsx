@@ -29,7 +29,11 @@ import {getReadingThemeById} from '@/constants/readingThemes';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
 import {
+  ALL_REWAYAH_IDS,
+  getDescription,
+  getLongLabel,
   hasDiffData,
+  hasTextData,
   type RewayahWithDiffs,
 } from '@/services/rewayah/RewayahIdentity';
 import {
@@ -512,6 +516,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   const handleRewayahSelect = useCallback(
     async (value: RewayahId) => {
       if (value === rewayah) return;
+      // Defense in depth: the UI should have already disabled the row for
+      // rewayat without bundled DK data, but guard here too so we never
+      // call switchRewayah for an id that will throw from
+      // requireRewayahAssets.
+      if (!hasTextData(value)) return;
       // Load the new words DB BEFORE flipping the store so React re-renders
       // with the correct text/layout already in place.
       try {
@@ -907,17 +916,17 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       {/* REWAYAH Section */}
       <Text style={styles.sectionHeader}>REWAYAH</Text>
       <View style={styles.card}>
-        {REWAYAH_OPTIONS.map((option, idx) => {
-          const isSelected = rewayah === option.value;
+        {AVAILABLE_REWAYAH_IDS.map((id, idx) => {
+          const isSelected = rewayah === id;
           return (
-            <React.Fragment key={option.value}>
+            <React.Fragment key={id}>
               {idx > 0 && <View style={styles.divider} />}
               <Pressable
                 style={({pressed}) => [
                   styles.radioRow,
                   pressed && styles.radioRowPressed,
                 ]}
-                onPress={() => handleRewayahSelect(option.value)}>
+                onPress={() => handleRewayahSelect(id)}>
                 <View
                   style={[
                     styles.radioCircle,
@@ -931,16 +940,40 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                       styles.radioLabel,
                       isSelected && styles.radioLabelSelected,
                     ]}>
-                    {option.label}
+                    {getLongLabel(id)}
                   </Text>
                   <Text style={styles.radioDescription}>
-                    {option.description}
+                    {getDescription(id)}
                   </Text>
                 </View>
               </Pressable>
             </React.Fragment>
           );
         })}
+      </View>
+
+      {/* Taxonomy-only rewayat — audio available, text preview not yet. */}
+      <Text style={styles.sectionHeader}>TEXT PREVIEW NOT YET AVAILABLE</Text>
+      <View style={styles.card}>
+        {UNAVAILABLE_REWAYAH_IDS.map((id, idx) => (
+          <React.Fragment key={id}>
+            {idx > 0 && <View style={styles.divider} />}
+            <View
+              style={[styles.radioRow, styles.radioRowDisabled]}
+              accessibilityRole="text"
+              accessibilityLabel={`${getLongLabel(id)}, text preview not yet available`}>
+              <View style={styles.radioCircle} />
+              <View style={styles.radioTextContainer}>
+                <Text style={[styles.radioLabel, styles.radioLabelDisabled]}>
+                  {getLongLabel(id)}
+                </Text>
+                <Text style={styles.radioDescription}>
+                  {getDescription(id)}
+                </Text>
+              </View>
+            </View>
+          </React.Fragment>
+        ))}
       </View>
       {hasDiffData(rewayah) && (
         <RewayahDiffCard
@@ -1219,56 +1252,18 @@ const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
   },
 };
 
-const REWAYAH_OPTIONS: Array<{
-  value: RewayahId;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'hafs',
-    label: "Hafs 'an Asim",
-    description: 'The standard reading, used by most of the Muslim world',
-  },
-  {
-    value: 'shubah',
-    label: "Shu'bah 'an Asim",
-    description: "The second Kufan transmission from Asim, brother of Hafs'",
-  },
-  {
-    value: 'al-bazzi',
-    label: "Al-Bazzi 'an Ibn Kathir",
-    description:
-      'Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen',
-  },
-  {
-    value: 'qunbul',
-    label: "Qunbul 'an Ibn Kathir",
-    description: 'The second Meccan transmission from Ibn Kathir',
-  },
-  {
-    value: 'warsh',
-    label: "Warsh 'an Nafi'",
-    description:
-      'Medinan transmission from Nafiʿ — dominant across North Africa',
-  },
-  {
-    value: 'qalun',
-    label: "Qalun 'an Nafi'",
-    description:
-      'The second Medinan transmission from Nafiʿ — read in Libya and parts of Tunisia',
-  },
-  {
-    value: 'al-duri-abi-amr',
-    label: "Al-Duri 'an Abu Amr",
-    description:
-      'Basran transmission from Abu Amr — common in Sudan and parts of West Africa',
-  },
-  {
-    value: 'al-susi',
-    label: "Al-Susi 'an Abu Amr",
-    description: 'The second Basran transmission from Abu Amr',
-  },
-];
+// The mushaf-settings picker is generated from ALL_REWAYAH_IDS. IDs with
+// bundled DK text data render in the top section and are selectable; the
+// remaining taxonomy-only entries render below under a "Text preview not
+// yet available" subheading, dimmed and not tappable — they advertise the
+// full catalog without letting the user pick one that would throw from
+// DigitalKhattDataService.requireRewayahAssets. Labels and descriptions
+// come from RewayahIdentity so all copy has one source of truth.
+const AVAILABLE_REWAYAH_IDS: readonly RewayahId[] =
+  ALL_REWAYAH_IDS.filter(hasTextData);
+const UNAVAILABLE_REWAYAH_IDS: readonly RewayahId[] = ALL_REWAYAH_IDS.filter(
+  id => !hasTextData(id),
+);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -1416,6 +1411,9 @@ const createStyles = (theme: Theme) =>
     radioRowPressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
+    radioRowDisabled: {
+      opacity: 0.45,
+    },
     radioCircle: {
       width: moderateScale(20),
       height: moderateScale(20),
@@ -1445,6 +1443,9 @@ const createStyles = (theme: Theme) =>
     },
     radioLabelSelected: {
       color: theme.colors.text,
+    },
+    radioLabelDisabled: {
+      color: Color(theme.colors.text).alpha(0.6).toString(),
     },
     radioDescription: {
       fontSize: moderateScale(11),
