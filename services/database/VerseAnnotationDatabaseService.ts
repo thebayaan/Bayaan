@@ -5,7 +5,11 @@ import type {
   VerseHighlight,
   HighlightColor,
 } from '@/types/verse-annotations';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import {
+  ALL_REWAYAH_IDS,
+  PERSISTED_ID_MIGRATIONS,
+  type RewayahId,
+} from '@/services/rewayah/RewayahIdentity';
 
 // Database row types (snake_case)
 interface BookmarkRow {
@@ -47,16 +51,7 @@ function parseRewayahId(value: string | null): RewayahId | undefined {
   if (!value) return undefined;
   // Trust DB values were written by our own code; still narrow through the
   // known-set to be safe if a hand-edited DB surfaces something unexpected.
-  const known = new Set<RewayahId>([
-    'hafs',
-    'shouba',
-    'bazzi',
-    'qumbul',
-    'warsh',
-    'qaloon',
-    'doori',
-    'soosi',
-  ]);
+  const known = new Set<RewayahId>(ALL_REWAYAH_IDS);
   return known.has(value as RewayahId) ? (value as RewayahId) : undefined;
 }
 
@@ -255,6 +250,21 @@ class VerseAnnotationDatabaseService {
       await this.db.execAsync(
         `UPDATE ${table} SET rewayah_id = 'hafs' WHERE rewayah_id IS NULL;`,
       );
+    }
+
+    // One-shot rename of pre-canonical rewayah slugs to the canonical ones.
+    // Pre-canonical ids (qumbul, shouba, qaloon, doori, soosi, bazzi)
+    // shipped only in TestFlight — the rename table in RewayahIdentity is
+    // the single source of truth. Idempotent: once applied, rows match the
+    // `=` clause once; on rerun the WHERE matches nothing and the UPDATE is
+    // a no-op. Safe to run every boot.
+    for (const table of ['bookmarks', 'notes', 'highlights']) {
+      for (const [oldId, newId] of Object.entries(PERSISTED_ID_MIGRATIONS)) {
+        if (oldId === newId) continue;
+        await this.db.execAsync(
+          `UPDATE ${table} SET rewayah_id = '${newId}' WHERE rewayah_id = '${oldId}';`,
+        );
+      }
     }
   }
 

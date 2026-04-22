@@ -15,6 +15,7 @@ import {useReciterNavigation} from '@/hooks/useReciterNavigation';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useTimestampStore} from '@/store/timestampStore';
 import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
+import {usePlayingRewayahObserver} from '@/hooks/usePlayingRewayahObserver';
 import {
   registerPlayerSheetRef,
   unregisterPlayerSheetRef,
@@ -25,6 +26,12 @@ export const PlayerSheet = () => {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const {navigateToReciterProfile} = useReciterNavigation();
+
+  // Fires a "Now reading <rewayah>" toast whenever the currently-playing
+  // track's resolved rewayah transitions. Mounted here (not deeper) so the
+  // observation outlives the sheet's open/close cycles — the toast fires
+  // on track changes regardless of whether the sheet is visible.
+  usePlayingRewayahObserver();
 
   const {setSheetMode, setRate, updateSettings, setImmersive} =
     usePlayerActions();

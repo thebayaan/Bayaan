@@ -29,6 +29,10 @@ import {getReadingThemeById} from '@/constants/readingThemes';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
 import {
+  hasDiffData,
+  type RewayahWithDiffs,
+} from '@/services/rewayah/RewayahIdentity';
+import {
   useMushafSettingsStore,
   getActualFontSize,
   getDisplayValue,
@@ -938,7 +942,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           );
         })}
       </View>
-      {rewayah !== 'hafs' && (
+      {hasDiffData(rewayah) && (
         <RewayahDiffCard
           rewayah={rewayah}
           showRewayahDiffs={showRewayahDiffs}
@@ -953,7 +957,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 };
 
 interface RewayahDiffCardProps {
-  rewayah: Exclude<RewayahId, 'hafs'>;
+  rewayah: RewayahWithDiffs;
   showRewayahDiffs: boolean;
   toggleRewayahDiffs: () => void;
   trackColor: {false: string; true: string};
@@ -1053,8 +1057,8 @@ interface RewayahLegend {
 // Per-rewayah disclosure of what 'Show Differences' actually highlights.
 // The summary is factual — describes which rules we do and don't cover so
 // users can calibrate expectations vs a printed color-coded mushaf.
-const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
-  shouba: {
+const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
+  shubah: {
     summary:
       'Flags words that differ from Hafs. Letter-level tajweed rules are not highlighted for this rewayah.',
     entries: [
@@ -1071,7 +1075,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  bazzi: {
+  'al-bazzi': {
     summary:
       "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
     entries: [
@@ -1093,7 +1097,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  qumbul: {
+  qunbul: {
     summary:
       "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
     entries: [
@@ -1152,7 +1156,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  qaloon: {
+  qalun: {
     summary:
       'Highlights the published-mushaf rules KFGQPC encodes: tashil, ibdal, madd al-badal, taghliz al-lam, silah, and genuine word variants. Taqlil, tarqiq ar-ra, and naql are not yet supported.',
     entries: [
@@ -1189,7 +1193,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  doori: {
+  'al-duri-abi-amr': {
     summary:
       'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
     entries: [
@@ -1201,7 +1205,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  soosi: {
+  'al-susi': {
     summary:
       'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
     entries: [
@@ -1226,18 +1230,18 @@ const REWAYAH_OPTIONS: Array<{
     description: 'The standard reading, used by most of the Muslim world',
   },
   {
-    value: 'shouba',
+    value: 'shubah',
     label: "Shu'bah 'an Asim",
     description: "The second Kufan transmission from Asim, brother of Hafs'",
   },
   {
-    value: 'bazzi',
+    value: 'al-bazzi',
     label: "Al-Bazzi 'an Ibn Kathir",
     description:
       'Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen',
   },
   {
-    value: 'qumbul',
+    value: 'qunbul',
     label: "Qunbul 'an Ibn Kathir",
     description: 'The second Meccan transmission from Ibn Kathir',
   },
@@ -1248,19 +1252,19 @@ const REWAYAH_OPTIONS: Array<{
       'Medinan transmission from Nafiʿ — dominant across North Africa',
   },
   {
-    value: 'qaloon',
+    value: 'qalun',
     label: "Qalun 'an Nafi'",
     description:
       'The second Medinan transmission from Nafiʿ — read in Libya and parts of Tunisia',
   },
   {
-    value: 'doori',
+    value: 'al-duri-abi-amr',
     label: "Al-Duri 'an Abu Amr",
     description:
       'Basran transmission from Abu Amr — common in Sudan and parts of West Africa',
   },
   {
-    value: 'soosi',
+    value: 'al-susi',
     label: "Al-Susi 'an Abu Amr",
     description: 'The second Basran transmission from Abu Amr',
   },

@@ -41,7 +41,6 @@ import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
-import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
 import Color from 'color';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
@@ -69,10 +68,6 @@ interface SkiaPageProps {
   onReady?: () => void;
   onTap?: () => void;
 }
-
-// Background tint applied to words that differ from Hafs when a non-Hafs
-// rewayah is active. Chosen to pop against both light and dark mushaf themes.
-const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
@@ -619,27 +614,18 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
     // Layer -1: Rewayah diff highlights (painted first, overdrawn by any
     // higher-priority highlight). Uses a saturated orange tint so differing
-    // words clearly pop out as a study aid for students.
+    // words clearly pop out as a study aid for students. Shared pipeline
+    // with ContinuousMushafView via rewayahDiffService.
     if (hasRewayahDiffs) {
-      const lineCount = digitalKhattDataService.getPageLines(pageNumber).length;
-      for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        const ranges = rewayahDiffService.getDiffRangesForLine(
-          pageNumber,
-          lineIndex,
-        );
-        if (ranges.length === 0) continue;
+      const diffHighlights =
+        rewayahDiffService.getPageDiffHighlightsByLine(pageNumber);
+      for (const [lineIndex, entries] of diffHighlights) {
         let arr = map.get(lineIndex);
         if (!arr) {
           arr = [];
           map.set(lineIndex, arr);
         }
-        for (const r of ranges) {
-          arr.push({
-            start: r.start,
-            end: r.end,
-            color: REWAYAH_DIFF_BACKGROUND,
-          });
-        }
+        for (const entry of entries) arr.push(entry);
       }
     }
 

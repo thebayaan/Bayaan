@@ -1,5 +1,16 @@
-import {digitalKhattDataService, type DKLine} from './DigitalKhattDataService';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import {
+  digitalKhattDataService,
+  type DKLine,
+  type DKWordInfo,
+} from './DigitalKhattDataService';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
+import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
+
+export interface PageDiffHighlight {
+  start: number;
+  end: number;
+  color: string;
+}
 
 export interface DiffRange {
   start: number;
@@ -54,13 +65,13 @@ class RewayahDiffService {
   }
 
   get hasSilahColoring(): boolean {
-    // Silah-heavy rewayat: Ibn Kathir pair always; Warsh/Qaloon use silah
+    // Silah-heavy rewayat: Ibn Kathir pair always; Warsh/Qalun use silah
     // less pervasively but still benefit from the mark-level coloring.
     return (
-      this.currentRewayah === 'bazzi' ||
-      this.currentRewayah === 'qumbul' ||
+      this.currentRewayah === 'al-bazzi' ||
+      this.currentRewayah === 'qunbul' ||
       this.currentRewayah === 'warsh' ||
-      this.currentRewayah === 'qaloon'
+      this.currentRewayah === 'qalun'
     );
   }
 
@@ -202,33 +213,29 @@ class RewayahDiffService {
   }
 
   /**
-   * Background-highlight ranges for whole-word content variants. Merges
-   * 'major' (close rewayat: Shouba/Bazzi/Qumbul) and 'mukhtalif' (far
-   * rewayat: Warsh/Qaloon/Doori/Soosi) — both semantically mean "this
-   * word differs from Hafs" and render as a unified background tint.
+   * Background-highlight ranges over a flat word-sequence joined by single
+   * spaces (the shape both SkiaPage lines and SkiaVerseText verse-text
+   * produce). Merges 'major' (close rewayat: Shu'bah/Al-Bazzi/Qunbul) and
+   * 'mukhtalif' (far rewayat: Warsh/Qalun/Al-Duri/Al-Susi) — both
+   * semantically mean "this word differs from Hafs" and render as a
+   * unified background tint.
+   *
+   * Pure function of the passed word list; returns EMPTY_RANGES if neither
+   * category has any entries. Used directly by the verse-level renderer
+   * (SkiaVerseText) and indirectly by getDiffRangesForLine for per-line
+   * rendering.
    */
-  getDiffRangesForLine(pageNumber: number, lineIndex: number): DiffRange[] {
+  getDiffRangesForWords(words: readonly DKWordInfo[]): DiffRange[] {
     const majorByVerse = this.byCategory.get('major');
     const mukhtalifByVerse = this.byCategory.get('mukhtalif');
     const hasMajor = majorByVerse && majorByVerse.size > 0;
     const hasMukhtalif = mukhtalifByVerse && mukhtalifByVerse.size > 0;
     if (!hasMajor && !hasMukhtalif) return EMPTY_RANGES;
-    const cacheKey = `${pageNumber}:${lineIndex}`;
-    const cached = this.rangeCache.get(cacheKey);
-    if (cached) return cached;
-
-    const lines = digitalKhattDataService.getPageLines(pageNumber);
-    const line: DKLine | undefined = lines[lineIndex];
-    if (!line || line.line_type !== 'ayah') {
-      this.rangeCache.set(cacheKey, EMPTY_RANGES);
-      return EMPTY_RANGES;
-    }
 
     const ranges: DiffRange[] = [];
     let offset = 0;
-    for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
-      const info = digitalKhattDataService.getWordInfo(wid);
-      if (!info) continue;
+    for (let i = 0; i < words.length; i++) {
+      const info = words[i];
       const wordLen = info.text.length;
       const inMajor =
         majorByVerse?.get(info.verseKey)?.has(info.wordPositionInVerse) ??
@@ -240,10 +247,73 @@ class RewayahDiffService {
         ranges.push({start: offset, end: offset + wordLen - 1});
       }
       offset += wordLen;
-      if (wid < line.last_word_id) offset += 1;
+      if (i < words.length - 1) offset += 1;
     }
+    return ranges;
+  }
+
+  /**
+   * Per-line variant — resolves the DK words for the given page line, then
+   * delegates to getDiffRangesForWords. Cached by page+line because both
+   * the word lookup and the subsequent iteration are hot paths during
+   * mushaf page rendering.
+   */
+  getDiffRangesForLine(pageNumber: number, lineIndex: number): DiffRange[] {
+    if (!this.hasDiffs) return EMPTY_RANGES;
+    const cacheKey = `${pageNumber}:${lineIndex}`;
+    const cached = this.rangeCache.get(cacheKey);
+    if (cached) return cached;
+
+    const lines = digitalKhattDataService.getPageLines(pageNumber);
+    const line: DKLine | undefined = lines[lineIndex];
+    if (!line || line.line_type !== 'ayah') {
+      this.rangeCache.set(cacheKey, EMPTY_RANGES);
+      return EMPTY_RANGES;
+    }
+
+    const words: DKWordInfo[] = [];
+    for (let wid = line.first_word_id; wid <= line.last_word_id; wid++) {
+      const info = digitalKhattDataService.getWordInfo(wid);
+      if (info) words.push(info);
+    }
+    const ranges = this.getDiffRangesForWords(words);
     this.rangeCache.set(cacheKey, ranges);
     return ranges;
+  }
+
+  /**
+   * Page-level rewayah-diff highlights grouped by line index, pre-stamped
+   * with REWAYAH_DIFF_BACKGROUND. Single source of truth for the page-
+   * renderer pipelines (SkiaPage, ContinuousMushafView) — each used to
+   * inline the same per-line loop plus its own local copy of the tint
+   * color constant.
+   *
+   * Returns EMPTY_HIGHLIGHTS_MAP when no diffs are loaded so callers can
+   * reference-check the result to skip all downstream merging work. Does
+   * NOT gate on the user's showRewayahDiffs toggle — callers apply that
+   * gate themselves (they already combine it with annotations/playback/
+   * theme gates, so pushing one more boolean into this service wouldn't
+   * buy anything).
+   */
+  getPageDiffHighlightsByLine(
+    pageNumber: number,
+  ): ReadonlyMap<number, readonly Readonly<PageDiffHighlight>[]> {
+    if (!this.hasDiffs) return EMPTY_HIGHLIGHTS_MAP;
+    const lineCount = digitalKhattDataService.getPageLines(pageNumber).length;
+    if (lineCount === 0) return EMPTY_HIGHLIGHTS_MAP;
+
+    const map = new Map<number, Readonly<PageDiffHighlight>[]>();
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+      const ranges = this.getDiffRangesForLine(pageNumber, lineIndex);
+      if (ranges.length === 0) continue;
+      const entries: Readonly<PageDiffHighlight>[] = ranges.map(r => ({
+        start: r.start,
+        end: r.end,
+        color: REWAYAH_DIFF_BACKGROUND,
+      }));
+      map.set(lineIndex, entries);
+    }
+    return map.size > 0 ? map : EMPTY_HIGHLIGHTS_MAP;
   }
 
   /**
@@ -289,35 +359,37 @@ class RewayahDiffService {
 
 const EMPTY_RANGES: DiffRange[] = [];
 const EMPTY_INDICES: number[] = [];
+const EMPTY_HIGHLIGHTS_MAP: ReadonlyMap<
+  number,
+  readonly Readonly<PageDiffHighlight>[]
+> = new Map();
 
 // Diff JSON supports legacy (number[]) and new ([wordPos, charIdx[]][]) entries.
 // Legacy flat arrays at the verse level are treated as whole-word 'major'.
 type CategoryEntries = number[] | [number, number[]][];
 type DiffAsset = Record<string, number[] | Record<string, CategoryEntries>>;
 
+// Diff JSON files on disk keep the pre-canonical filenames to avoid asset
+// churn; only the RewayahId key we switch on is canonical.
 function loadDiffAsset(rewayah: RewayahId): DiffAsset | null {
-  if (rewayah === 'shouba') {
-    return require('@/data/mushaf/digitalkhatt/shouba-diff.json') as DiffAsset;
+  switch (rewayah) {
+    case 'shubah':
+      return require('@/data/mushaf/digitalkhatt/shouba-diff.json') as DiffAsset;
+    case 'al-bazzi':
+      return require('@/data/mushaf/digitalkhatt/bazzi-diff.json') as DiffAsset;
+    case 'qunbul':
+      return require('@/data/mushaf/digitalkhatt/qumbul-diff.json') as DiffAsset;
+    case 'warsh':
+      return require('@/data/mushaf/digitalkhatt/warsh-diff.json') as DiffAsset;
+    case 'qalun':
+      return require('@/data/mushaf/digitalkhatt/qaloon-diff.json') as DiffAsset;
+    case 'al-duri-abi-amr':
+      return require('@/data/mushaf/digitalkhatt/doori-diff.json') as DiffAsset;
+    case 'al-susi':
+      return require('@/data/mushaf/digitalkhatt/soosi-diff.json') as DiffAsset;
+    default:
+      return null;
   }
-  if (rewayah === 'bazzi') {
-    return require('@/data/mushaf/digitalkhatt/bazzi-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'qumbul') {
-    return require('@/data/mushaf/digitalkhatt/qumbul-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'warsh') {
-    return require('@/data/mushaf/digitalkhatt/warsh-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'qaloon') {
-    return require('@/data/mushaf/digitalkhatt/qaloon-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'doori') {
-    return require('@/data/mushaf/digitalkhatt/doori-diff.json') as DiffAsset;
-  }
-  if (rewayah === 'soosi') {
-    return require('@/data/mushaf/digitalkhatt/soosi-diff.json') as DiffAsset;
-  }
-  return null;
 }
 
 export const rewayahDiffService = new RewayahDiffService();
