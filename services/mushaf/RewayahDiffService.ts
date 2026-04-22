@@ -30,11 +30,11 @@ const PRECEDING_VOWELS = new Set(['\u064F', '\u0650']);
  * overlap, so the most specific category should come LAST.
  */
 export const REWAYAH_DIFF_CATEGORIES = [
-  'mukhtalif', // red — catch-all word variants
-  'taghliz', // dark blue — Taghliz al-Lam
-  'ibdal', // light blue — Warsh hamza → long vowel
-  'tashil', // light blue — Hamza tashil / musahhala
-  'madd', // green — Madd al-Badal / Madd al-Lin
+  'mukhtalif', // red; catch-all word variants
+  'taghliz', // dark blue; Taghliz al-Lam
+  'ibdal', // light blue; Warsh hamza → long vowel
+  'tashil', // light blue; Hamza tashil / musahhala
+  'madd', // green; Madd al-Badal / Madd al-Lin
   'minor', // teal (legacy two-tier: mood/trailing-vowel shifts)
   'major', // orange (legacy two-tier: background block for close rewayat)
 ] as const;
@@ -45,7 +45,7 @@ export type RewayahDiffCategory = (typeof REWAYAH_DIFF_CATEGORIES)[number];
 // entries override earlier ones when a char falls into multiple categories.
 // Silah is appended by the rule-map builders as the most specific marker
 // (it always wins). 'mukhtalif' and 'major' are whole-word variants that
-// render as background tint (REWAYAH_DIFF_BACKGROUND) — not chars — so they
+// render as background tint (REWAYAH_DIFF_BACKGROUND); not chars; so they
 // are not part of this list.
 const FG_CATEGORIES: readonly RewayahDiffCategory[] = [
   'minor',
@@ -230,7 +230,7 @@ class RewayahDiffService {
    * Background-highlight ranges over a flat word-sequence joined by single
    * spaces (the shape both SkiaPage lines and SkiaVerseText verse-text
    * produce). Merges 'major' (close rewayat: Shu'bah/Al-Bazzi/Qunbul) and
-   * 'mukhtalif' (far rewayat: Warsh/Qalun/Al-Duri/Al-Susi) — both
+   * 'mukhtalif' (far rewayat: Warsh/Qalun/Al-Duri/Al-Susi); both
    * semantically mean "this word differs from Hafs" and render as a
    * unified background tint.
    *
@@ -267,7 +267,7 @@ class RewayahDiffService {
   }
 
   /**
-   * Per-line variant — resolves the DK words for the given page line, then
+   * Per-line variant; resolves the DK words for the given page line, then
    * delegates to getDiffRangesForWords. Cached by page+line because both
    * the word lookup and the subsequent iteration are hot paths during
    * mushaf page rendering.
@@ -300,11 +300,11 @@ class RewayahDiffService {
    * rewayah category (minor/ibdal/tashil/madd/taghliz) plus silah onto the
    * same char indices the line renderer uses. Shared by SkiaPage and
    * ContinuousMushafView so both page pipelines paint identical foreground
-   * highlights — the SkiaLine consumer still layers tajweed rules on top
+   * highlights; the SkiaLine consumer still layers tajweed rules on top
    * (caller merges tajweed into this map with tajweed as the base layer
    * so rewayah rules win on conflict, matching published-mushaf convention).
    *
-   * Returns null when no rewayah foreground categories fire on this line —
+   * Returns null when no rewayah foreground categories fire on this line;
    * callers can fall straight through to their tajweed map without merging.
    */
   getRewayahRuleMapForLine(
@@ -334,7 +334,7 @@ class RewayahDiffService {
    * Walks the word list once, mapping each word's flagged chars (or all
    * its chars when the diff entry is whole-word) onto the corresponding
    * offset in the joined verse string. Silah chars (U+06E5/U+06E6 plus
-   * the preceding damma/kasra) are scanned from the word text directly —
+   * the preceding damma/kasra) are scanned from the word text directly;
    * they aren't in the diff JSON since they're already in the DK words DB.
    *
    * Precedence matches getRewayahRuleMapForLine: minor → ibdal → tashil →
@@ -376,7 +376,7 @@ class RewayahDiffService {
         }
       }
 
-      // Silah always wins — scan the stored text for U+06E5/U+06E6.
+      // Silah always wins; scan the stored text for U+06E5/U+06E6.
       if (hasSilah) {
         for (let c = 0; c < wordLen; c++) {
           if (SILAH_CHARS.has(info.text[c])) {
@@ -397,13 +397,13 @@ class RewayahDiffService {
   /**
    * Page-level rewayah-diff highlights grouped by line index, pre-stamped
    * with REWAYAH_DIFF_BACKGROUND. Single source of truth for the page-
-   * renderer pipelines (SkiaPage, ContinuousMushafView) — each used to
+   * renderer pipelines (SkiaPage, ContinuousMushafView); each used to
    * inline the same per-line loop plus its own local copy of the tint
    * color constant.
    *
    * Returns EMPTY_HIGHLIGHTS_MAP when no diffs are loaded so callers can
    * reference-check the result to skip all downstream merging work. Does
-   * NOT gate on the user's showRewayahDiffs toggle — callers apply that
+   * NOT gate on the user's showRewayahDiffs toggle; callers apply that
    * gate themselves (they already combine it with annotations/playback/
    * theme gates, so pushing one more boolean into this service wouldn't
    * buy anything).

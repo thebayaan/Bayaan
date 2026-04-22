@@ -76,7 +76,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 }) => {
   const {theme} = useTheme();
   // Keep useFonts hook as fallback (can't conditionally call hooks).
-  // Prefer preloaded fontMgr from MushafPreloadService — ready synchronously
+  // Prefer preloaded fontMgr from MushafPreloadService; ready synchronously
   // on first render since AppInitializer runs before Mushaf tab mounts.
   const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
@@ -152,7 +152,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
 
-  // onReady tracking — refs keep handleParagraphReady callback stable
+  // onReady tracking; refs keep handleParagraphReady callback stable
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
   const readyFiredRef = useRef(false);
@@ -421,7 +421,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
       // Only allow forward (downward) selection
       if (currentIdx < startIdx) {
-        // Finger moved above start verse — keep only start
+        // Finger moved above start verse; keep only start
         if (dragCurrentVerseKeyRef.current !== startKey) {
           dragCurrentVerseKeyRef.current = startKey;
           selectVerse(startKey, pageNumber);

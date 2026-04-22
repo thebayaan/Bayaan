@@ -10,7 +10,7 @@ type ToastPreset = 'done' | 'error' | 'none';
  *   negative events (offline, failures) so iOS shows a red exclamation
  *   indicator instead of a misleading checkmark.
  * - Android note: Burnt's Android backend wraps `Toast.makeText`, which
- *   only renders a single string — the `message` field is silently
+ *   only renders a single string; the `message` field is silently
  *   dropped. To keep the full text visible we merge `title` + `message`
  *   into one line on Android.
  */

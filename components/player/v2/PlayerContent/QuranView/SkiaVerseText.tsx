@@ -26,7 +26,7 @@ const paragraphStyle = {
   textDirection: TextDirection.RTL,
 };
 
-// Corner radius for the rewayah-diff background tint — matches SkiaLine's
+// Corner radius for the rewayah-diff background tint; matches SkiaLine's
 // 4px so list-mode and page-mode highlights look identical.
 const DIFF_BG_RADIUS = 4;
 
@@ -63,7 +63,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   const effectiveRewayah: RewayahId = rewayah ?? mushafRewayah;
 
-  // Reactive read — re-renders when the requested rewayah's cache transitions
+  // Reactive read; re-renders when the requested rewayah's cache transitions
   // from loading → ready. Only queried when `text` isn't provided directly.
   const {words, status} = useRewayahWords(
     text !== undefined ? null : (verseKey ?? null),
@@ -143,11 +143,11 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return {paragraph: p, height: p.getHeight()};
   }, [verseText, width, textColor, fontFamily, fontSize, fontMgr, charToRule]);
 
-  // Rewayah diff backgrounds — highlights words that differ from Hafs.
+  // Rewayah diff backgrounds; highlights words that differ from Hafs.
   // Mirrors the SkiaPage pipeline (which uses getDiffRangesForLine) but
   // operates on the verse-level word list that useRewayahWords returned.
   // The gating conditions (textProvided / Hafs / toggle / mushaf-setting
-  // alignment) are shared with the foreground rule map above — see that
+  // alignment) are shared with the foreground rule map above; see that
   // block for the reasoning behind each condition.
   const diffBgRects = useMemo(() => {
     if (
@@ -183,7 +183,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
           });
         }
       } catch {
-        // Ignore per-range failures — don't want one bad range to wipe
+        // Ignore per-range failures; don't want one bad range to wipe
         // the whole set of highlights on this verse.
       }
     }

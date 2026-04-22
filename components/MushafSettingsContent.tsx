@@ -702,7 +702,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         </Pressable>
       </View>
 
-      {/* Word by Word Section — only in list view */}
+      {/* Word by Word Section; only in list view */}
       {context !== 'player' && viewMode === 'list' && (
         <>
           <Text style={styles.sectionHeader}>WORD BY WORD</Text>
@@ -913,7 +913,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         })}
       </View>
 
-      {/* REWAYAH Section — picker collapses by default behind the currently
+      {/* REWAYAH Section; picker collapses by default behind the currently
           selected rewayah; the diff toggle sits above it so it's reachable
           without scrolling past 20 radio options. */}
       <Text style={styles.sectionHeader}>REWAYAH</Text>
@@ -1140,7 +1140,7 @@ interface RewayahLegend {
 }
 
 // Per-rewayah disclosure of what 'Show Differences' actually highlights.
-// The summary is factual — describes which rules we do and don't cover so
+// The summary is factual; describes which rules we do and don't cover so
 // users can calibrate expectations vs a printed color-coded mushaf.
 const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
   shubah: {
@@ -1307,7 +1307,7 @@ const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
 // The mushaf-settings picker is generated from ALL_REWAYAH_IDS. IDs with
 // bundled DK text data render in the top section and are selectable; the
 // remaining taxonomy-only entries render below under a "Text preview not
-// yet available" subheading, dimmed and not tappable — they advertise the
+// yet available" subheading, dimmed and not tappable; they advertise the
 // full catalog without letting the user pick one that would throw from
 // DigitalKhattDataService.requireRewayahAssets. Labels and descriptions
 // come from RewayahIdentity so all copy has one source of truth.

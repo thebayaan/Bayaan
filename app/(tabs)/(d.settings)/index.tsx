@@ -146,7 +146,7 @@ const settingsItems = [
         title: 'Contribute on GitHub',
         type: 'github',
         description:
-          'Bayaan is now open source — star, report issues, or submit a PR',
+          'Bayaan is now open source. Star, report issues, or submit a PR',
         icon: 'github',
         iconType: 'feather',
       },

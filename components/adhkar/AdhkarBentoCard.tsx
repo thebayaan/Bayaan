@@ -18,7 +18,7 @@ interface AdhkarBentoCardProps {
   height: number;
 }
 
-// Label typography constants — also used below to size the image panel so
+// Label typography constants. Also used below to size the image panel so
 // a caller-supplied `height` is treated as the card's TOTAL footprint
 // (image + label), matching the spacing the card had before the title
 // was moved outside. That keeps sections vertically consistent with

@@ -99,7 +99,7 @@ function createExplicitLayout(): ColumnLayout {
 }
 
 // Tile presentation:
-//   - iOS 26 (USE_GLASS): Liquid Glass — GlassView with the "regular"
+//   - iOS 26 (USE_GLASS): Liquid Glass; GlassView with the "regular"
 //     effect. No colored chrome; the material itself carries the card.
 //   - Everywhere else: thin tinted hollow border fallback (no Liquid Glass
 //     on Android or pre-iOS-26, so we keep the colored outline we had).
@@ -318,7 +318,7 @@ export const ExploreView = React.memo(
             styles.scrollContent,
             {paddingHorizontal: horizontalPadding},
             // Glass: the system already pads for the search bar + tab bar
-            // via automatic insets — any manual top/bottom would double-pad.
+            // via automatic insets; any manual top/bottom would double-pad.
             // Non-glass: parent container handles top inset for the search
             // row; we need to clear the floating tab bar + mini player at
             // the bottom manually.
@@ -347,7 +347,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
       width: '100%',
     },
     // flex: 1 on the ScrollView itself lets iOS 26's NativeTabs
-    // BottomAccessory (mini player) auto-collapse on scroll — the tab bar
+    // BottomAccessory (mini player) auto-collapse on scroll; the tab bar
     // tracks the screen's primary scroll view by its frame, and a
     // ScrollView sized to content doesn't register as primary.
     scrollView: {

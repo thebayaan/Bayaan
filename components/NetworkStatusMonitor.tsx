@@ -5,13 +5,13 @@ import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {showToast} from '@/utils/toastUtils';
 
 /**
- * Fires non-persistent toasts on connectivity / API-health transitions —
+ * Fires non-persistent toasts on connectivity / API-health transitions:
  * one on disconnect, one on reconnect, one the first time we fall back to
  * cached data. Replaces the previous always-on pill banner so the UX is
  * identical on iOS and Android (both use the same native toast via
  * `burnt` through `showToast`).
  *
- * Renders nothing — mounts once at the root and listens to the relevant
+ * Renders nothing. Mounts once at the root and listens to the relevant
  * Zustand stores.
  */
 export function NetworkStatusMonitor(): null {
@@ -19,7 +19,7 @@ export function NetworkStatusMonitor(): null {
   const {isDisrupted, usingStaleCache} = useApiHealthStore();
   const forceNetworkBanner = useDevSettingsStore(s => s.forceNetworkBanner);
 
-  // On cold start we announce the initial state ONLY if it's offline —
+  // On cold start we announce the initial state ONLY if it's offline;
   // the user needs to know they're in a degraded experience. When the
   // initial state is online we stay silent (no "Connection restored"
   // toast on every launch). After that, every transition fires a toast.
@@ -46,8 +46,8 @@ export function NetworkStatusMonitor(): null {
   // intentionally NOT in the deps: we want a single "Showing cached data"
   // / "Backend unreachable" toast per disruption, not a retoast every
   // time the cache flips while still disrupted. The recovery edge fires
-  // no toast — the "Connection restored" toast above covers that
-  // narrative; a dedicated "Backend recovered" would double-fire with it.
+  // no toast; the "Connection restored" toast above covers that
+  // narrative, and a dedicated "Backend recovered" would double-fire.
   const prevDisruptedRef = useRef<boolean | null>(null);
   useEffect(() => {
     const prev = prevDisruptedRef.current;

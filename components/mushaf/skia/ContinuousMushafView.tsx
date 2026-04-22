@@ -176,7 +176,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       );
     }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
-    // Merged tajweed + rewayah foreground rules. Mirrors SkiaPage —
+    // Merged tajweed + rewayah foreground rules. Mirrors SkiaPage:
     // identical helper, identical precedence (tajweed base → rewayah
     // categories → silah). Keeps the vertical continuous-mushaf renderer
     // and the paginated SkiaPage renderer in lockstep so list-mode and
@@ -215,7 +215,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       }
       return maps;
       // rewayah is in the dep list so the memo re-runs when the active
-      // rewayah changes — rewayahDiffService is a singleton whose internal
+      // rewayah changes; rewayahDiffService is a singleton whose internal
       // state isn't tracked by React directly.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [lineTajweedMaps, pageNumber, pageLines, rewayah]);
@@ -471,7 +471,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         Array<{start: number; end: number; color: string}>
       >();
 
-      // Shared pipeline with SkiaPage — both consume the same per-line
+      // Shared pipeline with SkiaPage; both consume the same per-line
       // diff-highlight map produced by rewayahDiffService.
       if (hasRewayahDiffs) {
         const diffHighlights =
@@ -626,7 +626,7 @@ const ContinuousMushafView = forwardRef<
   const insets = useSafeAreaInsets();
   const flashListRef = useRef<FlashListRef<number>>(null);
 
-  // Font loading (fallback — prefer preloaded fontMgr)
+  // Font loading (fallback; prefer preloaded fontMgr)
   const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
     DigitalKhattV2: [
