@@ -31,9 +31,14 @@ import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
 
 const isExternalLink = (type: string): boolean => {
-  return ['support', 'featureRequest', 'terms', 'privacy', 'rateApp'].includes(
-    type,
-  );
+  return [
+    'support',
+    'featureRequest',
+    'terms',
+    'privacy',
+    'rateApp',
+    'github',
+  ].includes(type);
 };
 
 const settingsItems = [
@@ -136,6 +141,14 @@ const settingsItems = [
         description: 'View contributors and acknowledgments',
         icon: 'medal',
         iconType: 'custom',
+      },
+      {
+        title: 'Contribute on GitHub',
+        type: 'github',
+        description:
+          'Bayaan is open source — star, report issues, or submit a PR',
+        icon: 'github',
+        iconType: 'feather',
       },
       {
         title: 'Terms of Service',
@@ -263,6 +276,9 @@ export default function SettingsScreen() {
         break;
       case 'credits':
         router.push('/(d.settings)/credits');
+        break;
+      case 'github':
+        await Linking.openURL('https://github.com/thebayaan/Bayaan');
         break;
       default:
         break;
