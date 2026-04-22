@@ -40,6 +40,7 @@ import {getSurahById, getAllReciters} from '@/services/dataService';
 import {UserPlaylist, PlaylistItem} from '@/services/playlist/PlaylistService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 /**
  * Simplified type for loved tracks from the useLoved hook
  * The hook returns a subset without the timestamp field
@@ -405,7 +406,7 @@ export const CollectionSearchModal: React.FC<CollectionSearchModalProps> = ({
           results.push({
             type: 'rewayat',
             id: rewayat.id,
-            title: `${rewayat.name} by ${reciter.name}`,
+            title: `${getDisplayLabelFromName(rewayat.name)} by ${reciter.name}`,
             subtitle: 'Rewayat',
             metadata: {kind: 'rewayat', data: {reciter, rewayat}},
           });

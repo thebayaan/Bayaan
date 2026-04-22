@@ -14,6 +14,7 @@ import {getReciterById} from '@/services/dataService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -133,8 +134,10 @@ export const TrackInfo = () => {
                   {color: theme.colors.textSecondary},
                 ]}>
                 {rewayat
-                  ? `${rewayat.name}${rewayat.style ? ` • ${rewayat.style}` : ''}`
-                  : currentTrack?.rewayahName}
+                  ? `${getDisplayLabelFromName(rewayat.name)}${
+                      rewayat.style ? ` • ${rewayat.style}` : ''
+                    }`
+                  : getDisplayLabelFromName(currentTrack?.rewayahName)}
               </Text>
             )}
           </View>

@@ -3,6 +3,7 @@ import {
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
+import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 
 const TOTAL_PAGES = 604;
 
@@ -187,7 +188,19 @@ class DigitalKhattDataService {
     if (this._initialized) return;
     if (this._initializing) return this._initializing;
 
-    this.currentRewayah = useMushafSettingsStore.getState().rewayah;
+    // Defensive normalization: the store's persisted value may still be a
+    // pre-canonical slug (e.g. "qaloon") if the user is on a build whose
+    // persist version was bumped without running migratePersistedId, or
+    // whose AsyncStorage retained a broken intermediate write. Run the
+    // migrator here so the service never trusts an invalid slug, and
+    // write the corrected value back to the store so every other reader
+    // picks up the fix.
+    const rawRewayah = useMushafSettingsStore.getState().rewayah;
+    const normalized = migratePersistedId(rawRewayah as unknown as string);
+    if (normalized !== rawRewayah) {
+      useMushafSettingsStore.getState().setRewayah(normalized);
+    }
+    this.currentRewayah = normalized;
     this._initializing = this._doInit();
     return this._initializing;
   }
