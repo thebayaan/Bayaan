@@ -5,7 +5,7 @@
     "title": "A More Personal Mushaf",
     "highlights": [
       {
-        "title": "Bayaan is Open Source",
+        "title": "Bayaan is now Open Source",
         "description": "Bayaan is now AGPL-3.0 and on GitHub — star the repo, report issues, or open a pull request. Link in Settings › About Bayaan",
         "icon": "logo-github"
       },
@@ -32,7 +32,7 @@
     ],
     "fullChangelog": {
       "features": [
-        "Bayaan is now open source at github.com/thebayaan/Bayaan under AGPL-3.0 — a new Contribute on GitHub link in Settings › About Bayaan opens the repo",
+        "Bayaan is now open source at github.com/thebayaan/Bayaan under AGPL-3.0; a new Contribute on GitHub link in Settings › About Bayaan opens the repo",
         "7 new rewayat with full mushaf text and diff highlighting: Shu'bah, Al-Bazzi, Qunbul, Warsh, Qalun, Al-Duri (Abu Amr), Al-Susi — 8 rewayat with text in total (Hafs included)",
         "Canonical rewayah identity module with support for all 20 qira'at narrations; the 12 text-less rewayat appear in the picker as audio-only entries",
         "Rewayah-aware player: verse text renders in the currently-playing rewayah; bookmarks, notes, highlights, and share URLs carry the rewayah stamp",
