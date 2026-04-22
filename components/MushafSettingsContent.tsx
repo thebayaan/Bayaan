@@ -913,68 +913,10 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         })}
       </View>
 
-      {/* REWAYAH Section */}
+      {/* REWAYAH Section — picker collapses by default behind the currently
+          selected rewayah; the diff toggle sits above it so it's reachable
+          without scrolling past 20 radio options. */}
       <Text style={styles.sectionHeader}>REWAYAH</Text>
-      <View style={styles.card}>
-        {AVAILABLE_REWAYAH_IDS.map((id, idx) => {
-          const isSelected = rewayah === id;
-          return (
-            <React.Fragment key={id}>
-              {idx > 0 && <View style={styles.divider} />}
-              <Pressable
-                style={({pressed}) => [
-                  styles.radioRow,
-                  pressed && styles.radioRowPressed,
-                ]}
-                onPress={() => handleRewayahSelect(id)}>
-                <View
-                  style={[
-                    styles.radioCircle,
-                    isSelected && styles.radioCircleSelected,
-                  ]}>
-                  {isSelected && <View style={styles.radioCircleFill} />}
-                </View>
-                <View style={styles.radioTextContainer}>
-                  <Text
-                    style={[
-                      styles.radioLabel,
-                      isSelected && styles.radioLabelSelected,
-                    ]}>
-                    {getLongLabel(id)}
-                  </Text>
-                  <Text style={styles.radioDescription}>
-                    {getDescription(id)}
-                  </Text>
-                </View>
-              </Pressable>
-            </React.Fragment>
-          );
-        })}
-      </View>
-
-      {/* Taxonomy-only rewayat — audio available, text preview not yet. */}
-      <Text style={styles.sectionHeader}>TEXT PREVIEW NOT YET AVAILABLE</Text>
-      <View style={styles.card}>
-        {UNAVAILABLE_REWAYAH_IDS.map((id, idx) => (
-          <React.Fragment key={id}>
-            {idx > 0 && <View style={styles.divider} />}
-            <View
-              style={[styles.radioRow, styles.radioRowDisabled]}
-              accessibilityRole="text"
-              accessibilityLabel={`${getLongLabel(id)}, text preview not yet available`}>
-              <View style={styles.radioCircle} />
-              <View style={styles.radioTextContainer}>
-                <Text style={[styles.radioLabel, styles.radioLabelDisabled]}>
-                  {getLongLabel(id)}
-                </Text>
-                <Text style={styles.radioDescription}>
-                  {getDescription(id)}
-                </Text>
-              </View>
-            </View>
-          </React.Fragment>
-        ))}
-      </View>
       {hasDiffData(rewayah) && (
         <RewayahDiffCard
           rewayah={rewayah}
@@ -984,6 +926,116 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           styles={styles}
           theme={theme}
         />
+      )}
+      <RewayahAccordion
+        selectedId={rewayah}
+        onSelect={handleRewayahSelect}
+        styles={styles}
+        theme={theme}
+      />
+    </View>
+  );
+};
+
+interface RewayahAccordionProps {
+  selectedId: RewayahId;
+  onSelect: (id: RewayahId) => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}
+
+const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
+  selectedId,
+  onSelect,
+  styles,
+  theme,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <View style={styles.card}>
+      <Pressable
+        style={({pressed}) => [
+          styles.settingRow,
+          pressed && styles.settingRowPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{expanded}}
+        accessibilityLabel={`Rewayah: ${getLongLabel(selectedId)}. ${expanded ? 'Collapse' : 'Expand'} to change.`}
+        onPress={() => setExpanded(e => !e)}>
+        <View style={styles.radioTextContainer}>
+          <Text style={styles.accordionHeaderEyebrow}>Currently reading</Text>
+          <Text style={styles.accordionHeaderTitle}>
+            {getLongLabel(selectedId)}
+          </Text>
+        </View>
+        <Feather
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={moderateScale(18)}
+          color={Color(theme.colors.text).alpha(0.4).toString()}
+        />
+      </Pressable>
+      {expanded && (
+        <>
+          <View style={styles.divider} />
+          {AVAILABLE_REWAYAH_IDS.map((id, idx) => {
+            const isSelected = selectedId === id;
+            return (
+              <React.Fragment key={id}>
+                {idx > 0 && <View style={styles.divider} />}
+                <Pressable
+                  style={({pressed}) => [
+                    styles.radioRow,
+                    pressed && styles.radioRowPressed,
+                  ]}
+                  onPress={() => onSelect(id)}>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      isSelected && styles.radioCircleSelected,
+                    ]}>
+                    {isSelected && <View style={styles.radioCircleFill} />}
+                  </View>
+                  <View style={styles.radioTextContainer}>
+                    <Text
+                      style={[
+                        styles.radioLabel,
+                        isSelected && styles.radioLabelSelected,
+                      ]}>
+                      {getLongLabel(id)}
+                    </Text>
+                    <Text style={styles.radioDescription}>
+                      {getDescription(id)}
+                    </Text>
+                  </View>
+                </Pressable>
+              </React.Fragment>
+            );
+          })}
+          <View style={styles.divider} />
+          <Text style={styles.accordionSubHeader}>
+            TEXT PREVIEW NOT YET AVAILABLE
+          </Text>
+          {UNAVAILABLE_REWAYAH_IDS.map((id, idx) => (
+            <React.Fragment key={id}>
+              {idx > 0 && <View style={styles.divider} />}
+              <View
+                style={[styles.radioRow, styles.radioRowDisabled]}
+                accessibilityRole="text"
+                accessibilityLabel={`${getLongLabel(id)}, text preview not yet available`}>
+                <View style={styles.radioCircle} />
+                <View style={styles.radioTextContainer}>
+                  <Text style={[styles.radioLabel, styles.radioLabelDisabled]}>
+                    {getLongLabel(id)}
+                  </Text>
+                  <Text style={styles.radioDescription}>
+                    {getDescription(id)}
+                  </Text>
+                </View>
+              </View>
+            </React.Fragment>
+          ))}
+        </>
       )}
     </View>
   );
@@ -1471,6 +1523,30 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
       color: Color(theme.colors.text).alpha(0.85).toString(),
+    },
+
+    // --- Rewayah accordion styles ---
+    accordionHeaderEyebrow: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: verticalScale(2),
+    },
+    accordionHeaderTitle: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    accordionSubHeader: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      paddingTop: verticalScale(12),
+      paddingBottom: verticalScale(6),
     },
 
     // --- Rewayah legend styles ---
