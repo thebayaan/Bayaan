@@ -8,6 +8,7 @@ import {digitalKhattDataService} from './DigitalKhattDataService';
 import {quranTextService} from './QuranTextService';
 import {rewayahDiffService} from './RewayahDiffService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
@@ -64,6 +65,18 @@ class MushafPreloadService {
     // saved rewayah rather than the default (otherwise a reloaded app with
     // Shu'bah persisted would briefly init against Hafs and never catch up).
     await waitForSettingsHydration();
+
+    // Defensive normalization at the earliest hydration-complete point.
+    // If a stale pre-canonical slug ("qaloon", "shouba", etc.) slipped
+    // past the v12→v13 migration (e.g. an intermediate build that bumped
+    // the version without running the slug migrator), rewrite the store
+    // to the canonical slug before any reader pulls it. Keeps every
+    // downstream consumer — not just the DK service — on safe values.
+    const store = useMushafSettingsStore.getState();
+    const normalized = migratePersistedId(store.rewayah as unknown as string);
+    if (normalized !== store.rewayah) {
+      store.setRewayah(normalized);
+    }
 
     // DK data must be ready first — page lines are needed for layout computation
     await digitalKhattDataService.initialize();

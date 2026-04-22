@@ -41,6 +41,20 @@ export const REWAYAH_DIFF_CATEGORIES = [
 
 export type RewayahDiffCategory = (typeof REWAYAH_DIFF_CATEGORIES)[number];
 
+// Foreground char-level categories, in low→high precedence order. Later
+// entries override earlier ones when a char falls into multiple categories.
+// Silah is appended by the rule-map builders as the most specific marker
+// (it always wins). 'mukhtalif' and 'major' are whole-word variants that
+// render as background tint (REWAYAH_DIFF_BACKGROUND) — not chars — so they
+// are not part of this list.
+const FG_CATEGORIES: readonly RewayahDiffCategory[] = [
+  'minor',
+  'ibdal',
+  'tashil',
+  'madd',
+  'taghliz',
+];
+
 /**
  * Provides rewayah-specific character-level highlights for Mushaf rendering.
  *
@@ -279,6 +293,105 @@ class RewayahDiffService {
     const ranges = this.getDiffRangesForWords(words);
     this.rangeCache.set(cacheKey, ranges);
     return ranges;
+  }
+
+  /**
+   * Foreground char→rule map for a page line, merging every letter-level
+   * rewayah category (minor/ibdal/tashil/madd/taghliz) plus silah onto the
+   * same char indices the line renderer uses. Shared by SkiaPage and
+   * ContinuousMushafView so both page pipelines paint identical foreground
+   * highlights — the SkiaLine consumer still layers tajweed rules on top
+   * (caller merges tajweed into this map with tajweed as the base layer
+   * so rewayah rules win on conflict, matching published-mushaf convention).
+   *
+   * Returns null when no rewayah foreground categories fire on this line —
+   * callers can fall straight through to their tajweed map without merging.
+   */
+  getRewayahRuleMapForLine(
+    pageNumber: number,
+    lineIndex: number,
+  ): Map<number, string> | null {
+    const hasSilah = this.hasSilahColoring;
+    if (!this.hasAnyDiffs && !hasSilah) return null;
+
+    const merged = new Map<number, string>();
+    for (const cat of FG_CATEGORIES) {
+      if (!this.hasCategory(cat)) continue;
+      const indexes = this.getCharsForCategory(cat, pageNumber, lineIndex);
+      for (const idx of indexes) merged.set(idx, cat);
+    }
+    if (hasSilah) {
+      const silahIndexes = this.getSilahCharsForLine(pageNumber, lineIndex);
+      for (const idx of silahIndexes) merged.set(idx, 'silah');
+    }
+    return merged.size > 0 ? merged : null;
+  }
+
+  /**
+   * Verse-level equivalent of getRewayahRuleMapForLine. Operates on a flat
+   * word list joined by single spaces (the shape SkiaVerseText uses).
+   *
+   * Walks the word list once, mapping each word's flagged chars (or all
+   * its chars when the diff entry is whole-word) onto the corresponding
+   * offset in the joined verse string. Silah chars (U+06E5/U+06E6 plus
+   * the preceding damma/kasra) are scanned from the word text directly —
+   * they aren't in the diff JSON since they're already in the DK words DB.
+   *
+   * Precedence matches getRewayahRuleMapForLine: minor → ibdal → tashil →
+   * madd → taghliz → silah. Returns null when no categories fire.
+   */
+  getRewayahRuleMapForWords(
+    words: readonly DKWordInfo[],
+  ): Map<number, string> | null {
+    const hasSilah = this.hasSilahColoring;
+    if (!this.hasAnyDiffs && !hasSilah) return null;
+
+    const categoryMaps: Array<
+      [RewayahDiffCategory, Map<string, Map<number, number[]>>]
+    > = [];
+    for (const cat of FG_CATEGORIES) {
+      const byVerse = this.byCategory.get(cat);
+      if (byVerse && byVerse.size > 0) categoryMaps.push([cat, byVerse]);
+    }
+    if (categoryMaps.length === 0 && !hasSilah) return null;
+
+    const merged = new Map<number, string>();
+    let offset = 0;
+    for (let i = 0; i < words.length; i++) {
+      const info = words[i];
+      const wordLen = info.text.length;
+
+      // Letter-level categories (low→high precedence; later wins).
+      for (const [cat, byVerse] of categoryMaps) {
+        const charList = byVerse
+          .get(info.verseKey)
+          ?.get(info.wordPositionInVerse);
+        if (charList === undefined) continue;
+        if (charList.length === 0) {
+          for (let c = 0; c < wordLen; c++) merged.set(offset + c, cat);
+        } else {
+          for (const c of charList) {
+            if (c >= 0 && c < wordLen) merged.set(offset + c, cat);
+          }
+        }
+      }
+
+      // Silah always wins — scan the stored text for U+06E5/U+06E6.
+      if (hasSilah) {
+        for (let c = 0; c < wordLen; c++) {
+          if (SILAH_CHARS.has(info.text[c])) {
+            merged.set(offset + c, 'silah');
+            if (c > 0 && PRECEDING_VOWELS.has(info.text[c - 1])) {
+              merged.set(offset + c - 1, 'silah');
+            }
+          }
+        }
+      }
+
+      offset += wordLen;
+      if (i < words.length - 1) offset += 1;
+    }
+    return merged.size > 0 ? merged : null;
   }
 
   /**

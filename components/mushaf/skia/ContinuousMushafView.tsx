@@ -176,6 +176,50 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       );
     }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
+    // Merged tajweed + rewayah foreground rules. Mirrors SkiaPage —
+    // identical helper, identical precedence (tajweed base → rewayah
+    // categories → silah). Keeps the vertical continuous-mushaf renderer
+    // and the paginated SkiaPage renderer in lockstep so list-mode and
+    // page-mode paint the same foreground highlights.
+    const lineCharRuleMaps = useMemo(() => {
+      if (
+        !lineTajweedMaps &&
+        !rewayahDiffService.hasAnyDiffs &&
+        !rewayahDiffService.hasSilahColoring
+      ) {
+        return null;
+      }
+
+      const maps: (Map<number, string> | null)[] = [];
+      for (let i = 0; i < pageLines.length; i++) {
+        const tajweed = lineTajweedMaps?.[i] ?? null;
+        const rewayahMap = rewayahDiffService.getRewayahRuleMapForLine(
+          pageNumber,
+          i,
+        );
+        if (!tajweed && !rewayahMap) {
+          maps.push(null);
+          continue;
+        }
+        if (!rewayahMap) {
+          maps.push(tajweed);
+          continue;
+        }
+        if (!tajweed) {
+          maps.push(rewayahMap);
+          continue;
+        }
+        const merged = new Map(tajweed);
+        for (const [k, v] of rewayahMap) merged.set(k, v);
+        maps.push(merged);
+      }
+      return maps;
+      // rewayah is in the dep list so the memo re-runs when the active
+      // rewayah changes — rewayahDiffService is a singleton whose internal
+      // state isn't tracked by React directly.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lineTajweedMaps, pageNumber, pageLines, rewayah]);
+
     const canvasHeight = pageLines.length * BASE_LINE_HEIGHT;
 
     // ── Paragraph refs for hit testing ─────────────────────
@@ -553,7 +597,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 margin={lineMargin}
                 yPos={yPos}
                 textColor={textColor}
-                charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
+                charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 lineHeight={BASE_LINE_HEIGHT}
                 onParagraphReady={handleParagraphReady}
