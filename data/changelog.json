@@ -1,5 +1,60 @@
 [
   {
+    "version": "2.2",
+    "releaseDate": "2026-04-22",
+    "title": "A More Personal Mushaf",
+    "highlights": [
+      {
+        "title": "All 20 Rewayat",
+        "description": "Browse every qira'at narration in one place. Eight come with full mushaf text and diff highlighting; the rest are previewed for audio",
+        "icon": "layers-outline"
+      },
+      {
+        "title": "Consistent Highlighting",
+        "description": "Rewayah differences now show the same foreground and background colors whether you're in page mode, vertical mushaf, or list view",
+        "icon": "color-wand-outline"
+      },
+      {
+        "title": "Liquid Glass Explore",
+        "description": "The search tab's browse tiles adopt iOS 26's Liquid Glass material, with a refined bordered look on other devices",
+        "icon": "sparkles-outline"
+      },
+      {
+        "title": "Quieter Chrome",
+        "description": "The persistent offline banner is gone — network changes now surface as brief native toasts, only when something actually changes",
+        "icon": "notifications-off-outline"
+      }
+    ],
+    "fullChangelog": {
+      "features": [
+        "Full 20-rewayat picker in mushaf settings with a collapsible accordion showing your current selection",
+        "Share any recent-played recitation from the reciter long-press sheet",
+        "iOS 26 Liquid Glass treatment for the search-tab browse tiles",
+        "Cross-platform network-status toasts on connection loss, recovery, and backend fallback",
+        "Consistent foreground rewayah diff highlighting across paginated mushaf, vertical mushaf, and list modes"
+      ],
+      "improvements": [
+        "Adhkar cards now show titles below the artwork with sharper corners",
+        "Review and Learn About icons render at full text color",
+        "Clearer 'Add reciter to favorites' vs 'Add to loved' labels in the recent-reciter sheet",
+        "Mushaf settings rewayat list collapses by default; diff toggle promoted above the list",
+        "Mini player auto-collapses on scroll in mushaf settings and the search tab on iOS 26"
+      ],
+      "fixes": [
+        "Recovered users stuck on a stale pre-canonical rewayah slug (mushaf would fail to load)",
+        "Android toasts now show the full text (previously the subtitle was dropped)",
+        "Explore-tab bento tiles no longer double-pad under the search bar on iOS 26",
+        "Share sheet from the recent-reciter options no longer conflicts with the dismissing action sheet"
+      ],
+      "technical": [
+        "Shared RewayahDiffService.getRewayahRuleMapFor* helper consumed by all three mushaf renderers",
+        "Defensive migratePersistedId guards in DigitalKhattDataService and MushafPreloadService init paths",
+        "ApiDisruptionBanner replaced by NetworkStatusMonitor — headless, transition-only toast emitter",
+        "burnt toast wrapper accepts a preset argument; Android merges title+message into a single line"
+      ]
+    }
+  },
+  {
     "version": "2.1",
     "releaseDate": "2026-03-11",
     "title": "Deeper Understanding",
