@@ -12,7 +12,7 @@ buildscript {
     // gradle-play-publisher: ./gradlew publishReleaseBundle uploads the
     // signed AAB to the Play Console. Reads service-account credentials
     // from BAYAAN_PLAY_SERVICE_ACCOUNT (gradle property or env var).
-    classpath('com.github.triplet.gradle:play-publisher:3.11.0')
+    classpath('com.github.triplet.gradle:play-publisher:3.13.0')
   }
 }
 
