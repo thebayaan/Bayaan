@@ -1,6 +1,25 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.github.triplet.play"
+
+// Google Play publishing. Defaults to the `internal` track so manual
+// promotion is still the gate to production. Configure the service
+// account credentials file path via:
+//   - ~/.gradle/gradle.properties: BAYAAN_PLAY_SERVICE_ACCOUNT=/abs/path/to/play-service-account.json
+//   - or env var BAYAAN_PLAY_SERVICE_ACCOUNT=/abs/path/to/play-service-account.json
+// Generate the JSON from Play Console > Setup > API access > Service accounts.
+// Without credentials, uploadTasks print a clear error and skip instead of crashing
+// other gradle tasks.
+play {
+    def playCreds = project.properties['BAYAAN_PLAY_SERVICE_ACCOUNT'] ?: System.getenv('BAYAAN_PLAY_SERVICE_ACCOUNT')
+    if (playCreds) {
+        serviceAccountCredentials.set(file(playCreds))
+    }
+    defaultToAppBundles.set(true)
+    track.set('internal')
+    releaseStatus.set(com.github.triplet.gradle.androidpublisher.ReleaseStatus.COMPLETED)
+}
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -94,8 +113,8 @@ android {
         applicationId 'com.bayaan.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 695
-        versionName "2.1.2"
+        versionCode 698
+        versionName "2.2.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
