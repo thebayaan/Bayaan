@@ -1,5 +1,12 @@
-import React, {useMemo, useCallback} from 'react';
-import {View, StyleSheet, Pressable, Text, ScrollView} from 'react-native';
+import React, {useMemo, useCallback, useState} from 'react';
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Text,
+  ScrollView,
+  LayoutChangeEvent,
+} from 'react-native';
 import {Link} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -9,6 +16,7 @@ import {LinearGradient} from 'expo-linear-gradient';
 import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {useResponsive} from '@/hooks/useResponsive';
 import {GlassView} from 'expo-glass-effect';
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
@@ -252,8 +260,25 @@ const tileInnerStyles = StyleSheet.create({
 export const ExploreView = React.memo(
   function ExploreView({}: ExploreViewProps) {
     const {theme} = useTheme();
-    const {width} = useWindowDimensions();
+    const {width: windowWidth} = useWindowDimensions();
     const bottomInset = useBottomInset();
+    const {isTablet} = useResponsive();
+
+    // Tablet-only guard: on iPad the window width is not the same as the
+    // available content width (the sidebar steals space). Measure the real
+    // content width via onLayout so the two-column grid fits inside the
+    // visible area and tiles don't overlap. On phones we keep the original
+    // `useWindowDimensions` behavior untouched.
+    const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
+    const onContentLayout = useCallback((e: LayoutChangeEvent) => {
+      if (!isTablet) return;
+      const w = e.nativeEvent.layout.width;
+      if (w > 0) {
+        setMeasuredWidth(prev => (prev === w ? prev : w));
+      }
+    }, [isTablet]);
+
+    const width = isTablet && measuredWidth != null ? measuredWidth : windowWidth;
 
     // Calculate tile dimensions based on screen width - strict two-column grid
     const tileDimensions = useMemo(() => {
@@ -309,8 +334,13 @@ export const ExploreView = React.memo(
       [styles.column, tileDimensions.columnWidth, tileDimensions.baseHeight],
     );
 
+    // On tablet, wait for the first onLayout measurement before rendering the
+    // tiles so we never flash the wrong (windowWidth-based) sizes. The View
+    // wrapper itself always renders so onLayout can fire.
+    const tilesReady = !isTablet || measuredWidth != null;
+
     return (
-      <View style={styles.content}>
+      <View style={styles.content} onLayout={onContentLayout}>
         <ScrollView
           style={styles.scrollView}
           contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
@@ -330,10 +360,12 @@ export const ExploreView = React.memo(
                 },
           ]}
           showsVerticalScrollIndicator={false}>
-          <View style={styles.masonryContainer}>
-            {renderColumn(layout.leftColumn, 'left')}
-            {renderColumn(layout.rightColumn, 'right')}
-          </View>
+          {tilesReady && (
+            <View style={styles.masonryContainer}>
+              {renderColumn(layout.leftColumn, 'left')}
+              {renderColumn(layout.rightColumn, 'right')}
+            </View>
+          )}
         </ScrollView>
       </View>
     );

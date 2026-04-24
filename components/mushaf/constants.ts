@@ -1,4 +1,30 @@
-import {Dimensions} from 'react-native';
+import {useMemo} from 'react';
+import {Dimensions, useWindowDimensions} from 'react-native';
+import type {EdgeInsets} from 'react-native-safe-area-context';
+import {getIsTablet} from '@/utils/responsive';
+
+// ---------------------------------------------------------------------------
+// Live window dimensions (kept in sync via Dimensions subscription)
+// ---------------------------------------------------------------------------
+
+let _liveWidth = Dimensions.get('window').width;
+let _liveHeight = Dimensions.get('window').height;
+
+Dimensions.addEventListener('change', ({window}) => {
+  _liveWidth = window.width;
+  _liveHeight = window.height;
+});
+
+// ---------------------------------------------------------------------------
+// Module-level snapshot constants (backward-compat).
+//
+// These are captured at import time. They remain correct for the default
+// phone-portrait case (the only case the app supported before iPad work)
+// and are used by modules that cannot easily adopt the hook yet.
+//
+// iPad / rotation-aware consumers should instead use `useMushafLayout()`
+// or `getMushafLayout()` below, which always read the latest dimensions.
+// ---------------------------------------------------------------------------
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 
@@ -23,6 +49,7 @@ export function getPageEdgeLayout(pageNumber: number) {
       : PAGE_EDGE_OUTER_MARGIN,
   };
 }
+
 export const LINES_PER_PAGE = 15;
 
 export const CONTENT_WIDTH = SCREEN_WIDTH - PAGE_PADDING_HORIZONTAL * 2;
@@ -31,6 +58,284 @@ export const CONTENT_HEIGHT =
 export const BASE_LINE_HEIGHT = CONTENT_HEIGHT / LINES_PER_PAGE;
 
 export {SCREEN_WIDTH, SCREEN_HEIGHT};
+
+// ---------------------------------------------------------------------------
+// Responsive mushaf layout (hook + static helper)
+// ---------------------------------------------------------------------------
+
+export interface MushafLayoutMetrics {
+  /** Full device/container width — what the FlatList item occupies. */
+  screenWidth: number;
+  /** Full device/container height — what each page View occupies. */
+  screenHeight: number;
+  /** Width of ONE rendered mushaf page (capped on iPad to stay readable). */
+  pageWidth: number;
+  /**
+   * Horizontal offset from the FlatList item's left edge to the first
+   * rendered page. On phones this is 0. On iPad we center the page(s).
+   */
+  pageOffsetX: number;
+  /** Gap between the two facing pages. Only non-zero when `facingPages`. */
+  facingGap: number;
+  contentWidth: number;
+  contentHeight: number;
+  baseLineHeight: number;
+  paddingHorizontal: number;
+  paddingTop: number;
+  paddingBottom: number;
+  /** True when rendering two facing pages side-by-side (iPad landscape). */
+  facingPages: boolean;
+  /**
+   * When set, the page view is taller than the physical screen and should be
+   * wrapped in a ScrollView of this height (= physical landscape screen height).
+   * Only used for phone landscape mode.
+   */
+  scrollContainerHeight?: number;
+}
+
+export interface MushafLayoutOpts {
+  width?: number;
+  height?: number;
+  /**
+   * When provided, overrides `width`/`height` and is treated as the *measured*
+   * container size (i.e. after the parent has subtracted the stack header,
+   * toolbar, and safe-area insets). Prefer this on iPad to avoid the "cut off
+   * at the bottom" bug — computing metrics from raw window dimensions
+   * overestimates the available space because the stack chrome is not
+   * accounted for in `useWindowDimensions()`.
+   */
+  containerWidth?: number;
+  containerHeight?: number;
+  insets?: EdgeInsets | null;
+  /** Height of the custom bottom player/toolbar, if any (phone only). */
+  toolbarHeight?: number;
+  /** Height of the native stack header, if one is shown (phone only). */
+  headerHeight?: number;
+  isTablet?: boolean;
+}
+
+/**
+ * Target fontSize for iPad rendering. `SkiaPage` derives `fontSize` from
+ * `contentWidth` via `fontSize ≈ contentWidth * 0.053` (because the DK font
+ * reports `PAGE_WIDTH = 17000` and `FONTSIZE = 1000` at a `*0.9` render
+ * factor). We aim for a comfortable ~34pt font on iPad which maps to a
+ * `contentWidth ≈ 640pt` → `pageWidth ≈ 688pt`.
+ *
+ * Phones are never clamped (their width is always below this value).
+ */
+const IPAD_MAX_PAGE_WIDTH_SINGLE = 720;
+/**
+ * Cap for iPad landscape single-page rendering. Narrower than portrait so
+ * the page doesn't hog the whole screen when the device is rotated; also
+ * keeps the font noticeably smaller than portrait which mirrors how a
+ * physical mushaf feels when held landscape.
+ */
+const IPAD_MAX_PAGE_WIDTH_LANDSCAPE = 640;
+
+/**
+ * Pure helper that returns mushaf metrics for a given window/container + insets.
+ *
+ * Three important differences vs the legacy `SCREEN_*`/`CONTENT_*` constants:
+ *
+ *   1. `paddingTop` / `paddingBottom` are derived from the real safe area
+ *      instead of being frozen at 130/100pt. This fixes the "page cut off at
+ *      the bottom" bug on iPad portrait.
+ *   2. On tablet we cap `pageWidth` so `SkiaPage`'s font size (which scales
+ *      linearly with `contentWidth`) never grows past ~38pt. Without the cap,
+ *      iPad Pro 13" landscape renders 70pt+ text and lines overlap.
+ *   3. (Deferred) A `facingPages` flag is exposed on the metrics type for
+ *      future two-page spreads; currently always `false`.
+ */
+export function getMushafLayout(
+  opts: MushafLayoutOpts = {},
+): MushafLayoutMetrics {
+  // Prefer measured container dims when provided (iPad path). Fall back to
+  // raw window dims for the phone path and for first-render before layout.
+  const width = opts.containerWidth ?? opts.width ?? _liveWidth;
+  const height = opts.containerHeight ?? opts.height ?? _liveHeight;
+  const insetTop = opts.insets?.top ?? 0;
+  const insetBottom = opts.insets?.bottom ?? 0;
+  const headerHeight = opts.headerHeight ?? 0;
+  const toolbarHeight = opts.toolbarHeight ?? 0;
+  const isTablet = opts.isTablet ?? getIsTablet();
+
+  const landscape = width >= height;
+  const compact = height < 700;
+
+  // --- Vertical padding ----------------------------------------------------
+  // Phone bakes in the old legacy values so we don't shift any existing pixels.
+  const basePaddingTop = compact ? 95 : 130;
+  const basePaddingBottom = compact ? 70 : 100;
+  // Tablet: overlay chrome (non-glass `headerHeight`/`toolbarHeight`) + safe
+  // area inset + aesthetic margin for surah/juz/page labels. On iOS 26 glass
+  // iPad the stack chrome lives *outside* the container; callers should
+  // pass `headerHeight=0, toolbarHeight=0` and measure the true container
+  // height via `onLayout`.
+  const tabletPaddingTop = headerHeight + Math.max(insetTop, 8) + 28;
+  const tabletPaddingBottom = toolbarHeight + Math.max(insetBottom, 8) + 24;
+
+  const paddingTop = isTablet ? tabletPaddingTop : basePaddingTop;
+  const paddingBottom = isTablet ? tabletPaddingBottom : basePaddingBottom;
+
+  const contentHeight = Math.max(height - paddingTop - paddingBottom, 1);
+  const baseLineHeight = contentHeight / LINES_PER_PAGE;
+
+  // --- Horizontal layout ---------------------------------------------------
+  // Phone: one page fills the FlatList item, with a small edge margin.
+  // iPad: cap the page width so font size stays readable; center the page
+  //       (or a pair of pages) within the item and report `pageOffsetX`.
+  const basePaddingHorizontal = compact ? 4 : 8;
+
+  if (!isTablet) {
+    const paddingHorizontal = basePaddingHorizontal;
+
+    if (!landscape) {
+      const pageWidth = width;
+      const contentWidth = pageWidth - paddingHorizontal * 2;
+      return {
+        screenWidth: width,
+        screenHeight: height,
+        pageWidth,
+        pageOffsetX: 0,
+        facingGap: 0,
+        contentWidth,
+        contentHeight,
+        baseLineHeight,
+        paddingHorizontal,
+        paddingTop,
+        paddingBottom,
+        facingPages: false,
+      };
+    }
+
+    // Phone landscape: full-width "zoomed in" layout.
+    //
+    // The page fills the full landscape width (edge to edge). Because the
+    // font size scales with contentWidth, the text is noticeably larger than
+    // in portrait. The page content is taller than the physical screen, so a
+    // ScrollView wraps it — the user scrolls vertically through the page and
+    // swipes horizontally to change pages.
+    //
+    // fontSize ≈ contentWidth × 0.053 (from SkiaPage: FONTSIZE/PAGE_WIDTH × 0.9)
+    // We maintain the portrait baseLineHeight/fontSize ratio of ~2.1 so
+    // harakat never overlap the line below.
+    const headerH = opts.headerHeight ?? 60;
+    const toolbarH = opts.toolbarHeight ?? 60;
+    const landscapePaddingTop = headerH + insetTop + 12;
+    const landscapePaddingBottom = toolbarH + insetBottom + 8;
+
+    const landscapeContentWidth = width - basePaddingHorizontal * 2;
+    const fontSizeEst = landscapeContentWidth * 0.053;
+    const landscapeBaseLineHeight = fontSizeEst * 2.1;
+    const landscapeContentHeight = landscapeBaseLineHeight * LINES_PER_PAGE;
+    const landscapeScreenHeight =
+      landscapeContentHeight + landscapePaddingTop + landscapePaddingBottom;
+
+    return {
+      screenWidth: width,
+      screenHeight: landscapeScreenHeight,
+      pageWidth: width,
+      pageOffsetX: 0,
+      facingGap: 0,
+      contentWidth: landscapeContentWidth,
+      contentHeight: landscapeContentHeight,
+      baseLineHeight: landscapeBaseLineHeight,
+      paddingHorizontal: basePaddingHorizontal,
+      paddingTop: landscapePaddingTop,
+      paddingBottom: landscapePaddingBottom,
+      facingPages: false,
+      scrollContainerHeight: height,
+    };
+  }
+
+  // iPad pages get a touch more horizontal padding than phones so surah/juz
+  // labels breathe. Tuned to keep `fontSize ≈ 34pt` at 720pt page width.
+  const paddingHorizontal = 24;
+
+  // Landscape iPad: render two facing pages per spread. `pageWidth` is each
+  // individual page's width, capped so the font size stays readable. The
+  // FlatList items are spreads whose width is `screenWidth`; the consumer
+  // centers `(2*pageWidth + facingGap)` within `screenWidth` via
+  // `pageOffsetX`.
+  if (landscape) {
+    const facingGap = 12;
+    // Available width for the two pages combined.
+    const availableForPages = Math.max(width - facingGap, 1);
+    const pageWidth = Math.min(
+      IPAD_MAX_PAGE_WIDTH_LANDSCAPE,
+      Math.floor(availableForPages / 2),
+    );
+    const pageOffsetX = Math.max((width - (2 * pageWidth + facingGap)) / 2, 0);
+    const contentWidth = pageWidth - paddingHorizontal * 2;
+
+    return {
+      screenWidth: width,
+      screenHeight: height,
+      pageWidth,
+      pageOffsetX,
+      facingGap,
+      contentWidth,
+      contentHeight,
+      baseLineHeight,
+      paddingHorizontal,
+      paddingTop,
+      paddingBottom,
+      facingPages: true,
+    };
+  }
+
+  // Portrait iPad: single centered page, capped width.
+  const cap = IPAD_MAX_PAGE_WIDTH_SINGLE;
+  const pageWidth = Math.min(width, cap);
+  const pageOffsetX = Math.max((width - pageWidth) / 2, 0);
+  const contentWidth = pageWidth - paddingHorizontal * 2;
+
+  return {
+    screenWidth: width,
+    screenHeight: height,
+    pageWidth,
+    pageOffsetX,
+    facingGap: 0,
+    contentWidth,
+    contentHeight,
+    baseLineHeight,
+    paddingHorizontal,
+    paddingTop,
+    paddingBottom,
+    facingPages: false,
+  };
+}
+
+/**
+ * React hook that returns live mushaf metrics. Re-renders on rotation /
+ * split-view changes via `useWindowDimensions`.
+ *
+ * Pass `insets` from `useSafeAreaInsets()` and, if applicable, the height
+ * of any on-screen toolbar so the page never clips underneath it.
+ */
+export function useMushafLayout(
+  opts: Omit<MushafLayoutOpts, 'width' | 'height'> = {},
+): MushafLayoutMetrics {
+  const {width, height} = useWindowDimensions();
+
+  return useMemo(
+    () => getMushafLayout({...opts, width, height}),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      width,
+      height,
+      opts.containerWidth,
+      opts.containerHeight,
+      opts.insets?.top,
+      opts.insets?.bottom,
+      opts.insets?.left,
+      opts.insets?.right,
+      opts.toolbarHeight,
+      opts.headerHeight,
+      opts.isTablet,
+    ],
+  );
+}
 
 export const SURAH_NAMES: Record<number, string> = {
   1: '\u0627\u0644\u0641\u0627\u062A\u062D\u0629',
@@ -179,18 +484,24 @@ export function getHizbForPage(page: number): number {
 
 /**
  * Calculate Y positions for mushaf page lines with uniform line heights.
- * Every line (surah_name, basmallah, ayah) gets exactly BASE_LINE_HEIGHT.
+ * Every line (surah_name, basmallah, ayah) gets exactly `baseLineHeight`.
  * Pages 1-2 center the block vertically; pages 3-604 start from the top.
+ *
+ * `contentHeight` and `baseLineHeight` default to the module-level constants
+ * (phone-portrait snapshot). iPad / rotation-aware callers should pass the
+ * values returned by `useMushafLayout()` instead.
  */
 export function calculateLineYPositions(
   lines: {line_type: string}[],
   pageNumber: number,
+  contentHeight: number = CONTENT_HEIGHT,
+  baseLineHeight: number = BASE_LINE_HEIGHT,
 ): number[] {
   if (pageNumber === 1 || pageNumber === 2) {
-    const totalHeight = lines.length * BASE_LINE_HEIGHT;
-    const topOffset = (CONTENT_HEIGHT - totalHeight) / 2;
-    return lines.map((_, i) => topOffset + i * BASE_LINE_HEIGHT);
+    const totalHeight = lines.length * baseLineHeight;
+    const topOffset = (contentHeight - totalHeight) / 2;
+    return lines.map((_, i) => topOffset + i * baseLineHeight);
   }
 
-  return lines.map((_, i) => i * BASE_LINE_HEIGHT);
+  return lines.map((_, i) => i * baseLineHeight);
 }

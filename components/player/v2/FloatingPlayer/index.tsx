@@ -18,6 +18,7 @@ import {
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
+import {useResponsive} from '@/hooks/useResponsive';
 
 export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const {theme} = useTheme();
@@ -31,6 +32,7 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const isMushafActive = pathname === '/mushaf';
+  const {isTablet} = useResponsive();
   const prevTrackIdRef = useRef<string | null>(null);
 
   const currentTrack = useMemo(
@@ -46,7 +48,9 @@ export const FloatingPlayer: React.FC = React.memo(function FloatingPlayer() {
     return (trackLoading && isTrackChanging) || playbackState === 'buffering';
   }, [trackLoading, playbackState, currentTrack?.id]);
 
-  const shouldShow = !stateRestoring && !!currentTrack && !isMushafActive;
+  // iPad uses TabletDockedPlayer inside the sidebar instead of this pill.
+  const shouldShow =
+    !stateRestoring && !!currentTrack && !isMushafActive && !isTablet;
 
   const handlePress = useCallback(() => {
     expandPlayerSheet();

@@ -1,5 +1,5 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
-import {View, StyleSheet, Platform} from 'react-native';
+import {View, Platform} from 'react-native';
 import {
   Canvas,
   Skia,
@@ -42,13 +42,13 @@ import Color from 'color';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
 import {
-  SCREEN_WIDTH,
-  SCREEN_HEIGHT,
-  PAGE_PADDING_HORIZONTAL,
-  PAGE_PADDING_TOP,
-  CONTENT_WIDTH,
-  CONTENT_HEIGHT,
-  BASE_LINE_HEIGHT,
+  SCREEN_WIDTH as DEFAULT_SCREEN_WIDTH,
+  SCREEN_HEIGHT as DEFAULT_SCREEN_HEIGHT,
+  PAGE_PADDING_HORIZONTAL as DEFAULT_PAGE_PADDING_HORIZONTAL,
+  PAGE_PADDING_TOP as DEFAULT_PAGE_PADDING_TOP,
+  CONTENT_WIDTH as DEFAULT_CONTENT_WIDTH,
+  CONTENT_HEIGHT as DEFAULT_CONTENT_HEIGHT,
+  BASE_LINE_HEIGHT as DEFAULT_BASE_LINE_HEIGHT,
   calculateLineYPositions,
 } from '../constants';
 
@@ -64,6 +64,18 @@ interface SkiaPageProps {
   contentMarginLeft?: number;
   onReady?: () => void;
   onTap?: () => void;
+  /**
+   * Optional layout metrics overrides. When omitted, the component falls
+   * back to the module-level constants (phone-portrait defaults). iPad and
+   * rotation-aware callers should pass values from `useMushafLayout()`.
+   */
+  screenWidth?: number;
+  screenHeight?: number;
+  contentWidth?: number;
+  contentHeight?: number;
+  baseLineHeight?: number;
+  paddingHorizontal?: number;
+  paddingTop?: number;
 }
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
@@ -73,7 +85,23 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   contentMarginLeft,
   onReady,
   onTap,
+  screenWidth: propScreenWidth,
+  screenHeight: propScreenHeight,
+  contentWidth: propContentWidth,
+  contentHeight: propContentHeight,
+  baseLineHeight: propBaseLineHeight,
+  paddingHorizontal: propPaddingHorizontal,
+  paddingTop: propPaddingTop,
 }) => {
+  const SCREEN_WIDTH = propScreenWidth ?? DEFAULT_SCREEN_WIDTH;
+  const SCREEN_HEIGHT = propScreenHeight ?? DEFAULT_SCREEN_HEIGHT;
+  const CONTENT_WIDTH = propContentWidth ?? DEFAULT_CONTENT_WIDTH;
+  const CONTENT_HEIGHT = propContentHeight ?? DEFAULT_CONTENT_HEIGHT;
+  const BASE_LINE_HEIGHT = propBaseLineHeight ?? DEFAULT_BASE_LINE_HEIGHT;
+  const PAGE_PADDING_HORIZONTAL =
+    propPaddingHorizontal ?? DEFAULT_PAGE_PADDING_HORIZONTAL;
+  const PAGE_PADDING_TOP = propPaddingTop ?? DEFAULT_PAGE_PADDING_TOP;
+
   const {theme} = useTheme();
   // Keep useFonts hook as fallback (can't conditionally call hooks).
   // Prefer preloaded fontMgr from MushafPreloadService; ready synchronously
@@ -207,8 +235,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   // Calculate Y positions for each line
   const lineYPositions = useMemo(
-    () => calculateLineYPositions(pageLines, pageNumber),
-    [pageLines, pageNumber],
+    () =>
+      calculateLineYPositions(
+        pageLines,
+        pageNumber,
+        CONTENT_HEIGHT,
+        BASE_LINE_HEIGHT,
+      ),
+    [pageLines, pageNumber, CONTENT_HEIGHT, BASE_LINE_HEIGHT],
   );
 
   // Compute tajweed char-to-rule maps for each line
@@ -662,12 +696,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     pageNumber,
   ]);
 
+  const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
+
   if (!fontMgr || !justResults) {
-    return <View style={styles.page} />;
+    return <View style={pageStyle} />;
   }
 
   const content = (
-    <View style={styles.page}>
+    <View style={pageStyle}>
       <Canvas
         style={{
           width: CONTENT_WIDTH,
@@ -739,12 +775,5 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   return <GestureDetector gesture={composedGesture}>{content}</GestureDetector>;
 };
-
-const styles = StyleSheet.create({
-  page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  },
-});
 
 export default React.memo(SkiaPage);

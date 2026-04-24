@@ -1,5 +1,12 @@
 import React, {useCallback, useMemo, useRef, useEffect, useState} from 'react';
-import {StyleSheet, StatusBar, View, Platform, BackHandler} from 'react-native';
+import {
+  StyleSheet,
+  StatusBar,
+  View,
+  Platform,
+  BackHandler,
+  LayoutChangeEvent,
+} from 'react-native';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -9,6 +16,7 @@ import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTheme} from '@/hooks/useTheme';
 import PlayerContent from './PlayerContent';
+import TabletPlayer from './TabletPlayer';
 import Color from 'color';
 import {SURAHS} from '@/data/surahData';
 import {useReciterNavigation} from '@/hooks/useReciterNavigation';
@@ -20,11 +28,23 @@ import {
   registerPlayerSheetRef,
   unregisterPlayerSheetRef,
 } from '@/services/player/sheetRef';
+import {useResponsive} from '@/hooks/useResponsive';
+import {TabletPlayerReciterColumn} from '@/components/tablet/TabletPlayerReciterColumn';
+import {TabletPlayerControlsColumn} from '@/components/tablet/TabletPlayerControlsColumn';
 
 export const PlayerSheet = () => {
   const {theme} = useTheme();
+  const {isTablet, orientation} = useResponsive();
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
+  const [leftPaneWidth, setLeftPaneWidth] = useState<number | undefined>(
+    undefined,
+  );
+  const [tabletShowQueue, setTabletShowQueue] = useState(false);
+  const handleTabletQueueToggle = useCallback(
+    () => setTabletShowQueue(v => !v),
+    [],
+  );
   const {navigateToReciterProfile} = useReciterNavigation();
 
   // Fires a "Now reading <rewayah>" toast whenever the currently-playing
@@ -270,6 +290,10 @@ export const PlayerSheet = () => {
     [],
   );
 
+  const handleLeftPaneLayout = useCallback((e: LayoutChangeEvent) => {
+    setLeftPaneWidth(e.nativeEvent.layout.width);
+  }, []);
+
   // Only render modals once settings are loaded to prevent hydration issues
   if (!shouldShow) {
     return null;
@@ -277,6 +301,39 @@ export const PlayerSheet = () => {
 
   const textColor = Color(theme.colors.text);
   const isLightText = textColor.isLight();
+
+  // Landscape keeps the reciter-list split (only when there's a reciter).
+  // Portrait always splits on iPad: mushaf on the left, player controls on
+  // the right (replacing the reciter list in portrait).
+  const isTabletFull = isTablet && sheetMode === 'full';
+  const landscapeSplit =
+    isTabletFull && orientation === 'landscape' && !!currentTrack?.reciterId;
+  const portraitSplit = isTabletFull && orientation === 'portrait';
+  const showTabletSplit = landscapeSplit || portraitSplit;
+
+  const playerContentEl = isTablet ? (
+    <TabletPlayer
+      measuredParentWidth={showTabletSplit ? leftPaneWidth : undefined}
+      bodyOnly={portraitSplit}
+      showQueue={portraitSplit ? tabletShowQueue : undefined}
+      onQueueToggle={portraitSplit ? handleTabletQueueToggle : undefined}
+      onSpeedPress={handleShowSpeedSheet}
+      onSleepTimerPress={handleShowSleepTimerSheet}
+      onMushafLayoutPress={handleShowMushafLayoutSheet}
+      onAmbientPress={handleShowAmbientSheet}
+      onOptionsPress={handleShowOptionsSheet}
+      onFollowAlongPress={handleFollowAlongPress}
+    />
+  ) : (
+    <PlayerContent
+      onSpeedPress={handleShowSpeedSheet}
+      onSleepTimerPress={handleShowSleepTimerSheet}
+      onMushafLayoutPress={handleShowMushafLayoutSheet}
+      onAmbientPress={handleShowAmbientSheet}
+      onOptionsPress={handleShowOptionsSheet}
+      onFollowAlongPress={handleFollowAlongPress}
+    />
+  );
 
   return (
     <>
@@ -301,14 +358,46 @@ export const PlayerSheet = () => {
         enableOverDrag={false}
         style={styles.sheet}
         backgroundStyle={[styles.background, {backgroundColor: 'transparent'}]}>
-        <PlayerContent
-          onSpeedPress={handleShowSpeedSheet}
-          onSleepTimerPress={handleShowSleepTimerSheet}
-          onMushafLayoutPress={handleShowMushafLayoutSheet}
-          onAmbientPress={handleShowAmbientSheet}
-          onOptionsPress={handleShowOptionsSheet}
-          onFollowAlongPress={handleFollowAlongPress}
-        />
+        {showTabletSplit ? (
+          <View style={styles.tabletSplitRoot}>
+            <View
+              style={styles.tabletSplitPlayerPane}
+              onLayout={handleLeftPaneLayout}>
+              {playerContentEl}
+            </View>
+            <View
+              style={[
+                styles.tabletSplitDivider,
+                {
+                  backgroundColor: Color(theme.colors.text)
+                    .alpha(0.08)
+                    .toString(),
+                },
+              ]}
+            />
+            <View style={styles.tabletSplitReciterPane}>
+              {portraitSplit ? (
+                <TabletPlayerControlsColumn
+                  showQueue={tabletShowQueue}
+                  onQueueToggle={handleTabletQueueToggle}
+                  onSpeedPress={handleShowSpeedSheet}
+                  onSleepTimerPress={handleShowSleepTimerSheet}
+                  onMushafLayoutPress={handleShowMushafLayoutSheet}
+                  onAmbientPress={handleShowAmbientSheet}
+                  onOptionsPress={handleShowOptionsSheet}
+                  onFollowAlongPress={handleFollowAlongPress}
+                />
+              ) : (
+                <TabletPlayerReciterColumn
+                  reciterId={currentTrack!.reciterId!}
+                  initialRewayatId={currentTrack!.rewayatId}
+                />
+              )}
+            </View>
+          </View>
+        ) : (
+          playerContentEl
+        )}
       </BottomSheet>
     </>
   );
@@ -322,5 +411,22 @@ const styles = StyleSheet.create({
   background: {
     borderTopLeftRadius: 0,
     borderTopRightRadius: 0,
+  },
+  tabletSplitRoot: {
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: '100%',
+  },
+  tabletSplitPlayerPane: {
+    flex: 11,
+    minWidth: 0,
+  },
+  tabletSplitDivider: {
+    width: StyleSheet.hairlineWidth,
+  },
+  tabletSplitReciterPane: {
+    flex: 9,
+    minWidth: 0,
+    maxWidth: 560,
   },
 });
