@@ -8,6 +8,7 @@ import {digitalKhattDataService} from './DigitalKhattDataService';
 import {quranTextService} from './QuranTextService';
 import {rewayahDiffService} from './RewayahDiffService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 
 const FONT_ASSETS: Record<string, number> = {
   DigitalKhattV1: require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
@@ -23,7 +24,7 @@ const FONT_ASSETS: Record<string, number> = {
 /**
  * Preloads everything the Mushaf screen needs at app startup (AppInitializer
  * priority 5). By the time the user navigates to the Mushaf tab, fonts and
- * DK data are available synchronously — no loading spinners.
+ * DK data are available synchronously; no loading spinners.
  *
  * - DigitalKhatt SQLite data (word + layout databases)
  * - Skia TypefaceFontProvider with DK + ornamental fonts (for SkiaPage rendering)
@@ -65,7 +66,19 @@ class MushafPreloadService {
     // Shu'bah persisted would briefly init against Hafs and never catch up).
     await waitForSettingsHydration();
 
-    // DK data must be ready first — page lines are needed for layout computation
+    // Defensive normalization at the earliest hydration-complete point.
+    // If a stale pre-canonical slug ("qaloon", "shouba", etc.) slipped
+    // past the v12→v13 migration (e.g. an intermediate build that bumped
+    // the version without running the slug migrator), rewrite the store
+    // to the canonical slug before any reader pulls it. Keeps every
+    // downstream consumer; not just the DK service; on safe values.
+    const store = useMushafSettingsStore.getState();
+    const normalized = migratePersistedId(store.rewayah as unknown as string);
+    if (normalized !== store.rewayah) {
+      store.setRewayah(normalized);
+    }
+
+    // DK data must be ready first; page lines are needed for layout computation
     await digitalKhattDataService.initialize();
 
     // Load rewayah diff ranges for the current rewayah, then keep in sync.

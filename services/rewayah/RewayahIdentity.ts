@@ -169,7 +169,7 @@ const SHORT_LABELS: Readonly<Record<RewayahId, string>> = {
   qunbul: 'Qunbul',
   warsh: 'Warsh',
   qalun: 'Qalun',
-  'al-duri-abi-amr': 'Al-Duri (Abi Amr)',
+  'al-duri-abi-amr': 'Al-Duri (Abu Amr)',
   'al-susi': 'Al-Susi',
   hisham: 'Hisham',
   'ibn-dhakwan': 'Ibn Dhakwan',
@@ -187,6 +187,88 @@ const SHORT_LABELS: Readonly<Record<RewayahId, string>> = {
 
 export function getShortLabel(id: RewayahId): string {
   return SHORT_LABELS[id];
+}
+
+// Long labels — the "Student 'an Teacher" form used in the mushaf
+// settings picker. Kept as ASCII (matches the rest of the app's rewayah
+// copy). Used where the picker UI needs to disambiguate transmitters.
+const LONG_LABELS: Readonly<Record<RewayahId, string>> = {
+  hafs: "Hafs 'an Asim",
+  shubah: "Shu'bah 'an Asim",
+  'al-bazzi': "Al-Bazzi 'an Ibn Kathir",
+  qunbul: "Qunbul 'an Ibn Kathir",
+  warsh: "Warsh 'an Nafi'",
+  qalun: "Qalun 'an Nafi'",
+  'al-duri-abi-amr': "Al-Duri 'an Abu Amr",
+  'al-susi': "Al-Susi 'an Abu Amr",
+  hisham: "Hisham 'an Ibn Amir",
+  'ibn-dhakwan': "Ibn Dhakwan 'an Ibn Amir",
+  'khalaf-an-hamzah': "Khalaf 'an Hamzah",
+  khallad: "Khallad 'an Hamzah",
+  'al-duri-al-kisai': "Al-Duri 'an al-Kisa'i",
+  'abu-al-harith': "Abu al-Harith 'an al-Kisa'i",
+  'ibn-jammaz': "Ibn Jammaz 'an Abu Ja'far",
+  'ibn-wardan': "Ibn Wardan 'an Abu Ja'far",
+  rawh: "Rawh 'an Ya'qub",
+  ruwais: "Ruways 'an Ya'qub",
+  idris: "Idris 'an Khalaf al-Bazzar",
+  ishaq: "Ishaq 'an Khalaf al-Bazzar",
+};
+
+export function getLongLabel(id: RewayahId): string {
+  return LONG_LABELS[id];
+}
+
+// One-line descriptions for the picker. The first 8 are the copy that
+// used to live inline in MushafSettingsContent.REWAYAH_OPTIONS; the
+// remaining 12 are short geographic / historical context for the
+// taxonomy-only entries.
+const DESCRIPTIONS: Readonly<Record<RewayahId, string>> = {
+  hafs: 'The standard reading, used by most of the Muslim world',
+  shubah: 'The second Kufan transmission from Asim',
+  'al-bazzi':
+    'Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen',
+  qunbul: 'The second Meccan transmission from Ibn Kathir',
+  warsh: "Medinan transmission from Nafi' — dominant across North Africa",
+  qalun:
+    "The second Medinan transmission from Nafi' — read in Libya and parts of Tunisia",
+  'al-duri-abi-amr':
+    'Basran transmission from Abu Amr — common in Sudan and parts of West Africa',
+  'al-susi': 'The second Basran transmission from Abu Amr',
+  hisham: 'Damascene transmission from Ibn Amir',
+  'ibn-dhakwan': 'The second Damascene transmission from Ibn Amir',
+  'khalaf-an-hamzah': 'Kufan transmission from Hamzah',
+  khallad: 'The second Kufan transmission from Hamzah',
+  'al-duri-al-kisai':
+    "Kufan transmission from al-Kisa'i (distinct from Al-Duri 'an Abu Amr)",
+  'abu-al-harith': "The second Kufan transmission from al-Kisa'i",
+  'ibn-jammaz': "Medinan transmission from Abu Ja'far (10th Qira'ah)",
+  'ibn-wardan':
+    "The second Medinan transmission from Abu Ja'far (10th Qira'ah)",
+  rawh: "Basran transmission from Ya'qub (10th Qira'ah)",
+  ruwais: "The second Basran transmission from Ya'qub (10th Qira'ah)",
+  idris: "Transmission from Khalaf al-Bazzar (10th Qira'ah)",
+  ishaq: "The second transmission from Khalaf al-Bazzar (10th Qira'ah)",
+};
+
+export function getDescription(id: RewayahId): string {
+  return DESCRIPTIONS[id];
+}
+
+// Convenience for display sites that hold an API `rewayat` record: maps
+// the record's free-form `name` through the canonical resolver and
+// returns our short label when we recognize it. Falls back to the raw
+// name when we don't — so rewayat not yet in the canonical registry
+// (forward-compat with the server adding new ones, or reciter profile
+// picker showing tariq-aliased variants we want to pass through) still
+// render something sensible instead of disappearing. Prefer this
+// helper over reading `rewayat.name` directly in any UI display path.
+export function getDisplayLabelFromName(
+  dbName: string | null | undefined,
+): string {
+  if (!dbName) return '';
+  const canonical = resolveRewayahFromName(dbName);
+  return canonical ? getShortLabel(canonical) : dbName;
 }
 
 // ── Persisted-id migration ───────────────────────────────────────────────────

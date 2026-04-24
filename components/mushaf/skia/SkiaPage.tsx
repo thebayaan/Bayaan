@@ -29,10 +29,7 @@ import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheServi
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
-import {
-  rewayahDiffService,
-  type RewayahDiffCategory,
-} from '@/services/mushaf/RewayahDiffService';
+import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -107,7 +104,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   const {theme} = useTheme();
   // Keep useFonts hook as fallback (can't conditionally call hooks).
-  // Prefer preloaded fontMgr from MushafPreloadService — ready synchronously
+  // Prefer preloaded fontMgr from MushafPreloadService; ready synchronously
   // on first render since AppInitializer runs before Mushaf tab mounts.
   const hookFontMgr = useFonts({
     DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
@@ -183,7 +180,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
 
-  // onReady tracking — refs keep handleParagraphReady callback stable
+  // onReady tracking; refs keep handleParagraphReady callback stable
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
   const readyFiredRef = useRef(false);
@@ -258,64 +255,41 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return maps;
   }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
-  // Merged char-to-rule maps: tajweed + rewayah categories + silah.
-  // Precedence (later wins): tajweed → minor → ibdal → tashil → madd →
-  //   taghliz → silah. Silah always takes priority as the most specific
-  //   marker of Bazzi/Qumbul/Warsh/Qaloon pronunciation. 'mukhtalif' and
-  //   'major' are whole-word variants — they render as background tint
-  //   (see REWAYAH_DIFF_BACKGROUND in the backgroundHighlights pipeline),
-  //   not as foreground char colors.
+  // Merged char-to-rule maps: tajweed as base, rewayah foreground categories
+  // (+ silah) layered on top so rewayah rules win on overlap. The rewayah
+  // rule map is built once per line by RewayahDiffService and shared with
+  // the list- and vertical-mushaf renderers to keep foreground highlights
+  // consistent across every pipeline.
   const lineCharRuleMaps = useMemo(() => {
-    const hasSilah = rewayahDiffService.hasSilahColoring;
-    const hasAnyRewayah = rewayahDiffService.hasAnyDiffs;
-    if (!hasSilah && !hasAnyRewayah && !lineTajweedMaps) return null;
-
-    // Ordered low→high precedence: later entries override earlier ones
-    // when the same char index is in multiple categories.
-    const categories: readonly RewayahDiffCategory[] = [
-      'minor',
-      'ibdal',
-      'tashil',
-      'madd',
-      'taghliz',
-    ];
+    if (
+      !lineTajweedMaps &&
+      !rewayahDiffService.hasAnyDiffs &&
+      !rewayahDiffService.hasSilahColoring
+    ) {
+      return null;
+    }
 
     const maps: (Map<number, string> | null)[] = [];
     for (let i = 0; i < pageLines.length; i++) {
       const tajweed = lineTajweedMaps?.[i] ?? null;
-      const silahIndexes = hasSilah
-        ? rewayahDiffService.getSilahCharsForLine(pageNumber, i)
-        : null;
-      const categoryIndexes: Array<[RewayahDiffCategory, number[]]> = [];
-      if (hasAnyRewayah) {
-        for (const cat of categories) {
-          if (!rewayahDiffService.hasCategory(cat)) continue;
-          const indexes = rewayahDiffService.getCharsForCategory(
-            cat,
-            pageNumber,
-            i,
-          );
-          if (indexes.length > 0) categoryIndexes.push([cat, indexes]);
-        }
-      }
-
-      const anyIndexes =
-        (silahIndexes && silahIndexes.length > 0) || categoryIndexes.length > 0;
-      if (!tajweed && !anyIndexes) {
+      const rewayahMap = rewayahDiffService.getRewayahRuleMapForLine(
+        pageNumber,
+        i,
+      );
+      if (!tajweed && !rewayahMap) {
         maps.push(null);
         continue;
       }
-
-      const merged = new Map<number, string>();
-      if (tajweed) {
-        for (const [k, v] of tajweed) merged.set(k, v);
+      if (!rewayahMap) {
+        maps.push(tajweed);
+        continue;
       }
-      for (const [cat, indexes] of categoryIndexes) {
-        for (const idx of indexes) merged.set(idx, cat);
+      if (!tajweed) {
+        maps.push(rewayahMap);
+        continue;
       }
-      if (silahIndexes) {
-        for (const idx of silahIndexes) merged.set(idx, 'silah');
-      }
+      const merged = new Map(tajweed);
+      for (const [k, v] of rewayahMap) merged.set(k, v);
       maps.push(merged);
     }
     return maps;
@@ -481,7 +455,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
       // Only allow forward (downward) selection
       if (currentIdx < startIdx) {
-        // Finger moved above start verse — keep only start
+        // Finger moved above start verse; keep only start
         if (dragCurrentVerseKeyRef.current !== startKey) {
           dragCurrentVerseKeyRef.current = startKey;
           selectVerse(startKey, pageNumber);

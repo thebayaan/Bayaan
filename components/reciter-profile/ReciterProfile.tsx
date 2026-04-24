@@ -65,6 +65,7 @@ import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 interface ReciterProfileProps {
   id: string;
@@ -695,7 +696,10 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
       reciter.rewayat.forEach(r => {
         const style =
           r.style.charAt(0).toUpperCase() + r.style.slice(1).toLowerCase();
-        result.push({id: r.id, label: `${r.name} · ${style}`});
+        result.push({
+          id: r.id,
+          label: `${getDisplayLabelFromName(r.name)} · ${style}`,
+        });
       });
     }
     return result;

@@ -10,15 +10,14 @@ import {
 import {Link} from 'expo-router';
 import {moderateScale, scale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import Color from 'color';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useWindowDimensions} from 'react-native';
+import Color from 'color';
 import {LinearGradient} from 'expo-linear-gradient';
 import {getAllSystemPlaylists, SystemPlaylist} from '@/data/systemPlaylists';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {useResponsive} from '@/hooks/useResponsive';
+import {GlassView} from 'expo-glass-effect';
 
 // CONFIGURABLE ROW HEIGHT MULTIPLIER - This is the 'x' variable you can adjust
 const ROW_HEIGHT_UNIT = 80; // Base unit 'x' in points - adjust this value to change all card heights proportionally
@@ -86,10 +85,8 @@ function getAllTiles(): BentoTile[] {
   return [...BROWSE_TILES, ...systemPlaylistTiles];
 }
 
-interface ExploreViewProps {
-  /** Skip the built-in safe-area top padding (when the parent already handles it) */
-  skipTopInset?: boolean;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface ExploreViewProps {}
 
 interface ColumnLayout {
   leftColumn: BentoTile[];
@@ -109,7 +106,14 @@ function createExplicitLayout(): ColumnLayout {
   return {leftColumn, rightColumn};
 }
 
-// BentoTile component — matches AdhkarBentoCard styling
+// Tile presentation:
+//   - iOS 26 (USE_GLASS): Liquid Glass; GlassView with the "regular"
+//     effect. No colored chrome; the material itself carries the card.
+//   - Everywhere else: thin tinted hollow border fallback (no Liquid Glass
+//     on Android or pre-iOS-26, so we keep the colored outline we had).
+const BORDER_WIDTH = 1.5;
+const OUTER_RADIUS = moderateScale(20);
+
 const BentoTileComponent = React.memo(
   ({
     tile,
@@ -121,72 +125,65 @@ const BentoTileComponent = React.memo(
     const {theme} = useTheme();
     const glassColorScheme = useGlassColorScheme();
 
-    // Subtle gradient incorporating the tile's unique color
-    const baseColor = Color(tile.backgroundColor);
-    const gradientColors = [
-      baseColor.alpha(0.15).toString(),
-      baseColor.alpha(0.25).toString(),
-    ] as const;
+    const borderColor = useMemo(
+      () => Color(tile.backgroundColor).alpha(0.55).toString(),
+      [tile.backgroundColor],
+    );
 
     const isLargeCard = tile.heightMultiplier >= 2;
     const titleSize = isLargeCard ? moderateScale(16) : moderateScale(14);
     const subtitleSize = moderateScale(12);
 
-    const tileContent = (
-      <>
-        <LinearGradient
-          colors={gradientColors}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
-          style={tileInnerStyles.gradient}>
-          <View style={tileInnerStyles.content}>
-            <View
-              style={[
-                tileInnerStyles.textContainer,
-                isLargeCard
-                  ? tileInnerStyles.topLeftContainer
-                  : tileInnerStyles.centerLeftContainer,
-              ]}>
-              <Text
-                style={[
-                  tileInnerStyles.title,
-                  {fontSize: titleSize, color: theme.colors.text},
-                ]}
-                numberOfLines={2}>
-                {tile.title}
-              </Text>
-              {tile.subtitle && (
-                <Text
-                  style={[
-                    tileInnerStyles.subtitle,
-                    {fontSize: subtitleSize, color: theme.colors.textSecondary},
-                  ]}
-                  numberOfLines={1}>
-                  {tile.subtitle}
-                </Text>
-              )}
-            </View>
-          </View>
-        </LinearGradient>
-      </>
+    const contentBlock = (
+      <View
+        style={[
+          tileInnerStyles.textContainer,
+          isLargeCard
+            ? tileInnerStyles.topLeftContainer
+            : tileInnerStyles.centerLeftContainer,
+        ]}>
+        <Text
+          style={[
+            tileInnerStyles.title,
+            {fontSize: titleSize, color: theme.colors.text},
+          ]}
+          numberOfLines={2}>
+          {tile.title}
+        </Text>
+        {tile.subtitle && (
+          <Text
+            style={[
+              tileInnerStyles.subtitle,
+              {fontSize: subtitleSize, color: theme.colors.textSecondary},
+            ]}
+            numberOfLines={1}>
+            {tile.subtitle}
+          </Text>
+        )}
+      </View>
     );
 
-    const containerStyle = {
-      width: dimensions.width,
-      height: dimensions.height,
-      marginBottom: moderateScale(8),
-    };
+    const outerStyle = useMemo(
+      () => ({
+        width: dimensions.width,
+        height: dimensions.height,
+        marginBottom: moderateScale(8),
+      }),
+      [dimensions.width, dimensions.height],
+    );
 
     if (USE_GLASS) {
       return (
         <Link href={tile.route as any} asChild>
-          <Pressable style={containerStyle}>
+          <Pressable style={outerStyle}>
             <Link.AppleZoom>
               <GlassView
                 style={tileInnerStyles.glassInner}
                 glassEffectStyle="regular"
                 colorScheme={glassColorScheme}>
-                {tileContent}
+                <View style={tileInnerStyles.contentWrapper}>
+                  {contentBlock}
+                </View>
               </GlassView>
             </Link.AppleZoom>
           </Pressable>
@@ -194,17 +191,23 @@ const BentoTileComponent = React.memo(
       );
     }
 
+    // Non-glass fallback: keep the thin tinted hollow border so Android /
+    // pre-iOS-26 still get a recognizable card shape.
+    const fallbackStyle = useMemo(
+      () => ({
+        ...outerStyle,
+        borderRadius: OUTER_RADIUS,
+        borderWidth: BORDER_WIDTH,
+        borderColor,
+        backgroundColor: 'transparent' as const,
+      }),
+      [outerStyle, borderColor],
+    );
+
     return (
       <Link href={tile.route as any} asChild>
-        <Pressable
-          style={StyleSheet.flatten([
-            containerStyle,
-            {
-              borderRadius: moderateScale(20),
-              overflow: 'hidden' as const,
-            },
-          ])}>
-          {tileContent}
+        <Pressable style={fallbackStyle}>
+          <View style={tileInnerStyles.contentWrapper}>{contentBlock}</View>
         </Pressable>
       </Link>
     );
@@ -213,19 +216,18 @@ const BentoTileComponent = React.memo(
 
 BentoTileComponent.displayName = 'BentoTileComponent';
 
-// Static inner styles for BentoTileComponent (no theme dependency)
+// Static inner styles for BentoTileComponent (no theme dependency).
+// Per-tile tinted-border style is built inline (needs dynamic borderColor);
+// everything theme-independent lives here.
 const tileInnerStyles = StyleSheet.create({
   glassInner: {
     flex: 1,
-    borderRadius: moderateScale(20),
+    borderRadius: OUTER_RADIUS,
     overflow: 'hidden',
   },
-  gradient: {
+  contentWrapper: {
     flex: 1,
     padding: moderateScale(16),
-  },
-  content: {
-    flex: 1,
     justifyContent: 'center',
   },
   textContainer: {
@@ -240,15 +242,18 @@ const tileInnerStyles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   title: {
-    fontFamily: 'Manrope-SemiBold',
+    fontFamily: 'Manrope-Bold',
     lineHeight: moderateScale(22),
     textAlign: 'left',
+    letterSpacing: 0.2,
   },
   subtitle: {
     fontFamily: 'Manrope-Medium',
     marginTop: moderateScale(2),
     lineHeight: moderateScale(16),
     textAlign: 'left',
+    opacity: 0.9,
+    letterSpacing: 0.1,
   },
 });
 
@@ -256,7 +261,6 @@ export const ExploreView = React.memo(
   function ExploreView({}: ExploreViewProps) {
     const {theme} = useTheme();
     const {width: windowWidth} = useWindowDimensions();
-    const insets = useSafeAreaInsets();
     const bottomInset = useBottomInset();
     const {isTablet} = useResponsive();
 
@@ -338,15 +342,22 @@ export const ExploreView = React.memo(
     return (
       <View style={styles.content} onLayout={onContentLayout}>
         <ScrollView
+          style={styles.scrollView}
+          contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
           contentContainerStyle={[
             styles.scrollContent,
-            {
-              paddingTop: USE_GLASS
-                ? insets.top + moderateScale(16)
-                : moderateScale(16),
-              paddingHorizontal: horizontalPadding,
-              paddingBottom: bottomInset,
-            },
+            {paddingHorizontal: horizontalPadding},
+            // Glass: the system already pads for the search bar + tab bar
+            // via automatic insets; any manual top/bottom would double-pad.
+            // Non-glass: parent container handles top inset for the search
+            // row; we need to clear the floating tab bar + mini player at
+            // the bottom manually.
+            USE_GLASS
+              ? undefined
+              : {
+                  paddingTop: moderateScale(16),
+                  paddingBottom: bottomInset,
+                },
           ]}
           showsVerticalScrollIndicator={false}>
           {tilesReady && (
@@ -366,6 +377,13 @@ const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
     content: {
       flex: 1,
       width: '100%',
+    },
+    // flex: 1 on the ScrollView itself lets iOS 26's NativeTabs
+    // BottomAccessory (mini player) auto-collapse on scroll; the tab bar
+    // tracks the screen's primary scroll view by its frame, and a
+    // ScrollView sized to content doesn't register as primary.
+    scrollView: {
+      flex: 1,
     },
     scrollContent: {
       flexGrow: 1,

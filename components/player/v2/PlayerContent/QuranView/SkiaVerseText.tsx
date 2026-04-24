@@ -26,7 +26,7 @@ const paragraphStyle = {
   textDirection: TextDirection.RTL,
 };
 
-// Corner radius for the rewayah-diff background tint — matches SkiaLine's
+// Corner radius for the rewayah-diff background tint; matches SkiaLine's
 // 4px so list-mode and page-mode highlights look identical.
 const DIFF_BG_RADIUS = 4;
 
@@ -63,7 +63,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   const effectiveRewayah: RewayahId = rewayah ?? mushafRewayah;
 
-  // Reactive read — re-renders when the requested rewayah's cache transitions
+  // Reactive read; re-renders when the requested rewayah's cache transitions
   // from loading → ready. Only queried when `text` isn't provided directly.
   const {words, status} = useRewayahWords(
     text !== undefined ? null : (verseKey ?? null),
@@ -72,10 +72,40 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   const verseText =
     text ?? (status === 'ready' ? words.map(w => w.text).join(' ') : '');
 
+  // Rewayah-foreground gate mirrors the diff-background gate below: the
+  // singleton rewayahDiffService only carries one rewayah's diff data at
+  // a time (the active mushaf setting), so we can't paint fg highlights
+  // for a track rewayah that differs from the mushaf setting. Pre-built
+  // `text` inputs (share card / similar-verse snippets) have no per-word
+  // metadata, so we silently skip them too.
+  const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
+  const textProvided = text !== undefined;
+  const rewayahFgApplies =
+    !textProvided &&
+    showRewayahDiffs &&
+    effectiveRewayah !== 'hafs' &&
+    effectiveRewayah === mushafRewayah &&
+    (rewayahDiffService.hasAnyDiffs || rewayahDiffService.hasSilahColoring);
+
+  // Char→rule map: tajweed base layer + rewayah foreground categories
+  // (minor/ibdal/tashil/madd/taghliz/silah) on top, so rewayah rules win
+  // on conflict. Matches SkiaPage / ContinuousMushafView precedence exactly.
   const charToRule = useMemo(() => {
-    if (!verseKey || !showTajweed || !indexedTajweedData) return null;
-    return getVerseTajweedMap(verseKey, indexedTajweedData);
-  }, [verseKey, showTajweed, indexedTajweedData]);
+    const tajweedMap =
+      verseKey && showTajweed && indexedTajweedData
+        ? getVerseTajweedMap(verseKey, indexedTajweedData)
+        : null;
+    const rewayahMap =
+      rewayahFgApplies && words.length > 0
+        ? rewayahDiffService.getRewayahRuleMapForWords(words)
+        : null;
+    if (!tajweedMap && !rewayahMap) return null;
+    if (!rewayahMap) return tajweedMap;
+    if (!tajweedMap) return rewayahMap;
+    const merged = new Map(tajweedMap);
+    for (const [k, v] of rewayahMap) merged.set(k, v);
+    return merged;
+  }, [verseKey, showTajweed, indexedTajweedData, rewayahFgApplies, words]);
 
   const {paragraph, height} = useMemo(() => {
     if (!verseText || width <= 0) return {paragraph: null, height: 0};
@@ -113,32 +143,12 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return {paragraph: p, height: p.getHeight()};
   }, [verseText, width, textColor, fontFamily, fontSize, fontMgr, charToRule]);
 
-  // Rewayah diff backgrounds — highlights words that differ from Hafs.
+  // Rewayah diff backgrounds; highlights words that differ from Hafs.
   // Mirrors the SkiaPage pipeline (which uses getDiffRangesForLine) but
   // operates on the verse-level word list that useRewayahWords returned.
-  //
-  // Silently no-op when any of these are true:
-  //   - the caller provided pre-built `text` (share previews, similar-
-  //     verse snippets) — we have no per-word metadata in that path.
-  //   - Hafs (no baseline-vs-baseline diff exists).
-  //   - user has toggled diffs off.
-  //   - the diff service hasn't loaded any diff data yet.
-  //   - the effective rewayah isn't the mushaf-setting rewayah. This is
-  //     a deliberate limitation: rewayahDiffService carries only one
-  //     rewayah's diffs at a time (loaded in reaction to the mushaf
-  //     setting via MushafPreloadService.onRewayahChange), so player-
-  //     screen rendering against a track rewayah that differs from the
-  //     mushaf setting won't highlight. Fixing that cleanly means adding
-  //     a side-cache to RewayahDiffService — tracked as follow-up.
-  //
-  // Using `mushafRewayah` (the store value) instead of reading
-  // `rewayahDiffService.rewayah` directly keeps this memo's deps
-  // reactive: rewayahDiffService is a singleton whose internal
-  // `currentRewayah` isn't tracked by React, but the store value is and
-  // they are invariantly equal post-init (MushafPreloadService ensures
-  // rewayahDiffService.loadForRewayah fires for every mushaf switch).
-  const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
-  const textProvided = text !== undefined;
+  // The gating conditions (textProvided / Hafs / toggle / mushaf-setting
+  // alignment) are shared with the foreground rule map above; see that
+  // block for the reasoning behind each condition.
   const diffBgRects = useMemo(() => {
     if (
       !paragraph ||
@@ -173,7 +183,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
           });
         }
       } catch {
-        // Ignore per-range failures — don't want one bad range to wipe
+        // Ignore per-range failures; don't want one bad range to wipe
         // the whole set of highlights on this verse.
       }
     }

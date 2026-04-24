@@ -32,6 +32,7 @@ import {reciterImages} from '@/utils/reciterImages';
 import Header from '@/components/Header';
 import {useSettings} from '@/hooks/useSettings';
 import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
+import {resolveRewayahFromName} from '@/services/rewayah/RewayahIdentity';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
@@ -254,10 +255,16 @@ export default function BrowseReciters({
     }
 
     if (advancedFilters.rewayat.length > 0) {
+      // Chips use canonical RewayahId slugs as their key (FilterModal
+      // getAvailableRewayahChips); match by resolving each rewaya.name to
+      // its canonical slug and falling back to the raw name for the
+      // un-resolvable cases (combined-recording entries, etc.).
       result = result.filter(reciter =>
-        reciter.rewayat.some(rewaya =>
-          advancedFilters.rewayat.includes(rewaya.name || ''),
-        ),
+        reciter.rewayat.some(rewaya => {
+          if (!rewaya.name) return false;
+          const key = resolveRewayahFromName(rewaya.name) ?? rewaya.name;
+          return advancedFilters.rewayat.includes(key);
+        }),
       );
     }
 

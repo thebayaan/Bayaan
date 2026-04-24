@@ -34,7 +34,7 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
-import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
+import {NetworkStatusMonitor} from '@/components/NetworkStatusMonitor';
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {PostHogProvider, usePostHog} from 'posthog-react-native';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
@@ -453,7 +453,7 @@ function RootLayout() {
                 // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
                 overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
                 onLayout={onLayoutRootView}>
-                <ApiDisruptionBanner />
+                <NetworkStatusMonitor />
                 <SheetProvider>
                   <Stack
                     screenOptions={{

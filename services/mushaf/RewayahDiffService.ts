@@ -30,16 +30,30 @@ const PRECEDING_VOWELS = new Set(['\u064F', '\u0650']);
  * overlap, so the most specific category should come LAST.
  */
 export const REWAYAH_DIFF_CATEGORIES = [
-  'mukhtalif', // red — catch-all word variants
-  'taghliz', // dark blue — Taghliz al-Lam
-  'ibdal', // light blue — Warsh hamza → long vowel
-  'tashil', // light blue — Hamza tashil / musahhala
-  'madd', // green — Madd al-Badal / Madd al-Lin
+  'mukhtalif', // red; catch-all word variants
+  'taghliz', // dark blue; Taghliz al-Lam
+  'ibdal', // light blue; Warsh hamza → long vowel
+  'tashil', // light blue; Hamza tashil / musahhala
+  'madd', // green; Madd al-Badal / Madd al-Lin
   'minor', // teal (legacy two-tier: mood/trailing-vowel shifts)
   'major', // orange (legacy two-tier: background block for close rewayat)
 ] as const;
 
 export type RewayahDiffCategory = (typeof REWAYAH_DIFF_CATEGORIES)[number];
+
+// Foreground char-level categories, in low→high precedence order. Later
+// entries override earlier ones when a char falls into multiple categories.
+// Silah is appended by the rule-map builders as the most specific marker
+// (it always wins). 'mukhtalif' and 'major' are whole-word variants that
+// render as background tint (REWAYAH_DIFF_BACKGROUND); not chars; so they
+// are not part of this list.
+const FG_CATEGORIES: readonly RewayahDiffCategory[] = [
+  'minor',
+  'ibdal',
+  'tashil',
+  'madd',
+  'taghliz',
+];
 
 /**
  * Provides rewayah-specific character-level highlights for Mushaf rendering.
@@ -216,7 +230,7 @@ class RewayahDiffService {
    * Background-highlight ranges over a flat word-sequence joined by single
    * spaces (the shape both SkiaPage lines and SkiaVerseText verse-text
    * produce). Merges 'major' (close rewayat: Shu'bah/Al-Bazzi/Qunbul) and
-   * 'mukhtalif' (far rewayat: Warsh/Qalun/Al-Duri/Al-Susi) — both
+   * 'mukhtalif' (far rewayat: Warsh/Qalun/Al-Duri/Al-Susi); both
    * semantically mean "this word differs from Hafs" and render as a
    * unified background tint.
    *
@@ -253,7 +267,7 @@ class RewayahDiffService {
   }
 
   /**
-   * Per-line variant — resolves the DK words for the given page line, then
+   * Per-line variant; resolves the DK words for the given page line, then
    * delegates to getDiffRangesForWords. Cached by page+line because both
    * the word lookup and the subsequent iteration are hot paths during
    * mushaf page rendering.
@@ -282,15 +296,114 @@ class RewayahDiffService {
   }
 
   /**
+   * Foreground char→rule map for a page line, merging every letter-level
+   * rewayah category (minor/ibdal/tashil/madd/taghliz) plus silah onto the
+   * same char indices the line renderer uses. Shared by SkiaPage and
+   * ContinuousMushafView so both page pipelines paint identical foreground
+   * highlights; the SkiaLine consumer still layers tajweed rules on top
+   * (caller merges tajweed into this map with tajweed as the base layer
+   * so rewayah rules win on conflict, matching published-mushaf convention).
+   *
+   * Returns null when no rewayah foreground categories fire on this line;
+   * callers can fall straight through to their tajweed map without merging.
+   */
+  getRewayahRuleMapForLine(
+    pageNumber: number,
+    lineIndex: number,
+  ): Map<number, string> | null {
+    const hasSilah = this.hasSilahColoring;
+    if (!this.hasAnyDiffs && !hasSilah) return null;
+
+    const merged = new Map<number, string>();
+    for (const cat of FG_CATEGORIES) {
+      if (!this.hasCategory(cat)) continue;
+      const indexes = this.getCharsForCategory(cat, pageNumber, lineIndex);
+      for (const idx of indexes) merged.set(idx, cat);
+    }
+    if (hasSilah) {
+      const silahIndexes = this.getSilahCharsForLine(pageNumber, lineIndex);
+      for (const idx of silahIndexes) merged.set(idx, 'silah');
+    }
+    return merged.size > 0 ? merged : null;
+  }
+
+  /**
+   * Verse-level equivalent of getRewayahRuleMapForLine. Operates on a flat
+   * word list joined by single spaces (the shape SkiaVerseText uses).
+   *
+   * Walks the word list once, mapping each word's flagged chars (or all
+   * its chars when the diff entry is whole-word) onto the corresponding
+   * offset in the joined verse string. Silah chars (U+06E5/U+06E6 plus
+   * the preceding damma/kasra) are scanned from the word text directly;
+   * they aren't in the diff JSON since they're already in the DK words DB.
+   *
+   * Precedence matches getRewayahRuleMapForLine: minor → ibdal → tashil →
+   * madd → taghliz → silah. Returns null when no categories fire.
+   */
+  getRewayahRuleMapForWords(
+    words: readonly DKWordInfo[],
+  ): Map<number, string> | null {
+    const hasSilah = this.hasSilahColoring;
+    if (!this.hasAnyDiffs && !hasSilah) return null;
+
+    const categoryMaps: Array<
+      [RewayahDiffCategory, Map<string, Map<number, number[]>>]
+    > = [];
+    for (const cat of FG_CATEGORIES) {
+      const byVerse = this.byCategory.get(cat);
+      if (byVerse && byVerse.size > 0) categoryMaps.push([cat, byVerse]);
+    }
+    if (categoryMaps.length === 0 && !hasSilah) return null;
+
+    const merged = new Map<number, string>();
+    let offset = 0;
+    for (let i = 0; i < words.length; i++) {
+      const info = words[i];
+      const wordLen = info.text.length;
+
+      // Letter-level categories (low→high precedence; later wins).
+      for (const [cat, byVerse] of categoryMaps) {
+        const charList = byVerse
+          .get(info.verseKey)
+          ?.get(info.wordPositionInVerse);
+        if (charList === undefined) continue;
+        if (charList.length === 0) {
+          for (let c = 0; c < wordLen; c++) merged.set(offset + c, cat);
+        } else {
+          for (const c of charList) {
+            if (c >= 0 && c < wordLen) merged.set(offset + c, cat);
+          }
+        }
+      }
+
+      // Silah always wins; scan the stored text for U+06E5/U+06E6.
+      if (hasSilah) {
+        for (let c = 0; c < wordLen; c++) {
+          if (SILAH_CHARS.has(info.text[c])) {
+            merged.set(offset + c, 'silah');
+            if (c > 0 && PRECEDING_VOWELS.has(info.text[c - 1])) {
+              merged.set(offset + c - 1, 'silah');
+            }
+          }
+        }
+      }
+
+      offset += wordLen;
+      if (i < words.length - 1) offset += 1;
+    }
+    return merged.size > 0 ? merged : null;
+  }
+
+  /**
    * Page-level rewayah-diff highlights grouped by line index, pre-stamped
    * with REWAYAH_DIFF_BACKGROUND. Single source of truth for the page-
-   * renderer pipelines (SkiaPage, ContinuousMushafView) — each used to
+   * renderer pipelines (SkiaPage, ContinuousMushafView); each used to
    * inline the same per-line loop plus its own local copy of the tint
    * color constant.
    *
    * Returns EMPTY_HIGHLIGHTS_MAP when no diffs are loaded so callers can
    * reference-check the result to skip all downstream merging work. Does
-   * NOT gate on the user's showRewayahDiffs toggle — callers apply that
+   * NOT gate on the user's showRewayahDiffs toggle; callers apply that
    * gate themselves (they already combine it with annotations/playback/
    * theme gates, so pushing one more boolean into this service wouldn't
    * buy anything).
