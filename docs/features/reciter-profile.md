@@ -35,8 +35,6 @@ components/reciter-profile/
 - Reciter information display
 - Surah list with search functionality
 - Multiple rewayat support
-- Per-rewayah tab switching with Hafs-first sorting
-- Upload-aware profile tabs for user recitations
 - Playback controls
 - Favorite/bookmark functionality
 - Responsive design with animations

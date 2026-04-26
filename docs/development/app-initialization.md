@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Bayaan app uses a centralized initialization system (`AppInitializer`) to manage SQLite-backed services, analytics/bootstrap tasks, and app data loading. This keeps startup behavior consistent while allowing non-critical work to happen in parallel.
+The Bayaan app uses a centralized initialization system (`AppInitializer`) to manage all SQLite-based services and critical app data loading. This ensures consistent, reliable, and performant app startup.
 
 ## Architecture
 
@@ -19,7 +19,6 @@ The Bayaan app uses a centralized initialization system (`AppInitializer`) to ma
    - Lower priority number = initialized first
    - Critical services block app startup on failure
    - Non-critical services log errors but allow startup
-   - Critical services run sequentially; non-critical services run in parallel
 
 3. **Initialization Flow**
    ```
@@ -440,5 +439,6 @@ Potential improvements to consider:
 The AppInitializer provides a robust, extensible system for managing app startup. By preloading SQLite data during initialization, the app feels instant and responsive. Adding new features is as simple as registering them with the initializer.
 
 **Key Takeaway**: Always register SQLite-based services with AppInitializer to ensure data is ready before screens mount.
+
 
 

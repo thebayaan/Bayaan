@@ -81,13 +81,12 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
   const PAGE_SIZE = 200;
   let page = 1;
   let allReciters: Reciter[] = [];
-  let hasMorePages = true;
 
-  while (hasMorePages) {
+  while (true) {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (API_KEY) headers.Authorization = `Bearer ${API_KEY}`;
+    if (API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`;
 
     const res = await fetch(
       `${API_BASE}/v1/reciters?page=${page}&limit=${PAGE_SIZE}`,
@@ -107,8 +106,7 @@ async function fetchAllRecitersFromApi(): Promise<Reciter[]> {
     allReciters = allReciters.concat(reciters);
 
     const {total_pages} = json.meta ?? {};
-    hasMorePages = Boolean(total_pages && page < total_pages);
-    if (!hasMorePages) break;
+    if (!total_pages || page >= total_pages) break;
     page++;
   }
 
@@ -126,13 +124,13 @@ export function getSurahById(id: number): Surah | undefined {
 }
 
 export function searchSurahs(query: string): Surah[] {
-  const normalizedQuery = query.toLowerCase();
-
   return SURAHS.filter(
     surah =>
-      surah.name.toLowerCase().includes(normalizedQuery) ||
+      surah.name.toLowerCase().includes(query.toLowerCase()) ||
       surah.name_arabic.includes(query) ||
-      surah.translated_name_english.toLowerCase().includes(normalizedQuery) ||
+      surah.translated_name_english
+        .toLowerCase()
+        .includes(query.toLowerCase()) ||
       surah.id.toString() === query,
   );
 }
@@ -150,11 +148,7 @@ export async function getAllReciters(): Promise<Reciter[]> {
   const {setDisrupted, setRetryFn, clearDisruption} =
     useApiHealthStore.getState();
 
-  const canFetchFromApi =
-    typeof API_BASE === 'string' &&
-    API_BASE.length > 0 &&
-    typeof API_KEY === 'string' &&
-    API_KEY.length > 0;
+  const canFetchFromApi = Boolean(API_BASE && API_KEY);
 
   if (!canFetchFromApi) {
     console.warn(
@@ -185,11 +179,7 @@ export async function getAllReciters(): Promise<Reciter[]> {
   if (cached && cached.data.length > 0) {
     populateReciters(cached.data);
     if (canFetchFromApi) {
-      refreshRecitersInBackground().catch(error => {
-        if (__DEV__) {
-          console.debug('[dataService] Background refresh failed:', error);
-        }
-      });
+      refreshRecitersInBackground().catch(() => {});
     }
     return cached.data;
   }

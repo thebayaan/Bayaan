@@ -29,7 +29,7 @@ These branches exist throughout the project's lifetime:
 - Contains production-ready code
 - Always deployable
 - Tagged for releases
-- Usually updated by maintainers during release work
+- Protected from direct commits
 
 #### `develop`
 - Integration branch for features
@@ -46,7 +46,6 @@ These branches have a limited lifespan:
 - Merge back into: `develop`
 - Naming: `feature/feature-name`
 - Purpose: New features and non-urgent enhancements
-- External/open-source contributors should normally open a PR instead of pushing directly to `main`
 
 #### Hotfix Branches
 - Created from: `main`

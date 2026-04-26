@@ -2,9 +2,7 @@
 
 This is the documentation hub for the Bayaan open-source Quran app. All docs live in this directory.
 
-**Tech stack:** React Native 0.83 · Expo SDK 55 · Expo Router (SDK 55) · expo-audio · Zustand · expo-sqlite · MMKV · Skia
-
-Archived docs and shipped implementation plans are kept for historical context. For current behavior, start with the architecture overview and the relevant feature doc.
+**Tech stack:** React Native 0.83 · Expo SDK 55 · Expo Router v4 · expo-audio · Zustand · expo-sqlite · MMKV · Skia
 
 ---
 

@@ -12,8 +12,6 @@ The player is built on [expo-audio](https://docs.expo.dev/versions/latest/sdk/au
 2. **ExpoAudioProvider** — a React provider mounted at the app root that bridges the native player to the Zustand store
 3. **playerStore** — a Zustand store (persisted via AsyncStorage) that is the single source of truth for all player state
 
-The quickest source files to inspect are `services/audio/ExpoAudioService.ts`, `services/audio/ExpoAudioProvider.tsx`, `services/player/store/playerStore.ts`, and `hooks/usePlayerActions.ts`.
-
 ---
 
 ## Data flow
