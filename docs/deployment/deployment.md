@@ -55,7 +55,7 @@ This approach eliminates the need for an external `signing.gradle` file that was
 
 1. First, generate a fresh native build with Expo:
    ```bash
-   expo prebuild --platform android --clean
+   npx expo prebuild --platform android --clean
    ```
 
 2. Navigate to the android directory:
@@ -115,7 +115,7 @@ Bayaan uses an Expo Config Plugin (`withIOSTeam.js` in the project root) to auto
 
 1. First, generate a fresh native build with Expo:
    ```bash
-   expo prebuild --platform ios --clean
+   npx expo prebuild --platform ios --clean
    ```
 
 2. Open the project in Xcode:
@@ -173,7 +173,7 @@ If you encounter "wrong signing key" errors:
 1. Verify you're using the correct keystore
 2. Check that your `~/.gradle/gradle.properties` has the correct credentials
 3. Ensure `app.json` and `app.config.js` both include the `withAndroidSigning.js` plugin
-4. Try running `expo prebuild --platform android --clean` to regenerate the native project
+4. Try running `npx expo prebuild --platform android --clean` to regenerate the native project
 5. If needed, request an upload key reset in Google Play Console
 
 ### iOS Provisioning Issues
@@ -184,7 +184,7 @@ If you encounter "wrong signing key" errors:
 4. If team settings are reset despite using the plugin:
    - Check that both `app.json` and `app.config.js` include the `withIOSTeam.js` plugin
    - Verify that the Team ID in `withIOSTeam.js` matches your Apple Developer Team ID
-   - Try running `expo prebuild --platform ios --clean` to regenerate iOS files
+   - Try running `npx expo prebuild --platform ios --clean` to regenerate iOS files
    - As a last resort, manually set the team in Xcode: Target > Signing & Capabilities > Team
 
 ### Version Not Updated in Build

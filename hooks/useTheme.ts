@@ -1,5 +1,4 @@
 import {useThemeStore} from '@/store/themeStore';
-import {ThemeMode, PrimaryColor} from '@/utils/themeUtils';
 import {shallow} from 'zustand/shallow';
 
 export function useTheme() {
@@ -19,8 +18,8 @@ export function useTheme() {
     theme,
     themeMode,
     primaryColor,
-    setThemeMode: (mode: ThemeMode) => setThemeMode(mode),
-    setPrimaryColor: (color: PrimaryColor) => setPrimaryColor(color),
+    setThemeMode,
+    setPrimaryColor,
     isDarkMode: theme.isDarkMode,
   };
 }

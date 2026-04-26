@@ -24,7 +24,7 @@ Bayaan lets you listen to Quran recitations from 200+ reciters with background a
 - **Translations & Tafseer** — Multiple translation languages and tafseer editions, downloadable for offline use.
 - **Word-by-Word** — Arabic word-by-word translation overlay in the Mushaf view.
 - **Themes** — Light and dark mode with multiple Mushaf reading themes.
-- **i18n** — Internationalisation via react-i18next with RTL support.
+- **i18n** — Internationalization via react-i18next with RTL support.
 
 ---
 
@@ -80,7 +80,7 @@ flowchart TD
 
 
 
-For a full architecture walkthrough see [docs/architecture/current-state.md](docs/architecture/current-state.md).
+For a full architecture walkthrough, see [docs/architecture/current-state.md](docs/architecture/current-state.md).
 
 ---
 
@@ -158,7 +158,7 @@ Bayaan/
 
 ## Documentation
 
-Full documentation lives in the `[docs/](docs/README.md)` directory:
+Full documentation lives in the [docs](docs/README.md) directory:
 
 - [Architecture overview](docs/architecture/current-state.md)
 - [Player system](docs/features/player.md)
@@ -199,7 +199,7 @@ See [LICENSE](LICENSE) for the full terms.
 
 ## Screenshots
 
-> Coming soon — contributions welcome.
+> Screenshot documentation is still being added.
 
 ---
 

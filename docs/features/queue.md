@@ -2,6 +2,8 @@
 
 The queue in Bayaan is a flat array of `Track` objects inside `playerStore`. There is no separate queue service or context — the store is the single source of truth.
 
+If you are tracing queue behavior in code, start with `services/player/store/playerStore.ts` and `hooks/usePlayerActions.ts`.
+
 ---
 
 ## Queue state

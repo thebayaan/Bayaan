@@ -38,18 +38,25 @@ export function useStorageBreakdown() {
 
         // Get downloads storage
         const downloadsSize = getDownloadsStorage();
-        console.log('[Storage] Downloads size:', downloadsSize, 'bytes');
+        if (__DEV__) {
+          console.log('[Storage] Downloads size:', downloadsSize, 'bytes');
+        }
 
         // Get cache storage
         const cacheSize = await getCacheStorage();
-        console.log('[Storage] Cache size:', cacheSize, 'bytes');
+        if (__DEV__) {
+          console.log('[Storage] Cache size:', cacheSize, 'bytes');
+        }
 
         // Calculate breakdown:
         // Device used = total - free
         // Device used = other apps + our downloads + our cache
         // So: other apps = device used - our downloads - our cache
         const deviceUsed = deviceStorage.used;
-        const otherAppsSize = deviceUsed - downloadsSize - cacheSize;
+        const otherAppsSize = Math.max(
+          0,
+          deviceUsed - downloadsSize - cacheSize,
+        );
 
         // Update raw data (in bytes)
         setRawData({
@@ -58,7 +65,7 @@ export function useStorageBreakdown() {
           used: deviceUsed,
           downloads: downloadsSize,
           cache: cacheSize,
-          otherApps: Math.max(0, otherAppsSize), // Ensure non-negative
+          otherApps: otherAppsSize,
         });
 
         // Update formatted data
@@ -68,7 +75,7 @@ export function useStorageBreakdown() {
           used: formatBytes(deviceUsed),
           downloads: formatBytes(downloadsSize),
           cache: formatBytes(cacheSize),
-          otherApps: formatBytes(Math.max(0, otherAppsSize)),
+          otherApps: formatBytes(otherAppsSize),
         });
       } catch (err) {
         console.error('Error loading storage info:', err);

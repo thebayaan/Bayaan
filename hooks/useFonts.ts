@@ -5,6 +5,8 @@ export function useFonts() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
   useEffect(() => {
+    let isCancelled = false;
+
     async function loadFonts() {
       try {
         await Font.loadAsync({
@@ -22,13 +24,19 @@ export function useFonts() {
           'ScheherazadeNew-Bold': require('../assets/fonts/ScheherazadeNew-Bold.ttf'),
           'ScheherazadeNew-SemiBold': require('../assets/fonts/ScheherazadeNew-SemiBold.ttf'),
         });
-        setFontsLoaded(true);
+        if (!isCancelled) {
+          setFontsLoaded(true);
+        }
       } catch (error) {
         console.error('Error loading fonts:', error);
       }
     }
 
     loadFonts();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   return fontsLoaded;

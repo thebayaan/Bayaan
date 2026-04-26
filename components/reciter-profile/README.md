@@ -4,22 +4,28 @@
 ```
 components/reciter-profile/
 ├── README.md
+├── ReciterProfile.tsx     # Main exported screen component
 ├── index.tsx              # Barrel file for exports
 ├── types/                # Local type definitions
 │   └── index.ts
 ├── components/           # Component directories
-│   ├── ReciterProfile/   # Main composition component
-│   │   └── index.tsx
 │   ├── ReciterHeader/    # Reciter image and info
 │   │   └── index.tsx
 │   ├── StickyHeader/     # Blur + gradient header
 │   │   └── index.tsx
+│   ├── NavigationButtons/ # Back / share actions
+│   │   └── index.tsx
 │   ├── SearchHeader/     # Search functionality
+│   │   └── index.tsx
+│   ├── SearchView/        # Search-mode result list
 │   │   └── index.tsx
 │   ├── SurahList/        # Surah listing
 │   │   └── index.tsx
-│   └── ActionButtons/    # Play, shuffle, favorite buttons
-│       └── index.tsx
+│   ├── ActionButtons/    # Play, shuffle, favorite buttons
+│   │   └── index.tsx
+│   ├── RewayatTabBar.tsx # Horizontal rewayah tabs
+│   ├── UploadCard.tsx    # Upload CTA/state card
+│   └── UploadsTabContent.tsx
 └── styles/              # Shared styles
     └── index.ts
 ```
@@ -35,6 +41,7 @@ components/reciter-profile/
 - Reciter information display
 - Surah list with search functionality
 - Multiple rewayat support
+- Uploads tab support for user recitations
 - Playback controls
 - Favorite/bookmark functionality
 - Responsive design with animations

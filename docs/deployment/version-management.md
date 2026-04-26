@@ -65,6 +65,9 @@ This shows all version information extracted from Git:
 To create a new version, use one of these commands based on semantic versioning:
 
 ```bash
+# Sync remote tags first when collaborating with others
+git fetch origin --tags
+
 # Increment patch version (1.0.3 -> 1.0.4)
 npm run version:patch
 
