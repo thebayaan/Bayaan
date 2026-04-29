@@ -19,6 +19,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 import {
@@ -120,6 +121,7 @@ export const VerseItem = memo<VerseItemProps>(
     rewayah,
   }) => {
     const verseKey = verse.verse_key;
+    const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
 
     // Per-verse-key annotation selectors — Zustand skips re-render when
     // THIS verse's specific value didn't change
@@ -433,6 +435,7 @@ export const VerseItem = memo<VerseItemProps>(
             indexedTajweedData={indexedTajweedData}
             onTap={handlePress}
             onLongPress={handleLongPress}
+            arabicTextWeight={arabicTextWeight}
             rewayah={rewayah}
           />
         ) : (
@@ -448,6 +451,7 @@ export const VerseItem = memo<VerseItemProps>(
                 showTajweed={showTajweed}
                 width={arabicContainerWidth}
                 indexedTajweedData={indexedTajweedData}
+                arabicTextWeight={arabicTextWeight}
                 rewayah={rewayah}
               />
             ) : isQPCSelected && tajweedNodes ? (

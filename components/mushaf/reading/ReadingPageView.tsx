@@ -83,6 +83,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     s => s.wbwShowTransliteration,
   );
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const translationFontSize = useMushafSettingsStore(
     s => s.translationFontSize,
   );
@@ -184,6 +185,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               fontMgr={fontMgr}
               dkFontFamily={dkFontFamily}
               indexedTajweedData={indexedTajweedData}
+              arabicTextWeight={arabicTextWeight}
             />
           </View>
         );
@@ -244,6 +246,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       showTransliteration,
       showTajweed,
       arabicFontSize,
+      arabicTextWeight,
       translationFontSize,
       transliterationFontSize,
       fontMgr,

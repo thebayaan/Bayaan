@@ -126,6 +126,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const showThemes = useMushafSettingsStore(s => s.showThemes);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
@@ -763,6 +764,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               textColor={textColor}
               charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
+              arabicTextWeight={arabicTextWeight}
               onParagraphReady={handleParagraphReady}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
               lineHeight={

@@ -29,6 +29,7 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
   const [width, setWidth] = useState(0);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const activeRewayah = useMushafSettingsStore(s => s.rewayah);
   const rewayah: RewayahId = rewayahOverride ?? activeRewayah;
   const fontFamily =
@@ -92,6 +93,7 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
           showTajweed={false}
           width={width}
           indexedTajweedData={null}
+          arabicTextWeight={arabicTextWeight}
         />
       ) : null}
     </View>

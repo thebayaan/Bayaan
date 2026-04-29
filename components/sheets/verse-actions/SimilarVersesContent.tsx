@@ -79,6 +79,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontMgr = mushafPreloadService.fontMgr;
@@ -202,6 +203,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                       showTajweed={false}
                       width={contentWidth - moderateScale(28)}
                       indexedTajweedData={null}
+                      arabicTextWeight={arabicTextWeight}
                     />
                   </View>
                 ) : null}
@@ -244,6 +246,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                                 showTajweed={showTajweed}
                                 width={contentWidth - moderateScale(36)}
                                 indexedTajweedData={indexedTajweedData}
+                                arabicTextWeight={arabicTextWeight}
                               />
                             </View>
                           )}
@@ -316,6 +319,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
                       showTajweed={false}
                       width={contentWidth - moderateScale(28)}
                       indexedTajweedData={null}
+                      arabicTextWeight={arabicTextWeight}
                     />
                   ) : null}
                 </Pressable>

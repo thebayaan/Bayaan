@@ -24,6 +24,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {verticalScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -111,6 +112,7 @@ interface MushafPageContentProps {
   showTajweed: boolean;
   indexedTajweedData: IndexedTajweedData | null;
   fontFamily: string;
+  arabicTextWeight: MushafArabicTextWeight;
   rewayah: string;
   showRewayahDiffs: boolean;
   dividerFont: SkFont | null;
@@ -135,6 +137,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     showTajweed,
     indexedTajweedData,
     fontFamily,
+    arabicTextWeight,
     rewayah,
     showRewayahDiffs,
     dividerFont,
@@ -561,6 +564,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 textColor={textColor}
                 charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
+                arabicTextWeight={arabicTextWeight}
                 lineHeight={BASE_LINE_HEIGHT}
                 onParagraphReady={handleParagraphReady}
                 backgroundHighlights={lineBackgroundHighlightsMap.get(
@@ -578,6 +582,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     );
   },
 );
+MushafPageContent.displayName = 'MushafPageContent';
 
 // ── Main component ───────────────────────────────────────
 
@@ -620,6 +625,7 @@ const ContinuousMushafView = forwardRef<
   // Settings subscriptions
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
@@ -689,6 +695,7 @@ const ContinuousMushafView = forwardRef<
           showTajweed={showTajweed}
           indexedTajweedData={indexedTajweedData}
           fontFamily={fontFamily}
+          arabicTextWeight={arabicTextWeight}
           rewayah={rewayah}
           showRewayahDiffs={showRewayahDiffs}
           dividerFont={surahHeaderFonts.dividerFont}
@@ -704,6 +711,7 @@ const ContinuousMushafView = forwardRef<
       showTajweed,
       indexedTajweedData,
       fontFamily,
+      arabicTextWeight,
       rewayah,
       showRewayahDiffs,
       surahHeaderFonts,
@@ -730,5 +738,6 @@ const ContinuousMushafView = forwardRef<
     />
   );
 });
+ContinuousMushafView.displayName = 'ContinuousMushafView';
 
 export default React.memo(ContinuousMushafView);

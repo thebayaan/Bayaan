@@ -25,6 +25,7 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
+export type MushafArabicTextWeight = 'normal' | 'medium' | 'bold';
 export type RewayahId =
   | 'hafs'
   | 'shouba'
@@ -59,6 +60,7 @@ interface MushafSettingsState {
   arabicFontSize: number;
   translationFontSize: number;
   transliterationFontSize: number;
+  arabicTextWeight: MushafArabicTextWeight;
 
   // Font family (legacy — kept for backward compatibility)
   arabicFontFamily: 'Uthmani';
@@ -98,6 +100,7 @@ interface MushafSettingsState {
   setArabicFontSize: (size: number) => void;
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
+  setArabicTextWeight: (weight: MushafArabicTextWeight) => void;
   setArabicFontFamily: (font: 'Uthmani') => void;
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
@@ -128,6 +131,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
       transliterationFontSize: getActualFontSize(3),
+      arabicTextWeight: 'normal' as MushafArabicTextWeight,
       arabicFontFamily: 'Uthmani', // Default font
       uthmaniFont: 'v1', // Default to V1
       mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
@@ -158,6 +162,8 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set({translationFontSize: size}),
       setTransliterationFontSize: (size: number) =>
         set({transliterationFontSize: size}),
+      setArabicTextWeight: (weight: MushafArabicTextWeight) =>
+        set({arabicTextWeight: weight}),
       setArabicFontFamily: (font: 'Uthmani') => set({arabicFontFamily: font}),
       setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
       setMushafRenderer: (renderer: MushafRenderer) =>
@@ -218,7 +224,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 12,
+      version: 13,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -278,6 +284,14 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         if (version < 12) {
           state.rewayah = 'hafs';
           state.showRewayahDiffs = true;
+        }
+        if (
+          version < 13 ||
+          !['normal', 'medium', 'bold'].includes(
+            state.arabicTextWeight as string,
+          )
+        ) {
+          state.arabicTextWeight = 'normal';
         }
         return state as unknown as MushafSettingsState;
       },

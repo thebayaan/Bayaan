@@ -12,6 +12,7 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
@@ -39,6 +40,7 @@ interface QuranListHeaderProps {
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
   indexedTajweedData: IndexedTajweedData | null;
+  arabicTextWeight: MushafArabicTextWeight;
 }
 
 const QuranListHeader = React.memo<QuranListHeaderProps>(
@@ -52,6 +54,7 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     fontMgr,
     dkFontFamily,
     indexedTajweedData,
+    arabicTextWeight,
   }) => (
     <>
       <SurahDivider
@@ -68,10 +71,12 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
         indexedTajweedData={indexedTajweedData}
+        arabicTextWeight={arabicTextWeight}
       />
     </>
   ),
 );
+QuranListHeader.displayName = 'QuranListHeader';
 
 interface QuranViewProps {
   currentSurah: number;
@@ -113,6 +118,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
@@ -233,6 +239,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       showWBW,
       wbwShowTranslation,
       wbwShowTransliteration,
+      arabicTextWeight,
       trackRewayah,
     ],
   );
@@ -258,7 +265,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         ref={listRef}
         data={verses}
         renderItem={renderItem}
-        extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${showTranslation}-${showTransliteration}`}
+        extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${arabicTextWeight}-${showTranslation}-${showTransliteration}`}
         keyExtractor={keyExtractor}
         ListHeaderComponent={
           <QuranListHeader
@@ -271,6 +278,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
+            arabicTextWeight={arabicTextWeight}
           />
         }
         contentContainerStyle={{

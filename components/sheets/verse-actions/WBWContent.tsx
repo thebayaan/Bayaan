@@ -29,6 +29,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   // Inherit mushaf font settings
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
 
   const dkFontFamily =
@@ -54,7 +55,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   }, []);
 
   // no-op handlers (not needed in sheet context)
-  const noop = useCallback(() => {}, []);
+  const noop = useCallback(() => undefined, []);
 
   return (
     <ScrollView
@@ -73,6 +74,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
           selectedWordPosition={selectedWordPosition}
           showTajweed={showTajweed}
           indexedTajweedData={indexedTajweedData}
+          arabicTextWeight={arabicTextWeight}
           onTap={noop}
         />
       </View>

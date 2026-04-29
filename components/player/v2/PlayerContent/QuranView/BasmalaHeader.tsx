@@ -9,11 +9,17 @@ import {
   TextDirection,
   type SkTypefaceFontProvider,
   type SkTextStyle,
+  type SkColor,
 } from '@shopify/react-native-skia';
 import {BASMALLAH_TEXT} from '@/services/mushaf/DigitalKhattDataService';
 import {getBasmalaTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -24,6 +30,9 @@ const paragraphStyle = {
 interface BasmalaCacheEntry {
   key: string;
   paragraph: ReturnType<ReturnType<typeof Skia.ParagraphBuilder.Make>['build']>;
+  strokeParagraph: ReturnType<
+    ReturnType<typeof Skia.ParagraphBuilder.Make>['build']
+  > | null;
   height: number;
   xPos: number;
   maxWidth: number;
@@ -38,11 +47,16 @@ function getOrBuildBasmala(
   fontSize: number,
   charToRule: Map<number, string> | null,
   showTajweed: boolean,
+  arabicTextWeight: MushafArabicTextWeight,
 ): BasmalaCacheEntry {
-  const cacheKey = `${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}`;
+  const cacheKey = `${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}:${arabicTextWeight}`;
   if (basmalaCache?.key === cacheKey) return basmalaCache;
 
   const color = Skia.Color(textColor);
+  const strokeWidth = getArabicTextWeightStrokeWidth(
+    arabicTextWeight,
+    fontSize,
+  );
   const baseStyle: SkTextStyle = {
     color,
     fontFamilies: [dkFontFamily],
@@ -50,35 +64,55 @@ function getOrBuildBasmala(
     fontFeatures: [{name: 'basm', value: 1}],
   };
 
-  const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
-  builder.pushStyle(baseStyle);
+  const buildParagraph = (withStroke: boolean) => {
+    const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
+    const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
+      const strokePaint = withStroke
+        ? createTextStrokePaint(styleColor, strokeWidth)
+        : undefined;
+      if (strokePaint) {
+        builder.pushStyle(style, strokePaint);
+      } else {
+        builder.pushStyle(style);
+      }
+    };
 
-  for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
-    const char = BASMALLAH_TEXT.charAt(i);
-    const rule = charToRule?.get(i);
+    pushStyle(baseStyle, color);
 
-    if (rule && tajweedColors[rule]) {
-      const charStyle: SkTextStyle = {
-        ...baseStyle,
-        color: Skia.Color(tajweedColors[rule]),
-      };
-      builder.pushStyle(charStyle);
-      builder.addText(char);
-      builder.pop();
-    } else {
-      builder.addText(char);
+    for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
+      const char = BASMALLAH_TEXT.charAt(i);
+      const rule = charToRule?.get(i);
+
+      if (rule && tajweedColors[rule]) {
+        const charColor = Skia.Color(tajweedColors[rule]);
+        const charStyle: SkTextStyle = {
+          ...baseStyle,
+          color: charColor,
+        };
+        pushStyle(charStyle, charColor);
+        builder.addText(char);
+        builder.pop();
+      } else {
+        builder.addText(char);
+      }
     }
-  }
 
-  builder.pop();
-  const p = builder.build();
+    builder.pop();
+    const p = builder.build();
+    return p;
+  };
+
+  const p = buildParagraph(false);
+  const strokeP = strokeWidth > 0 ? buildParagraph(true) : null;
   const maxWidth = width * 2;
   p.layout(maxWidth);
+  strokeP?.layout(maxWidth);
   const lineWidth = p.getLongestLine();
 
   basmalaCache = {
     key: cacheKey,
     paragraph: p,
+    strokeParagraph: strokeP,
     height: p.getHeight(),
     xPos: -(maxWidth - width + (width - lineWidth) / 2),
     maxWidth,
@@ -98,6 +132,7 @@ interface BasmalaHeaderProps {
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
   indexedTajweedData: IndexedTajweedData | null;
+  arabicTextWeight?: MushafArabicTextWeight;
 }
 
 const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
@@ -108,6 +143,7 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   fontMgr,
   dkFontFamily,
   indexedTajweedData,
+  arabicTextWeight = 'normal',
 }) => {
   const charToRule = useMemo(() => {
     if (!showTajweed || !indexedTajweedData) return null;
@@ -122,21 +158,31 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
 
   // Skia rendering path — width is known synchronously, cache returns instantly on surah change
   if (fontMgr && width > 0) {
-    const {paragraph, height, xPos, maxWidth} = getOrBuildBasmala(
-      fontMgr,
-      width,
-      textColor,
-      dkFontFamily,
-      fontSize,
-      charToRule,
-      showTajweed,
-    );
+    const {paragraph, strokeParagraph, height, xPos, maxWidth} =
+      getOrBuildBasmala(
+        fontMgr,
+        width,
+        textColor,
+        dkFontFamily,
+        fontSize,
+        charToRule,
+        showTajweed,
+        arabicTextWeight,
+      );
     // Extra horizontal room so the basm glyph isn't clipped at canvas edges.
     // V2 font renders a wider basm glyph — scale padding with width for larger devices.
     const hPad = Math.max(moderateScale(16), width * 0.06);
     return (
       <View style={containerStyle}>
         <Canvas style={{width: width + hPad * 2, height, direction: 'rtl'}}>
+          {strokeParagraph && (
+            <Paragraph
+              paragraph={strokeParagraph}
+              x={xPos + hPad}
+              y={0}
+              width={maxWidth}
+            />
+          )}
           <Paragraph
             paragraph={paragraph}
             x={xPos + hPad}

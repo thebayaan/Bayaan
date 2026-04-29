@@ -7,12 +7,20 @@ import {
   TextDirection,
   type SkTypefaceFontProvider,
   type SkTextStyle,
+  type SkColor,
 } from '@shopify/react-native-skia';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import type {
+  MushafArabicTextWeight,
+  RewayahId,
+} from '@/store/mushafSettingsStore';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -29,6 +37,7 @@ interface SkiaVerseTextProps {
   showTajweed: boolean;
   width: number;
   indexedTajweedData: IndexedTajweedData | null;
+  arabicTextWeight?: MushafArabicTextWeight;
   /** Render text from this rewayah's DK words DB instead of the active
    *  mushaf one. Used by the player to show text matching the currently
    *  playing reciter's rewayah. Ignored if `text` prop is provided. */
@@ -45,6 +54,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   showTajweed,
   width,
   indexedTajweedData,
+  arabicTextWeight = 'normal',
   rewayah,
 }) => {
   const [, bump] = useReducer(x => x + 1, 0);
@@ -71,47 +81,95 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return getVerseTajweedMap(verseKey, indexedTajweedData);
   }, [verseKey, showTajweed, indexedTajweedData]);
 
-  const {paragraph, height} = useMemo(() => {
-    if (!verseText || width <= 0) return {paragraph: null, height: 0};
+  const {paragraph, strokeParagraph, height, yOffset} = useMemo(() => {
+    if (!verseText || width <= 0) {
+      return {paragraph: null, strokeParagraph: null, height: 0, yOffset: 0};
+    }
 
     const color = Skia.Color(textColor);
+    const strokeWidth = getArabicTextWeightStrokeWidth(
+      arabicTextWeight,
+      fontSize,
+    );
+    const yOffset = Math.ceil(strokeWidth);
     const baseStyle: SkTextStyle = {
       color,
       fontFamilies: [fontFamily],
       fontSize,
     };
 
-    const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
-    builder.pushStyle(baseStyle);
+    const buildParagraph = (withStroke: boolean) => {
+      const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
 
-    for (let i = 0; i < verseText.length; i++) {
-      const char = verseText.charAt(i);
-      const rule = charToRule?.get(i);
+      const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
+        const strokePaint = withStroke
+          ? createTextStrokePaint(styleColor, strokeWidth)
+          : undefined;
+        if (strokePaint) {
+          builder.pushStyle(style, strokePaint);
+        } else {
+          builder.pushStyle(style);
+        }
+      };
 
-      if (rule && tajweedColors[rule]) {
-        const charStyle: SkTextStyle = {
-          ...baseStyle,
-          color: Skia.Color(tajweedColors[rule]),
-        };
-        builder.pushStyle(charStyle);
-        builder.addText(char);
-        builder.pop();
-      } else {
-        builder.addText(char);
+      pushStyle(baseStyle, color);
+
+      for (let i = 0; i < verseText.length; i++) {
+        const char = verseText.charAt(i);
+        const rule = charToRule?.get(i);
+
+        if (rule && tajweedColors[rule]) {
+          const charColor = Skia.Color(tajweedColors[rule]);
+          const charStyle: SkTextStyle = {
+            ...baseStyle,
+            color: charColor,
+          };
+          pushStyle(charStyle, charColor);
+          builder.addText(char);
+          builder.pop();
+        } else {
+          builder.addText(char);
+        }
       }
-    }
 
-    builder.pop();
-    const p = builder.build();
-    p.layout(width);
-    return {paragraph: p, height: p.getHeight()};
-  }, [verseText, width, textColor, fontFamily, fontSize, fontMgr, charToRule]);
+      builder.pop();
+      const p = builder.build();
+      p.layout(width);
+      return p;
+    };
+
+    const p = buildParagraph(false);
+    const strokeP = strokeWidth > 0 ? buildParagraph(true) : null;
+    return {
+      paragraph: p,
+      strokeParagraph: strokeP,
+      height: p.getHeight() + yOffset * 2,
+      yOffset,
+    };
+  }, [
+    verseText,
+    width,
+    textColor,
+    fontFamily,
+    fontSize,
+    fontMgr,
+    charToRule,
+    arabicTextWeight,
+  ]);
 
   if (!paragraph || width <= 0) return null;
 
   return (
     <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>
-      <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
+      {strokeParagraph && (
+        <Paragraph
+          paragraph={strokeParagraph}
+          x={0}
+          y={yOffset}
+          width={width}
+        />
+      )}
+      <Paragraph paragraph={paragraph} x={0} y={yOffset} width={width} />
     </Canvas>
   );
 };
