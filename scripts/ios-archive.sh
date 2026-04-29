@@ -5,6 +5,12 @@
 
 set -e
 
+# Force UTF-8 locale for CocoaPods. Ruby 3.3 + CocoaPods 1.16.x raise
+# Encoding::CompatibilityError when LANG isn't a UTF-8 locale. Mirrors
+# the same guard in package.json's "ios" script.
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
