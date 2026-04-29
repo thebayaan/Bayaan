@@ -11,40 +11,6 @@ import {Link} from 'expo-router';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
-const TEXT_POSITION: Record<string, 'top' | 'bottom' | 'center'> = {
-  // Main adhkar
-  'morning-adhkar': 'bottom',
-  'evening-adhkar': 'bottom',
-  salah: 'top',
-  'before-sleep': 'top',
-  'after-salah': 'top',
-  'waking-up': 'top',
-  salawat: 'top',
-  'praises-of-allah': 'top',
-  istighfar: 'top',
-  nightmares: 'top',
-  'protection-of-iman': 'bottom',
-  'difficulties-happiness': 'top',
-  'quranic-duas': 'top',
-  // Other adhkar
-  'names-of-allah': 'bottom',
-  clothes: 'center',
-  'lavatory-wudu': 'bottom',
-  'adhan-masjid': 'top',
-  home: 'top',
-  istikharah: 'top',
-  gatherings: 'top',
-  'food-drink': 'top',
-  travel: 'top',
-  nature: 'top',
-  'social-interactions': 'bottom',
-  'hajj-umrah': 'top',
-  'marriage-children': 'top',
-  death: 'bottom',
-  'ruqyah-illness': 'top',
-  'money-shopping': 'top',
-};
-
 interface AdhkarBentoCardProps {
   category: SuperCategory;
   onPress?: () => void;
@@ -52,9 +18,18 @@ interface AdhkarBentoCardProps {
   height: number;
 }
 
+// Label typography constants. Also used below to size the image panel so
+// a caller-supplied `height` is treated as the card's TOTAL footprint
+// (image + label), matching the spacing the card had before the title
+// was moved outside. That keeps sections vertically consistent with
+// their neighbors.
+const LABEL_LINE_HEIGHT = moderateScale(16);
+const LABEL_MARGIN_TOP = moderateScale(4);
+const LABEL_FONT_SIZE = moderateScale(13);
+const LABEL_OVERHEAD = LABEL_LINE_HEIGHT + LABEL_MARGIN_TOP;
+
 export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
   category,
-  onPress,
   width,
   height,
 }: AdhkarBentoCardProps) {
@@ -69,66 +44,30 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
     baseColor.alpha(0.25).toString(),
   ] as const;
 
-  const titleSize = moderateScale(14);
-  const textPosition = TEXT_POSITION[category.id];
-
-  const styles = createStyles(theme, width, height);
+  const imageHeight = Math.max(0, height - LABEL_OVERHEAD);
+  const styles = createStyles(theme, width, imageHeight);
 
   const imageSet = ADHKAR_CATEGORY_IMAGES[category.id];
 
   const cardContent = imageSet ? (
-    <View style={styles.gradient}>
-      <Image
-        source={isDarkMode ? imageSet.dark : imageSet.light}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-      />
-      {isDarkMode && (
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.5)']}
-          start={{x: 0, y: 0.3}}
-          end={{x: 0, y: 1}}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      <View style={styles.content}>
-        <View
-          style={[
-            styles.textContainer,
-            textPosition === 'top'
-              ? styles.topLeftContainer
-              : textPosition === 'bottom'
-                ? styles.bottomLeftContainer
-                : styles.centerLeftContainer,
-          ]}>
-          <Text style={[styles.title, {fontSize: titleSize}]} numberOfLines={2}>
-            {category.title}
-          </Text>
-        </View>
-      </View>
-    </View>
+    <Image
+      source={isDarkMode ? imageSet.dark : imageSet.light}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+    />
   ) : (
     <LinearGradient
       colors={gradientColors}
       start={{x: 0, y: 0}}
       end={{x: 1, y: 1}}
-      style={styles.gradient}>
-      <View style={styles.content}>
-        <View
-          style={[
-            styles.textContainer,
-            textPosition === 'top'
-              ? styles.topLeftContainer
-              : textPosition === 'bottom'
-                ? styles.bottomLeftContainer
-                : styles.centerLeftContainer,
-          ]}>
-          <Text style={[styles.title, {fontSize: titleSize}]} numberOfLines={2}>
-            {category.title}
-          </Text>
-        </View>
-      </View>
-    </LinearGradient>
+      style={StyleSheet.absoluteFill}
+    />
+  );
+
+  const label = (
+    <Text style={styles.title} numberOfLines={2}>
+      {category.title}
+    </Text>
   );
 
   const linkProps = {
@@ -142,7 +81,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
   if (USE_GLASS) {
     return (
       <Link {...linkProps}>
-        <Pressable style={StyleSheet.flatten([styles.glassWrapper])}>
+        <Pressable style={styles.wrapper}>
           <Link.AppleZoom>
             <GlassView
               style={styles.glassInner}
@@ -151,6 +90,7 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
               {cardContent}
             </GlassView>
           </Link.AppleZoom>
+          {label}
         </Pressable>
       </Link>
     );
@@ -158,8 +98,9 @@ export const AdhkarBentoCard = React.memo(function AdhkarBentoCard({
 
   return (
     <Link {...linkProps}>
-      <Pressable style={StyleSheet.flatten([styles.container])}>
-        {cardContent}
+      <Pressable style={styles.wrapper}>
+        <View style={styles.container}>{cardContent}</View>
+        {label}
       </Pressable>
     </Link>
   );
@@ -171,49 +112,29 @@ const createStyles = (
   height: number,
 ) =>
   StyleSheet.create({
+    wrapper: {
+      width,
+    },
     container: {
       width,
       height,
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(5),
       overflow: 'hidden',
     },
-    glassWrapper: {
+    glassInner: {
       width,
       height,
-    },
-    glassInner: {
-      flex: 1,
-      borderRadius: moderateScale(20),
+      borderRadius: moderateScale(5),
       overflow: 'hidden' as const,
     },
-    gradient: {
-      flex: 1,
-      padding: moderateScale(16),
-    },
-    content: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    textContainer: {
-      flex: 1,
-      justifyContent: 'center',
-    },
-    centerLeftContainer: {
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-    },
-    topLeftContainer: {
-      justifyContent: 'flex-start',
-    },
-    bottomLeftContainer: {
-      justifyContent: 'flex-end',
-      alignItems: 'flex-start',
-    },
     title: {
+      fontSize: LABEL_FONT_SIZE,
       fontFamily: 'Manrope-SemiBold',
       color: theme.colors.text,
-      lineHeight: moderateScale(22),
+      lineHeight: LABEL_LINE_HEIGHT,
       textAlign: 'left',
+      marginTop: LABEL_MARGIN_TOP,
+      paddingHorizontal: moderateScale(2),
     },
   });
 

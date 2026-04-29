@@ -29,6 +29,14 @@ import {getReadingThemeById} from '@/constants/readingThemes';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
 import {
+  ALL_REWAYAH_IDS,
+  getDescription,
+  getLongLabel,
+  hasDiffData,
+  hasTextData,
+  type RewayahWithDiffs,
+} from '@/services/rewayah/RewayahIdentity';
+import {
   useMushafSettingsStore,
   getActualFontSize,
   getDisplayValue,
@@ -595,6 +603,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   const handleRewayahSelect = useCallback(
     async (value: RewayahId) => {
       if (value === rewayah) return;
+      // Defense in depth: the UI should have already disabled the row for
+      // rewayat without bundled DK data, but guard here too so we never
+      // call switchRewayah for an id that will throw from
+      // requireRewayahAssets.
+      if (!hasTextData(value)) return;
       // Load the new words DB BEFORE flipping the store so React re-renders
       // with the correct text/layout already in place.
       try {
@@ -776,7 +789,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         </Pressable>
       </View>
 
-      {/* Word by Word Section — only in list view */}
+      {/* Word by Word Section; only in list view */}
       {context !== 'player' && viewMode === 'list' && (
         <>
           <Text style={styles.sectionHeader}>WORD BY WORD</Text>
@@ -997,45 +1010,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         })}
       </View>
 
-      {/* REWAYAH Section */}
+      {/* REWAYAH Section; picker collapses by default behind the currently
+          selected rewayah; the diff toggle sits above it so it's reachable
+          without scrolling past 20 radio options. */}
       <Text style={styles.sectionHeader}>REWAYAH</Text>
-      <View style={styles.card}>
-        {REWAYAH_OPTIONS.map((option, idx) => {
-          const isSelected = rewayah === option.value;
-          return (
-            <React.Fragment key={option.value}>
-              {idx > 0 && <View style={styles.divider} />}
-              <Pressable
-                style={({pressed}) => [
-                  styles.radioRow,
-                  pressed && styles.radioRowPressed,
-                ]}
-                onPress={() => handleRewayahSelect(option.value)}>
-                <View
-                  style={[
-                    styles.radioCircle,
-                    isSelected && styles.radioCircleSelected,
-                  ]}>
-                  {isSelected && <View style={styles.radioCircleFill} />}
-                </View>
-                <View style={styles.radioTextContainer}>
-                  <Text
-                    style={[
-                      styles.radioLabel,
-                      isSelected && styles.radioLabelSelected,
-                    ]}>
-                    {option.label}
-                  </Text>
-                  <Text style={styles.radioDescription}>
-                    {option.description}
-                  </Text>
-                </View>
-              </Pressable>
-            </React.Fragment>
-          );
-        })}
-      </View>
-      {rewayah !== 'hafs' && (
+      {hasDiffData(rewayah) && (
         <RewayahDiffCard
           rewayah={rewayah}
           showRewayahDiffs={showRewayahDiffs}
@@ -1045,12 +1024,122 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           theme={theme}
         />
       )}
+      <RewayahAccordion
+        selectedId={rewayah}
+        onSelect={handleRewayahSelect}
+        styles={styles}
+        theme={theme}
+      />
+    </View>
+  );
+};
+
+interface RewayahAccordionProps {
+  selectedId: RewayahId;
+  onSelect: (id: RewayahId) => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}
+
+const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
+  selectedId,
+  onSelect,
+  styles,
+  theme,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <View style={styles.card}>
+      <Pressable
+        style={({pressed}) => [
+          styles.settingRow,
+          pressed && styles.settingRowPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{expanded}}
+        accessibilityLabel={`Rewayah: ${getLongLabel(selectedId)}. ${expanded ? 'Collapse' : 'Expand'} to change.`}
+        onPress={() => setExpanded(e => !e)}>
+        <View style={styles.radioTextContainer}>
+          <Text style={styles.accordionHeaderEyebrow}>Currently reading</Text>
+          <Text style={styles.accordionHeaderTitle}>
+            {getLongLabel(selectedId)}
+          </Text>
+        </View>
+        <Feather
+          name={expanded ? 'chevron-up' : 'chevron-down'}
+          size={moderateScale(18)}
+          color={Color(theme.colors.text).alpha(0.4).toString()}
+        />
+      </Pressable>
+      {expanded && (
+        <>
+          <View style={styles.divider} />
+          {AVAILABLE_REWAYAH_IDS.map((id, idx) => {
+            const isSelected = selectedId === id;
+            return (
+              <React.Fragment key={id}>
+                {idx > 0 && <View style={styles.divider} />}
+                <Pressable
+                  style={({pressed}) => [
+                    styles.radioRow,
+                    pressed && styles.radioRowPressed,
+                  ]}
+                  onPress={() => onSelect(id)}>
+                  <View
+                    style={[
+                      styles.radioCircle,
+                      isSelected && styles.radioCircleSelected,
+                    ]}>
+                    {isSelected && <View style={styles.radioCircleFill} />}
+                  </View>
+                  <View style={styles.radioTextContainer}>
+                    <Text
+                      style={[
+                        styles.radioLabel,
+                        isSelected && styles.radioLabelSelected,
+                      ]}>
+                      {getLongLabel(id)}
+                    </Text>
+                    <Text style={styles.radioDescription}>
+                      {getDescription(id)}
+                    </Text>
+                  </View>
+                </Pressable>
+              </React.Fragment>
+            );
+          })}
+          <View style={styles.divider} />
+          <Text style={styles.accordionSubHeader}>
+            TEXT PREVIEW NOT YET AVAILABLE
+          </Text>
+          {UNAVAILABLE_REWAYAH_IDS.map((id, idx) => (
+            <React.Fragment key={id}>
+              {idx > 0 && <View style={styles.divider} />}
+              <View
+                style={[styles.radioRow, styles.radioRowDisabled]}
+                accessibilityRole="text"
+                accessibilityLabel={`${getLongLabel(id)}, text preview not yet available`}>
+                <View style={styles.radioCircle} />
+                <View style={styles.radioTextContainer}>
+                  <Text style={[styles.radioLabel, styles.radioLabelDisabled]}>
+                    {getLongLabel(id)}
+                  </Text>
+                  <Text style={styles.radioDescription}>
+                    {getDescription(id)}
+                  </Text>
+                </View>
+              </View>
+            </React.Fragment>
+          ))}
+        </>
+      )}
     </View>
   );
 };
 
 interface RewayahDiffCardProps {
-  rewayah: Exclude<RewayahId, 'hafs'>;
+  rewayah: RewayahWithDiffs;
   showRewayahDiffs: boolean;
   toggleRewayahDiffs: () => void;
   trackColor: {false: string; true: string};
@@ -1148,10 +1237,10 @@ interface RewayahLegend {
 }
 
 // Per-rewayah disclosure of what 'Show Differences' actually highlights.
-// The summary is factual — describes which rules we do and don't cover so
+// The summary is factual; describes which rules we do and don't cover so
 // users can calibrate expectations vs a printed color-coded mushaf.
-const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
-  shouba: {
+const REWAYAH_LEGEND: Record<RewayahWithDiffs, RewayahLegend> = {
+  shubah: {
     summary:
       'Flags words that differ from Hafs. Letter-level tajweed rules are not highlighted for this rewayah.',
     entries: [
@@ -1168,7 +1257,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  bazzi: {
+  'al-bazzi': {
     summary:
       "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
     entries: [
@@ -1190,7 +1279,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  qumbul: {
+  qunbul: {
     summary:
       "Flags words that differ from Hafs and highlights Ibn Kathir's silah (pronoun lengthening). Letter-level tajweed rules are not highlighted.",
     entries: [
@@ -1249,7 +1338,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  qaloon: {
+  qalun: {
     summary:
       'Highlights the published-mushaf rules KFGQPC encodes: tashil, ibdal, madd al-badal, taghliz al-lam, silah, and genuine word variants. Taqlil, tarqiq ar-ra, and naql are not yet supported.',
     entries: [
@@ -1286,7 +1375,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  doori: {
+  'al-duri-abi-amr': {
     summary:
       'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
     entries: [
@@ -1298,7 +1387,7 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
       },
     ],
   },
-  soosi: {
+  'al-susi': {
     summary:
       'Flags only genuine letter-level word variants from Hafs. Abu Amr-specific tajweed rules (idgham kabeer, imalah) are not yet highlighted.',
     entries: [
@@ -1312,56 +1401,18 @@ const REWAYAH_LEGEND: Record<Exclude<RewayahId, 'hafs'>, RewayahLegend> = {
   },
 };
 
-const REWAYAH_OPTIONS: Array<{
-  value: RewayahId;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: 'hafs',
-    label: "Hafs 'an Asim",
-    description: 'The standard reading, used by most of the Muslim world',
-  },
-  {
-    value: 'shouba',
-    label: "Shu'bah 'an Asim",
-    description: "The second Kufan transmission from Asim, brother of Hafs'",
-  },
-  {
-    value: 'bazzi',
-    label: "Al-Bazzi 'an Ibn Kathir",
-    description:
-      'Meccan transmission from Ibn Kathir, read throughout Mecca and Yemen',
-  },
-  {
-    value: 'qumbul',
-    label: "Qunbul 'an Ibn Kathir",
-    description: 'The second Meccan transmission from Ibn Kathir',
-  },
-  {
-    value: 'warsh',
-    label: "Warsh 'an Nafi'",
-    description:
-      'Medinan transmission from Nafiʿ — dominant across North Africa',
-  },
-  {
-    value: 'qaloon',
-    label: "Qalun 'an Nafi'",
-    description:
-      'The second Medinan transmission from Nafiʿ — read in Libya and parts of Tunisia',
-  },
-  {
-    value: 'doori',
-    label: "Al-Duri 'an Abu Amr",
-    description:
-      'Basran transmission from Abu Amr — common in Sudan and parts of West Africa',
-  },
-  {
-    value: 'soosi',
-    label: "Al-Susi 'an Abu Amr",
-    description: 'The second Basran transmission from Abu Amr',
-  },
-];
+// The mushaf-settings picker is generated from ALL_REWAYAH_IDS. IDs with
+// bundled DK text data render in the top section and are selectable; the
+// remaining taxonomy-only entries render below under a "Text preview not
+// yet available" subheading, dimmed and not tappable; they advertise the
+// full catalog without letting the user pick one that would throw from
+// DigitalKhattDataService.requireRewayahAssets. Labels and descriptions
+// come from RewayahIdentity so all copy has one source of truth.
+const AVAILABLE_REWAYAH_IDS: readonly RewayahId[] =
+  ALL_REWAYAH_IDS.filter(hasTextData);
+const UNAVAILABLE_REWAYAH_IDS: readonly RewayahId[] = ALL_REWAYAH_IDS.filter(
+  id => !hasTextData(id),
+);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -1509,6 +1560,9 @@ const createStyles = (theme: Theme) =>
     radioRowPressed: {
       backgroundColor: Color(theme.colors.text).alpha(0.06).toString(),
     },
+    radioRowDisabled: {
+      opacity: 0.45,
+    },
     radioCircle: {
       width: moderateScale(20),
       height: moderateScale(20),
@@ -1539,6 +1593,9 @@ const createStyles = (theme: Theme) =>
     radioLabelSelected: {
       color: theme.colors.text,
     },
+    radioLabelDisabled: {
+      color: Color(theme.colors.text).alpha(0.6).toString(),
+    },
     radioDescription: {
       fontSize: moderateScale(11),
       fontFamily: 'Manrope-Regular',
@@ -1563,6 +1620,30 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(13.5),
       fontFamily: 'Manrope-Medium',
       color: Color(theme.colors.text).alpha(0.85).toString(),
+    },
+
+    // --- Rewayah accordion styles ---
+    accordionHeaderEyebrow: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      marginBottom: verticalScale(2),
+    },
+    accordionHeaderTitle: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    accordionSubHeader: {
+      fontSize: moderateScale(10.5),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      paddingTop: verticalScale(12),
+      paddingBottom: verticalScale(6),
     },
 
     // --- Rewayah legend styles ---

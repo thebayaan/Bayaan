@@ -7,6 +7,7 @@ import {MaterialIcons, Feather} from '@expo/vector-icons';
 import {Reciter} from '@/data/reciterData';
 import {ReciterImage} from '@/components/ReciterImage';
 import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 interface ReciterItemProps {
   item: Reciter;
@@ -60,7 +61,7 @@ export const ReciterItem: React.FC<ReciterItemProps> = React.memo(
               {secondaryText ||
                 (item.rewayat.length > 1
                   ? `${item.rewayat.length} rewayat available`
-                  : item.rewayat[0]?.name || '')}
+                  : getDisplayLabelFromName(item.rewayat[0]?.name))}
             </Text>
             {showFollowAlong && <FollowAlongBadge />}
           </View>

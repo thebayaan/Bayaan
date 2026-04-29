@@ -5,9 +5,13 @@ import {
   PrimaryColor,
   primaryColors,
 } from '@/styles/colorSchemes';
+import {PHONE_SCALE_CAP} from '@/utils/responsive';
 
 const {width} = Dimensions.get('window');
-const scale = (size: number) => (width / 375) * size;
+// Clamp scaling base so tablets do not inflate typography/spacing.
+// Phones pass through unchanged (width <= PHONE_SCALE_CAP).
+const scaleBase = Math.min(width, PHONE_SCALE_CAP);
+const scale = (size: number) => (scaleBase / 375) * size;
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 

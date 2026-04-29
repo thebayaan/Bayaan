@@ -3,6 +3,7 @@ import {
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
+import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 
 const TOTAL_PAGES = 604;
 
@@ -10,20 +11,28 @@ const TOTAL_PAGES = 604;
 // share a layout DB (same ayah boundaries → same line breaks); rewayat from
 // different qaris have their own layout DB because verse numbering and line
 // placement differ. `fontFamily` is the Skia typeface to render this rewayah's
-// text with — KFGQPC-per-qiraat fonts carry the correct OpenType features
+// text with; KFGQPC-per-qiraat fonts carry the correct OpenType features
 // for narration-specific marks (silah, imalah, etc.).
 const DK_HAFS_LAYOUT_ASSET = require('../../data/mushaf/digitalkhatt/digital-khatt-15-lines.db');
 
-const REWAYAH_DATA: Record<
-  RewayahId,
-  {
-    wordsDbName: string;
-    wordsAsset: number;
-    layoutDbName: string;
-    layoutAsset: number;
-    fontFamily: string | null;
-  }
-> = {
+interface RewayahAssetConfig {
+  wordsDbName: string;
+  wordsAsset: number;
+  layoutDbName: string;
+  layoutAsset: number;
+  fontFamily: string | null;
+}
+
+// Partial by design: only the 8 canonical slugs with DK data bundled today
+// have entries. The other 12 in RewayahId are taxonomy-only for now.
+// Callers that need an entry must go through requireRewayahAssets() which
+// throws a helpful error if data is absent; use RewayahIdentity.hasTextData
+// to branch ahead of time.
+//
+// DB filenames on disk (dk_words_shouba.db etc.) keep the pre-canonical
+// spellings to avoid renaming bundled assets in this PR; the RewayahId
+// keys change, the asset paths don't.
+const REWAYAH_DATA: Partial<Record<RewayahId, RewayahAssetConfig>> = {
   hafs: {
     wordsDbName: 'dk_words.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/digital-khatt-v2.db'),
@@ -31,21 +40,21 @@ const REWAYAH_DATA: Record<
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null, // defer to user's uthmaniFont/mushafRenderer choice
   },
-  shouba: {
+  shubah: {
     wordsDbName: 'dk_words_shouba.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_shouba.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  bazzi: {
+  'al-bazzi': {
     wordsDbName: 'dk_words_bazzi.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_bazzi.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
-    fontFamily: null, // render with DK font — sibling of Hafs, shares layout
+    fontFamily: null, // render with DK font; sibling of Hafs, shares layout
   },
-  qumbul: {
+  qunbul: {
     wordsDbName: 'dk_words_qumbul.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_qumbul.db'),
     layoutDbName: 'dk_layout.db',
@@ -59,21 +68,21 @@ const REWAYAH_DATA: Record<
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  qaloon: {
+  qalun: {
     wordsDbName: 'dk_words_qaloon.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_qaloon.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  doori: {
+  'al-duri-abi-amr': {
     wordsDbName: 'dk_words_doori.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_doori.db'),
     layoutDbName: 'dk_layout.db',
     layoutAsset: DK_HAFS_LAYOUT_ASSET,
     fontFamily: null,
   },
-  soosi: {
+  'al-susi': {
     wordsDbName: 'dk_words_soosi.db',
     wordsAsset: require('../../data/mushaf/digitalkhatt/dk_words_soosi.db'),
     layoutDbName: 'dk_layout.db',
@@ -82,11 +91,22 @@ const REWAYAH_DATA: Record<
   },
 };
 
+function requireRewayahAssets(rewayah: RewayahId): RewayahAssetConfig {
+  const cfg = REWAYAH_DATA[rewayah];
+  if (!cfg) {
+    throw new Error(
+      `[DigitalKhatt] No text data bundled for rewayah "${rewayah}". ` +
+        `Check RewayahIdentity.hasTextData before calling.`,
+    );
+  }
+  return cfg;
+}
+
 export function getRewayahFontFamily(rewayah: RewayahId): string | null {
   return REWAYAH_DATA[rewayah]?.fontFamily ?? null;
 }
 
-// Basmallah text is always the same 4 words — hardcoded to avoid DB lookup
+// Basmallah text is always the same 4 words; hardcoded to avoid DB lookup
 // (layout DB has NULL word IDs for basmallah lines)
 export const BASMALLAH_TEXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
 
@@ -107,6 +127,7 @@ export interface DKWordInfo {
 }
 
 type RewayahChangeListener = (rewayah: RewayahId) => void;
+type CacheChangeListener = () => void;
 
 class DigitalKhattDataService {
   private wordsById: Map<number, string> = new Map();
@@ -118,6 +139,12 @@ class DigitalKhattDataService {
   private verseToPage: Map<string, number> | null = null;
   private currentRewayah: RewayahId = 'hafs';
   private rewayahListeners: Set<RewayahChangeListener> = new Set();
+  // Monotonic version for reactive consumers (useRewayahWords via
+  // useSyncExternalStore). Bumped whenever the main or a side cache
+  // transitions; after initial load, after switchRewayah's loadWords,
+  // after _loadSideRewayah, after resetDatabases.
+  private cacheVersion = 0;
+  private cacheListeners: Set<CacheChangeListener> = new Set();
   // Side cache for rewayat OTHER than the currently-active mushaf rewayah.
   // Lets the player render text from a reciter's rewayah without mutating
   // currentRewayah (which the mushaf page follows). Populated lazily via
@@ -140,11 +167,40 @@ class DigitalKhattDataService {
     return () => this.rewayahListeners.delete(listener);
   }
 
+  // Bound to the instance so useSyncExternalStore receives a stable reference.
+  subscribeCacheChanges = (listener: CacheChangeListener): (() => void) => {
+    this.cacheListeners.add(listener);
+    return () => {
+      this.cacheListeners.delete(listener);
+    };
+  };
+
+  // Referentially stable snapshot getter; returns a number, so
+  // useSyncExternalStore's default shallow compare is correct.
+  getCacheVersion = (): number => this.cacheVersion;
+
+  private notifyCacheChange(): void {
+    this.cacheVersion += 1;
+    for (const cb of this.cacheListeners) cb();
+  }
+
   async initialize(): Promise<void> {
     if (this._initialized) return;
     if (this._initializing) return this._initializing;
 
-    this.currentRewayah = useMushafSettingsStore.getState().rewayah;
+    // Defensive normalization: the store's persisted value may still be a
+    // pre-canonical slug (e.g. "qaloon") if the user is on a build whose
+    // persist version was bumped without running migratePersistedId, or
+    // whose AsyncStorage retained a broken intermediate write. Run the
+    // migrator here so the service never trusts an invalid slug, and
+    // write the corrected value back to the store so every other reader
+    // picks up the fix.
+    const rawRewayah = useMushafSettingsStore.getState().rewayah;
+    const normalized = migratePersistedId(rawRewayah as unknown as string);
+    if (normalized !== rawRewayah) {
+      useMushafSettingsStore.getState().setRewayah(normalized);
+    }
+    this.currentRewayah = normalized;
     this._initializing = this._doInit();
     return this._initializing;
   }
@@ -156,6 +212,9 @@ class DigitalKhattDataService {
       await this.loadWords();
       await this.loadLayout();
       this._initialized = true;
+      // Main cache is now populated for currentRewayah; wake any subscribers
+      // (useRewayahWords) so they re-read getVerseWords.
+      this.notifyCacheChange();
     } catch (error) {
       console.error('[DigitalKhattDataService] Initialization failed:', error);
       this._initializing = null;
@@ -185,6 +244,7 @@ class DigitalKhattDataService {
 
     const dbNames = new Set<string>();
     for (const cfg of Object.values(REWAYAH_DATA)) {
+      if (!cfg) continue;
       dbNames.add(cfg.wordsDbName);
       dbNames.add(cfg.layoutDbName);
     }
@@ -192,15 +252,19 @@ class DigitalKhattDataService {
       try {
         await SQLite.deleteDatabaseAsync(dbName);
       } catch {
-        // DB may not exist yet — ignore
+        // DB may not exist yet; ignore
       }
     }
+    // Caches wiped; surface that to consumers so they don't hold onto stale
+    // word arrays. (Dev-only path; in production the service is re-initialized
+    // immediately afterwards, triggering another notify via _doInit.)
+    this.notifyCacheChange();
   }
 
   async switchRewayah(rewayah: RewayahId): Promise<void> {
     if (rewayah === this.currentRewayah) return;
-    const prevCfg = REWAYAH_DATA[this.currentRewayah];
-    const nextCfg = REWAYAH_DATA[rewayah];
+    const prevCfg = requireRewayahAssets(this.currentRewayah);
+    const nextCfg = requireRewayahAssets(rewayah);
     this.currentRewayah = rewayah;
     this.wordsById.clear();
     this.wordInfoById.clear();
@@ -211,18 +275,24 @@ class DigitalKhattDataService {
     this.sideVerseWords.delete(rewayah);
     await this.loadWords();
     // Layout only reloads if the new rewayah uses a different layout DB
-    // (e.g., hafs ↔ shouba share one; hafs ↔ bazzi do not).
+    // (all 8 currently bundled rewayat share the Hafs layout DB; kept the
+    // check because rewayat added in the future may bring their own layout).
     if (prevCfg.layoutDbName !== nextCfg.layoutDbName) {
       this.pageLines.clear();
       this.surahStartPages = {};
       this.pageToSurah = {};
       await this.loadLayout();
     }
+    // Main cache rebuilt + side cache for the new rewayah evicted; notify
+    // reactive consumers (useRewayahWords) before the rewayahListeners fire,
+    // since those listeners (e.g. MushafPreloadService) also react to the
+    // transition and should see a consistent cache.
+    this.notifyCacheChange();
     for (const listener of this.rewayahListeners) listener(rewayah);
   }
 
   private async loadWords(): Promise<void> {
-    const cfg = REWAYAH_DATA[this.currentRewayah];
+    const cfg = requireRewayahAssets(this.currentRewayah);
     const dbName = cfg.wordsDbName;
     let db = await SQLite.openDatabaseAsync(dbName);
 
@@ -280,7 +350,7 @@ class DigitalKhattDataService {
   }
 
   private async loadLayout(): Promise<void> {
-    const cfg = REWAYAH_DATA[this.currentRewayah];
+    const cfg = requireRewayahAssets(this.currentRewayah);
     const dbName = cfg.layoutDbName;
     let db = await SQLite.openDatabaseAsync(dbName);
 
@@ -427,7 +497,7 @@ class DigitalKhattDataService {
   }
 
   private async _loadSideRewayah(rewayah: RewayahId): Promise<void> {
-    const cfg = REWAYAH_DATA[rewayah];
+    const cfg = requireRewayahAssets(rewayah);
     const dbName = cfg.wordsDbName;
     let db = await SQLite.openDatabaseAsync(dbName);
     const tableCheck = await db
@@ -468,6 +538,11 @@ class DigitalKhattDataService {
       words.sort((a, b) => a.wordPositionInVerse - b.wordPositionInVerse);
     }
     this.sideVerseWords.set(rewayah, byVerse);
+    // Side cache for this rewayah is now ready; wake any consumer reading
+    // it (e.g. SkiaVerseText on the player screen rendering a non-mushaf
+    // rewayah). Without this, useRewayahWords would sit on a stale empty
+    // result until some unrelated render cycle pulled it back.
+    this.notifyCacheChange();
   }
 
   getPageForVerse(verseKey: string): number | undefined {

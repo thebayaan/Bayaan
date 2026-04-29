@@ -2,6 +2,14 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {
+  migratePersistedId,
+  type RewayahId,
+} from '@/services/rewayah/RewayahIdentity';
+
+// Re-exported for backward compat with existing imports across the app.
+// RewayahIdentity is the canonical source; do not redefine the union here.
+export type {RewayahId};
 
 // Constants for font sizing
 export const DISPLAY_MIN = 1;

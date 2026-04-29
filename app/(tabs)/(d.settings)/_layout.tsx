@@ -1,12 +1,14 @@
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {MaxWidthContainer} from '@/components/layout/MaxWidthContainer';
 
 export default function SettingsLayout() {
   const {theme} = useTheme();
 
   return (
-    <Stack
+    <MaxWidthContainer>
+      <Stack
       screenOptions={{
         headerShown: true,
         freezeOnBlur: true,
@@ -46,6 +48,7 @@ export default function SettingsLayout() {
       />
       <Stack.Screen name="reading-theme" options={{title: 'Reading Theme'}} />
       <Stack.Screen name="whats-new" options={{title: "What's New"}} />
-    </Stack>
+      </Stack>
+    </MaxWidthContainer>
   );
 }

@@ -13,6 +13,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {ListRenderItem} from 'react-native';
 import {Reciter} from '@/data/reciterData';
 import {Surah} from '@/data/surahData';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 import {DownloadedSurah} from '@/services/player/store/downloadStore';
 import {
   useDownloadActions,
@@ -129,7 +130,7 @@ export const ReciterDownloadsList: React.FC<ReciterDownloadsListProps> = ({
               // Capitalize style
               const capitalizedStyle =
                 rewayat.style.charAt(0).toUpperCase() + rewayat.style.slice(1);
-              rewayatName = `${rewayat.name} \u2022 ${capitalizedStyle}`;
+              rewayatName = `${getDisplayLabelFromName(rewayat.name)} \u2022 ${capitalizedStyle}`;
             }
           }
 
