@@ -202,6 +202,7 @@ const ContinuousListView = forwardRef<
       s => s.wbwShowTransliteration,
     );
     const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+    const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
     const translationFontSize = useMushafSettingsStore(
       s => s.translationFontSize,
     );
@@ -287,6 +288,7 @@ const ContinuousListView = forwardRef<
                 fontMgr={fontMgr}
                 dkFontFamily={dkFontFamily}
                 indexedTajweedData={indexedTajweedData}
+                arabicTextWeight={arabicTextWeight}
               />
             </View>
           );
@@ -327,6 +329,7 @@ const ContinuousListView = forwardRef<
         showTransliteration,
         showTajweed,
         arabicFontSize,
+        arabicTextWeight,
         translationFontSize,
         transliterationFontSize,
         fontMgr,
@@ -361,7 +364,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={items}
         renderItem={renderItem}
-        extraData={currentVerseKey}
+        extraData={`${currentVerseKey}-${arabicTextWeight}`}
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}
@@ -377,6 +380,7 @@ const ContinuousListView = forwardRef<
     );
   },
 );
+ContinuousListView.displayName = 'ContinuousListView';
 
 export default React.memo(ContinuousListView);
 

@@ -69,6 +69,7 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontMgr = mushafPreloadService.fontMgr;
@@ -218,6 +219,7 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                             showTajweed={false}
                             width={contentWidth - moderateScale(28)}
                             indexedTajweedData={null}
+                            arabicTextWeight={arabicTextWeight}
                           />
                         </View>
                       ) : null}
@@ -270,6 +272,7 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                                       showTajweed={showTajweed}
                                       width={contentWidth - moderateScale(36)}
                                       indexedTajweedData={indexedTajweedData}
+                                      arabicTextWeight={arabicTextWeight}
                                     />
                                   </View>
                                 )}
@@ -355,6 +358,7 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                           showTajweed={false}
                           width={contentWidth - moderateScale(28)}
                           indexedTajweedData={null}
+                          arabicTextWeight={arabicTextWeight}
                         />
                       ) : null}
                     </Pressable>

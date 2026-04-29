@@ -44,6 +44,7 @@ import {
   DISPLAY_MAX,
   type MushafRenderer,
   type MushafScrollDirection,
+  type MushafArabicTextWeight,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 
@@ -113,6 +114,30 @@ const FONT_OPTIONS: FontOption[] = [
   },
 ];
 
+interface TextWeightOption {
+  value: MushafArabicTextWeight;
+  label: string;
+  description: string;
+}
+
+const TEXT_WEIGHT_OPTIONS: TextWeightOption[] = [
+  {
+    value: 'normal',
+    label: 'Normal',
+    description: 'Original mushaf weight',
+  },
+  {
+    value: 'medium',
+    label: 'Medium',
+    description: 'Slightly more prominent',
+  },
+  {
+    value: 'bold',
+    label: 'Bold',
+    description: 'Maximum prominence',
+  },
+];
+
 // Internal reusable component for font size control
 interface FontSizeControlProps {
   label: string;
@@ -128,6 +153,7 @@ interface FontSizeControlProps {
   skiaFontFamily?: string;
   skiaVerseKey?: string;
   skiaIndexedTajweedData?: IndexedTajweedData | null;
+  skiaArabicTextWeight?: MushafArabicTextWeight;
 }
 
 const FontSizeControl: React.FC<FontSizeControlProps> = ({
@@ -144,6 +170,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   skiaFontFamily,
   skiaVerseKey,
   skiaIndexedTajweedData,
+  skiaArabicTextWeight = 'normal',
 }) => {
   const themedColors = useMemo(
     () => getThemedTajweedColors(theme.isDarkMode),
@@ -194,6 +221,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
           showTajweed={showTajweed ?? false}
           width={sampleWidth}
           indexedTajweedData={skiaIndexedTajweedData ?? null}
+          arabicTextWeight={skiaArabicTextWeight}
         />
       );
     } else if (isQPC && processedSampleSegments) {
@@ -233,6 +261,7 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     skiaFontMgr,
     skiaFontFamily,
     skiaIndexedTajweedData,
+    skiaArabicTextWeight,
     sampleWidth,
     isQPC,
     processedSampleSegments,
@@ -397,6 +426,62 @@ const TajweedToggle: React.FC<TajweedToggleProps> = ({
   );
 };
 
+interface TextWeightControlProps {
+  value: MushafArabicTextWeight;
+  onChange: (value: MushafArabicTextWeight) => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}
+
+const TextWeightControl: React.FC<TextWeightControlProps> = ({
+  value,
+  onChange,
+  styles,
+  theme,
+}) => (
+  <View style={styles.card}>
+    {TEXT_WEIGHT_OPTIONS.map((option, idx) => {
+      const isSelected = value === option.value;
+      return (
+        <React.Fragment key={option.value}>
+          {idx > 0 && <View style={styles.divider} />}
+          <Pressable
+            style={({pressed}) => [
+              styles.radioRow,
+              pressed && styles.radioRowPressed,
+            ]}
+            onPress={() => onChange(option.value)}>
+            <View
+              style={[
+                styles.radioCircle,
+                isSelected && styles.radioCircleSelected,
+              ]}>
+              {isSelected && <View style={styles.radioCircleFill} />}
+            </View>
+            <View style={styles.radioTextContainer}>
+              <Text
+                style={[
+                  styles.radioLabel,
+                  isSelected && styles.radioLabelSelected,
+                ]}>
+                {option.label}
+              </Text>
+              <Text style={styles.radioDescription}>{option.description}</Text>
+            </View>
+            {isSelected && (
+              <Feather
+                name="check"
+                size={moderateScale(18)}
+                color={Color(theme.colors.text).alpha(0.7).toString()}
+              />
+            )}
+          </Pressable>
+        </React.Fragment>
+      );
+    })}
+  </View>
+);
+
 interface MushafSettingsContentProps {
   containerStyle?: object;
   showTitle?: boolean;
@@ -421,12 +506,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     arabicFontSize,
     translationFontSize,
     transliterationFontSize,
+    arabicTextWeight,
     toggleTranslation,
     toggleTransliteration,
     toggleTajweed,
     setArabicFontSize,
     setTranslationFontSize,
     setTransliterationFontSize,
+    setArabicTextWeight,
     mushafRenderer,
     setMushafRenderer,
     pageLayout,
@@ -775,6 +862,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               skiaFontFamily={dkFontFamily}
               skiaVerseKey={verseKey}
               skiaIndexedTajweedData={indexedTajweedData}
+              skiaArabicTextWeight={arabicTextWeight}
             />
           </View>
 
@@ -838,6 +926,15 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           </View>
         </>
       )}
+
+      {/* TEXT THICKNESS Section */}
+      <Text style={styles.sectionHeader}>TEXT THICKNESS</Text>
+      <TextWeightControl
+        value={arabicTextWeight}
+        onChange={setArabicTextWeight}
+        styles={styles}
+        theme={theme}
+      />
 
       {/* THEMES Section */}
       <View style={styles.card}>
