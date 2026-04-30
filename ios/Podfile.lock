@@ -262,6 +262,29 @@ PODS:
   - ExpoRouter (55.0.3):
     - ExpoModulesCore
     - RNScreens
+  - ExpoScreenOrientation (55.0.13):
+    - ExpoModulesCore
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - ExpoShareIntentModule (6.0.0):
     - ExpoModulesCore
   - ExpoSharing (55.0.11):
@@ -2724,6 +2747,7 @@ DEPENDENCIES:
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
   - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
   - ExpoRouter (from `../node_modules/expo-router/ios`)
+  - ExpoScreenOrientation (from `../node_modules/expo-screen-orientation/ios`)
   - ExpoShareIntentModule (from `../node_modules/expo-share-intent/ios`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
@@ -2911,6 +2935,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-notifications/ios"
   ExpoRouter:
     :path: "../node_modules/expo-router/ios"
+  ExpoScreenOrientation:
+    :path: "../node_modules/expo-screen-orientation/ios"
   ExpoShareIntentModule:
     :path: "../node_modules/expo-share-intent/ios"
   ExpoSharing:
@@ -3153,6 +3179,7 @@ SPEC CHECKSUMS:
   ExpoModulesJSI: 59a126dc51164e603242ee9a38c19339c5c79da0
   ExpoNotifications: fa5cf77a46c8ea6bfc93bdbad9805c4f8d8a81fb
   ExpoRouter: 9f071f8eb7b03e684302a845d78b1fb8e08118ed
+  ExpoScreenOrientation: 651e404bda8f9b6a3c8669fc6709c0b7c64e6e16
   ExpoShareIntentModule: dab8f0838318ae97a7d1aff095da20de7d7070f5
   ExpoSharing: 5f1435af23bcf740c63b1d322400d1e26bf77393
   ExpoSplashScreen: 6452aefb424acc76347d62482caef9b4e613e59e

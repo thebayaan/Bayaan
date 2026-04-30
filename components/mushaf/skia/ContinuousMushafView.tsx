@@ -52,15 +52,65 @@ import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
-import {SCREEN_WIDTH, CONTENT_WIDTH, BASE_LINE_HEIGHT} from '../constants';
+import {type MushafLayoutMetrics} from '../constants';
 
-// Pre-compute rendering constants (derived from screen dimensions, never change)
-const renderScale = CONTENT_WIDTH / PAGE_WIDTH;
-const skiaMargin = MARGIN * renderScale;
-const lineWidth = CONTENT_WIDTH - 2 * skiaMargin;
-const skiaFontSize = FONTSIZE * renderScale * 0.9;
-const fontSizeLineWidthRatio = skiaFontSize / lineWidth;
-const canvasMarginX = (SCREEN_WIDTH - CONTENT_WIDTH) / 2;
+// Rendering constants are now derived from live `metrics` (see
+// `useRenderConstants` below). On phones the old frozen values are
+// reproduced exactly; on iPad we use the capped page width so fonts
+// stay readable and lines don't overlap.
+interface RenderConstants {
+  screenWidth: number;
+  contentWidth: number;
+  pageOffsetX: number;
+  baseLineHeight: number;
+  renderScale: number;
+  skiaMargin: number;
+  lineWidth: number;
+  skiaFontSize: number;
+  fontSizeLineWidthRatio: number;
+  canvasMarginX: number;
+}
+
+// Ratio of line-height to content-width that matches the phone's visual
+// density (derived from legacy constants: 41pt line height at 412pt content
+// width). Used for the continuous vertical view so each page's height stays
+// proportional to its width regardless of container height.
+const CONTINUOUS_LINE_HEIGHT_RATIO = 0.1;
+
+function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
+  const {screenWidth, contentWidth, pageOffsetX} = metrics;
+  const renderScale = contentWidth / PAGE_WIDTH;
+  const skiaMargin = MARGIN * renderScale;
+  const lineWidth = contentWidth - 2 * skiaMargin;
+  const skiaFontSize = FONTSIZE * renderScale * 0.9;
+  const fontSizeLineWidthRatio = skiaFontSize / lineWidth;
+  // Horizontal offset from the FlatList item's left edge to the Canvas.
+  // On phone: centers the content within the view (legacy behavior).
+  // On iPad: adds `pageOffsetX` so the (capped) page sits centered in the
+  // full container width.
+  const canvasMarginX = pageOffsetX + (metrics.pageWidth - contentWidth) / 2;
+  // Decouple line-height from container-height for the continuous view so
+  // each page's vertical footprint scales with its width (preserves the
+  // "continuous scroll" feel on iPad instead of each page filling the whole
+  // viewport). Still honor the metric's value if it produces a tighter
+  // layout (i.e. short screens).
+  const baseLineHeight = Math.min(
+    metrics.baseLineHeight,
+    contentWidth * CONTINUOUS_LINE_HEIGHT_RATIO,
+  );
+  return {
+    screenWidth,
+    contentWidth,
+    pageOffsetX,
+    baseLineHeight,
+    renderScale,
+    skiaMargin,
+    lineWidth,
+    skiaFontSize,
+    fontSizeLineWidthRatio,
+    canvasMarginX,
+  };
+}
 
 const TOTAL_PAGES = 604;
 const pages = Array.from({length: TOTAL_PAGES}, (_, i) => i + 1);
@@ -102,6 +152,9 @@ interface ContinuousMushafViewProps {
   onTap?: () => void;
   initialPage: number;
   onCurrentPageChange?: (page: number) => void;
+  /** Live layout metrics from `useMushafLayout()`. Threaded through so the
+   *  continuous view responds to iPad width caps + rotation. */
+  metrics: MushafLayoutMetrics;
 }
 
 // ── Per-page content with gestures + highlights ──────────
@@ -122,10 +175,9 @@ interface MushafPageContentProps {
   dividerFont: SkFont | null;
   nameFontSize: number;
   onTap?: () => void;
+  /** Live render constants derived from `metrics`. */
+  render: RenderConstants;
 }
-
-// Background tint for rewayah-diff words — matches SkiaPage.
-const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
 
 const EMPTY_BG_MAP = new Map<
   number,
@@ -149,8 +201,19 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     dividerFont,
     nameFontSize,
     onTap,
+    render,
   }) => {
     const {isDarkMode} = useTheme();
+    const {
+      screenWidth,
+      contentWidth,
+      baseLineHeight,
+      skiaMargin,
+      lineWidth,
+      skiaFontSize,
+      fontSizeLineWidthRatio,
+      canvasMarginX,
+    } = render;
 
     // ── Page data ──────────────────────────────────────────
     const pageLines = useMemo(
@@ -179,7 +242,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       // directly: getCachedPageLayout/setPageLayout key the cache by rewayah
       // internally, so the memo must re-run when rewayah changes.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pageNumber, fontMgr, fontFamily, rewayah]);
+    }, [pageNumber, fontMgr, fontFamily, rewayah, fontSizeLineWidthRatio]);
 
     const lineTajweedMaps = useMemo(() => {
       if (!showTajweed || !indexedTajweedData) return null;
@@ -206,7 +269,51 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       allahNameHighlightColor,
     ]);
 
-    const canvasHeight = pageLines.length * BASE_LINE_HEIGHT;
+    // Merged tajweed + rewayah foreground rules. Mirrors SkiaPage:
+    // identical helper, identical precedence (tajweed base → rewayah
+    // categories → silah). Keeps the vertical continuous-mushaf renderer
+    // and the paginated SkiaPage renderer in lockstep so list-mode and
+    // page-mode paint the same foreground highlights.
+    const lineCharRuleMaps = useMemo(() => {
+      if (
+        !lineTajweedMaps &&
+        !rewayahDiffService.hasAnyDiffs &&
+        !rewayahDiffService.hasSilahColoring
+      ) {
+        return null;
+      }
+
+      const maps: (Map<number, string> | null)[] = [];
+      for (let i = 0; i < pageLines.length; i++) {
+        const tajweed = lineTajweedMaps?.[i] ?? null;
+        const rewayahMap = rewayahDiffService.getRewayahRuleMapForLine(
+          pageNumber,
+          i,
+        );
+        if (!tajweed && !rewayahMap) {
+          maps.push(null);
+          continue;
+        }
+        if (!rewayahMap) {
+          maps.push(tajweed);
+          continue;
+        }
+        if (!tajweed) {
+          maps.push(rewayahMap);
+          continue;
+        }
+        const merged = new Map(tajweed);
+        for (const [k, v] of rewayahMap) merged.set(k, v);
+        maps.push(merged);
+      }
+      return maps;
+      // rewayah is in the dep list so the memo re-runs when the active
+      // rewayah changes; rewayahDiffService is a singleton whose internal
+      // state isn't tracked by React directly.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [lineTajweedMaps, pageNumber, pageLines, rewayah]);
+
+    const canvasHeight = pageLines.length * baseLineHeight;
 
     // ── Paragraph refs for hit testing ─────────────────────
     const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
@@ -254,14 +361,14 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 
         if (
           canvasX < 0 ||
-          canvasX > CONTENT_WIDTH ||
+          canvasX > contentWidth ||
           canvasY < 0 ||
           canvasY > canvasHeight
         ) {
           return null;
         }
 
-        const lineIndex = Math.floor(canvasY / BASE_LINE_HEIGHT);
+        const lineIndex = Math.floor(canvasY / baseLineHeight);
         if (lineIndex < 0 || lineIndex >= pageLines.length) return null;
 
         const line = pageLines[lineIndex];
@@ -271,7 +378,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         if (!paragraphInfo) return null;
 
         const paragraphX = canvasX - paragraphInfo.xPos;
-        const paragraphY = canvasY - lineIndex * BASE_LINE_HEIGHT;
+        const paragraphY = canvasY - lineIndex * baseLineHeight;
 
         const charIndex = paragraphInfo.paragraph.getGlyphPositionAtCoordinate(
           paragraphX,
@@ -284,7 +391,14 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
           charIndex,
         );
       },
-      [pageNumber, pageLines, canvasHeight],
+      [
+        pageNumber,
+        pageLines,
+        canvasHeight,
+        canvasMarginX,
+        contentWidth,
+        baseLineHeight,
+      ],
     );
 
     // ── Drag gesture handlers ──────────────────────────────
@@ -457,21 +571,18 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         Array<{start: number; end: number; color: string}>
       >();
 
+      // Shared pipeline with SkiaPage; both consume the same per-line
+      // diff-highlight map produced by rewayahDiffService.
       if (hasRewayahDiffs) {
-        for (let lineIndex = 0; lineIndex < pageLines.length; lineIndex++) {
-          const ranges = rewayahDiffService.getDiffRangesForLine(
-            pageNumber,
-            lineIndex,
-          );
-          if (ranges.length === 0) continue;
+        const diffHighlights =
+          rewayahDiffService.getPageDiffHighlightsByLine(pageNumber);
+        for (const [lineIndex, entries] of diffHighlights) {
           let arr = map.get(lineIndex);
           if (!arr) {
             arr = [];
             map.set(lineIndex, arr);
           }
-          for (const r of ranges) {
-            arr.push({start: r.start, end: r.end, color: REWAYAH_DIFF_COLOR});
-          }
+          for (const entry of entries) arr.push(entry);
         }
       }
 
@@ -533,15 +644,15 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 
     // ── Render ─────────────────────────────────────────────
     const content = (
-      <View style={{width: SCREEN_WIDTH, height: canvasHeight}}>
+      <View style={{width: screenWidth, height: canvasHeight}}>
         <Canvas
           style={{
-            width: CONTENT_WIDTH,
+            width: contentWidth,
             height: canvasHeight,
             marginHorizontal: canvasMarginX,
           }}>
           {pageLines.map((line, lineIndex) => {
-            const yPos = lineIndex * BASE_LINE_HEIGHT;
+            const yPos = lineIndex * baseLineHeight;
 
             if (line.line_type === 'surah_name') {
               if (!dividerFont) return null;
@@ -557,7 +668,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                   xOffset={skiaMargin}
                   dividerColor={dividerColor}
                   nameColor={textColor}
-                  lineHeight={BASE_LINE_HEIGHT}
+                  lineHeight={baseLineHeight}
                 />
               );
             }
@@ -581,16 +692,16 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 lineIndex={lineIndex}
                 fontMgr={fontMgr}
                 justResult={justResults[lineIndex]}
-                pageWidth={CONTENT_WIDTH}
+                pageWidth={contentWidth}
                 fontSize={skiaFontSize}
                 margin={lineMargin}
                 yPos={yPos}
                 textColor={textColor}
-                charToRule={lineTajweedMaps?.[lineIndex] ?? undefined}
                 charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
+                charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 arabicTextWeight={arabicTextWeight}
-                lineHeight={BASE_LINE_HEIGHT}
+                lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
                 backgroundHighlights={lineBackgroundHighlightsMap.get(
                   lineIndex,
@@ -614,175 +725,188 @@ MushafPageContent.displayName = 'MushafPageContent';
 const ContinuousMushafView = forwardRef<
   ContinuousMushafViewHandle,
   ContinuousMushafViewProps
->(({textColor, dividerColor, onTap, initialPage, onCurrentPageChange}, ref) => {
-  const insets = useSafeAreaInsets();
-  const {theme} = useTheme();
-  const flashListRef = useRef<FlashListRef<number>>(null);
+>(
+  (
+    {textColor, dividerColor, onTap, initialPage, onCurrentPageChange, metrics},
+    ref,
+  ) => {
+    const insets = useSafeAreaInsets();
+    const {theme} = useTheme();
+    const flashListRef = useRef<FlashListRef<number>>(null);
+    const render = useMemo(() => buildRenderConstants(metrics), [metrics]);
+    const {lineWidth} = render;
 
-  // Font loading (fallback — prefer preloaded fontMgr)
-  const hookFontMgr = useFonts({
-    DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
-    DigitalKhattV2: [
-      require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
-    ],
-    DigitalKhattIndoPak: [
-      require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
-    ],
-    QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
-    SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-  });
-  const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+    // Font loading (fallback — prefer preloaded fontMgr)
+    const hookFontMgr = useFonts({
+      DigitalKhattV1: [
+        require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
+      ],
+      DigitalKhattV2: [
+        require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
+      ],
+      DigitalKhattIndoPak: [
+        require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
+      ],
+      QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
+      SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
+    });
+    const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
 
-  // Surah header fonts (computed once from quranCommon typeface)
-  const surahHeaderFonts = useMemo(() => {
-    const qcTypeface = mushafPreloadService.quranCommonTypeface;
-    if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
-    const refFont = Skia.Font(qcTypeface, 100);
-    const ids = refFont.getGlyphIDs('\uE000');
-    const widths = refFont.getGlyphWidths(ids);
-    const measuredW = widths[0] || 1;
-    const scaledSize = (lineWidth / measuredW) * 100;
-    return {
-      dividerFont: Skia.Font(qcTypeface, scaledSize),
-      nameFontSize: scaledSize * 0.4,
-    };
-  }, []);
+    // Surah header fonts (computed once from quranCommon typeface)
+    const surahHeaderFonts = useMemo(() => {
+      const qcTypeface = mushafPreloadService.quranCommonTypeface;
+      if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
+      const refFont = Skia.Font(qcTypeface, 100);
+      const ids = refFont.getGlyphIDs('\uE000');
+      const widths = refFont.getGlyphWidths(ids);
+      const measuredW = widths[0] || 1;
+      const scaledSize = (lineWidth / measuredW) * 100;
+      return {
+        dividerFont: Skia.Font(qcTypeface, scaledSize),
+        nameFontSize: scaledSize * 0.4,
+      };
+    }, [lineWidth]);
 
-  // Settings subscriptions
-  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
-  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
-  const showAllahNameHighlight = useMushafSettingsStore(
-    s => s.showAllahNameHighlight,
-  );
-  const allahNameHighlightColorSetting = useMushafSettingsStore(
-    s => s.allahNameHighlightColor,
-  );
-  const rewayah = useMushafSettingsStore(s => s.rewayah);
-  const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
-  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
+    // Settings subscriptions
+    const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+    const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+    const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+    const showAllahNameHighlight = useMushafSettingsStore(
+      s => s.showAllahNameHighlight,
+    );
+    const allahNameHighlightColorSetting = useMushafSettingsStore(
+      s => s.allahNameHighlightColor,
+    );
+    const rewayah = useMushafSettingsStore(s => s.rewayah);
+    const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
+    const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
-  const fontFamily =
-    getRewayahFontFamily(rewayah) ??
-    (mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
+    const fontFamily =
+      getRewayahFontFamily(
+        rewayah as Parameters<typeof getRewayahFontFamily>[0],
+      ) ??
+      (mushafRenderer === 'dk_indopak'
+        ? 'DigitalKhattIndoPak'
+        : mushafRenderer === 'dk_v1'
         ? 'DigitalKhattV1'
         : 'DigitalKhattV2');
-  const allahNameHighlightColor = useMemo(
-    () =>
-      getAllahNameHighlightColorHex(
-        allahNameHighlightColorSetting,
-        theme.isDarkMode,
-      ),
-    [allahNameHighlightColorSetting, theme.isDarkMode],
-  );
+    const allahNameHighlightColor = useMemo(
+      () =>
+        getAllahNameHighlightColorHex(
+          allahNameHighlightColorSetting,
+          theme.isDarkMode,
+        ),
+      [allahNameHighlightColorSetting, theme.isDarkMode],
+    );
 
-  // Navigation
-  const surahStartPages = digitalKhattDataService.initialized
-    ? digitalKhattDataService.getSurahStartPages()
-    : {};
+    // Navigation
+    const surahStartPages = digitalKhattDataService.initialized
+      ? digitalKhattDataService.getSurahStartPages()
+      : {};
 
-  useImperativeHandle(ref, () => ({
-    scrollToPage: (page: number, animated = false) => {
-      flashListRef.current?.scrollToIndex({index: page - 1, animated});
-    },
-    scrollToSurah: (surahId: number, animated = false) => {
-      const targetPage = surahStartPages[surahId];
-      if (targetPage) {
-        flashListRef.current?.scrollToIndex({
-          index: targetPage - 1,
-          animated,
-        });
-      }
-    },
-    scrollToVerse: (verseKey: string, animated = false) => {
-      const page = getPageForVerse(verseKey);
-      if (page) {
+    useImperativeHandle(ref, () => ({
+      scrollToPage: (page: number, animated = false) => {
         flashListRef.current?.scrollToIndex({index: page - 1, animated});
-      }
-    },
-  }));
+      },
+      scrollToSurah: (surahId: number, animated = false) => {
+        const targetPage = surahStartPages[surahId];
+        if (targetPage) {
+          flashListRef.current?.scrollToIndex({
+            index: targetPage - 1,
+            animated,
+          });
+        }
+      },
+      scrollToVerse: (verseKey: string, animated = false) => {
+        const page = getPageForVerse(verseKey);
+        if (page) {
+          flashListRef.current?.scrollToIndex({index: page - 1, animated});
+        }
+      },
+    }));
 
-  // Load annotations for visible surahs
-  const loadAnnotationsForSurah = useVerseAnnotationsStore(
-    s => s.loadAnnotationsForSurah,
-  );
-  const pageToSurah = digitalKhattDataService.initialized
-    ? digitalKhattDataService.getPageToSurah()
-    : {};
+    // Load annotations for visible surahs
+    const loadAnnotationsForSurah = useVerseAnnotationsStore(
+      s => s.loadAnnotationsForSurah,
+    );
+    const pageToSurah = digitalKhattDataService.initialized
+      ? digitalKhattDataService.getPageToSurah()
+      : {};
 
-  const onViewableItemsChanged = useCallback(
-    ({viewableItems}: {viewableItems: Array<{item: number}>}) => {
-      if (viewableItems.length === 0) return;
-      const page = viewableItems[0].item;
-      onCurrentPageChange?.(page);
-      const surahId = pageToSurah[page];
-      if (surahId) loadAnnotationsForSurah(surahId);
-    },
-    [onCurrentPageChange, pageToSurah, loadAnnotationsForSurah],
-  );
+    const onViewableItemsChanged = useCallback(
+      ({viewableItems}: {viewableItems: Array<{item: number}>}) => {
+        if (viewableItems.length === 0) return;
+        const page = viewableItems[0].item;
+        onCurrentPageChange?.(page);
+        const surahId = pageToSurah[page];
+        if (surahId) loadAnnotationsForSurah(surahId);
+      },
+      [onCurrentPageChange, pageToSurah, loadAnnotationsForSurah],
+    );
 
-  const renderItem = useCallback(
-    ({item}: {item: number}) => {
-      if (!fontMgr) return null;
-      return (
-        <MushafPageContent
-          pageNumber={item}
-          fontMgr={fontMgr}
-          textColor={textColor}
-          dividerColor={dividerColor}
-          showTajweed={showTajweed}
-          indexedTajweedData={indexedTajweedData}
-          fontFamily={fontFamily}
-          arabicTextWeight={arabicTextWeight}
-          showAllahNameHighlight={showAllahNameHighlight}
-          allahNameHighlightColor={allahNameHighlightColor}
-          rewayah={rewayah}
-          showRewayahDiffs={showRewayahDiffs}
-          dividerFont={surahHeaderFonts.dividerFont}
-          nameFontSize={surahHeaderFonts.nameFontSize}
-          onTap={onTap}
-        />
-      );
-    },
-    [
-      fontMgr,
-      textColor,
-      dividerColor,
-      showTajweed,
-      indexedTajweedData,
-      fontFamily,
-      arabicTextWeight,
-      showAllahNameHighlight,
-      allahNameHighlightColor,
-      rewayah,
-      showRewayahDiffs,
-      surahHeaderFonts,
-      onTap,
-    ],
-  );
+    const renderItem = useCallback(
+      ({item}: {item: number}) => {
+        if (!fontMgr) return null;
+        return (
+          <MushafPageContent
+            pageNumber={item}
+            fontMgr={fontMgr}
+            textColor={textColor}
+            dividerColor={dividerColor}
+            showTajweed={showTajweed}
+            indexedTajweedData={indexedTajweedData}
+            fontFamily={fontFamily}
+            arabicTextWeight={arabicTextWeight}
+            showAllahNameHighlight={showAllahNameHighlight}
+            allahNameHighlightColor={allahNameHighlightColor}
+            rewayah={rewayah}
+            showRewayahDiffs={showRewayahDiffs}
+            dividerFont={surahHeaderFonts.dividerFont}
+            nameFontSize={surahHeaderFonts.nameFontSize}
+            onTap={onTap}
+            render={render}
+          />
+        );
+      },
+      [
+        fontMgr,
+        textColor,
+        dividerColor,
+        showTajweed,
+        indexedTajweedData,
+        fontFamily,
+        arabicTextWeight,
+        showAllahNameHighlight,
+        allahNameHighlightColor,
+        rewayah,
+        showRewayahDiffs,
+        surahHeaderFonts,
+        onTap,
+        render,
+      ],
+    );
 
-  const keyExtractor = useCallback((item: number) => `page-${item}`, []);
+    const keyExtractor = useCallback((item: number) => `page-${item}`, []);
 
-  return (
-    <FlashList
-      ref={flashListRef}
-      data={pages}
-      renderItem={renderItem}
-      extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}`}
-      keyExtractor={keyExtractor}
-      initialScrollIndex={initialPage - 1}
-      contentContainerStyle={{
-        paddingTop: insets.top + verticalScale(60),
-        paddingBottom: insets.bottom + verticalScale(80),
-      }}
-      showsVerticalScrollIndicator={false}
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={{itemVisiblePercentThreshold: 50}}
-    />
-  );
-});
+    return (
+      <FlashList
+        ref={flashListRef}
+        data={pages}
+        renderItem={renderItem}
+        extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}`}
+        keyExtractor={keyExtractor}
+        initialScrollIndex={initialPage - 1}
+        contentContainerStyle={{
+          paddingTop: insets.top + verticalScale(60),
+          paddingBottom: insets.bottom + verticalScale(80),
+        }}
+        showsVerticalScrollIndicator={false}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{itemVisiblePercentThreshold: 50}}
+      />
+    );
+  },
+);
 ContinuousMushafView.displayName = 'ContinuousMushafView';
 
 export default React.memo(ContinuousMushafView);

@@ -24,6 +24,11 @@ import {
   HeartIcon,
   StarIcon,
 } from '@/components/Icons';
+import {
+  recitationShareUrl,
+  reciterShareUrl,
+  shareUrl,
+} from '@/utils/shareUtils';
 
 export const HomeCardOptionsSheet = (
   props: SheetProps<'home-card-options'>,
@@ -119,6 +124,36 @@ export const HomeCardOptionsSheet = (
     }, 300);
   }, [reciterId, surahId, rewayatId, handleClose]);
 
+  const handleShare = useCallback(async () => {
+    const reciter = await getReciterById(reciterId);
+    const slug = reciter?.slug ?? String(reciterId);
+    const displayName = reciter?.name ?? reciterName;
+    // iOS refuses to present the native share sheet while another sheet is
+    // still animating out. Mirror handleGoToReciter / handleAddToPlaylist's
+    // 300ms hand-off so the action sheet closes first.
+    handleClose();
+    setTimeout(() => {
+      if (variant === 'recent' && surahId !== undefined) {
+        const url = recitationShareUrl(slug, surahId, rewayatId);
+        const surahLabel = surahName ?? `surah ${surahId}`;
+        shareUrl(
+          url,
+          `Listen to ${displayName} reciting ${surahLabel} on Bayaan`,
+        );
+        return;
+      }
+      shareUrl(reciterShareUrl(slug), `Listen to ${displayName} on Bayaan`);
+    }, 300);
+  }, [
+    reciterId,
+    reciterName,
+    surahId,
+    surahName,
+    rewayatId,
+    variant,
+    handleClose,
+  ]);
+
   const handleRemoveFromRecents = useCallback(() => {
     if (recentIndex !== undefined) {
       useRecentlyPlayedStore.getState().removeTrack(recentIndex);
@@ -200,7 +235,9 @@ export const HomeCardOptionsSheet = (
             onPress={handleToggleFavorite}>
             <StarIcon color={iconColor} size={iconSize} filled={isFavorite} />
             <Text style={styles.optionText}>
-              {isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              {isFavorite
+                ? 'Remove reciter from favorites'
+                : 'Add reciter to favorites'}
             </Text>
           </Pressable>
 
@@ -214,7 +251,11 @@ export const HomeCardOptionsSheet = (
                   pressed && styles.optionPressed,
                 ]}
                 onPress={handleToggleLoved}>
-                <HeartIcon color={iconColor} size={iconSize} filled={isLoved} />
+                <HeartIcon
+                  color={iconColor}
+                  size={moderateScale(22)}
+                  filled={isLoved}
+                />
                 <Text style={styles.optionText}>
                   {isLoved ? 'Remove from loved' : 'Add to loved'}
                 </Text>
@@ -233,6 +274,18 @@ export const HomeCardOptionsSheet = (
               </Pressable>
             </>
           )}
+
+          <View style={styles.divider} />
+
+          <Pressable
+            style={({pressed}) => [
+              styles.option,
+              pressed && styles.optionPressed,
+            ]}
+            onPress={handleShare}>
+            <Feather name="share" size={iconSize} color={iconColor} />
+            <Text style={styles.optionText}>Share</Text>
+          </Pressable>
         </View>
 
         {variant === 'recent' && (

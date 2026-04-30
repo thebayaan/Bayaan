@@ -442,7 +442,7 @@ export function SearchView({
       <RNAnimated.View
         style={[styles.modeContainer, {opacity: browseOpacity}]}
         pointerEvents={isSearchMode ? 'none' : 'auto'}>
-        <ExploreView skipTopInset={skipTopInset} />
+        <ExploreView />
       </RNAnimated.View>
 
       {/* Search Mode — always mounted, hidden via opacity */}

@@ -1,6 +1,6 @@
 import React, {useCallback} from 'react';
 import {View, Text, Pressable, StyleSheet} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {Feather} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';

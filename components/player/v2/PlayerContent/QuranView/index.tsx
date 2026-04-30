@@ -1,6 +1,7 @@
 import React, {useCallback, useRef, useEffect, useState, useMemo} from 'react';
 import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
+import {useResponsive} from '@/hooks/useResponsive';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
@@ -95,6 +96,8 @@ interface QuranViewProps {
   arabicFontSize: number;
   contentPaddingTop?: number;
   contentPaddingBottom?: number;
+  /** When the player is in a tablet split layout, width of the left pane (defaults to window). */
+  parentContentWidth?: number;
 }
 
 export const QuranView: React.FC<QuranViewProps> = ({
@@ -107,11 +110,19 @@ export const QuranView: React.FC<QuranViewProps> = ({
   arabicFontSize,
   contentPaddingTop,
   contentPaddingBottom,
+  parentContentWidth,
 }) => {
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
   const {width: screenWidth} = useWindowDimensions();
-  const contentWidth = screenWidth - 2 * moderateScale(20);
+  const {isTablet} = useResponsive();
+  const horizontalPad = moderateScale(20);
+  const maxReadingColumn = isTablet ? 680 : Number.POSITIVE_INFINITY;
+  const baseWidth = parentContentWidth ?? screenWidth;
+  const contentWidth = Math.min(
+    baseWidth - 2 * horizontalPad,
+    maxReadingColumn,
+  );
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const trackRewayah = useCurrentTrackRewayah();
@@ -286,6 +297,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
     <View style={styles.container}>
       <FlashList
         ref={listRef}
+        style={{width: contentWidth, height: '100%'}}
         data={verses}
         renderItem={renderItem}
         extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${arabicTextWeight}-${showTranslation}-${showTransliteration}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
@@ -350,6 +362,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'transparent',
     overflow: 'hidden',
+    alignItems: 'center',
   },
   recenterButton: {
     position: 'absolute',

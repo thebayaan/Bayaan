@@ -6,7 +6,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import {Verse} from '@/types/quran';
 import Color from 'color';

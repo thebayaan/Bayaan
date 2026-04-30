@@ -60,10 +60,18 @@ module.exports = {
             CFBundleURLSchemes: ['bayaan'],
           },
         ],
-        NSPrivacyPolicyURL: PRIVACY_POLICY_URL,
-        UISupportedInterfaceOrientations: ['UIInterfaceOrientationPortrait'],
+        NSPrivacyPolicyURL:
+          'https://osmansaeday.github.io/bayaan-privacy-policy',
+        UISupportedInterfaceOrientations: [
+          'UIInterfaceOrientationPortrait',
+          'UIInterfaceOrientationLandscapeLeft',
+          'UIInterfaceOrientationLandscapeRight',
+        ],
         'UISupportedInterfaceOrientations~ipad': [
           'UIInterfaceOrientationPortrait',
+          'UIInterfaceOrientationPortraitUpsideDown',
+          'UIInterfaceOrientationLandscapeLeft',
+          'UIInterfaceOrientationLandscapeRight',
         ],
       },
       icon: {

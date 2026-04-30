@@ -17,6 +17,7 @@ import {
 import {CircularProgress} from '@/components/CircularProgress';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 interface TrackItemProps {
   reciterId: string;
@@ -122,7 +123,7 @@ export const TrackItem: React.FC<TrackItemProps> = React.memo(
       if (!rewayat) return null;
       return (
         <Text style={[styles.rewayatText, {color: theme.colors.textSecondary}]}>
-          {rewayat.name}
+          {getDisplayLabelFromName(rewayat.name)}
           {rewayat.style ? ` \u2022 ${rewayat.style}` : ''}
         </Text>
       );
