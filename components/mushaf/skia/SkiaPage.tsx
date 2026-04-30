@@ -26,6 +26,7 @@ import {
   type DKLine,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
+import {getLineAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
@@ -42,6 +43,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import Color from 'color';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
@@ -127,6 +129,12 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
@@ -137,6 +145,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       : uthmaniFont === 'v1'
         ? 'DigitalKhattV1'
         : 'DigitalKhattV2');
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
 
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,
@@ -229,6 +245,24 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     }
     return maps;
   }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
+
+  const lineAllahNameColorMaps = useMemo(() => {
+    if (!showAllahNameHighlight) return null;
+    const maps: (Map<number, string> | null)[] = [];
+    for (let i = 0; i < pageLines.length; i++) {
+      const charMap = getLineAllahNameCharMap(pageNumber, i);
+      if (!charMap) {
+        maps.push(null);
+        continue;
+      }
+      const colorMap = new Map<number, string>();
+      for (const key of charMap.keys()) {
+        colorMap.set(key, allahNameHighlightColor);
+      }
+      maps.push(colorMap);
+    }
+    return maps;
+  }, [showAllahNameHighlight, pageNumber, pageLines, allahNameHighlightColor]);
 
   // Merged char-to-rule maps: tajweed + rewayah categories + silah.
   // Precedence (later wins): tajweed → minor → ibdal → tashil → madd →
@@ -763,6 +797,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               yPos={yPos}
               textColor={textColor}
               charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
+              charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
               onParagraphReady={handleParagraphReady}

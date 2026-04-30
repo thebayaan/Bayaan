@@ -26,6 +26,10 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {
+  ALLAH_NAME_HIGHLIGHT_OPTIONS,
+  getAllahNameHighlightColorHex,
+} from '@/constants/mushafAllahHighlight';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import {showToast} from '@/utils/toastUtils';
 import {
@@ -37,6 +41,7 @@ import {
   type MushafRenderer,
   type MushafScrollDirection,
   type MushafArabicTextWeight,
+  type MushafAllahNameHighlightColor,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
 
@@ -146,6 +151,8 @@ interface FontSizeControlProps {
   skiaVerseKey?: string;
   skiaIndexedTajweedData?: IndexedTajweedData | null;
   skiaArabicTextWeight?: MushafArabicTextWeight;
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
 }
 
 const FontSizeControl: React.FC<FontSizeControlProps> = ({
@@ -163,6 +170,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
   skiaVerseKey,
   skiaIndexedTajweedData,
   skiaArabicTextWeight = 'normal',
+  showAllahNameHighlight = false,
+  allahNameHighlightColor,
 }) => {
   const themedColors = useMemo(
     () => getThemedTajweedColors(theme.isDarkMode),
@@ -214,6 +223,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
           width={sampleWidth}
           indexedTajweedData={skiaIndexedTajweedData ?? null}
           arabicTextWeight={skiaArabicTextWeight}
+          showAllahNameHighlight={showAllahNameHighlight}
+          allahNameHighlightColor={allahNameHighlightColor}
         />
       );
     } else if (isQPC && processedSampleSegments) {
@@ -254,6 +265,8 @@ const FontSizeControl: React.FC<FontSizeControlProps> = ({
     skiaFontFamily,
     skiaIndexedTajweedData,
     skiaArabicTextWeight,
+    showAllahNameHighlight,
+    allahNameHighlightColor,
     sampleWidth,
     isQPC,
     processedSampleSegments,
@@ -474,6 +487,47 @@ const TextWeightControl: React.FC<TextWeightControlProps> = ({
   </View>
 );
 
+interface AllahNameColorControlProps {
+  value: MushafAllahNameHighlightColor;
+  onChange: (value: MushafAllahNameHighlightColor) => void;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}
+
+const AllahNameColorControl: React.FC<AllahNameColorControlProps> = ({
+  value,
+  onChange,
+  styles,
+  theme,
+}) => (
+  <View style={styles.colorPickerRow}>
+    {ALLAH_NAME_HIGHLIGHT_OPTIONS.map(option => {
+      const color = theme.isDarkMode ? option.dark : option.light;
+      const isActive = value === option.id;
+      return (
+        <Pressable
+          key={option.id}
+          style={[
+            styles.colorSwatch,
+            {backgroundColor: color},
+            isActive && styles.colorSwatchActive,
+          ]}
+          onPress={() => onChange(option.id)}>
+          {isActive ? (
+            <Feather
+              name="check"
+              size={moderateScale(16)}
+              color={Color('#111111')
+                .alpha(theme.isDarkMode ? 0.9 : 0.75)
+                .toString()}
+            />
+          ) : null}
+        </Pressable>
+      );
+    })}
+  </View>
+);
+
 interface MushafSettingsContentProps {
   containerStyle?: object;
   showTitle?: boolean;
@@ -499,6 +553,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     translationFontSize,
     transliterationFontSize,
     arabicTextWeight,
+    showAllahNameHighlight,
+    allahNameHighlightColor,
     toggleTranslation,
     toggleTransliteration,
     toggleTajweed,
@@ -521,6 +577,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     toggleWBW,
     toggleWBWTranslation,
     toggleWBWTransliteration,
+    toggleAllahNameHighlight,
     toggleThemes,
     lightThemeId,
     darkThemeId,
@@ -528,16 +585,21 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     showRewayahDiffs,
     setRewayah,
     toggleRewayahDiffs,
+    setAllahNameHighlightColor,
   } = useMushafSettingsStore();
 
-  const verseKey = '3:138';
+  const verseKey = '1:1';
+  const allahNameHighlightHex = getAllahNameHighlightColorHex(
+    allahNameHighlightColor,
+    theme.isDarkMode,
+  );
 
   const dkFontFamily =
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
   const fontMgr =
     mushafPreloadService.initialized && digitalKhattDataService.initialized
       ? mushafPreloadService.fontMgr
@@ -764,9 +826,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.settingRowLabel}>
             {themeMode === 'system'
               ? 'System'
-              : (getReadingThemeById(
+              : getReadingThemeById(
                   themeMode === 'light' ? lightThemeId : darkThemeId,
-                )?.name ?? 'System')}
+                )?.name ?? 'System'}
           </Text>
           <Feather
             name="chevron-right"
@@ -850,6 +912,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
               skiaVerseKey={verseKey}
               skiaIndexedTajweedData={indexedTajweedData}
               skiaArabicTextWeight={arabicTextWeight}
+              showAllahNameHighlight={showAllahNameHighlight}
+              allahNameHighlightColor={allahNameHighlightHex}
             />
           </View>
 
@@ -922,6 +986,35 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         styles={styles}
         theme={theme}
       />
+
+      <Text style={styles.sectionHeader}>ALLAH NAME</Text>
+      <View style={styles.card}>
+        <View style={styles.optionRow}>
+          <Text style={styles.optionLabel}>Highlight Allah&apos;s Name</Text>
+          <Switch
+            trackColor={trackColor}
+            thumbColor="#FFFFFF"
+            ios_backgroundColor={trackColor.false}
+            onValueChange={toggleAllahNameHighlight}
+            value={showAllahNameHighlight}
+            style={styles.switchStyle}
+          />
+        </View>
+        <Text style={styles.helperText}>
+          Highlights every occurrence of Allah&apos;s name in the mushaf.
+        </Text>
+        {showAllahNameHighlight && (
+          <>
+            <View style={styles.divider} />
+            <AllahNameColorControl
+              value={allahNameHighlightColor}
+              onChange={setAllahNameHighlightColor}
+              styles={styles}
+              theme={theme}
+            />
+          </>
+        )}
+      </View>
 
       {/* THEMES Section */}
       <View style={styles.card}>
@@ -1476,6 +1569,29 @@ const createStyles = (theme: Theme) =>
       marginTop: verticalScale(4),
       marginBottom: verticalScale(8),
       paddingHorizontal: moderateScale(16),
+    },
+    colorPickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(10),
+      paddingVertical: verticalScale(10),
+      paddingHorizontal: moderateScale(14),
+      marginHorizontal: -moderateScale(14),
+    },
+    colorSwatch: {
+      width: moderateScale(28),
+      height: moderateScale(28),
+      borderRadius: moderateScale(14),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: Color(theme.colors.text).alpha(0.12).toString(),
+    },
+    colorSwatchActive: {
+      borderColor: Color(theme.colors.text)
+        .alpha(theme.isDarkMode ? 0.9 : 0.75)
+        .toString(),
+      transform: [{scale: 1.04}],
     },
     tajweedOptionRow: {
       flexDirection: 'row',

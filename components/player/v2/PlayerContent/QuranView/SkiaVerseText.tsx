@@ -10,6 +10,7 @@ import {
   type SkColor,
 } from '@shopify/react-native-skia';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
@@ -38,6 +39,8 @@ interface SkiaVerseTextProps {
   width: number;
   indexedTajweedData: IndexedTajweedData | null;
   arabicTextWeight?: MushafArabicTextWeight;
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
   /** Render text from this rewayah's DK words DB instead of the active
    *  mushaf one. Used by the player to show text matching the currently
    *  playing reciter's rewayah. Ignored if `text` prop is provided. */
@@ -55,6 +58,8 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   width,
   indexedTajweedData,
   arabicTextWeight = 'normal',
+  showAllahNameHighlight = false,
+  allahNameHighlightColor,
   rewayah,
 }) => {
   const [, bump] = useReducer(x => x + 1, 0);
@@ -80,6 +85,13 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     if (!verseKey || !showTajweed || !indexedTajweedData) return null;
     return getVerseTajweedMap(verseKey, indexedTajweedData);
   }, [verseKey, showTajweed, indexedTajweedData]);
+
+  const charToAllahHighlight = useMemo(() => {
+    if (!showAllahNameHighlight || !allahNameHighlightColor || !verseText) {
+      return null;
+    }
+    return getTextAllahNameCharMap(verseText);
+  }, [showAllahNameHighlight, allahNameHighlightColor, verseText]);
 
   const {paragraph, strokeParagraph, height, yOffset} = useMemo(() => {
     if (!verseText || width <= 0) {
@@ -116,10 +128,16 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
 
       for (let i = 0; i < verseText.length; i++) {
         const char = verseText.charAt(i);
+        const allahHighlight = charToAllahHighlight?.has(i);
         const rule = charToRule?.get(i);
+        const resolvedColor = allahHighlight
+          ? allahNameHighlightColor
+          : rule && tajweedColors[rule]
+            ? tajweedColors[rule]
+            : null;
 
-        if (rule && tajweedColors[rule]) {
-          const charColor = Skia.Color(tajweedColors[rule]);
+        if (resolvedColor) {
+          const charColor = Skia.Color(resolvedColor);
           const charStyle: SkTextStyle = {
             ...baseStyle,
             color: charColor,
@@ -154,7 +172,9 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     fontSize,
     fontMgr,
     charToRule,
+    charToAllahHighlight,
     arabicTextWeight,
+    allahNameHighlightColor,
   ]);
 
   if (!paragraph || width <= 0) return null;
