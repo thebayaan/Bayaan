@@ -5,11 +5,26 @@ import {
 import {quranTextService} from './QuranTextService';
 
 // Strip Arabic marks so Allah-name matching survives different mushaf forms:
-// الله / ٱللَّه / لِلَّه / تَاللَّه / اللهم
+// الله / ٱللَّه / لِلَّه / تَاللَّه / اللهم / رب / برب / وربك / ربكم
 const ARABIC_MARKS = /\p{M}/gu;
 const TATWEEL = /\u0640/g;
 const ALLAH_MATCHES = ['اللهم', 'للهم', 'الله', 'لله'] as const;
 const DROPPED_ALIF_MATCHES = new Set(['للهم', 'لله']);
+const RABB_FORMS = [
+  'رب',
+  'ربي',
+  'ربك',
+  'ربكم',
+  'ربكما',
+  'ربكن',
+  'ربنا',
+  'ربه',
+  'ربها',
+  'ربهما',
+  'ربهم',
+  'ربهن',
+] as const;
+const RABB_PREFIXES = ['', 'و', 'ف', 'ب', 'ل'] as const;
 
 interface NormalizedCharMap {
   normalized: string;
@@ -27,7 +42,14 @@ function normalizeArabic(text: string): string {
 
 export function wordContainsAllahName(text: string): boolean {
   const normalized = normalizeArabic(text);
-  return ALLAH_MATCHES.some(form => normalized.includes(form));
+  return (
+    ALLAH_MATCHES.some(form => normalized.includes(form)) ||
+    RABB_FORMS.some(
+      form =>
+        normalized === form ||
+        RABB_PREFIXES.some(prefix => normalized === `${prefix}${form}`),
+    )
+  );
 }
 
 function normalizeArabicChar(char: string): string {
@@ -106,6 +128,47 @@ function findAllahNameRangesInWord(
   return ranges;
 }
 
+function findRabbTitleRangesInWord(
+  word: string,
+): Array<{start: number; end: number}> {
+  const {normalized, normalizedToOriginal} = buildNormalizedCharMap(word);
+  if (!normalized) return [];
+
+  for (const form of RABB_FORMS) {
+    if (normalized === form) {
+      const start = normalizedToOriginal[0];
+      let end = normalizedToOriginal[normalized.length - 1];
+      if (start === undefined || end === undefined) return [];
+      while (
+        end + 1 < word.length &&
+        isArabicMarkOrTatweel(word.charAt(end + 1))
+      ) {
+        end += 1;
+      }
+      return [{start, end}];
+    }
+
+    for (const prefix of RABB_PREFIXES) {
+      if (!prefix) continue;
+      const candidate = `${prefix}${form}`;
+      if (normalized === candidate) {
+        const start = normalizedToOriginal[prefix.length];
+        let end = normalizedToOriginal[candidate.length - 1];
+        if (start === undefined || end === undefined) return [];
+        while (
+          end + 1 < word.length &&
+          isArabicMarkOrTatweel(word.charAt(end + 1))
+        ) {
+          end += 1;
+        }
+        return [{start, end}];
+      }
+    }
+  }
+
+  return [];
+}
+
 export function getTextAllahNameCharMap(
   text: string,
 ): Map<number, string> | null {
@@ -117,8 +180,11 @@ export function getTextAllahNameCharMap(
 
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
-    const allahRanges = findAllahNameRangesInWord(word);
-    for (const range of allahRanges) {
+    const highlightRanges = [
+      ...findAllahNameRangesInWord(word),
+      ...findRabbTitleRangesInWord(word),
+    ];
+    for (const range of highlightRanges) {
       for (let charIndex = range.start; charIndex <= range.end; charIndex++) {
         charToColor.set(
           charOffset + charIndex,
@@ -160,8 +226,11 @@ export function getLineAllahNameCharMap(
       continue;
     }
 
-    const allahRanges = findAllahNameRangesInWord(wordText);
-    for (const range of allahRanges) {
+    const highlightRanges = [
+      ...findAllahNameRangesInWord(wordText),
+      ...findRabbTitleRangesInWord(wordText),
+    ];
+    for (const range of highlightRanges) {
       for (let charIndex = range.start; charIndex <= range.end; charIndex++) {
         charToColor.set(
           charOffset + charIndex,

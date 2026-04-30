@@ -987,10 +987,10 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         theme={theme}
       />
 
-      <Text style={styles.sectionHeader}>ALLAH NAME</Text>
+      <Text style={styles.sectionHeader}>DIVINE NAMES</Text>
       <View style={styles.card}>
         <View style={styles.optionRow}>
-          <Text style={styles.optionLabel}>Highlight Allah&apos;s Name</Text>
+          <Text style={styles.optionLabel}>Highlight Allah / Rabb</Text>
           <Switch
             trackColor={trackColor}
             thumbColor="#FFFFFF"
@@ -1001,7 +1001,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           />
         </View>
         <Text style={styles.helperText}>
-          Highlights every occurrence of Allah&apos;s name in the mushaf.
+          Highlights Allah&apos;s name and divine title forms like Rabb in the
+          mushaf.
         </Text>
         {showAllahNameHighlight && (
           <>

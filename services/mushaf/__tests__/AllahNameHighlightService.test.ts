@@ -34,6 +34,9 @@ describe('AllahNameHighlightService', () => {
     expect(wordContainsAllahName('بِاللّٰهِ')).toBe(true);
     expect(wordContainsAllahName('تَاللّٰهِ')).toBe(true);
     expect(wordContainsAllahName('اللَّهُمَّ')).toBe(true);
+    expect(wordContainsAllahName('رَبِّ')).toBe(true);
+    expect(wordContainsAllahName('بِرَبِّ')).toBe(true);
+    expect(wordContainsAllahName('وَرَبِّكَ')).toBe(true);
   });
 
   it('highlights only the Allah-name span inside prefixed words', () => {
@@ -44,5 +47,12 @@ describe('AllahNameHighlightService', () => {
 
   it('includes the meem in اللهم', () => {
     expect(getHighlightedText('اللَّهُمَّ')).toEqual(['اللَّهُمَّ']);
+  });
+
+  it('highlights Rabb title forms', () => {
+    expect(getHighlightedText('رَبِّ')).toEqual(['رَبِّ']);
+    expect(getHighlightedText('بِرَبِّ')).toEqual(['رَبِّ']);
+    expect(getHighlightedText('وَرَبِّكَ')).toEqual(['رَبِّكَ']);
+    expect(getHighlightedText('رَبَّنَا')).toEqual(['رَبَّنَا']);
   });
 });
