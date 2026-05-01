@@ -6,10 +6,11 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import {Verse} from '@/types/quran';
 import Color from 'color';
+import {useTheme} from '@/hooks/useTheme';
 import FormattedTextRenderer from '@/components/utils/FormattedText';
 import {Feather, Ionicons} from '@expo/vector-icons';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -19,6 +20,8 @@ import {SheetManager} from 'react-native-actions-sheet';
 import {mediumHaptics} from '@/utils/haptics';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 import {
@@ -119,7 +122,23 @@ export const VerseItem = memo<VerseItemProps>(
     wbwShowTransliteration,
     rewayah,
   }) => {
+    const {theme} = useTheme();
     const verseKey = verse.verse_key;
+    const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+    const showAllahNameHighlight = useMushafSettingsStore(
+      s => s.showAllahNameHighlight,
+    );
+    const allahNameHighlightColorSetting = useMushafSettingsStore(
+      s => s.allahNameHighlightColor,
+    );
+    const allahNameHighlightColor = useMemo(
+      () =>
+        getAllahNameHighlightColorHex(
+          allahNameHighlightColorSetting,
+          theme.isDarkMode,
+        ),
+      [allahNameHighlightColorSetting, theme.isDarkMode],
+    );
 
     // Per-verse-key annotation selectors — Zustand skips re-render when
     // THIS verse's specific value didn't change
@@ -433,6 +452,9 @@ export const VerseItem = memo<VerseItemProps>(
             indexedTajweedData={indexedTajweedData}
             onTap={handlePress}
             onLongPress={handleLongPress}
+            arabicTextWeight={arabicTextWeight}
+            showAllahNameHighlight={showAllahNameHighlight}
+            allahNameHighlightColor={allahNameHighlightColor}
             rewayah={rewayah}
           />
         ) : (
@@ -448,6 +470,9 @@ export const VerseItem = memo<VerseItemProps>(
                 showTajweed={showTajweed}
                 width={arabicContainerWidth}
                 indexedTajweedData={indexedTajweedData}
+                arabicTextWeight={arabicTextWeight}
+                showAllahNameHighlight={showAllahNameHighlight}
+                allahNameHighlightColor={allahNameHighlightColor}
                 rewayah={rewayah}
               />
             ) : isQPCSelected && tajweedNodes ? (

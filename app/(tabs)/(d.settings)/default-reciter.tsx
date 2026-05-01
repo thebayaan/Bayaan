@@ -16,6 +16,7 @@ import {useRouter} from 'expo-router';
 import {ReciterImage} from '@/components/ReciterImage';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 export default function DefaultReciterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +93,7 @@ export default function DefaultReciterScreen() {
                   {defaultReciter.name}
                 </Text>
                 <Text style={styles.currentReciterMoshaf}>
-                  {defaultReciter.rewayat[0].name}
+                  {getDisplayLabelFromName(defaultReciter.rewayat[0].name)}
                 </Text>
               </View>
             </View>

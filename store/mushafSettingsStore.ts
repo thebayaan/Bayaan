@@ -2,6 +2,14 @@ import {create} from 'zustand';
 import {persist, createJSONStorage} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getReadingThemeById} from '@/constants/readingThemes';
+import {
+  migratePersistedId,
+  type RewayahId,
+} from '@/services/rewayah/RewayahIdentity';
+
+// Re-exported for backward compat with existing imports across the app.
+// RewayahIdentity is the canonical source; do not redefine the union here.
+export type {RewayahId};
 
 // Constants for font sizing
 export const DISPLAY_MIN = 1;
@@ -25,6 +33,12 @@ export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
+export type MushafArabicTextWeight = 'normal' | 'medium' | 'bold';
+export type MushafAllahNameHighlightColor =
+  | 'gold'
+  | 'emerald'
+  | 'blue'
+  | 'rose';
 export type RewayahId =
   | 'hafs'
   | 'shouba'
@@ -59,6 +73,9 @@ interface MushafSettingsState {
   arabicFontSize: number;
   translationFontSize: number;
   transliterationFontSize: number;
+  arabicTextWeight: MushafArabicTextWeight;
+  showAllahNameHighlight: boolean;
+  allahNameHighlightColor: MushafAllahNameHighlightColor;
 
   // Font family (legacy — kept for backward compatibility)
   arabicFontFamily: 'Uthmani';
@@ -95,9 +112,12 @@ interface MushafSettingsState {
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
+  toggleAllahNameHighlight: () => void;
   setArabicFontSize: (size: number) => void;
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
+  setArabicTextWeight: (weight: MushafArabicTextWeight) => void;
+  setAllahNameHighlightColor: (color: MushafAllahNameHighlightColor) => void;
   setArabicFontFamily: (font: 'Uthmani') => void;
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
@@ -128,6 +148,9 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
       transliterationFontSize: getActualFontSize(3),
+      arabicTextWeight: 'normal' as MushafArabicTextWeight,
+      showAllahNameHighlight: false,
+      allahNameHighlightColor: 'gold' as MushafAllahNameHighlightColor,
       arabicFontFamily: 'Uthmani', // Default font
       uthmaniFont: 'v1', // Default to V1
       mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
@@ -153,11 +176,17 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),
       toggleWBWTransliteration: () =>
         set(state => ({wbwShowTransliteration: !state.wbwShowTransliteration})),
+      toggleAllahNameHighlight: () =>
+        set(state => ({showAllahNameHighlight: !state.showAllahNameHighlight})),
       setArabicFontSize: (size: number) => set({arabicFontSize: size}),
       setTranslationFontSize: (size: number) =>
         set({translationFontSize: size}),
       setTransliterationFontSize: (size: number) =>
         set({transliterationFontSize: size}),
+      setArabicTextWeight: (weight: MushafArabicTextWeight) =>
+        set({arabicTextWeight: weight}),
+      setAllahNameHighlightColor: (color: MushafAllahNameHighlightColor) =>
+        set({allahNameHighlightColor: color}),
       setArabicFontFamily: (font: 'Uthmani') => set({arabicFontFamily: font}),
       setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
       setMushafRenderer: (renderer: MushafRenderer) =>
@@ -218,7 +247,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 12,
+      version: 14,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -278,6 +307,18 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         if (version < 12) {
           state.rewayah = 'hafs';
           state.showRewayahDiffs = true;
+        }
+        if (
+          version < 13 ||
+          !['normal', 'medium', 'bold'].includes(
+            state.arabicTextWeight as string,
+          )
+        ) {
+          state.arabicTextWeight = 'normal';
+        }
+        if (version < 14) {
+          state.showAllahNameHighlight = false;
+          state.allahNameHighlightColor = 'gold';
         }
         return state as unknown as MushafSettingsState;
       },

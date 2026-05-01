@@ -1,14 +1,14 @@
 {
   "name": "bayaan",
   "main": "expo-router/entry",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "postinstall": "patch-package",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
-    "ios": "expo run:ios",
+    "ios": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 expo run:ios",
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "eslint .",
@@ -83,6 +83,7 @@
     "expo-navigation-bar": "~55.0.8",
     "expo-notifications": "~55.0.10",
     "expo-router": "~55.0.3",
+    "expo-screen-orientation": "^55.0.13",
     "expo-share-intent": "^6.0.0",
     "expo-sharing": "~55.0.11",
     "expo-splash-screen": "~55.0.10",
@@ -164,5 +165,8 @@
     "react-native-ios-utilities": "5.2.0",
     "@react-native-menu/menu": "2.0.0"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "private": true
 }

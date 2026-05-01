@@ -7,6 +7,7 @@ import {
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useTheme} from '@/hooks/useTheme';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 
 interface SkiaVersePreviewProps {
@@ -29,7 +30,22 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
   const [width, setWidth] = useState(0);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const activeRewayah = useMushafSettingsStore(s => s.rewayah);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
   const rewayah: RewayahId = rewayahOverride ?? activeRewayah;
   const fontFamily =
     mushafRenderer === 'dk_indopak'
@@ -92,6 +108,9 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
           showTajweed={false}
           width={width}
           indexedTajweedData={null}
+          arabicTextWeight={arabicTextWeight}
+          showAllahNameHighlight={showAllahNameHighlight}
+          allahNameHighlightColor={allahNameHighlightColor}
         />
       ) : null}
     </View>

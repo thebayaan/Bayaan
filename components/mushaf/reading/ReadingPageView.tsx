@@ -7,6 +7,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -21,6 +22,7 @@ import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseIte
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import Color from 'color';
 import PageEdgeDecoration, {
@@ -67,6 +69,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
   isBookLayout,
   onTap,
 }) => {
+  const {theme} = useTheme();
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const verseOffsetsRef = useRef<Map<string, number>>(new Map());
@@ -83,6 +86,13 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     s => s.wbwShowTransliteration,
   );
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const translationFontSize = useMushafSettingsStore(
     s => s.translationFontSize,
   );
@@ -95,6 +105,14 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     s => s.selectedTranslationId,
   );
   const translationName = getTranslationName(selectedTranslationId);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
 
   const dkFontFamily =
     mushafRenderer === 'dk_indopak'
@@ -184,6 +202,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
               fontMgr={fontMgr}
               dkFontFamily={dkFontFamily}
               indexedTajweedData={indexedTajweedData}
+              arabicTextWeight={arabicTextWeight}
+              showAllahNameHighlight={showAllahNameHighlight}
+              allahNameHighlightColor={allahNameHighlightColor}
             />
           </View>
         );
@@ -244,6 +265,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       showTransliteration,
       showTajweed,
       arabicFontSize,
+      arabicTextWeight,
       translationFontSize,
       transliterationFontSize,
       fontMgr,
@@ -257,6 +279,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       showWBW,
       wbwShowTranslation,
       wbwShowTransliteration,
+      showAllahNameHighlight,
+      allahNameHighlightColor,
       showThemes,
       textColor,
     ],

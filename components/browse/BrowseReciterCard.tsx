@@ -8,6 +8,7 @@ import Color from 'color';
 import {GlassView} from 'expo-glass-effect';
 import {Link} from 'expo-router';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 interface BrowseReciterCardProps {
   reciter: Reciter;
@@ -109,7 +110,7 @@ const BrowseReciterCard = React.memo(
           <Text style={styles.reciterInfo} numberOfLines={1}>
             {uniqueRewayatNames.length > 1
               ? `${uniqueRewayatNames.length} rewayat available`
-              : reciter.rewayat[0]?.name || ''}
+              : getDisplayLabelFromName(reciter.rewayat[0]?.name)}
           </Text>
         </View>
       </>

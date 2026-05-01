@@ -9,6 +9,7 @@ import {
   type SkTextStyle,
   type SkTypefaceFontProvider,
   type SkParagraph,
+  type SkColor,
 } from '@shopify/react-native-skia';
 import {
   quranTextService,
@@ -18,6 +19,11 @@ import {
 } from '@/services/mushaf/QuranTextService';
 import type {JustResultByLine} from '@/services/mushaf/JustificationService';
 import {tajweedColors} from '@/constants/tajweedColors';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 
 const lineParStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -36,7 +42,9 @@ interface SkiaLineProps {
   lineHeight?: number;
   textColor: string;
   charToRule?: Map<number, string>;
+  charToColor?: Map<number, string>;
   fontFamily?: string;
+  arabicTextWeight?: MushafArabicTextWeight;
   onParagraphReady?: (
     lineIndex: number,
     paragraph: SkParagraph,
@@ -57,11 +65,13 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   lineHeight,
   textColor,
   charToRule,
+  charToColor,
   fontFamily = 'DigitalKhatt',
+  arabicTextWeight = 'normal',
   onParagraphReady,
   backgroundHighlights,
 }) => {
-  const paragraph = useMemo(() => {
+  const paragraphs = useMemo(() => {
     const scale = (fontSize * justResult.fontSizeRatio) / FONTSIZE;
     const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
     const lineText = quranTextService.getLineText(pageNumber, lineIndex);
@@ -70,11 +80,16 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     if (!lineText) return null;
 
     const color = Skia.Color(textColor);
+    const effectiveFontSize = justResult.fontSizeRatio * fontSize;
+    const strokeWidth = getArabicTextWeightStrokeWidth(
+      arabicTextWeight,
+      effectiveFontSize,
+    );
 
     const textStyle: SkTextStyle = {
       color,
       fontFamilies: [fontFamily],
-      fontSize: justResult.fontSizeRatio * fontSize,
+      fontSize: effectiveFontSize,
     };
 
     // Basmallah lines (not on pages 1-2) get the basm feature
@@ -82,69 +97,96 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
       textStyle.fontFeatures = [{name: 'basm', value: 1}];
     }
 
-    const paragraphBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-    paragraphBuilder.pushStyle(textStyle);
+    const buildParagraph = (withStroke: boolean) => {
+      const paragraphBuilder = Skia.ParagraphBuilder.Make(
+        lineParStyle,
+        fontMgr,
+      );
 
-    for (
-      let wordIndex = 0;
-      wordIndex < lineTextInfo.wordInfos.length;
-      wordIndex++
-    ) {
-      const wordInfo = lineTextInfo.wordInfos[wordIndex];
+      const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
+        const strokePaint = withStroke
+          ? createTextStrokePaint(styleColor, strokeWidth)
+          : undefined;
+        if (strokePaint) {
+          paragraphBuilder.pushStyle(style, strokePaint);
+        } else {
+          paragraphBuilder.pushStyle(style);
+        }
+      };
 
-      // Render each character with optional font features and tajweed colors
-      for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
-        const char = lineText.charAt(i);
-        const justInfo = justResult.fontFeatures.get(i);
-        const tajweedRule = charToRule?.get(i);
+      pushStyle(textStyle, color);
 
-        const needsCustomStyle = justInfo || tajweedRule;
+      for (
+        let wordIndex = 0;
+        wordIndex < lineTextInfo.wordInfos.length;
+        wordIndex++
+      ) {
+        const wordInfo = lineTextInfo.wordInfos[wordIndex];
 
-        if (needsCustomStyle) {
-          const charStyle: SkTextStyle = {
+        // Render each character with optional font features and tajweed colors
+        for (let i = wordInfo.startIndex; i <= wordInfo.endIndex; i++) {
+          const char = lineText.charAt(i);
+          const justInfo = justResult.fontFeatures.get(i);
+          const tajweedRule = charToRule?.get(i);
+          const customColor = charToColor?.get(i);
+
+          const needsCustomStyle = justInfo || tajweedRule || customColor;
+
+          if (needsCustomStyle) {
+            const charStyle: SkTextStyle = {
+              ...textStyle,
+            };
+            let charColor = color;
+            if (justInfo) {
+              charStyle.fontFeatures = justInfo;
+            }
+            if (customColor) {
+              charColor = Skia.Color(customColor);
+              charStyle.color = charColor;
+            } else if (tajweedRule && tajweedColors[tajweedRule]) {
+              charColor = Skia.Color(tajweedColors[tajweedRule]);
+              charStyle.color = charColor;
+            }
+            pushStyle(charStyle, charColor);
+            paragraphBuilder.addText(char);
+            paragraphBuilder.pop();
+          } else {
+            paragraphBuilder.addText(char);
+          }
+        }
+
+        // Add space between words with appropriate letter spacing
+        const spaceType = lineTextInfo.spaces.get(wordInfo.endIndex + 1);
+        if (spaceType !== undefined) {
+          const newtextStyle: SkTextStyle = {
             ...textStyle,
           };
-          if (justInfo) {
-            charStyle.fontFeatures = justInfo;
+
+          if (spaceType === SpaceType.Aya) {
+            newtextStyle.letterSpacing =
+              (justResult.ayaSpacing - SPACEWIDTH) * scale;
+          } else {
+            newtextStyle.letterSpacing =
+              (justResult.simpleSpacing - SPACEWIDTH) * scale;
           }
-          if (tajweedRule && tajweedColors[tajweedRule]) {
-            charStyle.color = Skia.Color(tajweedColors[tajweedRule]);
-          }
-          paragraphBuilder.pushStyle(charStyle);
-          paragraphBuilder.addText(char);
+
+          pushStyle(newtextStyle, color);
+          paragraphBuilder.addText(' ');
           paragraphBuilder.pop();
-        } else {
-          paragraphBuilder.addText(char);
         }
       }
 
-      // Add space between words with appropriate letter spacing
-      const spaceType = lineTextInfo.spaces.get(wordInfo.endIndex + 1);
-      if (spaceType !== undefined) {
-        const newtextStyle: SkTextStyle = {
-          ...textStyle,
-        };
+      const maxWidth = pageWidth * 2;
+      paragraphBuilder.pop();
+      const p = paragraphBuilder.build();
+      p.layout(maxWidth);
+      return p;
+    };
 
-        if (spaceType === SpaceType.Aya) {
-          newtextStyle.letterSpacing =
-            (justResult.ayaSpacing - SPACEWIDTH) * scale;
-        } else {
-          newtextStyle.letterSpacing =
-            (justResult.simpleSpacing - SPACEWIDTH) * scale;
-        }
-
-        paragraphBuilder.pushStyle(newtextStyle);
-        paragraphBuilder.addText(' ');
-        paragraphBuilder.pop();
-      }
-    }
-
-    const maxWidth = pageWidth * 2;
-    paragraphBuilder.pop();
-    const p = paragraphBuilder.build();
-    p.layout(maxWidth);
-
-    return p;
+    return {
+      paragraph: buildParagraph(false),
+      strokeParagraph: strokeWidth > 0 ? buildParagraph(true) : null,
+    };
   }, [
     pageNumber,
     lineIndex,
@@ -155,14 +197,17 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     margin,
     textColor,
     charToRule,
+    charToColor,
     fontFamily,
+    arabicTextWeight,
   ]);
 
-  if (!paragraph) return null;
+  const paragraph = paragraphs?.paragraph;
+  const strokeParagraph = paragraphs?.strokeParagraph;
 
   const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
   const maxWidth = pageWidth * 2;
-  const currLineWidth = paragraph.getLongestLine();
+  const currLineWidth = paragraph?.getLongestLine() ?? 0;
 
   let xPos: number;
   if (
@@ -191,7 +236,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     pageNumber !== 1 &&
     pageNumber !== 2
   ) {
-    const pHeight = paragraph.getHeight();
+    const pHeight = paragraph?.getHeight() ?? 0;
     adjustedYPos = yPos + Math.max(0, (lineHeight - pHeight) / 2);
   }
 
@@ -233,6 +278,8 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     return rects.length > 0 ? rects : null;
   }, [paragraph, backgroundHighlights]);
 
+  if (!paragraph) return null;
+
   if (bgRects) {
     return (
       <Group>
@@ -247,6 +294,14 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
             color={rect.color}
           />
         ))}
+        {strokeParagraph && (
+          <Paragraph
+            paragraph={strokeParagraph}
+            x={xPos}
+            y={adjustedYPos}
+            width={maxWidth}
+          />
+        )}
         <Paragraph
           paragraph={paragraph}
           x={xPos}
@@ -258,12 +313,22 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   }
 
   return (
-    <Paragraph
-      paragraph={paragraph}
-      x={xPos}
-      y={adjustedYPos}
-      width={maxWidth}
-    />
+    <Group>
+      {strokeParagraph && (
+        <Paragraph
+          paragraph={strokeParagraph}
+          x={xPos}
+          y={adjustedYPos}
+          width={maxWidth}
+        />
+      )}
+      <Paragraph
+        paragraph={paragraph}
+        x={xPos}
+        y={adjustedYPos}
+        width={maxWidth}
+      />
+    </Group>
   );
 };
 

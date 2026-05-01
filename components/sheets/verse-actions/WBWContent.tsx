@@ -3,6 +3,7 @@ import {View, Text, StyleSheet} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import Color from 'color';
 import {ScrollView} from 'react-native-actions-sheet';
 import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
@@ -29,7 +30,22 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   // Inherit mushaf font settings
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
 
   const dkFontFamily =
     mushafRenderer === 'dk_indopak'
@@ -54,7 +70,7 @@ export const WBWContent: React.FC<WBWContentProps> = ({
   }, []);
 
   // no-op handlers (not needed in sheet context)
-  const noop = useCallback(() => {}, []);
+  const noop = useCallback(() => undefined, []);
 
   return (
     <ScrollView
@@ -73,6 +89,9 @@ export const WBWContent: React.FC<WBWContentProps> = ({
           selectedWordPosition={selectedWordPosition}
           showTajweed={showTajweed}
           indexedTajweedData={indexedTajweedData}
+          arabicTextWeight={arabicTextWeight}
+          showAllahNameHighlight={showAllahNameHighlight}
+          allahNameHighlightColor={allahNameHighlightColor}
           onTap={noop}
         />
       </View>

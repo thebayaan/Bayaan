@@ -8,7 +8,7 @@ import {
   type GestureResponderEvent,
   type LayoutChangeEvent,
 } from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {
   Canvas,
   Paragraph,
@@ -16,6 +16,8 @@ import {
   TextHeightBehavior,
   TextDirection,
   type SkTypefaceFontProvider,
+  type SkTextStyle,
+  type SkColor,
 } from '@shopify/react-native-skia';
 import Color from 'color';
 import {
@@ -29,10 +31,18 @@ import {
   alignWordTajweed,
   detectWordTafkhim,
 } from '@/services/mushaf/TajweedAlignmentService';
+import {wordContainsAllahName} from '@/services/mushaf/AllahNameHighlightService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import type {RewayahId} from '@/store/mushafSettingsStore';
+import type {
+  MushafArabicTextWeight,
+  RewayahId,
+} from '@/store/mushafSettingsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 
 // --- Constants ---
 
@@ -70,6 +80,9 @@ interface WBWVerseViewProps {
   selectedWordPosition: number | null;
   showTajweed: boolean;
   indexedTajweedData: IndexedTajweedData | null;
+  arabicTextWeight?: MushafArabicTextWeight;
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
   onTap?: () => void;
   onLongPress?: () => void;
   /** Context rewayah (player track or mushaf setting). Word-by-word data
@@ -85,6 +98,9 @@ interface MatchedWord {
 
 interface PositionedWord {
   paragraph: ReturnType<ReturnType<typeof Skia.ParagraphBuilder.Make>['build']>;
+  strokeParagraph: ReturnType<
+    ReturnType<typeof Skia.ParagraphBuilder.Make>['build']
+  > | null;
   arabicWidth: number;
   arabicHeight: number;
   columnWidth: number;
@@ -109,6 +125,7 @@ interface ComputedLayout {
 
 /** Strip Arabic diacritics for fuzzy text comparison between DK and WBW words */
 const ARABIC_DIACRITICS =
+  // eslint-disable-next-line no-misleading-character-class
   /[\u064B-\u065F\u0670\u06D6-\u06ED\u0617-\u061A\u08D3-\u08FF\u0640\u06E5\u06E6\u0653-\u0655\u065F\uFE70-\uFE7F\u0610-\u0615\u0656-\u065E\u0660-\u066F]/g;
 
 function stripDiacritics(text: string): string {
@@ -122,40 +139,73 @@ function buildParagraph(
   fontSize: number,
   textColor: string,
   charToRule?: Map<number, string> | null,
+  arabicTextWeight: MushafArabicTextWeight = 'normal',
+  allahNameHighlightColor?: string,
 ) {
-  const baseColor = Skia.Color(textColor);
+  const baseColor = Skia.Color(allahNameHighlightColor || textColor);
+  const strokeWidth = getArabicTextWeightStrokeWidth(
+    arabicTextWeight,
+    fontSize,
+  );
   const baseStyle = {
     color: baseColor,
     fontFamilies: [fontFamily],
     fontSize,
   };
-  const builder = Skia.ParagraphBuilder.Make(skParagraphStyle, fontMgr);
-  builder.pushStyle(baseStyle);
 
-  if (charToRule && charToRule.size > 0) {
-    // Per-character tajweed coloring
-    for (let i = 0; i < text.length; i++) {
-      const rule = charToRule.get(i);
-      if (rule && tajweedColors[rule]) {
-        builder.pushStyle({
-          ...baseStyle,
-          color: Skia.Color(tajweedColors[rule]),
-        });
-        builder.addText(text.charAt(i));
-        builder.pop();
+  const build = (withStroke: boolean) => {
+    const builder = Skia.ParagraphBuilder.Make(skParagraphStyle, fontMgr);
+
+    const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
+      const strokePaint = withStroke
+        ? createTextStrokePaint(styleColor, strokeWidth)
+        : undefined;
+      if (strokePaint) {
+        builder.pushStyle(style, strokePaint);
       } else {
-        builder.addText(text.charAt(i));
+        builder.pushStyle(style);
       }
-    }
-  } else {
-    builder.addText(text);
-  }
+    };
 
-  builder.pop();
-  const p = builder.build();
-  p.layout(1000); // Large width — single word never wraps
+    pushStyle(baseStyle, baseColor);
+
+    if (allahNameHighlightColor || (charToRule && charToRule.size > 0)) {
+      // Per-character tajweed coloring, with Allah-name override taking priority.
+      for (let i = 0; i < text.length; i++) {
+        const rule = charToRule?.get(i);
+        const resolvedColor =
+          allahNameHighlightColor ||
+          (rule && tajweedColors[rule] ? tajweedColors[rule] : null);
+        if (resolvedColor) {
+          const charColor = Skia.Color(resolvedColor);
+          pushStyle(
+            {
+              ...baseStyle,
+              color: charColor,
+            },
+            charColor,
+          );
+          builder.addText(text.charAt(i));
+          builder.pop();
+        } else {
+          builder.addText(text.charAt(i));
+        }
+      }
+    } else {
+      builder.addText(text);
+    }
+
+    builder.pop();
+    const p = builder.build();
+    p.layout(1000); // Large width, single word never wraps
+    return p;
+  };
+
+  const p = build(false);
+  const strokeP = strokeWidth > 0 ? build(true) : null;
   return {
     paragraph: p,
+    strokeParagraph: strokeP,
     width: Math.ceil(p.getLongestLine()) + 1,
     height: p.getHeight(),
   };
@@ -213,6 +263,9 @@ function computeRTLLayout(
     paragraph: ReturnType<
       ReturnType<typeof Skia.ParagraphBuilder.Make>['build']
     >;
+    strokeParagraph: ReturnType<
+      ReturnType<typeof Skia.ParagraphBuilder.Make>['build']
+    > | null;
     arabicWidth: number;
     arabicHeight: number;
     columnWidth: number;
@@ -275,6 +328,9 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     selectedWordPosition,
     showTajweed,
     indexedTajweedData,
+    arabicTextWeight = 'normal',
+    showAllahNameHighlight = false,
+    allahNameHighlightColor,
     onTap,
     onLongPress,
     rewayah: rewayahProp,
@@ -429,16 +485,26 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
             : detectWordTafkhim(dkWord.text);
         }
 
-        const {paragraph, width, height} = buildParagraph(
+        const wordAllahHighlightColor =
+          showAllahNameHighlight &&
+          allahNameHighlightColor &&
+          wordContainsAllahName(dkWord.text)
+            ? allahNameHighlightColor
+            : undefined;
+
+        const {paragraph, strokeParagraph, width, height} = buildParagraph(
           dkWord.text,
           fontMgr,
           dkFontFamily,
           scaledFontSize,
           textColor,
           wordCharToRule,
+          arabicTextWeight,
+          wordAllahHighlightColor,
         );
         return {
           paragraph,
+          strokeParagraph,
           arabicWidth: width,
           arabicHeight: height,
           columnWidth: computeColumnWidth(
@@ -458,15 +524,19 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
       });
 
       if (verseEndMarker) {
-        const {paragraph, width, height} = buildParagraph(
+        const {paragraph, strokeParagraph, width, height} = buildParagraph(
           verseEndMarker.text,
           fontMgr,
           dkFontFamily,
           scaledFontSize,
           textColor,
+          null,
+          arabicTextWeight,
+          undefined,
         );
         items.push({
           paragraph,
+          strokeParagraph,
           arabicWidth: width,
           arabicHeight: height,
           columnWidth: width,
@@ -490,6 +560,9 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
       showTranslation,
       showTransliteration,
       tajweedWords,
+      arabicTextWeight,
+      showAllahNameHighlight,
+      allahNameHighlightColor,
     ]);
 
     // Highlight color for selected word
@@ -648,13 +721,22 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
                   height: chunk.height,
                 }}>
                 {chunk.items.map(item => (
-                  <Paragraph
-                    key={item.dkPosition}
-                    paragraph={item.paragraph}
-                    x={item.x + (item.columnWidth - item.arabicWidth) / 2}
-                    y={item.y - chunk.startY}
-                    width={item.arabicWidth}
-                  />
+                  <React.Fragment key={item.dkPosition}>
+                    {item.strokeParagraph && (
+                      <Paragraph
+                        paragraph={item.strokeParagraph}
+                        x={item.x + (item.columnWidth - item.arabicWidth) / 2}
+                        y={item.y - chunk.startY}
+                        width={item.arabicWidth}
+                      />
+                    )}
+                    <Paragraph
+                      paragraph={item.paragraph}
+                      x={item.x + (item.columnWidth - item.arabicWidth) / 2}
+                      y={item.y - chunk.startY}
+                      width={item.arabicWidth}
+                    />
+                  </React.Fragment>
                 ))}
               </Canvas>
             ))}

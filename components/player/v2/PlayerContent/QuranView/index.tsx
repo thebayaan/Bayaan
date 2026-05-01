@@ -1,9 +1,11 @@
-import React, {useCallback, useRef, useEffect, useState} from 'react';
+import React, {useCallback, useRef, useEffect, useState, useMemo} from 'react';
 import {View, StyleSheet, Pressable, useWindowDimensions} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
+import {useResponsive} from '@/hooks/useResponsive';
 import {Ionicons} from '@expo/vector-icons';
 import {useTheme} from '@/hooks/useTheme';
 import {useReadingThemeColors} from '@/hooks/useReadingThemeColors';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {Surah} from '@/types/quran';
 import {VerseItem} from './VerseItem';
 import BasmalaHeader from './BasmalaHeader';
@@ -12,6 +14,7 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
@@ -39,6 +42,9 @@ interface QuranListHeaderProps {
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
   indexedTajweedData: IndexedTajweedData | null;
+  arabicTextWeight: MushafArabicTextWeight;
+  showAllahNameHighlight: boolean;
+  allahNameHighlightColor: string;
 }
 
 const QuranListHeader = React.memo<QuranListHeaderProps>(
@@ -52,6 +58,9 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
     fontMgr,
     dkFontFamily,
     indexedTajweedData,
+    arabicTextWeight,
+    showAllahNameHighlight,
+    allahNameHighlightColor,
   }) => (
     <>
       <SurahDivider
@@ -68,10 +77,14 @@ const QuranListHeader = React.memo<QuranListHeaderProps>(
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
         indexedTajweedData={indexedTajweedData}
+        arabicTextWeight={arabicTextWeight}
+        showAllahNameHighlight={showAllahNameHighlight}
+        allahNameHighlightColor={allahNameHighlightColor}
       />
     </>
   ),
 );
+QuranListHeader.displayName = 'QuranListHeader';
 
 interface QuranViewProps {
   currentSurah: number;
@@ -83,6 +96,8 @@ interface QuranViewProps {
   arabicFontSize: number;
   contentPaddingTop?: number;
   contentPaddingBottom?: number;
+  /** When the player is in a tablet split layout, width of the left pane (defaults to window). */
+  parentContentWidth?: number;
 }
 
 export const QuranView: React.FC<QuranViewProps> = ({
@@ -95,11 +110,19 @@ export const QuranView: React.FC<QuranViewProps> = ({
   arabicFontSize,
   contentPaddingTop,
   contentPaddingBottom,
+  parentContentWidth,
 }) => {
   const {theme} = useTheme();
   const readingColors = useReadingThemeColors();
   const {width: screenWidth} = useWindowDimensions();
-  const contentWidth = screenWidth - 2 * moderateScale(20);
+  const {isTablet} = useResponsive();
+  const horizontalPad = moderateScale(20);
+  const maxReadingColumn = isTablet ? 680 : Number.POSITIVE_INFINITY;
+  const baseWidth = parentContentWidth ?? screenWidth;
+  const contentWidth = Math.min(
+    baseWidth - 2 * horizontalPad,
+    maxReadingColumn,
+  );
   const listRef = useRef<FlashListRef<EnhancedVerse>>(null);
   const renderScrollComponent = useBottomSheetScrollableCreator();
   const trackRewayah = useCurrentTrackRewayah();
@@ -113,6 +136,13 @@ export const QuranView: React.FC<QuranViewProps> = ({
   // Granular mushaf settings selectors (avoid full-store subscription)
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const selectedTranslationId = useMushafSettingsStore(
     s => s.selectedTranslationId,
   );
@@ -122,6 +152,14 @@ export const QuranView: React.FC<QuranViewProps> = ({
     s => s.wbwShowTransliteration,
   );
   const translationName = getTranslationName(selectedTranslationId);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
 
   // Counter to force re-render when enhanced verses are rebuilt (async)
   const [, setRebuildCounter] = useState(0);
@@ -233,6 +271,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
       showWBW,
       wbwShowTranslation,
       wbwShowTransliteration,
+      arabicTextWeight,
+      showAllahNameHighlight,
+      allahNameHighlightColor,
       trackRewayah,
     ],
   );
@@ -256,9 +297,10 @@ export const QuranView: React.FC<QuranViewProps> = ({
     <View style={styles.container}>
       <FlashList
         ref={listRef}
+        style={{width: contentWidth, height: '100%'}}
         data={verses}
         renderItem={renderItem}
-        extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${showTranslation}-${showTransliteration}`}
+        extraData={`${showWBW}-${wbwShowTranslation}-${wbwShowTransliteration}-${showTajweed}-${arabicFontSize}-${arabicTextWeight}-${showTranslation}-${showTransliteration}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
         keyExtractor={keyExtractor}
         ListHeaderComponent={
           <QuranListHeader
@@ -271,6 +313,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
+            arabicTextWeight={arabicTextWeight}
+            showAllahNameHighlight={showAllahNameHighlight}
+            allahNameHighlightColor={allahNameHighlightColor}
           />
         }
         contentContainerStyle={{
@@ -317,6 +362,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: 'transparent',
     overflow: 'hidden',
+    alignItems: 'center',
   },
   recenterButton: {
     position: 'absolute',

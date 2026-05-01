@@ -34,7 +34,7 @@ import {
 } from 'react-native-reanimated';
 import {preloadTajweedData} from '@/utils/tajweedLoader';
 import {appInitializer} from '@/services/AppInitializer';
-import {ApiDisruptionBanner} from '@/components/ApiDisruptionBanner';
+import {NetworkStatusMonitor} from '@/components/NetworkStatusMonitor';
 import {useNetworkMonitor} from '@/hooks/useNetworkMonitor';
 import {PostHogProvider, usePostHog} from 'posthog-react-native';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
@@ -49,6 +49,7 @@ import {showToast} from '@/utils/toastUtils';
 import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import * as Sentry from '@sentry/react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -162,6 +163,11 @@ function RootLayout() {
     debug: __DEV__,
     resetOnBackground: true,
   });
+
+  // Lock to portrait by default; mushaf.tsx unlocks when that screen is active.
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  }, []);
 
   // Tajweed data — defer until after first frame + interactions complete
   useEffect(() => {
@@ -429,11 +435,14 @@ function RootLayout() {
   return (
     <ErrorBoundary>
       <PostHogProvider
-        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? ''}
+        apiKey={
+          process.env.EXPO_PUBLIC_POSTHOG_API_KEY || 'phc_disabled_placeholder'
+        }
         options={{
           host: 'https://us.i.posthog.com',
           flushAt: 20,
           flushInterval: 30000,
+          disabled: !process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
         }}
         autocapture={{
           captureScreens: true,
@@ -447,7 +456,7 @@ function RootLayout() {
                 // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
                 overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
                 onLayout={onLayoutRootView}>
-                <ApiDisruptionBanner />
+                <NetworkStatusMonitor />
                 <SheetProvider>
                   <Stack
                     screenOptions={{
