@@ -31,6 +31,7 @@ import {
   alignWordTajweed,
   detectWordTafkhim,
 } from '@/services/mushaf/TajweedAlignmentService';
+import {wordContainsAllahName} from '@/services/mushaf/AllahNameHighlightService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import type {
@@ -80,6 +81,8 @@ interface WBWVerseViewProps {
   showTajweed: boolean;
   indexedTajweedData: IndexedTajweedData | null;
   arabicTextWeight?: MushafArabicTextWeight;
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
   onTap?: () => void;
   onLongPress?: () => void;
   /** Context rewayah (player track or mushaf setting). Word-by-word data
@@ -137,8 +140,9 @@ function buildParagraph(
   textColor: string,
   charToRule?: Map<number, string> | null,
   arabicTextWeight: MushafArabicTextWeight = 'normal',
+  allahNameHighlightColor?: string,
 ) {
-  const baseColor = Skia.Color(textColor);
+  const baseColor = Skia.Color(allahNameHighlightColor || textColor);
   const strokeWidth = getArabicTextWeightStrokeWidth(
     arabicTextWeight,
     fontSize,
@@ -165,12 +169,15 @@ function buildParagraph(
 
     pushStyle(baseStyle, baseColor);
 
-    if (charToRule && charToRule.size > 0) {
-      // Per-character tajweed coloring
+    if (allahNameHighlightColor || (charToRule && charToRule.size > 0)) {
+      // Per-character tajweed coloring, with Allah-name override taking priority.
       for (let i = 0; i < text.length; i++) {
-        const rule = charToRule.get(i);
-        if (rule && tajweedColors[rule]) {
-          const charColor = Skia.Color(tajweedColors[rule]);
+        const rule = charToRule?.get(i);
+        const resolvedColor =
+          allahNameHighlightColor ||
+          (rule && tajweedColors[rule] ? tajweedColors[rule] : null);
+        if (resolvedColor) {
+          const charColor = Skia.Color(resolvedColor);
           pushStyle(
             {
               ...baseStyle,
@@ -322,6 +329,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     showTajweed,
     indexedTajweedData,
     arabicTextWeight = 'normal',
+    showAllahNameHighlight = false,
+    allahNameHighlightColor,
     onTap,
     onLongPress,
     rewayah: rewayahProp,
@@ -476,6 +485,13 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
             : detectWordTafkhim(dkWord.text);
         }
 
+        const wordAllahHighlightColor =
+          showAllahNameHighlight &&
+          allahNameHighlightColor &&
+          wordContainsAllahName(dkWord.text)
+            ? allahNameHighlightColor
+            : undefined;
+
         const {paragraph, strokeParagraph, width, height} = buildParagraph(
           dkWord.text,
           fontMgr,
@@ -484,6 +500,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           textColor,
           wordCharToRule,
           arabicTextWeight,
+          wordAllahHighlightColor,
         );
         return {
           paragraph,
@@ -515,6 +532,7 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
           textColor,
           null,
           arabicTextWeight,
+          undefined,
         );
         items.push({
           paragraph,
@@ -543,6 +561,8 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
       showTransliteration,
       tajweedWords,
       arabicTextWeight,
+      showAllahNameHighlight,
+      allahNameHighlightColor,
     ]);
 
     // Highlight color for selected word

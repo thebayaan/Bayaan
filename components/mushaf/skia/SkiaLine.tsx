@@ -42,6 +42,7 @@ interface SkiaLineProps {
   lineHeight?: number;
   textColor: string;
   charToRule?: Map<number, string>;
+  charToColor?: Map<number, string>;
   fontFamily?: string;
   arabicTextWeight?: MushafArabicTextWeight;
   onParagraphReady?: (
@@ -64,6 +65,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   lineHeight,
   textColor,
   charToRule,
+  charToColor,
   fontFamily = 'DigitalKhatt',
   arabicTextWeight = 'normal',
   onParagraphReady,
@@ -126,8 +128,9 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
           const char = lineText.charAt(i);
           const justInfo = justResult.fontFeatures.get(i);
           const tajweedRule = charToRule?.get(i);
+          const customColor = charToColor?.get(i);
 
-          const needsCustomStyle = justInfo || tajweedRule;
+          const needsCustomStyle = justInfo || tajweedRule || customColor;
 
           if (needsCustomStyle) {
             const charStyle: SkTextStyle = {
@@ -137,7 +140,10 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
             if (justInfo) {
               charStyle.fontFeatures = justInfo;
             }
-            if (tajweedRule && tajweedColors[tajweedRule]) {
+            if (customColor) {
+              charColor = Skia.Color(customColor);
+              charStyle.color = charColor;
+            } else if (tajweedRule && tajweedColors[tajweedRule]) {
               charColor = Skia.Color(tajweedColors[tajweedRule]);
               charStyle.color = charColor;
             }
@@ -191,6 +197,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
     margin,
     textColor,
     charToRule,
+    charToColor,
     fontFamily,
     arabicTextWeight,
   ]);

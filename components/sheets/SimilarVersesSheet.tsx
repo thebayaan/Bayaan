@@ -14,6 +14,7 @@ import {
 } from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import ActionSheet, {
   SheetProps,
   SheetManager,
@@ -70,7 +71,21 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontMgr = mushafPreloadService.fontMgr;
   const fontFamily =
@@ -220,6 +235,8 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                             width={contentWidth - moderateScale(28)}
                             indexedTajweedData={null}
                             arabicTextWeight={arabicTextWeight}
+                            showAllahNameHighlight={showAllahNameHighlight}
+                            allahNameHighlightColor={allahNameHighlightColor}
                           />
                         </View>
                       ) : null}
@@ -273,6 +290,12 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                                       width={contentWidth - moderateScale(36)}
                                       indexedTajweedData={indexedTajweedData}
                                       arabicTextWeight={arabicTextWeight}
+                                      showAllahNameHighlight={
+                                        showAllahNameHighlight
+                                      }
+                                      allahNameHighlightColor={
+                                        allahNameHighlightColor
+                                      }
                                     />
                                   </View>
                                 )}
@@ -359,6 +382,8 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                           width={contentWidth - moderateScale(28)}
                           indexedTajweedData={null}
                           arabicTextWeight={arabicTextWeight}
+                          showAllahNameHighlight={showAllahNameHighlight}
+                          allahNameHighlightColor={allahNameHighlightColor}
                         />
                       ) : null}
                     </Pressable>
