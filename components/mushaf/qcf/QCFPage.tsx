@@ -71,6 +71,28 @@ const REF_FONT_SIZE = 100;
 const FILL_RATIO = 0.97;
 const BASMALA_PAGE_NUMBER = 1;
 
+// Skia treats U+0020 (regular space) as a wrap-point and merges adjacent
+// PUA word-glyphs at line start when no separator precedes them — the two
+// failure modes are (a) first two words on every page rendering as one
+// glyph blob and (b) hizb-marker pages where the QF API embeds a regular
+// space inside the first word's code field. Replacing spaces with U+200A
+// (HAIR SPACE) avoids both: it's non-breaking, narrow, and Skia treats it
+// as letter-spacing rather than a word break. The same trick is what
+// qcf_quran (Flutter) uses; see m4hmoud-atef/qcf_quran lib/src/qcf_page.dart.
+const HAIR_SPACE = ' ';
+const massageLineText = (text: string): string => {
+  // Replace any embedded regular spaces with hair spaces.
+  let t = text.replace(/ /g, HAIR_SPACE);
+  // Insert a hair space after the first codepoint to keep its initial-form
+  // glyph from merging with the next codepoint at line start. Skip if the
+  // second char is already a hair space (e.g., already separated by the
+  // hizb-marker case above).
+  if (t.length > 1 && t[1] !== HAIR_SPACE) {
+    t = t[0] + HAIR_SPACE + t.slice(1);
+  }
+  return t;
+};
+
 interface RenderEntry {
   key: string;
   paragraph: SkParagraph;
@@ -162,7 +184,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
         line.line_number,
       );
       if (words.length === 0) continue;
-      const text = words.map(w => w.code).join('');
+      const text = massageLineText(words.map(w => w.code).join(''));
 
       tmpBuilder.reset();
       tmpBuilder.pushStyle({
@@ -209,7 +231,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
         if (!qcfFontLoader.isReady(BASMALA_PAGE_NUMBER)) continue;
         entries.push({
           key: `bs-${i}`,
-          paragraph: buildOne(BASMALA_TEXT, BASMALA_FONT_FAMILY),
+          paragraph: buildOne(massageLineText(BASMALA_TEXT), BASMALA_FONT_FAMILY),
           yPos,
         });
         continue;
@@ -221,7 +243,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
         line.line_number,
       );
       if (words.length === 0) continue;
-      const text = words.map(w => w.code).join('');
+      const text = massageLineText(words.map(w => w.code).join(''));
       entries.push({
         key: `ay-${i}`,
         paragraph: buildOne(text, fontFamily),
