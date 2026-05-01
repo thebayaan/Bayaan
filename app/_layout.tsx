@@ -429,11 +429,14 @@ function RootLayout() {
   return (
     <ErrorBoundary>
       <PostHogProvider
-        apiKey={process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? ''}
+        apiKey={
+          process.env.EXPO_PUBLIC_POSTHOG_API_KEY || 'phc_disabled_placeholder'
+        }
         options={{
           host: 'https://us.i.posthog.com',
           flushAt: 20,
           flushInterval: 30000,
+          disabled: !process.env.EXPO_PUBLIC_POSTHOG_API_KEY,
         }}
         autocapture={{
           captureScreens: true,

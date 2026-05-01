@@ -51,6 +51,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
+import QCFPage from './qcf/QCFPage';
 import ReadingPageView from './reading/ReadingPageView';
 import ContinuousListView, {
   type ContinuousListViewHandle,
@@ -120,6 +121,8 @@ const DKPageView: React.FC<{
 }) => {
   const [pageReady, setPageReady] = useState(false);
   const insets = useSafeAreaInsets();
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const isQCF = mushafRenderer === 'qcf_v2';
 
   const {isRightPage, contentMarginLeft} = useMemo(
     () => getPageEdgeLayout(pageNumber),
@@ -177,14 +180,25 @@ const DKPageView: React.FC<{
           />
         </>
       )}
-      <SkiaPage
-        pageNumber={pageNumber}
-        textColor={textColor}
-        dividerColor={labelColor}
-        contentMarginLeft={effectiveMarginLeft}
-        onReady={() => setPageReady(true)}
-        onTap={onTap}
-      />
+      {isQCF ? (
+        <QCFPage
+          pageNumber={pageNumber}
+          textColor={textColor}
+          dividerColor={labelColor}
+          contentMarginLeft={effectiveMarginLeft}
+          onReady={() => setPageReady(true)}
+          onTap={onTap}
+        />
+      ) : (
+        <SkiaPage
+          pageNumber={pageNumber}
+          textColor={textColor}
+          dividerColor={labelColor}
+          contentMarginLeft={effectiveMarginLeft}
+          onReady={() => setPageReady(true)}
+          onTap={onTap}
+        />
+      )}
       {isBookLayout && (
         <PageEdgeDecoration
           isRightPage={isRightPage}

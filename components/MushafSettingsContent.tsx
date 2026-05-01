@@ -103,6 +103,11 @@ const FONT_OPTIONS: FontOption[] = [
     label: 'IndoPak',
     description: 'Subcontinent Nastaliq style',
   },
+  {
+    value: 'qcf_v2',
+    label: 'Madinah QCF',
+    description: 'Printed Madani look (limits some features)',
+  },
 ];
 
 // Internal reusable component for font size control
