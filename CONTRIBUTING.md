@@ -14,6 +14,7 @@ Thank you for contributing to Bayaan. This guide covers everything you need to g
 6. [AI-assisted development](#ai-assisted-development)
 7. [Architecture navigation](#architecture-navigation)
 8. [Pull request workflow](#pull-request-workflow)
+9. [Architectural RFCs](#architectural-rfcs)
 
 ---
 
@@ -282,6 +283,7 @@ Full architecture documentation: [docs/architecture/current-state.md](docs/archi
   - `fix/description` — bug fix
   - `chore/description` — tooling, dependencies, cleanup
   - `docs/description` — documentation only
+  - `rfc/NNN-short-title` — Architectural RFC (see [Architectural RFCs](#architectural-rfcs) below)
 3. **Before submitting:**
   ```bash
    npx prettier --write .
@@ -303,6 +305,16 @@ docs: update player architecture doc
 ```
 
 Do not include AI tool names or attributions in commit messages.
+
+---
+
+## Architectural RFCs
+
+Larger architectural changes — extracting modules into packages, defining cross-cutting interfaces, modifying governance — go through a lightweight RFC process before implementation lands.
+
+An RFC PR adds a single document under [`docs/rfcs/`](docs/rfcs/) using the [template](docs/rfcs/000-template.md) and may include scaffolding the design enables (new types, contract test fixtures, CI workflow files) as long as no existing service behavior changes. Refactors of existing code land in named follow-up PRs that reference the merged RFC.
+
+If you're not sure whether your change warrants an RFC: when in doubt, open a regular PR. Reviewers will redirect to the RFC track if the scope justifies it.
 
 ---
 

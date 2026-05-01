@@ -165,5 +165,8 @@
     "react-native-ios-utilities": "5.2.0",
     "@react-native-menu/menu": "2.0.0"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "private": true
 }
