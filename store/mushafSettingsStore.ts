@@ -39,15 +39,6 @@ export type MushafAllahNameHighlightColor =
   | 'emerald'
   | 'blue'
   | 'rose';
-export type RewayahId =
-  | 'hafs'
-  | 'shouba'
-  | 'bazzi'
-  | 'qumbul'
-  | 'warsh'
-  | 'qaloon'
-  | 'doori'
-  | 'soosi';
 export interface RecentRead {
   surahId: number;
   page: number;
@@ -247,7 +238,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 14,
+      version: 15,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -319,6 +310,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         if (version < 14) {
           state.showAllahNameHighlight = false;
           state.allahNameHighlightColor = 'gold';
+        }
+        if (version < 15) {
+          state.rewayah = migratePersistedId(
+            typeof state.rewayah === 'string' ? state.rewayah : 'hafs',
+          );
         }
         return state as unknown as MushafSettingsState;
       },
