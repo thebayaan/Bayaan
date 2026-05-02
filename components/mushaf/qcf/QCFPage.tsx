@@ -371,8 +371,10 @@ const QCFPage: React.FC<QCFPageProps> = ({
         color,
         fontFamilies: [family],
         fontSize: effectiveFontSize,
-        fontFeatures: options?.fontFeatures,
       };
+      if (options?.fontFeatures?.length) {
+        baseStyle.fontFeatures = options.fontFeatures;
+      }
 
       const buildParagraph = (withStroke: boolean) => {
         const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
