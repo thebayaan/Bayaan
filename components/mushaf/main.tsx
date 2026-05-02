@@ -51,6 +51,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
+import QCFPage from './qcf/QCFPage';
 import ReadingPageView from './reading/ReadingPageView';
 import ContinuousListView, {
   type ContinuousListViewHandle,
@@ -145,6 +146,8 @@ const DKPageView: React.FC<{
 }) => {
   const [pageReady, setPageReady] = useState(false);
   const insets = useSafeAreaInsets();
+  const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const isQCF = mushafRenderer === 'qcf_v2';
 
   const {isRightPage, contentMarginLeft} = useMemo(
     () => getPageEdgeLayout(pageNumber),
@@ -227,21 +230,32 @@ const DKPageView: React.FC<{
           />
         </>
       )}
-      <SkiaPage
-        pageNumber={pageNumber}
-        textColor={textColor}
-        dividerColor={labelColor}
-        contentMarginLeft={effectiveMarginLeft}
-        onReady={() => setPageReady(true)}
-        onTap={onTap}
-        screenWidth={metrics.pageWidth}
-        screenHeight={metrics.screenHeight}
-        contentWidth={metrics.contentWidth}
-        contentHeight={metrics.contentHeight}
-        baseLineHeight={metrics.baseLineHeight}
-        paddingHorizontal={metrics.paddingHorizontal}
-        paddingTop={metrics.paddingTop}
-      />
+      {isQCF ? (
+        <QCFPage
+          pageNumber={pageNumber}
+          textColor={textColor}
+          dividerColor={labelColor}
+          contentMarginLeft={effectiveMarginLeft}
+          onReady={() => setPageReady(true)}
+          onTap={onTap}
+        />
+      ) : (
+        <SkiaPage
+          pageNumber={pageNumber}
+          textColor={textColor}
+          dividerColor={labelColor}
+          contentMarginLeft={effectiveMarginLeft}
+          onReady={() => setPageReady(true)}
+          onTap={onTap}
+          screenWidth={metrics.pageWidth}
+          screenHeight={metrics.screenHeight}
+          contentWidth={metrics.contentWidth}
+          contentHeight={metrics.contentHeight}
+          baseLineHeight={metrics.baseLineHeight}
+          paddingHorizontal={metrics.paddingHorizontal}
+          paddingTop={metrics.paddingTop}
+        />
+      )}
       {isBookLayout && (
         <PageEdgeDecoration
           isRightPage={isRightPage}

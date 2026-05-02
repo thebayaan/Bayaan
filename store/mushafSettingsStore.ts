@@ -29,7 +29,7 @@ export const getDisplayValue = (actualFontSize: number): number => {
   );
 };
 
-export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
+export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak' | 'qcf_v2';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
