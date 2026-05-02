@@ -16,12 +16,13 @@
 // `basm` feature. This matches DK's printed-mushaf basmallah look so
 // surah-start pages look identical between DK and QCF modes.
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {View, StyleSheet} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {View, StyleSheet, Platform} from 'react-native';
 import {
   Canvas,
   Group,
   Paragraph,
+  RoundedRect,
   Skia,
   TextAlign,
   TextDirection,
@@ -31,12 +32,20 @@ import {
 } from '@shopify/react-native-skia';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
+import * as Haptics from 'expo-haptics';
+import Color from 'color';
+import {SheetManager} from 'react-native-actions-sheet';
 import {
   digitalKhattDataService,
   BASMALLAH_TEXT,
   type DKLine,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {qcfDataService} from '@/services/mushaf/QCFDataService';
+import {
+  buildQCFLineRenderModel,
+  findQCFVerseAtCharIndex,
+  type QCFLineRenderModel,
+} from '@/services/mushaf/QCFLineService';
 import {PAGE_WIDTH, FONTSIZE} from '@/services/mushaf/QuranTextService';
 import {
   qcfFontFamilyForPage,
@@ -44,6 +53,7 @@ import {
 } from '@/services/mushaf/QCFFontLoader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
@@ -90,26 +100,15 @@ const DK_FONT_SIZE = (CONTENT_WIDTH / PAGE_WIDTH) * FONTSIZE * 0.9;
 // (HAIR SPACE) avoids both: it's non-breaking, narrow, and Skia treats it
 // as letter-spacing rather than a word break. The same trick is what
 // qcf_quran (Flutter) uses; see m4hmoud-atef/qcf_quran lib/src/qcf_page.dart.
-const HAIR_SPACE = ' ';
-const massageLineText = (text: string): string => {
-  // Replace any embedded regular spaces with hair spaces.
-  let t = text.replace(/ /g, HAIR_SPACE);
-  // Insert a hair space after the first codepoint to keep its initial-form
-  // glyph from merging with the next codepoint at line start. Skip if the
-  // second char is already a hair space (e.g., already separated by the
-  // hizb-marker case above).
-  if (t.length > 1 && t[1] !== HAIR_SPACE) {
-    t = t[0] + HAIR_SPACE + t.slice(1);
-  }
-  return t;
-};
-
 interface RenderEntry {
   key: string;
+  lineIndex: number;
   paragraph: SkParagraph;
   strokeParagraph: SkParagraph | null;
   yPos: number;
   width: number;
+  model: QCFLineRenderModel | null;
+  backgroundHighlights: Array<{start: number; end: number; color: string}>;
 }
 
 interface SurahHeaderEntry {
@@ -129,6 +128,16 @@ const QCFPage: React.FC<QCFPageProps> = ({
 }) => {
   const fontMgr = mushafPreloadService.fontMgr;
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const selectedVerseKeys = useMushafVerseSelectionStore(
+    s => s.selectedVerseKeys,
+  );
+  const selectedPageNumber = useMushafVerseSelectionStore(
+    s => s.selectedPageNumber,
+  );
+  const selectVerse = useMushafVerseSelectionStore(s => s.selectVerse);
+  const selectVerseRange = useMushafVerseSelectionStore(
+    s => s.selectVerseRange,
+  );
 
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
@@ -160,6 +169,55 @@ const QCFPage: React.FC<QCFPageProps> = ({
     () => calculateLineYPositions(pageLines, pageNumber),
     [pageLines, pageNumber],
   );
+
+  const orderedVerseKeys = useMemo(
+    () => qcfDataService.getOrderedVerseKeysForPage(pageNumber),
+    [pageNumber],
+  );
+  const orderedVerseKeysRef = useRef<string[]>(orderedVerseKeys);
+  orderedVerseKeysRef.current = orderedVerseKeys;
+
+  const dragStartVerseKeyRef = useRef<string | null>(null);
+  const dragCurrentVerseKeyRef = useRef<string | null>(null);
+
+  const selectionBgColor = useMemo(
+    () =>
+      Color(textColor)
+        .alpha(0.18)
+        .toString(),
+    [textColor],
+  );
+
+  const lineSelectionHighlights = useMemo(() => {
+    const byLine = new Map<
+      number,
+      Array<{start: number; end: number; color: string}>
+    >();
+    if (selectedPageNumber !== pageNumber || selectedVerseKeys.length === 0) {
+      return byLine;
+    }
+
+    const selectedSet = new Set(selectedVerseKeys);
+    for (let i = 0; i < pageLines.length; i++) {
+      const line = pageLines[i];
+      if (line.line_type !== 'ayah') continue;
+      const words = qcfDataService.getWordsForLine(pageNumber, line.line_number);
+      if (words.length === 0) continue;
+      const model = buildQCFLineRenderModel(words);
+      const ranges = model.verseSegments
+        .filter(segment => selectedSet.has(segment.verseKey))
+        .map(segment => ({
+          start: segment.startCharIndex,
+          end: segment.endCharIndex,
+          color: selectionBgColor,
+        }));
+      if (ranges.length > 0) {
+        byLine.set(i, ranges);
+      }
+    }
+
+    return byLine;
+  }, [pageLines, pageNumber, selectedPageNumber, selectedVerseKeys, selectionBgColor]);
 
   // Load this page's QCF page-font, prefetch neighbors. Basmallah no
   // longer needs the page-1 font — DK font handles it.
@@ -353,10 +411,13 @@ const QCFPage: React.FC<QCFPageProps> = ({
         }
         entries.push({
           key: `bs-${i}`,
+          lineIndex: i,
           paragraph: para,
           strokeParagraph,
           width: naturalWidth,
           yPos,
+          model: null,
+          backgroundHighlights: [],
         });
         continue;
       }
@@ -367,15 +428,24 @@ const QCFPage: React.FC<QCFPageProps> = ({
         line.line_number,
       );
       if (words.length === 0) continue;
-      const text = massageLineText(words.map(w => w.code).join(''));
+      const model = buildQCFLineRenderModel(words);
+      const text = model.renderedText;
       const built = buildOne(text, fontFamily);
-      entries.push({key: `ay-${i}`, ...built, yPos});
+      entries.push({
+        key: `ay-${i}`,
+        lineIndex: i,
+        ...built,
+        yPos,
+        model,
+        backgroundHighlights: lineSelectionHighlights.get(i) ?? [],
+      });
     }
     return entries;
   }, [
     arabicTextWeight,
     fontMgr,
     fontReady,
+    lineSelectionHighlights,
     pageLines,
     lineYPositions,
     pageNumber,
@@ -426,20 +496,192 @@ const QCFPage: React.FC<QCFPageProps> = ({
     [handleTap],
   );
 
+  const renderEntryByLine = useMemo(() => {
+    const map = new Map<number, RenderEntry>();
+    for (const entry of renderEntries) {
+      map.set(entry.lineIndex, entry);
+    }
+    return map;
+  }, [renderEntries]);
+
+  const findLineAtY = useCallback(
+    (canvasY: number): number => {
+      for (let i = 0; i < lineYPositions.length; i++) {
+        const lineTop = lineYPositions[i];
+        const lineBottom =
+          i < lineYPositions.length - 1
+            ? lineYPositions[i + 1]
+            : CONTENT_HEIGHT;
+        if (canvasY >= lineTop && canvasY < lineBottom) {
+          return i;
+        }
+      }
+      return -1;
+    },
+    [lineYPositions],
+  );
+
+  const hitTestVerse = useCallback(
+    (eventX: number, eventY: number) => {
+      const canvasX = eventX - (contentMarginLeft ?? PAGE_PADDING_HORIZONTAL);
+      const canvasY = eventY - PAGE_PADDING_TOP;
+
+      if (
+        canvasX < 0 ||
+        canvasX > CONTENT_WIDTH ||
+        canvasY < 0 ||
+        canvasY > CONTENT_HEIGHT
+      ) {
+        return null;
+      }
+
+      const lineIndex = findLineAtY(canvasY);
+      if (lineIndex < 0) return null;
+
+      const entry = renderEntryByLine.get(lineIndex);
+      if (!entry?.model) return null;
+
+      const paragraphX = canvasX - (CONTENT_WIDTH - entry.width) / 2;
+      const paragraphY = canvasY - entry.yPos;
+      const charIndex = entry.paragraph.getGlyphPositionAtCoordinate(
+        paragraphX,
+        paragraphY,
+      );
+
+      return findQCFVerseAtCharIndex(entry.model, charIndex);
+    },
+    [contentMarginLeft, findLineAtY, renderEntryByLine],
+  );
+
+  const handleDragStart = useCallback(
+    (eventX: number, eventY: number) => {
+      const segment = hitTestVerse(eventX, eventY);
+      if (!segment) {
+        dragStartVerseKeyRef.current = null;
+        return;
+      }
+
+      dragStartVerseKeyRef.current = segment.verseKey;
+      dragCurrentVerseKeyRef.current = segment.verseKey;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      selectVerse(segment.verseKey, pageNumber);
+    },
+    [hitTestVerse, pageNumber, selectVerse],
+  );
+
+  const handleDragUpdate = useCallback(
+    (eventX: number, eventY: number) => {
+      if (Platform.OS === 'android') return;
+
+      const startKey = dragStartVerseKeyRef.current;
+      if (!startKey) return;
+
+      const segment = hitTestVerse(eventX, eventY);
+      if (!segment) return;
+
+      const currentKey = segment.verseKey;
+      if (currentKey === dragCurrentVerseKeyRef.current) return;
+
+      const ordered = orderedVerseKeysRef.current;
+      const startIdx = ordered.indexOf(startKey);
+      const currentIdx = ordered.indexOf(currentKey);
+      if (startIdx === -1 || currentIdx === -1) return;
+
+      if (currentIdx < startIdx) {
+        if (dragCurrentVerseKeyRef.current !== startKey) {
+          dragCurrentVerseKeyRef.current = startKey;
+          selectVerse(startKey, pageNumber);
+        }
+        return;
+      }
+
+      dragCurrentVerseKeyRef.current = currentKey;
+      const range = ordered.slice(startIdx, currentIdx + 1);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (range.length === 1) {
+        selectVerse(range[0], pageNumber);
+      } else {
+        selectVerseRange(range, pageNumber);
+      }
+    },
+    [hitTestVerse, pageNumber, selectVerse, selectVerseRange],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    const startKey = dragStartVerseKeyRef.current;
+    if (!startKey) return;
+
+    const store = useMushafVerseSelectionStore.getState();
+    const keys = store.selectedVerseKeys;
+    if (keys.length === 0) return;
+
+    const firstKey = keys[0];
+    const [surahStr, ayahStr] = firstKey.split(':');
+    SheetManager.show('verse-actions', {
+      payload: {
+        verseKey: firstKey,
+        surahNumber: parseInt(surahStr, 10),
+        ayahNumber: parseInt(ayahStr, 10),
+        verseKeys: keys.length > 1 ? keys : undefined,
+        source: 'mushaf',
+      },
+    });
+
+    dragStartVerseKeyRef.current = null;
+    dragCurrentVerseKeyRef.current = null;
+  }, []);
+
+  const longPressDragGesture = useMemo(
+    () =>
+      Platform.OS === 'android'
+        ? Gesture.LongPress()
+            .minDuration(400)
+            .maxDistance(20)
+            .onStart(event => {
+              'worklet';
+              runOnJS(handleDragStart)(event.x, event.y);
+            })
+            .onEnd(() => {
+              'worklet';
+              runOnJS(handleDragEnd)();
+            })
+        : Gesture.Pan()
+            .activateAfterLongPress(400)
+            .minDistance(0)
+            .onStart(event => {
+              'worklet';
+              runOnJS(handleDragStart)(event.x, event.y);
+            })
+            .onUpdate(event => {
+              'worklet';
+              runOnJS(handleDragUpdate)(event.x, event.y);
+            })
+            .onEnd(() => {
+              'worklet';
+              runOnJS(handleDragEnd)();
+            }),
+    [handleDragEnd, handleDragStart, handleDragUpdate],
+  );
+
+  const composedGesture = useMemo(
+    () => Gesture.Exclusive(longPressDragGesture, tapGesture),
+    [longPressDragGesture, tapGesture],
+  );
+
   if (!fontMgr || pageLines.length === 0) {
     return <View style={styles.page} />;
   }
 
   if (!fontReady || renderEntries.length === 0) {
     return (
-      <GestureDetector gesture={tapGesture}>
+      <GestureDetector gesture={composedGesture}>
         <View style={styles.page} />
       </GestureDetector>
     );
   }
 
   return (
-    <GestureDetector gesture={tapGesture}>
+    <GestureDetector gesture={composedGesture}>
       <View style={styles.page}>
         <Canvas
           style={{
@@ -463,8 +705,26 @@ const QCFPage: React.FC<QCFPageProps> = ({
                 lineHeight={lineHeight}
               />
             ))}
-          {renderEntries.map(({key, paragraph, strokeParagraph, yPos, width}) => (
+          {renderEntries.map(
+            ({key, paragraph, strokeParagraph, yPos, width, backgroundHighlights}) => (
             <Group key={key}>
+              {backgroundHighlights.map((highlight, index) => {
+                const rects = paragraph.getRectsForRange(
+                  highlight.start,
+                  highlight.end + 1,
+                );
+                return rects.map((rect, rectIndex) => (
+                  <RoundedRect
+                    key={`${key}-bg-${index}-${rectIndex}`}
+                    x={(CONTENT_WIDTH - width) / 2 + rect.x}
+                    y={yPos + rect.y}
+                    width={rect.width}
+                    height={rect.height}
+                    r={4}
+                    color={highlight.color}
+                  />
+                ));
+              })}
               {strokeParagraph && (
                 <Paragraph
                   paragraph={strokeParagraph}
