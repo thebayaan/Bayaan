@@ -108,6 +108,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreenRaw(screen);
   }, []);
 
+  const hideCurrentSheet = useCallback(() => {
+    SheetManager.hide(props.sheetId).catch(error => {
+      console.warn('[VerseActionsSheet] Failed to hide sheet:', error);
+    });
+  }, [props.sheetId]);
+
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
   const surahNumber = payload?.surahNumber ?? 0;
@@ -224,8 +230,15 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         store.addBookmark(vk);
       }
     }
-    SheetManager.hideAll();
-  }, [verseKey, verseKeys, isRange, isBookmarked, resolvedRewayah]);
+    await SheetManager.hide(props.sheetId);
+  }, [
+    verseKey,
+    verseKeys,
+    isRange,
+    isBookmarked,
+    resolvedRewayah,
+    props.sheetId,
+  ]);
 
   const handleHighlight = useCallback(async () => {
     if (isHighlighted) {
@@ -236,11 +249,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         await verseAnnotationService.removeHighlight(vk);
         store.removeHighlight(vk);
       }
-      SheetManager.hideAll();
+      hideCurrentSheet();
     } else {
       setActiveScreen('highlight');
     }
-  }, [verseKey, verseKeys, isRange, isHighlighted]);
+  }, [verseKey, verseKeys, isRange, isHighlighted, hideCurrentSheet]);
 
   const handleNote = useCallback(() => {
     setActiveScreen('note');
@@ -257,8 +270,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         : `Quran ${verseRefText} · ${getRewayahShortLabel(resolvedRewayah)}`;
     parts.push(ref);
     await Clipboard.setStringAsync(parts.join('\n\n'));
-    SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText, resolvedRewayah]);
+    await SheetManager.hide(props.sheetId);
+  }, [arabicText, translation, verseRefText, resolvedRewayah, props.sheetId]);
 
   const handleShare = useCallback(() => {
     lightHaptics();
@@ -329,7 +342,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           currentPage: page,
           pendingStartVerseKey: firstKey,
         });
-        await SheetManager.hideAll();
+        await SheetManager.hide(props.sheetId);
         SheetManager.show('mushaf-player-options', {
           payload: {currentPage: page},
         });
@@ -367,10 +380,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         store.setRangeRepeatCount(1);
       }
 
-      SheetManager.hideAll();
+      hideCurrentSheet();
       store.startPlayback(page, firstKey);
     },
-    [verseKey, verseKeys, isRange],
+    [verseKey, verseKeys, isRange, props.sheetId, hideCurrentSheet],
   );
 
   const handlePlaySelection = useCallback(
@@ -394,9 +407,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
-    await SheetManager.hideAll();
+    await SheetManager.hide(props.sheetId);
     SheetManager.show('follow-along');
-  }, []);
+  }, [props.sheetId]);
 
   const handlePlayerPlayFromHere = useCallback(() => {
     lightHaptics();
@@ -424,8 +437,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       timestampTo: ts.timestampTo,
     });
 
-    SheetManager.hideAll();
-  }, [verseKey, verseKeys, isRange]);
+    hideCurrentSheet();
+  }, [verseKey, verseKeys, isRange, hideCurrentSheet]);
 
   const handlePlayerRepeat = useCallback(async () => {
     lightHaptics();
@@ -456,7 +469,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       playerState.pause();
     }
 
-    await SheetManager.hideAll();
+    await SheetManager.hide(props.sheetId);
     playerState.setSheetMode('hidden');
 
     useMushafPlayerStore.setState({
@@ -476,7 +489,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     SheetManager.show('mushaf-player-options', {
       payload: {currentPage: page},
     });
-  }, [verseKey, verseKeys, isRange]);
+  }, [verseKey, verseKeys, isRange, props.sheetId]);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !activeScreen) return;
@@ -494,8 +507,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, []);
 
   const handleDismiss = useCallback(() => {
-    SheetManager.hideAll();
-  }, []);
+    hideCurrentSheet();
+  }, [hideCurrentSheet]);
 
   const handleBack = useCallback(() => {
     setActiveScreen(null);
@@ -552,7 +565,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 <Pressable
                   onPress={() => {
                     lightHaptics();
-                    SheetManager.hideAll();
+                    hideCurrentSheet();
                     usePlayerStore.getState().setSheetMode('hidden');
                     setTimeout(() => {
                       router.push('/(tabs)/(a.home)/translations');
