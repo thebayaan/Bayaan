@@ -56,6 +56,7 @@ import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {
   createTextStrokePaint,
@@ -151,6 +152,10 @@ const QCFPage: React.FC<QCFPageProps> = ({
   const selectVerseRange = useMushafVerseSelectionStore(
     s => s.selectVerseRange,
   );
+  const playbackVerseKey = useMushafPlayerStore(s => {
+    if (!s.currentVerseKey || s.playbackState === 'idle') return null;
+    return s.currentVerseKey;
+  });
 
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
@@ -202,18 +207,17 @@ const QCFPage: React.FC<QCFPageProps> = ({
   );
 
   const selectionBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(0.18)
-        .toString(),
+    () => Color(textColor).alpha(0.18).toString(),
+    [textColor],
+  );
+
+  const playbackBgColor = useMemo(
+    () => Color(textColor).alpha(0.22).toString(),
     [textColor],
   );
 
   const themeBgColor = useMemo(
-    () =>
-      Color(textColor)
-        .alpha(0.12)
-        .toString(),
+    () => Color(textColor).alpha(0.12).toString(),
     [textColor],
   );
 
@@ -229,11 +233,25 @@ const QCFPage: React.FC<QCFPageProps> = ({
     for (let i = 0; i < pageLines.length; i++) {
       const line = pageLines[i];
       if (line.line_type !== 'ayah') continue;
-      const words = qcfDataService.getWordsForLine(pageNumber, line.line_number);
+      const words = qcfDataService.getWordsForLine(
+        pageNumber,
+        line.line_number,
+      );
       if (words.length === 0) continue;
       const model = buildQCFLineRenderModel(words);
       const ranges: Array<{start: number; end: number; color: string}> = [];
       for (const segment of model.verseSegments) {
+        if (
+          playbackVerseKey === segment.verseKey &&
+          !selectedSet?.has(segment.verseKey)
+        ) {
+          ranges.push({
+            start: segment.startCharIndex,
+            end: segment.endCharIndex,
+            color: playbackBgColor,
+          });
+          continue;
+        }
         if (showThemes && !selectedSet?.has(segment.verseKey)) {
           const themeInfo = themeDataService.getThemeForVerse(segment.verseKey);
           if (themeInfo && themeInfo.themeIndex % 2 === 0) {
@@ -263,6 +281,8 @@ const QCFPage: React.FC<QCFPageProps> = ({
     pageNumber,
     selectedPageNumber,
     selectedVerseKeys,
+    playbackVerseKey,
+    playbackBgColor,
     selectionBgColor,
     showThemes,
     themeBgColor,
@@ -342,8 +362,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
         ? sortedDesc[1]
         : sortedDesc[0];
 
-    const fontSize =
-      ((CONTENT_WIDTH * FILL_RATIO) / widestRef) * REF_FONT_SIZE;
+    const fontSize = ((CONTENT_WIDTH * FILL_RATIO) / widestRef) * REF_FONT_SIZE;
 
     // Lay out each line at its INTRINSIC width (not canvas width) so outlier
     // lines overhang the canvas edges instead of wrapping. We position the
@@ -442,10 +461,15 @@ const QCFPage: React.FC<QCFPageProps> = ({
                 ].map(index => [index, allahNameHighlightColor] as const),
               )
             : null;
-        const built = buildOne(BASMALLAH_TEXT, DK_FONT_FAMILY, basmallahAllahMap, {
-          fontSize: DK_FONT_SIZE,
-          fontFeatures: [{name: 'basm', value: 1}],
-        });
+        const built = buildOne(
+          BASMALLAH_TEXT,
+          DK_FONT_FAMILY,
+          basmallahAllahMap,
+          {
+            fontSize: DK_FONT_SIZE,
+            fontFeatures: [{name: 'basm', value: 1}],
+          },
+        );
         entries.push({
           key: `bs-${i}`,
           lineIndex: i,
@@ -749,41 +773,49 @@ const QCFPage: React.FC<QCFPageProps> = ({
               />
             ))}
           {renderEntries.map(
-            ({key, paragraph, strokeParagraph, yPos, width, backgroundHighlights}) => (
-            <Group key={key}>
-              {backgroundHighlights.map((highlight, index) => {
-                const rects = paragraph.getRectsForRange(
-                  highlight.start,
-                  highlight.end + 1,
-                );
-                return rects.map((rect, rectIndex) => (
-                  <RoundedRect
-                    key={`${key}-bg-${index}-${rectIndex}`}
-                    x={(CONTENT_WIDTH - width) / 2 + rect.x}
-                    y={yPos + rect.y}
-                    width={rect.width}
-                    height={rect.height}
-                    r={4}
-                    color={highlight.color}
+            ({
+              key,
+              paragraph,
+              strokeParagraph,
+              yPos,
+              width,
+              backgroundHighlights,
+            }) => (
+              <Group key={key}>
+                {backgroundHighlights.map((highlight, index) => {
+                  const rects = paragraph.getRectsForRange(
+                    highlight.start,
+                    highlight.end + 1,
+                  );
+                  return rects.map((rect, rectIndex) => (
+                    <RoundedRect
+                      key={`${key}-bg-${index}-${rectIndex}`}
+                      x={(CONTENT_WIDTH - width) / 2 + rect.x}
+                      y={yPos + rect.y}
+                      width={rect.width}
+                      height={rect.height}
+                      r={4}
+                      color={highlight.color}
+                    />
+                  ));
+                })}
+                {strokeParagraph && (
+                  <Paragraph
+                    paragraph={strokeParagraph}
+                    x={(CONTENT_WIDTH - width) / 2}
+                    y={yPos}
+                    width={Math.ceil(width) + 2}
                   />
-                ));
-              })}
-              {strokeParagraph && (
+                )}
                 <Paragraph
-                  paragraph={strokeParagraph}
+                  paragraph={paragraph}
                   x={(CONTENT_WIDTH - width) / 2}
                   y={yPos}
                   width={Math.ceil(width) + 2}
                 />
-              )}
-              <Paragraph
-                paragraph={paragraph}
-                x={(CONTENT_WIDTH - width) / 2}
-                y={yPos}
-                width={Math.ceil(width) + 2}
-              />
-            </Group>
-          ))}
+              </Group>
+            ),
+          )}
         </Canvas>
       </View>
     </GestureDetector>
