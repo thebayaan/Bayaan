@@ -41,6 +41,19 @@ export interface QCFWord {
 export const BASMALA_TEXT = 'ﱁﱂﱃﱄ';
 export const BASMALA_FONT_FAMILY = 'p1-v2';
 
+// Per-page line-content overrides applied at lookup time to correct
+// API line-break decisions that don't match the printed Madinah mushaf.
+// Each entry's `moveLastWordToNextLine` lists 1-indexed line numbers
+// whose final word should be relocated to the start of the next line.
+//
+// Page 27: API places line 14 with 10 words ending at 2:181:5. The
+// printed mushaf (and Golden Quran) wraps 2:181:5 to line 15. Moving
+// it removes the line-14 width outlier that was shrinking the page's
+// fontSize relative to neighbouring pages.
+const LINE_OVERRIDES: Record<number, {moveLastWordToNextLine: number[]}> = {
+  27: {moveLastWordToNextLine: [14]},
+};
+
 class QCFDataService {
   private raw: RawData | null = null;
   private wordsCache = new Map<string, QCFWord[]>();
@@ -65,18 +78,36 @@ class QCFDataService {
       this.wordsCache.set(cacheKey, []);
       return [];
     }
-    const line = page.l.find(l => l.n === lineNumber);
-    if (!line) {
-      this.wordsCache.set(cacheKey, []);
-      return [];
-    }
+    const rawLine = page.l.find(l => l.n === lineNumber);
 
-    const words: QCFWord[] = line.w.map(rw => ({
+    const toQCFWord = (rw: RawWord): QCFWord => ({
       code: rw.c,
       location: rw.l,
       charType: rw.t === 'e' ? 'end' : 'word',
       fallbackText: rw.f,
-    }));
+    });
+
+    let words: QCFWord[] = rawLine ? rawLine.w.map(toQCFWord) : [];
+
+    // Apply per-page overrides:
+    //   - If THIS line was demoted (its last word should sit on the next
+    //     line), drop the trailing word.
+    //   - If the PREVIOUS line was demoted, prepend its last word here.
+    const override = LINE_OVERRIDES[pageNumber];
+    if (override) {
+      if (override.moveLastWordToNextLine.includes(lineNumber) && rawLine) {
+        words = words.slice(0, -1);
+      }
+      const prevLineNumber = lineNumber - 1;
+      if (override.moveLastWordToNextLine.includes(prevLineNumber)) {
+        const prevRaw = page.l.find(l => l.n === prevLineNumber);
+        const movedWord = prevRaw?.w.at(-1);
+        if (movedWord) {
+          words = [toQCFWord(movedWord), ...words];
+        }
+      }
+    }
+
     this.wordsCache.set(cacheKey, words);
     return words;
   }

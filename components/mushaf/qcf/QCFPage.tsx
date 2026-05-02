@@ -97,6 +97,7 @@ interface RenderEntry {
   key: string;
   paragraph: SkParagraph;
   yPos: number;
+  width: number;
 }
 
 const QCFPage: React.FC<QCFPageProps> = ({
@@ -174,9 +175,11 @@ const QCFPage: React.FC<QCFPageProps> = ({
 
     const fontFamily = qcfFontFamilyForPage(pageNumber);
 
-    // Pick fontSize from the widest ayah line at REF_FONT_SIZE.
+    // Measure every ayah line at REF_FONT_SIZE so we can pick fontSize and
+    // also detect width outliers (one anomalously wide line that would
+    // otherwise drag fontSize down for the whole page).
     const tmpBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-    let widestRef = 0;
+    const lineWidths: number[] = [];
     for (const line of pageLines) {
       if (line.line_type !== 'ayah') continue;
       const words = qcfDataService.getWordsForLine(
@@ -195,16 +198,32 @@ const QCFPage: React.FC<QCFPageProps> = ({
       tmpBuilder.addText(text);
       const para = tmpBuilder.build();
       para.layout(99999);
-      const w = para.getLongestLine();
+      lineWidths.push(para.getLongestLine());
       para.dispose();
-      if (w > widestRef) widestRef = w;
     }
-    if (widestRef === 0) return [];
+    if (lineWidths.length === 0) return [];
+
+    // Outlier-skip: if the widest line is >5% wider than the second-widest
+    // (e.g., page 27's line 14, which the printed mushaf wraps to line 15),
+    // calibrate against the second-widest. The outlier line then overhangs
+    // the canvas slightly via per-line natural-width centering below — much
+    // better than shrinking the entire page to fit one anomaly.
+    const sortedDesc = [...lineWidths].sort((a, b) => b - a);
+    const widestRef =
+      sortedDesc.length > 1 && sortedDesc[0] > sortedDesc[1] * 1.05
+        ? sortedDesc[1]
+        : sortedDesc[0];
 
     const fontSize =
       ((CONTENT_WIDTH * FILL_RATIO) / widestRef) * REF_FONT_SIZE;
 
-    const buildOne = (text: string, family: string): SkParagraph => {
+    // Lay out each line at its INTRINSIC width (not canvas width) so outlier
+    // lines overhang the canvas edges instead of wrapping. We position the
+    // line with an explicit x-offset for centering at render time.
+    const buildOne = (
+      text: string,
+      family: string,
+    ): {paragraph: SkParagraph; width: number} => {
       const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
       builder.pushStyle({
         color: Skia.Color(textColor),
@@ -213,8 +232,10 @@ const QCFPage: React.FC<QCFPageProps> = ({
       });
       builder.addText(text);
       const para = builder.build();
-      para.layout(CONTENT_WIDTH);
-      return para;
+      para.layout(99999);
+      const naturalWidth = para.getLongestLine();
+      para.layout(Math.ceil(naturalWidth) + 2);
+      return {paragraph: para, width: naturalWidth};
     };
 
     const entries: RenderEntry[] = [];
@@ -229,11 +250,11 @@ const QCFPage: React.FC<QCFPageProps> = ({
 
       if (line.line_type === 'basmallah') {
         if (!qcfFontLoader.isReady(BASMALA_PAGE_NUMBER)) continue;
-        entries.push({
-          key: `bs-${i}`,
-          paragraph: buildOne(massageLineText(BASMALA_TEXT), BASMALA_FONT_FAMILY),
-          yPos,
-        });
+        const built = buildOne(
+          massageLineText(BASMALA_TEXT),
+          BASMALA_FONT_FAMILY,
+        );
+        entries.push({key: `bs-${i}`, ...built, yPos});
         continue;
       }
 
@@ -244,11 +265,8 @@ const QCFPage: React.FC<QCFPageProps> = ({
       );
       if (words.length === 0) continue;
       const text = massageLineText(words.map(w => w.code).join(''));
-      entries.push({
-        key: `ay-${i}`,
-        paragraph: buildOne(text, fontFamily),
-        yPos,
-      });
+      const built = buildOne(text, fontFamily);
+      entries.push({key: `ay-${i}`, ...built, yPos});
     }
     return entries;
   }, [
@@ -304,13 +322,13 @@ const QCFPage: React.FC<QCFPageProps> = ({
             marginLeft: contentMarginLeft ?? PAGE_PADDING_HORIZONTAL,
             marginTop: PAGE_PADDING_TOP,
           }}>
-          {renderEntries.map(({key, paragraph, yPos}) => (
+          {renderEntries.map(({key, paragraph, yPos, width}) => (
             <Paragraph
               key={key}
               paragraph={paragraph}
-              x={0}
+              x={(CONTENT_WIDTH - width) / 2}
               y={yPos}
-              width={CONTENT_WIDTH}
+              width={Math.ceil(width) + 2}
             />
           ))}
         </Canvas>
