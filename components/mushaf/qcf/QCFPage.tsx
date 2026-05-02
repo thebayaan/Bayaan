@@ -43,6 +43,7 @@ import {
 import {qcfDataService} from '@/services/mushaf/QCFDataService';
 import {
   buildQCFLineRenderModel,
+  buildQCFLineTajweedMap,
   findQCFVerseAtCharIndex,
   type QCFLineRenderModel,
 } from '@/services/mushaf/QCFLineService';
@@ -54,10 +55,12 @@ import {
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
+import {useTajweedStore} from '@/store/tajweedStore';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
+import {tajweedColors} from '@/constants/tajweedColors';
 import SkiaSurahHeader from '../skia/SkiaSurahHeader';
 import {
   SCREEN_WIDTH,
@@ -128,6 +131,8 @@ const QCFPage: React.FC<QCFPageProps> = ({
 }) => {
   const fontMgr = mushafPreloadService.fontMgr;
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,
   );
@@ -266,7 +271,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
         line.line_number,
       );
       if (words.length === 0) continue;
-      const text = massageLineText(words.map(w => w.code).join(''));
+      const text = buildQCFLineRenderModel(words).renderedText;
 
       tmpBuilder.reset();
       tmpBuilder.pushStyle({
@@ -302,6 +307,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
     const buildOne = (
       text: string,
       family: string,
+      charToRule?: Map<number, string> | null,
     ): {
       paragraph: SkParagraph;
       strokeParagraph: SkParagraph | null;
@@ -320,15 +326,34 @@ const QCFPage: React.FC<QCFPageProps> = ({
 
       const buildParagraph = (withStroke: boolean) => {
         const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-        const strokePaint = withStroke
-          ? createTextStrokePaint(color, strokeWidth)
-          : undefined;
-        if (strokePaint) {
-          builder.pushStyle(baseStyle, strokePaint);
-        } else {
-          builder.pushStyle(baseStyle);
+        const pushStyle = (style: SkTextStyle, styleColor: string) => {
+          const strokePaint = withStroke
+            ? createTextStrokePaint(Skia.Color(styleColor), strokeWidth)
+            : undefined;
+          if (strokePaint) {
+            builder.pushStyle(style, strokePaint);
+          } else {
+            builder.pushStyle(style);
+          }
+        };
+
+        pushStyle(baseStyle, textColor);
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const rule = charToRule?.get(i);
+          if (rule && tajweedColors[rule]) {
+            const ruleColor = tajweedColors[rule];
+            const charStyle: SkTextStyle = {
+              ...baseStyle,
+              color: Skia.Color(ruleColor),
+            };
+            pushStyle(charStyle, ruleColor);
+            builder.addText(char);
+            builder.pop();
+          } else {
+            builder.addText(char);
+          }
         }
-        builder.addText(text);
         builder.pop();
         const para = builder.build();
         para.layout(99999);
@@ -430,7 +455,11 @@ const QCFPage: React.FC<QCFPageProps> = ({
       if (words.length === 0) continue;
       const model = buildQCFLineRenderModel(words);
       const text = model.renderedText;
-      const built = buildOne(text, fontFamily);
+      const charToRule =
+        showTajweed && indexedTajweedData
+          ? buildQCFLineTajweedMap(words, indexedTajweedData)
+          : null;
+      const built = buildOne(text, fontFamily, charToRule);
       entries.push({
         key: `ay-${i}`,
         lineIndex: i,
@@ -445,10 +474,12 @@ const QCFPage: React.FC<QCFPageProps> = ({
     arabicTextWeight,
     fontMgr,
     fontReady,
+    indexedTajweedData,
     lineSelectionHighlights,
     pageLines,
     lineYPositions,
     pageNumber,
+    showTajweed,
     textColor,
   ]);
 
