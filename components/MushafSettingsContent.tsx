@@ -1,5 +1,5 @@
 import React, {useMemo, useCallback, useState} from 'react';
-import {View, Text, StyleSheet, Switch, Pressable} from 'react-native';
+import {Alert, View, Text, StyleSheet, Switch, Pressable} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
@@ -602,6 +602,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   } = useMushafSettingsStore();
 
   const verseKey = '1:1';
+  const isQCF1440 = mushafRenderer === 'qcf_v2';
   const allahNameHighlightHex = getAllahNameHighlightColorHex(
     allahNameHighlightColor,
     theme.isDarkMode,
@@ -661,10 +662,25 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   };
 
   const handleFontSelect = useCallback(
-    (value: MushafRenderer) => {
+    async (value: MushafRenderer) => {
+      const switchingToQCF = value === 'qcf_v2' && mushafRenderer !== 'qcf_v2';
+      if (switchingToQCF && rewayah !== 'hafs') {
+        try {
+          await digitalKhattDataService.switchRewayah('hafs');
+        } catch (error) {
+          console.error('[MushafSettings] Failed to reset rewayah for QCF:', error);
+        }
+        setRewayah('hafs');
+      }
       setMushafRenderer(value);
+      if (switchingToQCF) {
+        Alert.alert(
+          'Mushaf 1440 Beta',
+          'Mushaf 1440 is Bayaan’s most modern mushaf pipeline, but it is still in beta. Some features are currently disabled, including tajweed coloring and rewayah switching.',
+        );
+      }
     },
-    [setMushafRenderer],
+    [mushafRenderer, rewayah, setMushafRenderer, setRewayah],
   );
 
   const handleRewayahSelect = useCallback(
@@ -1061,13 +1077,16 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <View style={styles.tajweedLabelContainer}>
             <Text style={styles.tajweedLabel}>Tajweed Coloring</Text>
             <Text style={styles.tajweedSubLabel}>
-              Highlight rules with colors
+              {isQCF1440
+                ? 'Unavailable in Mushaf 1440 beta'
+                : 'Highlight rules with colors'}
             </Text>
           </View>
           <TajweedToggle
             value={showTajweed}
             onValueChange={toggleTajweed}
             theme={theme}
+            disabled={isQCF1440}
           />
         </View>
         <View style={styles.divider} />
@@ -1113,7 +1132,13 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           selected rewayah; the diff toggle sits above it so it's reachable
           without scrolling past 20 radio options. */}
       <Text style={styles.sectionHeader}>REWAYAH</Text>
-      {hasDiffData(rewayah) && (
+      {isQCF1440 ? (
+        <View style={styles.card}>
+          <Text style={styles.helperText}>
+            Rewayah switching is disabled in Mushaf 1440 beta.
+          </Text>
+        </View>
+      ) : hasDiffData(rewayah) && (
         <RewayahDiffCard
           rewayah={rewayah}
           showRewayahDiffs={showRewayahDiffs}
@@ -1128,6 +1153,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
         onSelect={handleRewayahSelect}
         styles={styles}
         theme={theme}
+        disabled={isQCF1440}
       />
     </View>
   );
@@ -1138,6 +1164,7 @@ interface RewayahAccordionProps {
   onSelect: (id: RewayahId) => void;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
+  disabled?: boolean;
 }
 
 const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
@@ -1145,6 +1172,7 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
   onSelect,
   styles,
   theme,
+  disabled = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -1154,10 +1182,12 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
         style={({pressed}) => [
           styles.settingRow,
           pressed && styles.settingRowPressed,
+          disabled && styles.radioRowDisabled,
         ]}
         accessibilityRole="button"
-        accessibilityState={{expanded}}
+        accessibilityState={{expanded, disabled}}
         accessibilityLabel={`Rewayah: ${getLongLabel(selectedId)}. ${expanded ? 'Collapse' : 'Expand'} to change.`}
+        disabled={disabled}
         onPress={() => setExpanded(e => !e)}>
         <View style={styles.radioTextContainer}>
           <Text style={styles.accordionHeaderEyebrow}>Currently reading</Text>

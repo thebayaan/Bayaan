@@ -43,7 +43,7 @@ import {
 import {qcfDataService} from '@/services/mushaf/QCFDataService';
 import {
   buildQCFLineRenderModel,
-  buildQCFLineTajweedMap,
+  buildQCFLineAllahNameMap,
   findQCFVerseAtCharIndex,
   type QCFLineRenderModel,
 } from '@/services/mushaf/QCFLineService';
@@ -53,14 +53,16 @@ import {
   qcfFontLoader,
 } from '@/services/mushaf/QCFFontLoader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
+import {themeDataService} from '@/services/mushaf/ThemeDataService';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {useTajweedStore} from '@/store/tajweedStore';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
 } from '@/utils/skiaTextWeight';
-import {tajweedColors} from '@/constants/tajweedColors';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
+import {useTheme} from '@/hooks/useTheme';
 import SkiaSurahHeader from '../skia/SkiaSurahHeader';
 import {
   SCREEN_WIDTH,
@@ -129,10 +131,16 @@ const QCFPage: React.FC<QCFPageProps> = ({
   onReady,
   onTap,
 }) => {
+  const {theme} = useTheme();
   const fontMgr = mushafPreloadService.fontMgr;
   const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
-  const showTajweed = useMushafSettingsStore(s => s.showTajweed);
-  const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
+  const showThemes = useMushafSettingsStore(s => s.showThemes);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,
   );
@@ -184,6 +192,14 @@ const QCFPage: React.FC<QCFPageProps> = ({
 
   const dragStartVerseKeyRef = useRef<string | null>(null);
   const dragCurrentVerseKeyRef = useRef<string | null>(null);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
 
   const selectionBgColor = useMemo(
     () =>
@@ -193,36 +209,64 @@ const QCFPage: React.FC<QCFPageProps> = ({
     [textColor],
   );
 
-  const lineSelectionHighlights = useMemo(() => {
+  const themeBgColor = useMemo(
+    () =>
+      Color(textColor)
+        .alpha(0.12)
+        .toString(),
+    [textColor],
+  );
+
+  const lineBackgroundHighlights = useMemo(() => {
     const byLine = new Map<
       number,
       Array<{start: number; end: number; color: string}>
     >();
-    if (selectedPageNumber !== pageNumber || selectedVerseKeys.length === 0) {
-      return byLine;
-    }
-
-    const selectedSet = new Set(selectedVerseKeys);
+    const selectedSet =
+      selectedPageNumber === pageNumber && selectedVerseKeys.length > 0
+        ? new Set(selectedVerseKeys)
+        : null;
     for (let i = 0; i < pageLines.length; i++) {
       const line = pageLines[i];
       if (line.line_type !== 'ayah') continue;
       const words = qcfDataService.getWordsForLine(pageNumber, line.line_number);
       if (words.length === 0) continue;
       const model = buildQCFLineRenderModel(words);
-      const ranges = model.verseSegments
-        .filter(segment => selectedSet.has(segment.verseKey))
-        .map(segment => ({
-          start: segment.startCharIndex,
-          end: segment.endCharIndex,
-          color: selectionBgColor,
-        }));
+      const ranges: Array<{start: number; end: number; color: string}> = [];
+      for (const segment of model.verseSegments) {
+        if (showThemes && !selectedSet?.has(segment.verseKey)) {
+          const themeInfo = themeDataService.getThemeForVerse(segment.verseKey);
+          if (themeInfo && themeInfo.themeIndex % 2 === 0) {
+            ranges.push({
+              start: segment.startCharIndex,
+              end: segment.endCharIndex,
+              color: themeBgColor,
+            });
+          }
+        }
+        if (selectedSet?.has(segment.verseKey)) {
+          ranges.push({
+            start: segment.startCharIndex,
+            end: segment.endCharIndex,
+            color: selectionBgColor,
+          });
+        }
+      }
       if (ranges.length > 0) {
         byLine.set(i, ranges);
       }
     }
 
     return byLine;
-  }, [pageLines, pageNumber, selectedPageNumber, selectedVerseKeys, selectionBgColor]);
+  }, [
+    pageLines,
+    pageNumber,
+    selectedPageNumber,
+    selectedVerseKeys,
+    selectionBgColor,
+    showThemes,
+    themeBgColor,
+  ]);
 
   // Load this page's QCF page-font, prefetch neighbors. Basmallah no
   // longer needs the page-1 font — DK font handles it.
@@ -307,21 +351,27 @@ const QCFPage: React.FC<QCFPageProps> = ({
     const buildOne = (
       text: string,
       family: string,
-      charToRule?: Map<number, string> | null,
+      charToColor?: Map<number, string> | null,
+      options?: {
+        fontSize?: number;
+        fontFeatures?: Array<{name: string; value: number}>;
+      },
     ): {
       paragraph: SkParagraph;
       strokeParagraph: SkParagraph | null;
       width: number;
     } => {
       const color = Skia.Color(textColor);
+      const effectiveFontSize = options?.fontSize ?? fontSize;
       const strokeWidth = getArabicTextWeightStrokeWidth(
         arabicTextWeight,
-        fontSize,
+        effectiveFontSize,
       );
       const baseStyle: SkTextStyle = {
         color,
         fontFamilies: [family],
-        fontSize,
+        fontSize: effectiveFontSize,
+        fontFeatures: options?.fontFeatures,
       };
 
       const buildParagraph = (withStroke: boolean) => {
@@ -340,14 +390,13 @@ const QCFPage: React.FC<QCFPageProps> = ({
         pushStyle(baseStyle, textColor);
         for (let i = 0; i < text.length; i++) {
           const char = text[i];
-          const rule = charToRule?.get(i);
-          if (rule && tajweedColors[rule]) {
-            const ruleColor = tajweedColors[rule];
+          const colorOverride = charToColor?.get(i);
+          if (colorOverride) {
             const charStyle: SkTextStyle = {
               ...baseStyle,
-              color: Skia.Color(ruleColor),
+              color: Skia.Color(colorOverride),
             };
-            pushStyle(charStyle, ruleColor);
+            pushStyle(charStyle, colorOverride);
             builder.addText(char);
             builder.pop();
           } else {
@@ -383,63 +432,24 @@ const QCFPage: React.FC<QCFPageProps> = ({
       }
 
       if (line.line_type === 'basmallah') {
-        // Render exactly like DK SkiaLine: BASMALLAH_TEXT in the DK
-        // font with the OpenType `basm` feature, sized to DK's natural
-        // basmallah size, centered in the canvas.
-        const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-        builder.pushStyle({
-          color: Skia.Color(textColor),
-          fontFamilies: [DK_FONT_FAMILY],
+        const basmallahAllahMap =
+          showAllahNameHighlight && allahNameHighlightColor
+            ? new Map(
+                [
+                  ...(getTextAllahNameCharMap(BASMALLAH_TEXT)?.keys() ?? []),
+                ].map(index => [index, allahNameHighlightColor] as const),
+              )
+            : null;
+        const built = buildOne(BASMALLAH_TEXT, DK_FONT_FAMILY, basmallahAllahMap, {
           fontSize: DK_FONT_SIZE,
           fontFeatures: [{name: 'basm', value: 1}],
         });
-        builder.addText(BASMALLAH_TEXT);
-        builder.pop();
-        const para = builder.build();
-        para.layout(99999);
-        const naturalWidth = para.getLongestLine();
-        para.layout(Math.ceil(naturalWidth) + 2);
-        const strokeWidth = getArabicTextWeightStrokeWidth(
-          arabicTextWeight,
-          DK_FONT_SIZE,
-        );
-        let strokeParagraph: SkParagraph | null = null;
-        if (strokeWidth > 0) {
-          const strokeBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-          const strokePaint = createTextStrokePaint(
-            Skia.Color(textColor),
-            strokeWidth,
-          );
-          if (strokePaint) {
-            strokeBuilder.pushStyle(
-              {
-                color: Skia.Color(textColor),
-                fontFamilies: [DK_FONT_FAMILY],
-                fontSize: DK_FONT_SIZE,
-                fontFeatures: [{name: 'basm', value: 1}],
-              },
-              strokePaint,
-            );
-          } else {
-            strokeBuilder.pushStyle({
-              color: Skia.Color(textColor),
-              fontFamilies: [DK_FONT_FAMILY],
-              fontSize: DK_FONT_SIZE,
-              fontFeatures: [{name: 'basm', value: 1}],
-            });
-          }
-          strokeBuilder.addText(BASMALLAH_TEXT);
-          strokeBuilder.pop();
-          strokeParagraph = strokeBuilder.build();
-          strokeParagraph.layout(99999);
-          strokeParagraph.layout(Math.ceil(naturalWidth) + 2);
-        }
         entries.push({
           key: `bs-${i}`,
           lineIndex: i,
-          paragraph: para,
-          strokeParagraph,
-          width: naturalWidth,
+          paragraph: built.paragraph,
+          strokeParagraph: built.strokeParagraph,
+          width: built.width,
           yPos,
           model: null,
           backgroundHighlights: [],
@@ -455,31 +465,31 @@ const QCFPage: React.FC<QCFPageProps> = ({
       if (words.length === 0) continue;
       const model = buildQCFLineRenderModel(words);
       const text = model.renderedText;
-      const charToRule =
-        showTajweed && indexedTajweedData
-          ? buildQCFLineTajweedMap(words, indexedTajweedData)
+      const charToColor =
+        showAllahNameHighlight && allahNameHighlightColor
+          ? buildQCFLineAllahNameMap(words, allahNameHighlightColor)
           : null;
-      const built = buildOne(text, fontFamily, charToRule);
+      const built = buildOne(text, fontFamily, charToColor);
       entries.push({
         key: `ay-${i}`,
         lineIndex: i,
         ...built,
         yPos,
         model,
-        backgroundHighlights: lineSelectionHighlights.get(i) ?? [],
+        backgroundHighlights: lineBackgroundHighlights.get(i) ?? [],
       });
     }
     return entries;
   }, [
+    allahNameHighlightColor,
     arabicTextWeight,
     fontMgr,
     fontReady,
-    indexedTajweedData,
-    lineSelectionHighlights,
+    lineBackgroundHighlights,
     pageLines,
     lineYPositions,
     pageNumber,
-    showTajweed,
+    showAllahNameHighlight,
     textColor,
   ]);
 

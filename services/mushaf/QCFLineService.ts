@@ -1,10 +1,6 @@
 import type {QCFWord} from './QCFDataService';
 import {digitalKhattDataService} from './DigitalKhattDataService';
-import {
-  alignWordTajweed,
-  detectWordTafkhim,
-} from './TajweedAlignmentService';
-import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {getTextAllahNameCharMap} from './AllahNameHighlightService';
 
 export const QCF_HAIR_SPACE = ' ';
 
@@ -134,27 +130,9 @@ function findDKWordText(location: string): string | null {
   return dkWord?.text ?? null;
 }
 
-function dominantRule(ruleMap: Map<number, string>): string | null {
-  const counts = new Map<string, number>();
-  for (const rule of ruleMap.values()) {
-    counts.set(rule, (counts.get(rule) ?? 0) + 1);
-  }
-
-  let winner: string | null = null;
-  let winnerCount = -1;
-  for (const [rule, count] of counts) {
-    if (count > winnerCount) {
-      winner = rule;
-      winnerCount = count;
-    }
-  }
-
-  return winner;
-}
-
-function projectWordRulesToQCF(
+function projectWordCharMapToQCF(
   code: string,
-  wordRules: Map<number, string>,
+  charMap: Map<number, string>,
   dkWordText: string,
 ): Map<number, string> | null {
   const qcfChars = [...code].map(char => (char === ' ' ? QCF_HAIR_SPACE : char));
@@ -162,62 +140,44 @@ function projectWordRulesToQCF(
     .map((char, index) => (char === QCF_HAIR_SPACE ? null : index))
     .filter((index): index is number => index !== null);
 
-  if (qcfSlots.length === 0) return null;
+  if (qcfSlots.length === 0 || charMap.size === 0) return null;
 
   const projected = new Map<number, string>();
   const dkLength = Math.max([...dkWordText].length, 1);
 
-  for (const [dkIndex, rule] of wordRules) {
+  for (const [dkIndex, value] of charMap) {
     const slotIndex = Math.min(
       qcfSlots.length - 1,
       Math.floor((dkIndex * qcfSlots.length) / dkLength),
     );
-    projected.set(qcfSlots[slotIndex], rule);
-  }
-
-  if (projected.size === 0 && wordRules.size > 0) {
-    const rule = dominantRule(wordRules);
-    if (rule) {
-      projected.set(qcfSlots[0], rule);
-    }
+    projected.set(qcfSlots[slotIndex], value);
   }
 
   return projected.size > 0 ? projected : null;
 }
 
-export function buildQCFLineTajweedMap(
+export function buildQCFLineAllahNameMap(
   words: QCFWord[],
-  indexedTajweedData: IndexedTajweedData,
+  color: string,
 ): Map<number, string> | null {
-  const charToRule = new Map<number, string>();
+  const charToColor = new Map<number, string>();
   let charOffset = 0;
 
   for (const word of words) {
-    const [surah, ayah, wordPositionRaw] = word.location.split(':');
-    const verseKey = `${surah}:${ayah}`;
-    const wordPosition = parseInt(wordPositionRaw, 10);
     const dkWordText = findDKWordText(word.location);
     const qcfLength = [...word.code.replace(/ /g, QCF_HAIR_SPACE)].length;
 
-    if (!dkWordText || Number.isNaN(wordPosition)) {
+    if (!dkWordText) {
       charOffset += qcfLength;
       continue;
     }
 
-    const tajweedWord = indexedTajweedData[verseKey]?.find(entry => {
-      const pos = parseInt(entry.location.split(':')[2], 10);
-      return pos === wordPosition;
-    });
-
-    const wordRules = tajweedWord
-      ? alignWordTajweed(dkWordText, tajweedWord.segments)
-      : detectWordTafkhim(dkWordText);
-
-    if (wordRules && wordRules.size > 0) {
-      const projected = projectWordRulesToQCF(word.code, wordRules, dkWordText);
+    const allahMap = getTextAllahNameCharMap(dkWordText);
+    if (allahMap && allahMap.size > 0) {
+      const projected = projectWordCharMapToQCF(word.code, allahMap, dkWordText);
       if (projected) {
-        for (const [localIndex, rule] of projected) {
-          charToRule.set(charOffset + localIndex, rule);
+        for (const [localIndex] of projected) {
+          charToColor.set(charOffset + localIndex, color);
         }
       }
     }
@@ -225,15 +185,11 @@ export function buildQCFLineTajweedMap(
     charOffset += qcfLength;
   }
 
-  if (charToRule.size === 0) return null;
+  if (charToColor.size === 0) return null;
 
-  if (charToRule.size > 0) {
-    const shifted = new Map<number, string>();
-    for (const [index, rule] of charToRule) {
-      shifted.set(index >= 1 ? index + 1 : index, rule);
-    }
-    return shifted;
+  const shifted = new Map<number, string>();
+  for (const [index, value] of charToColor) {
+    shifted.set(index >= 1 ? index + 1 : index, value);
   }
-
-  return charToRule;
+  return shifted;
 }

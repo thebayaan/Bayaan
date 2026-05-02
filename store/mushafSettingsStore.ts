@@ -160,7 +160,12 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({showTranslation: !state.showTranslation})),
       toggleTransliteration: () =>
         set(state => ({showTransliteration: !state.showTransliteration})),
-      toggleTajweed: () => set(state => ({showTajweed: !state.showTajweed})),
+      toggleTajweed: () =>
+        set(state =>
+          state.mushafRenderer === 'qcf_v2'
+            ? state
+            : {showTajweed: !state.showTajweed},
+        ),
       toggleThemes: () => set(state => ({showThemes: !state.showThemes})),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
@@ -181,16 +186,21 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       setArabicFontFamily: (font: 'Uthmani') => set({arabicFontFamily: font}),
       setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
       setMushafRenderer: (renderer: MushafRenderer) =>
-        set({
+        set(state => ({
           mushafRenderer: renderer,
           arabicFontFamily: 'Uthmani',
+          showTajweed:
+            renderer === 'qcf_v2' ? false : state.showTajweed,
+          rewayah: renderer === 'qcf_v2' ? 'hafs' : state.rewayah,
+          showRewayahDiffs:
+            renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
           uthmaniFont:
             renderer === 'dk_v1'
               ? 'v1'
               : renderer === 'dk_indopak'
                 ? 'v2'
                 : 'v2',
-        }),
+        })),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
       setScrollDirection: (direction: MushafScrollDirection) =>
@@ -231,14 +241,21 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             ? {lightThemeId: themeId}
             : {darkThemeId: themeId};
         }),
-      setRewayah: (rewayah: RewayahId) => set({rewayah}),
+      setRewayah: (rewayah: RewayahId) =>
+        set(state =>
+          state.mushafRenderer === 'qcf_v2' ? state : {rewayah},
+        ),
       toggleRewayahDiffs: () =>
-        set(state => ({showRewayahDiffs: !state.showRewayahDiffs})),
+        set(state =>
+          state.mushafRenderer === 'qcf_v2'
+            ? state
+            : {showRewayahDiffs: !state.showRewayahDiffs},
+        ),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 15,
+      version: 16,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -315,6 +332,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.rewayah = migratePersistedId(
             typeof state.rewayah === 'string' ? state.rewayah : 'hafs',
           );
+        }
+        if (version < 16 && state.mushafRenderer === 'qcf_v2') {
+          state.showTajweed = false;
+          state.rewayah = 'hafs';
+          state.showRewayahDiffs = false;
         }
         return state as unknown as MushafSettingsState;
       },
