@@ -10,10 +10,11 @@
 // the KFGQPC typographer's intent (each page-font is designed so its
 // widest line fills the page width at the natural design size).
 //
-// Surah header rendering is currently disabled (debugging the
-// SkiaSurahHeader sizing on QCF pages — divider was rendering at a
-// massive size). Header-line slot is left blank for now; reinstate
-// after fixing.
+// Surah-name lines render via SkiaSurahHeader (same component DK uses
+// at SkiaPage.tsx). Basmallah lines render exactly like DK does: the
+// Unicode BASMALLAH_TEXT in the DigitalKhatt font with the OpenType
+// `basm` feature. This matches DK's printed-mushaf basmallah look so
+// surah-start pages look identical between DK and QCF modes.
 
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {View, StyleSheet} from 'react-native';
@@ -30,18 +31,17 @@ import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import {
   digitalKhattDataService,
+  BASMALLAH_TEXT,
   type DKLine,
 } from '@/services/mushaf/DigitalKhattDataService';
-import {
-  qcfDataService,
-  BASMALA_TEXT,
-  BASMALA_FONT_FAMILY,
-} from '@/services/mushaf/QCFDataService';
+import {qcfDataService} from '@/services/mushaf/QCFDataService';
+import {PAGE_WIDTH, FONTSIZE} from '@/services/mushaf/QuranTextService';
 import {
   qcfFontFamilyForPage,
   qcfFontLoader,
 } from '@/services/mushaf/QCFFontLoader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import SkiaSurahHeader from '../skia/SkiaSurahHeader';
 import {
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
@@ -69,7 +69,11 @@ const lineParStyle = {
 
 const REF_FONT_SIZE = 100;
 const FILL_RATIO = 0.97;
-const BASMALA_PAGE_NUMBER = 1;
+
+// DK's font + size for basmallah rendering. Matches SkiaPage's calc
+// (FONTSIZE * scale * 0.9 where scale = CONTENT_WIDTH / PAGE_WIDTH).
+const DK_FONT_FAMILY = 'DigitalKhattV2';
+const DK_FONT_SIZE = (CONTENT_WIDTH / PAGE_WIDTH) * FONTSIZE * 0.9;
 
 // Skia treats U+0020 (regular space) as a wrap-point and merges adjacent
 // PUA word-glyphs at line start when no separator precedes them — the two
@@ -100,19 +104,41 @@ interface RenderEntry {
   width: number;
 }
 
+interface SurahHeaderEntry {
+  key: string;
+  surahNumber: number;
+  yPos: number;
+  lineHeight: number;
+}
+
 const QCFPage: React.FC<QCFPageProps> = ({
   pageNumber,
   textColor,
+  dividerColor,
   contentMarginLeft,
   onReady,
   onTap,
 }) => {
   const fontMgr = mushafPreloadService.fontMgr;
+
+  const surahHeaderFonts = useMemo(() => {
+    const qcTypeface = mushafPreloadService.quranCommonTypeface;
+    if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
+    const refFont = Skia.Font(qcTypeface, 100);
+    // Reference glyph U+E000 in QuranCommon. Using the explicit escape
+    // (not the literal char) so editors / Edit tools can't strip the
+    // invisible PUA character and silently break the calc.
+    const ids = refFont.getGlyphIDs('');
+    const widths = refFont.getGlyphWidths(ids);
+    const measuredW = widths[0] || 1;
+    const scaledSize = (CONTENT_WIDTH / measuredW) * 100;
+    return {
+      dividerFont: Skia.Font(qcTypeface, scaledSize),
+      nameFontSize: scaledSize * 0.4,
+    };
+  }, []);
   const [fontReady, setFontReady] = useState<boolean>(() =>
     qcfFontLoader.isReady(pageNumber),
-  );
-  const [basmalaFontReady, setBasmalaFontReady] = useState<boolean>(() =>
-    qcfFontLoader.isReady(BASMALA_PAGE_NUMBER),
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -126,18 +152,13 @@ const QCFPage: React.FC<QCFPageProps> = ({
     [pageLines, pageNumber],
   );
 
-  const hasBasmala = useMemo(
-    () => pageLines.some(l => l.line_type === 'basmallah'),
-    [pageLines],
-  );
-
-  // Load this page's font + page-1 font (for basmala), prefetch neighbors.
+  // Load this page's QCF page-font, prefetch neighbors. Basmallah no
+  // longer needs the page-1 font — DK font handles it.
   useEffect(() => {
     if (!fontMgr) return;
     let cancelled = false;
     setError(null);
     setFontReady(qcfFontLoader.isReady(pageNumber));
-    setBasmalaFontReady(qcfFontLoader.isReady(BASMALA_PAGE_NUMBER));
 
     (async () => {
       try {
@@ -150,15 +171,6 @@ const QCFPage: React.FC<QCFPageProps> = ({
         return;
       }
 
-      if (hasBasmala) {
-        try {
-          await qcfFontLoader.ensure(BASMALA_PAGE_NUMBER, fontMgr);
-          if (!cancelled) setBasmalaFontReady(true);
-        } catch {
-          // non-fatal
-        }
-      }
-
       qcfFontLoader.prefetch(
         [pageNumber - 1, pageNumber + 1, pageNumber - 2, pageNumber + 2],
         fontMgr,
@@ -168,7 +180,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [fontMgr, pageNumber, hasBasmala]);
+  }, [fontMgr, pageNumber]);
 
   const renderEntries = useMemo<RenderEntry[]>(() => {
     if (!fontMgr || !fontReady) return [];
@@ -244,17 +256,33 @@ const QCFPage: React.FC<QCFPageProps> = ({
       const yPos = lineYPositions[i];
 
       if (line.line_type === 'surah_name') {
-        // Skipped — see file header. Empty slot for now.
+        // Rendered separately as a SkiaSurahHeader element; see the
+        // surahHeaders memo below.
         continue;
       }
 
       if (line.line_type === 'basmallah') {
-        if (!qcfFontLoader.isReady(BASMALA_PAGE_NUMBER)) continue;
-        const built = buildOne(
-          massageLineText(BASMALA_TEXT),
-          BASMALA_FONT_FAMILY,
-        );
-        entries.push({key: `bs-${i}`, ...built, yPos});
+        // Render exactly like DK SkiaLine: BASMALLAH_TEXT in the DK
+        // font with the OpenType `basm` feature, sized to DK's natural
+        // basmallah size, centered in the canvas.
+        const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
+        builder.pushStyle({
+          color: Skia.Color(textColor),
+          fontFamilies: [DK_FONT_FAMILY],
+          fontSize: DK_FONT_SIZE,
+          fontFeatures: [{name: 'basm', value: 1}],
+        });
+        builder.addText(BASMALLAH_TEXT);
+        const para = builder.build();
+        para.layout(99999);
+        const naturalWidth = para.getLongestLine();
+        para.layout(Math.ceil(naturalWidth) + 2);
+        entries.push({
+          key: `bs-${i}`,
+          paragraph: para,
+          width: naturalWidth,
+          yPos,
+        });
         continue;
       }
 
@@ -272,12 +300,34 @@ const QCFPage: React.FC<QCFPageProps> = ({
   }, [
     fontMgr,
     fontReady,
-    basmalaFontReady,
     pageLines,
     lineYPositions,
     pageNumber,
     textColor,
   ]);
+
+  // Surah-header lines (line_type === 'surah_name'). DK's SkiaSurahHeader
+  // takes the same dividerFont + nameFontSize we computed above, plus the
+  // surah number from DK's pageLines metadata.
+  const surahHeaders = useMemo<SurahHeaderEntry[]>(() => {
+    const entries: SurahHeaderEntry[] = [];
+    for (let i = 0; i < pageLines.length; i++) {
+      const line = pageLines[i];
+      if (line.line_type !== 'surah_name') continue;
+      const yPos = lineYPositions[i];
+      const lineHeight =
+        i < lineYPositions.length - 1
+          ? lineYPositions[i + 1] - lineYPositions[i]
+          : CONTENT_HEIGHT - lineYPositions[i];
+      entries.push({
+        key: `sh-${i}`,
+        surahNumber: line.surah_number,
+        yPos,
+        lineHeight,
+      });
+    }
+    return entries;
+  }, [pageLines, lineYPositions]);
 
   useEffect(() => {
     if (error) {
@@ -322,6 +372,21 @@ const QCFPage: React.FC<QCFPageProps> = ({
             marginLeft: contentMarginLeft ?? PAGE_PADDING_HORIZONTAL,
             marginTop: PAGE_PADDING_TOP,
           }}>
+          {surahHeaderFonts.dividerFont &&
+            surahHeaders.map(({key, surahNumber, yPos, lineHeight}) => (
+              <SkiaSurahHeader
+                key={key}
+                dividerFont={surahHeaderFonts.dividerFont!}
+                fontMgr={fontMgr}
+                nameFontSize={surahHeaderFonts.nameFontSize}
+                surahNumber={surahNumber}
+                yPos={yPos}
+                pageWidth={CONTENT_WIDTH}
+                dividerColor={dividerColor}
+                nameColor={textColor}
+                lineHeight={lineHeight}
+              />
+            ))}
           {renderEntries.map(({key, paragraph, yPos, width}) => (
             <Paragraph
               key={key}
