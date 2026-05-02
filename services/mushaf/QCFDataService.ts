@@ -41,18 +41,12 @@ export interface QCFWord {
 export const BASMALA_TEXT = 'ﱁﱂﱃﱄ';
 export const BASMALA_FONT_FAMILY = 'p1-v2';
 
-// Per-page line-content overrides applied at lookup time to correct
-// API line-break decisions that don't match the printed Madinah mushaf.
-// Each entry's `moveLastWordToNextLine` lists 1-indexed line numbers
-// whose final word should be relocated to the start of the next line.
-//
-// Page 27: API places line 14 with 10 words ending at 2:181:5. The
-// printed mushaf (and Golden Quran) wraps 2:181:5 to line 15. Moving
-// it removes the line-14 width outlier that was shrinking the page's
-// fontSize relative to neighbouring pages.
-const LINE_OVERRIDES: Record<number, {moveLastWordToNextLine: number[]}> = {
-  27: {moveLastWordToNextLine: [14]},
-};
+// Per-page line-content overrides applied at lookup time. Currently
+// empty — the QUL Tarteel-sourced qcf-pages.json (built via
+// scripts/build-qcf-from-qul.mjs) has correct line breaks straight from
+// the curated KFGQPC V2 layout. Add entries here only if a future page
+// needs hand-tuning beyond what the source data provides.
+const LINE_OVERRIDES: Record<number, {moveLastWordToNextLine: number[]}> = {};
 
 class QCFDataService {
   private raw: RawData | null = null;
