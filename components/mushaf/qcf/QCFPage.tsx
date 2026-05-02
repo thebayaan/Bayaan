@@ -52,6 +52,7 @@ import {
   qcfFontFamilyForPage,
   qcfFontLoader,
 } from '@/services/mushaf/QCFFontLoader';
+import {qcfLayoutCacheService} from '@/services/mushaf/QCFLayoutCacheService';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
@@ -114,7 +115,6 @@ interface RenderEntry {
   yPos: number;
   width: number;
   model: QCFLineRenderModel | null;
-  backgroundHighlights: Array<{start: number; end: number; color: string}>;
 }
 
 interface SurahHeaderEntry {
@@ -221,6 +221,58 @@ const QCFPage: React.FC<QCFPageProps> = ({
     [textColor],
   );
 
+  const layoutMetrics = useMemo(() => {
+    if (!fontMgr || !fontReady) return null;
+
+    const fontFamily = qcfFontFamilyForPage(pageNumber);
+    const cached = qcfLayoutCacheService.getPageLayout(pageNumber, fontFamily);
+    if (cached) return cached;
+
+    const tmpBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
+    const lineWidthsAtRef: Array<{lineIndex: number; width: number}> = [];
+    for (let i = 0; i < pageLines.length; i++) {
+      const line = pageLines[i];
+      if (line.line_type !== 'ayah') continue;
+      const words = qcfDataService.getWordsForLine(
+        pageNumber,
+        line.line_number,
+      );
+      if (words.length === 0) continue;
+      const text = buildQCFLineRenderModel(words).renderedText;
+
+      tmpBuilder.reset();
+      tmpBuilder.pushStyle({
+        color: Skia.Color(textColor),
+        fontFamilies: [fontFamily],
+        fontSize: REF_FONT_SIZE,
+      });
+      tmpBuilder.addText(text);
+      const para = tmpBuilder.build();
+      para.layout(99999);
+      lineWidthsAtRef.push({
+        lineIndex: i,
+        width: para.getLongestLine(),
+      });
+      para.dispose();
+    }
+    if (lineWidthsAtRef.length === 0) return null;
+
+    const sortedDesc = [...lineWidthsAtRef]
+      .map(entry => entry.width)
+      .sort((a, b) => b - a);
+    const widestRef =
+      sortedDesc.length > 1 && sortedDesc[0] > sortedDesc[1] * 1.05
+        ? sortedDesc[1]
+        : sortedDesc[0];
+
+    const measured = {
+      fontSize: ((CONTENT_WIDTH * FILL_RATIO) / widestRef) * REF_FONT_SIZE,
+      lineWidthsAtRef,
+    };
+    qcfLayoutCacheService.setPageLayout(pageNumber, fontFamily, measured);
+    return measured;
+  }, [fontMgr, fontReady, pageLines, pageNumber, textColor]);
+
   const lineBackgroundHighlights = useMemo(() => {
     const byLine = new Map<
       number,
@@ -319,50 +371,16 @@ const QCFPage: React.FC<QCFPageProps> = ({
   }, [fontMgr, pageNumber]);
 
   const renderEntries = useMemo<RenderEntry[]>(() => {
-    if (!fontMgr || !fontReady) return [];
+    if (!fontMgr || !fontReady || !layoutMetrics) return [];
 
     const fontFamily = qcfFontFamilyForPage(pageNumber);
-
-    // Measure every ayah line at REF_FONT_SIZE so we can pick fontSize and
-    // also detect width outliers (one anomalously wide line that would
-    // otherwise drag fontSize down for the whole page).
-    const tmpBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-    const lineWidths: number[] = [];
-    for (const line of pageLines) {
-      if (line.line_type !== 'ayah') continue;
-      const words = qcfDataService.getWordsForLine(
-        pageNumber,
-        line.line_number,
-      );
-      if (words.length === 0) continue;
-      const text = buildQCFLineRenderModel(words).renderedText;
-
-      tmpBuilder.reset();
-      tmpBuilder.pushStyle({
-        color: Skia.Color(textColor),
-        fontFamilies: [fontFamily],
-        fontSize: REF_FONT_SIZE,
-      });
-      tmpBuilder.addText(text);
-      const para = tmpBuilder.build();
-      para.layout(99999);
-      lineWidths.push(para.getLongestLine());
-      para.dispose();
-    }
-    if (lineWidths.length === 0) return [];
-
-    // Outlier-skip: if the widest line is >5% wider than the second-widest
-    // (e.g., page 27's line 14, which the printed mushaf wraps to line 15),
-    // calibrate against the second-widest. The outlier line then overhangs
-    // the canvas slightly via per-line natural-width centering below — much
-    // better than shrinking the entire page to fit one anomaly.
-    const sortedDesc = [...lineWidths].sort((a, b) => b - a);
-    const widestRef =
-      sortedDesc.length > 1 && sortedDesc[0] > sortedDesc[1] * 1.05
-        ? sortedDesc[1]
-        : sortedDesc[0];
-
-    const fontSize = ((CONTENT_WIDTH * FILL_RATIO) / widestRef) * REF_FONT_SIZE;
+    const fontSize = layoutMetrics.fontSize;
+    const lineWidthAtRefByLine = new Map(
+      layoutMetrics.lineWidthsAtRef.map(entry => [
+        entry.lineIndex,
+        entry.width,
+      ]),
+    );
 
     // Lay out each line at its INTRINSIC width (not canvas width) so outlier
     // lines overhang the canvas edges instead of wrapping. We position the
@@ -374,6 +392,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
       options?: {
         fontSize?: number;
         fontFeatures?: Array<{name: string; value: number}>;
+        widthAtRef?: number;
       },
     ): {
       paragraph: SkParagraph;
@@ -394,6 +413,11 @@ const QCFPage: React.FC<QCFPageProps> = ({
       if (options?.fontFeatures?.length) {
         baseStyle.fontFeatures = options.fontFeatures;
       }
+
+      const widthFromCache =
+        options?.widthAtRef != null
+          ? (options.widthAtRef * effectiveFontSize) / REF_FONT_SIZE
+          : null;
 
       const buildParagraph = (withStroke: boolean) => {
         const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
@@ -426,8 +450,11 @@ const QCFPage: React.FC<QCFPageProps> = ({
         }
         builder.pop();
         const para = builder.build();
-        para.layout(99999);
-        const naturalWidth = para.getLongestLine();
+        let naturalWidth = widthFromCache;
+        if (naturalWidth == null) {
+          para.layout(99999);
+          naturalWidth = para.getLongestLine();
+        }
         para.layout(Math.ceil(naturalWidth) + 2);
         return {paragraph: para, width: naturalWidth};
       };
@@ -478,7 +505,6 @@ const QCFPage: React.FC<QCFPageProps> = ({
           width: built.width,
           yPos,
           model: null,
-          backgroundHighlights: [],
         });
         continue;
       }
@@ -495,14 +521,15 @@ const QCFPage: React.FC<QCFPageProps> = ({
         showAllahNameHighlight && allahNameHighlightColor
           ? buildQCFLineAllahNameMap(words, allahNameHighlightColor)
           : null;
-      const built = buildOne(text, fontFamily, charToColor);
+      const built = buildOne(text, fontFamily, charToColor, {
+        widthAtRef: lineWidthAtRefByLine.get(i),
+      });
       entries.push({
         key: `ay-${i}`,
         lineIndex: i,
         ...built,
         yPos,
         model,
-        backgroundHighlights: lineBackgroundHighlights.get(i) ?? [],
       });
     }
     return entries;
@@ -511,7 +538,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
     arabicTextWeight,
     fontMgr,
     fontReady,
-    lineBackgroundHighlights,
+    layoutMetrics,
     pageLines,
     lineYPositions,
     pageNumber,
@@ -773,32 +800,27 @@ const QCFPage: React.FC<QCFPageProps> = ({
               />
             ))}
           {renderEntries.map(
-            ({
-              key,
-              paragraph,
-              strokeParagraph,
-              yPos,
-              width,
-              backgroundHighlights,
-            }) => (
+            ({key, lineIndex, paragraph, strokeParagraph, yPos, width}) => (
               <Group key={key}>
-                {backgroundHighlights.map((highlight, index) => {
-                  const rects = paragraph.getRectsForRange(
-                    highlight.start,
-                    highlight.end + 1,
-                  );
-                  return rects.map((rect, rectIndex) => (
-                    <RoundedRect
-                      key={`${key}-bg-${index}-${rectIndex}`}
-                      x={(CONTENT_WIDTH - width) / 2 + rect.x}
-                      y={yPos + rect.y}
-                      width={rect.width}
-                      height={rect.height}
-                      r={4}
-                      color={highlight.color}
-                    />
-                  ));
-                })}
+                {(lineBackgroundHighlights.get(lineIndex) ?? []).map(
+                  (highlight, index) => {
+                    const rects = paragraph.getRectsForRange(
+                      highlight.start,
+                      highlight.end + 1,
+                    );
+                    return rects.map((rect, rectIndex) => (
+                      <RoundedRect
+                        key={`${key}-bg-${index}-${rectIndex}`}
+                        x={(CONTENT_WIDTH - width) / 2 + rect.x}
+                        y={yPos + rect.y}
+                        width={rect.width}
+                        height={rect.height}
+                        r={4}
+                        color={highlight.color}
+                      />
+                    ));
+                  },
+                )}
                 {strokeParagraph && (
                   <Paragraph
                     paragraph={strokeParagraph}
