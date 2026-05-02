@@ -20,12 +20,14 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {View, StyleSheet} from 'react-native';
 import {
   Canvas,
+  Group,
   Paragraph,
   Skia,
   TextAlign,
   TextDirection,
   TextHeightBehavior,
   type SkParagraph,
+  type SkTextStyle,
 } from '@shopify/react-native-skia';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
@@ -41,6 +43,11 @@ import {
   qcfFontLoader,
 } from '@/services/mushaf/QCFFontLoader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 import SkiaSurahHeader from '../skia/SkiaSurahHeader';
 import {
   SCREEN_WIDTH,
@@ -100,6 +107,7 @@ const massageLineText = (text: string): string => {
 interface RenderEntry {
   key: string;
   paragraph: SkParagraph;
+  strokeParagraph: SkParagraph | null;
   yPos: number;
   width: number;
 }
@@ -120,6 +128,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
   onTap,
 }) => {
   const fontMgr = mushafPreloadService.fontMgr;
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
 
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
@@ -235,19 +244,48 @@ const QCFPage: React.FC<QCFPageProps> = ({
     const buildOne = (
       text: string,
       family: string,
-    ): {paragraph: SkParagraph; width: number} => {
-      const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
-      builder.pushStyle({
-        color: Skia.Color(textColor),
+    ): {
+      paragraph: SkParagraph;
+      strokeParagraph: SkParagraph | null;
+      width: number;
+    } => {
+      const color = Skia.Color(textColor);
+      const strokeWidth = getArabicTextWeightStrokeWidth(
+        arabicTextWeight,
+        fontSize,
+      );
+      const baseStyle: SkTextStyle = {
+        color,
         fontFamilies: [family],
         fontSize,
-      });
-      builder.addText(text);
-      const para = builder.build();
-      para.layout(99999);
-      const naturalWidth = para.getLongestLine();
-      para.layout(Math.ceil(naturalWidth) + 2);
-      return {paragraph: para, width: naturalWidth};
+      };
+
+      const buildParagraph = (withStroke: boolean) => {
+        const builder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
+        const strokePaint = withStroke
+          ? createTextStrokePaint(color, strokeWidth)
+          : undefined;
+        if (strokePaint) {
+          builder.pushStyle(baseStyle, strokePaint);
+        } else {
+          builder.pushStyle(baseStyle);
+        }
+        builder.addText(text);
+        builder.pop();
+        const para = builder.build();
+        para.layout(99999);
+        const naturalWidth = para.getLongestLine();
+        para.layout(Math.ceil(naturalWidth) + 2);
+        return {paragraph: para, width: naturalWidth};
+      };
+
+      const base = buildParagraph(false);
+      const stroke = strokeWidth > 0 ? buildParagraph(true).paragraph : null;
+      return {
+        paragraph: base.paragraph,
+        strokeParagraph: stroke,
+        width: base.width,
+      };
     };
 
     const entries: RenderEntry[] = [];
@@ -273,13 +311,50 @@ const QCFPage: React.FC<QCFPageProps> = ({
           fontFeatures: [{name: 'basm', value: 1}],
         });
         builder.addText(BASMALLAH_TEXT);
+        builder.pop();
         const para = builder.build();
         para.layout(99999);
         const naturalWidth = para.getLongestLine();
         para.layout(Math.ceil(naturalWidth) + 2);
+        const strokeWidth = getArabicTextWeightStrokeWidth(
+          arabicTextWeight,
+          DK_FONT_SIZE,
+        );
+        let strokeParagraph: SkParagraph | null = null;
+        if (strokeWidth > 0) {
+          const strokeBuilder = Skia.ParagraphBuilder.Make(lineParStyle, fontMgr);
+          const strokePaint = createTextStrokePaint(
+            Skia.Color(textColor),
+            strokeWidth,
+          );
+          if (strokePaint) {
+            strokeBuilder.pushStyle(
+              {
+                color: Skia.Color(textColor),
+                fontFamilies: [DK_FONT_FAMILY],
+                fontSize: DK_FONT_SIZE,
+                fontFeatures: [{name: 'basm', value: 1}],
+              },
+              strokePaint,
+            );
+          } else {
+            strokeBuilder.pushStyle({
+              color: Skia.Color(textColor),
+              fontFamilies: [DK_FONT_FAMILY],
+              fontSize: DK_FONT_SIZE,
+              fontFeatures: [{name: 'basm', value: 1}],
+            });
+          }
+          strokeBuilder.addText(BASMALLAH_TEXT);
+          strokeBuilder.pop();
+          strokeParagraph = strokeBuilder.build();
+          strokeParagraph.layout(99999);
+          strokeParagraph.layout(Math.ceil(naturalWidth) + 2);
+        }
         entries.push({
           key: `bs-${i}`,
           paragraph: para,
+          strokeParagraph,
           width: naturalWidth,
           yPos,
         });
@@ -298,6 +373,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
     }
     return entries;
   }, [
+    arabicTextWeight,
     fontMgr,
     fontReady,
     pageLines,
@@ -387,14 +463,23 @@ const QCFPage: React.FC<QCFPageProps> = ({
                 lineHeight={lineHeight}
               />
             ))}
-          {renderEntries.map(({key, paragraph, yPos, width}) => (
-            <Paragraph
-              key={key}
-              paragraph={paragraph}
-              x={(CONTENT_WIDTH - width) / 2}
-              y={yPos}
-              width={Math.ceil(width) + 2}
-            />
+          {renderEntries.map(({key, paragraph, strokeParagraph, yPos, width}) => (
+            <Group key={key}>
+              {strokeParagraph && (
+                <Paragraph
+                  paragraph={strokeParagraph}
+                  x={(CONTENT_WIDTH - width) / 2}
+                  y={yPos}
+                  width={Math.ceil(width) + 2}
+                />
+              )}
+              <Paragraph
+                paragraph={paragraph}
+                x={(CONTENT_WIDTH - width) / 2}
+                y={yPos}
+                width={Math.ceil(width) + 2}
+              />
+            </Group>
           ))}
         </Canvas>
       </View>

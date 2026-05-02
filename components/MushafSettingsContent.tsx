@@ -119,8 +119,8 @@ const FONT_OPTIONS: FontOption[] = [
   },
   {
     value: 'qcf_v2',
-    label: 'Madinah QCF',
-    description: 'Printed Madani look (limits some features)',
+    label: 'Mushaf 1440',
+    description: 'Modern Madinah printed pipeline',
   },
 ];
 
