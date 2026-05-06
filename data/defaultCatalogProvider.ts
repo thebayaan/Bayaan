@@ -15,6 +15,9 @@ let _activeProvider: CatalogProvider = defaultCatalogProvider;
  * reciter catalog.
  */
 export function setCatalogProvider(provider: CatalogProvider): void {
+  if (__DEV__ && _activeProvider !== defaultCatalogProvider) {
+    console.warn('setCatalogProvider called more than once — ensure this is intentional');
+  }
   _activeProvider = provider;
 }
 
