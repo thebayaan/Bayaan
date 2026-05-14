@@ -39,6 +39,7 @@ export interface RankedResult {
   subtitle: string;
   arabicPreview?: string;
   badge?: string;
+  // Display-only artwork kind. Mapped from `EntityType`: adhkar_category → adhkar, name_of_allah → name, numeric_ref → verse. Update both when adding a new EntityType.
   artwork?: {
     kind:
       | 'reciter'
@@ -69,6 +70,7 @@ export type NumericRef =
 
 export interface SearchRequest {
   query: string;
+  // Optional Unix-ms timestamp used by contextual signals (morning/evening/friday) and injectable in tests.
   now?: number;
 }
 
