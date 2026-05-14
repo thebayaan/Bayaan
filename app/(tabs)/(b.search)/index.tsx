@@ -7,14 +7,17 @@ import {
   StyleSheet,
   Keyboard,
 } from 'react-native';
-import {Stack} from 'expo-router';
+import {Stack, useRouter} from 'expo-router';
 import {SearchView} from '@/components/search/SearchView';
+import {SearchViewV2} from '@/components/search/v2/SearchViewV2';
 import {useTheme} from '@/hooks/useTheme';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useFeatureFlag} from '@/utils/featureFlags';
+import type {RankedResult} from '@/services/search/types';
 
 export default function SearchScreen() {
   const {theme} = useTheme();
@@ -22,6 +25,62 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
   const inputRef = useRef<TextInput>(null);
+  const router = useRouter();
+  const flagOn = useFeatureFlag('search.v2', false);
+
+  const handleV2ResultPress = (r: RankedResult): void => {
+    switch (r.payload.kind) {
+      case 'reciter':
+        router.push({
+          pathname: '/(tabs)/(b.search)/reciter/[id]',
+          params: {id: r.payload.reciter.id, name: r.payload.reciter.name},
+        });
+        return;
+      case 'surah':
+        router.push({
+          pathname: '/mushaf',
+          params: {surah: r.payload.surah.id.toString()},
+        });
+        return;
+      case 'rewayat':
+        console.warn(
+          '[search.v2] rewayat route not implemented yet',
+          r.payload.rewayat.id,
+        );
+        return;
+      case 'adhkar_category':
+        console.warn(
+          '[search.v2] adhkar_category route not implemented yet',
+          r.payload.categoryId,
+        );
+        return;
+      case 'name_of_allah':
+        console.warn(
+          '[search.v2] name_of_allah route not implemented yet',
+          r.payload.index,
+        );
+        return;
+      case 'playlist':
+        console.warn(
+          '[search.v2] playlist route not implemented yet',
+          r.payload.playlistId,
+        );
+        return;
+      case 'numeric_ref': {
+        const ref = r.payload.ref;
+        const params =
+          ref.kind === 'verse'
+            ? {surah: ref.surah, ayah: ref.ayah}
+            : ref.kind === 'page'
+              ? {page: ref.page}
+              : ref.kind === 'juz'
+                ? {juz: ref.juz}
+                : {surah: ref.surah};
+        router.push({pathname: '/mushaf', params});
+        return;
+      }
+    }
+  };
 
   const handleCancel = () => {
     setQuery('');
@@ -112,16 +171,24 @@ export default function SearchScreen() {
           </View>
         </View>
       )}
-      <SearchView
-        visible={true}
-        onClose={() => {
-          setQuery('');
-          setIsSearchActive(false);
-        }}
-        query={query}
-        isSearchActive={isSearchActive}
-        skipTopInset={!USE_GLASS}
-      />
+      {flagOn ? (
+        <SearchViewV2
+          query={query}
+          isSearchActive={isSearchActive}
+          onResultPress={handleV2ResultPress}
+        />
+      ) : (
+        <SearchView
+          visible={true}
+          onClose={() => {
+            setQuery('');
+            setIsSearchActive(false);
+          }}
+          query={query}
+          isSearchActive={isSearchActive}
+          skipTopInset={!USE_GLASS}
+        />
+      )}
     </View>
   );
 }
