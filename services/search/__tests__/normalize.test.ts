@@ -27,6 +27,12 @@ describe('normalize', () => {
   it('collapses whitespace and trims', () => {
     expect(normalize('  Al   Fatihah ')).toBe('al fatihah');
   });
+
+  it('handles Arabic presentation forms via NFKC', () => {
+    // U+FEF7 (lam with alef final form) is a presentation form.
+    // NFKC decomposes it to lam + hamza-on-alef, then Arabic folding converts to لا.
+    expect(normalize('ﻷ')).toBe('لا');
+  });
 });
 
 describe('tokenize', () => {

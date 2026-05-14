@@ -3,8 +3,10 @@ const LATIN_DIACRITICS_RE = /[̀-ͯ]/g;
 
 export function normalize(input: string): string {
   if (!input) return '';
+  // Normalize presentation forms (U+FB50-U+FEFF) to base Arabic (U+0600-U+06FF) via NFKC.
+  let s = input.normalize('NFKC');
   // Fold Arabic letter variants before NFD so they match in composed form.
-  let s = input.replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
+  s = s.replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
   // NFD + strip Latin combining diacritics, then lowercase.
   s = s.normalize('NFD').replace(LATIN_DIACRITICS_RE, '');
   s = s.toLowerCase();
