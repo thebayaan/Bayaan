@@ -27,6 +27,9 @@ export const ANALYTICS_EVENTS = {
   PLAYLIST_MODIFIED: 'playlist_modified',
   SHARE_CREATED: 'share_created',
   SEARCH_PERFORMED: 'search_performed',
+  SEARCH_QUERY: 'search_query',
+  SEARCH_RESULT_TAPPED: 'search_result_tapped',
+  SEARCH_DISMISSED: 'search_dismissed',
   TRANSLATION_VIEWED: 'translation_viewed',
   // Lifecycle
   APP_OPENED: 'app_opened',
@@ -181,4 +184,26 @@ export interface TranslationViewedProps {
 export interface AppBackgroundedProps {
   session_duration_ms: number;
   total_listen_ms: number;
+}
+
+export interface SearchQueryProps {
+  query_length: number;
+  has_arabic: boolean;
+  has_numeric: boolean;
+  tab_active: string;
+}
+
+export interface SearchResultTappedProps {
+  entity_type: string;
+  position: number;
+  score: number;
+  tier: string;
+  signal: string | null;
+  query_length: number;
+  tab_active: string;
+}
+
+export interface SearchDismissedProps {
+  had_results: boolean;
+  query_length: number;
 }

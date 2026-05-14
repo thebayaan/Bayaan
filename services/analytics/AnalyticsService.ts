@@ -26,6 +26,9 @@ import {
   PlaylistModifiedProps,
   ShareCreatedProps,
   SearchPerformedProps,
+  SearchQueryProps,
+  SearchResultTappedProps,
+  SearchDismissedProps,
   TranslationViewedProps,
   AppBackgroundedProps,
 } from './events';
@@ -212,6 +215,18 @@ class AnalyticsServiceImpl {
 
   trackSearchPerformed(props: SearchPerformedProps): void {
     this.capture(ANALYTICS_EVENTS.SEARCH_PERFORMED, {...props});
+  }
+
+  trackSearchQuery(props: SearchQueryProps): void {
+    this.capture(ANALYTICS_EVENTS.SEARCH_QUERY, {...props});
+  }
+
+  trackSearchResultTapped(props: SearchResultTappedProps): void {
+    this.capture(ANALYTICS_EVENTS.SEARCH_RESULT_TAPPED, {...props});
+  }
+
+  trackSearchDismissed(props: SearchDismissedProps): void {
+    this.capture(ANALYTICS_EVENTS.SEARCH_DISMISSED, {...props});
   }
 
   trackTranslationViewed(props: TranslationViewedProps): void {
