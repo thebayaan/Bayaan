@@ -27,6 +27,7 @@ import {BookmarkChips} from './BookmarkChips';
 import {JUZ_START_PAGES} from './constants';
 import {useMushafSettingsStore, RecentRead} from '@/store/mushafSettingsStore';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {parseRef} from '@/services/search/refParser';
 
 // ============================================================================
 // Types
@@ -89,6 +90,31 @@ const MAX_HISTORY = 10;
 // Smart Search Parser
 // ============================================================================
 
+// Multi-word juz aliases not handled by parseRef (which only handles single
+// tokens). Kept here so the existing search behaviour is preserved exactly.
+const MULTI_WORD_JUZ_NAMES: Record<string, number> = {
+  'juz amma': 30,
+  'juz tabarak': 29,
+};
+
+function juzSearchItem(
+  juz: number,
+  pageToSurah: Record<number, number>,
+): Extract<SearchResultItem, {type: 'juz'}> {
+  const page = JUZ_START_PAGES[juz - 1];
+  const surahId = pageToSurah[page];
+  const surahName =
+    surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+  return {
+    type: 'juz',
+    juz,
+    page,
+    primary:
+      juz === 30 ? "Juz 'Amma" : juz === 29 ? 'Juz Tabarak' : `Juz ${juz}`,
+    secondary: `Page ${page} · ${surahName}`,
+  };
+}
+
 function parseSearchQuery(
   query: string,
   surahStartPages: Record<number, number>,
@@ -98,135 +124,78 @@ function parseSearchQuery(
   if (!q) return [];
 
   const lower = q.toLowerCase();
-  const results: SearchResultItem[] = [];
 
-  // 1. "page N" or "pg N"
-  const pageMatch = q.match(/^(?:page|pg)\s+(\d+)$/i);
-  if (pageMatch) {
-    const page = parseInt(pageMatch[1], 10);
-    if (page >= 1 && page <= 604) {
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
-      results.push({
-        type: 'page',
-        page,
-        primary: `Page ${page}`,
-        secondary: surahName,
-      });
-    }
-    return results;
-  }
-
-  // 2. Show all Juz list if typing "juz" or "jz"
+  // Show all 30 juz when typing bare "juz" or "jz". Not covered by parseRef.
   if (lower === 'juz' || lower === 'jz') {
+    const results: SearchResultItem[] = [];
     for (let i = 1; i <= 30; i++) {
-      const page = JUZ_START_PAGES[i - 1];
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
-      results.push({
-        type: 'juz',
-        juz: i,
-        page,
-        primary: i === 30 ? "Juz 'Amma" : i === 29 ? 'Juz Tabarak' : `Juz ${i}`,
-        secondary: `Page ${page} \u00B7 ${surahName}`,
-      });
+      results.push(juzSearchItem(i, pageToSurah));
     }
     return results;
   }
 
-  // 3. "juz N", "j N", "jz N" or common names like "Amma"
-  const juzMatch = q.match(/^(?:juz|j|jz)\s*(\d+)$/i);
-  const juzNames: Record<string, number> = {
-    amma: 30,
-    'juz amma': 30,
-    tabarak: 29,
-    'juz tabarak': 29,
-  };
-
-  if (juzMatch || juzNames[lower]) {
-    const juz = juzMatch ? parseInt(juzMatch[1], 10) : juzNames[lower];
-    if (juz >= 1 && juz <= 30) {
-      const page = JUZ_START_PAGES[juz - 1];
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
-      results.push({
-        type: 'juz',
-        juz,
-        page,
-        primary:
-          juz === 30 ? "Juz 'Amma" : juz === 29 ? 'Juz Tabarak' : `Juz ${juz}`,
-        secondary: `Page ${page} \u00B7 ${surahName}`,
-      });
-    }
-    if (juzMatch) return results; // Only return early if it was an explicit "juz N" search
+  // Multi-word juz aliases ("juz amma", "juz tabarak"). Not covered by parseRef.
+  const multiWordJuz = MULTI_WORD_JUZ_NAMES[lower];
+  if (multiWordJuz !== undefined) {
+    return [juzSearchItem(multiWordJuz, pageToSurah)];
   }
 
-  // 4. "N:M" (surah:verse)
-  const verseMatch = q.match(/^(\d+):(\d+)$/);
-  if (verseMatch) {
-    const surahId = parseInt(verseMatch[1], 10);
-    const verse = parseInt(verseMatch[2], 10);
-    if (surahId >= 1 && surahId <= 114) {
-      const surah = SURAHS[surahId - 1];
-      if (verse >= 1 && verse <= surah.verses_count) {
-        results.push({
-          type: 'verse',
-          surahId,
-          verse,
-          primary: `${surah.name} ${surahId}:${verse}`,
-          secondary: `Verse ${verse}`,
-        });
+  // Delegate all single-token numeric patterns to the shared ref parser.
+  const refs = parseRef(q);
+  if (refs.length > 0) {
+    const results: SearchResultItem[] = [];
+    for (const ref of refs) {
+      switch (ref.kind) {
+        case 'verse': {
+          const surah = SURAHS.find(x => x.id === ref.surah);
+          if (surah) {
+            results.push({
+              type: 'verse',
+              surahId: ref.surah,
+              verse: ref.ayah,
+              primary: `${surah.name} ${ref.surah}:${ref.ayah}`,
+              secondary: `Verse ${ref.ayah}`,
+            });
+          }
+          break;
+        }
+        case 'page': {
+          const surahId = pageToSurah[ref.page];
+          const surahName =
+            surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
+          results.push({
+            type: 'page',
+            page: ref.page,
+            primary: `Page ${ref.page}`,
+            secondary: surahName,
+          });
+          break;
+        }
+        case 'juz': {
+          results.push(juzSearchItem(ref.juz, pageToSurah));
+          break;
+        }
+        case 'surah': {
+          const surah = SURAHS.find(x => x.id === ref.surah);
+          if (surah) {
+            results.push({
+              type: 'surah',
+              surah,
+              primary: surah.name,
+              secondary: `Surah ${surah.id} · ${surah.translated_name_english}`,
+            });
+          }
+          break;
+        }
       }
     }
+    // verse, page, and explicit juz/amma/tabarak matches are terminal (no fuzzy fallthrough).
+    // Plain-number results (surah + juz + page) are also terminal.
     return results;
   }
 
-  // 4. Plain number → show matching surah, page, and juz
-  const plainNum = /^\d+$/.test(q) ? parseInt(q, 10) : null;
-  if (plainNum !== null) {
-    // Surah result
-    if (plainNum >= 1 && plainNum <= 114) {
-      const surah = SURAHS[plainNum - 1];
-      results.push({
-        type: 'surah',
-        surah,
-        primary: surah.name,
-        secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
-      });
-    }
-    // Juz result
-    if (plainNum >= 1 && plainNum <= 30) {
-      const page = JUZ_START_PAGES[plainNum - 1];
-      const surahId = pageToSurah[page];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
-      results.push({
-        type: 'juz',
-        juz: plainNum,
-        page,
-        primary: `Juz ${plainNum}`,
-        secondary: `Page ${page} \u00B7 ${surahName}`,
-      });
-    }
-    // Page result
-    if (plainNum >= 1 && plainNum <= 604) {
-      const surahId = pageToSurah[plainNum];
-      const surahName =
-        surahId >= 1 && surahId <= 114 ? SURAHS[surahId - 1].name : '';
-      results.push({
-        type: 'page',
-        page: plainNum,
-        primary: `Page ${plainNum}`,
-        secondary: surahName,
-      });
-    }
-    return results;
-  }
-
-  // 5. Fuzzy match on surah names
+  // Fuzzy match on surah names. Unchanged from original.
+  const results: SearchResultItem[] = [];
   for (const surah of SURAHS) {
     if (
       surah.name.toLowerCase().includes(lower) ||
@@ -237,7 +206,7 @@ function parseSearchQuery(
         type: 'surah',
         surah,
         primary: surah.name,
-        secondary: `Surah ${surah.id} \u00B7 ${surah.translated_name_english}`,
+        secondary: `Surah ${surah.id} · ${surah.translated_name_english}`,
       });
     }
   }
