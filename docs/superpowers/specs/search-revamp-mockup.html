@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bayaan Search Revamp - Layout Mockups</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #141414;
+    --panel-2: #1c1c1e;
+    --line: rgba(255,255,255,0.08);
+    --text: #f5f5f7;
+    --muted: #8e8e93;
+    --muted-2: #6c6c70;
+    --accent: #d4af37;       /* deeper gold, like a mushaf border */
+    --accent-soft: rgba(212,175,55,0.14);
+    --accent-strong: #e7c463;
+    --green: #1db954;        /* spotify-ish for the hero accent only */
+    --pill: rgba(255,255,255,0.07);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page {
+    min-height: 100vh;
+    padding: 32px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  .header {
+    width: 100%;
+    max-width: 1280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+  }
+  .header h1 { margin: 0; font-size: 28px; letter-spacing: -0.5px; font-weight: 700; }
+  .header p { margin: 0; color: var(--muted); font-size: 14px; max-width: 640px; line-height: 1.55; }
+
+  .controls {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  .seg {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 160ms ease;
+  }
+  .seg.active { background: var(--accent); color: #0a0a0a; }
+  .seg:not(.active):hover { color: var(--text); }
+
+  .query-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .query-row code {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: 4px 10px;
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  .q-chip { padding: 4px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .q-chip.active { color: var(--accent); border-color: rgba(212,175,55,0.35); background: var(--accent-soft); }
+
+  .phones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* phone frame */
+  .phone {
+    width: 380px;
+    height: 780px;
+    background: #000;
+    border-radius: 46px;
+    padding: 12px;
+    box-shadow:
+      0 0 0 2px #1a1a1a,
+      0 30px 80px rgba(0,0,0,0.55),
+      0 8px 20px rgba(0,0,0,0.35);
+    position: relative;
+  }
+  .phone-screen {
+    width: 100%;
+    height: 100%;
+    background: var(--bg);
+    border-radius: 36px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .notch {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 30px;
+    background: #000;
+    border-radius: 18px;
+    z-index: 10;
+  }
+  .status-bar {
+    height: 44px;
+    padding: 0 26px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    padding-bottom: 6px;
+  }
+
+  /* search header */
+  .nav {
+    padding: 8px 18px 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.4px; }
+  .nav .ic { width: 32px; height: 32px; display: grid; place-items: center; background: var(--panel); border-radius: 50%; }
+  .search-field {
+    margin: 8px 16px 8px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .search-field svg { color: var(--muted); }
+  .search-field .typed { color: var(--text); font-size: 15px; }
+  .search-field .caret {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: var(--accent);
+    animation: blink 1s steps(2, start) infinite;
+    margin-left: 2px;
+    vertical-align: -3px;
+  }
+  @keyframes blink { to { visibility: hidden; } }
+
+  .scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px 16px 24px;
+    scrollbar-width: thin;
+  }
+  .scroll::-webkit-scrollbar { width: 4px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  /* section header */
+  .sec-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 4px 8px;
+  }
+  .sec-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+  }
+  .sec-head .all { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+  /* row */
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 4px;
+    border-radius: 10px;
+  }
+  .row:hover { background: var(--panel); }
+  .row .art {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .row .art.round { border-radius: 50%; }
+  .row .art.adhkar { background: linear-gradient(135deg,#3a2a1e,#1f1410); color: #e7c463; }
+  .row .art.surah { background: linear-gradient(135deg,#1e2a3a,#101820); color: #9fc1f0; }
+  .row .art.verse { background: linear-gradient(135deg,#2a1e3a,#1a1020); color: #c69ff0; }
+  .row .art.reciter { background: linear-gradient(135deg,#2a3a2e,#13201a); color: #95d8a8; }
+  .row .art.rewayat { background: linear-gradient(135deg,#3a2e1e,#1f1810); color: #d4af37; }
+  .row .art.name { background: linear-gradient(135deg,#3a1e2a,#201018); color: #e89bb0; }
+  .row .art.track { background: linear-gradient(135deg,#1a2a2a,#0e1818); color: #6ec9c9; }
+  .row .meta { flex: 1; min-width: 0; }
+  .row .meta .t1 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row .meta .t2 {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .row .badge {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    padding: 3px 6px;
+    background: var(--pill);
+    border-radius: 4px;
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+  .row .play {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--panel-2);
+    display: grid;
+    place-items: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .row .signal {
+    font-size: 10px;
+    color: var(--accent-strong);
+    margin-left: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  mark {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    border-radius: 3px;
+    padding: 0 2px;
+  }
+
+  /* hero (top result) */
+  .hero {
+    margin: 8px 0 4px;
+    padding: 18px 18px 18px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04) 60%), var(--panel);
+    border: 1px solid rgba(212,175,55,0.22);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: -60% -40% auto auto;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(closest-side, rgba(212,175,55,0.22), transparent 70%);
+    pointer-events: none;
+  }
+  .hero .label {
+    font-size: 11px;
+    color: var(--accent-strong);
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .hero .h-art {
+    width: 78px;
+    height: 78px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2a1e3a, #1a1020);
+    display: grid;
+    place-items: center;
+    color: #c69ff0;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+  .hero h4 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.4px;
+  }
+  .hero .sub {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .hero .arabic {
+    margin-top: 12px;
+    direction: rtl;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #e0d2a8;
+    font-family: "Noto Naskh Arabic", "Amiri", serif;
+  }
+  .hero .h-play {
+    position: absolute;
+    bottom: 18px;
+    right: 18px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #0a0a0a;
+    display: grid;
+    place-items: center;
+  }
+
+  /* tab filter bar (layout C) */
+  .tabbar {
+    display: flex;
+    gap: 8px;
+    padding: 6px 4px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabbar::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--panel);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .tab.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); }
+
+  /* bottom tab bar */
+  .bottom {
+    height: 78px;
+    border-top: 1px solid var(--line);
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding-bottom: 18px;
+  }
+  .bottom .b {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .bottom .b.active { color: var(--accent); }
+
+  /* footer label under each phone */
+  .phone-label {
+    text-align: center;
+    margin-top: 16px;
+    color: var(--muted);
+    font-size: 13px;
+    max-width: 380px;
+  }
+  .phone-label strong { color: var(--text); font-size: 14px; display: block; margin-bottom: 4px; }
+
+  .legend {
+    margin-top: 16px;
+    color: var(--muted-2);
+    font-size: 12px;
+    text-align: center;
+    max-width: 880px;
+    line-height: 1.6;
+  }
+  .legend code { color: var(--accent); }
+
+  @media (max-width: 1280px) {
+    .phones { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Bayaan Search Revamp</h1>
+    <p>Three layout proposals side by side. Same query, same ranking engine, three different ways of presenting the results. Try changing the query to see how each layout handles different intents.</p>
+  </div>
+
+  <div class="query-row">
+    <span>Showing query:</span>
+    <span class="q-chip active" data-q="yas">yas</span>
+    <span class="q-chip" data-q="morn">morn</span>
+    <span class="q-chip" data-q="mercy">mercy</span>
+    <span class="q-chip" data-q="2:255">2:255</span>
+    <span class="q-chip" data-q="mishary">mishary</span>
+    <span class="q-chip" data-q="hafs">hafs</span>
+  </div>
+
+  <div class="phones">
+    <div>
+      <div class="phone"><div class="notch"></div><div class="phone-screen" id="phoneA"></div></div>
+      <div class="phone-label"><strong>Layout A - Top Result + Sections</strong>Recommended. Hero card with the single best match, then ordered sections.</div>
+    </div>
+    <div>
+      <div class="phone"><div class="notch"></div><div class="phone-screen" id="phoneB"></div></div>
+      <div class="phone-label"><strong>Layout B - Sections Only</strong>quran.com style. No hero. Same sections, no celebrity.</div>
+    </div>
+    <div>
+      <div class="phone"><div class="notch"></div><div class="phone-screen" id="phoneC"></div></div>
+      <div class="phone-label"><strong>Layout C - Tab Filter Bar</strong>iOS Music style. One type at a time. Fast scanning, weaker cross-type discovery.</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    Highlights: <mark>yellow underline</mark> shows matched text. The small "RECENT" / "LOVED" / "DOWNLOADED" tags illustrate personal-signal boosts. Hero card appears only in Layout A. All three pull from the same ranked candidate list, just sliced differently.
+  </div>
+</div>
+
+<script>
+// --- mock data, keyed by query -----------------------------------
+const DATA = {
+  yas: {
+    hero: { type: 'surah', title: 'Surah Ya-Sin', sub: 'Chapter 36 - 83 verses - Makki', mark: ['Ya'], art: 'Y', arabic: 'يس' },
+    sections: [
+      { name: 'Tracks', items: [
+        { art: 'track', icon: '36', t1: 'Ya-Sin', t2: 'Mishary Alafasy - Hafs', mark: ['Ya'], badge: '4:50', signal: 'LOVED' },
+        { art: 'track', icon: '36', t1: 'Ya-Sin', t2: 'AbdulRahman Sudais - Hafs', mark: ['Ya'], badge: '12:11', signal: 'RECENT' },
+        { art: 'track', icon: '36', t1: 'Ya-Sin', t2: 'Maher Al-Muaiqly - Hafs', mark: ['Ya'], badge: '14:32' }
+      ]},
+      { name: 'Reciters', items: [
+        { art: 'reciter round', icon: 'YD', t1: 'Yasser Ad-Dossari', t2: 'Reciter - 7 narrations', mark: ['Yas'] },
+        { art: 'reciter round', icon: 'YQ', t1: 'Yassen Al-Qurashi', t2: 'Reciter - 1 narration', mark: ['Yas'] }
+      ]},
+      { name: 'Surahs', items: [
+        { art: 'surah', icon: '36', t1: 'Ya-Sin', t2: 'Chapter 36 - 83 verses', mark: ['Ya'] }
+      ]},
+      { name: 'Verses', items: [
+        { art: 'verse', icon: '36:1', t1: 'Ya-Sin', t2: 'By the Wise Quran...', mark: ['Ya'], arabic: 'يس ۞ وَالْقُرْآنِ الْحَكِيمِ' }
+      ]},
+      { name: 'Jump to', items: [
+        { art: 'verse', icon: '36', t1: 'Surah 36 - Ya-Sin', t2: 'Page 440, Juz 22-23', mark: [] }
+      ]}
+    ]
+  },
+  morn: {
+    hero: { type: 'adhkar', title: 'Morning Adhkar', sub: '24 supplications - daily', mark: ['Morn'], art: '☀', arabic: 'أذكار الصباح' },
+    sections: [
+      { name: 'Adhkar', items: [
+        { art: 'adhkar', icon: '☀', t1: 'Morning Adhkar', t2: '24 items - 8 min', mark: ['Morn'], signal: 'CONTEXTUAL' },
+        { art: 'adhkar', icon: 'F', t1: 'After Fajr Adhkar', t2: '12 items - 4 min', mark: [] },
+        { art: 'adhkar', icon: '🤲', t1: 'Adhkar before sleep', t2: '14 items - 5 min', mark: [] }
+      ]},
+      { name: 'Tracks', items: [
+        { art: 'track', icon: '67', t1: 'Al-Mulk', t2: 'Mishary Alafasy - often recited mornings', mark: [], badge: '8:42' }
+      ]},
+      { name: 'Surahs', items: [
+        { art: 'surah', icon: '67', t1: 'Al-Mulk', t2: 'The Sovereignty - Chapter 67', mark: [] }
+      ]}
+    ]
+  },
+  mercy: {
+    hero: { type: 'verse', title: 'Ar-Rahman, the Most Merciful', sub: 'Verse 1:1 - Al-Fatihah', mark: ['Merc'], art: '1:1', arabic: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ' },
+    sections: [
+      { name: 'Verses', items: [
+        { art: 'verse', icon: '1:1', t1: 'In the name of Allah, the Most Merciful, the Bestower of Mercy', t2: 'Al-Fatihah 1:1', mark: ['Merc'] },
+        { art: 'verse', icon: '21:107', t1: 'We sent you not but as a Mercy to all worlds', t2: 'Al-Anbiya 21:107', mark: ['Merc'] },
+        { art: 'verse', icon: '6:54', t1: 'Your Lord has decreed Mercy upon Himself', t2: 'Al-Anam 6:54', mark: ['Merc'] }
+      ]},
+      { name: 'Names of Allah', items: [
+        { art: 'name', icon: '1', t1: 'Ar-Rahman - The Most Merciful', t2: 'Beautiful Name 1 of 99', mark: ['Merc'] },
+        { art: 'name', icon: '2', t1: 'Ar-Rahim - The Bestower of Mercy', t2: 'Beautiful Name 2 of 99', mark: ['Merc'] }
+      ]},
+      { name: 'Surahs', items: [
+        { art: 'surah', icon: '55', t1: 'Ar-Rahman', t2: 'The Most Merciful - Chapter 55', mark: [] }
+      ]}
+    ]
+  },
+  '2:255': {
+    hero: { type: 'verse', title: 'Ayat al-Kursi', sub: 'Al-Baqarah 2:255', mark: [], art: '2:255', arabic: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ' },
+    sections: [
+      { name: 'Jump to', items: [
+        { art: 'verse', icon: '2:255', t1: 'Al-Baqarah, verse 255', t2: 'Open in mushaf - Page 42, Juz 3', mark: [], signal: 'EXACT' }
+      ]},
+      { name: 'Tracks', items: [
+        { art: 'track', icon: '255', t1: 'Ayat al-Kursi', t2: 'Mishary Alafasy - Hafs', mark: [], badge: '1:48', signal: 'LOVED' },
+        { art: 'track', icon: '255', t1: 'Ayat al-Kursi', t2: 'AbdulBaset AbdulSamad - Mojawwad', mark: [], badge: '3:22' }
+      ]}
+    ]
+  },
+  mishary: {
+    hero: { type: 'reciter', title: 'Mishary Rashid Alafasy', sub: 'Reciter - 8 narrations - Kuwaiti', mark: ['Mishary'], art: 'MA', arabic: 'مشاري راشد العفاسي' },
+    sections: [
+      { name: 'Reciters', items: [
+        { art: 'reciter round', icon: 'MA', t1: 'Mishary Rashid Alafasy', t2: '8 narrations - Hafs - Murattal', mark: ['Mishary'], signal: 'DEFAULT' }
+      ]},
+      { name: 'Tracks', items: [
+        { art: 'track', icon: '36', t1: 'Ya-Sin', t2: 'Mishary Alafasy', mark: ['Mishary'], badge: '4:50', signal: 'LOVED' },
+        { art: 'track', icon: '67', t1: 'Al-Mulk', t2: 'Mishary Alafasy', mark: ['Mishary'], badge: '8:42', signal: 'RECENT' },
+        { art: 'track', icon: '18', t1: 'Al-Kahf', t2: 'Mishary Alafasy', mark: ['Mishary'], badge: '52:11' }
+      ]},
+      { name: 'Playlists', items: [
+        { art: 'track', icon: '♥', t1: 'Loved - Mishary', t2: '14 tracks', mark: ['Mishary'] }
+      ]}
+    ]
+  },
+  hafs: {
+    hero: { type: 'rewayat', title: 'Hafs A\'n Asim', sub: 'Narration - 247 reciters', mark: ['Hafs'], art: 'ح', arabic: 'حفص عن عاصم' },
+    sections: [
+      { name: 'Rewayat', items: [
+        { art: 'rewayat', icon: 'ح', t1: 'Hafs A\'n Asim', t2: '247 reciters - the most widespread narration', mark: ['Hafs'], signal: 'DEFAULT' }
+      ]},
+      { name: 'Reciters', items: [
+        { art: 'reciter round', icon: 'MA', t1: 'Mishary Alafasy', t2: 'Hafs - Murattal', mark: ['Hafs'] },
+        { art: 'reciter round', icon: 'AS', t1: 'AbdulRahman Sudais', t2: 'Hafs - Murattal', mark: ['Hafs'] },
+        { art: 'reciter round', icon: 'MM', t1: 'Maher Al-Muaiqly', t2: 'Hafs - Murattal', mark: ['Hafs'] }
+      ]}
+    ]
+  }
+};
+
+// section order
+const SECTION_ORDER = ['Jump to', 'Tracks', 'Reciters', 'Surahs', 'Rewayat', 'Adhkar', 'Verses', 'Names of Allah', 'Playlists'];
+
+function highlight(text, marks) {
+  if (!marks || !marks.length) return text;
+  let out = text;
+  marks.forEach(m => {
+    const re = new RegExp('(' + m.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'i');
+    out = out.replace(re, '<mark>$1</mark>');
+  });
+  return out;
+}
+
+function renderRow(item) {
+  const art = `<div class="art ${item.art}">${item.icon}</div>`;
+  const sig = item.signal ? `<span class="signal">${item.signal}</span>` : '';
+  const t1 = highlight(item.t1, item.mark);
+  const t2 = highlight(item.t2, item.mark);
+  const badge = item.badge ? `<span class="badge">${item.badge}</span>` : '';
+  const arabic = item.arabic ? `<div style="margin-top:6px; direction:rtl; font-size:14px; line-height:1.5; color:#cbb87a; font-family:'Noto Naskh Arabic','Amiri',serif;">${item.arabic}</div>` : '';
+  const play = `<div class="play"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>`;
+  return `<div class="row">${art}<div class="meta"><div class="t1">${t1}${sig}</div><div class="t2">${t2}</div>${arabic}</div>${badge}${play}</div>`;
+}
+
+function renderHero(h) {
+  if (!h) return '';
+  const title = highlight(h.title, h.mark);
+  return `
+    <div class="hero">
+      <div class="label">Top result</div>
+      <div class="h-art">${h.art}</div>
+      <h4>${title}</h4>
+      <div class="sub">${h.sub}</div>
+      ${h.arabic ? `<div class="arabic">${h.arabic}</div>` : ''}
+      <div class="h-play"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></svg></div>
+    </div>
+  `;
+}
+
+function renderSections(data, opts={}) {
+  const ordered = SECTION_ORDER
+    .map(name => data.sections.find(s => s.name === name))
+    .filter(Boolean);
+  return ordered.map(sec => {
+    if (opts.skipHeroDuplicate && opts.heroType && sec.items.length === 1 && opts.heroTitle && sec.items[0].t1 === opts.heroTitle) {
+      return '';
+    }
+    const rows = sec.items.map(renderRow).join('');
+    return `
+      <div class="sec-head"><h3>${sec.name}</h3><span class="all">Show all</span></div>
+      ${rows}
+    `;
+  }).join('');
+}
+
+function searchField(q) {
+  return `
+    <div class="search-field">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <div class="typed">${q}<span class="caret"></span></div>
+    </div>
+  `;
+}
+
+function frame(inner, label) {
+  return `
+    <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+    <div class="nav">
+      <h2>Search</h2>
+      <div class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 1-12.5 4"/><path d="M5 12a7 7 0 0 1 12.5-4"/></svg></div>
+    </div>
+    ${inner}
+    <div class="bottom">
+      <div class="b"><span>♪</span><span>Recite</span></div>
+      <div class="b active"><span>⌕</span><span>Search</span></div>
+      <div class="b"><span>♥</span><span>Collection</span></div>
+      <div class="b"><span>☰</span><span>More</span></div>
+    </div>
+  `;
+}
+
+function render(q) {
+  const data = DATA[q];
+  const A = document.getElementById('phoneA');
+  const B = document.getElementById('phoneB');
+  const C = document.getElementById('phoneC');
+
+  // Layout A: hero + sections
+  A.innerHTML = frame(
+    searchField(q) +
+    `<div class="scroll">${renderHero(data.hero)}${renderSections(data, { skipHeroDuplicate: true, heroType: data.hero.type, heroTitle: data.hero.title })}</div>`
+  );
+
+  // Layout B: sections only
+  B.innerHTML = frame(
+    searchField(q) +
+    `<div class="scroll">${renderSections(data)}</div>`
+  );
+
+  // Layout C: tab filter bar + one section
+  const tabs = ['All', ...SECTION_ORDER.filter(n => data.sections.find(s => s.name === n))];
+  const firstSection = data.sections[0];
+  const tabbar = `<div class="tabbar" style="padding:6px 16px 12px;">${tabs.map((t,i) => `<span class="tab ${i===0?'active':''}">${t}</span>`).join('')}</div>`;
+  // In "All" tab show flat list
+  const flat = data.sections.flatMap(s => s.items).map(renderRow).join('');
+  C.innerHTML = frame(
+    searchField(q) + tabbar +
+    `<div class="scroll" style="padding-top:0;">${flat}</div>`
+  );
+}
+
+document.querySelectorAll('.q-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.q-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    render(chip.dataset.q);
+  });
+});
+
+render('yas');
+</script>
+</body>
+</html>
