@@ -49,7 +49,9 @@ function tierFor(query: string, token: string): Tier | null {
   return null;
 }
 
-export function createEntityIndex<Row>(opts: EntityIndexOptions<Row>): EntityIndex {
+export function createEntityIndex<Row>(
+  opts: EntityIndexOptions<Row>,
+): EntityIndex {
   const floor = opts.floor ?? 0.2;
   const maxWeight = opts.fields.reduce((m, f) => Math.max(m, f.weight), 1);
   const tokenMap = new Map<string, TokenIndexEntry[]>();

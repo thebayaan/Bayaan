@@ -1,12 +1,12 @@
-import type { Signal } from './types';
+import type {Signal} from './types';
 
 export interface PersonalContext {
-  lovedReciterIds: Set<string>;       // string ids (Reciter.id is string)
-  lovedTrackIds: Set<string>;          // `${reciterId}:${surahId}` (used in Phase 3)
-  downloadedTrackIds: Set<string>;     // `${reciterId}:${surahId}` (used in Phase 3)
+  lovedReciterIds: Set<string>; // string ids (Reciter.id is string)
+  lovedTrackIds: Set<string>; // `${reciterId}:${surahId}` (used in Phase 3)
+  downloadedTrackIds: Set<string>; // `${reciterId}:${surahId}` (used in Phase 3)
   defaultReciterId: string | null;
   defaultRewayatId: string | null;
-  recentResultIds: Set<string>;        // full result ids, e.g. `surah:36`
+  recentResultIds: Set<string>; // full result ids, e.g. `surah:36`
 }
 
 const WEIGHTS = {
@@ -53,5 +53,5 @@ export function computePersonalBoost(
     if (!signal) signal = 'default';
   }
 
-  return { boost: Math.min(1.0, boost), signal };
+  return {boost: Math.min(1.0, boost), signal};
 }
