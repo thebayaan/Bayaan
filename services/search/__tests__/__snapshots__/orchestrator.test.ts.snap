@@ -1,0 +1,151 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`orchestrator snapshots stable ranking for "2:255" 1`] = `
+[
+  {
+    "id": "ref:{"kind":"verse","surah":2,"ayah":255,"label":"The Cow 2:255"}",
+    "tier": "exact",
+    "title": "The Cow 2:255",
+    "type": "numeric_ref",
+  },
+  {
+    "id": "surah:25",
+    "tier": "prefix",
+    "title": "The Criterion",
+    "type": "surah",
+  },
+]
+`;
+
+exports[`orchestrator snapshots stable ranking for "amma" 1`] = `
+[
+  {
+    "id": "ref:{"kind":"juz","juz":30,"label":"Juz 30 (Amma)"}",
+    "tier": "exact",
+    "title": "Juz 30 (Amma)",
+    "type": "numeric_ref",
+  },
+  {
+    "id": "surah:47",
+    "tier": "whole_word",
+    "title": "Muhammad",
+    "type": "surah",
+  },
+  {
+    "id": "rewayat:ibn-jammaz-an-abi-jafar",
+    "tier": "whole_word",
+    "title": "Ibn Jammaz",
+    "type": "rewayat",
+  },
+  {
+    "id": "reciter:r2",
+    "tier": "fuzzy",
+    "title": "AbdulRahman Sudais",
+    "type": "reciter",
+  },
+  {
+    "id": "name:1",
+    "tier": "fuzzy",
+    "title": "Ar-Rahman - The Most Merciful",
+    "type": "name_of_allah",
+  },
+]
+`;
+
+exports[`orchestrator snapshots stable ranking for "fatiha" 1`] = `
+[
+  {
+    "id": "surah:1",
+    "tier": "exact",
+    "title": "The Opener",
+    "type": "surah",
+  },
+  {
+    "id": "name:18",
+    "tier": "fuzzy",
+    "title": "Al-Fattah - The Opener",
+    "type": "name_of_allah",
+  },
+]
+`;
+
+exports[`orchestrator snapshots stable ranking for "hafs" 1`] = `
+[
+  {
+    "id": "rewayat:hafs-an-assem",
+    "tier": "exact",
+    "title": "Hafs",
+    "type": "rewayat",
+  },
+  {
+    "id": "reciter:r1",
+    "tier": "exact",
+    "title": "Mishary Alafasy",
+    "type": "reciter",
+  },
+  {
+    "id": "reciter:r2",
+    "tier": "exact",
+    "title": "AbdulRahman Sudais",
+    "type": "reciter",
+  },
+  {
+    "id": "reciter:r3",
+    "tier": "exact",
+    "title": "Yasser Ad-Dossari",
+    "type": "reciter",
+  },
+  {
+    "id": "surah:40",
+    "tier": "fuzzy",
+    "title": "The Forgiver",
+    "type": "surah",
+  },
+]
+`;
+
+exports[`orchestrator snapshots stable ranking for "page 100" 1`] = `
+[
+  {
+    "id": "ref:{"kind":"page","page":100,"label":"Page 100"}",
+    "tier": "exact",
+    "title": "Page 100",
+    "type": "numeric_ref",
+  },
+]
+`;
+
+exports[`orchestrator snapshots stable ranking for "yas" 1`] = `
+[
+  {
+    "id": "reciter:r3",
+    "tier": "prefix",
+    "title": "Yasser Ad-Dossari",
+    "type": "reciter",
+  },
+  {
+    "id": "surah:36",
+    "tier": "prefix",
+    "title": "Ya Sin",
+    "type": "surah",
+  },
+  {
+    "id": "rewayat:hafs-an-assem",
+    "tier": "fuzzy",
+    "title": "Hafs",
+    "type": "rewayat",
+  },
+  {
+    "id": "name:5",
+    "tier": "fuzzy",
+    "title": "As-Salam - The Source of Peace",
+    "type": "name_of_allah",
+  },
+  {
+    "id": "name:21",
+    "tier": "fuzzy",
+    "title": "Al-Basit - The Extender",
+    "type": "name_of_allah",
+  },
+]
+`;
