@@ -26,7 +26,7 @@ export interface RewayatInfo extends RewayatEntry {
 // RewayahIdentity module (Al-Duri, Qalun, Ibn Dhakwan, Hisham, Asim, Abu
 // Amr, Ibn Amir, al-Kisa'i, Abu Ja'far, Ya'qub, etc.) so every UI consumer
 // renders the same spelling.
-const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
+export const REWAYAT_REGISTRY: readonly RewayatEntry[] = [
   // Nafi'
   {
     id: 'warsh-an-nafi',
