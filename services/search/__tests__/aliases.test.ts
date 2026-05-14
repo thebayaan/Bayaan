@@ -22,4 +22,11 @@ describe('aliases', () => {
       expect.arrayContaining(['hafs', 'حفص']),
     );
   });
+
+  it('returns a defensive copy that does not leak mutations', () => {
+    const first = aliasesFor('surah', 36);
+    first.push('NOT-AN-ALIAS');
+    const second = aliasesFor('surah', 36);
+    expect(second).not.toContain('NOT-AN-ALIAS');
+  });
 });

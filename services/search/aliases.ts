@@ -45,11 +45,11 @@ const NAMES = buildIndex(RAW_NAME_ALIASES);
 export function aliasesFor(key: AliasKey, id: AliasId): string[] {
   switch (key) {
     case 'surah':
-      return SURAH.get(`${id}`) ?? [];
+      return [...(SURAH.get(`${id}`) ?? [])];
     case 'rewayat':
-      return REWAYAT.get(`${id}`) ?? [];
+      return [...(REWAYAT.get(`${id}`) ?? [])];
     case 'name':
-      return NAMES.get(`${id}`) ?? [];
+      return [...(NAMES.get(`${id}`) ?? [])];
     case 'reciter':
       return [];
   }
