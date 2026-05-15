@@ -1,27 +1,19 @@
-// components/search/v2/RankedResultRow.tsx
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {RankedResult} from '@/services/search/types';
 import {SignalIcon} from './SignalIcon';
+import {RowArtwork} from './RowArtwork';
 
 interface Props {
   result: RankedResult;
   onPress: (r: RankedResult) => void;
 }
 
-export function RankedResultRow({result, onPress}: Props) {
+export function RankedResultRow({result, onPress}: Props): JSX.Element {
   return (
     <Pressable
       onPress={() => onPress(result)}
       style={({pressed}) => [styles.row, pressed && styles.rowPressed]}>
-      {result.artwork && (
-        <View
-          style={[
-            styles.art,
-            styles[`art_${result.artwork.kind}` as keyof typeof styles],
-          ]}>
-          <Text style={styles.artText}>{result.artwork.label}</Text>
-        </View>
-      )}
+      <RowArtwork result={result} />
       <View style={styles.meta}>
         <View style={styles.titleRow}>
           <Text style={styles.title} numberOfLines={1}>
@@ -56,22 +48,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   rowPressed: {backgroundColor: 'rgba(255,255,255,0.04)'},
-  art: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1c1c1e',
-  },
-  art_reciter: {borderRadius: 22},
-  art_surah: {},
-  art_rewayat: {},
-  art_adhkar: {},
-  art_name: {},
-  art_playlist: {},
-  art_verse: {},
-  artText: {color: '#d4af37', fontWeight: '700', fontSize: 14},
   meta: {flex: 1, minWidth: 0},
   titleRow: {flexDirection: 'row', alignItems: 'center'},
   title: {color: '#f5f5f7', fontSize: 14, fontWeight: '600', flexShrink: 1},
