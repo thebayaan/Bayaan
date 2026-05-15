@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Bayaan Search Revamp - Live Preview</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #141414;
+    --panel-2: #1c1c1e;
+    --line: rgba(255,255,255,0.08);
+    --text: #f5f5f7;
+    --muted: #8e8e93;
+    --accent: #d4af37;
+    --accent-soft: rgba(212,175,55,0.14);
+    --gold-row: rgba(212,175,55,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #050505; color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 16px 80px; gap: 24px; }
+  .head { text-align: center; max-width: 720px; }
+  .head h1 { margin: 0; font-size: 26px; letter-spacing: -0.5px; }
+  .head p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .head .note { margin-top: 12px; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; font-size: 12px; color: var(--muted); text-align: left; }
+  .head .note code { color: var(--accent); }
+
+  .chips { display: flex; gap: 8px; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  .chip { appearance: none; background: transparent; border: 0; color: var(--muted); font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-family: inherit; }
+  .chip.active { background: var(--accent); color: #0a0a0a; }
+
+  .phone { width: 390px; height: 800px; background: #000; border-radius: 46px; padding: 12px; box-shadow: 0 0 0 2px #1a1a1a, 0 30px 80px rgba(0,0,0,0.6); position: relative; }
+  .notch { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 110px; height: 30px; background: #000; border-radius: 18px; z-index: 10; }
+  .screen { width: 100%; height: 100%; background: var(--bg); border-radius: 36px; overflow: hidden; display: flex; flex-direction: column; }
+  .status-bar { height: 44px; padding: 0 26px; display: flex; align-items: flex-end; justify-content: space-between; font-size: 13px; font-weight: 600; padding-bottom: 6px; }
+
+  .nav { padding: 8px 18px 4px; display: flex; align-items: center; justify-content: space-between; }
+  .nav h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.4px; }
+  .search-field { margin: 8px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; }
+  .search-field svg { color: var(--muted); }
+  .typed { color: var(--text); font-size: 15px; }
+  .caret { display: inline-block; width: 1px; height: 18px; background: var(--accent); animation: blink 1s steps(2, start) infinite; margin-left: 2px; vertical-align: -3px; }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* TabBar style match (real component) */
+  .tabbar { display: flex; gap: 8px; padding: 6px 16px 12px; overflow-x: auto; scrollbar-width: none; }
+  .tabbar::-webkit-scrollbar { display: none; }
+  .tab { padding: 6px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-shrink: 0; cursor: pointer; }
+  .tab.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); }
+  .tab .count { font-size: 10px; color: inherit; background: rgba(0,0,0,0.18); padding: 1px 6px; border-radius: 8px; font-weight: 700; }
+
+  .list { flex: 1; overflow-y: auto; padding: 4px 0 12px; }
+  .list::-webkit-scrollbar { width: 4px; }
+  .list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  /* RankedResultRow style match (real component) */
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+  .row:hover { background: rgba(255,255,255,0.04); }
+  .art { width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: var(--panel-2); flex-shrink: 0; }
+  .art.reciter { border-radius: 22px; }
+  .art-text { color: var(--accent); font-weight: 700; font-size: 14px; }
+  .meta { flex: 1; min-width: 0; }
+  .title-row { display: flex; align-items: center; }
+  .title { color: var(--text); font-size: 14px; font-weight: 600; flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .signal { margin-left: 6px; opacity: 0.75; color: var(--accent); font-size: 12px; font-weight: 600; }
+  .subtitle { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .arabic { color: #cbb87a; font-size: 14px; margin-top: 4px; text-align: right; font-family: "Noto Naskh Arabic", "Amiri", serif; }
+  .tier-pill { font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; font-weight: 600; }
+
+  .legend { margin-top: 8px; color: var(--muted); font-size: 11px; max-width: 720px; text-align: center; line-height: 1.6; }
+  .legend code { color: var(--accent); background: var(--panel); padding: 1px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="head">
+    <h1>Search v2 - Live Preview</h1>
+    <p>Each query renders the actual orchestrator output (from the Jest snapshots), wrapped in the real React Native styles of <code>TabBar</code>, <code>RankedResultRow</code>, and <code>SignalIcon</code>. Tap a query chip to switch.</p>
+    <div class="note">
+      <strong>Heads up:</strong> in production the iOS native search-bar covers the top of the screen via <code>Stack.SearchBar</code>; here we render a mock field instead. The fixture has 3 test reciters (Mishary Alafasy, Sudais, Yasser Ad-Dossari); a real device will show the full reciter list returned by <code>getAllReciters()</code>.
+    </div>
+  </div>
+
+  <div class="chips">
+    <button class="chip active" data-q="yas">yas</button>
+    <button class="chip" data-q="fatiha">fatiha</button>
+    <button class="chip" data-q="hafs">hafs</button>
+    <button class="chip" data-q="2:255">2:255</button>
+    <button class="chip" data-q="page 100">page 100</button>
+    <button class="chip" data-q="amma">amma</button>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen" id="screen"></div>
+  </div>
+
+  <div class="legend">
+    Tab colors and pill shape match <code>TabBar.tsx</code>. Row layout, font sizes, and signal icon match <code>RankedResultRow.tsx</code> + <code>SignalIcon.tsx</code>. Tier pill (right side) shows <code>features.tier</code> for clarity in the preview, the real app does not render it. Signal icons fire when personal/contextual boosts are present, with no history they stay off.
+  </div>
+</div>
+
+<script>
+// Real snapshot data lifted from
+// services/search/__tests__/__snapshots__/orchestrator.test.ts.snap
+const DATA = {
+  "yas": [
+    { id: "reciter:r3",          tier: "prefix", title: "Yasser Ad-Dossari",       type: "reciter" },
+    { id: "surah:36",            tier: "prefix", title: "Ya Sin",                  type: "surah" },
+    { id: "rewayat:hafs-an-assem", tier: "fuzzy",  title: "Hafs",                  type: "rewayat" },
+    { id: "name:5",              tier: "fuzzy",  title: "As-Salam - The Source of Peace", type: "name_of_allah" },
+    { id: "name:21",             tier: "fuzzy",  title: "Al-Basit - The Extender", type: "name_of_allah" },
+  ],
+  "fatiha": [
+    { id: "surah:1",  tier: "exact", title: "The Opener",              type: "surah" },
+    { id: "name:18",  tier: "fuzzy", title: "Al-Fattah - The Opener",  type: "name_of_allah" },
+  ],
+  "hafs": [
+    { id: "rewayat:hafs-an-assem", tier: "exact", title: "Hafs",               type: "rewayat" },
+    { id: "reciter:r1",            tier: "exact", title: "Mishary Alafasy",    type: "reciter" },
+    { id: "reciter:r2",            tier: "exact", title: "AbdulRahman Sudais", type: "reciter" },
+    { id: "reciter:r3",            tier: "exact", title: "Yasser Ad-Dossari",  type: "reciter" },
+    { id: "surah:40",              tier: "fuzzy", title: "The Forgiver",       type: "surah" },
+  ],
+  "2:255": [
+    { id: "ref:verse-2-255", tier: "exact",  title: "The Cow 2:255", type: "numeric_ref" },
+    { id: "surah:25",        tier: "prefix", title: "The Criterion", type: "surah" },
+  ],
+  "page 100": [
+    { id: "ref:page-100", tier: "exact", title: "Page 100", type: "numeric_ref" },
+  ],
+  "amma": [
+    { id: "ref:juz-30",                       tier: "exact",      title: "Juz 30 (Amma)",                  type: "numeric_ref" },
+    { id: "surah:47",                         tier: "whole_word", title: "Muhammad",                       type: "surah" },
+    { id: "rewayat:ibn-jammaz-an-abi-jafar",  tier: "whole_word", title: "Ibn Jammaz",                     type: "rewayat" },
+    { id: "reciter:r2",                       tier: "fuzzy",      title: "AbdulRahman Sudais",             type: "reciter" },
+    { id: "name:1",                           tier: "fuzzy",      title: "Ar-Rahman - The Most Merciful",  type: "name_of_allah" },
+  ],
+};
+
+// Subtitle synthesis mimics the toResult functions
+function subtitleFor(r) {
+  switch (r.type) {
+    case "reciter":       return "Reciter";
+    case "surah": {
+      const id = r.id.split(":")[1];
+      return `Chapter ${id}`;
+    }
+    case "rewayat":       return "Narration";
+    case "adhkar_category": return "Adhkar category";
+    case "name_of_allah": {
+      const i = r.id.split(":")[1];
+      return `Beautiful Name ${i} of 99`;
+    }
+    case "playlist":      return "Playlist";
+    case "numeric_ref":   return "Open in mushaf";
+  }
+}
+
+function artworkFor(r) {
+  switch (r.type) {
+    case "reciter": {
+      const initials = r.title.split(" ").map(p => p[0]).slice(0, 2).join("").toUpperCase();
+      return { kind: "reciter", label: initials };
+    }
+    case "surah": {
+      const id = r.id.split(":")[1];
+      return { kind: "surah", label: id };
+    }
+    case "rewayat":       return { kind: "rewayat", label: r.title.slice(0, 2) };
+    case "adhkar_category": return { kind: "adhkar", label: r.title[0] };
+    case "name_of_allah": {
+      const i = r.id.split(":")[1];
+      return { kind: "name", label: i };
+    }
+    case "playlist":      return { kind: "playlist", label: r.title[0]?.toUpperCase() ?? "P" };
+    case "numeric_ref":   return { kind: "verse", label: r.title.match(/\d+(?::\d+)?|\d+/)?.[0] ?? "?" };
+  }
+}
+
+const TAB_LABEL = {
+  numeric_ref: "Jump to",
+  reciter: "Reciters",
+  surah: "Surahs",
+  rewayat: "Rewayat",
+  adhkar_category: "Adhkar",
+  name_of_allah: "Names of Allah",
+  playlist: "Playlists",
+};
+
+const TAB_ORDER = ["numeric_ref", "reciter", "surah", "rewayat", "adhkar_category", "name_of_allah", "playlist"];
+
+function rowHtml(r) {
+  const art = artworkFor(r);
+  const subtitle = subtitleFor(r);
+  return `
+    <div class="row">
+      <div class="art ${art.kind}"><span class="art-text">${art.label}</span></div>
+      <div class="meta">
+        <div class="title-row">
+          <div class="title">${r.title}</div>
+        </div>
+        <div class="subtitle">${subtitle}</div>
+      </div>
+      <div class="tier-pill">${r.tier}</div>
+    </div>
+  `;
+}
+
+function render(q) {
+  const results = DATA[q] || [];
+  const counts = new Map();
+  for (const r of results) counts.set(r.type, (counts.get(r.type) ?? 0) + 1);
+
+  const tabs = [
+    { key: "all", label: "All", count: results.length, active: true },
+    ...TAB_ORDER
+      .filter(t => counts.has(t))
+      .map(t => ({ key: t, label: TAB_LABEL[t], count: counts.get(t), active: false })),
+  ];
+
+  const screen = document.getElementById("screen");
+  screen.innerHTML = `
+    <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+    <div class="nav"><h2>Search</h2></div>
+    <div class="search-field">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="typed">${q}<span class="caret"></span></span>
+    </div>
+    <div class="tabbar">
+      ${tabs.map(t => `
+        <div class="tab ${t.active ? 'active' : ''}">
+          <span>${t.label}</span>
+          ${t.key !== 'all' ? `<span class="count">${t.count}</span>` : ''}
+        </div>
+      `).join('')}
+    </div>
+    <div class="list">
+      ${results.map(rowHtml).join('') || '<div style="color:var(--muted); padding:32px; text-align:center;">No results</div>'}
+    </div>
+  `;
+}
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    render(chip.dataset.q);
+  });
+});
+
+render('yas');
+</script>
+</body>
+</html>
