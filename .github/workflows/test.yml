@@ -1,0 +1,35 @@
+name: Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jest:
+    name: Jest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Jest
+        # jest-expo eagerly loads Metro's transform cache; the default ~1.7 GB
+        # heap is enough today but very tight. Match lint.yml's bump for headroom.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run test:ci

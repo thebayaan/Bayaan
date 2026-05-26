@@ -4,6 +4,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
 import {ReciterImage} from '@/components/ReciterImage';
+import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import Color from 'color';
 import {GlassView} from 'expo-glass-effect';
 import {Link} from 'expo-router';
@@ -60,6 +61,12 @@ function createStyles(theme: Theme, width: number, height: number) {
       color: Color(theme.colors.textSecondary).alpha(0.5).toString(),
       lineHeight: moderateScale(12),
       includeFontPadding: false,
+      flexShrink: 1,
+    },
+    secondaryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: moderateScale(4),
     },
     glassContainer: {
       borderWidth: 0,
@@ -80,6 +87,7 @@ const BrowseReciterCard = React.memo(
     height,
     theme,
     rewayatId,
+    showFollowAlong,
   }: BrowseReciterCardProps) => {
     const glassColorScheme = useGlassColorScheme();
     const styles = useMemo(
@@ -107,11 +115,14 @@ const BrowseReciterCard = React.memo(
           <Text style={styles.reciterName} numberOfLines={1}>
             {reciter.name}
           </Text>
-          <Text style={styles.reciterInfo} numberOfLines={1}>
-            {uniqueRewayatNames.length > 1
-              ? `${uniqueRewayatNames.length} rewayat available`
-              : getDisplayLabelFromName(reciter.rewayat[0]?.name)}
-          </Text>
+          <View style={styles.secondaryRow}>
+            <Text style={styles.reciterInfo} numberOfLines={1}>
+              {uniqueRewayatNames.length > 1
+                ? `${uniqueRewayatNames.length} rewayat available`
+                : getDisplayLabelFromName(reciter.rewayat[0]?.name)}
+            </Text>
+            {showFollowAlong && <FollowAlongBadge />}
+          </View>
         </View>
       </>
     );
@@ -154,6 +165,7 @@ const BrowseReciterCard = React.memo(
     prevProps.width === nextProps.width &&
     prevProps.height === nextProps.height &&
     prevProps.theme === nextProps.theme &&
+    prevProps.showFollowAlong === nextProps.showFollowAlong &&
     prevProps.onLongPress === nextProps.onLongPress,
 );
 

@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
+import {moderateScale as moderateScaleCapped} from '@/utils/scale';
 import {LegendList} from '@legendapp/list';
 import {Reciter} from '@/data/reciterData';
 import {Theme} from '@/utils/themeUtils';
@@ -18,16 +19,22 @@ interface BrowseGridProps {
   keyboardShouldPersistTaps?: 'always' | 'handled' | 'never';
   onScrollBeginDrag?: () => void;
   getRewayatIdForReciter?: (reciter: Reciter) => string | undefined;
+  // Optional bottom inset to clear the floating mini-player + tab bar.
+  // Callers compute via `useBottomInset` so the last grid row stays
+  // tappable when the mini-player is visible. Defaults to 0 for callers
+  // that don't need it; the original `moderateScale(80)` floor still
+  // applies when the inset is small or unset.
+  bottomInset?: number;
 }
 
-function createStyles(_theme: Theme) {
+function createStyles(_theme: Theme, bottomInset = 0) {
   return StyleSheet.create({
     container: {
       flex: 1,
     },
     gridContainer: {
       paddingHorizontal: moderateScale(10),
-      paddingBottom: moderateScale(80),
+      paddingBottom: Math.max(moderateScaleCapped(80), bottomInset),
       paddingTop: moderateScale(8),
     },
     row: {
@@ -61,6 +68,7 @@ const BrowseGrid = React.memo(
     theme,
     onScrollBeginDrag,
     getRewayatIdForReciter,
+    bottomInset = 0,
   }: BrowseGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
     const [isLoading] = useState(false);
@@ -76,7 +84,10 @@ const BrowseGrid = React.memo(
       return createItemRows(reciters, numColumns);
     }, [reciters, numColumns]);
 
-    const styles = useMemo(() => createStyles(theme), [theme]);
+    const styles = useMemo(
+      () => createStyles(theme, bottomInset),
+      [theme, bottomInset],
+    );
 
     // Calculate item dimensions
     const itemDimensions = useMemo(() => {
@@ -151,6 +162,7 @@ const BrowseGrid = React.memo(
           renderItem={renderRow}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.gridContainer}
+          scrollIndicatorInsets={{bottom: bottomInset}}
           estimatedItemSize={itemDimensions.height}
           recycleItems
           drawDistance={2000}
@@ -169,7 +181,8 @@ const BrowseGrid = React.memo(
     prevProps.theme === nextProps.theme &&
     prevProps.onReciterPress === nextProps.onReciterPress &&
     prevProps.reciters.length === nextProps.reciters.length &&
-    prevProps.getRewayatIdForReciter === nextProps.getRewayatIdForReciter,
+    prevProps.getRewayatIdForReciter === nextProps.getRewayatIdForReciter &&
+    prevProps.bottomInset === nextProps.bottomInset,
 );
 
 BrowseGrid.displayName = 'BrowseGrid';

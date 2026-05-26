@@ -13,6 +13,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {
   getReadingPageItems,
@@ -126,7 +127,8 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       mushafRenderer === 'dk_indopak') &&
     mushafPreloadService.initialized &&
     digitalKhattDataService.initialized;
-  const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
+  const subscribedFontMgr = useMushafFontMgr();
+  const fontMgr = isDK ? subscribedFontMgr : null;
 
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 

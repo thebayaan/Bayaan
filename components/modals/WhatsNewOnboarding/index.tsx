@@ -29,7 +29,7 @@ import {
   getLastSeenVersion,
   filterPagesByVersion,
 } from '@/utils/versionUtils';
-import {ONBOARDING_PAGES, OnboardingPage} from '@/data/onboardingPages';
+import {getOnboardingPages, OnboardingPage} from '@/data/onboardingPages';
 import OnboardingPageComponent from './OnboardingPage';
 import DotIndicator from './DotIndicator';
 
@@ -43,7 +43,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
   const {theme} = useTheme();
   const [visible, setVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [pages, setPages] = useState<OnboardingPage[]>(ONBOARDING_PAGES);
+  const [pages, setPages] = useState<OnboardingPage[]>(getOnboardingPages());
   const flatListRef = useRef<FlatList<OnboardingPage>>(null);
   const scrollX = useSharedValue(0);
 
@@ -57,7 +57,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
 
   useImperativeHandle(ref, () => ({
     show: () => {
-      setPages(ONBOARDING_PAGES);
+      setPages(getOnboardingPages());
       setCurrentPage(0);
       scrollX.value = 0;
       flatListRef.current?.scrollToOffset({offset: 0, animated: false});
@@ -71,7 +71,7 @@ export const WhatsNewModal = forwardRef<WhatsNewModalRef>((_, ref) => {
         const versionChanged = await hasVersionChanged();
         if (versionChanged) {
           const lastSeen = await getLastSeenVersion();
-          const filtered = filterPagesByVersion(ONBOARDING_PAGES, lastSeen);
+          const filtered = filterPagesByVersion(getOnboardingPages(), lastSeen);
 
           if (filtered.length === 0) return;
 

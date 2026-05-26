@@ -1,11 +1,7 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
 import {View, Platform} from 'react-native';
-import {
-  Canvas,
-  Skia,
-  useFonts,
-  type SkParagraph,
-} from '@shopify/react-native-skia';
+import {Canvas, Skia, type SkParagraph} from '@shopify/react-native-skia';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
@@ -106,28 +102,23 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const PAGE_PADDING_TOP = propPaddingTop ?? DEFAULT_PAGE_PADDING_TOP;
 
   const {theme} = useTheme();
-  // Keep useFonts hook as fallback (can't conditionally call hooks).
-  // Prefer preloaded fontMgr from MushafPreloadService; ready synchronously
-  // on first render since AppInitializer runs before Mushaf tab mounts.
-  const hookFontMgr = useFonts({
-    DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
-    DigitalKhattV2: [
-      require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
-    ],
-    DigitalKhattIndoPak: [
-      require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
-    ],
-    QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
-    SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-  });
-  const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+  // Subscribe to the preloaded fontMgr instead of running a parallel
+  // useFonts() fallback that races at first-mount and surfaces as
+  // "Couldn't create typeface for SurahNameV4" Sentry exceptions.
+  const fontMgr = useMushafFontMgr();
 
   // Calculate rendering dimensions (hoisted above surahHeaderFonts so lineWidth is available)
   const scale = CONTENT_WIDTH / PAGE_WIDTH;
   const margin = MARGIN * scale;
   const lineWidth = CONTENT_WIDTH - 2 * margin;
 
-  // Create scaled SkFont objects for surah header rendering (Skia Text path)
+  // Create scaled SkFont objects for surah header rendering (Skia Text path).
+  // `fontMgr` is in the dep array even though we read `quranCommonTypeface`
+  // directly from the singleton: when the subscription fires (preload
+  // completes after this component mounted), `lineWidth` hasn't changed
+  // and the memo would otherwise return its cached null-divider result.
+  // Re-running on the fontMgr transition rebuilds the divider with the
+  // now-available typeface.
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
     if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
@@ -143,7 +134,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       dividerFont: Skia.Font(qcTypeface, scaledSize),
       nameFontSize: scaledSize * 0.4,
     };
-  }, [lineWidth]);
+  }, [lineWidth, fontMgr]);
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const showThemes = useMushafSettingsStore(s => s.showThemes);
@@ -166,8 +157,8 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     (mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : uthmaniFont === 'v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2');
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2');
   const allahNameHighlightColor = useMemo(
     () =>
       getAllahNameHighlightColorHex(

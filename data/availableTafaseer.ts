@@ -1,5 +1,18 @@
 import type {TafseerEdition} from '@/types/tafseer';
 
+/**
+ * Boot-time tafsir editions list, hand-curated and shipped in-bundle.
+ *
+ * RFC-009 — this static list intentionally coexists with the dynamic
+ * `TafsirProvider.fetchAvailableEditions()` runtime path. The static
+ * list is the no-network UI surface used by Settings → Tafsir to render
+ * the picker on first launch and offline; the provider's dynamic
+ * fetcher is for forks that want a server-driven editions catalog
+ * (e.g. surfacing new tafaseer without an app update). Forks may
+ * either: (a) keep this static list and treat `fetchAvailableEditions`
+ * as a future hook, (b) replace it with a `useEffect` that calls
+ * `fetchAvailableEditions`, or (c) merge both.
+ */
 export const AVAILABLE_TAFASEER: TafseerEdition[] = [
   {
     identifier: '169',

@@ -1,10 +1,11 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {verticalScale} from '@/utils/scale';
-import {Canvas, Skia, useFonts} from '@shopify/react-native-skia';
+import {Canvas, Skia} from '@shopify/react-native-skia';
 import {SURAH_DIVIDER_CHAR} from '@/constants/surahNameGlyphs';
 import SkiaSurahHeader from '@/components/mushaf/skia/SkiaSurahHeader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import type {SkFont} from '@shopify/react-native-skia';
 
 const REFERENCE_SIZE = 100;
@@ -73,13 +74,9 @@ const SurahDivider: React.FC<SurahDividerProps> = ({
   nameColor,
   variant = 'withIcon',
 }) => {
-  // Keep useFonts hook as fallback (can't conditionally call hooks).
-  // Prefer preloaded fontMgr from MushafPreloadService — ready synchronously.
-  const hookFontMgr = useFonts({
-    SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-    SurahNameQCF: [require('@/data/mushaf/surah-name-qcf.ttf')],
-  });
-  const nameFontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+  // Subscribe to the preloaded fontMgr instead of running a parallel
+  // `useFonts` call that races at first-mount.
+  const nameFontMgr = useMushafFontMgr();
 
   const scaledDividerFont = getOrBuildDividerFont(width);
 

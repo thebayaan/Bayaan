@@ -20,6 +20,17 @@ class TimestampDatabaseService {
       try {
         const db = await SQLite.openDatabaseAsync(DB_NAME);
 
+        // Note on the cached_surahs.source column:
+        // `source` is informational (no CHECK constraint at the SQLite
+        // layer). The TimestampSource enum narrowed from
+        // 'mp3quran' | 'qdc' | 'local' (pre-R2-mirror) to 'r2' | 'local'
+        // (current), so devices upgrading across PR #278 may carry stale
+        // 'mp3quran' / 'qdc' rows here until the next fetch overwrites
+        // them via INSERT OR REPLACE in writeTimestamps. The stale
+        // values are never read back as a TimestampSource — they live
+        // only on this row for diagnostic purposes — so
+        // overwrite-on-next-fetch is sufficient and no one-shot
+        // migration is required.
         await db.execAsync(`
           CREATE TABLE IF NOT EXISTS ayah_timestamps (
             rewayat_id TEXT NOT NULL,

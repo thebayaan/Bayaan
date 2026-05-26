@@ -9,12 +9,16 @@ export default function BrowseScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
-  const {surahId, teacher, student, rewayatName} = useLocalSearchParams<{
-    surahId: string;
-    teacher: string;
-    student: string;
-    rewayatName: string;
-  }>();
+  const {surahId, teacher, student, rewayatName, hasPhoto} =
+    useLocalSearchParams<{
+      surahId: string;
+      teacher: string;
+      student: string;
+      rewayatName: string;
+      // RFC-012 — composable Search-tab filter chips. Tiles on the Home
+      // tab can deeplink here with chips pre-applied (e.g. `?hasPhoto=1`).
+      hasPhoto: string;
+    }>();
 
   const handleBack = () => {
     router.back();
@@ -42,6 +46,7 @@ export default function BrowseScreen() {
       title={title}
       initialTeacher={teacher}
       initialStudent={student}
+      initialHasPhoto={hasPhoto === '1' || hasPhoto === 'true'}
     />
   );
 }

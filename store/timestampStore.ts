@@ -73,7 +73,7 @@ export const useTimestampStore = create<TimestampState>()((set, get) => ({
 
     for (const reciter of RECITERS) {
       for (const rewayat of reciter.rewayat) {
-        if (rewayat.mp3quran_read_id || rewayat.qdc_reciter_id) {
+        if (rewayat.has_timestamps) {
           rewayatIds.add(rewayat.id);
           reciterIds.add(reciter.id);
         }

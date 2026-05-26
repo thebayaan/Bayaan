@@ -7,6 +7,7 @@ import {
   Pressable,
   TextInput,
   Dimensions,
+  type ListRenderItemInfo,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -58,7 +59,7 @@ export const FavoriteRecitersSheet = (
   );
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter}) => {
+    ({item}: ListRenderItemInfo<Reciter>) => {
       const isFavorite = favoriteIds.has(item.id);
 
       return (

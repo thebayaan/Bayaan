@@ -3,6 +3,7 @@ import {MeaningfulListenProps} from './events';
 interface TrackInfo {
   surahId: number;
   reciterId: string;
+  reciterName: string;
   rewayahId: string;
   totalDurationMs: number;
 }
@@ -31,6 +32,7 @@ export class MeaningfulListenTracker {
       this.onMeaningfulListen({
         surah_id: this.currentTrack.surahId,
         reciter_id: this.currentTrack.reciterId,
+        reciter_name: this.currentTrack.reciterName,
         rewayah_id: this.currentTrack.rewayahId,
       });
     }

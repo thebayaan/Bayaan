@@ -8,6 +8,7 @@ import {
   Keyboard,
   Platform,
   Animated as RNAnimated,
+  type ListRenderItemInfo,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -382,7 +383,7 @@ export function SearchView({
   );
 
   const renderSearchResult = useCallback(
-    ({item}: {item: SearchResult}) => {
+    ({item}: ListRenderItemInfo<SearchResult>) => {
       if (item.type === 'surah') {
         return (
           <SurahItem
@@ -404,7 +405,7 @@ export function SearchView({
   );
 
   const renderRecentSearch = useCallback(
-    ({item: recentItem}: {item: RecentSearchItem}) => {
+    ({item: recentItem}: ListRenderItemInfo<RecentSearchItem>) => {
       const handlePress = () => {
         handleResultPress({
           type: recentItem.type,

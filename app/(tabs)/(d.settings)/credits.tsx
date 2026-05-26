@@ -5,6 +5,7 @@ import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Theme} from '@/utils/themeUtils';
+import branding from '@/config/branding';
 
 interface Credit {
   title: string;
@@ -12,113 +13,120 @@ interface Credit {
   link?: string;
 }
 
-const CREDITS: {
-  section: string;
-  items: Credit[];
-}[] = [
-  {
-    section: 'Quran Data',
-    items: [
-      {
-        title: 'Quranic Universal Library',
-        description:
-          'Advanced Quranic data and word-level information by Tarteel',
-        link: 'https://qul.tarteel.ai',
-      },
-      {
-        title: 'Quran Foundation API',
-        description: 'Comprehensive Quran API services by Quran.com',
-        link: 'https://api-docs.quran.foundation',
-      },
-    ],
-  },
-  {
-    section: 'Audio Sources',
-    items: [
-      {
-        title: 'MP3Quran',
-        description: 'Comprehensive reciter collection',
-        link: 'https://mp3quran.net',
-      },
-    ],
-  },
-  {
-    section: 'Design Resources',
-    items: [
-      {
-        title: 'SVGRepo',
-        description: 'Beautiful open source icons and illustrations',
-        link: 'https://www.svgrepo.com',
-      },
-      {
-        title: 'Manrope Font',
-        description: 'Modern geometric sans-serif font family',
-        link: 'https://fonts.google.com/specimen/Manrope',
-      },
-      {
-        title: 'Uthmani Font',
-        description: 'Beautiful Quranic font from Arabic Fonts',
-        link: 'https://arabicfonts.net',
-      },
-      {
-        title: 'Quran.com Resources',
-        description: 'Surah name SVGs and icons',
-        link: 'https://api-docs.quran.foundation',
-      },
-    ],
-  },
-  {
-    section: 'Open Source Libraries',
-    items: [
-      {
-        title: 'React Native',
-        description: 'Core framework',
-        link: 'https://reactnative.dev',
-      },
-      {
-        title: 'Expo',
-        description: 'Development platform',
-        link: 'https://expo.dev',
-      },
-      {
-        title: 'React Native Reanimated',
-        description: 'Animations library',
-        link: 'https://docs.swmansion.com/react-native-reanimated/',
-      },
-    ],
-  },
-  {
-    section: 'Special Thanks',
-    items: [
-      {
-        title: 'Our Contributors',
-        description: 'Everyone who helped make Bayaan better',
-      },
-      {
-        title: 'Beta Testers',
-        description: 'For their valuable feedback and suggestions',
-      },
-      {
-        title: 'Muslim Community',
-        description: 'For their continuous support and guidance',
-      },
-    ],
-  },
-  {
-    section: 'Design & Art',
-    items: [
-      {
-        title: 'Dr. Naoki Yamamoto',
-        description: 'Custom designed splash screen calligraphy',
-        link: 'https://twitter.com/NaokiQYamamoto',
-      },
-    ],
-  },
-];
+/**
+ * Credits data factory. Brand strings (e.g. `branding.appName`) resolve
+ * at call time, not module load — this lets a fork override `branding`
+ * without having to fork this file. Originally a top-level const, but
+ * top-level const arrays evaluate before any `branding` resolution,
+ * baking the upstream brand name into the bundle.
+ */
+function getCredits(): {section: string; items: Credit[]}[] {
+  return [
+    {
+      section: 'Quran Data',
+      items: [
+        {
+          title: 'Quranic Universal Library',
+          description:
+            'Advanced Quranic data and word-level information by Tarteel',
+          link: 'https://qul.tarteel.ai',
+        },
+        {
+          title: 'Quran Foundation API',
+          description: 'Comprehensive Quran API services by Quran.com',
+          link: 'https://api-docs.quran.foundation',
+        },
+      ],
+    },
+    {
+      section: 'Audio Sources',
+      items: [
+        {
+          title: 'MP3Quran',
+          description: 'Comprehensive reciter collection',
+          link: 'https://mp3quran.net',
+        },
+      ],
+    },
+    {
+      section: 'Design Resources',
+      items: [
+        {
+          title: 'SVGRepo',
+          description: 'Beautiful open source icons and illustrations',
+          link: 'https://www.svgrepo.com',
+        },
+        {
+          title: 'Manrope Font',
+          description: 'Modern geometric sans-serif font family',
+          link: 'https://fonts.google.com/specimen/Manrope',
+        },
+        {
+          title: 'Uthmani Font',
+          description: 'Beautiful Quranic font from Arabic Fonts',
+          link: 'https://arabicfonts.net',
+        },
+        {
+          title: 'Quran.com Resources',
+          description: 'Surah name SVGs and icons',
+          link: 'https://api-docs.quran.foundation',
+        },
+      ],
+    },
+    {
+      section: 'Open Source Libraries',
+      items: [
+        {
+          title: 'React Native',
+          description: 'Core framework',
+          link: 'https://reactnative.dev',
+        },
+        {
+          title: 'Expo',
+          description: 'Development platform',
+          link: 'https://expo.dev',
+        },
+        {
+          title: 'React Native Reanimated',
+          description: 'Animations library',
+          link: 'https://docs.swmansion.com/react-native-reanimated/',
+        },
+      ],
+    },
+    {
+      section: 'Special Thanks',
+      items: [
+        {
+          title: 'Our Contributors',
+          description: `Everyone who helped make ${branding.appName} better`,
+        },
+        {
+          title: 'Beta Testers',
+          description: 'For their valuable feedback and suggestions',
+        },
+        {
+          title: 'Muslim Community',
+          description: 'For their continuous support and guidance',
+        },
+      ],
+    },
+    {
+      section: 'Design & Art',
+      items: [
+        {
+          title: 'Dr. Naoki Yamamoto',
+          description: 'Custom designed splash screen calligraphy',
+          link: 'https://twitter.com/NaokiQYamamoto',
+        },
+      ],
+    },
+  ];
+}
 
 export default function CreditsScreen() {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const credits = useMemo(() => getCredits(), []);
 
   const linkIconColor = Color(theme.colors.text).alpha(0.35).toString();
   const pressedBg = Color(theme.colors.text).alpha(0.06).toString();
@@ -144,7 +152,7 @@ export default function CreditsScreen() {
             tech world.
           </Text>
 
-          {CREDITS.map(section => (
+          {credits.map(section => (
             <View key={section.section} style={styles.section}>
               <Text style={styles.sectionHeader}>
                 {section.section.toUpperCase()}

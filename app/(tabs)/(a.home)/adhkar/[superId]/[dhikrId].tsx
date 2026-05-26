@@ -30,6 +30,7 @@ import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {dhikrShareUrl, shareUrl} from '@/utils/shareUtils';
+import branding from '@/config/branding';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -186,7 +187,7 @@ const DhikrReaderScreen: React.FC = () => {
   const handleShareDhikr = useCallback(() => {
     if (!superId || !currentDhikr) return;
     const url = dhikrShareUrl(superId, currentDhikr.id);
-    shareUrl(url, `Check out this dhikr on Bayaan`);
+    shareUrl(url, `Check out this dhikr on ${branding.appName}`);
   }, [superId, currentDhikr]);
 
   // Set native header with title + position subtitle

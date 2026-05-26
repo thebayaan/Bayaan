@@ -29,6 +29,7 @@ import {
 } from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
+import branding from '@/config/branding';
 
 const isExternalLink = (type: string): boolean => {
   return [
@@ -112,14 +113,14 @@ const settingsItems = [
       {
         title: 'Help & Support',
         type: 'support',
-        description: 'Get assistance with using Bayaan',
+        description: `Get assistance with using ${branding.appName}`,
         icon: 'chatBubble',
         iconType: 'custom',
       },
     ],
   },
   {
-    section: 'About Bayaan',
+    section: `About ${branding.appName}`,
     items: [
       {
         title: "What's New",
@@ -129,7 +130,7 @@ const settingsItems = [
         iconType: 'custom',
       },
       {
-        title: 'About Bayaan',
+        title: `About ${branding.appName}`,
         type: 'about',
         description: 'Learn more about our mission',
         icon: 'infoRounded',
@@ -145,8 +146,7 @@ const settingsItems = [
       {
         title: 'Contribute on GitHub',
         type: 'github',
-        description:
-          'Bayaan is now open source. Star, report issues, or submit a PR',
+        description: `${branding.appName} is now open source. Star, report issues, or submit a PR`,
         icon: 'github',
         iconType: 'feather',
       },
@@ -260,16 +260,16 @@ export default function SettingsScreen() {
         router.push('/(d.settings)/whats-new');
         break;
       case 'support':
-        await Linking.openURL('https://thebayaan.com/support');
+        await Linking.openURL(branding.supportUrl);
         break;
       case 'featureRequest':
-        await Linking.openURL('https://thebayaan.com/support');
+        await Linking.openURL(branding.supportUrl);
         break;
       case 'terms':
-        await Linking.openURL('https://thebayaan.com/terms');
+        await Linking.openURL(branding.termsUrl);
         break;
       case 'privacy':
-        await Linking.openURL('https://thebayaan.com/privacy');
+        await Linking.openURL(branding.privacyUrl);
         break;
       case 'about':
         router.push('/(d.settings)/about');

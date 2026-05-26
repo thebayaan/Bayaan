@@ -46,6 +46,28 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useAdhkarStore} from '@/store/adhkarStore';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
+import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
+
+/**
+ * Fallback row order used when `branding.homeRowConfig` is undefined.
+ * Matches the historical hardcoded order so behavior is unchanged for any
+ * branding that omits the field. Forks declare their own array in
+ * `config/branding.js` to reorder, hide, or omit rows entirely.
+ */
+const DEFAULT_HOME_ROW_CONFIG: readonly HomeRow[] = [
+  {id: 'continue-listening', enabled: true},
+  {id: 'new-to-quran', enabled: true},
+  {id: 'favorites', enabled: true},
+  {id: 'featured', enabled: true},
+  {id: 'adhkar', enabled: true},
+  {id: 'follow-along', enabled: true},
+  {id: 'playlists', enabled: true},
+  {id: 'exclusives', enabled: true},
+  {id: 'tajweed', enabled: true},
+  {id: 'memorization', enabled: true},
+  {id: 'rewayat', enabled: true},
+  {id: 'collection', enabled: true},
+];
 
 interface RecitersViewProps {
   onReciterPress: (reciter: Reciter) => void;
@@ -530,22 +552,20 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
     return result;
   }, [mainSuperCategories]);
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={
-        USE_GLASS
-          ? undefined
-          : {paddingTop: insets.top, paddingBottom: bottomInset}
-      }
-      contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
-      showsVerticalScrollIndicator={false}
-      removeClippedSubviews={true}>
-      {/* Use the unified RecitersHero component */}
-      <RecitersHero />
-
-      {/* Recently played tracks - high priority for immediate access */}
-      {validRecentTracks.length > 0 && (
+  /**
+   * Pre-built JSX for each home row. Each value is `null` when the row's
+   * data is empty (rows self-hide regardless of `enabled`). The render
+   * order is determined by `branding.homeRowConfig` below, not by the
+   * order of entries here.
+   *
+   * Pre-building (rather than factory functions) avoids
+   * `react/no-unstable-nested-components`; runtime cost is identical to
+   * inline conditional rendering (each branch's null-return is what
+   * Bayaan already did with `{cond && <Section …/>}`).
+   */
+  const rowNodes: Record<HomeRowId, React.ReactNode> = {
+    'continue-listening':
+      validRecentTracks.length > 0 ? (
         <Section
           title="Continue Listening"
           data={validRecentTracks}
@@ -554,10 +574,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onClear={handleClearRecentTracks}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Where to start - for new users who need guidance (shown only first 5 times) */}
-      {showNewToQuran && beginnerFriendlyReciters.length > 0 && (
+    'new-to-quran':
+      showNewToQuran && beginnerFriendlyReciters.length > 0 ? (
         <Section
           title="New to Quran? Start Here"
           data={beginnerFriendlyReciters}
@@ -565,10 +585,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* User favorites - personal relevance section */}
-      {favoriteRecitersSection.length > 0 && (
+    favorites:
+      favoriteRecitersSection.length > 0 ? (
         <Section
           title="Your Favorites"
           data={favoriteRecitersSection}
@@ -576,10 +596,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Featured section - showcase spotlighted content prominently */}
-      {featuredReciters.length > 0 && (
+    featured:
+      featuredReciters.length > 0 ? (
         <Section
           title="Featured Reciters"
           data={featuredReciters}
@@ -587,10 +607,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Adhkar section */}
-      {adhkarLoaded && adhkarCategories.length > 0 && (
+    adhkar:
+      adhkarLoaded && adhkarCategories.length > 0 ? (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, {color: theme.colors.text}]}>
@@ -614,23 +634,17 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           </View>
           <FlatList
             data={adhkarCategories}
-            renderItem={({item}) => (
-              <AdhkarBentoCard
-                category={item}
-                width={moderateScale(140)}
-                height={moderateScale(100)}
-              />
-            )}
-            keyExtractor={item => item.id}
+            renderItem={renderAdhkarItem}
+            keyExtractor={adhkarKeyExtractor}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.sectionContent}
           />
         </View>
-      )}
+      ) : null,
 
-      {/* Follow Along - reciters with verse-by-verse tracking */}
-      {followAlongReciters.length > 0 && (
+    'follow-along':
+      followAlongReciters.length > 0 ? (
         <Section
           title="Follow Along"
           data={followAlongReciters}
@@ -638,10 +652,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* User playlists - personal collections */}
-      {playlists.length > 0 && (
+    playlists:
+      playlists.length > 0 ? (
         <Section
           title="Your Playlists"
           data={seededShuffle(playlists, sessionSeed + 8).slice(0, 10)}
@@ -650,10 +664,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onPlaylistPress={handlePlaylistPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Exclusives - exclusive content showcased prominently */}
-      {bayaanOriginalsReciters.length > 0 && (
+    exclusives:
+      bayaanOriginalsReciters.length > 0 ? (
         <Section
           title="Exclusives"
           data={bayaanOriginalsReciters}
@@ -661,10 +675,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Purpose-based collections come next */}
-      {tajweedReciters.length > 0 && (
+    tajweed:
+      tajweedReciters.length > 0 ? (
         <Section
           title="Best for Tajweed"
           data={tajweedReciters}
@@ -672,9 +686,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {memorizationReciters.length > 0 && (
+    memorization:
+      memorizationReciters.length > 0 ? (
         <Section
           title="Best for Memorization"
           data={memorizationReciters}
@@ -682,10 +697,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Rewayat collection - Browse by different narration styles */}
-      {rewayatTypes.length > 0 && (
+    rewayat:
+      rewayatTypes.length > 0 ? (
         <Section
           title="Explore by Rewayah"
           data={rewayatTypes}
@@ -694,10 +709,10 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onRewayatPress={handleRewayatPress}
           theme={theme}
         />
-      )}
+      ) : null,
 
-      {/* Personal collection at the end */}
-      {collectionReciters.length > 0 && (
+    collection:
+      collectionReciters.length > 0 ? (
         <Section
           title="From your Collection"
           data={collectionReciters}
@@ -705,10 +720,54 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
           onReciterPress={onReciterPress}
           theme={theme}
         />
-      )}
+      ) : null,
+  };
+
+  const homeRowConfig = branding.homeRowConfig ?? DEFAULT_HOME_ROW_CONFIG;
+
+  // RFC-008 — Listen-tab top-region slot. Forks may replace the default
+  // `RecitersHero` via `branding.listenTabTopComponent`; capitalised here
+  // so it can be used as a JSX element. `undefined` keeps Bayaan's hero.
+  const ListenTabTopComponent = branding.listenTabTopComponent;
+
+  return (
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={
+        USE_GLASS
+          ? undefined
+          : {paddingTop: insets.top, paddingBottom: bottomInset}
+      }
+      contentInsetAdjustmentBehavior={USE_GLASS ? 'automatic' : 'never'}
+      showsVerticalScrollIndicator={false}
+      removeClippedSubviews={true}>
+      {/* RFC-008 — Listen-tab top region. Default is the unified
+       * `RecitersHero`; forks may substitute their own via
+       * `branding.listenTabTopComponent`. */}
+      {ListenTabTopComponent ? <ListenTabTopComponent /> : <RecitersHero />}
+
+      {homeRowConfig
+        .filter(row => row.enabled)
+        .map(row => (
+          <React.Fragment key={row.id}>
+            {rowNodes[row.id] ?? null}
+          </React.Fragment>
+        ))}
     </ScrollView>
   );
 }
+
+// Module-level helpers to keep the renderItem/keyExtractor references
+// stable across renders (avoids react/no-unstable-nested-components).
+const renderAdhkarItem = ({item}: {item: SuperCategory}) => (
+  <AdhkarBentoCard
+    category={item}
+    width={moderateScale(140)}
+    height={moderateScale(100)}
+  />
+);
+
+const adhkarKeyExtractor = (item: SuperCategory) => item.id;
 
 const styles = StyleSheet.create({
   container: {

@@ -1,7 +1,8 @@
 import React, {useMemo, useCallback} from 'react';
 import {View, StyleSheet, useWindowDimensions} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
-import {LegendList} from '@legendapp/list';
+import {moderateScale as moderateScaleCapped} from '@/utils/scale';
+import {LegendList, type LegendListRenderItemProps} from '@legendapp/list';
 import {Theme} from '@/utils/themeUtils';
 import {PlaylistCard} from '@/components/cards/PlaylistCard';
 import {CircularReciterCard} from '@/components/cards/CircularReciterCard';
@@ -77,16 +78,22 @@ interface CollectionGridProps {
   items: CollectionItem[];
   theme: Theme;
   onScrollBeginDrag?: () => void;
+  // Optional bottom inset to clear the floating mini-player + tab bar.
+  // Callers compute via `useBottomInset` so the last grid row stays
+  // tappable when the mini-player is visible. Defaults to 0 for callers
+  // that don't need it; the original `moderateScale(80)` floor still
+  // applies when the inset is small or unset.
+  bottomInset?: number;
 }
 
-function createStyles(_theme: Theme) {
+function createStyles(_theme: Theme, bottomInset = 0) {
   return StyleSheet.create({
     container: {
       flex: 1,
     },
     gridContainer: {
       paddingHorizontal: moderateScale(16),
-      paddingBottom: moderateScale(80),
+      paddingBottom: Math.max(moderateScaleCapped(80), bottomInset),
       paddingTop: moderateScale(8),
     },
     row: {
@@ -110,7 +117,7 @@ const createItemRows = (
 };
 
 export const CollectionGrid = React.memo(
-  ({items, theme, onScrollBeginDrag}: CollectionGridProps) => {
+  ({items, theme, onScrollBeginDrag, bottomInset = 0}: CollectionGridProps) => {
     const {width: windowWidth} = useWindowDimensions();
 
     // Calculate number of columns based on screen width (same as BrowseGrid)
@@ -125,7 +132,10 @@ export const CollectionGrid = React.memo(
       return createItemRows(items, numColumns);
     }, [items, numColumns]);
 
-    const styles = useMemo(() => createStyles(theme), [theme]);
+    const styles = useMemo(
+      () => createStyles(theme, bottomInset),
+      [theme, bottomInset],
+    );
 
     // Calculate item dimensions (same as BrowseGrid)
     const itemDimensions = useMemo(() => {
@@ -245,7 +255,7 @@ export const CollectionGrid = React.memo(
 
     // Render a row of items
     const renderRow = useCallback(
-      ({item}: {item: CollectionItem[]}) => (
+      ({item}: LegendListRenderItemProps<CollectionItem[]>) => (
         <View style={styles.row}>
           {item.map(collectionItem => renderCard(collectionItem))}
           {/* Add empty placeholders for incomplete rows */}
@@ -275,6 +285,7 @@ export const CollectionGrid = React.memo(
           renderItem={renderRow}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.gridContainer}
+          scrollIndicatorInsets={{bottom: bottomInset}}
           estimatedItemSize={moderateScale(140)}
           recycleItems
           drawDistance={2000}
@@ -292,7 +303,9 @@ export const CollectionGrid = React.memo(
     // Don't re-render if theme hasn't changed and items array reference is the same
     // Since items is memoized, the reference will change when any item data changes
     return (
-      prevProps.theme === nextProps.theme && prevProps.items === nextProps.items
+      prevProps.theme === nextProps.theme &&
+      prevProps.items === nextProps.items &&
+      prevProps.bottomInset === nextProps.bottomInset
     );
   },
 );

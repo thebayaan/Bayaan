@@ -9,6 +9,7 @@ import {ScrollView} from 'react-native-actions-sheet';
 import {WBWVerseView} from '@/components/player/v2/PlayerContent/QuranView/WBWVerseView';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {useTajweedStore} from '@/store/tajweedStore';
 
@@ -56,7 +57,8 @@ export const WBWContent: React.FC<WBWContentProps> = ({
 
   const isDK =
     mushafPreloadService.initialized && digitalKhattDataService.initialized;
-  const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
+  const subscribedFontMgr = useMushafFontMgr();
+  const fontMgr = isDK ? subscribedFontMgr : null;
 
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 

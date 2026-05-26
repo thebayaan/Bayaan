@@ -29,6 +29,7 @@ import {
   reciterShareUrl,
   shareUrl,
 } from '@/utils/shareUtils';
+import branding from '@/config/branding';
 
 export const HomeCardOptionsSheet = (
   props: SheetProps<'home-card-options'>,
@@ -138,11 +139,14 @@ export const HomeCardOptionsSheet = (
         const surahLabel = surahName ?? `surah ${surahId}`;
         shareUrl(
           url,
-          `Listen to ${displayName} reciting ${surahLabel} on Bayaan`,
+          `Listen to ${displayName} reciting ${surahLabel} on ${branding.appName}`,
         );
         return;
       }
-      shareUrl(reciterShareUrl(slug), `Listen to ${displayName} on Bayaan`);
+      shareUrl(
+        reciterShareUrl(slug),
+        `Listen to ${displayName} on ${branding.appName}`,
+      );
     }, 300);
   }, [
     reciterId,

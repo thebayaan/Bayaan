@@ -11,11 +11,11 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {
   Canvas,
   Skia,
-  useFonts,
   type SkFont,
   type SkParagraph,
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
@@ -736,23 +736,15 @@ const ContinuousMushafView = forwardRef<
     const render = useMemo(() => buildRenderConstants(metrics), [metrics]);
     const {lineWidth} = render;
 
-    // Font loading (fallback — prefer preloaded fontMgr)
-    const hookFontMgr = useFonts({
-      DigitalKhattV1: [
-        require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
-      ],
-      DigitalKhattV2: [
-        require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
-      ],
-      DigitalKhattIndoPak: [
-        require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
-      ],
-      QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
-      SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-    });
-    const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+    // Subscribe to preloaded fontMgr; no useFonts fallback that races
+    // at first-mount.
+    const fontMgr = useMushafFontMgr();
 
-    // Surah header fonts (computed once from quranCommon typeface)
+    // Surah header fonts (computed once from quranCommon typeface).
+    // `fontMgr` dep mirrors the SkiaPage memo: when the preload completes
+    // after this view mounted, the subscription re-renders but `lineWidth`
+    // hasn't changed, so without `fontMgr` in deps the memo would stay on
+    // its cached null-divider snapshot.
     const surahHeaderFonts = useMemo(() => {
       const qcTypeface = mushafPreloadService.quranCommonTypeface;
       if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
@@ -765,7 +757,7 @@ const ContinuousMushafView = forwardRef<
         dividerFont: Skia.Font(qcTypeface, scaledSize),
         nameFontSize: scaledSize * 0.4,
       };
-    }, [lineWidth]);
+    }, [lineWidth, fontMgr]);
 
     // Settings subscriptions
     const showTajweed = useMushafSettingsStore(s => s.showTajweed);
@@ -788,8 +780,8 @@ const ContinuousMushafView = forwardRef<
       (mushafRenderer === 'dk_indopak'
         ? 'DigitalKhattIndoPak'
         : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2');
+          ? 'DigitalKhattV1'
+          : 'DigitalKhattV2');
     const allahNameHighlightColor = useMemo(
       () =>
         getAllahNameHighlightColorHex(

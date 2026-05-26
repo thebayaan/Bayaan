@@ -92,10 +92,22 @@ export const LIGHT_READING_THEMES: ReadingTheme[] = [
       card: '#d9dce0',
     },
   },
+  {
+    id: 'sand',
+    name: 'Sand',
+    mode: 'light',
+    colors: {
+      background: '#f0d59a',
+      backgroundSecondary: '#e8c888',
+      text: '#1a0800',
+      textSecondary: '#5c3418',
+      card: '#e0c07a',
+    },
+  },
 ];
 
 // Order matches LIGHT_READING_THEMES positionally:
-// Cream↔Navy, Parchment↔Sepia, White↔Black, Sage↔Sage, Rose↔Charcoal, Cool↔Indigo
+// Cream↔Navy, Parchment↔Sepia, White↔Black, Sage↔Sage, Rose↔Charcoal, Cool↔Indigo, Sand↔Amber
 export const DARK_READING_THEMES: ReadingTheme[] = [
   {
     id: 'dark-default',
@@ -167,6 +179,18 @@ export const DARK_READING_THEMES: ReadingTheme[] = [
       text: '#d8d4e8',
       textSecondary: '#7a74a0',
       card: '#0e0c18',
+    },
+  },
+  {
+    id: 'dark-amber',
+    name: 'Dark Amber',
+    mode: 'dark',
+    colors: {
+      background: '#150e04',
+      backgroundSecondary: '#1e1508',
+      text: '#e8d4a8',
+      textSecondary: '#8a6e48',
+      card: '#150e04',
     },
   },
 ];

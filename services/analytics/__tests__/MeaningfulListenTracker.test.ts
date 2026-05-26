@@ -14,6 +14,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 1,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -26,6 +27,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 1,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -36,6 +38,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 2,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -50,6 +53,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 1,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -62,6 +66,7 @@ describe('MeaningfulListenTracker', () => {
       expect(onMeaningfulListen).toHaveBeenCalledWith({
         surah_id: 1,
         reciter_id: 'reciter-1',
+        reciter_name: 'Reciter One',
         rewayah_id: 'rewayah-1',
       });
     });
@@ -71,6 +76,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 2,
         reciterId: 'reciter-2',
+        reciterName: 'Reciter Two',
         rewayahId: 'rewayah-2',
         totalDurationMs: 40000,
       });
@@ -83,6 +89,7 @@ describe('MeaningfulListenTracker', () => {
       expect(onMeaningfulListen).toHaveBeenCalledWith({
         surah_id: 2,
         reciter_id: 'reciter-2',
+        reciter_name: 'Reciter Two',
         rewayah_id: 'rewayah-2',
       });
     });
@@ -91,6 +98,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 1,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -113,6 +121,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 1,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -127,6 +136,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 1,
         reciterId: 'reciter-1',
+        reciterName: 'Reciter One',
         rewayahId: 'rewayah-1',
         totalDurationMs: 600000,
       });
@@ -136,6 +146,7 @@ describe('MeaningfulListenTracker', () => {
       tracker.startTracking({
         surahId: 3,
         reciterId: 'reciter-3',
+        reciterName: 'Reciter Three',
         rewayahId: 'rewayah-3',
         totalDurationMs: 600000,
       });
@@ -145,6 +156,7 @@ describe('MeaningfulListenTracker', () => {
       expect(onMeaningfulListen).toHaveBeenCalledWith({
         surah_id: 3,
         reciter_id: 'reciter-3',
+        reciter_name: 'Reciter Three',
         rewayah_id: 'rewayah-3',
       });
     });

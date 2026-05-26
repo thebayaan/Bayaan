@@ -23,7 +23,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import type {SimilarAyah, MutashabihatPhrase} from '@/types/qul';
 
@@ -97,7 +97,7 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
     [allahNameHighlightColorSetting, theme.isDarkMode],
   );
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-  const fontMgr = mushafPreloadService.fontMgr;
+  const fontMgr = useMushafFontMgr();
   const fontFamily =
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'

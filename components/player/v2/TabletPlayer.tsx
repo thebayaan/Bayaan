@@ -48,6 +48,8 @@ import {useTimestampLoader} from '@/hooks/useTimestampLoader';
 import {useAyahTracker} from '@/hooks/useAyahTracker';
 import {useTimestampStore} from '@/store/timestampStore';
 import {useRewayatFollowAlong} from '@/hooks/useFollowAlong';
+import {useCurrentTrackResolvedRewayah} from '@/hooks/useCurrentTrackRewayah';
+import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
 import {useAmbientStore} from '@/store/ambientStore';
 import {getReciterById} from '@/services/dataService';
 import type {Reciter, Rewayat} from '@/data/reciterData';
@@ -264,6 +266,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
   const {navigateToReciterProfile} = useReciterNavigation();
   const [, setReciter] = useState<Reciter | null>(null);
   const [rewayat, setRewayat] = useState<Rewayat | null>(null);
+  const resolvedRewayah = useCurrentTrackResolvedRewayah();
   useEffect(() => {
     setRewayat(null);
     let alive = true;
@@ -350,7 +353,7 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
   const [seekValue, setSeekValue] = useState(0);
   const displayTime = isSeeking
     ? seekValue
-    : progress.seekPosition ?? progress.position;
+    : (progress.seekPosition ?? progress.position);
   const handleSliderStart = useCallback(() => {
     setIsSeeking(true);
     setSeekValue(progress.seekPosition ?? progress.position);
@@ -497,13 +500,13 @@ const TabletPlayer: React.FC<TabletPlayerProps> = ({
           numberOfLines={1}>
           {currentTrack?.artist || ''}
         </Text>
-        {(rewayat || currentTrack?.rewayahName) && (
+        {resolvedRewayah && (rewayat || currentTrack?.rewayahName) && (
           <Text
             style={[styles.trackRewayat, {color: secondaryColor}]}
             numberOfLines={1}>
-            {rewayat
-              ? `${rewayat.name}${rewayat.style ? ` • ${rewayat.style}` : ''}`
-              : currentTrack?.rewayahName}
+            {`${getShortLabel(resolvedRewayah.id)}${
+              rewayat?.style ? ` • ${rewayat.style}` : ''
+            }`}
           </Text>
         )}
       </View>

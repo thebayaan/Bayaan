@@ -37,6 +37,7 @@ import {
   getQCFSurahNameChar,
 } from '@/constants/surahNameGlyphs';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {
   digitalKhattDataService,
   BASMALLAH_TEXT,
@@ -190,7 +191,8 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
         : 'DigitalKhattV2';
   const fontsReady =
     mushafPreloadService.initialized && digitalKhattDataService.initialized;
-  const fontMgr = fontsReady ? mushafPreloadService.fontMgr : null;
+  const subscribedFontMgr = useMushafFontMgr();
+  const fontMgr = fontsReady ? subscribedFontMgr : null;
 
   return (
     <ScrollView

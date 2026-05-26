@@ -1,5 +1,10 @@
 import React, {useCallback} from 'react';
-import {View, FlatList, StyleSheet} from 'react-native';
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  type ListRenderItemInfo,
+} from 'react-native';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {CircularReciterCard} from './cards/CircularReciterCard';
@@ -45,7 +50,7 @@ export default function CollectionView({
   });
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter | TrackItem}) => {
+    ({item}: ListRenderItemInfo<Reciter | TrackItem>) => {
       if ('surahId' in item) {
         const reciter = favoriteReciters.find(r => r.id === item.reciterId);
         return (

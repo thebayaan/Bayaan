@@ -13,39 +13,29 @@
 1. **Active ayah highlighting** — the currently-playing ayah gets a background tint in QuranView
 2. **Smart auto-scroll** — QuranView follows playback; pauses when user scrolls manually; re-center FAB button appears to resume
 3. **Seek-to-ayah utility** — `seekToAyah()` function ready in PlayerContent for future UI binding (e.g. double-tap, button)
-4. **Bundled timestamp database** — 274K+ ayah timing rows for 34 reciters, zero network dependency
+4. **R2-mirrored timestamp JSON**: ayah timing for ~114 reciters (113 mp3quran + Bandar Baleelah from QDC), fetched direct from CDN
 
 ### Not Yet Implemented
 
 - Tap-to-seek UI interaction (seekToAyah is wired but not bound to a gesture yet)
 - Range playback (repeat ayah ranges)
 - Word-by-word highlighting (data exists in `segments` column)
-- Adding the 10 unmatched reciters (need Supabase inserts)
+- Adding remaining reciters not yet mirrored to R2
 
 ---
 
 ## Architecture
 
-### Bundled DB Approach
+### R2 CDN Approach
 
-The original design doc assumed lazy downloading from Supabase. We instead bundle the entire database with the app for zero-latency, zero-network operation.
-
-```
-assets/data/timestamps.db.gz  (25MB, committed to git)
-    ↓ npm postinstall: gzip -dkf
-assets/data/timestamps.db     (117MB, .gitignore'd, generated locally)
-    ↓ metro.config.js: .db in assetExts
-    ↓ app.config.js: expo-asset plugin embeds in native binary
-    ↓ Runtime: TimestampDatabaseService copies from asset to documentDirectory (first launch only)
-    ↓ expo-sqlite opens from documentDirectory
-```
+Timestamps are fetched direct from Cloudflare R2 (`cdn.thebayaan.com/timestamps/{rewayat_id}/{NNN}.json`). No bundled DB, no backend round-trip. This matches how audio is served (also R2-mirrored from mp3quran), so timestamps and audio are always in sync.
 
 ### Data Flow
 
 ```
-TimestampDatabaseService (SQLite singleton)
-    ↓ query on track change
-TimestampService (in-memory cache layer)
+R2 CDN (cdn.thebayaan.com/timestamps/{rewayat_id}/{NNN}.json)
+    ↓ fetch on track change (if rewayat has_timestamps + surah in timestamps_surah_list)
+TimestampFetchService (in-memory cache layer)
     ↓ cache by "{rewayatId}-{surahNumber}"
 timestampStore (Zustand — currentAyah, currentSurahTimestamps)
     ↓ subscribed by hooks
@@ -55,35 +45,21 @@ useAyahTracker (200ms poll → binary search → setCurrentAyah)
 QuranView (isActive prop on VerseItem, auto-scroll)
 ```
 
-### Database Schema
+### JSON Shape
 
-Source: `/Users/osmansaeday/theBayaan/quran-timestamps/output/timestamps.db` (117MB)
+Each file at `cdn.thebayaan.com/timestamps/{rewayat_id}/{NNN}.json` is an `AyahTimestamp[]`:
 
-```sql
-CREATE TABLE timestamp_meta (
-    rewayat_id TEXT PRIMARY KEY,
-    slug TEXT NOT NULL,
-    source TEXT NOT NULL DEFAULT 'qurancom',
-    audio_source TEXT NOT NULL DEFAULT 'quranicaudio',
-    version INTEGER NOT NULL DEFAULT 1,
-    total_ayahs INTEGER NOT NULL,
-    has_word_segments INTEGER NOT NULL DEFAULT 0,
-    audio_url_pattern TEXT,
-    url_padding TEXT NOT NULL DEFAULT 'padded'
-);
-
-CREATE TABLE ayah_timestamps (
-    rewayat_id TEXT NOT NULL,
-    surah_number INTEGER NOT NULL,
-    ayah_number INTEGER NOT NULL,
-    timestamp_from INTEGER NOT NULL,  -- milliseconds
-    timestamp_to INTEGER NOT NULL,    -- milliseconds
-    duration_ms INTEGER NOT NULL,
-    segments TEXT NOT NULL DEFAULT '[]',  -- JSON: [[word_idx, start_ms, end_ms], ...]
-    PRIMARY KEY (rewayat_id, surah_number, ayah_number)
-);
-CREATE INDEX idx_timestamps_surah ON ayah_timestamps(rewayat_id, surah_number);
+```ts
+interface AyahTimestamp {
+  surahNumber: number;
+  ayahNumber: number;
+  timestampFrom: number; // milliseconds
+  timestampTo: number;   // milliseconds
+  durationMs: number;
+}
 ```
+
+Source of truth: `types/timestamps.ts`. The shape matches exactly what the mirror script writes and what the mobile client reads, so no transformation is needed at read time.
 
 ---
 
@@ -95,8 +71,7 @@ CREATE INDEX idx_timestamps_surah ON ayah_timestamps(rewayat_id, surah_number);
 |------|---------|
 | `types/timestamps.ts` | Domain types, row types, mapping functions |
 | `utils/timestampUtils.ts` | `binarySearchAyah()` O(log n), `findAyahTimestamp()` direct lookup |
-| `services/timestamps/TimestampDatabaseService.ts` | SQLite singleton — copies bundled asset, opens DB |
-| `services/timestamps/TimestampService.ts` | Caching layer over DB service |
+| `services/timestamps/TimestampFetchService.ts` | Fetches AyahTimestamp[] from R2 CDN, in-memory cache |
 | `store/timestampStore.ts` | Zustand store — currentAyah, currentSurahTimestamps |
 | `hooks/useTimestampLoader.ts` | Loads timestamps on track change |
 | `hooks/useAyahTracker.ts` | 200ms poll → binary search → updates currentAyah |
@@ -105,41 +80,31 @@ CREATE INDEX idx_timestamps_surah ON ayah_timestamps(rewayat_id, surah_number);
 
 | File | Change |
 |------|--------|
-| `metro.config.js` | Added `.db` to `assetExts` |
-| `app.config.js` | Configured expo-asset plugin to embed `timestamps.db` |
-| `package.json` | Chained `gzip -dkf` in postinstall; added `expo-file-system` |
-| `.gitignore` | Added `assets/data/timestamps.db` (decompressed, not committed) |
 | `services/AppInitializer.ts` | Registered Timestamps service at priority 8 (non-critical) |
 | `components/player/v2/PlayerContent/QuranView/VerseItem.tsx` | `isActive` prop, active background highlight, padding/borderRadius |
 | `components/player/v2/PlayerContent/QuranView/index.tsx` | Passes `isActive`, auto-scroll effect, scroll-drag detection, re-center FAB |
 | `components/player/v2/PlayerContent/index.tsx` | Mounts `useTimestampLoader` + `useAyahTracker`, `seekToAyah()` utility |
-| `utils/audioUtils.ts` | **TEMPORARY** quranicaudio.com URL overrides for testing |
+| `utils/audioUtils.ts` | Audio URL helpers (quranicaudio overrides removed) |
 
 ---
 
-## Audio Source Mismatch (Known Issue)
+## Data Source
 
-The timestamp data was generated from **quranicaudio.com** recordings. The app normally plays from **mp3quran.net**. These are different recordings, so timestamps don't align with mp3quran audio.
+Timestamps are mirrored to Cloudflare R2 at `cdn.thebayaan.com/timestamps/{rewayat_id}/{NNN}.json` as `AyahTimestamp[]` JSON. The mobile client fetches direct from the CDN (matching the audio model: no backend round-trip). See `docs/superpowers/plans/2026-05-23-timestamps-r2-mirror.md` for the migration details.
 
-### Current Workaround
+Coverage is gated by two fields on each rewayat:
+- `has_timestamps: boolean`: whether any surah has timestamps on R2
+- `timestamps_surah_list: number[]`: exactly which surahs are covered
 
-`utils/audioUtils.ts` contains a `TIMESTAMP_AUDIO_OVERRIDES` map that redirects 34 reciters to quranicaudio.com URLs. This is **temporary for testing**.
+The client uses these to avoid 404 probing.
 
-### Known Issues with quranicaudio.com Audio
-
-Some quranicaudio files have unnatural cuts between ayahs — the audio is spliced rather than naturally paused. This affects some reciters more than others.
-
-### Permanent Solutions (Pick One)
-
-1. **Re-generate timestamps** against mp3quran.net audio files using ASR alignment
-2. **Permanently switch** to quranicaudio.com as the audio source (if quality is acceptable)
-3. **Offer both sources** as selectable options per reciter
+To add timestamps for a new reciter, run `npm run mirror:timestamps -- --rewayat=<id>` then `npm run apply:timestamps-coverage`.
 
 ---
 
 ## Reciter Coverage
 
-34 of 44 timestamp rewayat IDs match existing app reciters. Those with word-level segments (for future word-by-word highlighting) are marked:
+Reciters with word-level segments (for future word-by-word highlighting) are marked. This table reflects the original v1 set; current coverage is broader (check `timestamps_surah_list` on each rewayat for live data):
 
 | Reciter | Style | Word Segments |
 |---------|-------|:---:|
@@ -178,7 +143,7 @@ Some quranicaudio files have unnatural cuts between ayahs — the audio is splic
 | Mohammed Siddiq Al-Minshawi | Murattal | yes |
 | Yasser Al-Dosari | | yes |
 
-10 unmatched reciters in timestamp DB need Supabase inserts to add to app (deferred).
+Coverage continues to expand as new reciters are mirrored to R2.
 
 ---
 
@@ -186,8 +151,7 @@ Some quranicaudio files have unnatural cuts between ayahs — the audio is splic
 
 | Operation | Cost |
 |-----------|------|
-| First launch: asset copy | ~1-2s for 117MB (one-time native file copy) |
-| Track change: DB query | <1ms (indexed by rewayat_id + surah_number) |
+| Track change: R2 fetch | ~50-200ms (CDN edge, cached after first fetch) |
 | 200ms poll: position read | Near-free (sync `player.currentTime`) |
 | 200ms poll: binary search | ~8 comparisons on max 286 items |
 | Ayah transition: re-render | 2 VerseItems (old active + new active) |
@@ -204,4 +168,4 @@ Some quranicaudio files have unnatural cuts between ayahs — the audio is splic
 | Position in bismillah region | `binarySearchAyah` returns null → no highlight |
 | Rapid track skipping | useEffect cleanup ensures only latest track loads |
 | App killed mid-playback | Timestamps re-load on next track change |
-| DB already copied | `FileSystem.getInfoAsync` check skips copy |
+| Surah already fetched | In-memory cache hit, no network request |

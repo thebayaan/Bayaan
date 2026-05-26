@@ -10,6 +10,7 @@ import {
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {ReciterImage} from '@/components/ReciterImage';
+import {FollowAlongBadge} from '@/components/badges/FollowAlongBadge';
 import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {Link} from 'expo-router';
@@ -42,6 +43,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
   addTextStyle,
   width,
   height,
+  showFollowAlong,
 }) => {
   const {theme} = useTheme();
 
@@ -96,6 +98,10 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           textAlign: 'center',
           width: imageSize,
           marginTop: moderateScale(1),
+        },
+        subtitleRow: {
+          marginTop: moderateScale(2),
+          alignItems: 'center',
         },
         addContainer: {
           width: imageSize,
@@ -154,9 +160,15 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           <Text style={styles.name} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            Reciter
-          </Text>
+          {showFollowAlong ? (
+            <View style={styles.subtitleRow}>
+              <FollowAlongBadge />
+            </View>
+          ) : (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              Reciter
+            </Text>
+          )}
         </>
       )}
     </>

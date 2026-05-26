@@ -35,7 +35,9 @@ import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
 import {resolveRewayahFromName} from '@/services/rewayah/RewayahIdentity';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useHeaderHeight} from '@react-navigation/elements';
+import branding from '@/config/branding';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {useBottomInset} from '@/hooks/useBottomInset';
 
 interface BrowseRecitersProps {
   theme: Theme;
@@ -44,6 +46,12 @@ interface BrowseRecitersProps {
   title?: string;
   initialTeacher?: string;
   initialStudent?: string;
+  /**
+   * RFC-012 — initial value for the `has-photo` filter chip. When the
+   * chip is enabled in `branding.searchFilters`, this prop seeds its
+   * starting state. Defaults to `false` (chip un-toggled).
+   */
+  initialHasPhoto?: boolean;
 }
 
 // Fallback: extract teacher from a rewayat name by splitting on "A'n"
@@ -108,12 +116,14 @@ export default function BrowseReciters({
   title = 'Browse All',
   initialTeacher,
   initialStudent,
+  initialHasPhoto = false,
 }: BrowseRecitersProps) {
   const router = useRouter();
   const {updateQueue, play} = usePlayerActions();
   const {startNewChain} = useRecentlyPlayedStore();
   const {setReciterPreference} = useSettings();
   const insets = useSafeAreaInsets();
+  const bottomInset = useBottomInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // On iOS, the native Stack header handles the top area; on Android, use custom Header
@@ -125,6 +135,16 @@ export default function BrowseReciters({
   );
   const [selectedStudent, setSelectedStudent] = useState<string | null>(
     initialStudent || null,
+  );
+
+  // RFC-012 — composable filter chips. Each dimension in
+  // `branding.searchFilters` (when configured) gets its own piece of
+  // state + a toggleable chip in the strip below the search input.
+  // v1 ships `has-photo` end-to-end; `rewaya` / `has-surah` stay on
+  // their existing bespoke implementations and migrate later.
+  const hasPhotoEnabled = !!branding.searchFilters?.includes('has-photo');
+  const [hasPhoto, setHasPhoto] = useState<boolean>(
+    hasPhotoEnabled && initialHasPhoto,
   );
 
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
@@ -202,6 +222,19 @@ export default function BrowseReciters({
   }, [selectedTeacher, selectedStudent, primaryTeachers]);
 
   const filteredReciters = useMemo(() => {
+    // Hoisted above the filter chain so the RFC-012 `has-photo` filter
+    // and the existing sort step share one definition. "Has photo" matches
+    // a card whose user-visible artwork resolves to something — either a
+    // catalog `image_url` OR a bundled local headshot fallback.
+    const hasImage = (reciter: Reciter): boolean => {
+      if (reciter.image_url) return true;
+      const formattedName = reciter.name
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      return !!reciterImages[formattedName];
+    };
+
     let result = [...RECITERS];
 
     if (surahId) {
@@ -268,14 +301,13 @@ export default function BrowseReciters({
       );
     }
 
-    const hasImage = (reciter: Reciter): boolean => {
-      if (reciter.image_url) return true;
-      const formattedName = reciter.name
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
-      return !!reciterImages[formattedName];
-    };
+    // RFC-012 — `has-photo` filter dimension. Predicate uses the same
+    // `hasImage` helper as the sort step below, so the filter and the
+    // sort agree on what counts as "has a photo." No-op when the chip
+    // isn't enabled in branding or the user hasn't toggled it on.
+    if (hasPhoto) {
+      result = result.filter(hasImage);
+    }
 
     const featuredRecitersData = getFeaturedReciters(20);
     const featuredIds = new Set(featuredRecitersData.map(r => r.id));
@@ -291,7 +323,15 @@ export default function BrowseReciters({
     });
 
     return result;
-  }, [selectedTeacher, selectedStudent, searchQuery, surahId, advancedFilters]);
+  }, [
+    selectedTeacher,
+    selectedStudent,
+    searchQuery,
+    surahId,
+    advancedFilters,
+    hasPhoto,
+    hasPhotoEnabled,
+  ]);
 
   const handleFilterModalPress = () => {
     setIsFilterModalVisible(true);
@@ -331,6 +371,8 @@ export default function BrowseReciters({
       rewayat: [],
       sortBy: 'featured',
     });
+    // RFC-012 — reset the composable chip state too.
+    setHasPhoto(false);
   };
 
   const handleSearchFocus = () => {
@@ -354,9 +396,16 @@ export default function BrowseReciters({
       searchQuery.trim() !== '' ||
       advancedFilters.styles.length > 0 ||
       advancedFilters.rewayat.length > 0 ||
-      advancedFilters.sortBy !== 'featured'
+      advancedFilters.sortBy !== 'featured' ||
+      hasPhoto // RFC-012 — `has-photo` chip counts as active
     );
-  }, [selectedTeacher, selectedStudent, searchQuery, advancedFilters]);
+  }, [
+    selectedTeacher,
+    selectedStudent,
+    searchQuery,
+    advancedFilters,
+    hasPhoto,
+  ]);
 
   const handleReciterPress = useCallback(
     async (reciter: Reciter) => {
@@ -543,6 +592,9 @@ export default function BrowseReciters({
                   </View>
                 ) : (
                   <Pressable
+                    accessibilityRole="togglebutton"
+                    accessibilityLabel={chip.label}
+                    accessibilityState={{selected: chip.isSelected}}
                     style={({pressed}) => [
                       styles.filterChip,
                       chip.isSelected && styles.filterChipActive,
@@ -563,6 +615,36 @@ export default function BrowseReciters({
                 )}
               </Animated.View>
             ))}
+            {/* RFC-012 — composable chip(s) from `branding.searchFilters`.
+             * v1 ships `has-photo` end-to-end; other dimensions render
+             * once they're wired through (or live as bespoke chips above). */}
+            {hasPhotoEnabled && (
+              <Animated.View
+                entering={FadeIn.duration(300)}
+                layout={LinearTransition.duration(300)}>
+                <Pressable
+                  accessibilityRole="togglebutton"
+                  accessibilityLabel="Has photo"
+                  accessibilityState={{selected: hasPhoto}}
+                  style={({pressed}) => [
+                    styles.filterChip,
+                    hasPhoto && styles.filterChipActive,
+                    pressed && styles.filterChipPressed,
+                  ]}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setHasPhoto(v => !v);
+                  }}>
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      hasPhoto && styles.filterChipTextActive,
+                    ]}>
+                    Has photo
+                  </Text>
+                </Pressable>
+              </Animated.View>
+            )}
           </ScrollView>
         </View>
 
@@ -595,6 +677,7 @@ export default function BrowseReciters({
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={() => Keyboard.dismiss()}
             getRewayatIdForReciter={getRewayatIdForReciter}
+            bottomInset={bottomInset}
           />
         </View>
 

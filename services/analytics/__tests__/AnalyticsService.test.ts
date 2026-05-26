@@ -87,6 +87,7 @@ describe('AnalyticsService', () => {
       analyticsService.trackPlaybackStarted({
         surah_id: 1,
         reciter_id: 'r-1',
+        reciter_name: 'Reciter One',
         rewayah_id: 'rw-1',
         source: 'direct',
         position_ms: 0,
@@ -95,6 +96,7 @@ describe('AnalyticsService', () => {
       expect(posthog.capture).toHaveBeenCalledWith('playback_started', {
         surah_id: 1,
         reciter_id: 'r-1',
+        reciter_name: 'Reciter One',
         rewayah_id: 'rw-1',
         source: 'direct',
         position_ms: 0,
@@ -138,6 +140,7 @@ describe('AnalyticsService', () => {
       analyticsService.trackPlaybackStarted({
         surah_id: 1,
         reciter_id: 'r-1',
+        reciter_name: 'Reciter One',
         rewayah_id: 'rw-1',
         source: 'direct',
         position_ms: 0,

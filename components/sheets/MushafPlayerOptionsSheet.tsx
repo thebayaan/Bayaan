@@ -60,12 +60,21 @@ type AccordionSection = 'startVerse' | 'endVerse' | 'reciter' | null;
 type VersePick = 'surahList' | 'ayahGrid';
 
 // ---------------------------------------------------------------------------
-// Helper: format verse key to display string
+// Verse-key helpers
 // ---------------------------------------------------------------------------
 function formatVerseKey(verseKey: string): string {
   const [s, a] = verseKey.split(':').map(Number);
   if (s < 1 || s > 114) return verseKey;
   return `${SURAHS[s - 1].name} ${s}:${a}`;
+}
+
+// Negative if a < b, zero if equal, positive if a > b. Used to keep the
+// range from going backwards: a new start past the current end drags end
+// forward; a new end before the current start drags start back.
+function compareVerseKeys(a: string, b: string): number {
+  const [aSurah, aAyah] = a.split(':').map(Number);
+  const [bSurah, bAyah] = b.split(':').map(Number);
+  return aSurah !== bSurah ? aSurah - bSurah : aAyah - bAyah;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +159,10 @@ export const MushafPlayerOptionsSheet = (
   const [selectedReciterName, setSelectedReciterName] = useState<string | null>(
     storeReciterName,
   );
-  const [rate, setRate] = useState(storeRate);
+  // Speed binds directly to the store via `storeRate` below — no local
+  // mirror. The previous useState(storeRate) latched at mount, which
+  // raced AsyncStorage rehydration: chip showed 1x regardless of the
+  // persisted value, and Play wrote that stale 1x back to the store.
   const [verseRepeat, setVerseRepeat] = useState(storeVerseRepeat);
   const [rangeRepeat, setRangeRepeat] = useState(storeRangeRepeat);
 
@@ -179,9 +191,9 @@ export const MushafPlayerOptionsSheet = (
     }
   }, [availableReciters.length]);
 
-  // Apply rate change immediately for live preview
+  // Apply rate change immediately. Reactive `storeRate` selector above
+  // reflects this in the chip on the next render.
   const handleRateChange = useCallback((newRate: number) => {
-    setRate(newRate);
     useMushafPlayerStore.getState().setRate(newRate);
   }, []);
 
@@ -230,19 +242,29 @@ export const MushafPlayerOptionsSheet = (
   const handleStartAyahPick = useCallback(
     (ayah: number) => {
       if (!startPickSurah) return;
-      setStartVerseKey(`${startPickSurah}:${ayah}`);
+      const picked = `${startPickSurah}:${ayah}`;
+      setStartVerseKey(picked);
+      // Drag end forward if the new start went past it.
+      if (compareVerseKeys(picked, endVerseKey) > 0) {
+        setEndVerseKey(picked);
+      }
       setExpandedSection(null);
     },
-    [startPickSurah],
+    [startPickSurah, endVerseKey],
   );
 
   const handleEndAyahPick = useCallback(
     (ayah: number) => {
       if (!endPickSurah) return;
-      setEndVerseKey(`${endPickSurah}:${ayah}`);
+      const picked = `${endPickSurah}:${ayah}`;
+      setEndVerseKey(picked);
+      // Drag start back if the new end came before it.
+      if (compareVerseKeys(picked, startVerseKey) < 0) {
+        setStartVerseKey(picked);
+      }
       setExpandedSection(null);
     },
-    [endPickSurah],
+    [endPickSurah, startVerseKey],
   );
 
   // Reciter selection
@@ -268,7 +290,8 @@ export const MushafPlayerOptionsSheet = (
     const [endS, endA] = endVerseKey.split(':').map(Number);
     store.setRange({surah: startS, ayah: startA}, {surah: endS, ayah: endA});
 
-    store.setRate(rate);
+    // rate is bound directly to the store via the speed chips; no need to
+    // commit it here (and committing a stale local copy was the bug).
     store.setVerseRepeatCount(verseRepeat);
     store.setRangeRepeatCount(rangeRepeat);
 
@@ -279,7 +302,6 @@ export const MushafPlayerOptionsSheet = (
     selectedReciterName,
     startVerseKey,
     endVerseKey,
-    rate,
     verseRepeat,
     rangeRepeat,
     currentPage,
@@ -350,7 +372,11 @@ export const MushafPlayerOptionsSheet = (
       id={props.sheetId}
       containerStyle={styles.sheetContainer}
       indicatorStyle={styles.indicator}
-      gestureEnabled={true}>
+      // Disable the sheet's drag-to-dismiss pan while an accordion is open
+      // so vertical scrolling inside the accordion's inner ScrollView isn't
+      // intercepted by the sheet's gesture handler. Re-enable when nothing
+      // is expanded so the user can still swipe the sheet away.
+      gestureEnabled={expandedSection === null}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.container}
@@ -493,7 +519,7 @@ export const MushafPlayerOptionsSheet = (
           <Text style={styles.sectionLabel}>Play speed</Text>
           <View style={styles.chipRowFlex}>
             {SPEEDS.map(speed => {
-              const isActive = rate === speed;
+              const isActive = storeRate === speed;
               return (
                 <Pressable
                   key={speed}

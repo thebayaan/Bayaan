@@ -196,6 +196,29 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 - Use `usePlayerActions` for audio controls, not the deprecated `useUnifiedPlayer`
 - Name variables/functions camelCase, components PascalCase, directories lowercase-with-hyphens
 
+### Scripts: common pitfalls
+
+When writing Node scripts under `scripts/` that shell out to binaries (`ffmpeg`, `sharp`, `imagemagick`, etc.), avoid passing large binary buffers via `child_process.spawnSync(cmd, args, { input: bigBuffer })`. Once `input` exceeds the OS pipe buffer (~64 KB on macOS / Linux), `spawnSync` deadlocks: the child blocks waiting for stdin to drain while Node blocks waiting for the child to exit. The script appears to "succeed" — the child emits a tiny empty output and no error is raised — which makes the failure mode silent and easy to ship.
+
+Safer pattern: write the input to a temp file, pass the path as an argument, and clean up in `finally`:
+
+```js
+import { spawnSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const tmp = join(tmpdir(), `script-${process.pid}-${Date.now()}.bin`);
+writeFileSync(tmp, bigBuffer);
+try {
+  spawnSync('ffmpeg', ['-i', tmp, /* ... */ outPath], { stdio: 'inherit' });
+} finally {
+  try { unlinkSync(tmp); } catch {}
+}
+```
+
+For streaming use cases, prefer the async `spawn` with an explicit `child.stdin.end(buffer)` and an awaited `'close'` event — `spawnSync` is the wrong primitive for >64 KB of stdin. See the [Node `child_process` docs](https://nodejs.org/api/child_process.html#child_processspawnsynccommand-args-options) for the underlying buffer behavior.
+
 ---
 
 ## Design system
@@ -243,6 +266,18 @@ AI tools (Cursor, Copilot, Claude, etc.) are welcome and encouraged. See [docs/c
 - All AI-generated code blocks must be marked with `// @ai` at the end of the line (single line) or `// @ai-start` / `// @ai-end` comments wrapping a block
 - You are responsible for every line you submit — review and understand AI output before pushing
 - The PR template includes an AI disclosure checkbox
+
+### Forks and Claude Code tooling
+
+Bayaan's `.gitignore` excludes the entire `.claude/` directory because it can contain operational paths private to a maintainer's machine. Forks that want to ship their own project-versioned Claude Code skills or scheduled tasks (so they survive across machines and collaborators) can opt-in by adding negation rules to the fork's own `.gitignore`, e.g.:
+
+```gitignore
+# Un-ignore project-versioned Claude Code tooling
+!.claude/skills/
+!.claude/scheduled-tasks/
+```
+
+Keep machine-local Claude state ignored: `.claude/settings.local.json`, `scheduled_tasks.lock`, `.claude/projects/`. The convention separates project tooling (versioned, shared) from per-developer state (machine-local).
 
 ---
 

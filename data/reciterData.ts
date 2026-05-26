@@ -25,6 +25,8 @@ export interface Rewayat {
   created_at: string;
   mp3quran_read_id?: number;
   qdc_reciter_id?: number;
+  has_timestamps?: boolean;
+  timestamps_surah_list?: number[];
 }
 
 // Mutable array — populated in-place by dataService after API fetch.

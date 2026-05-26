@@ -64,6 +64,7 @@ import {useNavigation} from 'expo-router';
 import {useHeaderHeight} from '@react-navigation/elements';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
+import branding from '@/config/branding';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
@@ -290,7 +291,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                   const slug = reciter?.slug ?? currentReciterId;
                   shareUrl(
                     reciterShareUrl(slug),
-                    `Listen to ${reciter?.name ?? 'this reciter'} on Bayaan`,
+                    `Listen to ${reciter?.name ?? 'this reciter'} on ${branding.appName}`,
                   );
                 }}
                 hitSlop={8}>
@@ -1162,7 +1163,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                 const slug = reciter?.slug ?? currentReciterId;
                 shareUrl(
                   reciterShareUrl(slug),
-                  `Listen to ${reciter?.name ?? 'this reciter'} on Bayaan`,
+                  `Listen to ${reciter?.name ?? 'this reciter'} on ${branding.appName}`,
                 );
               }}
             />

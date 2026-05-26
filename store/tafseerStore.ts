@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {DownloadedTafseerMeta} from '@/types/tafseer';
 import {tafseerApiService} from '@/services/tafseer/TafseerApiService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
+import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
 
 interface TafseerStoreState {
   // Metadata for downloaded tafaseer (synced from SQLite)
@@ -36,9 +37,15 @@ export const useTafseerStore = create<TafseerStoreState>()(
         set({downloadingId: editionId, downloadProgress: 0});
 
         try {
+          // Pass the static edition entry when available so the provider
+          // can skip its internal editions-list lookup (RFC-009 v2 review).
+          const staticEdition = AVAILABLE_TAFASEER.find(
+            e => e.identifier === editionId,
+          );
           const {edition, verses} = await tafseerApiService.fetchFullTafseer(
             editionId,
             progress => set({downloadProgress: progress}),
+            staticEdition,
           );
 
           await tafseerDbService.saveTafseer(

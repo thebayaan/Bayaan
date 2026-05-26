@@ -111,20 +111,40 @@ export const RecentReciterCard = ({
   ]);
 
   // Calculate time remaining
+  //
+  // Two display states the old code conflated as `'0m'`:
+  //   1. **Duration unknown** — `effectiveDuration` is 0 because the
+  //      track's duration hasn't been measured yet, or we're paused on
+  //      a track with no `duration` field. The old `'0m'` reads as
+  //      "track ended" to the user. Now returns an em-dash so the user
+  //      knows the time is genuinely unknown rather than zero.
+  //   2. **Short tracks** — for any remaining duration under 60s,
+  //      `Math.round(remainingSeconds / 60)` rounds to 0 → `'0m'`. Most
+  //      visible on short surahs like Al-Fatihah (~50s total): every
+  //      state past mid-track collapses to "0m". Now shows seconds for
+  //      remaining < 60s, e.g. "20s".
   const timeRemaining = useMemo(() => {
     const effectiveDuration =
       isCurrentlyPlaying && storeDuration > 0 ? storeDuration : duration;
-    let remainingSeconds = effectiveDuration;
 
-    if (effectiveDuration > 0) {
-      if (isCurrentlyPlaying && storePosition >= 0) {
-        remainingSeconds = effectiveDuration - storePosition;
-      } else {
-        remainingSeconds = effectiveDuration * (1 - progress);
-      }
+    // Duration unknown → em-dash placeholder rather than '0m'
+    // which the user reads as "track ended".
+    if (effectiveDuration <= 0) return '—';
+
+    let remainingSeconds = effectiveDuration;
+    if (isCurrentlyPlaying && storePosition >= 0) {
+      remainingSeconds = effectiveDuration - storePosition;
+    } else {
+      remainingSeconds = effectiveDuration * (1 - progress);
     }
 
-    if (remainingSeconds <= 0) return '0m';
+    if (remainingSeconds <= 0) return '0s';
+
+    // Under a minute → show seconds so short surahs (Al-Fatihah / An-Nas
+    // / Al-Falaq / Al-Ikhlas) don't all collapse to "0m" near the end.
+    if (remainingSeconds < 60) {
+      return `${Math.max(1, Math.ceil(remainingSeconds))}s`;
+    }
 
     const totalMinutes = Math.round(remainingSeconds / 60);
     if (totalMinutes >= 60) {

@@ -1,7 +1,8 @@
 import {Share, Platform} from 'react-native';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import branding from '@/config/branding';
 
-const BASE_URL = 'https://app.thebayaan.com';
+const BASE_URL = branding.shareBaseUrl;
 
 export function reciterShareUrl(slug: string): string {
   return `${BASE_URL}/reciter/${slug}`;

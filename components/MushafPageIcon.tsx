@@ -12,6 +12,7 @@ import {
 } from '@shopify/react-native-skia';
 import {moderateScale} from 'react-native-size-matters';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {
   quranTextService,
   PAGE_WIDTH,
@@ -50,7 +51,7 @@ const MushafPageIcon: React.FC<MushafPageIconProps> = ({
   color,
   borderColor,
 }) => {
-  const fontMgr = mushafPreloadService.fontMgr;
+  const fontMgr = useMushafFontMgr();
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
   const fontFamily =

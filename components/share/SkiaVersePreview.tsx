@@ -4,8 +4,8 @@ import {
   useMushafSettingsStore,
   type RewayahId,
 } from '@/store/mushafSettingsStore';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {useTheme} from '@/hooks/useTheme';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
@@ -54,7 +54,7 @@ const SkiaVersePreview: React.FC<SkiaVersePreviewProps> = ({
         ? 'DigitalKhattV1'
         : 'DigitalKhattV2';
 
-  const fontMgr = mushafPreloadService.fontMgr;
+  const fontMgr = useMushafFontMgr();
 
   // Lazy-load the override rewayah's DB if it's not the active one.
   const [, bump] = useReducer(x => x + 1, 0);
