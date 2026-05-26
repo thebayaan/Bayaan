@@ -47,6 +47,7 @@ import {useAdhkarStore} from '@/store/adhkarStore';
 import {AdhkarBentoCard} from '@/components/adhkar/AdhkarBentoCard';
 import {SuperCategory} from '@/types/adhkar';
 import branding, {type HomeRow, type HomeRowId} from '@/config/branding';
+import {useRemoteHomeConfig} from '@/hooks/useRemoteHomeConfig';
 
 /**
  * Fallback row order used when `branding.homeRowConfig` is undefined.
@@ -723,7 +724,13 @@ function RecitersView({onReciterPress}: RecitersViewProps) {
       ) : null,
   };
 
-  const homeRowConfig = branding.homeRowConfig ?? DEFAULT_HOME_ROW_CONFIG;
+  // RFC-016: prefer the remote row config (served by the backend's
+  // GET /v1/home-config) when available, falling back to `branding`
+  // then to the historical default so offline / fresh-install behaviour
+  // is preserved.
+  const remoteRows = useRemoteHomeConfig();
+  const homeRowConfig =
+    remoteRows ?? branding.homeRowConfig ?? DEFAULT_HOME_ROW_CONFIG;
 
   // RFC-008 — Listen-tab top-region slot. Forks may replace the default
   // `RecitersHero` via `branding.listenTabTopComponent`; capitalised here
