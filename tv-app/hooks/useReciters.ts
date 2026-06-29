@@ -1,12 +1,13 @@
 import {useEffect, useState} from 'react';
 import fallbackReciters from '../../data/reciters-fallback.json';
+import {normalizeReciters} from '../services/normalizeReciter';
 import {fetchReciters, getCachedReciters} from '../services/tvDataService';
 import type {Reciter} from '../types/reciter';
 
 function seed(): Reciter[] {
   const cached = getCachedReciters();
   if (cached && cached.length > 0) return cached;
-  return fallbackReciters as Reciter[];
+  return normalizeReciters(fallbackReciters);
 }
 
 export function useReciters(): {reciters: Reciter[]; loading: boolean} {

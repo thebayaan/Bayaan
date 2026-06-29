@@ -1,6 +1,7 @@
 import fallbackReciters from '../../data/reciters-fallback.json';
+import {normalizeReciters, normalizeRewayat} from './normalizeReciter';
 import type {Reciter, Rewayah} from '../types/reciter';
-import {readJSON, storage, writeJSON} from './storage';
+import {readJSON, writeJSON} from './storage';
 
 const DATA_VERSION = '4';
 const RECITERS_KEY = 'bayaan_reciters';
@@ -41,7 +42,7 @@ export async function fetchReciters(opts?: {
 
   const enabled = API_URL ? await isBackendEnabled() : false;
   if (!enabled) {
-    const data = fallbackReciters as Reciter[];
+    const data = normalizeReciters(fallbackReciters);
     writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
     return data;
   }
@@ -51,13 +52,13 @@ export async function fetchReciters(opts?: {
       headers: API_KEY ? {Authorization: `Bearer ${API_KEY}`} : {},
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as Reciter[];
+    const data = normalizeReciters(await res.json());
     writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
     return data;
   } catch {
     const cached = getCachedReciters();
     if (cached) return cached;
-    const data = fallbackReciters as Reciter[];
+    const data = normalizeReciters(fallbackReciters);
     writeJSON<Cached<Reciter[]>>(RECITERS_KEY, {version: DATA_VERSION, data});
     return data;
   }
@@ -71,7 +72,7 @@ export function getCachedRewayat(reciterId: string): Rewayah[] | null {
   }
   const embedded = getCachedReciters()?.find(r => r.id === reciterId)?.rewayat;
   if (embedded && embedded.length > 0) return embedded;
-  const fromFallback = (fallbackReciters as Reciter[]).find(
+  const fromFallback = normalizeReciters(fallbackReciters).find(
     r => r.id === reciterId,
   )?.rewayat;
   return fromFallback ?? null;
@@ -91,7 +92,7 @@ export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
   }
 
   if (!API_URL) {
-    const fromFallback = (fallbackReciters as Reciter[]).find(
+    const fromFallback = normalizeReciters(fallbackReciters).find(
       r => r.id === reciterId,
     )?.rewayat;
     return fromFallback ?? [];
@@ -101,7 +102,7 @@ export async function fetchRewayat(reciterId: string): Promise<Rewayah[]> {
       headers: API_KEY ? {Authorization: `Bearer ${API_KEY}`} : {},
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = (await res.json()) as Rewayah[];
+    const data = normalizeRewayat(await res.json());
     writeJSON<Cached<Rewayah[]>>(key, {version: DATA_VERSION, data});
     return data;
   } catch {
