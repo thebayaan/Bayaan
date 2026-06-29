@@ -6,7 +6,9 @@ import {
   ScrollView,
   FlatList,
   Keyboard,
+  Platform,
   Animated as RNAnimated,
+  type ListRenderItemInfo,
 } from 'react-native';
 import {useRouter} from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -82,6 +84,24 @@ export function SearchView({
   const {askEveryTime, defaultReciterSelection} = useSettings();
   const defaultReciter = useReciterStore(state => state.defaultReciter);
   const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Drive the mode transition from external state
   const isSearchMode = isSearchActive || query.length > 0;
@@ -363,7 +383,7 @@ export function SearchView({
   );
 
   const renderSearchResult = useCallback(
-    ({item}: {item: SearchResult}) => {
+    ({item}: ListRenderItemInfo<SearchResult>) => {
       if (item.type === 'surah') {
         return (
           <SurahItem
@@ -385,7 +405,7 @@ export function SearchView({
   );
 
   const renderRecentSearch = useCallback(
-    ({item: recentItem}: {item: RecentSearchItem}) => {
+    ({item: recentItem}: ListRenderItemInfo<RecentSearchItem>) => {
       const handlePress = () => {
         handleResultPress({
           type: recentItem.type,
@@ -423,7 +443,7 @@ export function SearchView({
       <RNAnimated.View
         style={[styles.modeContainer, {opacity: browseOpacity}]}
         pointerEvents={isSearchMode ? 'none' : 'auto'}>
-        <ExploreView skipTopInset={skipTopInset} />
+        <ExploreView />
       </RNAnimated.View>
 
       {/* Search Mode — always mounted, hidden via opacity */}
@@ -444,7 +464,7 @@ export function SearchView({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
-              {paddingBottom: bottomInset},
+              {paddingBottom: Math.max(keyboardHeight, bottomInset)},
             ]}
             keyboardShouldPersistTaps="handled">
             {recentSearches.length > 0 ? (
@@ -530,7 +550,10 @@ export function SearchView({
             data={searchResults}
             renderItem={renderSearchResult}
             keyExtractor={(item, index) => `${item.type}-${index}`}
-            contentContainerStyle={styles.resultsContent}
+            contentContainerStyle={[
+              styles.resultsContent,
+              {paddingBottom: Math.max(keyboardHeight, bottomInset)},
+            ]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             onScrollBeginDrag={() => Keyboard.dismiss()}
@@ -589,7 +612,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modeOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1,
   },
   flexFill: {

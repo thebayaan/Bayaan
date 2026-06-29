@@ -13,7 +13,8 @@
  */
 
 import {createAudioPlayer, AudioPlayer} from 'expo-audio';
-import {EventSubscription} from 'expo-modules-core';
+
+type EventSubscription = {remove(): void};
 import type {AyahTimestamp} from '@/types/timestamps';
 import {binarySearchAyah} from '@/utils/timestampUtils';
 import {audioCoordinator} from './AudioCoordinator';

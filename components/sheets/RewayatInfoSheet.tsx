@@ -11,6 +11,7 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {RewayatIcon} from '@/components/Icons';
 import ReadMore from '@fawazahmed/react-native-read-more';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 export const RewayatInfoSheet = (props: SheetProps<'rewayat-info'>) => {
   const {theme} = useTheme();
@@ -94,7 +95,9 @@ Each Rewayah may have slight variations in pronunciation, elongation, or articul
                 ]}
                 onPress={() => handleRewayatSelect(rewayat.id)}>
                 <View>
-                  <Text style={styles.rewayatName}>{rewayat.name}</Text>
+                  <Text style={styles.rewayatName}>
+                    {getDisplayLabelFromName(rewayat.name)}
+                  </Text>
                   <Text style={styles.rewayatStyle}>{rewayat.style}</Text>
                 </View>
                 {selectedRewayatId === rewayat.id && (

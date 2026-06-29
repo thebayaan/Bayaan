@@ -3,6 +3,7 @@ import {View} from 'react-native';
 import {Stack} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {MaxWidthContainer} from '@/components/layout/MaxWidthContainer';
 
 const EmptyHeaderBackground = () => <View />;
 
@@ -10,7 +11,8 @@ export default function SearchLayout() {
   const {theme} = useTheme();
 
   return (
-    <Stack
+    <MaxWidthContainer>
+      <Stack
       screenOptions={{
         headerShown: false,
         freezeOnBlur: true,
@@ -103,6 +105,7 @@ export default function SearchLayout() {
         }}
       />
       <Stack.Screen name="reciter/browse" />
-    </Stack>
+      </Stack>
+    </MaxWidthContainer>
   );
 }

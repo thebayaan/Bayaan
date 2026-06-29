@@ -1,9 +1,11 @@
 import {Stack} from 'expo-router';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {MaxWidthContainer} from '@/components/layout/MaxWidthContainer';
 
 export default function HomeLayout() {
   return (
-    <Stack
+    <MaxWidthContainer>
+      <Stack
       screenOptions={{
         headerShown: true,
         freezeOnBlur: true,
@@ -53,6 +55,7 @@ export default function HomeLayout() {
           headerShown: USE_GLASS,
         }}
       />
-    </Stack>
+      </Stack>
+    </MaxWidthContainer>
   );
 }

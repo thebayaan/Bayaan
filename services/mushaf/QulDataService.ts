@@ -39,9 +39,9 @@ class QulDataService {
     const dbName = 'qul_themes.db';
     let db = await SQLite.openDatabaseAsync(dbName);
     const check = await db
-      .getFirstAsync<{name: string}>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='themes';",
-      )
+      .getFirstAsync<{
+        name: string;
+      }>("SELECT name FROM sqlite_master WHERE type='table' AND name='themes';")
       .catch(() => null);
     if (!check) {
       await db.closeAsync();
@@ -58,9 +58,9 @@ class QulDataService {
     const dbName = 'qul_similar.db';
     let db = await SQLite.openDatabaseAsync(dbName);
     const check = await db
-      .getFirstAsync<{name: string}>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='similar_ayahs';",
-      )
+      .getFirstAsync<{
+        name: string;
+      }>("SELECT name FROM sqlite_master WHERE type='table' AND name='similar_ayahs';")
       .catch(() => null);
     if (!check) {
       await db.closeAsync();
@@ -77,9 +77,9 @@ class QulDataService {
     const dbName = 'qul_mutashabihat.db';
     let db = await SQLite.openDatabaseAsync(dbName);
     const check = await db
-      .getFirstAsync<{name: string}>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='phrases';",
-      )
+      .getFirstAsync<{
+        name: string;
+      }>("SELECT name FROM sqlite_master WHERE type='table' AND name='phrases';")
       .catch(() => null);
     if (!check) {
       await db.closeAsync();

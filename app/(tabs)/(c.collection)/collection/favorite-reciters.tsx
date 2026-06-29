@@ -21,6 +21,7 @@ import {Reciter} from '@/data/reciterData';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import {USE_GLASS} from '@/hooks/useGlassProps';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 export default function FavoriteRecitersScreen() {
   const {theme} = useTheme();
@@ -79,7 +80,9 @@ export default function FavoriteRecitersScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
+          paddingTop: USE_GLASS
+            ? moderateScale(16)
+            : insets.top + moderateScale(40),
           paddingBottom: moderateScale(30),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,
@@ -242,7 +245,7 @@ export default function FavoriteRecitersScreen() {
       SheetManager.show('collection-options', {
         payload: {
           title: reciter.name,
-          subtitle: reciter.rewayat[0]?.name || '',
+          subtitle: getDisplayLabelFromName(reciter.rewayat[0]?.name),
           options: [
             {
               label: 'Remove from Favorites',

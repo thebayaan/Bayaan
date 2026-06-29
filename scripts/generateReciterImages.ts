@@ -27,9 +27,8 @@ function generateReciterImagesFile(): void {
     if (supportedExtensions.includes(extension)) {
       const normalizedName = normalizeFileName(path.parse(image).name);
       try {
-        imageMap[
-          normalizedName
-        ] = `require('@/assets/reciter-images/${image}')`;
+        imageMap[normalizedName] =
+          `require('@/assets/reciter-images/${image}')`;
       } catch (error: unknown) {
         if (error instanceof Error) {
           console.error(`Error processing image ${image}: ${error.message}`);

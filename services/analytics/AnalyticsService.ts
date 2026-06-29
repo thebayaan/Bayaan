@@ -250,12 +250,14 @@ class AnalyticsServiceImpl {
     totalDurationMs: number,
     surahId: number,
     reciterId: string,
+    reciterName: string,
     rewayahId: string,
   ): void {
     this.meaningfulListenTracker.startTracking({
       totalDurationMs,
       surahId,
       reciterId,
+      reciterName,
       rewayahId,
     });
   }

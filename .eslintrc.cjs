@@ -22,6 +22,9 @@ module.exports = {
       },
     ],
     'react/prop-types': 'off',
+
+    'no-dupe-keys': 'error',
+    'react/no-unused-prop-types': 'warn',
     'react/react-in-jsx-scope': 'off',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',

@@ -22,6 +22,7 @@ export default function MushafSettingsScreen() {
         },
       ]}>
       <ScrollView
+        style={styles.content}
         contentContainerStyle={styles.scrollContent}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}>
@@ -36,6 +37,13 @@ export default function MushafSettingsScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  // flex: 1 on the ScrollView itself is what lets iOS 26's NativeTabs
+  // BottomAccessory (mini player) auto-collapse on scroll; the tab bar
+  // tracks the screen's primary scroll view by its frame, and a ScrollView
+  // sized to content doesn't register as primary.
+  content: {
     flex: 1,
   },
   scrollContent: {

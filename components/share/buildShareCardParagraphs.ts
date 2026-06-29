@@ -39,6 +39,7 @@ import {
 } from '@/services/mushaf/DigitalKhattDataService';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
 import type {RewayahId} from '@/store/mushafSettingsStore';
+import branding from '@/config/branding';
 
 interface QuranEntry {
   verse_key: string;
@@ -314,7 +315,7 @@ export function buildShareCardParagraphs(
     rewayahLabelHeight = rewayahLabelParagraph.getHeight();
   }
 
-  // Watermark: logo + "made with Bayaan" (left-aligned, manually centered in canvas)
+  // Watermark: logo + "made with {appName}" (left-aligned, manually centered in canvas)
   let watermarkParagraph: SkParagraph | null = null;
   let watermarkHeight = 0;
   let watermarkTextWidth = 0;
@@ -330,7 +331,7 @@ export function buildShareCardParagraphs(
       fontFamilies: ['ManropeSemiBold'],
       fontSize: watermarkFontSize,
     });
-    wmBuilder.addText('made with Bayaan');
+    wmBuilder.addText(`made with ${branding.appName}`);
     wmBuilder.pop();
     watermarkParagraph = wmBuilder.build();
     watermarkParagraph.layout(contentWidth);

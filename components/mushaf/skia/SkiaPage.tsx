@@ -1,11 +1,7 @@
 import React, {useMemo, useState, useEffect, useRef, useCallback} from 'react';
-import {View, StyleSheet, Platform} from 'react-native';
-import {
-  Canvas,
-  Skia,
-  useFonts,
-  type SkParagraph,
-} from '@shopify/react-native-skia';
+import {View, Platform} from 'react-native';
+import {Canvas, Skia, type SkParagraph} from '@shopify/react-native-skia';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
@@ -26,13 +22,11 @@ import {
   type DKLine,
 } from '@/services/mushaf/DigitalKhattDataService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
+import {getLineAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {themeDataService} from '@/services/mushaf/ThemeDataService';
-import {
-  rewayahDiffService,
-  type RewayahDiffCategory,
-} from '@/services/mushaf/RewayahDiffService';
+import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -42,17 +36,18 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
 import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import Color from 'color';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
 import {
-  SCREEN_WIDTH,
-  SCREEN_HEIGHT,
-  PAGE_PADDING_HORIZONTAL,
-  PAGE_PADDING_TOP,
-  CONTENT_WIDTH,
-  CONTENT_HEIGHT,
-  BASE_LINE_HEIGHT,
+  SCREEN_WIDTH as DEFAULT_SCREEN_WIDTH,
+  SCREEN_HEIGHT as DEFAULT_SCREEN_HEIGHT,
+  PAGE_PADDING_HORIZONTAL as DEFAULT_PAGE_PADDING_HORIZONTAL,
+  PAGE_PADDING_TOP as DEFAULT_PAGE_PADDING_TOP,
+  CONTENT_WIDTH as DEFAULT_CONTENT_WIDTH,
+  CONTENT_HEIGHT as DEFAULT_CONTENT_HEIGHT,
+  BASE_LINE_HEIGHT as DEFAULT_BASE_LINE_HEIGHT,
   calculateLineYPositions,
 } from '../constants';
 
@@ -68,11 +63,19 @@ interface SkiaPageProps {
   contentMarginLeft?: number;
   onReady?: () => void;
   onTap?: () => void;
+  /**
+   * Optional layout metrics overrides. When omitted, the component falls
+   * back to the module-level constants (phone-portrait defaults). iPad and
+   * rotation-aware callers should pass values from `useMushafLayout()`.
+   */
+  screenWidth?: number;
+  screenHeight?: number;
+  contentWidth?: number;
+  contentHeight?: number;
+  baseLineHeight?: number;
+  paddingHorizontal?: number;
+  paddingTop?: number;
 }
-
-// Background tint applied to words that differ from Hafs when a non-Hafs
-// rewayah is active. Chosen to pop against both light and dark mushaf themes.
-const REWAYAH_DIFF_COLOR = 'rgba(255, 107, 53, 0.3)';
 
 const SkiaPage: React.FC<SkiaPageProps> = ({
   pageNumber,
@@ -81,30 +84,41 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   contentMarginLeft,
   onReady,
   onTap,
+  screenWidth: propScreenWidth,
+  screenHeight: propScreenHeight,
+  contentWidth: propContentWidth,
+  contentHeight: propContentHeight,
+  baseLineHeight: propBaseLineHeight,
+  paddingHorizontal: propPaddingHorizontal,
+  paddingTop: propPaddingTop,
 }) => {
+  const SCREEN_WIDTH = propScreenWidth ?? DEFAULT_SCREEN_WIDTH;
+  const SCREEN_HEIGHT = propScreenHeight ?? DEFAULT_SCREEN_HEIGHT;
+  const CONTENT_WIDTH = propContentWidth ?? DEFAULT_CONTENT_WIDTH;
+  const CONTENT_HEIGHT = propContentHeight ?? DEFAULT_CONTENT_HEIGHT;
+  const BASE_LINE_HEIGHT = propBaseLineHeight ?? DEFAULT_BASE_LINE_HEIGHT;
+  const PAGE_PADDING_HORIZONTAL =
+    propPaddingHorizontal ?? DEFAULT_PAGE_PADDING_HORIZONTAL;
+  const PAGE_PADDING_TOP = propPaddingTop ?? DEFAULT_PAGE_PADDING_TOP;
+
   const {theme} = useTheme();
-  // Keep useFonts hook as fallback (can't conditionally call hooks).
-  // Prefer preloaded fontMgr from MushafPreloadService — ready synchronously
-  // on first render since AppInitializer runs before Mushaf tab mounts.
-  const hookFontMgr = useFonts({
-    DigitalKhattV1: [require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf')],
-    DigitalKhattV2: [
-      require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
-    ],
-    DigitalKhattIndoPak: [
-      require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
-    ],
-    QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
-    SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-  });
-  const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+  // Subscribe to the preloaded fontMgr instead of running a parallel
+  // useFonts() fallback that races at first-mount and surfaces as
+  // "Couldn't create typeface for SurahNameV4" Sentry exceptions.
+  const fontMgr = useMushafFontMgr();
 
   // Calculate rendering dimensions (hoisted above surahHeaderFonts so lineWidth is available)
   const scale = CONTENT_WIDTH / PAGE_WIDTH;
   const margin = MARGIN * scale;
   const lineWidth = CONTENT_WIDTH - 2 * margin;
 
-  // Create scaled SkFont objects for surah header rendering (Skia Text path)
+  // Create scaled SkFont objects for surah header rendering (Skia Text path).
+  // `fontMgr` is in the dep array even though we read `quranCommonTypeface`
+  // directly from the singleton: when the subscription fires (preload
+  // completes after this component mounted), `lineWidth` hasn't changed
+  // and the memo would otherwise return its cached null-divider result.
+  // Re-running on the fontMgr transition rebuilds the divider with the
+  // now-available typeface.
   const surahHeaderFonts = useMemo(() => {
     const qcTypeface = mushafPreloadService.quranCommonTypeface;
     if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
@@ -120,22 +134,39 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       dividerFont: Skia.Font(qcTypeface, scaledSize),
       nameFontSize: scaledSize * 0.4,
     };
-  }, [lineWidth]);
+  }, [lineWidth, fontMgr]);
 
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
   const showThemes = useMushafSettingsStore(s => s.showThemes);
   const uthmaniFont = useMushafSettingsStore(s => s.uthmaniFont);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
   const fontFamily =
-    getRewayahFontFamily(rewayah) ??
+    getRewayahFontFamily(
+      rewayah as Parameters<typeof getRewayahFontFamily>[0],
+    ) ??
     (mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : uthmaniFont === 'v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2');
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2');
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
 
   const selectedVerseKeys = useMushafVerseSelectionStore(
     s => s.selectedVerseKeys,
@@ -160,7 +191,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
 
-  // onReady tracking — refs keep handleParagraphReady callback stable
+  // onReady tracking; refs keep handleParagraphReady callback stable
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
   const readyFiredRef = useRef(false);
@@ -215,8 +246,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   // Calculate Y positions for each line
   const lineYPositions = useMemo(
-    () => calculateLineYPositions(pageLines, pageNumber),
-    [pageLines, pageNumber],
+    () =>
+      calculateLineYPositions(
+        pageLines,
+        pageNumber,
+        CONTENT_HEIGHT,
+        BASE_LINE_HEIGHT,
+      ),
+    [pageLines, pageNumber, CONTENT_HEIGHT, BASE_LINE_HEIGHT],
   );
 
   // Compute tajweed char-to-rule maps for each line
@@ -229,64 +266,59 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return maps;
   }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
 
-  // Merged char-to-rule maps: tajweed + rewayah categories + silah.
-  // Precedence (later wins): tajweed → minor → ibdal → tashil → madd →
-  //   taghliz → silah. Silah always takes priority as the most specific
-  //   marker of Bazzi/Qumbul/Warsh/Qaloon pronunciation. 'mukhtalif' and
-  //   'major' are whole-word variants — they render as background tint
-  //   (see REWAYAH_DIFF_BACKGROUND in the backgroundHighlights pipeline),
-  //   not as foreground char colors.
-  const lineCharRuleMaps = useMemo(() => {
-    const hasSilah = rewayahDiffService.hasSilahColoring;
-    const hasAnyRewayah = rewayahDiffService.hasAnyDiffs;
-    if (!hasSilah && !hasAnyRewayah && !lineTajweedMaps) return null;
+  const lineAllahNameColorMaps = useMemo(() => {
+    if (!showAllahNameHighlight) return null;
+    const maps: (Map<number, string> | null)[] = [];
+    for (let i = 0; i < pageLines.length; i++) {
+      const charMap = getLineAllahNameCharMap(pageNumber, i);
+      if (!charMap) {
+        maps.push(null);
+        continue;
+      }
+      const colorMap = new Map<number, string>();
+      for (const key of charMap.keys()) {
+        colorMap.set(key, allahNameHighlightColor);
+      }
+      maps.push(colorMap);
+    }
+    return maps;
+  }, [showAllahNameHighlight, pageNumber, pageLines, allahNameHighlightColor]);
 
-    // Ordered low→high precedence: later entries override earlier ones
-    // when the same char index is in multiple categories.
-    const categories: readonly RewayahDiffCategory[] = [
-      'minor',
-      'ibdal',
-      'tashil',
-      'madd',
-      'taghliz',
-    ];
+  // Merged char-to-rule maps: tajweed as base, rewayah foreground categories
+  // (+ silah) layered on top so rewayah rules win on overlap. The rewayah
+  // rule map is built once per line by RewayahDiffService and shared with
+  // the list- and vertical-mushaf renderers to keep foreground highlights
+  // consistent across every pipeline.
+  const lineCharRuleMaps = useMemo(() => {
+    if (
+      !lineTajweedMaps &&
+      !rewayahDiffService.hasAnyDiffs &&
+      !rewayahDiffService.hasSilahColoring
+    ) {
+      return null;
+    }
 
     const maps: (Map<number, string> | null)[] = [];
     for (let i = 0; i < pageLines.length; i++) {
       const tajweed = lineTajweedMaps?.[i] ?? null;
-      const silahIndexes = hasSilah
-        ? rewayahDiffService.getSilahCharsForLine(pageNumber, i)
-        : null;
-      const categoryIndexes: Array<[RewayahDiffCategory, number[]]> = [];
-      if (hasAnyRewayah) {
-        for (const cat of categories) {
-          if (!rewayahDiffService.hasCategory(cat)) continue;
-          const indexes = rewayahDiffService.getCharsForCategory(
-            cat,
-            pageNumber,
-            i,
-          );
-          if (indexes.length > 0) categoryIndexes.push([cat, indexes]);
-        }
-      }
-
-      const anyIndexes =
-        (silahIndexes && silahIndexes.length > 0) || categoryIndexes.length > 0;
-      if (!tajweed && !anyIndexes) {
+      const rewayahMap = rewayahDiffService.getRewayahRuleMapForLine(
+        pageNumber,
+        i,
+      );
+      if (!tajweed && !rewayahMap) {
         maps.push(null);
         continue;
       }
-
-      const merged = new Map<number, string>();
-      if (tajweed) {
-        for (const [k, v] of tajweed) merged.set(k, v);
+      if (!rewayahMap) {
+        maps.push(tajweed);
+        continue;
       }
-      for (const [cat, indexes] of categoryIndexes) {
-        for (const idx of indexes) merged.set(idx, cat);
+      if (!tajweed) {
+        maps.push(rewayahMap);
+        continue;
       }
-      if (silahIndexes) {
-        for (const idx of silahIndexes) merged.set(idx, 'silah');
-      }
+      const merged = new Map(tajweed);
+      for (const [k, v] of rewayahMap) merged.set(k, v);
       maps.push(merged);
     }
     return maps;
@@ -452,7 +484,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
       // Only allow forward (downward) selection
       if (currentIdx < startIdx) {
-        // Finger moved above start verse — keep only start
+        // Finger moved above start verse; keep only start
         if (dragCurrentVerseKeyRef.current !== startKey) {
           dragCurrentVerseKeyRef.current = startKey;
           selectVerse(startKey, pageNumber);
@@ -619,27 +651,18 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
     // Layer -1: Rewayah diff highlights (painted first, overdrawn by any
     // higher-priority highlight). Uses a saturated orange tint so differing
-    // words clearly pop out as a study aid for students.
+    // words clearly pop out as a study aid for students. Shared pipeline
+    // with ContinuousMushafView via rewayahDiffService.
     if (hasRewayahDiffs) {
-      const lineCount = digitalKhattDataService.getPageLines(pageNumber).length;
-      for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        const ranges = rewayahDiffService.getDiffRangesForLine(
-          pageNumber,
-          lineIndex,
-        );
-        if (ranges.length === 0) continue;
+      const diffHighlights =
+        rewayahDiffService.getPageDiffHighlightsByLine(pageNumber);
+      for (const [lineIndex, entries] of diffHighlights) {
         let arr = map.get(lineIndex);
         if (!arr) {
           arr = [];
           map.set(lineIndex, arr);
         }
-        for (const r of ranges) {
-          arr.push({
-            start: r.start,
-            end: r.end,
-            color: REWAYAH_DIFF_BACKGROUND,
-          });
-        }
+        for (const entry of entries) arr.push(entry);
       }
     }
 
@@ -702,12 +725,14 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     pageNumber,
   ]);
 
+  const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
+
   if (!fontMgr || !justResults) {
-    return <View style={styles.page} />;
+    return <View style={pageStyle} />;
   }
 
   const content = (
-    <View style={styles.page}>
+    <View style={pageStyle}>
       <Canvas
         style={{
           width: CONTENT_WIDTH,
@@ -762,7 +787,9 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               yPos={yPos}
               textColor={textColor}
               charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
+              charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
               fontFamily={fontFamily}
+              arabicTextWeight={arabicTextWeight}
               onParagraphReady={handleParagraphReady}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
               lineHeight={
@@ -779,12 +806,5 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
   return <GestureDetector gesture={composedGesture}>{content}</GestureDetector>;
 };
-
-const styles = StyleSheet.create({
-  page: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  },
-});
 
 export default React.memo(SkiaPage);

@@ -1,7 +1,7 @@
 // app/(tabs)/_layout.tsx
 
 import React from 'react';
-import {Platform, View} from 'react-native';
+import {View} from 'react-native';
 import {Tabs} from 'expo-router';
 import {StatusBar} from 'expo-status-bar';
 import {useTheme} from '@/hooks/useTheme';
@@ -9,17 +9,11 @@ import {NativeTabs} from 'expo-router/unstable-native-tabs';
 import {MiniPlayer} from '@/components/player/v2/MiniPlayer';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import BottomTabBar from '@/components/BottomTabBar';
-import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {BottomTabBarProps} from 'expo-router/build/react-navigation/bottom-tabs';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
-import {
-  HomeIcon,
-  SearchIcon,
-  CollectionIcon,
-  SettingsIcon,
-} from '@/components/Icons';
+import {TabletSidebar} from '@/components/tablet/TabletSidebar';
+import {useResponsive} from '@/hooks/useResponsive';
 import {USE_GLASS} from '@/hooks/useGlassProps';
-
-const ICON_SIZE = 24;
 
 // PNG tab icons for NativeTabs (iOS) — template-rendered by the native tab bar
 const tabIcons = {
@@ -45,15 +39,17 @@ const tabBarComponent = (props: BottomTabBarProps) => (
   <BottomTabBar {...props} />
 );
 
+const tabletSidebarComponent = (props: BottomTabBarProps) => (
+  <TabletSidebar {...props} />
+);
+
 function IOSTabs() {
-  const {theme, isDarkMode} = useTheme();
+  const {theme} = useTheme();
   const hasTrack = usePlayerStore(state => {
     const tracks = state.queue.tracks;
     const index = state.queue.currentIndex;
     return tracks.length > 0 && tracks[index] != null;
   });
-
-  const color = theme.colors.text;
 
   return (
     <NativeTabs
@@ -143,17 +139,45 @@ function AndroidTabs() {
   );
 }
 
+/**
+ * Tablet shell: left-docked sidebar (rail in portrait, labeled in landscape)
+ * with the mini player docked in the sidebar footer. Replaces both the iOS
+ * NativeTabs and the Android floating pill when `isTablet` is true.
+ */
+function TabletTabs() {
+  return (
+    <View style={{flex: 1}}>
+      <Tabs
+        initialRouteName="(a.home)"
+        screenOptions={{
+          headerShown: false,
+          lazy: true,
+          tabBarPosition: 'left',
+          tabBarStyle: {
+            borderTopWidth: 0,
+            borderRightWidth: 0,
+            elevation: 0,
+          },
+        }}
+        tabBar={tabletSidebarComponent}>
+        <Tabs.Screen name="(a.home)" options={{title: 'Home'}} />
+        <Tabs.Screen name="(b.surahs)" options={{title: 'Surahs'}} />
+        <Tabs.Screen name="(b.search)" options={{title: 'Search'}} />
+        <Tabs.Screen name="(c.collection)" options={{title: 'Collection'}} />
+        <Tabs.Screen name="(d.settings)" options={{title: 'Settings'}} />
+      </Tabs>
+    </View>
+  );
+}
+
 export default function TabsLayout() {
   const {isDarkMode} = useTheme();
+  const {isTablet} = useResponsive();
 
   return (
     <>
-      <StatusBar
-        style={isDarkMode ? 'light' : 'dark'}
-        translucent
-        backgroundColor="transparent"
-      />
-      {USE_GLASS ? <IOSTabs /> : <AndroidTabs />}
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      {isTablet ? <TabletTabs /> : USE_GLASS ? <IOSTabs /> : <AndroidTabs />}
     </>
   );
 }

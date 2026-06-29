@@ -188,7 +188,7 @@ const ShareCardPreview: React.FC<ShareCardPreviewProps> = ({
           y += elements.rewayahLabelHeight;
         }
 
-        // Watermark: squircle logo + "made with Bayaan" (centered)
+        // Watermark: squircle logo + "made with {appName}" (centered)
         if (elements.watermarkParagraph) {
           const iconSize = elements.watermarkIconSize;
           const gap = elements.watermarkGap;

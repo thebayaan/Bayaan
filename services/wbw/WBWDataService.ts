@@ -31,9 +31,9 @@ class WBWDataService {
       let db = await SQLite.openDatabaseAsync(dbName);
 
       const tableCheck = await db
-        .getFirstAsync<{name: string}>(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='words';",
-        )
+        .getFirstAsync<{
+          name: string;
+        }>("SELECT name FROM sqlite_master WHERE type='table' AND name='words';")
         .catch(() => null);
 
       if (!tableCheck) {

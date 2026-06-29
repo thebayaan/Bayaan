@@ -14,6 +14,7 @@ import {
 } from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {Theme} from '@/utils/themeUtils';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import ActionSheet, {
   SheetProps,
   SheetManager,
@@ -26,7 +27,7 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
-import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import SkiaVerseText from '@/components/player/v2/PlayerContent/QuranView/SkiaVerseText';
 import type {SimilarAyah, MutashabihatPhrase} from '@/types/qul';
 
@@ -69,15 +70,30 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+  const showAllahNameHighlight = useMushafSettingsStore(
+    s => s.showAllahNameHighlight,
+  );
+  const allahNameHighlightColorSetting = useMushafSettingsStore(
+    s => s.allahNameHighlightColor,
+  );
   const showTajweed = useMushafSettingsStore(s => s.showTajweed);
+  const allahNameHighlightColor = useMemo(
+    () =>
+      getAllahNameHighlightColorHex(
+        allahNameHighlightColorSetting,
+        theme.isDarkMode,
+      ),
+    [allahNameHighlightColorSetting, theme.isDarkMode],
+  );
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
-  const fontMgr = mushafPreloadService.fontMgr;
+  const fontMgr = useMushafFontMgr();
   const fontFamily =
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-      ? 'DigitalKhattV1'
-      : 'DigitalKhattV2';
+        ? 'DigitalKhattV1'
+        : 'DigitalKhattV2';
   const [contentWidth, setContentWidth] = useState(0);
 
   const handleContentLayout = useCallback((e: LayoutChangeEvent) => {
@@ -218,6 +234,9 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                             showTajweed={false}
                             width={contentWidth - moderateScale(28)}
                             indexedTajweedData={null}
+                            arabicTextWeight={arabicTextWeight}
+                            showAllahNameHighlight={showAllahNameHighlight}
+                            allahNameHighlightColor={allahNameHighlightColor}
                           />
                         </View>
                       ) : null}
@@ -270,6 +289,13 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                                       showTajweed={showTajweed}
                                       width={contentWidth - moderateScale(36)}
                                       indexedTajweedData={indexedTajweedData}
+                                      arabicTextWeight={arabicTextWeight}
+                                      showAllahNameHighlight={
+                                        showAllahNameHighlight
+                                      }
+                                      allahNameHighlightColor={
+                                        allahNameHighlightColor
+                                      }
                                     />
                                   </View>
                                 )}
@@ -355,6 +381,9 @@ export const SimilarVersesSheet = (props: SheetProps<'similar-verses'>) => {
                           showTajweed={false}
                           width={contentWidth - moderateScale(28)}
                           indexedTajweedData={null}
+                          arabicTextWeight={arabicTextWeight}
+                          showAllahNameHighlight={showAllahNameHighlight}
+                          allahNameHighlightColor={allahNameHighlightColor}
                         />
                       ) : null}
                     </Pressable>

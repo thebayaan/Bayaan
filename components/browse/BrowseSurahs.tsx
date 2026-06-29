@@ -21,7 +21,7 @@ import {GRADIENT_COLORS} from '@/utils/gradientColors';
 import {useReciterSelection} from '@/hooks/useReciterSelection';
 import {Theme} from '@/utils/themeUtils';
 import {getJuzForSurah, getJuzName} from '@/data/juzData';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 
@@ -469,7 +469,9 @@ export default function BrowseSurahs({theme, onBack}: BrowseSurahsProps) {
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {/* Android: custom header | iOS: native header via layout */}
-      {!isGlass && <Header title="All Surahs" onBack={onBack} showBlur={true} />}
+      {!isGlass && (
+        <Header title="All Surahs" onBack={onBack} showBlur={true} />
+      )}
 
       <View
         style={[

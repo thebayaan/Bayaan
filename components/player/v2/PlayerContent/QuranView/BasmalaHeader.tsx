@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {moderateScale, verticalScale} from '@/utils/scale';
 import {
   Canvas,
   Paragraph,
@@ -9,11 +9,18 @@ import {
   TextDirection,
   type SkTypefaceFontProvider,
   type SkTextStyle,
+  type SkColor,
 } from '@shopify/react-native-skia';
 import {BASMALLAH_TEXT} from '@/services/mushaf/DigitalKhattDataService';
+import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getBasmalaTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -24,6 +31,9 @@ const paragraphStyle = {
 interface BasmalaCacheEntry {
   key: string;
   paragraph: ReturnType<ReturnType<typeof Skia.ParagraphBuilder.Make>['build']>;
+  strokeParagraph: ReturnType<
+    ReturnType<typeof Skia.ParagraphBuilder.Make>['build']
+  > | null;
   height: number;
   xPos: number;
   maxWidth: number;
@@ -38,47 +48,84 @@ function getOrBuildBasmala(
   fontSize: number,
   charToRule: Map<number, string> | null,
   showTajweed: boolean,
+  arabicTextWeight: MushafArabicTextWeight,
+  showAllahNameHighlight: boolean,
+  allahNameHighlightColor?: string,
 ): BasmalaCacheEntry {
-  const cacheKey = `${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}`;
+  const cacheKey = `${width}:${textColor}:${dkFontFamily}:${fontSize}:${showTajweed}:${arabicTextWeight}:${showAllahNameHighlight}:${allahNameHighlightColor ?? ''}`;
   if (basmalaCache?.key === cacheKey) return basmalaCache;
 
   const color = Skia.Color(textColor);
+  const strokeWidth = getArabicTextWeightStrokeWidth(
+    arabicTextWeight,
+    fontSize,
+  );
   const baseStyle: SkTextStyle = {
     color,
     fontFamilies: [dkFontFamily],
     fontSize,
     fontFeatures: [{name: 'basm', value: 1}],
   };
+  const charToAllahHighlight =
+    showAllahNameHighlight && allahNameHighlightColor
+      ? getTextAllahNameCharMap(BASMALLAH_TEXT)
+      : null;
 
-  const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
-  builder.pushStyle(baseStyle);
+  const buildParagraph = (withStroke: boolean) => {
+    const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
+    const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
+      const strokePaint = withStroke
+        ? createTextStrokePaint(styleColor, strokeWidth)
+        : undefined;
+      if (strokePaint) {
+        builder.pushStyle(style, strokePaint);
+      } else {
+        builder.pushStyle(style);
+      }
+    };
 
-  for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
-    const char = BASMALLAH_TEXT.charAt(i);
-    const rule = charToRule?.get(i);
+    pushStyle(baseStyle, color);
 
-    if (rule && tajweedColors[rule]) {
-      const charStyle: SkTextStyle = {
-        ...baseStyle,
-        color: Skia.Color(tajweedColors[rule]),
-      };
-      builder.pushStyle(charStyle);
-      builder.addText(char);
-      builder.pop();
-    } else {
-      builder.addText(char);
+    for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
+      const char = BASMALLAH_TEXT.charAt(i);
+      const allahHighlight = charToAllahHighlight?.has(i);
+      const rule = charToRule?.get(i);
+      const resolvedColor = allahHighlight
+        ? allahNameHighlightColor
+        : rule && tajweedColors[rule]
+          ? tajweedColors[rule]
+          : null;
+
+      if (resolvedColor) {
+        const charColor = Skia.Color(resolvedColor);
+        const charStyle: SkTextStyle = {
+          ...baseStyle,
+          color: charColor,
+        };
+        pushStyle(charStyle, charColor);
+        builder.addText(char);
+        builder.pop();
+      } else {
+        builder.addText(char);
+      }
     }
-  }
 
-  builder.pop();
-  const p = builder.build();
+    builder.pop();
+    const p = builder.build();
+    return p;
+  };
+
+  const p = buildParagraph(false);
+  const strokeP = strokeWidth > 0 ? buildParagraph(true) : null;
   const maxWidth = width * 2;
   p.layout(maxWidth);
+  strokeP?.layout(maxWidth);
   const lineWidth = p.getLongestLine();
 
   basmalaCache = {
     key: cacheKey,
     paragraph: p,
+    strokeParagraph: strokeP,
     height: p.getHeight(),
     xPos: -(maxWidth - width + (width - lineWidth) / 2),
     maxWidth,
@@ -98,6 +145,9 @@ interface BasmalaHeaderProps {
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
   indexedTajweedData: IndexedTajweedData | null;
+  arabicTextWeight?: MushafArabicTextWeight;
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
 }
 
 const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
@@ -108,6 +158,9 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   fontMgr,
   dkFontFamily,
   indexedTajweedData,
+  arabicTextWeight = 'normal',
+  showAllahNameHighlight = false,
+  allahNameHighlightColor,
 }) => {
   const charToRule = useMemo(() => {
     if (!showTajweed || !indexedTajweedData) return null;
@@ -122,21 +175,33 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
 
   // Skia rendering path — width is known synchronously, cache returns instantly on surah change
   if (fontMgr && width > 0) {
-    const {paragraph, height, xPos, maxWidth} = getOrBuildBasmala(
-      fontMgr,
-      width,
-      textColor,
-      dkFontFamily,
-      fontSize,
-      charToRule,
-      showTajweed,
-    );
+    const {paragraph, strokeParagraph, height, xPos, maxWidth} =
+      getOrBuildBasmala(
+        fontMgr,
+        width,
+        textColor,
+        dkFontFamily,
+        fontSize,
+        charToRule,
+        showTajweed,
+        arabicTextWeight,
+        showAllahNameHighlight,
+        allahNameHighlightColor,
+      );
     // Extra horizontal room so the basm glyph isn't clipped at canvas edges.
     // V2 font renders a wider basm glyph — scale padding with width for larger devices.
     const hPad = Math.max(moderateScale(16), width * 0.06);
     return (
       <View style={containerStyle}>
         <Canvas style={{width: width + hPad * 2, height, direction: 'rtl'}}>
+          {strokeParagraph && (
+            <Paragraph
+              paragraph={strokeParagraph}
+              x={xPos + hPad}
+              y={0}
+              width={maxWidth}
+            />
+          )}
           <Paragraph
             paragraph={paragraph}
             x={xPos + hPad}
@@ -156,6 +221,8 @@ const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
         showTajweed={showTajweed}
         textColor={textColor}
         fontSize={fontSize}
+        showAllahNameHighlight={showAllahNameHighlight}
+        allahNameHighlightColor={allahNameHighlightColor}
       />
     </View>
   );
@@ -167,49 +234,53 @@ const BasmalaFallbackText: React.FC<{
   showTajweed: boolean;
   textColor: string;
   fontSize: number;
-}> = ({indexedTajweedData, showTajweed, textColor, fontSize}) => {
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
+}> = ({
+  indexedTajweedData,
+  showTajweed,
+  textColor,
+  fontSize,
+  showAllahNameHighlight = false,
+  allahNameHighlightColor,
+}) => {
+  const charToRule = useMemo(() => {
+    if (!showTajweed || !indexedTajweedData) return null;
+    return getBasmalaTajweedMap(indexedTajweedData);
+  }, [showTajweed, indexedTajweedData]);
+
+  const charToAllahHighlight = useMemo(
+    () =>
+      showAllahNameHighlight && allahNameHighlightColor
+        ? getTextAllahNameCharMap(BASMALLAH_TEXT)
+        : null,
+    [showAllahNameHighlight, allahNameHighlightColor],
+  );
+
   const fallbackNodes = useMemo(() => {
-    if (!indexedTajweedData) return null;
-    const tajweedWords = indexedTajweedData['1:1'];
-    if (!tajweedWords) return null;
-
-    const basmalaWords = BASMALLAH_TEXT.split(' ');
     const nodes: React.ReactNode[] = [];
-
-    for (let i = 0; i < basmalaWords.length; i++) {
-      const wordPosition = i + 1;
-      const tajweedWord = tajweedWords.find(w => {
-        const pos = parseInt(w.location.split(':')[2], 10);
-        return pos === wordPosition;
-      });
-
-      if (tajweedWord) {
-        tajweedWord.segments.forEach((segment, segIndex) => {
-          const color =
-            showTajweed && segment.rule
-              ? tajweedColors[segment.rule] || textColor
-              : textColor;
-          nodes.push(
-            <Text key={`basm-${i}-${segIndex}`} style={{color}}>
-              {segment.text}
-            </Text>,
-          );
-        });
-      } else {
-        nodes.push(
-          <Text key={`basm-${i}`} style={{color: textColor}}>
-            {basmalaWords[i]}
-          </Text>,
-        );
-      }
-
-      if (i < basmalaWords.length - 1) {
-        nodes.push(<Text key={`basm-sp-${i}`}> </Text>);
-      }
+    for (let i = 0; i < BASMALLAH_TEXT.length; i++) {
+      const color =
+        charToAllahHighlight?.has(i) && allahNameHighlightColor
+          ? allahNameHighlightColor
+          : showTajweed && charToRule?.get(i)
+            ? tajweedColors[charToRule.get(i)!] || textColor
+            : textColor;
+      nodes.push(
+        <Text key={`basm-char-${i}`} style={{color}}>
+          {BASMALLAH_TEXT.charAt(i)}
+        </Text>,
+      );
     }
 
     return nodes;
-  }, [indexedTajweedData, showTajweed, textColor]);
+  }, [
+    showTajweed,
+    textColor,
+    charToRule,
+    charToAllahHighlight,
+    allahNameHighlightColor,
+  ]);
 
   if (fallbackNodes) {
     return (

@@ -54,7 +54,9 @@ export default function PlaylistsScreen() {
         contentArea: {
           width: '100%',
           alignItems: 'center',
-          paddingTop: USE_GLASS ? moderateScale(16) : insets.top + moderateScale(40),
+          paddingTop: USE_GLASS
+            ? moderateScale(16)
+            : insets.top + moderateScale(40),
           paddingBottom: moderateScale(30),
           overflow: 'hidden',
           backgroundColor: theme.colors.background,

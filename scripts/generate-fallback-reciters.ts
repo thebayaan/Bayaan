@@ -3,6 +3,19 @@
  * to data/reciters-fallback.json for use as a killswitch fallback.
  *
  * Usage: npx tsx scripts/generate-fallback-reciters.ts
+ *
+ * ⚠️  MAINTAINER-ONLY — this overwrites the OSS-safe fallback.
+ *
+ * The file checked into git at data/reciters-fallback.json is a curated
+ * public-source version (mp3quran.net / quranicaudio.com only) that ships
+ * with the open-source repo so forks work out of the box without exposing
+ * the full R2 catalog. Running this script replaces it with the full
+ * catalog from the Bayaan API (including cdn.example.com URLs).
+ *
+ * Do not commit the regenerated file to the public repo. If you need to
+ * regenerate the OSS fallback after adding new reciters, export the data
+ * and filter out entries whose `server` points at private hosts before
+ * committing.
  */
 
 import * as fs from 'fs';

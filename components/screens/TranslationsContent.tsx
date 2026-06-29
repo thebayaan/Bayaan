@@ -19,7 +19,7 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useNavigation} from 'expo-router';
 import TabSelector from '@/components/TabSelector';
@@ -774,7 +774,7 @@ export default function TranslationsContent() {
         <View style={{flex: 1}}>
           <View
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               {opacity: activeTab === 'Translations' ? 1 : 0},
             ]}
             pointerEvents={activeTab === 'Translations' ? 'auto' : 'none'}>
@@ -793,7 +793,7 @@ export default function TranslationsContent() {
           </View>
           <View
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               {opacity: activeTab === 'Tafaseer' ? 1 : 0},
             ]}
             pointerEvents={activeTab === 'Tafaseer' ? 'auto' : 'none'}>

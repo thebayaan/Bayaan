@@ -1,3 +1,5 @@
+> **SHIPPED — This feature is implemented.** This was the design document for the word-by-word translation feature. See `services/wbw/WBWDataService.ts` and `mushafSettingsStore` (`showWBW`) for the implementation.
+
 # Word-by-Word Translation — Design Document
 
 **Date:** 2026-03-04
@@ -135,12 +137,14 @@ Long-press handler
 
 ## New Files
 
-| File | Purpose |
-|------|---------|
-| `services/wbw/WBWDataService.ts` | SQLite service for WBW lookups |
-| `components/player/v2/PlayerContent/QuranView/WBWVerseView.tsx` | RTL flex-wrap word grid component |
-| `components/sheets/WordDetailSheet.tsx` | Long-press word detail bottom sheet |
-| `data/wbw/wbw-en.db` | Bundled WBW database |
+
+| File                                                            | Purpose                             |
+| --------------------------------------------------------------- | ----------------------------------- |
+| `services/wbw/WBWDataService.ts`                                | SQLite service for WBW lookups      |
+| `components/player/v2/PlayerContent/QuranView/WBWVerseView.tsx` | RTL flex-wrap word grid component   |
+| `components/sheets/WordDetailSheet.tsx`                         | Long-press word detail bottom sheet |
+| `data/wbw/wbw-en.db`                                            | Bundled WBW database                |
+
 
 ## Performance Considerations
 
@@ -148,3 +152,4 @@ Long-press handler
 - Each verse lookup is a single indexed SQLite query: `WHERE verse_key = ? ORDER BY position`
 - FlashList virtualization still applies — only visible verses render WBW grids
 - Word units are simple View + Text stacks, no heavy computation
+

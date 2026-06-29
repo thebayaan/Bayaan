@@ -26,6 +26,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 ## Layers
 
 **Presentation Layer:**
+
 - Purpose: Render UI and handle user interactions
 - Location: `app/` (screens), `components/` (reusable components)
 - Contains: Screen components, UI elements, animations, styles
@@ -33,12 +34,14 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Used by: Direct user interaction
 
 **Routing & Navigation:**
+
 - Purpose: Manage screen navigation and state persistence
 - Location: `app/` directory with Expo Router layout files
 - Pattern: File-based routing with `_layout.tsx` for shared UI
 - Structure: Nested group folders like `(a.home)`, `(b.search)`, `(c.collection)`
 
 **State Management Layer:**
+
 - Purpose: Persist and manage application state
 - Location: `store/` and `services/player/store/`
 - Contains: Zustand stores with AsyncStorage persistence
@@ -49,6 +52,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Dependencies: AsyncStorage for persistence layer
 
 **Service Layer:**
+
 - Purpose: Business logic, data operations, external integrations
 - Location: `services/` directory
 - Core Services:
@@ -64,6 +68,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Used by: Hooks, components, app initialization
 
 **Audio Playback System:**
+
 - Purpose: Manage audio playback state and queue
 - Location: `services/player/`
 - Components:
@@ -77,6 +82,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Data Flow: TrackPlayer events → Event bridge → playerStore updates → UI re-renders
 
 **Data Layer:**
+
 - Purpose: Persist data and access external APIs
 - Location: `services/database/`, Supabase (cloud)
 - Storage Methods:
@@ -87,6 +93,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Flow: Service → Database/Storage → Zustand store → Components
 
 **Utility Layer:**
+
 - Purpose: Shared helper functions, formatters, validators
 - Location: `utils/` directory
 - Categories:
@@ -104,12 +111,12 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 
 1. User selects Surah/Reciter from UI
 2. Hook (`usePlayback`) prepares queue:
-   - Calls `QueueManager.getInstance()`
-   - Loads initial batch (3 tracks) from `dataService`
-   - Builds `Track[]` objects with remote URLs
+  - Calls `QueueManager.getInstance()`
+  - Loads initial batch (3 tracks) from `dataService`
+  - Builds `Track[]` objects with remote URLs
 3. `playerStore.loadAndPlayTrack()` called:
-   - Updates TrackPlayer queue via `TrackPlayer.add()`
-   - Sets current position and start playback
+  - Updates TrackPlayer queue via `TrackPlayer.add()`
+  - Sets current position and start playback
 4. TrackPlayer fires `PlaybackState` event
 5. Event bridge (`setupEventBridge`) captures event
 6. Event listener updates `playerStore` with new state
@@ -127,9 +134,9 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 
 1. User initiates download from UI
 2. `downloadService.downloadSurah()` called:
-   - Calls `dataService.fetchAudioUrl()` to get remote URL
-   - Uses `expo-file-system` to download to device
-   - Returns file path and size
+  - Calls `dataService.fetchAudioUrl()` to get remote URL
+  - Uses `expo-file-system` to download to device
+  - Returns file path and size
 3. `downloadStore` updated with `DownloadedSurah` record
 4. Next playback: `audioUtils.generateSmartAudioUrl()` returns local path if available
 5. TrackPlayer loads from local filesystem instead of network
@@ -149,9 +156,9 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 1. `app/_layout.tsx` boots up
 2. Fonts loaded, player initialized
 3. `AppInitializer.initialize()` called:
-   - Database initialized (critical)
-   - PlaylistService initialized (critical)
-   - Playlists data loaded from DB → `usePlaylistsStore`
+  - Database initialized (critical)
+  - PlaylistService initialized (critical)
+  - Playlists data loaded from DB → `usePlaylistsStore`
 4. Zustand stores hydrate from AsyncStorage via `persist` middleware
 5. Previous playback state, selections, settings restored
 6. UI renders with restored state
@@ -159,6 +166,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 ## Key Abstractions
 
 **UnifiedPlayerState:**
+
 - Purpose: Represent complete player state across multiple stores
 - Location: `services/player/types/state.ts`
 - Composition:
@@ -174,12 +182,14 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Used by: `playerStore`, UI components accessing playback info
 
 **Track Type:**
+
 - Purpose: Unified representation of audio playable item
 - Location: `types/audio.ts`
 - Properties: URL, duration, title (surah name), artist (reciter), artwork
 - Used across: Queue, downloads, recently played, loved tracks
 
 **Reciter & Rewayat:**
+
 - Purpose: Represent Quranic recitation source and variant
 - Structure:
   - `Reciter`: Name, image, collection of `Rewayat`
@@ -188,12 +198,14 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 - Used by: Player URL generation, reciter selection screens
 
 **QueueManager:**
+
 - Purpose: Centralized queue state and operations
 - Location: `services/QueueManager.ts`
 - Responsible for: Track sequencing, batch loading logic, queue navigation
 - Singleton pattern: Accessed via `getInstance()`
 
 **AppInitializer:**
+
 - Purpose: Orchestrate service startup with priority-based ordering
 - Pattern: Service registry with dependency management
 - Features:
@@ -206,6 +218,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 ## Entry Points
 
 **App Bootstrap:**
+
 - Location: `app/_layout.tsx`
 - Triggers: App launch
 - Responsibilities:
@@ -218,6 +231,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
   - Theme/platform configuration
 
 **Root Navigation:**
+
 - Location: `app/(tabs)/_layout.tsx`
 - Pattern: Tab-based navigation
 - Structure:
@@ -226,15 +240,18 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
   - `(c.collection)` - User's playlists, loved tracks, downloads
 
 **Home Screen:**
+
 - Location: `app/(tabs)/(a.home)/index.tsx`
 - Entry point for: Reciter selection, Surah browsing
 - Connects to: Player initialization, featured content display
 
 **Search/Browse:**
+
 - Location: `app/(tabs)/(b.search)/`
 - Functionality: Reciter discovery, Surah catalog, full-text search
 
 **Collections:**
+
 - Location: `app/(tabs)/(c.collection)/`
 - Functionality: Playlists, loved tracks, offline downloads management
 
@@ -245,57 +262,58 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
 **Patterns:**
 
 1. **Component Level:**
-   - ErrorBoundary wrapper (`components/ErrorBoundary.tsx`) catches render errors
-   - Returns fallback UI or error message
-
+  - ErrorBoundary wrapper (`components/ErrorBoundary.tsx`) catches render errors
+  - Returns fallback UI or error message
 2. **Async Operations:**
-   - Try-catch in service methods
-   - Errors captured in store (`playerStore.setError()`)
-   - UI checks error state and displays appropriate feedback
-
+  - Try-catch in service methods
+  - Errors captured in store (`playerStore.setError()`)
+  - UI checks error state and displays appropriate feedback
 3. **Player Setup:**
-   - Initialization errors caught in `app/_layout.tsx`
-   - Max retry attempts enforced (3 tries with 1s delay)
-   - If player setup fails after retries, show error screen
-
+  - Initialization errors caught in `app/_layout.tsx`
+  - Max retry attempts enforced (3 tries with 1s delay)
+  - If player setup fails after retries, show error screen
 4. **Critical vs Non-Critical Services:**
-   - Critical service failure: Blocks app startup (`AppInitializer`)
-   - Non-critical service failure: Logged, app continues
-   - Examples:
-     - Critical: Database, Playlist service
-     - Non-critical: Tajweed data preload
-
+  - Critical service failure: Blocks app startup (`AppInitializer`)
+  - Non-critical service failure: Logged, app continues
+  - Examples:
+    - Critical: Database, Playlist service
+    - Non-critical: Tajweed data preload
 5. **Error Types:**
-   - Location: `services/player/types/errors.ts`
-   - Categories: Playback errors, queue errors, system errors
-   - Each tracked in `playerStore.error` state
+  - Location: `services/player/types/errors.ts`
+  - Categories: Playback errors, queue errors, system errors
+  - Each tracked in `playerStore.error` state
 
 ## Cross-Cutting Concerns
 
 **Logging:**
+
 - Framework: `console` (native React Native)
 - Convention: Prefixed with module name `[ModuleName] message`
 - Examples: `[App]`, `[AppInitializer]`, `[PlayerStore]`, `[PlaylistService]`
 - Level: info, warn, error (used consistently)
 
 **Validation:**
+
 - Tool: Zod for schema validation
 - Location: `services/player/store/validation.ts`
 - Usage: Input validation in services, default state creation
 - Pattern: Validate early, throw or return error
 
 **Authentication:**
+
 - Type: Supabase anonymous key (public read-only access)
 - Usage: Fetch reciter metadata from Supabase
 - No user accounts: App is standalone player, no auth required
 
 **Internationalization:**
+
 - Framework: `react-i18next`
 - Namespaces: App strings, UI labels
 - RTL Support: Built-in for Arabic content
 - Data languages: Surahs have Arabic and English names
 
 **Theme Management:**
+
 - Location: `theme/` directory
 - System: Light/dark mode based on device settings
 - Implementation:
@@ -305,6 +323,7 @@ Bayaan is a React Native/Expo application built on a **layered architecture** wi
   - Components use theme colors for styling
 
 **Performance Monitoring:**
+
 - Location: `utils/performance.ts`
 - Approach: Manual timing with `console.time/timeEnd`
 - Key metrics: Service initialization times, load operations

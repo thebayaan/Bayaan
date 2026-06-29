@@ -3,7 +3,7 @@ import {View, Text, Pressable, StyleSheet} from 'react-native';
 import {GlassView} from 'expo-glass-effect';
 import {USE_GLASS, useGlassColorScheme} from '@/hooks/useGlassProps';
 import {FrostedView} from '@/components/FrostedView';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {SymbolView} from 'expo-symbols';
 import {Entypo, Feather} from '@expo/vector-icons';
 import {
@@ -18,6 +18,7 @@ import {useTheme} from '@/hooks/useTheme';
 import {usePlayerActions} from '@/hooks/usePlayerActions';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {getQCFSurahNameChar} from '@/constants/surahNameGlyphs';
+import {useResponsive} from '@/hooks/useResponsive';
 
 const fallbackSurahNames: Record<number, string> = {};
 (
@@ -26,18 +27,25 @@ const fallbackSurahNames: Record<number, string> = {};
   fallbackSurahNames[s.id] = s.name_arabic;
 });
 
-const QCF_FONT_SIZE = moderateScale(20);
-const CANVAS_MAX_WIDTH = moderateScale(200);
-
 interface HeaderProps {
   onOptionsPress: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
   const {theme} = useTheme();
+  const {isTablet} = useResponsive();
   const glassColorScheme = useGlassColorScheme();
   const {setSheetMode} = usePlayerActions();
   const queue = usePlayerStore(s => s.queue);
+
+  const iconSize = moderateScale(isTablet ? 15 : 18);
+  const pillSize = moderateScale(isTablet ? 36 : 44);
+  const pillRadius = pillSize / 2;
+  const edgeInset = moderateScale(isTablet ? 8 : 10);
+  const qcfFontSize = moderateScale(isTablet ? 17 : 20);
+  const canvasMaxWidth = moderateScale(isTablet ? 172 : 200);
+  const fallbackNameSize = moderateScale(isTablet ? 15 : 18);
+  const headerMinH = moderateScale(isTablet ? 46 : 54);
 
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const surahNumber = currentTrack?.surahId
@@ -59,14 +67,14 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
     builder.pushStyle({
       color: Skia.Color(theme.colors.text),
       fontFamilies: ['SurahNameQCF'],
-      fontSize: QCF_FONT_SIZE,
+      fontSize: qcfFontSize,
     });
     builder.addText(qcfChar);
     builder.pop();
     const p = builder.build();
-    p.layout(CANVAS_MAX_WIDTH);
+    p.layout(canvasMaxWidth);
     return p;
-  }, [qcfChar, fontMgr, theme.colors.text]);
+  }, [qcfChar, fontMgr, theme.colors.text, qcfFontSize, canvasMaxWidth]);
 
   const qcfLayout = useMemo(() => {
     if (!qcfParagraph) return null;
@@ -107,16 +115,22 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
     }
     if (surahNumber) {
       return (
-        <Text style={[styles.fallbackName, {color: theme.colors.text}]}>
+        <Text
+          style={[
+            styles.fallbackName,
+            {color: theme.colors.text, fontSize: fallbackNameSize},
+          ]}>
           {fallbackSurahNames[surahNumber] || ''}
         </Text>
       );
     }
-    // Fallback for uploads without a surah — show category or [Untagged]
     const fallbackLabel = currentTrack?.uploadCategory || '';
     return (
       <Text
-        style={[styles.fallbackName, {color: theme.colors.text}]}
+        style={[
+          styles.fallbackName,
+          {color: theme.colors.text, fontSize: fallbackNameSize},
+        ]}
         numberOfLines={1}>
         {fallbackLabel}
       </Text>
@@ -132,21 +146,29 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
       }
     : {};
 
+  const pillStyle = {
+    width: pillSize,
+    height: pillSize,
+    borderRadius: pillRadius,
+  };
+
   return (
-    <View style={styles.header}>
-      <PillWrapper style={styles.closeButton} {...pillProps}>
+    <View style={[styles.header, {minHeight: headerMinH}]}>
+      <PillWrapper
+        style={[styles.closeButton, pillStyle, {left: edgeInset}]}
+        {...pillProps}>
         <Pressable style={styles.glassButtonInner} onPress={handleClose}>
           {USE_GLASS ? (
             <SymbolView
               name="xmark"
-              size={moderateScale(18)}
+              size={iconSize}
               tintColor={theme.colors.text}
               weight="medium"
             />
           ) : (
             <Entypo
               name="chevron-thin-down"
-              size={moderateScale(18)}
+              size={iconSize}
               color={theme.colors.text}
             />
           )}
@@ -155,19 +177,21 @@ export const Header: React.FC<HeaderProps> = ({onOptionsPress}) => {
 
       {renderSurahName()}
 
-      <PillWrapper style={styles.optionsButton} {...pillProps}>
+      <PillWrapper
+        style={[styles.optionsButton, pillStyle, {right: edgeInset}]}
+        {...pillProps}>
         <Pressable style={styles.glassButtonInner} onPress={onOptionsPress}>
           {USE_GLASS ? (
             <SymbolView
               name="ellipsis"
-              size={moderateScale(18)}
+              size={iconSize}
               tintColor={theme.colors.text}
               weight="medium"
             />
           ) : (
             <Feather
               name="more-horizontal"
-              size={moderateScale(18)}
+              size={iconSize}
               color={theme.colors.text}
             />
           )}
@@ -182,27 +206,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: moderateScale(54),
     paddingVertical: moderateScale(4),
     paddingHorizontal: moderateScale(16),
     width: '100%',
   },
   closeButton: {
     position: 'absolute',
-    left: moderateScale(10),
     zIndex: 1,
-    width: moderateScale(44),
-    height: moderateScale(44),
-    borderRadius: moderateScale(22),
     overflow: 'hidden',
   },
   optionsButton: {
     position: 'absolute',
-    right: moderateScale(10),
     zIndex: 1,
-    width: moderateScale(44),
-    height: moderateScale(44),
-    borderRadius: moderateScale(22),
     overflow: 'hidden',
   },
   glassButtonInner: {
@@ -211,7 +226,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fallbackName: {
-    fontSize: moderateScale(18),
     textAlign: 'center',
   },
 });

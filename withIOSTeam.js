@@ -1,7 +1,8 @@
 const {withXcodeProject} = require('@expo/config-plugins');
 
-// The team ID from your Apple Developer account
-const TEAM_ID = 'S4W5Q2L53W'; // This should match what's in your app.config.js
+// Apple Developer Team ID. Forks override via APPLE_TEAM_ID env var (must
+// match the value used in app.config.js).
+const TEAM_ID = process.env.APPLE_TEAM_ID ?? 'S4W5Q2L53W';
 
 const withIOSTeam = config => {
   // eslint-disable-next-line no-shadow

@@ -152,10 +152,21 @@ function generateVersionInfo() {
 // Generate version info
 const versionInfo = generateVersionInfo();
 
-// Log version info if script is executed directly
+// Log version info if script is executed directly.
+//
+// `--json-only` (or `-j`) suppresses the human-readable header so callers can
+// JSON.parse(stdout) directly without regex-matching out a `{...}` substring.
+// Used by scripts/verify-version-sync.js — see PR review on #251 for why
+// regex-extracting JSON from interleaved log output is fragile.
 if (require.main === module) {
-  console.log('Generated version information:');
-  console.log(JSON.stringify(versionInfo, null, 2));
+  const argv = process.argv.slice(2);
+  const jsonOnly = argv.includes('--json-only') || argv.includes('-j');
+  if (jsonOnly) {
+    process.stdout.write(JSON.stringify(versionInfo));
+  } else {
+    console.log('Generated version information:');
+    console.log(JSON.stringify(versionInfo, null, 2));
+  }
 }
 
 module.exports = versionInfo;

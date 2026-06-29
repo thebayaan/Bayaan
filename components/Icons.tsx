@@ -2181,25 +2181,19 @@ export const ThreeStarsReviewIcon: React.FC<IconProps> = ({color, size}) => (
     <Path
       d="M5 10L5.8 12.5H8.3L6.3 14L7 16.5L5 15L3 16.5L3.7 14L1.7 12.5H4.2Z"
       stroke={color}
-      strokeWidth={1}
-      fill={color}
-      opacity={0.15}
+      strokeWidth={1.2}
       strokeLinejoin="round"
     />
     <Path
       d="M12 4L13.2 7.5H16.7L13.8 9.5L14.8 13L12 11L9.2 13L10.2 9.5L7.3 7.5H10.8Z"
       stroke={color}
-      strokeWidth={1.2}
-      fill={color}
-      opacity={0.2}
+      strokeWidth={1.3}
       strokeLinejoin="round"
     />
     <Path
       d="M19 10L19.8 12.5H22.3L20.3 14L21 16.5L19 15L17 16.5L17.7 14L15.7 12.5H18.2Z"
       stroke={color}
-      strokeWidth={1}
-      fill={color}
-      opacity={0.15}
+      strokeWidth={1.2}
       strokeLinejoin="round"
     />
     <Line
@@ -2208,9 +2202,8 @@ export const ThreeStarsReviewIcon: React.FC<IconProps> = ({color, size}) => (
       x2={19}
       y2={20}
       stroke={color}
-      strokeWidth={0.8}
+      strokeWidth={1.2}
       strokeLinecap="round"
-      opacity={0.2}
     />
   </Svg>
 );
@@ -2272,8 +2265,6 @@ export const LearnAboutIcon: React.FC<IconProps> = ({color, size}) => (
       d="M12 2C8 2 5 5 5 9C5 12 7 14 8 15.5V18C8 18.55 8.45 19 9 19H15C15.55 19 16 18.55 16 18V15.5C17 14 19 12 19 9C19 5 16 2 12 2Z"
       stroke={color}
       strokeWidth={1.3}
-      fill={color}
-      opacity={0.06}
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -2294,13 +2285,11 @@ export const LearnAboutIcon: React.FC<IconProps> = ({color, size}) => (
       stroke={color}
       strokeWidth={1.2}
       strokeLinecap="round"
-      opacity={0.5}
     />
     <Path
       d="M10 12C10 12 11 10 12 10C13 10 14 12 14 12"
       stroke={color}
-      strokeWidth={0.8}
-      opacity={0.3}
+      strokeWidth={1}
       strokeLinecap="round"
     />
   </Svg>

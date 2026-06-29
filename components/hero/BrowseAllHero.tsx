@@ -1,5 +1,11 @@
 import React, {useMemo, useEffect, useRef} from 'react';
-import {View, Text, StyleSheet, Pressable, InteractionManager} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  InteractionManager,
+} from 'react-native';
 import {Link} from 'expo-router';
 import {useTheme} from '@/hooks/useTheme';
 import {moderateScale} from 'react-native-size-matters';
@@ -87,7 +93,11 @@ interface TileData {
 }
 
 // Generate tile colors/opacities for a single column
-function generateColumnTiles(seed: number, colIndex: number, count: number): TileData[] {
+function generateColumnTiles(
+  seed: number,
+  colIndex: number,
+  count: number,
+): TileData[] {
   let s = seed + colIndex * 7919; // different seed per column
   function nextRand() {
     s = (s * 16807 + 11) % 2147483647;
@@ -300,7 +310,7 @@ const createStyles = (theme: Theme) =>
       overflow: 'hidden',
     },
     tilesContainer: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       flexDirection: 'row',
       gap: TILE_GAP,
       justifyContent: 'center',

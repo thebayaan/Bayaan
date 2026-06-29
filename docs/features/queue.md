@@ -1,122 +1,132 @@
-# Queue Management System
+# Queue System
 
-A robust queue management system for handling audio playback with efficient batch loading and state management.
+The queue in Bayaan is a flat array of `Track` objects inside `playerStore`. There is no separate queue service or context — the store is the single source of truth.
 
-## Architecture
+---
 
-The system consists of four main components:
+## Queue state
 
-1. **QueueContext**: Singleton class that serves as the central point for managing queue state and operations.
-2. **QueueOperationManager**: Handles queue operations like playing tracks, adding to queue, etc.
-3. **BatchLoader**: Manages efficient loading of track batches to prevent memory issues.
-4. **useQueue Hook**: React hook for easy integration with components.
-
-## Usage
-
-### Basic Usage with React Components
+Queue state lives in `playerStore` under the `queue` slice:
 
 ```typescript
-import { useQueue } from '@/hooks/useQueue';
-
-function AudioPlayer() {
-  const {
-    currentTrack,
-    isLoading,
-    playTrack,
-    pauseTrack,
-    resumeTrack,
-    skipToNext,
-    skipToPrevious
-  } = useQueue();
-
-  if (isLoading) return <Loading />;
-  
-  return (
-    <div>
-      <h3>{currentTrack?.title}</h3>
-      <div>
-        <button onClick={() => skipToPrevious()}>Previous</button>
-        <button onClick={() => pauseTrack()}>Pause</button>
-        <button onClick={() => resumeTrack()}>Play</button>
-        <button onClick={() => skipToNext()}>Next</button>
-      </div>
-    </div>
-  );
+interface QueueState {
+  tracks: Track[];       // All tracks in the current queue
+  currentIndex: number;  // Index of the currently playing track
+  total: number;         // Total number of tracks (= tracks.length)
 }
 ```
 
-### Managing Batches
+Access via the store:
+```typescript
+import {usePlayerStore} from '@/services/player/store/playerStore';
+
+const tracks = usePlayerStore(s => s.queue.tracks);
+const currentIndex = usePlayerStore(s => s.queue.currentIndex);
+const currentTrack = usePlayerStore(s => s.queue.tracks[s.queue.currentIndex]);
+```
+
+---
+
+## Starting a new queue
+
+To start playback of a new set of tracks, call `updateQueue`:
 
 ```typescript
-import { useQueue } from '@/hooks/useQueue';
-import { useEffect } from 'react';
+import {usePlayerActions} from '@/hooks/usePlayerActions';
 
-function ReciterView({ reciter }) {
-  const { setCurrentReciter, loadNextBatch } = useQueue();
+const {updateQueue} = usePlayerActions();
 
-  useEffect(() => {
-    setCurrentReciter(reciter);
-    loadNextBatch(); // Load initial batch
-  }, [reciter]);
+// Play from the beginning
+await updateQueue(tracks, 0);
 
-  return <AudioPlayer />;
+// Play from a specific surah (e.g. user tapped surah 18)
+await updateQueue(allTracks, 17); // 0-indexed
+```
+
+`updateQueue` replaces the current queue, loads the track at `startIndex` into `ExpoAudioService`, and starts playback.
+
+---
+
+## Modifying the queue
+
+```typescript
+const {addToQueue, removeFromQueue, moveInQueue} = usePlayerActions();
+
+// Add tracks to the end
+addToQueue(newTracks);
+
+// Remove a track by index
+removeFromQueue(3);
+
+// Reorder (e.g. drag-and-drop)
+moveInQueue(fromIndex, toIndex);
+```
+
+---
+
+## Navigation
+
+```typescript
+const {skipToNext, skipToPrevious, seekTo} = usePlayerActions();
+
+skipToNext();              // Move to next track
+skipToPrevious();          // Move to previous track
+seekTo(120);               // Seek to 2 minutes in current track
+```
+
+---
+
+## Repeat modes
+
+| Mode | Behaviour |
+|------|-----------|
+| `'off'` | Queue plays to end then stops |
+| `'track'` | Current track loops indefinitely |
+| `'queue'` | Queue restarts from index 0 after the last track |
+
+```typescript
+const {setRepeatMode} = usePlayerActions();
+setRepeatMode('track');
+```
+
+---
+
+## Track shape
+
+Tracks are defined in `types/audio.ts`:
+
+```typescript
+interface Track {
+  id: string;
+  url: string;               // Streaming URL or local file path
+  title: string;             // Surah name
+  artist: string;            // Reciter display name
+  artwork?: string;          // Reciter image URL
+  reciterId?: string;        // Used for download lookup and progress tracking
+  surahId?: string;          // String-encoded surah number
+  rewayatId?: string;
+  isDownloaded?: boolean;    // True if a local file exists
+  localPath?: string;        // Set by download system; resolved at play time
+  isUserUpload?: boolean;    // True for user-uploaded recitations
+  userRecitationId?: string; // For upload-specific progress tracking
 }
 ```
 
-## API Reference
+When `localPath` is set, the player resolves the full file path at runtime using `resolveFilePath()` in `utils/audioUtils.ts` — this handles iOS path changes after app updates.
 
-### useQueue Hook
+---
 
-Returns an object with the following properties and methods:
+## Download integration
 
-#### State
-- `state`: Current queue state
-- `currentTrack`: Currently playing track
-- `isLoading`: Loading state
-- `error`: Any error that occurred
+The player checks download state when loading a track. If the track has a `localPath` in `downloadStore`, playback switches to the local file automatically. No manual intervention is needed in queue management code.
 
-#### Track Operations
-- `playTrack(payload)`: Play a specific track
-- `pauseTrack()`: Pause current track
-- `resumeTrack()`: Resume current track
-- `skipToNext()`: Skip to next track
-- `skipToPrevious()`: Skip to previous track
-- `seekTo(position)`: Seek to position in current track
+---
 
-#### Queue Operations
-- `addToQueue(tracks)`: Add tracks to queue
-- `removeFromQueue(index)`: Remove track at index
-- `clearQueue()`: Clear entire queue
+## Queue persistence
 
-#### Batch Operations
-- `setCurrentReciter(reciter)`: Set current reciter for batch loading
-- `loadNextBatch(force?)`: Load next batch of tracks
+The queue is persisted to AsyncStorage as part of `playerStore`. On app relaunch, `restoreSession.ts` restores the previous queue and seeks to the last known position (paused, not auto-playing).
 
-## Error Handling
-
-The system includes comprehensive error handling:
-
-```typescript
-const { error } = useQueue();
-
-useEffect(() => {
-  if (error) {
-    console.error('Queue error:', error);
-    // Handle error appropriately
-  }
-}, [error]);
-```
-
-## Best Practices
-
-1. **Batch Loading**: Always set a current reciter before attempting to load batches
-2. **Error Handling**: Always handle potential errors in your components
-3. **State Management**: Use the provided operations instead of modifying state directly
-4. **Cleanup**: The useQueue hook handles cleanup automatically
-
-## Future Improvements
-
-1. Add comprehensive test coverage
-2. Implement more sophisticated batch loading strategies
-3. Add support for shuffle and repeat modes
-4. Improve error recovery mechanisms
+The persisted snapshot includes:
+- Full `tracks` array
+- `currentIndex`
+- Last known `position` and `duration`

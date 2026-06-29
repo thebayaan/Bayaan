@@ -10,14 +10,17 @@ const BAYAAN_API_URL = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
 const BAYAAN_API_KEY = process.env.EXPO_PUBLIC_BAYAAN_API_KEY;
 
 // ── Killswitch ───────────────────────────────────────────────────────────────
-
-const CDN_CONFIG_URL = 'https://cdn.example.com/config/app-config.json';
+// Only fetched when EXPO_PUBLIC_KILLSWITCH_URL is set. Forks that don't
+// configure one skip the check entirely — no phone-home to the maintainer's
+// CDN on launch. The maintainer sets this in their local .env.
+const KILLSWITCH_URL = process.env.EXPO_PUBLIC_KILLSWITCH_URL;
 
 async function isBackendEnabled(): Promise<boolean> {
+  if (!KILLSWITCH_URL) return true;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(CDN_CONFIG_URL, {signal: controller.signal});
+    const res = await fetch(KILLSWITCH_URL, {signal: controller.signal});
     clearTimeout(timeout);
     if (!res.ok) return true; // Config fetch failed, assume backend is fine
     const config = await res.json();

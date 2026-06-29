@@ -37,12 +37,8 @@ import {getReciterName} from '@/services/dataService';
 import Color from 'color';
 import {CircularProgress} from '@/components/CircularProgress';
 import {getReciterByIdSync} from '@/services/dataService';
-import {
-  recitationShareUrl,
-  getRewayatSlug,
-  getStyleSlug,
-  shareUrl,
-} from '@/utils/shareUtils';
+import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
+import branding from '@/config/branding';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -263,16 +259,8 @@ export const SurahOptionsSheet = (props: SheetProps<'surah-options'>) => {
     if (!reciter?.slug) return;
     const rewayat = reciter.rewayat.find(rw => rw.id === rewayatId);
     if (!rewayat) return;
-    const rewayatSlugVal = getRewayatSlug(rewayat);
-    if (!rewayatSlugVal) return;
-    const styleSlug = getStyleSlug(rewayat);
-    const url = recitationShareUrl(
-      reciter.slug,
-      rewayatSlugVal,
-      styleSlug,
-      surah.id,
-    );
-    shareUrl(url, `Listen to ${surah.name} on Bayaan`);
+    const url = recitationShareUrl(reciter.slug, surah.id, rewayat.id);
+    shareUrl(url, `Listen to ${surah.name} on ${branding.appName}`);
   }, [reciterId, rewayatId, surah]);
 
   const handleSheetChange = useCallback((index: number) => {

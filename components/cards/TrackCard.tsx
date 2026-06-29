@@ -18,6 +18,7 @@ import {
 import {CircularProgress} from '@/components/CircularProgress';
 import {Ionicons} from '@expo/vector-icons';
 import {GradientText} from '@/components/GradientText';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 interface TrackCardProps {
   reciterId: string;
@@ -247,7 +248,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       </View>
       {rewayat && (
         <Text style={styles.rewayatText} numberOfLines={1}>
-          {rewayat.name}
+          {getDisplayLabelFromName(rewayat.name)}
           {rewayat.style ? ` • ${rewayat.style}` : ''}
         </Text>
       )}

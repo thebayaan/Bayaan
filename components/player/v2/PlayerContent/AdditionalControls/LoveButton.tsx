@@ -1,6 +1,6 @@
 import React from 'react';
 import {Pressable, StyleSheet} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon} from '@/components/Icons';

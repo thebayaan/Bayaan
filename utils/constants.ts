@@ -1,9 +1,13 @@
 import {Dimensions, Platform} from 'react-native';
-import {moderateScale} from 'react-native-size-matters';
+import {moderateScale} from '@/utils/scale';
+import {getIsTablet} from '@/utils/responsive';
 
 const {height: SCREEN_HEIGHT} = Dimensions.get('window');
 
-export const MAX_PLAYER_CONTENT_HEIGHT = SCREEN_HEIGHT * 0.45;
+// Cap the player sheet content height on tablets so it doesn't stretch edge to edge.
+export const MAX_PLAYER_CONTENT_HEIGHT = getIsTablet()
+  ? Math.min(SCREEN_HEIGHT * 0.45, 520)
+  : SCREEN_HEIGHT * 0.45;
 export const FLOATING_PLAYER_HEIGHT = moderateScale(50);
 export const TAB_BAR_HEIGHT =
   Platform.OS === 'android' ? moderateScale(55, 0.5) : moderateScale(50, 0.5);

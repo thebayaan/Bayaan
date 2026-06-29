@@ -10,8 +10,12 @@ import {
   Pressable,
   Animated as RNAnimated,
   BackHandler,
+  type ListRenderItemInfo,
 } from 'react-native';
-import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
+import {
+  FlashList,
+  type ListRenderItemInfo as FlashListRenderItemInfo,
+} from '@shopify/flash-list';
 import {moderateScale as ms} from 'react-native-size-matters';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -419,8 +423,12 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   const searchInputRef = useRef<TextInput>(null);
 
   // Fade animation refs — if autoFocusSearch, start in search mode immediately
-  const browseOpacity = useRef(new RNAnimated.Value(autoFocusSearch ? 0 : 1)).current;
-  const searchOpacity = useRef(new RNAnimated.Value(autoFocusSearch ? 1 : 0)).current;
+  const browseOpacity = useRef(
+    new RNAnimated.Value(autoFocusSearch ? 0 : 1),
+  ).current;
+  const searchOpacity = useRef(
+    new RNAnimated.Value(autoFocusSearch ? 1 : 0),
+  ).current;
 
   // Auto-focus search input on mount when autoFocusSearch is true
   useEffect(() => {
@@ -694,7 +702,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Browse mode renderers
   // ──────────────────────────────────────────────────────────
   const renderBrowseItem = useCallback(
-    ({item}: ListRenderItemInfo<BrowseItem>) => {
+    ({item}: FlashListRenderItemInfo<BrowseItem>) => {
       if (item.type === 'juz-header') {
         return (
           <View
@@ -721,7 +729,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
 
   const getItemType = useCallback((item: BrowseItem) => item.type, []);
 
-
   const SortBar = useMemo(
     () => (
       <View style={styles.sortBar}>
@@ -732,8 +739,8 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
               option === 'asc'
                 ? 'arrow-up'
                 : option === 'desc'
-                ? 'arrow-down'
-                : 'calendar';
+                  ? 'arrow-down'
+                  : 'calendar';
             const label =
               option === 'asc' ? 'Asc' : option === 'desc' ? 'Desc' : 'Rev';
             return (
@@ -803,7 +810,7 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
   // Search mode renderers
   // ──────────────────────────────────────────────────────────
   const renderSearchResult = useCallback(
-    ({item}: {item: SearchResultItem}) => (
+    ({item}: ListRenderItemInfo<SearchResultItem>) => (
       <SearchResultRow
         item={item}
         textColor={theme.colors.text}
@@ -812,18 +819,6 @@ const MushafSearchView: React.FC<MushafSearchViewProps> = ({
       />
     ),
     [theme.colors, handleResultPress],
-  );
-
-  const renderHistoryItem = useCallback(
-    ({item}: {item: SearchHistoryItem}) => (
-      <HistoryRow
-        item={item}
-        textColor={theme.colors.text}
-        secondaryColor={theme.colors.textSecondary}
-        onPress={() => handleHistoryPress(item)}
-      />
-    ),
-    [theme.colors, handleHistoryPress],
   );
 
   const isQueryEmpty = searchQuery.trim().length === 0;
@@ -1047,14 +1042,14 @@ export default MushafSearchView;
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 20,
   },
   modeContainer: {
     flex: 1,
   },
   modeOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1,
   },
 

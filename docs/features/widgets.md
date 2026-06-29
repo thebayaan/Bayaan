@@ -32,9 +32,9 @@ Build native home screen widgets for iOS (WidgetKit + SwiftUI) and Android (App 
 - Calligraphic presentation using existing Uthmani fonts
 
 #### 4. Last Read (Mushaf Bookmark)
-- Shows last mushaf page and surah name from `mushafSettingsStore.lastReadPage`
+- Shows last mushaf page and surah name from `mushafSessionStore.getLastReadPage()` (MMKV-backed)
 - "Continue reading" — one tap opens mushaf where the user left off
-- Uses `recentPages` for additional context
+- Uses `mushafSettingsStore.recentPages` for additional context
 
 ### Tier 2 — Medium Complexity
 
@@ -154,7 +154,7 @@ Since widgets are native code, integration with the Expo/RN project requires:
 | Now Playing | `playerStore` (current track, progress) | Yes |
 | Quick Play | `playCountStore.getMostPlayed()`, `recentSurahStore` | Yes |
 | Daily Verse | `surahData`, verse text from SQLite | Yes |
-| Last Read | `mushafSettingsStore.lastReadPage`, `recentPages` | Yes |
+| Last Read | `mushafSessionStore.getLastReadPage()` (MMKV), `mushafSettingsStore.recentPages` | Yes |
 | Adhkar | `adhkarStore`, `adhkarSettingsStore` | Yes |
 | Listening Stats | `playCountStore` | Yes (counts only, no duration) |
 | Playlist | `PlaylistService` (SQLite) | Yes |

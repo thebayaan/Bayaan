@@ -5,9 +5,13 @@ import {
   PrimaryColor,
 } from '@/styles/colorSchemes';
 import {Dimensions, ColorSchemeName, Appearance} from 'react-native';
+import {PHONE_SCALE_CAP} from '@/utils/responsive';
 
 const {width} = Dimensions.get('window');
-const scale = (size: number) => (width / 375) * size;
+// Clamp scaling base so tablets (iPad) do not inflate the theme typography.
+// Phones always pass through unchanged because their width <= PHONE_SCALE_CAP.
+const scaleBase = Math.min(width, PHONE_SCALE_CAP);
+const scale = (size: number) => (scaleBase / 375) * size;
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type {PrimaryColor} from '@/styles/colorSchemes';

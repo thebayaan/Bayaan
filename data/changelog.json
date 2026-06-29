@@ -1,12 +1,102 @@
 [
   {
+    "version": "2.2",
+    "releaseDate": "2026-04-22",
+    "title": "A More Personal Mushaf",
+    "highlights": [
+      {
+        "title": "Bayaan is now Open Source",
+        "description": "Bayaan is now AGPL-3.0 and on GitHub. Star the repo, report issues, or open a pull request. Link in Settings › About Bayaan",
+        "icon": "logo-github"
+      },
+      {
+        "title": "7 More Rewayat",
+        "description": "Read the mushaf in Warsh, Qalun, Al-Bazzi, Qunbul, Shu'bah, Al-Duri, and Al-Susi alongside Hafs, with per-letter and whole-word diff highlighting",
+        "icon": "layers-outline"
+      },
+      {
+        "title": "Rewayah Everywhere",
+        "description": "The player renders verse text in the currently-playing rewayah, saved bookmarks remember which rewayah they were made in, and a toast tells you when it switches",
+        "icon": "refresh-outline"
+      },
+      {
+        "title": "Share Anything",
+        "description": "New share buttons on verses, surahs, mushaf pages, reciters, recitations, adhkar, and dhikr. Deep links open straight back into the app",
+        "icon": "share-outline"
+      },
+      {
+        "title": "Surahs Tab",
+        "description": "A dedicated tab for the whole mushaf, with juz groupings and a continue-reading hero that remembers where you left off",
+        "icon": "book-outline"
+      }
+    ],
+    "fullChangelog": {
+      "features": [
+        "Bayaan is now open source at github.com/thebayaan/Bayaan under AGPL-3.0; a new Contribute on GitHub link in Settings › About Bayaan opens the repo",
+        "7 new rewayat with full mushaf text and diff highlighting: Shu'bah, Al-Bazzi, Qunbul, Warsh, Qalun, Al-Duri (Abu Amr), Al-Susi. 8 rewayat with text in total, Hafs included",
+        "Canonical rewayah identity module with support for all 20 qira'at narrations; the 12 text-less rewayat appear in the picker as audio-only entries",
+        "Rewayah-aware player: verse text renders in the currently-playing rewayah; bookmarks, notes, highlights, and share URLs carry the rewayah stamp",
+        "Char-level tajweed highlights for Warsh/Qalun (madd al-badal, tashil, ibdal, taghliz al-lam, silah) plus whole-word mukhtalif tinting for Al-Duri/Al-Susi",
+        "\"Now reading\" toast when the currently-playing track's rewayah transitions",
+        "Consistent foreground diff highlighting across paginated mushaf, vertical mushaf, and list modes. Previously only the paginated view painted them",
+        "Collapsible accordion for the rewayat picker in mushaf settings with the diff toggle promoted above it; color legend disclosure per rewayah",
+        "Shareable deep links for verses, surahs, mushaf pages, reciters, recitations, adhkar super-categories, and individual dhikr. All open back into the app",
+        "Share buttons in player options, surah options, verse actions, mushaf header, adhkar index, dhikr screen, and the recent-reciter long-press sheet",
+        "Theme-aware Open Graph images (light/dark) generated server-side with custom fonts for surah and verse share links",
+        "New Surahs tab with juz groupings, continue-reading hero that resumes at your last-read page, and shared gradient-mesh styling with the hero",
+        "Listening insights: anonymous PostHog analytics (30s/10% meaningful-listen threshold) with opt-out, Sentry crash reporting, local MMKV aggregation for offline events",
+        "Bayaan backend API integration for reciter catalog. App now pulls from api.thebayaan.com with a local bundled fallback and cache",
+        "Community-fork friendly: app runs without an API key using the bundled fallback catalog",
+        "iOS 26 Liquid Glass treatment for the search-tab browse tiles",
+        "Cross-platform network-status toasts on connection loss, recovery, and backend-fallback transitions. Replaces the persistent pill banner",
+        "Share recent-played recitation from the reciter long-press sheet with reciter + surah + rewayah context"
+      ],
+      "improvements": [
+        "iOS 26 polish pass: inset handling across scroll views, search-keyboard edge cases, surah-card cleanup",
+        "Mini-player auto-collapses on scroll in the mushaf-settings and search tabs (iOS 26)",
+        "Adhkar cards now show titles below the artwork with sharper corners, preserving the home-screen vertical rhythm",
+        "Clearer 'Add reciter to favorites' vs 'Add to loved' labels in the recent-reciter sheet; heart icon for loved is bigger",
+        "Review and Learn About icons render at full text color (were previously dimmed by hardcoded opacity)",
+        "Adhkar See More button, rewayah-aware navigation context, and canonical category ordering",
+        "Rewayah displayed in mushaf header meta",
+        "Quran tab icon resized for visual balance",
+        "Cached reciter data is used immediately on startup (no blank state while the API responds)"
+      ],
+      "fixes": [
+        "Recovered users stuck on a stale pre-canonical rewayah slug (\"qaloon\", \"shouba\", etc.) where the mushaf would fail to load",
+        "Android toasts now show the full text instead of dropping the subtitle line",
+        "Explore-tab bento tiles no longer double-pad under the iOS 26 search bar",
+        "Share sheet from the recent-reciter options no longer conflicts with the dismissing action sheet",
+        "Fixed 4 codepoints that weren't in the DigitalKhatt font (substituted cleanly)",
+        "Android crash on setColorScheme(null); settings top-inset fix",
+        "Adhkar header styling and settings-screen scroll behavior",
+        "What's New onboarding now filters by version",
+        "TrackInfo navigation cleanup and hydration timeout fallback",
+        "Floating player, player-sheet header, and upload UI refinements"
+      ],
+      "technical": [
+        "License switched from Apache 2.0 + Commons Clause to AGPL-3.0-or-later; added TRADEMARKS.md separating code license from brand protection",
+        "Open-source governance files added; bundled reciters.json removed (streams from API instead); unused fonts removed",
+        "Cloudflare R2 audio CDN migration with slug-based URL resolution and cache-busting backwards compatibility",
+        "Analytics infrastructure: PostHog SDK + device-ID generation + event schema + local aggregation + meaningful-listen tracking",
+        "Analytics killswitch + privacy manifest + build hardening",
+        "Shared RewayahDiffService.getRewayahRuleMapForLine / getRewayahRuleMapForWords consumed by all three mushaf renderers",
+        "Defensive migratePersistedId guards in DigitalKhattDataService and MushafPreloadService init paths so corrupted persisted slugs self-heal",
+        "Normalized alef/yeh variants in the mukhtalif classifier; multi-category tajweed classifier for far rewayat",
+        "ApiDisruptionBanner replaced by NetworkStatusMonitor: headless, transition-only toast emitter",
+        "burnt toast wrapper accepts a preset argument; Android merges title+message into a single line since Toast.makeText only renders one string",
+        "Build 697 (iOS); ShareExtension bumped to 2.1.2"
+      ]
+    }
+  },
+  {
     "version": "2.1",
     "releaseDate": "2026-03-11",
     "title": "Deeper Understanding",
     "highlights": [
       {
         "title": "Word by Word",
-        "description": "Tap any word to see its meaning, transliteration, and grammar — right in the mushaf or player",
+        "description": "Tap any word to see its meaning, transliteration, and grammar right in the mushaf or player",
         "icon": "text-outline"
       },
       {

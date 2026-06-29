@@ -14,6 +14,8 @@ import {getReciterById} from '@/services/dataService';
 import {Reciter, Rewayat} from '@/data/reciterData';
 import {useLoved} from '@/hooks/useLoved';
 import {HeartIcon, MicrophoneIcon} from '@/components/Icons';
+import {getShortLabel} from '@/services/rewayah/RewayahIdentity';
+import {useCurrentTrackResolvedRewayah} from '@/hooks/useCurrentTrackRewayah';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -28,6 +30,7 @@ export const TrackInfo = () => {
   const currentTrack = queue?.tracks?.[queue?.currentIndex ?? -1];
   const [, setReciter] = useState<Reciter | null>(null);
   const [rewayat, setRewayat] = useState<Rewayat | null>(null);
+  const resolvedRewayah = useCurrentTrackResolvedRewayah();
   const {isTrackLoved, toggleTrackLoved} = useLoved();
   const loveScale = useSharedValue(1);
   const loveAnimatedStyle = useAnimatedStyle(() => ({
@@ -126,15 +129,15 @@ export const TrackInfo = () => {
               numberOfLines={1}>
               {currentTrack?.artist || ''}
             </Text>
-            {(rewayat || currentTrack?.rewayahName) && (
+            {resolvedRewayah && (rewayat || currentTrack?.rewayahName) && (
               <Text
                 style={[
                   styles.rewayatText,
                   {color: theme.colors.textSecondary},
                 ]}>
-                {rewayat
-                  ? `${rewayat.name}${rewayat.style ? ` • ${rewayat.style}` : ''}`
-                  : currentTrack?.rewayahName}
+                {`${getShortLabel(resolvedRewayah.id)}${
+                  rewayat?.style ? ` • ${rewayat.style}` : ''
+                }`}
               </Text>
             )}
           </View>

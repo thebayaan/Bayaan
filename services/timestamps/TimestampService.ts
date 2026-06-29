@@ -13,7 +13,7 @@ class TimestampService {
    * Check if a rewayat has timestamp support (static check, no network).
    */
   hasTimestampSource(rewayatId: string): boolean {
-    return timestampFetchService.getSourceForRewayat(rewayatId) !== null;
+    return timestampFetchService.hasSource(rewayatId);
   }
 
   /**

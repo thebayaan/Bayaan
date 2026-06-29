@@ -7,6 +7,7 @@ import {
   Pressable,
   TextInput,
   Dimensions,
+  type ListRenderItemInfo,
 } from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -22,6 +23,7 @@ import Color from 'color';
 import {SearchInput} from '@/components/SearchInput';
 import {ReciterImage} from '@/components/ReciterImage';
 import {Feather} from '@expo/vector-icons';
+import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 
 export const FavoriteRecitersSheet = (
   props: SheetProps<'favorite-reciters'>,
@@ -57,7 +59,7 @@ export const FavoriteRecitersSheet = (
   );
 
   const renderItem = useCallback(
-    ({item}: {item: Reciter}) => {
+    ({item}: ListRenderItemInfo<Reciter>) => {
       const isFavorite = favoriteIds.has(item.id);
 
       return (
@@ -82,7 +84,7 @@ export const FavoriteRecitersSheet = (
             <Text style={styles.reciterDetail} numberOfLines={1}>
               {item.rewayat.length > 1
                 ? `${item.rewayat.length} rewayat`
-                : item.rewayat[0]?.name || ''}
+                : getDisplayLabelFromName(item.rewayat[0]?.name)}
             </Text>
           </View>
           <View

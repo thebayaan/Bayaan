@@ -37,6 +37,7 @@ import {
   getQCFSurahNameChar,
 } from '@/constants/surahNameGlyphs';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {
   digitalKhattDataService,
   BASMALLAH_TEXT,
@@ -57,7 +58,14 @@ const MODE_TO_INDEX: Record<ThemeMode, number> = {
 };
 
 // Surah An-Nas verse keys for preview
-const PREVIEW_VERSE_KEYS = ['114:1', '114:2', '114:3', '114:4', '114:5', '114:6'];
+const PREVIEW_VERSE_KEYS = [
+  '114:1',
+  '114:2',
+  '114:3',
+  '114:4',
+  '114:5',
+  '114:6',
+];
 
 // Share-card style constants for mushaf preview (reference coordinate system)
 const REF_CONTENT_WIDTH = 960;
@@ -183,7 +191,8 @@ export const ReadingThemeContent: React.FC<ReadingThemeContentProps> = ({
         : 'DigitalKhattV2';
   const fontsReady =
     mushafPreloadService.initialized && digitalKhattDataService.initialized;
-  const fontMgr = fontsReady ? mushafPreloadService.fontMgr : null;
+  const subscribedFontMgr = useMushafFontMgr();
+  const fontMgr = fontsReady ? subscribedFontMgr : null;
 
   return (
     <ScrollView

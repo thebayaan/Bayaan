@@ -65,9 +65,7 @@ async function main() {
   );
 
   const withFootnotes = rows.filter(r => r.markers > 0);
-  const withoutFootnotes = rows.filter(
-    r => r.error == null && r.markers === 0,
-  );
+  const withoutFootnotes = rows.filter(r => r.error == null && r.markers === 0);
   const failed = rows.filter(r => r.error != null);
 
   console.log('\n=== Summary ===');
