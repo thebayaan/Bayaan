@@ -1,8 +1,20 @@
-import React, {useEffect, useMemo, useRef} from 'react';
-import {Animated, Easing, StyleSheet, Text, View} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  useTVEventHandler,
+  View,
+} from 'react-native';
+import type {HWEvent} from 'react-native';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {colors} from '../../theme/colors';
 import {spacing} from '../../theme/spacing';
+
+const SCRUBBER_STEP_SECONDS = 10;
 
 function fmt(t: number): string {
   if (!Number.isFinite(t) || t < 0) return '0:00';
@@ -19,7 +31,28 @@ export function Scrubber(): React.ReactElement {
   const durationSeconds = useTVPlayerStore(s => s.durationSeconds);
   const status = useTVPlayerStore(s => s.status);
   const speed = useTVPlayerStore(s => s.speed);
+  const seekBy = useTVPlayerStore(s => s.seekBy);
+  const toggle = useTVPlayerStore(s => s.toggle);
   const anim = useRef(new Animated.Value(positionSeconds)).current;
+
+  // Track focus in a ref so the remote handler always reads the live value
+  // regardless of how the TV event subscription is memoized.
+  const focusedRef = useRef(false);
+  const [focused, setFocused] = useState(false);
+
+  // While the scrubber holds focus, Left/Right seek by a fixed step. The
+  // wrapping guide traps horizontal focus so these presses reach this handler
+  // instead of moving focus; Up/Down are not trapped, so they still escape to
+  // the Back button (above) and the transport controls (below).
+  const handleSeekEvent = useCallback(
+    (event: HWEvent): void => {
+      if (!focusedRef.current) return;
+      if (event.eventType === 'right') seekBy(SCRUBBER_STEP_SECONDS);
+      else if (event.eventType === 'left') seekBy(-SCRUBBER_STEP_SECONDS);
+    },
+    [seekBy],
+  );
+  useTVEventHandler(handleSeekEvent);
 
   useEffect(() => {
     anim.stopAnimation();
@@ -52,16 +85,35 @@ export function Scrubber(): React.ReactElement {
   });
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.track}>
-        <Animated.View style={[styles.fill, {width: widthPct}]} />
-        <Animated.View style={[styles.thumb, {left: widthPct}]} />
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.time}>{fmt(positionSeconds)}</Text>
-        <Text style={styles.time}>{fmt(durationSeconds)}</Text>
-      </View>
-    </View>
+    <TVFocusGuideView trapFocusLeft trapFocusRight style={styles.wrap}>
+      <Pressable
+        onPress={toggle}
+        onFocus={() => {
+          focusedRef.current = true;
+          setFocused(true);
+        }}
+        onBlur={() => {
+          focusedRef.current = false;
+          setFocused(false);
+        }}
+        accessibilityLabel="Seek bar. Left and right to seek, select to play or pause."
+        style={styles.hit}>
+        <View style={[styles.track, focused && styles.trackFocused]}>
+          <Animated.View style={[styles.fill, {width: widthPct}]} />
+          <Animated.View
+            style={[
+              styles.thumb,
+              focused && styles.thumbFocused,
+              {left: widthPct},
+            ]}
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.time}>{fmt(positionSeconds)}</Text>
+          <Text style={styles.time}>{fmt(durationSeconds)}</Text>
+        </View>
+      </Pressable>
+    </TVFocusGuideView>
   );
 }
 
@@ -74,6 +126,17 @@ const styles = StyleSheet.create({
     left: spacing.xl,
     right: spacing.xl,
     bottom: 220,
+  },
+  hit: {paddingVertical: 12},
+  trackFocused: {
+    backgroundColor: 'rgba(255,255,255,0.32)',
+  },
+  thumbFocused: {
+    width: THUMB + 8,
+    height: THUMB + 8,
+    borderRadius: (THUMB + 8) / 2,
+    top: -(THUMB + 8 - TRACK_H) / 2,
+    marginLeft: -(THUMB + 8) / 2,
   },
   track: {
     height: TRACK_H,
