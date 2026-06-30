@@ -30,11 +30,14 @@ export function TopTabBar(): React.ReactElement {
   const switchTab = useNavStore(s => s.switchTab);
 
   return (
-    <View style={styles.bar}>
+    // The whole bar is one autoFocus focus region so an Up press from any
+    // screen's content lands on the nav (and the right-side Settings/now-playing
+    // controls become reachable), not just the centered tabs.
+    <TVFocusGuideView autoFocus style={styles.bar}>
       <View style={styles.brandWrap}>
         <Text style={styles.brand}>Bayaan</Text>
       </View>
-      <TVFocusGuideView autoFocus style={styles.center}>
+      <View style={styles.center}>
         {TABS.map(t => {
           const active = current === t.key;
           const Icon = t.icon;
@@ -54,7 +57,7 @@ export function TopTabBar(): React.ReactElement {
             </FocusableButton>
           );
         })}
-      </TVFocusGuideView>
+      </View>
       <View style={styles.rightWrap}>
         <NowPlayingChip />
         <FocusableButton
@@ -68,7 +71,7 @@ export function TopTabBar(): React.ReactElement {
           />
         </FocusableButton>
       </View>
-    </View>
+    </TVFocusGuideView>
   );
 }
 

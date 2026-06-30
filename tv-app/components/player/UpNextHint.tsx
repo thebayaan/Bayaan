@@ -42,9 +42,10 @@ export function UpNextHint(): React.ReactElement | null {
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: spacing.xl,
     right: spacing.xl,
     top: spacing.xl,
+    maxWidth: 520,
+    alignItems: 'flex-end',
     gap: 4,
   },
   kicker: {
@@ -53,6 +54,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 2.4,
     opacity: 0.55,
+    textAlign: 'right',
   },
   title: {
     color: colors.text,
@@ -60,5 +62,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     opacity: 0.9,
     letterSpacing: -0.2,
+    textAlign: 'right',
   },
 });

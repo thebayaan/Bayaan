@@ -178,6 +178,12 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
           />
         ) : null}
         <View style={styles.heroScrim} />
+        <FocusableButton
+          onPress={pop}
+          accessibilityLabel="Back"
+          style={styles.back}>
+          <Text style={styles.backText}>‹ Back</Text>
+        </FocusableButton>
         <View style={styles.heroContent}>
           {reciter.image_url ? (
             <Image
@@ -399,6 +405,22 @@ function SortChip({label, active, onPress}: SortChipProps): React.ReactElement {
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
   scroll: {paddingBottom: spacing.xxl},
+  back: {
+    position: 'absolute',
+    top: 24,
+    left: spacing.xl,
+    zIndex: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  backText: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    fontWeight: '700',
+  },
   hero: {
     height: 380,
     marginBottom: spacing.md,

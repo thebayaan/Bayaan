@@ -1,11 +1,5 @@
 import React, {useCallback} from 'react';
-import {
-  StyleSheet,
-  Text,
-  TVFocusGuideView,
-  View,
-  useTVEventHandler,
-} from 'react-native';
+import {StyleSheet, Text, View, useTVEventHandler} from 'react-native';
 import type {HWEvent} from 'react-native';
 import {ArtworkBackdrop} from '../components/player/ArtworkBackdrop';
 import {ArtworkCard} from '../components/player/ArtworkCard';
@@ -48,6 +42,7 @@ export function NowPlayingScreen(): React.ReactElement {
   const toggle = useTVPlayerStore(s => s.toggle);
   const seekBy = useTVPlayerStore(s => s.seekBy);
   const resetNav = useNavStore(s => s.reset);
+  const pop = useNavStore(s => s.pop);
   const {reciters} = useReciters();
 
   const item = queue[currentIndex];
@@ -111,6 +106,12 @@ export function NowPlayingScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <ArtworkBackdrop imageUrl={reciter?.image_url ?? null} />
+      <FocusableButton
+        onPress={pop}
+        accessibilityLabel="Back"
+        style={styles.back}>
+        <Text style={styles.backText}>‹ Back</Text>
+      </FocusableButton>
       <UpNextHint />
       <ArtworkCard
         imageUrl={reciter?.image_url ?? null}
@@ -124,9 +125,7 @@ export function NowPlayingScreen(): React.ReactElement {
         rewayahName={rewayahLabel(rewayah)}
       />
       <Scrubber />
-      <TVFocusGuideView autoFocus style={StyleSheet.absoluteFillObject}>
-        <TransportRow />
-      </TVFocusGuideView>
+      <TransportRow />
       <ErrorBanner />
       <SecondaryOverlay />
       <SpeedOverlay />
@@ -138,6 +137,22 @@ export function NowPlayingScreen(): React.ReactElement {
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
+  back: {
+    position: 'absolute',
+    top: 40,
+    left: spacing.xl,
+    zIndex: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  backText: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    fontWeight: '700',
+  },
   empty: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
