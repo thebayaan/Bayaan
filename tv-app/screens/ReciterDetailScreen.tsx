@@ -577,8 +577,9 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
     paddingHorizontal: spacing.xl,
+    paddingVertical: 8,
   },
   surahCard: {
     width: 170,

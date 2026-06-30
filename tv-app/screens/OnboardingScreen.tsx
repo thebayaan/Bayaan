@@ -167,7 +167,8 @@ const styles = StyleSheet.create({
   rail: {
     paddingHorizontal: spacing.xxl,
     gap: 20,
-    paddingVertical: spacing.md,
+    // Room for a focused card's 1.05 scale + glow so it is not clipped.
+    paddingVertical: 22,
   },
   card: {
     width: CARD_W,

@@ -24,10 +24,13 @@ export function Rail({title, children}: Props): React.ReactElement {
 
 const styles = StyleSheet.create({
   section: {marginBottom: spacing.md},
+  // The horizontal ScrollView clips to its own frame, so reserve enough padding
+  // for a focused card's 1.05 scale + glow ring: extra vertical room top/bottom
+  // and a left inset so the first card does not clip when it scales up.
   rail: {
     gap: 18,
-    paddingLeft: 6,
+    paddingLeft: 16,
     paddingRight: spacing.xl,
-    paddingVertical: 6,
+    paddingVertical: 18,
   },
 });

@@ -20,7 +20,10 @@ import {Animated} from 'react-native';
  * Both primitives drive scale with the native driver, so this motion runs on
  * the UI thread and stays smooth even while the JS thread handles focus state.
  */
-export const focusScaleDefault = 1.08;
+// Moderate focus scale. Kept small (1.05) so a focused card grows just enough
+// to read as "active" at 10 feet without spilling past its rail/grid container
+// and getting clipped. Containers still reserve breathing room (padding) for it.
+export const focusScaleDefault = 1.05;
 
 export function animateFocusScale(
   value: Animated.Value,

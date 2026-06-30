@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     opacity: 0.75,
   },
-  grid: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
+  grid: {flexDirection: 'row', flexWrap: 'wrap', gap: 16, paddingVertical: 6},
   chip: {
     paddingHorizontal: 20,
     paddingVertical: 12,

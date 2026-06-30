@@ -200,5 +200,5 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   gridLabel: {paddingHorizontal: 8, paddingTop: spacing.sm},
-  cell: {padding: 10},
+  cell: {padding: 12},
 });

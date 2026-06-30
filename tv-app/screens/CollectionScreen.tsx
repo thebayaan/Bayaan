@@ -336,10 +336,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: spacing.xl - 8,
-    paddingTop: 4,
+    paddingTop: 8,
     paddingBottom: spacing.xxl,
   },
-  cell: {padding: 10},
+  // Per-cell padding doubles as the breathing room a focused card needs to
+  // scale (1.05) + show its glow without clipping against neighbors or edges.
+  cell: {padding: 12},
   center: {
     flex: 1,
     alignItems: 'center',
