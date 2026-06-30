@@ -27,7 +27,7 @@ import {
   ShuffleIcon,
 } from '../../components/Icons';
 import {colors} from '../theme/colors';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
 
 type Props = {reciterId: string};
@@ -425,6 +425,7 @@ const styles = StyleSheet.create({
   portraitPlaceholder: {alignItems: 'center', justifyContent: 'center'},
   portraitInitial: {
     color: colors.text,
+    fontFamily: fonts.extraLight,
     fontSize: 104,
     fontWeight: '200',
     opacity: 0.45,
@@ -432,9 +433,7 @@ const styles = StyleSheet.create({
   heroMeta: {flex: 1, paddingBottom: spacing.sm, gap: 6},
   kicker: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2.2,
+    ...typography.label,
     opacity: 0.7,
     marginBottom: 4,
   },
@@ -446,7 +445,8 @@ const styles = StyleSheet.create({
   },
   sub: {
     color: colors.text,
-    fontSize: 18,
+    fontFamily: fonts.medium,
+    fontSize: 20,
     fontWeight: '500',
     opacity: 0.75,
     marginTop: 6,
@@ -460,7 +460,8 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: colors.background,
-    fontSize: 15,
+    fontFamily: fonts.extraBold,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
@@ -480,7 +481,8 @@ const styles = StyleSheet.create({
   favInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
   favText: {
     color: colors.text,
-    fontSize: 14,
+    fontFamily: fonts.bold,
+    fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
@@ -502,14 +504,16 @@ const styles = StyleSheet.create({
   chipActive: {backgroundColor: colors.text},
   chipText: {
     color: colors.text,
-    fontSize: 15,
+    fontFamily: fonts.semiBold,
+    fontSize: 18,
     fontWeight: '600',
     letterSpacing: -0.1,
   },
   chipTextActive: {color: colors.background},
   sectionLabel: {
     color: colors.text,
-    fontSize: 22,
+    fontFamily: fonts.bold,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.3,
     paddingHorizontal: spacing.xl,
@@ -532,7 +536,8 @@ const styles = StyleSheet.create({
   sortChipActive: {backgroundColor: colors.text},
   sortChipText: {
     color: colors.text,
-    fontSize: 13,
+    fontFamily: fonts.bold,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: 0.1,
   },
@@ -571,14 +576,16 @@ const styles = StyleSheet.create({
   },
   num: {
     color: colors.text,
-    fontSize: 18,
+    fontFamily: fonts.extraBold,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
   name: {
     flex: 1,
     color: colors.text,
-    fontSize: 14,
+    fontFamily: fonts.semiBold,
+    fontSize: 17,
     fontWeight: '600',
     opacity: 0.85,
   },
@@ -593,7 +600,8 @@ const styles = StyleSheet.create({
   },
   noSurahsText: {
     color: colors.textSecondary,
-    fontSize: 18,
+    fontFamily: fonts.medium,
+    fontSize: 20,
     fontWeight: '500',
     opacity: 0.8,
   },
@@ -605,39 +613,43 @@ const styles = StyleSheet.create({
   },
   notFoundTitle: {
     color: colors.text,
-    fontSize: 32,
+    fontFamily: fonts.bold,
+    fontSize: 34,
     fontWeight: '700',
     letterSpacing: -0.3,
     textAlign: 'center',
   },
   notFoundSub: {
     color: colors.textSecondary,
-    fontSize: 18,
+    fontFamily: fonts.medium,
+    fontSize: 20,
     fontWeight: '500',
     textAlign: 'center',
     maxWidth: 560,
-    lineHeight: 28,
+    lineHeight: 30,
     opacity: 0.8,
   },
   notFoundBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    paddingHorizontal: 30,
+    paddingVertical: 16,
     borderRadius: 28,
     backgroundColor: colors.text,
     marginTop: spacing.sm,
   },
   notFoundBtnText: {
     color: colors.background,
-    fontSize: 15,
+    fontFamily: fonts.extraBold,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
   bioBlock: {marginTop: spacing.xl},
   bio: {
     color: colors.textSecondary,
-    fontSize: 17,
+    fontFamily: fonts.regular,
+    fontSize: 19,
     fontWeight: '400',
-    lineHeight: 28,
+    lineHeight: 30,
     paddingHorizontal: spacing.xl,
     opacity: 0.85,
     maxWidth: 900,

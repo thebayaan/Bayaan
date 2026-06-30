@@ -12,7 +12,7 @@ import {clearFavorites} from '../services/favoritesStore';
 import {useSettingsStore} from '../store/settingsStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 
 type ConfirmKey = 'history' | 'favorites' | null;
 
@@ -151,9 +151,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2.2,
+    ...typography.label,
     opacity: 0.55,
     marginBottom: 6,
   },
@@ -165,7 +163,8 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     color: colors.text,
-    fontSize: 22,
+    fontFamily: fonts.bold,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: -0.3,
     marginBottom: 10,
@@ -173,7 +172,8 @@ const styles = StyleSheet.create({
   sectionSpacer: {marginTop: spacing.xxl},
   currentValue: {
     color: colors.text,
-    fontSize: 18,
+    fontFamily: fonts.medium,
+    fontSize: 20,
     fontWeight: '500',
     marginBottom: spacing.md,
     opacity: 0.75,
@@ -187,7 +187,12 @@ const styles = StyleSheet.create({
   },
   chipActive: {backgroundColor: colors.text},
   chipInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  chipText: {color: colors.text, fontSize: 15, fontWeight: '600'},
+  chipText: {
+    color: colors.text,
+    fontFamily: fonts.semiBold,
+    fontSize: 18,
+    fontWeight: '600',
+  },
   chipTextActive: {color: colors.background},
   dataRow: {flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap'},
   clearBtn: {
@@ -199,19 +204,31 @@ const styles = StyleSheet.create({
   },
   clearBtnConfirm: {backgroundColor: colors.text},
   clearInner: {flexDirection: 'row', alignItems: 'center', gap: 12},
-  clearLabel: {color: colors.text, fontSize: 15, fontWeight: '700'},
+  clearLabel: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    fontWeight: '700',
+  },
   clearLabelConfirm: {color: colors.background},
   clearMeta: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontFamily: fonts.medium,
+    fontSize: 14,
     fontWeight: '500',
     opacity: 0.7,
     marginTop: 2,
   },
-  aboutText: {color: colors.text, fontSize: 18, fontWeight: '500'},
+  aboutText: {
+    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 20,
+    fontWeight: '500',
+  },
   aboutSub: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontFamily: fonts.regular,
+    fontSize: 16,
     opacity: 0.7,
     marginTop: 4,
   },

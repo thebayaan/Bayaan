@@ -20,6 +20,7 @@ import type {ContinueEntry} from '../services/continueListeningStore';
 import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
+import {fonts} from '../theme/typography';
 
 const QUICK_PLAY_SURAHS = [1, 18, 67, 55, 36, 112];
 
@@ -295,7 +296,8 @@ const styles = StyleSheet.create({
   hero: {marginBottom: 4},
   greeting: {
     color: colors.text,
-    fontSize: 36,
+    fontFamily: fonts.extraBold,
+    fontSize: 40,
     fontWeight: '800',
     letterSpacing: -0.6,
   },

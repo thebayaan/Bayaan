@@ -1,6 +1,7 @@
 import React, {useRef, useState} from 'react';
 import {Animated, Pressable, StyleProp, ViewStyle} from 'react-native';
 import {colors} from '../../theme/colors';
+import {animateFocusScale, focusScaleDefault} from './focusMotion';
 
 type Props = {
   onPress: () => void;
@@ -19,20 +20,10 @@ export function FocusableCard({
   hasTVPreferredFocus,
   style,
   accessibilityLabel,
-  focusScale = 1.08,
+  focusScale = focusScaleDefault,
 }: Props): React.ReactElement {
   const [focused, setFocused] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
-
-  function animate(to: number): void {
-    Animated.spring(scale, {
-      toValue: to,
-      stiffness: 240,
-      damping: 18,
-      mass: 1,
-      useNativeDriver: true,
-    }).start();
-  }
 
   return (
     <Animated.View style={{transform: [{scale}]}}>
@@ -41,11 +32,11 @@ export function FocusableCard({
         onLongPress={onLongPress}
         onFocus={() => {
           setFocused(true);
-          animate(focusScale);
+          animateFocusScale(scale, focusScale);
         }}
         onBlur={() => {
           setFocused(false);
-          animate(1);
+          animateFocusScale(scale, 1);
         }}
         hasTVPreferredFocus={hasTVPreferredFocus}
         accessibilityLabel={accessibilityLabel}

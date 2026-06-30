@@ -9,7 +9,7 @@ import {useReciters} from '../hooks/useReciters';
 import {useNavStore} from '../store/navStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 import type {Reciter} from '../types/reciter';
 
 const CELL_HEIGHT = 300;
@@ -187,7 +187,8 @@ const styles = StyleSheet.create({
   title: {color: colors.text, ...typography.title, letterSpacing: -0.5},
   sub: {
     color: colors.textSecondary,
-    fontSize: 18,
+    fontFamily: fonts.regular,
+    fontSize: 20,
     fontWeight: '400',
     opacity: 0.75,
     marginTop: 2,

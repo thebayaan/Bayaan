@@ -20,7 +20,7 @@ import {
 import {fetchRewayat} from '../services/tvDataService';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 
 export function SearchScreen(): React.ReactElement {
   const [query, setQuery] = useState('');
@@ -184,9 +184,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2.2,
+    ...typography.label,
     opacity: 0.55,
   },
   pageTitle: {
@@ -207,7 +205,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.text,
-    fontSize: 32,
+    fontFamily: fonts.medium,
+    fontSize: 34,
     fontWeight: '500',
     paddingVertical: 6,
     letterSpacing: -0.5,
@@ -224,20 +223,19 @@ const styles = StyleSheet.create({
   },
   recentsKicker: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2.2,
+    ...typography.label,
     opacity: 0.55,
   },
   clearBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   clearBtnText: {
     color: colors.text,
-    fontSize: 12,
+    fontFamily: fonts.bold,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
@@ -256,7 +254,8 @@ const styles = StyleSheet.create({
   },
   recentFillText: {
     color: colors.text,
-    fontSize: 18,
+    fontFamily: fonts.semiBold,
+    fontSize: 20,
     fontWeight: '600',
     letterSpacing: -0.2,
   },
@@ -268,7 +267,8 @@ const styles = StyleSheet.create({
   },
   recentRemoveText: {
     color: colors.textSecondary,
-    fontSize: 13,
+    fontFamily: fonts.bold,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
   },

@@ -1,6 +1,7 @@
 import React, {useRef} from 'react';
 import {Pressable, Animated, StyleProp, ViewStyle} from 'react-native';
 import {colors} from '../../theme/colors';
+import {animateFocusScale, focusScaleDefault} from './focusMotion';
 
 type Props = {
   onPress: () => void;
@@ -19,31 +20,19 @@ export function FocusableButton({
   style,
   focusedStyle,
   accessibilityLabel,
-  focusScale = 1.08,
+  focusScale = focusScaleDefault,
 }: Props): React.ReactElement {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const [isFocused, setIsFocused] = React.useState(false);
 
   const handleFocus = (): void => {
     setIsFocused(true);
-    Animated.spring(scaleValue, {
-      toValue: focusScale,
-      stiffness: 240,
-      damping: 18,
-      mass: 1,
-      useNativeDriver: true,
-    }).start();
+    animateFocusScale(scaleValue, focusScale);
   };
 
   const handleBlur = (): void => {
     setIsFocused(false);
-    Animated.spring(scaleValue, {
-      toValue: 1,
-      stiffness: 240,
-      damping: 18,
-      mass: 1,
-      useNativeDriver: true,
-    }).start();
+    animateFocusScale(scaleValue, 1);
   };
 
   const focusRingStyle = isFocused

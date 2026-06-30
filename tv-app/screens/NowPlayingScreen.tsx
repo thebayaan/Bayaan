@@ -18,7 +18,7 @@ import {useNavStore} from '../store/navStore';
 import {useReciters} from '../hooks/useReciters';
 import type {Rewayah} from '../types/reciter';
 import {colors} from '../theme/colors';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 import {spacing} from '../theme/spacing';
 
 const SEEK_STEP_SECONDS = 15;
@@ -144,7 +144,8 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 40,
+    fontFamily: fonts.extraBold,
+    fontSize: 44,
     fontWeight: '800',
     letterSpacing: -0.6,
     marginTop: 6,
@@ -152,24 +153,26 @@ const styles = StyleSheet.create({
   },
   emptyBody: {
     color: colors.textSecondary,
-    fontSize: 18,
+    fontFamily: fonts.medium,
+    fontSize: 22,
     fontWeight: '500',
     textAlign: 'center',
-    lineHeight: 26,
-    maxWidth: 520,
+    lineHeight: 32,
+    maxWidth: 560,
     marginBottom: 18,
     opacity: 0.9,
   },
   emptyCta: {
-    paddingHorizontal: 30,
-    paddingVertical: 14,
-    borderRadius: 26,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 28,
     backgroundColor: colors.text,
     marginTop: 8,
   },
   emptyCtaText: {
     color: colors.background,
-    fontSize: 16,
+    fontFamily: fonts.extraBold,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: 0.3,
   },

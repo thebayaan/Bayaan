@@ -17,7 +17,7 @@ import type {Reciter} from '../types/reciter';
 import SURAHS from '../../data/surahData.json';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 
 type TabKey = 'favorites' | 'continue' | 'recent';
 
@@ -267,9 +267,7 @@ const styles = StyleSheet.create({
   header: {paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: 6},
   kicker: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 2.2,
+    ...typography.label,
     opacity: 0.55,
   },
   pageTitle: {
@@ -279,7 +277,8 @@ const styles = StyleSheet.create({
   },
   sub: {
     color: colors.textSecondary,
-    fontSize: 16,
+    fontFamily: fonts.medium,
+    fontSize: 18,
     fontWeight: '500',
     opacity: 0.75,
     marginTop: 2,
@@ -300,16 +299,17 @@ const styles = StyleSheet.create({
   tabInner: {flexDirection: 'row', alignItems: 'center', gap: 8},
   tabText: {
     color: colors.text,
-    fontSize: 15,
+    fontFamily: fonts.bold,
+    fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.1,
   },
   tabTextActive: {color: colors.background},
   countPill: {
-    paddingHorizontal: 8,
-    minWidth: 22,
-    height: 20,
-    borderRadius: 10,
+    paddingHorizontal: 9,
+    minWidth: 26,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -317,7 +317,8 @@ const styles = StyleSheet.create({
   countPillActive: {backgroundColor: 'rgba(0,0,0,0.14)'},
   countText: {
     color: colors.text,
-    fontSize: 11,
+    fontFamily: fonts.extraBold,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
@@ -348,7 +349,8 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 32,
+    fontFamily: fonts.bold,
+    fontSize: 34,
     fontWeight: '700',
     letterSpacing: -0.3,
     textAlign: 'center',
@@ -358,19 +360,20 @@ const styles = StyleSheet.create({
     ...typography.body,
     textAlign: 'center',
     maxWidth: 640,
-    lineHeight: 28,
+    lineHeight: 30,
     opacity: 0.75,
   },
   emptyCta: {
     marginTop: spacing.sm,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
+    paddingHorizontal: 30,
+    paddingVertical: 16,
     borderRadius: 28,
     backgroundColor: colors.text,
   },
   emptyCtaText: {
     color: colors.background,
-    fontSize: 15,
+    fontFamily: fonts.extraBold,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.3,
   },

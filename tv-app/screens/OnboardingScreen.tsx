@@ -9,7 +9,7 @@ import {useReciters} from '../hooks/useReciters';
 import type {Reciter} from '../types/reciter';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
-import {typography} from '../theme/typography';
+import {fonts, typography} from '../theme/typography';
 
 export function OnboardingScreen(): React.ReactElement {
   const {reciters} = useReciters();
@@ -141,9 +141,11 @@ const styles = StyleSheet.create({
   header: {paddingHorizontal: spacing.xxl, marginBottom: spacing.xl, gap: 6},
   kicker: {
     color: colors.text,
-    fontSize: 13,
+    fontFamily: fonts.extraBold,
+    fontSize: 15,
     fontWeight: '800',
     letterSpacing: 2.6,
+    textTransform: 'uppercase',
     opacity: 0.7,
     marginBottom: 6,
   },
@@ -154,10 +156,11 @@ const styles = StyleSheet.create({
   },
   sub: {
     color: colors.textSecondary,
-    fontSize: 17,
+    fontFamily: fonts.medium,
+    fontSize: 20,
     fontWeight: '500',
-    lineHeight: 26,
-    maxWidth: 780,
+    lineHeight: 30,
+    maxWidth: 820,
     opacity: 0.8,
     marginTop: 10,
   },
@@ -182,24 +185,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initial: {color: colors.text, fontSize: 84, fontWeight: '300', opacity: 0.35},
+  initial: {
+    color: colors.text,
+    fontFamily: fonts.light,
+    fontSize: 84,
+    fontWeight: '300',
+    opacity: 0.35,
+  },
   meta: {paddingHorizontal: 14, paddingVertical: 12},
   name: {
     color: colors.text,
-    fontSize: 17,
+    fontFamily: fonts.bold,
+    fontSize: 20,
     fontWeight: '700',
     letterSpacing: -0.2,
   },
   cardSub: {
     color: colors.textSecondary,
-    fontSize: 12,
+    fontFamily: fonts.medium,
+    fontSize: 15,
     fontWeight: '500',
     opacity: 0.65,
     marginTop: 4,
   },
   selectedTag: {
     color: colors.text,
-    fontSize: 11,
+    fontFamily: fonts.extraBold,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 1.4,
     opacity: 0.85,
@@ -218,7 +230,8 @@ const styles = StyleSheet.create({
   ctaActive: {backgroundColor: colors.text},
   ctaText: {
     color: colors.text,
-    fontSize: 16,
+    fontFamily: fonts.extraBold,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
