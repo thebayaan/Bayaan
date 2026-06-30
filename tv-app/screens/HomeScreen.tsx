@@ -1,5 +1,11 @@
 import React, {useMemo} from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -152,134 +158,134 @@ export function HomeScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <TopTabBar />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Text style={styles.greeting}>{greeting}</Text>
-        </View>
-        {spotlight && (
-          <FeaturedBanner
-            reciter={spotlight}
-            onSelect={handleReciterSelect}
-            hasTVPreferredFocus={!hasContinue}
-          />
-        )}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <TVFocusGuideView autoFocus style={styles.scroll}>
+          <View style={styles.hero}>
+            <Text style={styles.greeting}>{greeting}</Text>
+          </View>
+          {spotlight && (
+            <FeaturedBanner
+              reciter={spotlight}
+              onSelect={handleReciterSelect}
+              hasTVPreferredFocus={!hasContinue}
+            />
+          )}
 
-        {hasContinue && (
-          <Rail title="Continue Listening">
-            {continueEntries.map((e, i) => (
-              <ContinueCard
-                key={`${e.reciterId}:${e.surahNumber}`}
-                entry={e}
-                reciter={reciterById.get(e.reciterId) ?? null}
-                surahName={
-                  surahByNumber.get(e.surahNumber) ?? `Surah ${e.surahNumber}`
-                }
-                onSelect={handleContinueSelect}
-                hasTVPreferredFocus={i === 0}
-              />
-            ))}
-          </Rail>
-        )}
+          {hasContinue && (
+            <Rail title="Continue Listening">
+              {continueEntries.map((e, i) => (
+                <ContinueCard
+                  key={`${e.reciterId}:${e.surahNumber}`}
+                  entry={e}
+                  reciter={reciterById.get(e.reciterId) ?? null}
+                  surahName={
+                    surahByNumber.get(e.surahNumber) ?? `Surah ${e.surahNumber}`
+                  }
+                  onSelect={handleContinueSelect}
+                  hasTVPreferredFocus={i === 0}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {recentReciters.length > 0 && (
-          <Rail title="Jump Back In">
-            {recentReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
+          {recentReciters.length > 0 && (
+            <Rail title="Jump Back In">
+              {recentReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {favoriteReciters.length > 0 && (
-          <Rail title="Your Favorites">
-            {favoriteReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
+          {favoriteReciters.length > 0 && (
+            <Rail title="Your Favorites">
+              {favoriteReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {defaultReciterId && (
-          <Rail title="Quick Play">
-            {QUICK_PLAY_SURAHS.map(n => (
-              <QuickPlayCard
-                key={n}
-                surahNumber={n}
-                surahName={surahByNumber.get(n) ?? `Surah ${n}`}
-                onSelect={handleQuickPlay}
-              />
-            ))}
-          </Rail>
-        )}
+          {defaultReciterId && (
+            <Rail title="Quick Play">
+              {QUICK_PLAY_SURAHS.map(n => (
+                <QuickPlayCard
+                  key={n}
+                  surahNumber={n}
+                  surahName={surahByNumber.get(n) ?? `Surah ${n}`}
+                  onSelect={handleQuickPlay}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {featuredReciters.length > 0 && (
-          <Rail title="Featured Reciters">
-            {featuredReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
+          {featuredReciters.length > 0 && (
+            <Rail title="Featured Reciters">
+              {featuredReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {warshReciters.length >= 5 && (
-          <Rail title="Warsh A'n Nafi'">
-            {warshReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
+          {warshReciters.length >= 5 && (
+            <Rail title="Warsh A'n Nafi'">
+              {warshReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {qalunReciters.length >= 5 && (
-          <Rail title="Qalun A'n Nafi'">
-            {qalunReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
+          {qalunReciters.length >= 5 && (
+            <Rail title="Qalun A'n Nafi'">
+              {qalunReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {multiRewayahReciters.length >= 5 && (
-          <Rail title="Multiple Rewayat">
-            {multiRewayahReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-          </Rail>
-        )}
+          {multiRewayahReciters.length >= 5 && (
+            <Rail title="Multiple Rewayat">
+              {multiRewayahReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+            </Rail>
+          )}
 
-        {discoverReciters.length > 0 && (
-          <Rail title="Discover">
-            {discoverReciters.map(r => (
-              <ReciterCard
-                key={r.id}
-                reciter={r}
-                onSelect={handleReciterSelect}
-              />
-            ))}
-            <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
-          </Rail>
-        )}
+          {discoverReciters.length > 0 && (
+            <Rail title="Discover">
+              {discoverReciters.map(r => (
+                <ReciterCard
+                  key={r.id}
+                  reciter={r}
+                  onSelect={handleReciterSelect}
+                />
+              ))}
+              <SeeAllCard onSelect={() => push({screen: 'catalogGrid'})} />
+            </Rail>
+          )}
+        </TVFocusGuideView>
       </ScrollView>
     </View>
   );

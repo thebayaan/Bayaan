@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {NowPlayingChip} from './NowPlayingChip';
 import {colors} from '../../theme/colors';
@@ -34,7 +34,7 @@ export function TopTabBar(): React.ReactElement {
       <View style={styles.brandWrap}>
         <Text style={styles.brand}>Bayaan</Text>
       </View>
-      <View style={styles.center}>
+      <TVFocusGuideView autoFocus style={styles.center}>
         {TABS.map(t => {
           const active = current === t.key;
           const Icon = t.icon;
@@ -54,7 +54,7 @@ export function TopTabBar(): React.ReactElement {
             </FocusableButton>
           );
         })}
-      </View>
+      </TVFocusGuideView>
       <View style={styles.rightWrap}>
         <NowPlayingChip />
         <FocusableButton

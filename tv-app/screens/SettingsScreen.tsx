@@ -1,5 +1,11 @@
 import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
@@ -48,7 +54,7 @@ export function SettingsScreen(): React.ReactElement {
         <Text style={styles.currentValue}>
           {current?.name ?? 'Not set — pick one below'}
         </Text>
-        <View style={styles.grid}>
+        <TVFocusGuideView autoFocus style={styles.grid}>
           {reciters.slice(0, 18).map((r, i) => {
             const selected = defaultReciterId === r.id;
             return (
@@ -72,12 +78,12 @@ export function SettingsScreen(): React.ReactElement {
               </FocusableCard>
             );
           })}
-        </View>
+        </TVFocusGuideView>
 
         <Text style={[styles.sectionLabel, styles.sectionSpacer]}>
           Your Data
         </Text>
-        <View style={styles.dataRow}>
+        <TVFocusGuideView autoFocus style={styles.dataRow}>
           <ClearButton
             label="Clear listening history"
             count={continueEntries.length}
@@ -90,7 +96,7 @@ export function SettingsScreen(): React.ReactElement {
             confirming={confirm === 'favorites'}
             onPress={() => runClear('favorites')}
           />
-        </View>
+        </TVFocusGuideView>
 
         <Text style={[styles.sectionLabel, styles.sectionSpacer]}>About</Text>
         <Text style={styles.aboutText}>Bayaan TV · v0.1.0</Text>

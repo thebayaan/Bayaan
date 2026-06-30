@@ -1,5 +1,11 @@
 import React, {useCallback} from 'react';
-import {StyleSheet, Text, View, useTVEventHandler} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+  useTVEventHandler,
+} from 'react-native';
 import type {HWEvent} from 'react-native';
 import {ArtworkBackdrop} from '../components/player/ArtworkBackdrop';
 import {ArtworkCard} from '../components/player/ArtworkCard';
@@ -118,7 +124,9 @@ export function NowPlayingScreen(): React.ReactElement {
         rewayahName={rewayahLabel(rewayah)}
       />
       <Scrubber />
-      <TransportRow />
+      <TVFocusGuideView autoFocus style={StyleSheet.absoluteFillObject}>
+        <TransportRow />
+      </TVFocusGuideView>
       <ErrorBanner />
       <SecondaryOverlay />
       <SpeedOverlay />

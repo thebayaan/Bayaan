@@ -1,5 +1,5 @@
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, Text, TVFocusGuideView} from 'react-native';
 import {FocusableButton} from '../primitives/FocusableButton';
 import {SleepTimerButton} from './SleepTimerButton';
 import {useTVPlayerStore} from '../../store/tvPlayerStore';
@@ -37,7 +37,7 @@ export function TransportRow(): React.ReactElement {
 
   return (
     <>
-      <View style={styles.secondaryRow}>
+      <TVFocusGuideView autoFocus style={styles.secondaryRow}>
         <FocusableButton
           onPress={() => useOverlayStore.getState().open('speed')}
           style={styles.sBtn}
@@ -57,8 +57,8 @@ export function TransportRow(): React.ReactElement {
           accessibilityLabel="Queue">
           <QueueIcon color={colors.text} size={20} />
         </FocusableButton>
-      </View>
-      <View style={styles.row}>
+      </TVFocusGuideView>
+      <TVFocusGuideView autoFocus style={styles.row}>
         <FocusableButton
           onPress={() => setShuffle(!shuffle)}
           accessibilityLabel="Shuffle"
@@ -117,7 +117,7 @@ export function TransportRow(): React.ReactElement {
             />
           )}
         </FocusableButton>
-      </View>
+      </TVFocusGuideView>
     </>
   );
 }

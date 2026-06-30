@@ -1,5 +1,11 @@
 import React, {useMemo, useState} from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {ReciterCard} from '../components/rails/ReciterCard';
@@ -192,7 +198,7 @@ export function CollectionScreen(): React.ReactElement {
           </Text>
         ) : null}
       </View>
-      <View style={styles.tabRow}>
+      <TVFocusGuideView autoFocus style={styles.tabRow}>
         {tabs.map(t => {
           const active = tab === t.key;
           return (
@@ -224,10 +230,12 @@ export function CollectionScreen(): React.ReactElement {
             </FocusableButton>
           );
         })}
-      </View>
-      {tab === 'favorites' ? renderFavorites() : null}
-      {tab === 'continue' ? renderContinue() : null}
-      {tab === 'recent' ? renderRecent() : null}
+      </TVFocusGuideView>
+      <TVFocusGuideView autoFocus style={styles.content}>
+        {tab === 'favorites' ? renderFavorites() : null}
+        {tab === 'continue' ? renderContinue() : null}
+        {tab === 'recent' ? renderRecent() : null}
+      </TVFocusGuideView>
     </View>
   );
 }
@@ -264,6 +272,7 @@ function EmptyState({
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.background},
+  content: {flex: 1},
   header: {paddingHorizontal: spacing.xl, paddingTop: spacing.sm, gap: 6},
   kicker: {
     color: colors.text,

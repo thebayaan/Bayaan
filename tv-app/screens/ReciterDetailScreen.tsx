@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TVFocusGuideView,
   View,
 } from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
@@ -202,7 +203,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                 {totalSurahs} surahs
               </Text>
             ) : null}
-            <View style={styles.heroActions}>
+            <TVFocusGuideView autoFocus style={styles.heroActions}>
               {current ? (
                 <FocusableButton
                   onPress={async () => {
@@ -264,13 +265,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
                   </Text>
                 </View>
               </FocusableButton>
-            </View>
+            </TVFocusGuideView>
           </View>
         </View>
       </View>
 
       {rewayat.length > 1 && (
-        <View style={styles.rewayahRow}>
+        <TVFocusGuideView autoFocus style={styles.rewayahRow}>
           {rewayat.map(r => (
             <FocusableCard
               key={r.id}
@@ -288,13 +289,13 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               </Text>
             </FocusableCard>
           ))}
-        </View>
+        </TVFocusGuideView>
       )}
 
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionLabel}>Surahs</Text>
         {sortedSurahNumbers.length > 1 ? (
-          <View style={styles.sortRow}>
+          <TVFocusGuideView autoFocus style={styles.sortRow}>
             <SortChip
               label="1–114"
               active={sort === 'asc'}
@@ -310,11 +311,11 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               active={sort === 'revelation'}
               onPress={() => setSort('revelation')}
             />
-          </View>
+          </TVFocusGuideView>
         ) : null}
       </View>
       {sortedSurahNumbers.length > 0 ? (
-        <View style={styles.grid}>
+        <TVFocusGuideView autoFocus style={styles.grid}>
           {sortedSurahNumbers.map(n => {
             const p = progressByNumber.get(n);
             const ratio =
@@ -357,7 +358,7 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
               </FocusableCard>
             );
           })}
-        </View>
+        </TVFocusGuideView>
       ) : loading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator color={colors.text} size="large" />

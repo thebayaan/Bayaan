@@ -1,6 +1,12 @@
 import {FlashList} from '@shopify/flash-list';
 import React, {useMemo} from 'react';
-import {StyleSheet, Text, useWindowDimensions, View} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TVFocusGuideView,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {Rail} from '../components/rails/Rail';
 import {RailHeader} from '../components/rails/RailHeader';
@@ -143,7 +149,7 @@ export function CatalogGridScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <TopTabBar />
-      <View style={styles.listWrap}>
+      <TVFocusGuideView autoFocus style={styles.listWrap}>
         <FlashList
           data={reciters}
           numColumns={numColumns}
@@ -168,7 +174,7 @@ export function CatalogGridScreen(): React.ReactElement {
           )}
           keyExtractor={reciter => reciter.id}
         />
-      </View>
+      </TVFocusGuideView>
     </View>
   );
 }

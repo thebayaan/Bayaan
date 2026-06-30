@@ -1,5 +1,12 @@
 import React, {useState} from 'react';
-import {ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TVFocusGuideView,
+  View,
+} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {Rail} from '../components/rails/Rail';
@@ -69,7 +76,7 @@ export function SearchScreen(): React.ReactElement {
       <View style={styles.body}>
         <Text style={styles.kicker}>CATALOG</Text>
         <Text style={styles.pageTitle}>Search</Text>
-        <View style={styles.inputRow}>
+        <TVFocusGuideView autoFocus style={styles.inputRow}>
           <SearchIcon color={colors.text} size={32} />
           <TextInput
             value={query}
@@ -81,94 +88,98 @@ export function SearchScreen(): React.ReactElement {
             autoCapitalize="none"
             hasTVPreferredFocus
           />
-        </View>
-        <ScrollView style={styles.results} showsVerticalScrollIndicator={false}>
-          {hasReciters && (
-            <Rail
-              title={`${reciterResults.length} ${
-                reciterResults.length === 1 ? 'reciter' : 'reciters'
-              }`}>
-              {reciterResults.map(r => (
-                <ReciterCard
-                  key={r.id}
-                  reciter={r}
-                  onSelect={() => handleReciterSelect(r.id)}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {hasSurahs && defaultReciterId && (
-            <Rail
-              title={`${surahResults.length} ${
-                surahResults.length === 1 ? 'surah' : 'surahs'
-              } to play`}>
-              {surahResults.map(s => (
-                <QuickPlayCard
-                  key={s.id}
-                  surahNumber={s.id}
-                  surahName={s.name}
-                  onSelect={handleSurahSelect}
-                />
-              ))}
-            </Rail>
-          )}
-
-          {!active && recents.length > 0 && (
-            <View style={styles.recentsBlock}>
-              <View style={styles.recentsHeader}>
-                <Text style={styles.recentsKicker}>RECENT SEARCHES</Text>
-                <FocusableButton
-                  onPress={() => clearRecentSearches()}
-                  accessibilityLabel="Clear recent searches"
-                  style={styles.clearBtn}>
-                  <Text style={styles.clearBtnText}>Clear</Text>
-                </FocusableButton>
-              </View>
-              <View style={styles.recentList}>
-                {recents.map(r => (
-                  <View key={r} style={styles.recentRow}>
-                    <FocusableButton
-                      onPress={() => setQuery(r)}
-                      accessibilityLabel={`Search ${r}`}
-                      focusedStyle={styles.recentFillWrap}
-                      style={styles.recentFill}>
-                      <Text style={styles.recentFillText} numberOfLines={1}>
-                        {r}
-                      </Text>
-                    </FocusableButton>
-                    <FocusableButton
-                      onPress={() => removeRecentSearch(r)}
-                      accessibilityLabel={`Remove ${r} from recent searches`}
-                      style={styles.recentRemove}>
-                      <Text style={styles.recentRemoveText}>Remove</Text>
-                    </FocusableButton>
-                  </View>
+        </TVFocusGuideView>
+        <TVFocusGuideView autoFocus style={styles.results}>
+          <ScrollView
+            style={styles.results}
+            showsVerticalScrollIndicator={false}>
+            {hasReciters && (
+              <Rail
+                title={`${reciterResults.length} ${
+                  reciterResults.length === 1 ? 'reciter' : 'reciters'
+                }`}>
+                {reciterResults.map(r => (
+                  <ReciterCard
+                    key={r.id}
+                    reciter={r}
+                    onSelect={() => handleReciterSelect(r.id)}
+                  />
                 ))}
+              </Rail>
+            )}
+
+            {hasSurahs && defaultReciterId && (
+              <Rail
+                title={`${surahResults.length} ${
+                  surahResults.length === 1 ? 'surah' : 'surahs'
+                } to play`}>
+                {surahResults.map(s => (
+                  <QuickPlayCard
+                    key={s.id}
+                    surahNumber={s.id}
+                    surahName={s.name}
+                    onSelect={handleSurahSelect}
+                  />
+                ))}
+              </Rail>
+            )}
+
+            {!active && recents.length > 0 && (
+              <View style={styles.recentsBlock}>
+                <View style={styles.recentsHeader}>
+                  <Text style={styles.recentsKicker}>RECENT SEARCHES</Text>
+                  <FocusableButton
+                    onPress={() => clearRecentSearches()}
+                    accessibilityLabel="Clear recent searches"
+                    style={styles.clearBtn}>
+                    <Text style={styles.clearBtnText}>Clear</Text>
+                  </FocusableButton>
+                </View>
+                <View style={styles.recentList}>
+                  {recents.map(r => (
+                    <View key={r} style={styles.recentRow}>
+                      <FocusableButton
+                        onPress={() => setQuery(r)}
+                        accessibilityLabel={`Search ${r}`}
+                        focusedStyle={styles.recentFillWrap}
+                        style={styles.recentFill}>
+                        <Text style={styles.recentFillText} numberOfLines={1}>
+                          {r}
+                        </Text>
+                      </FocusableButton>
+                      <FocusableButton
+                        onPress={() => removeRecentSearch(r)}
+                        accessibilityLabel={`Remove ${r} from recent searches`}
+                        style={styles.recentRemove}>
+                        <Text style={styles.recentRemoveText}>Remove</Text>
+                      </FocusableButton>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
-          {active && loading && !hasAny && (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.hint}>Searching…</Text>
-            </View>
-          )}
+            {active && loading && !hasAny && (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.hint}>Searching…</Text>
+              </View>
+            )}
 
-          {active && !loading && !hasAny && (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.hint}>No matches for that search</Text>
-            </View>
-          )}
+            {active && !loading && !hasAny && (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.hint}>No matches for that search</Text>
+              </View>
+            )}
 
-          {!active && recents.length === 0 && (
-            <View style={styles.emptyWrap}>
-              <Text style={styles.hint}>
-                Start typing a reciter, a surah name, or a surah number
-              </Text>
-            </View>
-          )}
-        </ScrollView>
+            {!active && recents.length === 0 && (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.hint}>
+                  Start typing a reciter, a surah name, or a surah number
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+        </TVFocusGuideView>
       </View>
     </View>
   );
