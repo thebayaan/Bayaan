@@ -18,6 +18,15 @@ export function recordSearch(query: string): void {
   writeJSON(KEY, next);
 }
 
+export function removeRecentSearch(query: string): void {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return;
+  const existing = getRecentSearches();
+  const next = existing.filter(q => q.toLowerCase() !== trimmed.toLowerCase());
+  if (next.length === existing.length) return;
+  writeJSON(KEY, next);
+}
+
 export function clearRecentSearches(): void {
   remove(KEY);
 }

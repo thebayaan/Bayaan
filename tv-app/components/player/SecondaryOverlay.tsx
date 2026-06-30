@@ -2,20 +2,17 @@
 import React from 'react';
 import {StyleSheet, View} from 'react-native';
 import {useOverlayStore} from '../../store/overlayStore';
-import {SpeedPicker} from '../overlays/SpeedPicker';
-import {SleepTimer} from '../overlays/SleepTimer';
-import {AmbientPicker} from '../overlays/AmbientPicker';
 import {QueueOverlay} from '../overlays/QueueOverlay';
 
+// The Speed, Sleep, and Ambient overlays now render their own scrim and
+// self-gate on overlayStore.active (mounted directly in NowPlayingScreen).
+// SecondaryOverlay only owns the Queue branch to avoid a doubled scrim.
 export function SecondaryOverlay(): React.ReactElement | null {
   const active = useOverlayStore(s => s.active);
-  if (!active) return null;
+  if (active !== 'queue') return null;
   return (
     <View style={[StyleSheet.absoluteFillObject, styles.scrim]}>
-      {active === 'speed' && <SpeedPicker />}
-      {active === 'sleep' && <SleepTimer />}
-      {active === 'ambient' && <AmbientPicker />}
-      {active === 'queue' && <QueueOverlay />}
+      <QueueOverlay />
     </View>
   );
 }

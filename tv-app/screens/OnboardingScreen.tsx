@@ -76,12 +76,20 @@ type ChoiceProps = {
   hasTVPreferredFocus: boolean;
 };
 
+function reciterSubtitle(reciter: Reciter): string {
+  const count = reciter.rewayat.length;
+  if (count === 0) return '';
+  if (count === 1) return reciter.rewayat[0].name;
+  return `${count} rewayat`;
+}
+
 function ReciterChoice({
   reciter,
   selected,
   onSelect,
   hasTVPreferredFocus,
 }: ChoiceProps): React.ReactElement {
+  const subtitle = reciterSubtitle(reciter);
   return (
     <FocusableCard
       style={[styles.card, selected && styles.cardSelected]}
@@ -110,11 +118,11 @@ function ReciterChoice({
         </Text>
         {selected ? (
           <Text style={styles.selectedTag}>SELECTED</Text>
-        ) : (
-          <Text style={styles.date} numberOfLines={1}>
-            {reciter.date ?? ''}
+        ) : subtitle ? (
+          <Text style={styles.cardSub} numberOfLines={1}>
+            {subtitle}
           </Text>
-        )}
+        ) : null}
       </View>
     </FocusableCard>
   );
@@ -182,7 +190,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  date: {
+  cardSub: {
     color: colors.textSecondary,
     fontSize: 12,
     fontWeight: '500',

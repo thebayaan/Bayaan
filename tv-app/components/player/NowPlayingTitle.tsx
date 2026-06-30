@@ -29,8 +29,12 @@ export function NowPlayingTitle({
       </Text>
       <Text style={styles.reciter} numberOfLines={1}>
         {reciterName}
-        {rewayahName ? `  ·  ${rewayahName}` : ''}
       </Text>
+      {rewayahName ? (
+        <Text style={styles.rewayah} numberOfLines={1}>
+          {rewayahName}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -56,9 +60,15 @@ const styles = StyleSheet.create({
   },
   reciter: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '500',
-    opacity: 0.75,
+    opacity: 0.7,
     marginTop: 2,
+  },
+  rewayah: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.45,
   },
 });

@@ -1,6 +1,7 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image} from 'expo-image';
 import {
+  ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollView,
@@ -52,17 +53,29 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
   const continueEntries = useContinueListening();
   const isFav = favorites.some(f => f.reciterId === reciterId);
   const push = useNavStore(s => s.push);
+  const pop = useNavStore(s => s.pop);
   const [sort, setSort] = useState<SortMode>('asc');
+  const [loading, setLoading] = useState<boolean>(
+    () => (getCachedRewayat(reciterId)?.length ?? 0) === 0,
+  );
 
   const scrollRef = useRef<ScrollView>(null);
   const restoredRef = useRef<boolean>(false);
 
   useEffect(() => {
-    fetchRewayat(reciterId).then(r => {
-      if (r.length === 0) return;
-      setRewayat(r);
-      setActive(prev => prev ?? r[0]?.id ?? null);
-    });
+    let cancelled = false;
+    fetchRewayat(reciterId)
+      .then(r => {
+        if (cancelled || r.length === 0) return;
+        setRewayat(r);
+        setActive(prev => prev ?? r[0]?.id ?? null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [reciterId]);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>): void {
@@ -121,7 +134,23 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
     return map;
   }, [continueEntries, reciterId]);
 
-  if (!reciter) return <View style={styles.container} />;
+  if (!reciter) {
+    return (
+      <View style={[styles.container, styles.notFound]}>
+        <Text style={styles.notFoundTitle}>Reciter unavailable</Text>
+        <Text style={styles.notFoundSub}>
+          We couldn&apos;t load this reciter. Head back and pick another.
+        </Text>
+        <FocusableButton
+          onPress={pop}
+          accessibilityLabel="Go back"
+          hasTVPreferredFocus
+          style={styles.notFoundBtn}>
+          <Text style={styles.notFoundBtnText}>Go back</Text>
+        </FocusableButton>
+      </View>
+    );
+  }
 
   const surahByNumber = new Map<number, string>(
     SURAHS.map(s => [s.id, s.name]),
@@ -329,11 +358,15 @@ export function ReciterDetailScreen({reciterId}: Props): React.ReactElement {
             );
           })}
         </View>
+      ) : loading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={colors.text} size="large" />
+        </View>
       ) : (
-        <View style={styles.emptyGrid}>
-          {Array.from({length: 10}).map((_, i) => (
-            <View key={i} style={[styles.surahCard, styles.surahSkeleton]} />
-          ))}
+        <View style={styles.noSurahs}>
+          <Text style={styles.noSurahsText}>
+            No surahs are available for this rewayah yet.
+          </Text>
         </View>
       )}
 
@@ -549,11 +582,55 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     opacity: 0.85,
   },
-  emptyGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  loadingRow: {
     paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    alignItems: 'flex-start',
+  },
+  noSurahs: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+  },
+  noSurahsText: {
+    color: colors.textSecondary,
+    fontSize: 18,
+    fontWeight: '500',
+    opacity: 0.8,
+  },
+  notFound: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  notFoundTitle: {
+    color: colors.text,
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+  },
+  notFoundSub: {
+    color: colors.textSecondary,
+    fontSize: 18,
+    fontWeight: '500',
+    textAlign: 'center',
+    maxWidth: 560,
+    lineHeight: 28,
+    opacity: 0.8,
+  },
+  notFoundBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
+    backgroundColor: colors.text,
+    marginTop: spacing.sm,
+  },
+  notFoundBtnText: {
+    color: colors.background,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   bioBlock: {marginTop: spacing.xl},
   bio: {
@@ -564,10 +641,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     opacity: 0.85,
     maxWidth: 900,
-  },
-  surahSkeleton: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
-    opacity: 0.5,
   },
 });

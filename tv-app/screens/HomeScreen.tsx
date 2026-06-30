@@ -39,7 +39,7 @@ export function HomeScreen(): React.ReactElement {
   const favorites = useFavorites();
   const recent = useRecentlyPlayed();
   const {defaultReciterId} = useDefaultReciter();
-  const {playRewayah} = usePlayer();
+  const {playRewayah, resumeContinue} = usePlayer();
   const push = useNavStore(s => s.push);
 
   const surahByNumber = useMemo(() => {
@@ -124,7 +124,13 @@ export function HomeScreen(): React.ReactElement {
     const rewayat = await fetchRewayat(entry.reciterId);
     const rewayah = rewayat.find(r => r.id === entry.rewayahId) ?? rewayat[0];
     if (!rewayah) return;
-    await playRewayah(reciter.id, reciter.name, rewayah, entry.surahNumber);
+    await resumeContinue(
+      reciter.id,
+      reciter.name,
+      rewayah,
+      entry.surahNumber,
+      entry.positionSeconds,
+    );
     push({screen: 'nowPlaying'});
   }
 

@@ -45,11 +45,19 @@ export type UsePlayerReturn = {
     reciterName: string,
     rewayah: Rewayah,
   ) => Promise<void>;
+  resumeContinue: (
+    reciterId: string,
+    reciterName: string,
+    rewayah: Rewayah,
+    surahNumber: number,
+    positionSeconds: number,
+  ) => Promise<void>;
 };
 
 export function usePlayer(): UsePlayerReturn {
   const loadQueue = useTVPlayerStore(s => s.loadQueue);
   const setShuffle = useTVPlayerStore(s => s.setShuffle);
+  const seekTo = useTVPlayerStore(s => s.seekTo);
 
   const playRewayah = async (
     reciterId: string,
@@ -75,5 +83,18 @@ export function usePlayer(): UsePlayerReturn {
     await loadQueue(queue, 0);
   };
 
-  return {playRewayah, shufflePlayRewayah};
+  const resumeContinue = async (
+    reciterId: string,
+    reciterName: string,
+    rewayah: Rewayah,
+    surahNumber: number,
+    positionSeconds: number,
+  ): Promise<void> => {
+    await playRewayah(reciterId, reciterName, rewayah, surahNumber);
+    if (positionSeconds > 0) {
+      seekTo(positionSeconds);
+    }
+  };
+
+  return {playRewayah, shufflePlayRewayah, resumeContinue};
 }

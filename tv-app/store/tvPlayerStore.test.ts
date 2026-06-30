@@ -1,5 +1,12 @@
 import {useTVPlayerStore} from './tvPlayerStore';
 import type {AudioEngine, EngineEvent} from '../services/audioEngine';
+import {
+  DEFAULT_RECITER_KEY,
+  getDefaultReciter,
+  seedDefaultReciter,
+} from '../services/tvDataService';
+import {normalizeReciters} from '../services/normalizeReciter';
+import {storage} from '../services/storage';
 
 function makeMockEngine(): AudioEngine & {emit: (e: EngineEvent) => void} {
   let listener: ((e: EngineEvent) => void) | null = null;
@@ -157,5 +164,48 @@ describe('tvPlayerStore', () => {
     useTVPlayerStore.getState().setEngine(engineA);
     useTVPlayerStore.getState().setEngine(engineB);
     expect(engineA.destroy).toHaveBeenCalled();
+  });
+});
+
+describe('getDefaultReciter', () => {
+  it('returns null for an empty reciter list', () => {
+    expect(getDefaultReciter([])).toBeNull();
+  });
+
+  it('prefers a featured reciter when one exists', () => {
+    const reciters = normalizeReciters([
+      {id: 'a', name: 'Alpha'},
+      {id: 'b', name: 'Beta', is_featured: true},
+      {id: 'c', name: 'Gamma'},
+    ]);
+    expect(getDefaultReciter(reciters)?.id).toBe('b');
+  });
+
+  it('falls back to the first reciter when none are featured', () => {
+    const reciters = normalizeReciters([
+      {id: 'a', name: 'Alpha'},
+      {id: 'b', name: 'Beta'},
+    ]);
+    expect(getDefaultReciter(reciters)?.id).toBe('a');
+  });
+});
+
+describe('seedDefaultReciter', () => {
+  beforeEach(() => {
+    storage.clearAll();
+  });
+
+  it('resolves and persists a non-null default reciter with no history', async () => {
+    expect(storage.getString(DEFAULT_RECITER_KEY)).toBeUndefined();
+    const id = await seedDefaultReciter();
+    expect(id).not.toBeNull();
+    expect(storage.getString(DEFAULT_RECITER_KEY)).toBe(id);
+  });
+
+  it('does not overwrite an already-persisted default reciter', async () => {
+    storage.set(DEFAULT_RECITER_KEY, 'existing-id');
+    const id = await seedDefaultReciter();
+    expect(id).toBe('existing-id');
+    expect(storage.getString(DEFAULT_RECITER_KEY)).toBe('existing-id');
   });
 });

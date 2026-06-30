@@ -4,12 +4,12 @@ import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {CheckIcon, TrashIcon} from '../../components/Icons';
-import {useDefaultReciter} from '../hooks/useDefaultReciter';
 import {useReciters} from '../hooks/useReciters';
 import {useContinueListening} from '../hooks/useContinueListening';
 import {useFavorites} from '../hooks/useFavorites';
 import {clearContinue} from '../services/continueListeningStore';
 import {clearFavorites} from '../services/favoritesStore';
+import {useSettingsStore} from '../store/settingsStore';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {typography} from '../theme/typography';
@@ -18,7 +18,8 @@ type ConfirmKey = 'history' | 'favorites' | null;
 
 export function SettingsScreen(): React.ReactElement {
   const {reciters} = useReciters();
-  const {defaultReciterId, setDefaultReciter} = useDefaultReciter();
+  const defaultReciterId = useSettingsStore(s => s.defaultReciterId);
+  const setDefaultReciterId = useSettingsStore(s => s.setDefaultReciterId);
   const continueEntries = useContinueListening();
   const favorites = useFavorites();
   const current = reciters.find(r => r.id === defaultReciterId);
@@ -54,7 +55,7 @@ export function SettingsScreen(): React.ReactElement {
               <FocusableCard
                 key={r.id}
                 style={[styles.chip, selected && styles.chipActive]}
-                onPress={() => setDefaultReciter(r.id)}
+                onPress={() => setDefaultReciterId(r.id)}
                 hasTVPreferredFocus={i === 0}>
                 <View style={styles.chipInner}>
                   {selected && (

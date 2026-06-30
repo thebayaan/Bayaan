@@ -6,6 +6,7 @@ import {useTVPlayerStore} from '../../store/tvPlayerStore';
 import {useOverlayStore} from '../../store/overlayStore';
 import {colors} from '../../theme/colors';
 import {
+  AmbientIcon,
   NextIcon,
   PauseIcon,
   PlayIcon,
@@ -44,6 +45,12 @@ export function TransportRow(): React.ReactElement {
           <Text style={styles.sText}>{speed}x</Text>
         </FocusableButton>
         <SleepTimerButton />
+        <FocusableButton
+          onPress={() => useOverlayStore.getState().open('ambient')}
+          style={styles.sBtn}
+          accessibilityLabel="Ambient sound">
+          <AmbientIcon color={colors.text} size={20} />
+        </FocusableButton>
         <FocusableButton
           onPress={() => useOverlayStore.getState().open('queue')}
           style={styles.sBtn}

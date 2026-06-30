@@ -1,4 +1,4 @@
-import {useAmbientStore} from './ambientStore';
+import {useAmbientStore, readPersistedAmbient} from './ambientStore';
 import {storage} from '../services/storage';
 
 beforeEach(() => {
@@ -30,5 +30,27 @@ describe('ambientStore', () => {
   it('setSound updates currentSound', () => {
     useAmbientStore.getState().setSound('forest');
     expect(useAmbientStore.getState().currentSound).toBe('forest');
+  });
+
+  describe('persistence (MMKV)', () => {
+    it('persists enabled, currentSound, and volume across re-reads', () => {
+      useAmbientStore.getState().toggle();
+      useAmbientStore.getState().setSound('ocean');
+      useAmbientStore.getState().setVolume(0.8);
+      expect(readPersistedAmbient()).toEqual({
+        enabled: true,
+        currentSound: 'ocean',
+        volume: 0.8,
+      });
+    });
+
+    it('falls back to defaults when nothing is persisted', () => {
+      storage.clearAll();
+      expect(readPersistedAmbient()).toEqual({
+        enabled: false,
+        currentSound: 'rain',
+        volume: 0.5,
+      });
+    });
   });
 });

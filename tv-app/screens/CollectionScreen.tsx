@@ -89,6 +89,10 @@ export function CollectionScreen(): React.ReactElement {
           icon={<HeartIcon color={colors.text} size={64} />}
           title="Nothing saved yet"
           sub="Open a reciter and tap Favorite to pin them here."
+          cta={{
+            label: 'Browse reciters',
+            onPress: () => push({screen: 'catalogGrid'}),
+          }}
         />
       );
     }
@@ -115,6 +119,10 @@ export function CollectionScreen(): React.ReactElement {
         <EmptyState
           title="No listening history"
           sub="Surahs you've started will show up here so you can pick up where you left off."
+          cta={{
+            label: 'Browse reciters',
+            onPress: () => push({screen: 'catalogGrid'}),
+          }}
         />
       );
     }
@@ -145,6 +153,10 @@ export function CollectionScreen(): React.ReactElement {
         <EmptyState
           title="Nothing played yet"
           sub="Reciters you've played will appear here for quick return."
+          cta={{
+            label: 'Browse reciters',
+            onPress: () => push({screen: 'catalogGrid'}),
+          }}
         />
       );
     }
@@ -224,14 +236,28 @@ type EmptyStateProps = {
   title: string;
   sub: string;
   icon?: React.ReactNode;
+  cta?: {label: string; onPress: () => void};
 };
 
-function EmptyState({title, sub, icon}: EmptyStateProps): React.ReactElement {
+function EmptyState({
+  title,
+  sub,
+  icon,
+  cta,
+}: EmptyStateProps): React.ReactElement {
   return (
     <View style={styles.center}>
       {icon ? <View style={styles.iconHalo}>{icon}</View> : null}
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.emptySub}>{sub}</Text>
+      {cta ? (
+        <FocusableButton
+          onPress={cta.onPress}
+          accessibilityLabel={cta.label}
+          style={styles.emptyCta}>
+          <Text style={styles.emptyCtaText}>{cta.label}</Text>
+        </FocusableButton>
+      ) : null}
     </View>
   );
 }
@@ -334,5 +360,18 @@ const styles = StyleSheet.create({
     maxWidth: 640,
     lineHeight: 28,
     opacity: 0.75,
+  },
+  emptyCta: {
+    marginTop: spacing.sm,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
+    backgroundColor: colors.text,
+  },
+  emptyCtaText: {
+    color: colors.background,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

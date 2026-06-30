@@ -66,6 +66,10 @@ function mapPlaybackState(state: PlaybackState): EngineStatus {
 export function createAudioEngine(): AudioEngine {
   const listeners = new Set<(e: EngineEvent) => void>();
   let pollTimer: ReturnType<typeof setInterval> | null = null;
+  // Loading a fresh source resets the underlying player's rate to 1x, so we
+  // track the chosen rate here and re-apply it after every load() to keep the
+  // selected speed across track changes.
+  let currentRate = 1;
 
   function safeGet<T>(fn: () => T, fallback: T): T {
     try {
@@ -119,6 +123,7 @@ export function createAudioEngine(): AudioEngine {
   return {
     load: async (url: string): Promise<void> => {
       await expoAudioService.loadTrack(url);
+      expoAudioService.setRate(currentRate);
     },
 
     play: async (): Promise<void> => {
@@ -136,6 +141,7 @@ export function createAudioEngine(): AudioEngine {
     },
 
     setRate: (rate: number): void => {
+      currentRate = rate;
       expoAudioService.setRate(rate);
     },
 

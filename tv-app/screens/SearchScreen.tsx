@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
+import React, {useState} from 'react';
 import {ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {TopTabBar} from '../components/nav/TopTabBar';
 import {FocusableButton} from '../components/primitives/FocusableButton';
@@ -9,19 +9,18 @@ import {SearchIcon} from '../../components/Icons';
 import {useReciters} from '../hooks/useReciters';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
 import {useSearchRecents} from '../hooks/useSearchRecents';
+import {useSearch, MIN_QUERY_LENGTH} from '../hooks/useSearch';
 import {usePlayer} from '../hooks/usePlayer';
 import {useNavStore} from '../store/navStore';
 import {
   clearRecentSearches,
   recordSearch,
+  removeRecentSearch,
 } from '../services/searchRecentsStore';
 import {fetchRewayat} from '../services/tvDataService';
-import {SURAHS} from '../../data/surahData';
 import {colors} from '../theme/colors';
 import {spacing} from '../theme/spacing';
 import {typography} from '../theme/typography';
-
-type SurahMeta = {id: number; name: string};
 
 export function SearchScreen(): React.ReactElement {
   const [query, setQuery] = useState('');
@@ -31,35 +30,22 @@ export function SearchScreen(): React.ReactElement {
   const {playRewayah} = usePlayer();
   const push = useNavStore(s => s.push);
 
-  const q = query.trim().toLowerCase();
-  const ready = q.length >= 2;
+  const {
+    reciters: reciterResults,
+    surahs: surahResults,
+    loading,
+  } = useSearch(query, reciters);
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!ready) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => recordSearch(query), 1200);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query, ready]);
+  const active = query.trim().length >= MIN_QUERY_LENGTH;
 
-  const reciterResults = useMemo(() => {
-    if (!ready) return [];
-    return reciters.filter(r => r.name.toLowerCase().includes(q)).slice(0, 20);
-  }, [reciters, q, ready]);
+  function commitSearch(): void {
+    recordSearch(query);
+  }
 
-  const surahResults = useMemo(() => {
-    if (!ready) return [];
-    const numericQ = Number(q);
-    return (SURAHS as SurahMeta[])
-      .filter(
-        s =>
-          s.name.toLowerCase().includes(q) ||
-          (Number.isFinite(numericQ) && s.id === numericQ),
-      )
-      .slice(0, 12);
-  }, [q, ready]);
+  function handleReciterSelect(reciterId: string): void {
+    commitSearch();
+    push({screen: 'reciterDetail', reciterId});
+  }
 
   async function handleSurahSelect(surahNumber: number): Promise<void> {
     if (!defaultReciterId) return;
@@ -68,6 +54,7 @@ export function SearchScreen(): React.ReactElement {
     const rewayat = await fetchRewayat(defaultReciterId);
     const rewayah = rewayat[0];
     if (!rewayah) return;
+    commitSearch();
     await playRewayah(reciter.id, reciter.name, rewayah, surahNumber);
     push({screen: 'nowPlaying'});
   }
@@ -105,9 +92,7 @@ export function SearchScreen(): React.ReactElement {
                 <ReciterCard
                   key={r.id}
                   reciter={r}
-                  onSelect={() =>
-                    push({screen: 'reciterDetail', reciterId: r.id})
-                  }
+                  onSelect={() => handleReciterSelect(r.id)}
                 />
               ))}
             </Rail>
@@ -117,7 +102,7 @@ export function SearchScreen(): React.ReactElement {
             <Rail
               title={`${surahResults.length} ${
                 surahResults.length === 1 ? 'surah' : 'surahs'
-              } — tap to play`}>
+              } to play`}>
               {surahResults.map(s => (
                 <QuickPlayCard
                   key={s.id}
@@ -129,7 +114,7 @@ export function SearchScreen(): React.ReactElement {
             </Rail>
           )}
 
-          {!ready && recents.length > 0 && (
+          {!active && recents.length > 0 && (
             <View style={styles.recentsBlock}>
               <View style={styles.recentsHeader}>
                 <Text style={styles.recentsKicker}>RECENT SEARCHES</Text>
@@ -140,26 +125,46 @@ export function SearchScreen(): React.ReactElement {
                   <Text style={styles.clearBtnText}>Clear</Text>
                 </FocusableButton>
               </View>
-              <View style={styles.chipRow}>
+              <View style={styles.recentList}>
                 {recents.map(r => (
-                  <FocusableButton
-                    key={r}
-                    onPress={() => setQuery(r)}
-                    accessibilityLabel={`Search ${r}`}
-                    style={styles.recentChip}>
-                    <Text style={styles.recentChipText}>{r}</Text>
-                  </FocusableButton>
+                  <View key={r} style={styles.recentRow}>
+                    <FocusableButton
+                      onPress={() => setQuery(r)}
+                      accessibilityLabel={`Search ${r}`}
+                      focusedStyle={styles.recentFillWrap}
+                      style={styles.recentFill}>
+                      <Text style={styles.recentFillText} numberOfLines={1}>
+                        {r}
+                      </Text>
+                    </FocusableButton>
+                    <FocusableButton
+                      onPress={() => removeRecentSearch(r)}
+                      accessibilityLabel={`Remove ${r} from recent searches`}
+                      style={styles.recentRemove}>
+                      <Text style={styles.recentRemoveText}>Remove</Text>
+                    </FocusableButton>
+                  </View>
                 ))}
               </View>
             </View>
           )}
 
-          {!hasAny && (
+          {active && loading && !hasAny && (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.hint}>Searching…</Text>
+            </View>
+          )}
+
+          {active && !loading && !hasAny && (
+            <View style={styles.emptyWrap}>
+              <Text style={styles.hint}>No matches for that search</Text>
+            </View>
+          )}
+
+          {!active && recents.length === 0 && (
             <View style={styles.emptyWrap}>
               <Text style={styles.hint}>
-                {ready
-                  ? 'No matches for that search'
-                  : 'Start typing — reciters, surah names, or surah numbers'}
+                Start typing a reciter, a surah name, or a surah number
               </Text>
             </View>
           )}
@@ -236,17 +241,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  chipRow: {flexDirection: 'row', flexWrap: 'wrap', gap: 10},
-  recentChip: {
+  recentList: {gap: 10},
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  recentFillWrap: {flex: 1},
+  recentFill: {
     paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 22,
+    paddingVertical: 12,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  recentChipText: {
+  recentFillText: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '600',
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
+  },
+  recentRemove: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  recentRemoveText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
