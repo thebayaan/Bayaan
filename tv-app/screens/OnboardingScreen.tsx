@@ -1,6 +1,6 @@
 import React, {useMemo} from 'react';
 import {Image} from 'expo-image';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, TVFocusGuideView, View} from 'react-native';
 import {FocusableButton} from '../components/primitives/FocusableButton';
 import {FocusableCard} from '../components/primitives/FocusableCard';
 import {useDefaultReciter} from '../hooks/useDefaultReciter';
@@ -54,7 +54,7 @@ export function OnboardingScreen(): React.ReactElement {
           />
         ))}
       </ScrollView>
-      <View style={styles.actions}>
+      <TVFocusGuideView autoFocus style={styles.actions}>
         <FocusableButton
           onPress={finish}
           accessibilityLabel={defaultReciterId ? 'Continue' : 'Skip for now'}
@@ -64,7 +64,7 @@ export function OnboardingScreen(): React.ReactElement {
             {defaultReciterId ? 'Continue' : 'Skip for now'}
           </Text>
         </FocusableButton>
-      </View>
+      </TVFocusGuideView>
     </View>
   );
 }
