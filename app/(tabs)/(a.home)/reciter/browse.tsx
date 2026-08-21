@@ -9,16 +9,27 @@ export default function BrowseScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const {theme} = useTheme();
-  const {surahId, teacher, student, rewayatName, hasPhoto} =
-    useLocalSearchParams<{
-      surahId: string;
-      teacher: string;
-      student: string;
-      rewayatName: string;
-      // RFC-012 — composable Search-tab filter chips. Tiles on the Home
-      // tab can deeplink here with chips pre-applied (e.g. `?hasPhoto=1`).
-      hasPhoto: string;
-    }>();
+  const {
+    surahId,
+    teacher,
+    student,
+    rewayatName,
+    countryName,
+    translationName,
+    hasPhoto,
+  } = useLocalSearchParams<{
+    surahId: string;
+    teacher: string;
+    student: string;
+    // RFC-012 / RFC-020 — display companions for the composable filter
+    // chips, used here only to title the destination header.
+    rewayatName: string;
+    countryName: string;
+    translationName: string;
+    // RFC-012 — composable Search-tab filter chips. Tiles on the Home
+    // tab can deeplink here with chips pre-applied (e.g. `?hasPhoto=1`).
+    hasPhoto: string;
+  }>();
 
   const handleBack = () => {
     router.back();
@@ -27,9 +38,13 @@ export default function BrowseScreen() {
   // Get title based on context
   const title = rewayatName
     ? rewayatName
-    : surahId
-      ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
-      : 'Browse All';
+    : countryName
+      ? countryName
+      : translationName
+        ? `${translationName} translation`
+        : surahId
+          ? `Browse Reciters - ${SURAHS[parseInt(surahId, 10) - 1].name}`
+          : 'Browse All';
 
   // Set native header title on iOS
   useLayoutEffect(() => {

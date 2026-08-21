@@ -52,24 +52,56 @@ export interface HomeRow {
 export interface ListenTabTopComponentProps {}
 
 /**
- * RFC-012 — identifier for a Search/Browse-tab filter dimension.
+ * RFC-012 / RFC-020 — identifier for a Search/Browse-tab filter dimension.
  *
  * Each id is a predicate the `BrowseReciters` filter pipeline can apply
  * to the reciter list. Forks declare an array in `branding.searchFilters`
  * to opt in to the user-editable chip framework; when undefined, the
  * Search tab keeps today's bespoke chip set (teacher/student) unchanged.
  *
- * v1 ships the exists-today subset only — every dimension here resolves
+ * `rewaya` / `has-surah` / `has-photo` / `recitation-style` resolve
  * against fields that already exist on `Reciter` / `Reciter.rewayat[]`.
- * Future dimensions (`country`, `translation`) require the corresponding
- * fields to be added to the `Reciter` type and populated from the
- * catalog first; they're not part of this PR.
+ * `country` / `translation` need the corresponding `Reciter` field
+ * populated from the catalog first — a fork declaring one before the
+ * field is populated gets an empty, harmless chip. `full-quran` has no
+ * dedicated field — it's derived: any of the reciter's `rewayat[]` with
+ * `surah_total === 114`.
+ *
+ * See `SearchFilterFlagFacet` for the generic boolean-field form used by
+ * fork-only facets (e.g. a curated collection flag) that shouldn't
+ * widen this shared string union.
  */
 export type SearchFilterDimension =
   | 'rewaya' // Reciter.rewayat[].name — teacher/student (already bespoke; here for future migration)
   | 'has-surah' // surah picker → Reciter.rewayat[].surah_list includes (already bespoke; here for future migration)
   | 'has-photo' // Reciter.image_url present
-  | 'recitation-style'; // Reciter.rewayat[].style — canonical slugs 'murattal'|'mojawwad'|'moalim' per data/rewayat-slugs.json (already bespoke; here for future migration)
+  | 'recitation-style' // Reciter.rewayat[].style — canonical slugs 'murattal'|'mojawwad'|'moalim' per data/rewayat-slugs.json (already bespoke; here for future migration)
+  | 'country' // Reciter.country present — requires the field populated from the catalog
+  | 'translation' // Reciter.translation present — requires the field populated from the catalog
+  | 'full-quran'; // any Reciter.rewayat[] with surah_total === 114 — derived, no dedicated field
+
+/**
+ * RFC-020 — generic boolean-facet form for tenant-specific filter chips
+ * that don't belong in the shared `SearchFilterDimension` string union
+ * (e.g. a fork's curated collection flags such as an editorial
+ * "featured" set). `field` names a boolean-or-undefined property on
+ * `Reciter`; a reciter matches the facet when that property is `true`.
+ * `label` is the chip's display text.
+ *
+ * Deliberately generic (a `string field`, not a literal union of known
+ * fork fields) so a tenant can add its own boolean `Reciter` field and
+ * surface it as a chip without widening this shared type.
+ *
+ * @example
+ * { kind: 'flag', field: 'featured', label: 'Featured' }
+ */
+export interface SearchFilterFlagFacet {
+  kind: 'flag';
+  /** A boolean (or undefined) field on `Reciter` this facet filters by. */
+  field: string;
+  /** Chip display label. */
+  label: string;
+}
 
 /** App identity values that vary across forks. */
 export interface Branding {
@@ -130,29 +162,32 @@ export interface Branding {
    */
   listenTabTopComponent?: ComponentType<ListenTabTopComponentProps>;
   /**
-   * RFC-012 — composable Search-tab filter dimensions. When set, the
-   * Search tab renders a user-editable chip per id; tiles on the Home
-   * tab can deeplink in with chips pre-applied via the matching URL
-   * params on the `reciter/browse` route. RFC-012 chips render AFTER
-   * Bayaan's existing bespoke chips (teacher/student) — trailing
-   * position is intentional so users of a forked build see the
-   * familiar chips first and the fork's additions after.
+   * RFC-012 / RFC-020 — composable Search-tab filter dimensions. When
+   * set, the Search tab renders a user-editable chip per entry; tiles on
+   * the Home tab can deeplink in with chips pre-applied via the matching
+   * URL params on the `reciter/browse` route. Chips render in
+   * declaration order, AFTER Bayaan's existing bespoke chips
+   * (teacher/student) — trailing position is intentional so users of a
+   * forked build see the familiar chips first and the fork's additions
+   * after.
    *
    * Tri-state semantics:
    *   - `undefined` (default) — "not migrated"; Search tab keeps
    *     today's bespoke chip set unchanged. Bayaan ships this.
-   *   - `[]` — "explicitly disable all RFC-012 chips". Observably the
-   *     same as `undefined` today, but the intent is distinct for
-   *     future v2 migration when bespoke chips themselves move under
-   *     this seam.
-   *   - non-empty array — opt in to the listed dimensions.
+   *   - `[]` — "explicitly disable all chips". Observably the same as
+   *     `undefined` today, but the intent is distinct for future v2
+   *     migration when bespoke chips themselves move under this seam.
+   *   - non-empty array — opt in to the listed dimensions/facets.
    *
-   * v1 ships exists-today dimensions only — see `SearchFilterDimension`.
+   * Each entry is either a `SearchFilterDimension` string (a predicate
+   * built into the shared filter pipeline) or a `SearchFilterFlagFacet`
+   * object (a tenant-supplied boolean `Reciter` field, e.g. a curated
+   * collection flag) — see both types above.
    *
    * @example
-   * searchFilters: ['rewaya', 'has-surah', 'has-photo']
+   * searchFilters: ['rewaya', 'has-photo', {kind: 'flag', field: 'featured', label: 'Featured'}]
    */
-  searchFilters?: SearchFilterDimension[];
+  searchFilters?: Array<SearchFilterDimension | SearchFilterFlagFacet>;
   /**
    * RFC-013 — optional hook returning the verse_key (e.g. `"2:197"`) the
    * PlayerSheet ayah list (`QuranView`) should anchor on for the

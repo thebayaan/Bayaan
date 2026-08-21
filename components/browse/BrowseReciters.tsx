@@ -38,6 +38,15 @@ import {useHeaderHeight} from 'expo-router/react-navigation';
 import branding from '@/config/branding';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';
+import RecitationsList, {buildRecitationRows} from './RecitationsList';
+import SearchFilters from '@/components/search/SearchFilters';
+import {useURLFiltersAsChips} from '@/hooks/useURLFiltersAsChips';
+import {useReciterStore} from '@/store/reciterStore';
+import {
+  reciterHasFullQuran,
+  reciterMatchesCountry,
+  reciterMatchesTranslation,
+} from './browseFilterPredicates';
 
 interface BrowseRecitersProps {
   theme: Theme;
@@ -126,6 +135,45 @@ export default function BrowseReciters({
   const bottomInset = useBottomInset();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  // RFC-020 — the composer's active chips, resolved from the same URL params
+  // the predicates below read. Used for the named empty-state label and to
+  // know when any seam filter is active (`activeChips` is empty when
+  // `branding.searchFilters` is unset → stock behaviour). The <SearchFilters />
+  // strip calls this hook independently for its own UI.
+  const {activeChips, declaredDims} = useURLFiltersAsChips();
+  // Whether the RFC-020 composer exists for this build — identical to when
+  // <SearchFilters /> renders (it returns null with no declared dims). Gates
+  // the composer-only behaviours (named empty-state, Clear-All param wipe)
+  // so a stock build stays byte-identical.
+  const composerEnabled = declaredDims.length > 0;
+  // RECITERS populates async after mount. A scalar `isInitialized` selector
+  // (never a whole-store subscription) re-renders us on catalog load so the
+  // filter memo recomputes against the populated array.
+  const catalogReady = useReciterStore(s => s.isInitialized);
+
+  // RFC-020 — filter values driven by the composer's active chips (the same
+  // URL params <SearchFilters /> reads). rewaya (teacher/student) and
+  // has-surah (surahId) keep their existing bespoke prop-driven paths; the
+  // new dims resolve from activeChips so a composer edit flows straight into
+  // the filter memo. All empty when `branding.searchFilters` is unset.
+  const countrySlug = activeChips.find(c => c.dim === 'country')?.value;
+  const translationSlug = activeChips.find(c => c.dim === 'translation')?.value;
+  const fullQuranActive = activeChips.some(c => c.dim === 'full-quran');
+  // Active flag-facet fields joined into a stable string so the filter memo
+  // can depend on it (the fields array itself is rebuilt every render).
+  const activeFacetKey = declaredDims
+    .filter(
+      d =>
+        d.input === 'toggle' &&
+        d.dim !== 'full-quran' &&
+        activeChips.some(c => c.dim === d.dim),
+    )
+    .map(d => d.dim)
+    .join(',');
+  // The has-surah result-row mode (RecitationsList) only replaces the grid
+  // when a fork declares the `has-surah` dimension; stock keeps its grid.
+  const hasSurahDeclared = !!branding.searchFilters?.includes('has-surah');
+
   // On iOS, the native Stack header handles the top area; on Android, use custom Header
   const useNativeHeader = USE_GLASS;
   const iosHeaderHeight = useNativeHeader ? useHeaderHeight() : 0;
@@ -171,6 +219,21 @@ export default function BrowseReciters({
   useEffect(() => {
     studentRef.current = selectedStudent;
   }, [selectedStudent]);
+
+  // RFC-020 — the rewaya seam dimension reuses the existing teacher/student
+  // URL params, which feed the selectedTeacher/selectedStudent bespoke-chip
+  // state. Syncing that state FROM the params (not just seeding it at mount)
+  // lets a composer-driven rewaya add/edit/remove reach both the filter
+  // predicate and the bespoke chips. These fire only when the URL params
+  // change, so a bespoke chip tap (which mutates state, not the URL) never
+  // re-triggers them — the drill-down keeps working.
+  useEffect(() => {
+    setSelectedTeacher(initialTeacher || null);
+  }, [initialTeacher]);
+
+  useEffect(() => {
+    setSelectedStudent(initialStudent || null);
+  }, [initialStudent]);
 
   const dynamicFilterChips = useMemo((): Chip[] => {
     const chips: Chip[] = [];
@@ -222,6 +285,12 @@ export default function BrowseReciters({
   }, [selectedTeacher, selectedStudent, primaryTeachers]);
 
   const filteredReciters = useMemo(() => {
+    // RFC-020 — RECITERS (and any fork's facet fields) populate async after
+    // catalog load; tying the memo to `catalogReady` recomputes it on load.
+    // The early-return is byte-identical to the pre-load pass (an empty
+    // RECITERS filters to []).
+    if (!catalogReady) return [] as Reciter[];
+
     // Hoisted above the filter chain so the RFC-012 `has-photo` filter
     // and the existing sort step share one definition. "Has photo" matches
     // a card whose user-visible artwork resolves to something — either a
@@ -243,6 +312,20 @@ export default function BrowseReciters({
           rewaya.surah_list?.includes(surahId),
         );
       });
+    }
+
+    // RFC-020 — country / translation seam dimensions. Driven by the
+    // composer's active chips; a no-op (the value is undefined) until a fork
+    // declares the dimension AND populates the matching Reciter field.
+    if (countrySlug) {
+      result = result.filter(reciter =>
+        reciterMatchesCountry(reciter, countrySlug),
+      );
+    }
+    if (translationSlug) {
+      result = result.filter(reciter =>
+        reciterMatchesTranslation(reciter, translationSlug),
+      );
     }
 
     if (searchQuery.trim()) {
@@ -309,6 +392,21 @@ export default function BrowseReciters({
       result = result.filter(hasImage);
     }
 
+    // RFC-020 — full-quran + generic flag facets, appended AFTER the existing
+    // chain so composition stays AND-across-dimensions and legacy behaviour
+    // is unchanged. Driven by the composer's active chips; a flag facet
+    // filters on its boolean Reciter field. No-op for stock builds (nothing
+    // declared → nothing active).
+    if (fullQuranActive) {
+      result = result.filter(reciterHasFullQuran);
+    }
+    for (const field of activeFacetKey ? activeFacetKey.split(',') : []) {
+      result = result.filter(
+        reciter =>
+          (reciter as unknown as Record<string, unknown>)[field] === true,
+      );
+    }
+
     const featuredRecitersData = getFeaturedReciters(20);
     const featuredIds = new Set(featuredRecitersData.map(r => r.id));
 
@@ -328,10 +426,25 @@ export default function BrowseReciters({
     selectedStudent,
     searchQuery,
     surahId,
+    countrySlug,
+    translationSlug,
+    fullQuranActive,
+    activeFacetKey,
+    catalogReady,
     advancedFilters,
     hasPhoto,
     hasPhotoEnabled,
   ]);
+
+  // RFC-020 — when has-surah is active the destination shows one row per
+  // (reciter, rewaya) recitation of that surah instead of the reciter grid;
+  // that surface lives in <RecitationsList />. Here we only need the row
+  // COUNT for the active-filters indicator — via the shared
+  // `buildRecitationRows` builder so the count and the list never disagree.
+  const recitationCount = useMemo(
+    () => (surahId ? buildRecitationRows(filteredReciters, surahId).length : 0),
+    [filteredReciters, surahId],
+  );
 
   const handleFilterModalPress = () => {
     setIsFilterModalVisible(true);
@@ -373,6 +486,30 @@ export default function BrowseReciters({
     });
     // RFC-012 — reset the composable chip state too.
     setHasPhoto(false);
+    // RFC-020 — also clear the URL-driven seam filters so "Clear All" empties
+    // the composer chips alongside the bespoke ones. Gated on the composer
+    // existing, so a stock build makes no extra router write and stays
+    // byte-identical.
+    if (composerEnabled) {
+      const cleared: Record<string, string | undefined> = {
+        country: undefined,
+        countryName: undefined,
+        translation: undefined,
+        translationName: undefined,
+        surahId: undefined,
+        teacher: undefined,
+        student: undefined,
+        rewayatName: undefined,
+        fullQuran: undefined,
+      };
+      // Clear any active generic flag-facet params (serialized as <field>=1).
+      for (const chip of activeChips) {
+        if (chip.value === '1' && chip.dim !== 'full-quran') {
+          cleared[chip.dim] = undefined;
+        }
+      }
+      router.setParams(cleared);
+    }
   };
 
   const handleSearchFocus = () => {
@@ -389,6 +526,9 @@ export default function BrowseReciters({
     Keyboard.dismiss();
   }, []);
 
+  // Primitive so the memo below doesn't churn on the hook's per-render
+  // `activeChips` array identity (0 when searchFilters is unset).
+  const activeChipCount = activeChips.length;
   const hasActiveFilters = useMemo(() => {
     return (
       selectedTeacher !== null ||
@@ -397,7 +537,8 @@ export default function BrowseReciters({
       advancedFilters.styles.length > 0 ||
       advancedFilters.rewayat.length > 0 ||
       advancedFilters.sortBy !== 'featured' ||
-      hasPhoto // RFC-012 — `has-photo` chip counts as active
+      hasPhoto || // RFC-012 — `has-photo` chip counts as active
+      activeChipCount > 0 // RFC-020 — any composer chip counts as active
     );
   }, [
     selectedTeacher,
@@ -405,6 +546,7 @@ export default function BrowseReciters({
     searchQuery,
     advancedFilters,
     hasPhoto,
+    activeChipCount,
   ]);
 
   const handleReciterPress = useCallback(
@@ -515,6 +657,26 @@ export default function BrowseReciters({
   // Top offset: native header height on iOS, 0 on Android (custom Header handles it)
   const topOffset = useNativeHeader ? iosHeaderHeight : 0;
 
+  // RFC-020 — named empty-state. When an active filter combination yields
+  // zero results, show which filters produced it (composed from the active
+  // composer chips) instead of a blank grid, so the user can see what to
+  // relax. Falls back to a generic line for a bespoke-only empty result.
+  const renderFilterEmptyState = (unit: string) => {
+    const chipLabels =
+      activeChips.length > 0
+        ? activeChips.map(chip => chip.label).join(' + ')
+        : undefined;
+    return (
+      <View style={styles.emptyStateContainer}>
+        <Text style={styles.emptyStateText}>
+          {chipLabels
+            ? `No ${unit} match ${chipLabels}`
+            : `No ${unit} match your filters`}
+        </Text>
+      </View>
+    );
+  };
+
   return (
     <TouchableWithoutFeedback onPress={handleOutsidePress}>
       <View style={styles.container}>
@@ -572,6 +734,12 @@ export default function BrowseReciters({
             </Pressable>
           )}
         </View>
+
+        {/* RFC-020 — composable filter composer. Renders the active seam
+         * chips + an "Add a filter" palette above the bespoke teacher/student
+         * chips row (which stays untouched below). Renders nothing when
+         * `branding.searchFilters` is unset (stock upstream). */}
+        <SearchFilters />
 
         {/* Filter Chips */}
         <View style={styles.filterSectionsContainer}>
@@ -652,7 +820,11 @@ export default function BrowseReciters({
         {hasActiveFilters && (
           <View style={styles.activeFiltersContainer}>
             <Text style={styles.activeFiltersText}>
-              {filteredReciters.length} reciters found with current filters
+              {surahId && hasSurahDeclared
+                ? `${recitationCount} recitation${
+                    recitationCount === 1 ? '' : 's'
+                  } found with current filters`
+                : `${filteredReciters.length} reciters found with current filters`}
             </Text>
             <Pressable
               style={({pressed}) => [
@@ -670,15 +842,39 @@ export default function BrowseReciters({
 
         {/* Content */}
         <View style={styles.contentContainer}>
-          <BrowseGrid
-            reciters={filteredReciters}
-            onReciterPress={handleReciterPress}
-            theme={theme}
-            keyboardShouldPersistTaps="handled"
-            onScrollBeginDrag={() => Keyboard.dismiss()}
-            getRewayatIdForReciter={getRewayatIdForReciter}
-            bottomInset={bottomInset}
-          />
+          {surahId && hasSurahDeclared ? (
+            // RFC-020 — has-surah result-row mode: one row per (reciter,
+            // rewaya) recitation instead of the reciter grid. An empty
+            // combination shows the named empty-state (composer builds only),
+            // never a blank list. `catalogReady`-gated so a deeplinked filter
+            // arriving during hydration doesn't flash a false "No results".
+            catalogReady &&
+            composerEnabled &&
+            recitationCount === 0 &&
+            hasActiveFilters ? (
+              renderFilterEmptyState('recitations')
+            ) : (
+              <RecitationsList surahId={surahId} reciters={filteredReciters} />
+            )
+          ) : catalogReady &&
+            composerEnabled &&
+            filteredReciters.length === 0 &&
+            hasActiveFilters ? (
+            // RFC-020 — named empty-state for a zero-result filter combination
+            // (composer builds only; stock falls through to the grid's own
+            // empty rendering).
+            renderFilterEmptyState('reciters')
+          ) : (
+            <BrowseGrid
+              reciters={filteredReciters}
+              onReciterPress={handleReciterPress}
+              theme={theme}
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={() => Keyboard.dismiss()}
+              getRewayatIdForReciter={getRewayatIdForReciter}
+              bottomInset={bottomInset}
+            />
+          )}
         </View>
 
         {/* Filter Modal */}
@@ -781,6 +977,20 @@ const createStyles = (theme: Theme) =>
       fontSize: moderateScale(12),
       fontFamily: 'Manrope-Medium',
       color: theme.colors.text,
+    },
+    // RFC-020 — named empty-state for a zero-result filter combo.
+    emptyStateContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: moderateScale(32),
+      paddingBottom: moderateScale(80),
+    },
+    emptyStateText: {
+      fontSize: moderateScale(14),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
+      textAlign: 'center',
     },
     separatorChip: {
       paddingHorizontal: moderateScale(6),
