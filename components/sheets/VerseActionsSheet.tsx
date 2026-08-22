@@ -217,22 +217,32 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lightHaptics();
     const keys = isRange ? verseKeys : [verseKey];
     const store = useVerseAnnotationsStore.getState();
-    if (isBookmarked) {
-      for (const vk of keys) {
-        await verseAnnotationService.removeBookmark(vk);
-        store.removeBookmark(vk);
+    // A persistence failure must never strand the sheet open: without this
+    // guard a rejected write skipped both the optimistic store update and
+    // SheetManager.hide, freezing the sheet with no feedback. The DB write is
+    // now idempotent (INSERT OR IGNORE) so the duplicate case can't reject at
+    // all; this is the belt-and-braces for anything else (disk, migration).
+    // @ai
+    try {
+      if (isBookmarked) {
+        for (const vk of keys) {
+          await verseAnnotationService.removeBookmark(vk);
+          store.removeBookmark(vk);
+        }
+      } else {
+        for (const vk of keys) {
+          const [s, a] = vk.split(':');
+          await verseAnnotationService.addBookmark(
+            vk,
+            parseInt(s, 10),
+            parseInt(a, 10),
+            resolvedRewayah,
+          );
+          store.addBookmark(vk);
+        }
       }
-    } else {
-      for (const vk of keys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.addBookmark(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          resolvedRewayah,
-        );
-        store.addBookmark(vk);
-      }
+    } catch (error) {
+      console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
     await SheetManager.hide(props.sheetId);
   }, [

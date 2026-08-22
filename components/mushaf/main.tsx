@@ -49,6 +49,8 @@ import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
+import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {useMushafAutoPageTurn} from '@/hooks/useMushafAutoPageTurn';
 import {MushafPlayerBar} from './MushafPlayerBar';
 import SkiaPage from './skia/SkiaPage';
@@ -636,6 +638,28 @@ export default function MushafViewer({
     : {};
 
   const currentSurahId = pageToSurah[currentPage] || 1;
+
+  // @ai — load verse annotations for every surah on the current page.
+  // Nothing in the horizontal paged pipeline loaded the store before, so
+  // bookmark tints never painted and the long-press sheet showed stale
+  // bookmark state on cold entry (tapping it then INSERTed a duplicate row).
+  // Multi-surah aware because Juz-'Amma pages hold several surahs; the
+  // continuous views' own per-surah loads become subset no-ops against this.
+  const loadAnnotationsForSurahs = useVerseAnnotationsStore(
+    s => s.loadAnnotationsForSurahs,
+  );
+  useEffect(() => {
+    const verseKeys =
+      mushafVerseMapService.getOrderedVerseKeysForPage(currentPage);
+    let surahs = [
+      ...new Set(verseKeys.map(vk => Number(vk.split(':')[0]))),
+    ].filter(n => Number.isFinite(n) && n > 0);
+    if (surahs.length === 0 && digitalKhattDataService.initialized) {
+      const fallback = digitalKhattDataService.getPageToSurah()[currentPage];
+      if (fallback) surahs = [fallback];
+    }
+    if (surahs.length > 0) void loadAnnotationsForSurahs(surahs);
+  }, [currentPage, loadAnnotationsForSurahs]);
 
   // --- Analytics: mushaf page tracking ---
   const pageReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
