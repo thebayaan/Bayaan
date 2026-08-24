@@ -172,6 +172,7 @@ module.exports = {
       : {enabled: false},
     plugins: [
       'expo-router',
+      'expo-secure-store',
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
       [

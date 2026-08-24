@@ -50,6 +50,15 @@ import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import * as Sentry from '@sentry/react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
+
+type GestureHandlerRootViewWithOverrideProps =
+  React.ComponentProps<typeof GestureHandlerRootView> & {
+    overrideUserInterfaceStyle?: 'light' | 'dark';
+  };
+
+const GestureHandlerRootViewWithOverride =
+  GestureHandlerRootView as React.ComponentType<GestureHandlerRootViewWithOverrideProps>;
 
 // Configure Reanimated logger
 configureReanimatedLogger({
@@ -400,7 +409,7 @@ function RootLayout() {
       !hasShareIntent &&
       mushafRestoreHandled
     ) {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [
     appIsReady,
@@ -450,48 +459,49 @@ function RootLayout() {
         <AnalyticsConnector />
         <ThemeProvider value={navigationTheme}>
           <SafeAreaProvider>
-            <ExpoAudioProvider>
-              <GestureHandlerRootView
-                style={{flex: 1, backgroundColor: theme.colors.background}}
-                // @ts-ignore - RN supports this on iOS to override system theme for native UI (keyboard, menus, alerts)
-                overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
-                onLayout={onLayoutRootView}>
-                <NetworkStatusMonitor />
-                <SheetProvider>
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: {
-                        paddingTop: 0,
-                        backgroundColor: theme.colors.background,
-                      },
-                      animation: 'fade',
-                    }}>
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{headerShown: false}}
-                    />
-                    <Stack.Screen
-                      name="mushaf"
-                      options={{
-                        headerShown: USE_GLASS,
-                        headerTransparent: true,
-                        headerStyle: {backgroundColor: 'transparent'},
-                        headerShadowVisible: false,
-                        headerTitle: '',
-                        headerTitleAlign: 'center',
-                        headerBackButtonDisplayMode: 'minimal',
-                        animation: 'slide_from_right',
-                        fullScreenGestureEnabled: false,
-                      }}
-                    />
-                  </Stack>
-                  <PlayerSheet />
-                  <WhatsNewModal ref={whatsNewModalRef} />
-                  <DevMenu whatsNewModalRef={whatsNewModalRef} />
-                </SheetProvider>
-              </GestureHandlerRootView>
-            </ExpoAudioProvider>
+            <BayaanAuthProvider>
+              <ExpoAudioProvider>
+                <GestureHandlerRootViewWithOverride
+                  style={{flex: 1, backgroundColor: theme.colors.background}}
+                  overrideUserInterfaceStyle={isDarkMode ? 'dark' : 'light'}
+                  onLayout={onLayoutRootView}>
+                  <NetworkStatusMonitor />
+                  <SheetProvider>
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: {
+                          paddingTop: 0,
+                          backgroundColor: theme.colors.background,
+                        },
+                        animation: 'fade',
+                      }}>
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{headerShown: false}}
+                      />
+                      <Stack.Screen
+                        name="mushaf"
+                        options={{
+                          headerShown: USE_GLASS,
+                          headerTransparent: true,
+                          headerStyle: {backgroundColor: 'transparent'},
+                          headerShadowVisible: false,
+                          headerTitle: '',
+                          headerTitleAlign: 'center',
+                          headerBackButtonDisplayMode: 'minimal',
+                          animation: 'slide_from_right',
+                          fullScreenGestureEnabled: false,
+                        }}
+                      />
+                    </Stack>
+                    <PlayerSheet />
+                    <WhatsNewModal ref={whatsNewModalRef} />
+                    <DevMenu whatsNewModalRef={whatsNewModalRef} />
+                  </SheetProvider>
+                </GestureHandlerRootViewWithOverride>
+              </ExpoAudioProvider>
+            </BayaanAuthProvider>
           </SafeAreaProvider>
         </ThemeProvider>
       </PostHogProvider>
