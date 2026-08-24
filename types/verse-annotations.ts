@@ -1,4 +1,5 @@
 export type HighlightColor = 'yellow' | 'green' | 'blue' | 'orange' | 'purple';
+export type AnnotationOwnerScope = 'guest' | `qf:${string}`;
 
 export const HIGHLIGHT_COLORS: Record<HighlightColor, string> = {
   yellow: 'rgba(255, 243, 176, 0.3)',
@@ -15,15 +16,20 @@ import type {RewayahId} from '@/store/mushafSettingsStore';
 
 export interface VerseBookmark {
   id: string;
+  ownerScope?: AnnotationOwnerScope;
   verseKey: string;
   surahNumber: number;
   ayahNumber: number;
   createdAt: number;
   rewayahId?: RewayahId;
+  remoteId?: string;
+  serverCreatedAt?: number;
+  serverUpdatedAt?: number;
 }
 
 export interface VerseNote {
   id: string;
+  ownerScope?: AnnotationOwnerScope;
   verseKey: string;
   surahNumber: number;
   ayahNumber: number;
@@ -32,14 +38,21 @@ export interface VerseNote {
   createdAt: number;
   updatedAt: number;
   rewayahId?: RewayahId;
+  remoteId?: string;
+  serverCreatedAt?: number;
+  serverUpdatedAt?: number;
 }
 
 export interface VerseHighlight {
   id: string;
+  ownerScope?: AnnotationOwnerScope;
   verseKey: string;
   surahNumber: number;
   ayahNumber: number;
   color: HighlightColor;
   createdAt: number;
   rewayahId?: RewayahId;
+  remoteId?: string;
+  serverCreatedAt?: number;
+  serverUpdatedAt?: number;
 }
