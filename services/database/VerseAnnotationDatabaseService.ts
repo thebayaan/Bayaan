@@ -127,13 +127,17 @@ function requireOwnerScope(
   return ownerScope;
 }
 
-class VerseAnnotationDatabaseService {
+export class VerseAnnotationDatabaseService {
+  constructor(
+    private readonly database = verseAnnotationDatabase,
+  ) {}
+
   async initialize(): Promise<void> {
-    await verseAnnotationDatabase.initialize();
+    await this.database.initialize();
   }
 
   private async ensureReady() {
-    return verseAnnotationDatabase.getConnection();
+    return this.database.getConnection();
   }
 
   // Bookmark operations
@@ -548,7 +552,7 @@ class VerseAnnotationDatabaseService {
   }
 
   async close(): Promise<void> {
-    await verseAnnotationDatabase.close();
+    await this.database.close();
   }
 }
 
