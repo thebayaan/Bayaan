@@ -19,7 +19,10 @@ const sqlitePromise = (async () => {
 
 type TestDatabase = {
   execAsync(source: string): Promise<void>;
-  runAsync(source: string, params?: unknown[] | Record<string, unknown>): Promise<unknown>;
+  runAsync(
+    source: string,
+    params?: unknown[] | Record<string, unknown>,
+  ): Promise<unknown>;
   getAllAsync<T extends Record<string, unknown>>(
     source: string,
     params?: unknown[] | Record<string, unknown>,
@@ -133,15 +136,15 @@ async function createServices(name: string) {
   jest.doMock('expo-sqlite', () => ({
     openDatabaseAsync: mockOpenDatabaseAsync,
   }));
-  const {VerseAnnotationDatabase} = require(
-    '@/services/database/VerseAnnotationDatabase'
-  );
-  const {VerseAnnotationDatabaseService} = require(
-    '@/services/database/VerseAnnotationDatabaseService'
-  );
-  const {QfSyncDatabaseService} = require(
-    '@/services/sync/qfSyncDatabaseService'
-  );
+  const {
+    VerseAnnotationDatabase,
+  } = require('@/services/database/VerseAnnotationDatabase');
+  const {
+    VerseAnnotationDatabaseService,
+  } = require('@/services/database/VerseAnnotationDatabaseService');
+  const {
+    QfSyncDatabaseService,
+  } = require('@/services/sync/qfSyncDatabaseService');
   const database = new VerseAnnotationDatabase(
     `${testRunDatabasePrefix}-${name}`,
   );
@@ -217,6 +220,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       localId: bookmark.id,
     });
 
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: operation.localOperationId,
+      startedAt: 1601,
+    });
     await sync.acknowledgeOperation({
       accountId: 'reader-a',
       localOperationId: operation.localOperationId,
@@ -254,6 +262,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       rewayahId: 'warsh',
     });
     const [operation] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: operation.localOperationId,
+      startedAt: 1601,
+    });
 
     const connection = (await database.getConnection()) as TestDatabase;
     const originalRunAsync = connection.runAsync.bind(connection);
@@ -497,7 +510,9 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     services = await createServices(databaseName);
     await services.sync.initialize();
 
-    await expect(services.sync.getReadingLocations('reader-a')).resolves.toEqual([
+    await expect(
+      services.sync.getReadingLocations('reader-a'),
+    ).resolves.toEqual([
       expect.objectContaining({
         verseKey: '3:7',
         surahNumber: 3,
@@ -517,7 +532,7 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     await services.database.close();
   });
 
-  it('retains a newer local note edit when acknowledging an earlier in-flight create revision', async () => {
+  it('retains a newer local note edit when acknowledging an in-flight create without a caller snapshot', async () => {
     const databaseName = 'qf-note-create-ack-race.db';
     let services = await createServices(databaseName);
     await services.sync.initialize();
@@ -532,6 +547,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       rewayahId: 'warsh',
     });
     const [sentCreate] = await services.sync.getOutboxEntries('reader-a');
+    await services.sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: sentCreate.localOperationId,
+      startedAt: 5501,
+    });
 
     await services.sync.updateNote({
       accountId: 'reader-a',
@@ -545,7 +565,6 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       resourceId: 'remote-note-1',
       serverCreatedAt: 6001,
       serverUpdatedAt: 6001,
-      acknowledgedPayloadJson: sentCreate.payloadJson,
     });
 
     await services.database.close();
@@ -582,6 +601,79 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     await services.database.close();
   });
 
+  it('retains delete intent when a note create is in-flight and remotely ambiguous across restart', async () => {
+    const databaseName = 'qf-note-delete-in-flight.db';
+    let services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    const note = await services.sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '18:10',
+      surahNumber: 18,
+      ayahNumber: 10,
+      content: 'create already sent',
+    });
+    const [createOperation] = await services.sync.getOutboxEntries('reader-a');
+    await services.sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      startedAt: 6201,
+    });
+
+    await services.sync.deleteNote({
+      accountId: 'reader-a',
+      noteId: note.id,
+    });
+
+    await services.database.close();
+    services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    await expect(
+      services.annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([]);
+    await expect(services.sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        localOperationId: createOperation.localOperationId,
+        resource: 'NOTE',
+        mutationType: 'DELETE',
+        deliveryState: 'IN_FLIGHT',
+        revision: 2,
+        inFlightRevision: 1,
+        inFlightMutationType: 'CREATE',
+        remoteId: null,
+      }),
+    ]);
+
+    await services.sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      resourceId: 'remote-note-after-delete',
+      serverCreatedAt: 6301,
+      serverUpdatedAt: 6301,
+    });
+
+    await services.database.close();
+    services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    await expect(services.sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        localOperationId: createOperation.localOperationId,
+        resource: 'NOTE',
+        mutationType: 'DELETE',
+        deliveryState: 'PENDING',
+        revision: 2,
+        inFlightRevision: null,
+        inFlightMutationType: null,
+        remoteId: 'remote-note-after-delete',
+        baseServerUpdatedAt: 6301,
+      }),
+    ]);
+
+    await services.database.close();
+  });
+
   it('deletes notes and durably enqueues only required delete intent per account', async () => {
     const databaseName = 'qf-note-delete.db';
     let services = await createServices(databaseName);
@@ -596,6 +688,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       rewayahId: 'warsh',
     });
     const [createOperation] = await services.sync.getOutboxEntries('reader-a');
+    await services.sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      startedAt: 5901,
+    });
     await services.sync.acknowledgeOperation({
       accountId: 'reader-a',
       localOperationId: createOperation.localOperationId,
@@ -671,6 +768,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       rewayahId: 'warsh',
     });
     const [createOperation] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      startedAt: 6001,
+    });
     await sync.acknowledgeOperation({
       accountId: 'reader-a',
       localOperationId: createOperation.localOperationId,
@@ -729,6 +831,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     });
     const [createOperation] = await sync.getOutboxEntries('reader-a');
 
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      startedAt: 5901,
+    });
     await sync.acknowledgeOperation({
       accountId: 'reader-a',
       localOperationId: createOperation.localOperationId,
@@ -834,6 +941,11 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       rewayahId: 'warsh',
     });
     const [createOperation] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      startedAt: 5901,
+    });
     await sync.acknowledgeOperation({
       accountId: 'reader-a',
       localOperationId: createOperation.localOperationId,

@@ -3,6 +3,10 @@ import {
   USER_SYNC_V1_VERSION,
   migrateUserSyncV1,
 } from '../migrations/userSyncV1';
+import {
+  USER_SYNC_V2_VERSION,
+  migrateUserSyncV2,
+} from '../migrations/userSyncV2';
 
 type TestDb = {
   execAsync(source: string): Promise<void>;
@@ -268,7 +272,15 @@ async function createOlderLegacyAnnotationTables(db: TestDb): Promise<void> {
     `INSERT INTO notes
        (id, verse_key, surah_number, ayah_number, content, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ['older-note', '18:10', 18, 10, 'legacy note without range columns', 2101, 3101],
+    [
+      'older-note',
+      '18:10',
+      18,
+      10,
+      'legacy note without range columns',
+      2101,
+      3101,
+    ],
   );
 
   await db.runAsync(
@@ -578,5 +590,62 @@ describe('userSyncV1 annotation migration', () => {
         rewayah_id: 'qumbul',
       },
     ]);
+  });
+});
+
+describe('userSyncV2 outbox delivery-state migration', () => {
+  it('preserves existing operations as ambiguous durable revisions and is rerun safe', async () => {
+    const db = await openTestDb();
+    await migrateUserSyncV1(db);
+    await db.runAsync(
+      `INSERT INTO qf_sync_outbox (
+         local_operation_id, owner_scope, account_id, resource, mutation_type,
+         local_id, remote_id, payload_json, base_server_updated_at, attempts,
+         next_attempt_at, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'legacy-operation',
+        'qf:reader-a',
+        'reader-a',
+        'NOTE',
+        'CREATE',
+        'local-note',
+        null,
+        '{"content":"possibly sent"}',
+        null,
+        0,
+        null,
+        5001,
+      ],
+    );
+
+    await migrateUserSyncV2(db);
+    await migrateUserSyncV2(db);
+
+    await expect(
+      db.getFirstAsync(
+        `SELECT revision, delivery_state, in_flight_revision,
+                in_flight_mutation_type, in_flight_payload_json,
+                in_flight_started_at
+         FROM qf_sync_outbox
+         WHERE local_operation_id = ?`,
+        ['legacy-operation'],
+      ),
+    ).resolves.toEqual({
+      revision: 1,
+      delivery_state: 'AMBIGUOUS',
+      in_flight_revision: null,
+      in_flight_mutation_type: null,
+      in_flight_payload_json: null,
+      in_flight_started_at: null,
+    });
+    await expect(
+      db.getAllAsync(`SELECT version FROM schema_migrations ORDER BY version`),
+    ).resolves.toEqual([
+      {version: USER_SYNC_V1_VERSION},
+      {version: USER_SYNC_V2_VERSION},
+    ]);
+
+    await db.closeAsync();
   });
 });
