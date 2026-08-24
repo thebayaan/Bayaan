@@ -30,6 +30,15 @@ const FORBIDDEN_CALLBACK_PARAMS = new Set([
   'code',
 ]);
 
+function isBrowserCancelOrDismissResult(result: unknown): boolean {
+  if (!result || typeof result !== 'object') {
+    return false;
+  }
+
+  const type = (result as {type?: unknown}).type;
+  return type === 'cancel' || type === 'dismiss';
+}
+
 export class BayaanAuthError extends Error {
   constructor(
     public readonly code: BayaanAuthErrorCode,
@@ -127,7 +136,22 @@ export function createBayaanAuthService(
         state: start.state,
         expiresAt: parseExpiresAt(start.expiresAt),
       });
-      await openBrowserAsync(start.authorizationUrl);
+
+      try {
+        const browserResult = await openBrowserAsync(start.authorizationUrl);
+        if (isBrowserCancelOrDismissResult(browserResult)) {
+          throw new BayaanAuthError(
+            'access_denied',
+            'Sign-in was cancelled',
+          );
+        }
+      } catch (error) {
+        await clearPendingBayaanAuthState();
+        if (error instanceof BayaanAuthError) {
+          throw error;
+        }
+        throw new BayaanAuthError('network_error', 'Sign-in failed');
+      }
     },
 
     async handleCallbackUrl(url: string): Promise<BayaanOpaqueSession> {

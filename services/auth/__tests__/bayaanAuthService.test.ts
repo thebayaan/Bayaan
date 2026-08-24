@@ -79,6 +79,29 @@ describe('Bayaan BFF auth service', () => {
     );
   });
 
+  it.each(['cancel', 'dismiss'])(
+    'clears pending state when the browser returns %s',
+    async browserResult => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl:
+            'https://api-prelive.thebayaan.com/v1/qf/auth/launch?state=state-123',
+          state: 'state-123',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      );
+      mockOpenBrowserAsync.mockResolvedValueOnce({type: browserResult});
+
+      const service = createBayaanAuthService({apiUrl});
+
+      await expect(service.signIn()).rejects.toMatchObject({
+        code: 'access_denied',
+        message: 'Sign-in was cancelled',
+      });
+      await expect(getPendingBayaanAuthState()).resolves.toBeNull();
+    },
+  );
+
   it('completes a valid app callback once and persists only the opaque session', async () => {
     await savePendingBayaanAuthState({
       state: 'state-123',
