@@ -30,6 +30,7 @@ web-build/
 .cursorrules
 .cursor/
 .superpowers/
+.worktrees/
 .mcp.json
 
 config.ts
