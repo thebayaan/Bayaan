@@ -44,6 +44,7 @@ jest.mock('@/hooks/useTheme', () => ({
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import {QfAccountCard} from '../QfAccountCard';
+import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
 import {getPendingBayaanAuthState} from '@/services/auth/bayaanSessionStorage';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
@@ -89,7 +90,8 @@ describe('QfAccountCard', () => {
       throw new Error('Expected account card to render');
     }
 
-    const signInButton = findButton(screen);
+    const renderedScreen = screen;
+    const signInButton = findButton(renderedScreen);
     await act(async () => {
       await signInButton.props.onPress();
     });
@@ -99,9 +101,81 @@ describe('QfAccountCard', () => {
       errorCode: 'access_denied',
     });
     await expect(getPendingBayaanAuthState()).resolves.toBeNull();
-    expect(findButton(screen).props.disabled).toBe(false);
+    expect(findButton(renderedScreen).props.disabled).toBe(false);
     expect(
-      screen.root.findAllByProps({children: 'Sign in'}).length,
+      renderedScreen.root.findAllByProps({children: 'Sign in'}).length,
     ).toBeGreaterThan(0);
+    await act(async () => {
+      renderedScreen.unmount();
+    });
+  });
+
+  it('keeps authenticated state when callback completion causes the browser to dismiss', async () => {
+    let resolveBrowser: (result: unknown) => void = () => undefined;
+    mockOpenBrowserAsync.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveBrowser = resolve;
+        }),
+    );
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl:
+            'https://api-prelive.thebayaan.com/v1/qf/auth/launch?state=state-123',
+          state: 'state-123',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'opaque-bayaan-session',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile: {
+            accountId: 'bayaan-account-id',
+            email: 'reader@example.test',
+            name: 'Reader',
+          },
+        }),
+      );
+
+    let screen: renderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      screen = renderer.create(<QfAccountCard />);
+    });
+    if (!screen) {
+      throw new Error('Expected account card to render');
+    }
+
+    const renderedScreen = screen;
+    const signInButton = findButton(renderedScreen);
+    let signInPromise: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      signInPromise = signInButton.props.onPress();
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    await act(async () => {
+      const session = await bayaanAuthService.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+      );
+      useBayaanAuthStore.getState().setAuthenticated(session.profile);
+    });
+
+    resolveBrowser({type: 'dismiss'});
+    await act(async () => {
+      await signInPromise;
+    });
+
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {
+        accountId: 'bayaan-account-id',
+      },
+      errorCode: null,
+    });
+    await act(async () => {
+      renderedScreen.unmount();
+    });
   });
 });

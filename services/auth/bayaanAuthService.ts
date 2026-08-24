@@ -30,13 +30,13 @@ const FORBIDDEN_CALLBACK_PARAMS = new Set([
   'code',
 ]);
 
-function isBrowserCancelOrDismissResult(result: unknown): boolean {
+function getBrowserResultType(result: unknown): 'cancel' | 'dismiss' | null {
   if (!result || typeof result !== 'object') {
-    return false;
+    return null;
   }
 
   const type = (result as {type?: unknown}).type;
-  return type === 'cancel' || type === 'dismiss';
+  return type === 'cancel' || type === 'dismiss' ? type : null;
 }
 
 export class BayaanAuthError extends Error {
@@ -124,6 +124,8 @@ export function createBayaanAuthService(
   const openBrowserAsync =
     options.openBrowserAsync ?? WebBrowser.openBrowserAsync;
   const now = options.now ?? Date.now;
+  let signInAwaitingBrowser = false;
+  let successfulCallbackDuringSignIn = false;
 
   return {
     async signIn(): Promise<void> {
@@ -138,8 +140,16 @@ export function createBayaanAuthService(
       });
 
       try {
+        signInAwaitingBrowser = true;
         const browserResult = await openBrowserAsync(start.authorizationUrl);
-        if (isBrowserCancelOrDismissResult(browserResult)) {
+        const browserResultType = getBrowserResultType(browserResult);
+        if (browserResultType) {
+          if (
+            browserResultType === 'dismiss' &&
+            successfulCallbackDuringSignIn
+          ) {
+            return;
+          }
           throw new BayaanAuthError(
             'access_denied',
             'Sign-in was cancelled',
@@ -151,6 +161,9 @@ export function createBayaanAuthService(
           throw error;
         }
         throw new BayaanAuthError('network_error', 'Sign-in failed');
+      } finally {
+        signInAwaitingBrowser = false;
+        successfulCallbackDuringSignIn = false;
       }
     },
 
@@ -207,6 +220,9 @@ export function createBayaanAuthService(
 
         const session = await client.completeAuth(handoff, callbackState);
         await saveBayaanSession(session);
+        if (signInAwaitingBrowser) {
+          successfulCallbackDuringSignIn = true;
+        }
         WebBrowser.dismissBrowser();
         return session;
       } catch (error) {

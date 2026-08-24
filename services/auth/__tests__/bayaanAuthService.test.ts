@@ -102,6 +102,46 @@ describe('Bayaan BFF auth service', () => {
     },
   );
 
+  it('does not classify browser dismissal after a successful callback as access_denied', async () => {
+    let resolveBrowser: (result: unknown) => void = () => undefined;
+    mockOpenBrowserAsync.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveBrowser = resolve;
+        }),
+    );
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl:
+            'https://api-prelive.thebayaan.com/v1/qf/auth/launch?state=state-123',
+          state: 'state-123',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'opaque-bayaan-session',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile,
+        }),
+      );
+
+    const service = createBayaanAuthService({apiUrl});
+    const signInPromise = service.signIn();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    await expect(
+      service.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+      ),
+    ).resolves.toMatchObject({token: 'opaque-bayaan-session'});
+
+    resolveBrowser({type: 'dismiss'});
+    await expect(signInPromise).resolves.toBeUndefined();
+    expect(mockDismissBrowser).toHaveBeenCalledTimes(1);
+  });
+
   it('completes a valid app callback once and persists only the opaque session', async () => {
     await savePendingBayaanAuthState({
       state: 'state-123',
