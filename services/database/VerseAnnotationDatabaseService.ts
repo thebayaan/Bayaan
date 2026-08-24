@@ -117,6 +117,16 @@ function mapHighlightRow(row: HighlightRow): VerseHighlight {
   };
 }
 
+function requireOwnerScope(
+  ownerScope: AnnotationOwnerScope,
+): AnnotationOwnerScope {
+  if (!ownerScope) {
+    throw new Error('ownerScope is required');
+  }
+
+  return ownerScope;
+}
+
 class VerseAnnotationDatabaseService {
   async initialize(): Promise<void> {
     await verseAnnotationDatabase.initialize();
@@ -133,11 +143,28 @@ class VerseAnnotationDatabaseService {
     ayahNumber: number,
     rewayahId?: string,
   ): Promise<VerseBookmark> {
+    return this.addBookmarkForOwnerScope(
+      GUEST_OWNER_SCOPE,
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      rewayahId,
+    );
+  }
+
+  async addBookmarkForOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    rewayahId?: string,
+  ): Promise<VerseBookmark> {
     const db = await this.ensureReady();
+    const resolvedOwnerScope = requireOwnerScope(ownerScope);
 
     const bookmark: VerseBookmark = {
       id: generateId(),
-      ownerScope: GUEST_OWNER_SCOPE,
+      ownerScope: resolvedOwnerScope,
       verseKey,
       surahNumber,
       ayahNumber,
@@ -147,10 +174,10 @@ class VerseAnnotationDatabaseService {
 
     await db.runAsync(
       `INSERT INTO bookmarks (id, owner_scope, verse_key, surah_number, ayah_number, created_at, rewayah_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         bookmark.id,
-        GUEST_OWNER_SCOPE,
+        resolvedOwnerScope,
         bookmark.verseKey,
         bookmark.surahNumber,
         bookmark.ayahNumber,
@@ -163,36 +190,63 @@ class VerseAnnotationDatabaseService {
   }
 
   async removeBookmark(verseKey: string): Promise<void> {
+    await this.removeBookmarkInOwnerScope(GUEST_OWNER_SCOPE, verseKey);
+  }
+
+  async removeBookmarkInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+  ): Promise<void> {
     const db = await this.ensureReady();
     await db.runAsync(
       `DELETE FROM bookmarks WHERE owner_scope = ? AND verse_key = ?`,
-      [GUEST_OWNER_SCOPE, verseKey],
+      [requireOwnerScope(ownerScope), verseKey],
     );
   }
 
   async getBookmarksBySurah(surahNumber: number): Promise<VerseBookmark[]> {
+    return this.getBookmarksBySurahInOwnerScope(GUEST_OWNER_SCOPE, surahNumber);
+  }
+
+  async getBookmarksBySurahInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    surahNumber: number,
+  ): Promise<VerseBookmark[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
       `SELECT * FROM bookmarks WHERE owner_scope = ? AND surah_number = ? ORDER BY ayah_number`,
-      [GUEST_OWNER_SCOPE, surahNumber],
+      [requireOwnerScope(ownerScope), surahNumber],
     )) as BookmarkRow[];
     return rows.map(mapBookmarkRow);
   }
 
   async getAllBookmarks(): Promise<VerseBookmark[]> {
+    return this.getAllBookmarksInOwnerScope(GUEST_OWNER_SCOPE);
+  }
+
+  async getAllBookmarksInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+  ): Promise<VerseBookmark[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
       `SELECT * FROM bookmarks WHERE owner_scope = ? ORDER BY created_at DESC`,
-      [GUEST_OWNER_SCOPE],
+      [requireOwnerScope(ownerScope)],
     )) as BookmarkRow[];
     return rows.map(mapBookmarkRow);
   }
 
   async isBookmarked(verseKey: string): Promise<boolean> {
+    return this.isBookmarkedInOwnerScope(GUEST_OWNER_SCOPE, verseKey);
+  }
+
+  async isBookmarkedInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+  ): Promise<boolean> {
     const db = await this.ensureReady();
     const row = await db.getFirstAsync(
       `SELECT id FROM bookmarks WHERE owner_scope = ? AND verse_key = ?`,
-      [GUEST_OWNER_SCOPE, verseKey],
+      [requireOwnerScope(ownerScope), verseKey],
     );
     return row !== null;
   }
@@ -206,7 +260,28 @@ class VerseAnnotationDatabaseService {
     verseKeys?: string[],
     rewayahId?: string,
   ): Promise<VerseNote> {
+    return this.addNoteForOwnerScope(
+      GUEST_OWNER_SCOPE,
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      content,
+      verseKeys,
+      rewayahId,
+    );
+  }
+
+  async addNoteForOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    content: string,
+    verseKeys?: string[],
+    rewayahId?: string,
+  ): Promise<VerseNote> {
     const db = await this.ensureReady();
+    const resolvedOwnerScope = requireOwnerScope(ownerScope);
 
     const now = Date.now();
     const id = generateId();
@@ -214,10 +289,10 @@ class VerseAnnotationDatabaseService {
 
     await db.runAsync(
       `INSERT INTO notes (id, owner_scope, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        GUEST_OWNER_SCOPE,
+        resolvedOwnerScope,
         verseKey,
         surahNumber,
         ayahNumber,
@@ -231,7 +306,7 @@ class VerseAnnotationDatabaseService {
 
     return {
       id,
-      ownerScope: GUEST_OWNER_SCOPE,
+      ownerScope: resolvedOwnerScope,
       verseKey,
       surahNumber,
       ayahNumber,
@@ -244,62 +319,111 @@ class VerseAnnotationDatabaseService {
   }
 
   async updateNote(noteId: string, content: string): Promise<void> {
+    await this.updateNoteInOwnerScope(GUEST_OWNER_SCOPE, noteId, content);
+  }
+
+  async updateNoteInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    noteId: string,
+    content: string,
+  ): Promise<void> {
     const db = await this.ensureReady();
     await db.runAsync(
       `UPDATE notes SET content = ?, updated_at = ? WHERE owner_scope = ? AND id = ?`,
-      [content, Date.now(), GUEST_OWNER_SCOPE, noteId],
+      [content, Date.now(), requireOwnerScope(ownerScope), noteId],
     );
   }
 
   async getNoteById(noteId: string): Promise<VerseNote | null> {
+    return this.getNoteByIdInOwnerScope(GUEST_OWNER_SCOPE, noteId);
+  }
+
+  async getNoteByIdInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    noteId: string,
+  ): Promise<VerseNote | null> {
     const db = await this.ensureReady();
     const row = (await db.getFirstAsync(
       `SELECT * FROM notes WHERE owner_scope = ? AND id = ?`,
-      [GUEST_OWNER_SCOPE, noteId],
+      [requireOwnerScope(ownerScope), noteId],
     )) as NoteRow | null;
     return row ? mapNoteRow(row) : null;
   }
 
   async getNotesForVerse(verseKey: string): Promise<VerseNote[]> {
+    return this.getNotesForVerseInOwnerScope(GUEST_OWNER_SCOPE, verseKey);
+  }
+
+  async getNotesForVerseInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+  ): Promise<VerseNote[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
       `SELECT * FROM notes WHERE owner_scope = ? AND (verse_key = ? OR (',' || verse_keys || ',') LIKE ?) ORDER BY created_at DESC`,
-      [GUEST_OWNER_SCOPE, verseKey, `%,${verseKey},%`],
+      [requireOwnerScope(ownerScope), verseKey, `%,${verseKey},%`],
     )) as NoteRow[];
     return rows.map(mapNoteRow);
   }
 
   async deleteNoteById(noteId: string): Promise<void> {
+    await this.deleteNoteByIdInOwnerScope(GUEST_OWNER_SCOPE, noteId);
+  }
+
+  async deleteNoteByIdInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    noteId: string,
+  ): Promise<void> {
     const db = await this.ensureReady();
     await db.runAsync(`DELETE FROM notes WHERE owner_scope = ? AND id = ?`, [
-      GUEST_OWNER_SCOPE,
+      requireOwnerScope(ownerScope),
       noteId,
     ]);
   }
 
   async getNotesCountForVerse(verseKey: string): Promise<number> {
+    return this.getNotesCountForVerseInOwnerScope(GUEST_OWNER_SCOPE, verseKey);
+  }
+
+  async getNotesCountForVerseInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+  ): Promise<number> {
     const db = await this.ensureReady();
     const row = (await db.getFirstAsync(
       `SELECT COUNT(*) as count FROM notes WHERE owner_scope = ? AND (verse_key = ? OR (',' || verse_keys || ',') LIKE ?)`,
-      [GUEST_OWNER_SCOPE, verseKey, `%,${verseKey},%`],
+      [requireOwnerScope(ownerScope), verseKey, `%,${verseKey},%`],
     )) as {count: number} | null;
     return row?.count ?? 0;
   }
 
   async getAllNotes(): Promise<VerseNote[]> {
+    return this.getAllNotesInOwnerScope(GUEST_OWNER_SCOPE);
+  }
+
+  async getAllNotesInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+  ): Promise<VerseNote[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
       `SELECT * FROM notes WHERE owner_scope = ? ORDER BY updated_at DESC`,
-      [GUEST_OWNER_SCOPE],
+      [requireOwnerScope(ownerScope)],
     )) as NoteRow[];
     return rows.map(mapNoteRow);
   }
 
   async getNotesBySurah(surahNumber: number): Promise<VerseNote[]> {
+    return this.getNotesBySurahInOwnerScope(GUEST_OWNER_SCOPE, surahNumber);
+  }
+
+  async getNotesBySurahInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    surahNumber: number,
+  ): Promise<VerseNote[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
       `SELECT * FROM notes WHERE owner_scope = ? AND surah_number = ? ORDER BY ayah_number`,
-      [GUEST_OWNER_SCOPE, surahNumber],
+      [requireOwnerScope(ownerScope), surahNumber],
     )) as NoteRow[];
     return rows.map(mapNoteRow);
   }
@@ -312,7 +436,26 @@ class VerseAnnotationDatabaseService {
     color: HighlightColor,
     rewayahId?: string,
   ): Promise<VerseHighlight> {
+    return this.upsertHighlightForOwnerScope(
+      GUEST_OWNER_SCOPE,
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      color,
+      rewayahId,
+    );
+  }
+
+  async upsertHighlightForOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    color: HighlightColor,
+    rewayahId?: string,
+  ): Promise<VerseHighlight> {
     const db = await this.ensureReady();
+    const resolvedOwnerScope = requireOwnerScope(ownerScope);
 
     const now = Date.now();
     const id = generateId();
@@ -320,10 +463,10 @@ class VerseAnnotationDatabaseService {
     await db.runAsync(
       `INSERT INTO highlights (id, owner_scope, verse_key, surah_number, ayah_number, color, created_at, rewayah_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(owner_scope, verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`,
+      ON CONFLICT(owner_scope, verse_key) DO UPDATE SET color = excluded.color, rewayah_id = excluded.rewayah_id`,
       [
         id,
-        GUEST_OWNER_SCOPE,
+        resolvedOwnerScope,
         verseKey,
         surahNumber,
         ayahNumber,
@@ -335,7 +478,7 @@ class VerseAnnotationDatabaseService {
 
     return {
       id,
-      ownerScope: GUEST_OWNER_SCOPE,
+      ownerScope: resolvedOwnerScope,
       verseKey,
       surahNumber,
       ayahNumber,
@@ -346,18 +489,32 @@ class VerseAnnotationDatabaseService {
   }
 
   async removeHighlight(verseKey: string): Promise<void> {
+    await this.removeHighlightInOwnerScope(GUEST_OWNER_SCOPE, verseKey);
+  }
+
+  async removeHighlightInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+  ): Promise<void> {
     const db = await this.ensureReady();
     await db.runAsync(
       `DELETE FROM highlights WHERE owner_scope = ? AND verse_key = ?`,
-      [GUEST_OWNER_SCOPE, verseKey],
+      [requireOwnerScope(ownerScope), verseKey],
     );
   }
 
   async getHighlightsBySurah(surahNumber: number): Promise<VerseHighlight[]> {
+    return this.getHighlightsBySurahInOwnerScope(GUEST_OWNER_SCOPE, surahNumber);
+  }
+
+  async getHighlightsBySurahInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    surahNumber: number,
+  ): Promise<VerseHighlight[]> {
     const db = await this.ensureReady();
     const rows = (await db.getAllAsync(
       `SELECT * FROM highlights WHERE owner_scope = ? AND surah_number = ? ORDER BY ayah_number`,
-      [GUEST_OWNER_SCOPE, surahNumber],
+      [requireOwnerScope(ownerScope), surahNumber],
     )) as HighlightRow[];
     return rows.map(mapHighlightRow);
   }
@@ -368,10 +525,24 @@ class VerseAnnotationDatabaseService {
     notes: VerseNote[];
     highlights: VerseHighlight[];
   }> {
+    return this.getAnnotationsForSurahInOwnerScope(
+      GUEST_OWNER_SCOPE,
+      surahNumber,
+    );
+  }
+
+  async getAnnotationsForSurahInOwnerScope(
+    ownerScope: AnnotationOwnerScope,
+    surahNumber: number,
+  ): Promise<{
+    bookmarks: VerseBookmark[];
+    notes: VerseNote[];
+    highlights: VerseHighlight[];
+  }> {
     const [bookmarks, notes, highlights] = await Promise.all([
-      this.getBookmarksBySurah(surahNumber),
-      this.getNotesBySurah(surahNumber),
-      this.getHighlightsBySurah(surahNumber),
+      this.getBookmarksBySurahInOwnerScope(ownerScope, surahNumber),
+      this.getNotesBySurahInOwnerScope(ownerScope, surahNumber),
+      this.getHighlightsBySurahInOwnerScope(ownerScope, surahNumber),
     ]);
     return {bookmarks, notes, highlights};
   }

@@ -224,6 +224,61 @@ async function createLegacyAnnotationTables(db: TestDb): Promise<void> {
   );
 }
 
+async function createOlderLegacyAnnotationTables(db: TestDb): Promise<void> {
+  await db.execAsync(`
+    CREATE TABLE bookmarks (
+      id TEXT PRIMARY KEY,
+      verse_key TEXT NOT NULL UNIQUE,
+      surah_number INTEGER NOT NULL,
+      ayah_number INTEGER NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX idx_bookmarks_surah ON bookmarks(surah_number);
+
+    CREATE TABLE notes (
+      id TEXT PRIMARY KEY,
+      verse_key TEXT NOT NULL,
+      surah_number INTEGER NOT NULL,
+      ayah_number INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX idx_notes_surah ON notes(surah_number);
+
+    CREATE TABLE highlights (
+      id TEXT PRIMARY KEY,
+      verse_key TEXT NOT NULL UNIQUE,
+      surah_number INTEGER NOT NULL,
+      ayah_number INTEGER NOT NULL,
+      color TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX idx_highlights_surah ON highlights(surah_number);
+  `);
+
+  await db.runAsync(
+    `INSERT INTO bookmarks
+       (id, verse_key, surah_number, ayah_number, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    ['older-bookmark', '18:10', 18, 10, 1101],
+  );
+
+  await db.runAsync(
+    `INSERT INTO notes
+       (id, verse_key, surah_number, ayah_number, content, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ['older-note', '18:10', 18, 10, 'legacy note without range columns', 2101, 3101],
+  );
+
+  await db.runAsync(
+    `INSERT INTO highlights
+       (id, verse_key, surah_number, ayah_number, color, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    ['older-highlight', '18:10', 18, 10, 'green', 4101],
+  );
+}
+
 async function tableNames(db: TestDb): Promise<string[]> {
   const rows = await db.getAllAsync(
     `SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name`,
@@ -364,6 +419,61 @@ describe('userSyncV1 annotation migration', () => {
     await expect(
       db.getFirstAsync(`SELECT version FROM schema_migrations`),
     ).resolves.toEqual({version: USER_SYNC_V1_VERSION});
+  });
+
+  it('migrates older legacy annotation tables that predate verse_keys and rewayah_id columns', async () => {
+    const db = await openTestDb();
+    await createOlderLegacyAnnotationTables(db);
+
+    await migrateUserSyncV1(db);
+
+    await expect(
+      db.getAllAsync(
+        `SELECT id, owner_scope, verse_key, rewayah_id
+         FROM bookmarks
+         ORDER BY id`,
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'older-bookmark',
+        owner_scope: GUEST_OWNER_SCOPE,
+        verse_key: '18:10',
+        rewayah_id: 'hafs',
+      },
+    ]);
+
+    await expect(
+      db.getAllAsync(
+        `SELECT id, owner_scope, verse_key, content, verse_keys, rewayah_id
+         FROM notes
+         ORDER BY id`,
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'older-note',
+        owner_scope: GUEST_OWNER_SCOPE,
+        verse_key: '18:10',
+        content: 'legacy note without range columns',
+        verse_keys: null,
+        rewayah_id: 'hafs',
+      },
+    ]);
+
+    await expect(
+      db.getAllAsync(
+        `SELECT id, owner_scope, verse_key, color, rewayah_id
+         FROM highlights
+         ORDER BY id`,
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'older-highlight',
+        owner_scope: GUEST_OWNER_SCOPE,
+        verse_key: '18:10',
+        color: 'green',
+        rewayah_id: 'hafs',
+      },
+    ]);
   });
 
   it('is rerun safe and enforces bookmark uniqueness only within an owner scope', async () => {

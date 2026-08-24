@@ -5,6 +5,10 @@ export const GUEST_OWNER_SCOPE = 'guest';
 
 type SQLiteLikeDatabase = {
   execAsync(source: string): Promise<void>;
+  getAllAsync?(
+    source: string,
+    params?: unknown[] | Record<string, unknown>,
+  ): Promise<unknown[]>;
   getFirstAsync(
     source: string,
     params?: unknown[] | Record<string, unknown>,
@@ -16,6 +20,10 @@ interface MigrationRow {
 }
 
 interface TableRow {
+  name: string;
+}
+
+interface TableInfoRow {
   name: string;
 }
 
@@ -46,6 +54,28 @@ async function hasMigration(db: SQLiteLikeDatabase): Promise<boolean> {
     [USER_SYNC_V1_VERSION],
   )) as MigrationRow | null;
   return row?.version === USER_SYNC_V1_VERSION;
+}
+
+async function getTableColumns(
+  db: SQLiteLikeDatabase,
+  tableName: string,
+): Promise<Set<string>> {
+  if (!db.getAllAsync) {
+    throw new Error('Database does not support getAllAsync required for migration');
+  }
+
+  const rows = (await db.getAllAsync(
+    `PRAGMA table_info(${tableName})`,
+  )) as TableInfoRow[];
+  return new Set(rows.map(row => row.name));
+}
+
+function legacyRewayahSelect(columns: Set<string>): string {
+  return columns.has('rewayah_id') ? canonicalRewayahSql('rewayah_id') : `'hafs'`;
+}
+
+function legacyVerseKeysSelect(columns: Set<string>): string {
+  return columns.has('verse_keys') ? 'verse_keys' : 'NULL';
 }
 
 async function createFreshBookmarks(db: SQLiteLikeDatabase): Promise<void> {
@@ -131,6 +161,10 @@ async function rebuildBookmarks(db: SQLiteLikeDatabase): Promise<void> {
   await db.execAsync(
     `ALTER TABLE bookmarks RENAME TO bookmarks_legacy_user_sync_v1;`,
   );
+  const legacyColumns = await getTableColumns(
+    db,
+    'bookmarks_legacy_user_sync_v1',
+  );
   await createFreshBookmarks(db);
   await db.execAsync(`
     INSERT INTO bookmarks (
@@ -152,7 +186,7 @@ async function rebuildBookmarks(db: SQLiteLikeDatabase): Promise<void> {
       surah_number,
       ayah_number,
       created_at,
-      ${canonicalRewayahSql('rewayah_id')},
+      ${legacyRewayahSelect(legacyColumns)},
       NULL,
       NULL,
       NULL
@@ -168,6 +202,7 @@ async function rebuildNotes(db: SQLiteLikeDatabase): Promise<void> {
   }
 
   await db.execAsync(`ALTER TABLE notes RENAME TO notes_legacy_user_sync_v1;`);
+  const legacyColumns = await getTableColumns(db, 'notes_legacy_user_sync_v1');
   await createFreshNotes(db);
   await db.execAsync(`
     INSERT INTO notes (
@@ -192,10 +227,10 @@ async function rebuildNotes(db: SQLiteLikeDatabase): Promise<void> {
       surah_number,
       ayah_number,
       content,
-      verse_keys,
+      ${legacyVerseKeysSelect(legacyColumns)},
       created_at,
       updated_at,
-      ${canonicalRewayahSql('rewayah_id')},
+      ${legacyRewayahSelect(legacyColumns)},
       NULL,
       NULL,
       NULL
@@ -212,6 +247,10 @@ async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
 
   await db.execAsync(
     `ALTER TABLE highlights RENAME TO highlights_legacy_user_sync_v1;`,
+  );
+  const legacyColumns = await getTableColumns(
+    db,
+    'highlights_legacy_user_sync_v1',
   );
   await createFreshHighlights(db);
   await db.execAsync(`
@@ -236,7 +275,7 @@ async function rebuildHighlights(db: SQLiteLikeDatabase): Promise<void> {
       ayah_number,
       color,
       created_at,
-      ${canonicalRewayahSql('rewayah_id')},
+      ${legacyRewayahSelect(legacyColumns)},
       NULL,
       NULL,
       NULL
