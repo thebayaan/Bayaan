@@ -1,12 +1,8 @@
 const FORBIDDEN_PUBLIC_KEY_PATTERNS = [
   /QF_CLIENT/i,
+  /QF_AUTHORIZATION_CODE/i,
   /QF.*TOKEN/i,
   /CLIENT_SECRET/i,
-];
-
-const FORBIDDEN_PUBLIC_VALUE_PATTERNS = [
-  /^https:\/\/prelive-oauth2\.quran\.foundation\/?$/i,
-  /^https:\/\/apis-prelive\.quran\.foundation\/auth\/?$/i,
 ];
 
 export interface BayaanAuthConfig {
@@ -14,30 +10,80 @@ export interface BayaanAuthConfig {
   apiUrl: string;
 }
 
+export interface PublicBayaanAuthEnv
+  extends Record<string, string | undefined> {
+  EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED?: string;
+  EXPO_PUBLIC_BAYAAN_API_URL?: string;
+  EXPO_PUBLIC_QF_CLIENT_ID?: string;
+  EXPO_PUBLIC_QF_CLIENT_SECRET?: string;
+  EXPO_PUBLIC_QF_AUTHORIZATION_CODE?: string;
+  EXPO_PUBLIC_QF_TOKEN?: string;
+  EXPO_PUBLIC_CLIENT_SECRET?: string;
+  EXPO_PUBLIC_OAUTH_ISSUER_URL?: string;
+  EXPO_PUBLIC_USER_API_URL?: string;
+  EXPO_PUBLIC_QF_DISCOVERY_URL?: string;
+  EXPO_PUBLIC_QF_PROFILE_URL?: string;
+}
+
+function parsePublicUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return new URL(trimmed);
+  } catch {
+    return null;
+  }
+}
+
+function isForbiddenQfHost(url: URL) {
+  const hostname = url.hostname.toLowerCase();
+  if (!hostname.endsWith("quran.foundation")) {
+    return false;
+  }
+
+  return hostname.includes("oauth") || hostname.startsWith("apis");
+}
+
 function isForbiddenPublicConfig(key: string, value: string) {
-  return (
-    FORBIDDEN_PUBLIC_KEY_PATTERNS.some(pattern => pattern.test(key)) ||
-    FORBIDDEN_PUBLIC_VALUE_PATTERNS.some(pattern => pattern.test(value))
-  );
+  if (FORBIDDEN_PUBLIC_KEY_PATTERNS.some(pattern => pattern.test(key))) {
+    return true;
+  }
+
+  const parsedUrl = parsePublicUrl(value);
+  return parsedUrl ? isForbiddenQfHost(parsedUrl) : false;
+}
+
+export function assertNoForbiddenPublicBayaanAuthEnv(
+  env: Record<string, string | undefined>,
+) {
+  const forbiddenKeys = Object.entries(env)
+    .filter(([key, value]) => {
+      if (!key.startsWith('EXPO_PUBLIC_')) {
+        return false;
+      }
+
+      if (!value?.trim()) {
+        return false;
+      }
+
+      return isForbiddenPublicConfig(key, value ?? '');
+    })
+    .map(([key]) => key);
+
+  if (forbiddenKeys.length > 0) {
+    throw new Error(
+      `Forbidden EXPO_PUBLIC_ auth config detected: ${forbiddenKeys.join(', ')}`,
+    );
+  }
 }
 
 export function readBayaanAuthConfig(
-  env: NodeJS.ProcessEnv = process.env,
+  env: PublicBayaanAuthEnv,
 ): BayaanAuthConfig {
-  const forbiddenEntries = Object.entries(env).filter(([key, value]) => {
-    if (!key.startsWith('EXPO_PUBLIC_')) {
-      return false;
-    }
-
-    return isForbiddenPublicConfig(key, value ?? '');
-  });
-
-  if (forbiddenEntries.length > 0) {
-    const forbiddenKeys = forbiddenEntries.map(([key]) => key).join(', ');
-    throw new Error(
-      `Forbidden EXPO_PUBLIC_ auth config detected: ${forbiddenKeys}`,
-    );
-  }
+  assertNoForbiddenPublicBayaanAuthEnv(env);
 
   return {
     qfSyncEnabled:
@@ -46,4 +92,18 @@ export function readBayaanAuthConfig(
   };
 }
 
-export const bayaanAuthConfig = readBayaanAuthConfig();
+export const bayaanAuthConfig = readBayaanAuthConfig({
+  EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED:
+    process.env.EXPO_PUBLIC_BAYAAN_QF_SYNC_ENABLED,
+  EXPO_PUBLIC_BAYAAN_API_URL: process.env.EXPO_PUBLIC_BAYAAN_API_URL,
+  EXPO_PUBLIC_QF_CLIENT_ID: process.env.EXPO_PUBLIC_QF_CLIENT_ID,
+  EXPO_PUBLIC_QF_CLIENT_SECRET: process.env.EXPO_PUBLIC_QF_CLIENT_SECRET,
+  EXPO_PUBLIC_QF_AUTHORIZATION_CODE:
+    process.env.EXPO_PUBLIC_QF_AUTHORIZATION_CODE,
+  EXPO_PUBLIC_QF_TOKEN: process.env.EXPO_PUBLIC_QF_TOKEN,
+  EXPO_PUBLIC_CLIENT_SECRET: process.env.EXPO_PUBLIC_CLIENT_SECRET,
+  EXPO_PUBLIC_OAUTH_ISSUER_URL: process.env.EXPO_PUBLIC_OAUTH_ISSUER_URL,
+  EXPO_PUBLIC_USER_API_URL: process.env.EXPO_PUBLIC_USER_API_URL,
+  EXPO_PUBLIC_QF_DISCOVERY_URL: process.env.EXPO_PUBLIC_QF_DISCOVERY_URL,
+  EXPO_PUBLIC_QF_PROFILE_URL: process.env.EXPO_PUBLIC_QF_PROFILE_URL,
+});

@@ -28,6 +28,12 @@ function loadBayaanAuthConfig() {
   return require('../../../config/bayaanAuth');
 }
 
+function loadAppConfig() {
+  jest.resetModules();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('../../../app.config.js');
+}
+
 afterEach(() => {
   for (const key of Object.keys(process.env)) {
     if (!(key in originalEnv)) {
@@ -50,20 +56,30 @@ describe('bayaan auth public config', () => {
     expect(bayaanAuthConfig.apiUrl).toBe(
       'https://api-prelive.thebayaan.com',
     );
+    expect(() => loadAppConfig()).not.toThrow();
   });
 
   it.each([
     ['EXPO_PUBLIC_QF_CLIENT_ID', 'dummy-client-id'],
     ['EXPO_PUBLIC_QF_CLIENT_SECRET', 'dummy-client-secret'],
+    ['EXPO_PUBLIC_QF_AUTHORIZATION_CODE', 'dummy-auth-code'],
     ['EXPO_PUBLIC_QF_TOKEN', 'dummy-qf-token'],
     ['EXPO_PUBLIC_CLIENT_SECRET', 'dummy-client-secret'],
     [
       'EXPO_PUBLIC_OAUTH_ISSUER_URL',
-      'https://prelive-oauth2.quran.foundation',
+      ' https://prelive-oauth2.quran.foundation/.well-known/openid-configuration?foo=bar ',
     ],
     [
       'EXPO_PUBLIC_USER_API_URL',
-      'https://apis-prelive.quran.foundation/auth',
+      'https://apis-prelive.quran.foundation/auth/me?page=1',
+    ],
+    [
+      'EXPO_PUBLIC_QF_DISCOVERY_URL',
+      'https://staging-oauth2.quran.foundation/authorize',
+    ],
+    [
+      'EXPO_PUBLIC_QF_PROFILE_URL',
+      'https://apis.quran.foundation/auth/profile',
     ],
   ])('rejects forbidden public QF config %s', (key, value) => {
     setPublicEnv({
@@ -72,5 +88,6 @@ describe('bayaan auth public config', () => {
 
     expect(() => loadBayaanAuthConfig()).toThrow(/EXPO_PUBLIC_/);
     expect(() => loadBayaanAuthConfig()).toThrow(key);
+    expect(() => loadAppConfig()).toThrow(key);
   });
 });

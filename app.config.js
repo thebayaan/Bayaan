@@ -1,5 +1,8 @@
 // Import version information from Git-based generator
 const versionInfo = require('./scripts/generate-version');
+const {
+  assertNoForbiddenPublicBayaanAuthEnv,
+} = require('./config/bayaanAuth.build');
 
 // Get version string
 const getVersionString = () => versionInfo.semanticVersion;
@@ -20,6 +23,8 @@ const OTA_UPDATES_ENABLED = Boolean(EAS_PROJECT_ID_FROM_ENV);
 const ASSOCIATED_DOMAIN = process.env.EXPO_PUBLIC_ASSOCIATED_DOMAIN;
 const PRIVACY_POLICY_URL =
   process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL ?? 'https://thebayaan.com/privacy';
+
+assertNoForbiddenPublicBayaanAuthEnv(process.env);
 
 module.exports = {
   expo: {
