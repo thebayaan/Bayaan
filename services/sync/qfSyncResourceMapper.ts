@@ -63,10 +63,17 @@ function parseVerseKey(verseKey: string): ParsedVerseKey {
     throw new Error(`Invalid verse key: ${verseKey}`);
   }
 
+  const surahNumber = Number(match[1]);
+  const ayahNumber = Number(match[2]);
+  const verseCount = SURAH_VERSE_COUNTS.get(surahNumber);
+  if (!verseCount || ayahNumber < 1 || ayahNumber > verseCount) {
+    throw new Error(`Invalid verse key: ${verseKey}`);
+  }
+
   return {
-    raw: verseKey,
-    surahNumber: Number(match[1]),
-    ayahNumber: Number(match[2]),
+    raw: `${surahNumber}:${ayahNumber}`,
+    surahNumber,
+    ayahNumber,
   };
 }
 
@@ -119,6 +126,10 @@ export function buildVerseRanges(verseKeys: string[]): string[] {
 }
 
 function mapBookmark(entry: QfOutboxEntryLike): QfSyncRequestMutation {
+  if (entry.mutationType === 'UPDATE') {
+    throw new Error('BOOKMARK UPDATE is not supported');
+  }
+
   if (entry.mutationType === 'DELETE') {
     return {
       resource: 'BOOKMARK',
@@ -131,7 +142,7 @@ function mapBookmark(entry: QfOutboxEntryLike): QfSyncRequestMutation {
   const payload = parsePayload<BookmarkPayload>(entry);
   return {
     resource: 'BOOKMARK',
-    type: entry.mutationType,
+    type: 'CREATE',
     data: {
       key: payload.surahNumber,
       type: 'ayah',

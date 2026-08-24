@@ -7,6 +7,7 @@ import type {
 } from '@/types/verse-annotations';
 import {
   ALL_REWAYAH_IDS,
+  migratePersistedId,
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import {verseAnnotationDatabase} from '@/services/database/VerseAnnotationDatabase';
@@ -66,6 +67,10 @@ function parseRewayahId(value: string | null): RewayahId | undefined {
   // known-set to be safe if a hand-edited DB surfaces something unexpected.
   const known = new Set<RewayahId>(ALL_REWAYAH_IDS);
   return known.has(value as RewayahId) ? (value as RewayahId) : undefined;
+}
+
+function resolveRewayahId(value: string | undefined): RewayahId {
+  return migratePersistedId(value ?? 'hafs');
 }
 
 function mapBookmarkRow(row: BookmarkRow): VerseBookmark {
@@ -165,6 +170,7 @@ export class VerseAnnotationDatabaseService {
   ): Promise<VerseBookmark> {
     const db = await this.ensureReady();
     const resolvedOwnerScope = requireOwnerScope(ownerScope);
+    const resolvedRewayahId = resolveRewayahId(rewayahId);
 
     const bookmark: VerseBookmark = {
       id: generateId(),
@@ -173,7 +179,7 @@ export class VerseAnnotationDatabaseService {
       surahNumber,
       ayahNumber,
       createdAt: Date.now(),
-      rewayahId: rewayahId as VerseBookmark['rewayahId'],
+      rewayahId: resolvedRewayahId,
     };
 
     await db.runAsync(
@@ -186,7 +192,7 @@ export class VerseAnnotationDatabaseService {
         bookmark.surahNumber,
         bookmark.ayahNumber,
         bookmark.createdAt,
-        bookmark.rewayahId ?? null,
+        resolvedRewayahId,
       ],
     );
 
@@ -304,7 +310,7 @@ export class VerseAnnotationDatabaseService {
         verseKeysStr,
         now,
         now,
-        rewayahId ?? null,
+        resolveRewayahId(rewayahId),
       ],
     );
 
@@ -318,7 +324,7 @@ export class VerseAnnotationDatabaseService {
       verseKeys: verseKeys?.length ? verseKeys : undefined,
       createdAt: now,
       updatedAt: now,
-      rewayahId: rewayahId as VerseNote['rewayahId'],
+      rewayahId: resolveRewayahId(rewayahId),
     };
   }
 
@@ -476,7 +482,7 @@ export class VerseAnnotationDatabaseService {
         ayahNumber,
         color,
         now,
-        rewayahId ?? null,
+        resolveRewayahId(rewayahId),
       ],
     );
 
@@ -488,7 +494,7 @@ export class VerseAnnotationDatabaseService {
       ayahNumber,
       color,
       createdAt: now,
-      rewayahId: rewayahId as VerseHighlight['rewayahId'],
+      rewayahId: resolveRewayahId(rewayahId),
     };
   }
 

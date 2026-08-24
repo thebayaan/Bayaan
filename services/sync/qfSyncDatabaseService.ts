@@ -35,6 +35,11 @@ interface UpdateNoteInput {
   content: string;
 }
 
+interface DeleteNoteInput {
+  accountId: string;
+  noteId: string;
+}
+
 interface UpsertReadingLocationInput {
   accountId: string;
   verseKey: string;
@@ -63,6 +68,7 @@ interface AcknowledgeOperationInput {
   resourceId: string;
   serverCreatedAt?: number;
   serverUpdatedAt?: number;
+  acknowledgedPayloadJson?: string;
 }
 
 interface QfSyncDatabaseServiceOptions {
@@ -174,6 +180,8 @@ interface ReadingSessionOutboxPayload {
   clientUpdatedAt: number;
 }
 
+const DEFAULT_REWAYAH_ID = 'hafs';
+
 export interface QfReadingLocation {
   id: string;
   ownerScope: AnnotationOwnerScope;
@@ -252,6 +260,7 @@ export class QfSyncDatabaseService {
   async addBookmark(input: AddBookmarkInput): Promise<VerseBookmark> {
     const db = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
+    const rewayahId = input.rewayahId ?? DEFAULT_REWAYAH_ID;
     let bookmark: VerseBookmark | undefined;
 
     await db.withTransactionAsync(async () => {
@@ -260,7 +269,7 @@ export class QfSyncDatabaseService {
         input.verseKey,
         input.surahNumber,
         input.ayahNumber,
-        input.rewayahId,
+        rewayahId,
       );
 
       await this.clearBookmarkOutbox(db, ownerScope, input.verseKey);
@@ -275,7 +284,7 @@ export class QfSyncDatabaseService {
           verseKey: input.verseKey,
           surahNumber: input.surahNumber,
           ayahNumber: input.ayahNumber,
-          rewayahId: input.rewayahId,
+          rewayahId,
           clientCreatedAt: bookmark.createdAt,
           clientUpdatedAt: bookmark.createdAt,
         } satisfies BookmarkOutboxPayload,
@@ -325,6 +334,7 @@ export class QfSyncDatabaseService {
   async addNote(input: AddNoteInput): Promise<VerseNote> {
     const db = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
+    const rewayahId = input.rewayahId ?? DEFAULT_REWAYAH_ID;
     let note: VerseNote | undefined;
 
     await db.withTransactionAsync(async () => {
@@ -335,7 +345,7 @@ export class QfSyncDatabaseService {
         input.ayahNumber,
         input.content,
         input.verseKeys,
-        input.rewayahId,
+        rewayahId,
       );
 
       await this.enqueueMutation(db, {
@@ -351,7 +361,7 @@ export class QfSyncDatabaseService {
           ayahNumber: input.ayahNumber,
           content: input.content,
           verseKeys: input.verseKeys,
-          rewayahId: input.rewayahId,
+          rewayahId,
           clientCreatedAt: note.createdAt,
           clientUpdatedAt: note.updatedAt,
         } satisfies NoteOutboxPayload,
@@ -440,12 +450,73 @@ export class QfSyncDatabaseService {
     });
   }
 
-  async upsertReadingLocation(input: UpsertReadingLocationInput): Promise<void> {
+  async deleteNote(input: DeleteNoteInput): Promise<void> {
     const db = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
 
     await db.withTransactionAsync(async () => {
+      const note = await this.getNoteRow(db, ownerScope, input.noteId);
+      if (!note) {
+        return;
+      }
+
+      const existingOperation = await this.getLatestNoteOutboxEntry(
+        db,
+        ownerScope,
+        input.noteId,
+      );
+
+      await this.annotations.deleteNoteByIdInOwnerScope(ownerScope, input.noteId);
+      await this.clearNoteOutbox(db, ownerScope, input.noteId);
+
+      const remoteId = note.remote_id ?? existingOperation?.remoteId ?? undefined;
+      if (
+        existingOperation?.mutationType === 'CREATE' &&
+        !note.remote_id &&
+        !existingOperation.remoteId
+      ) {
+        return;
+      }
+
+      if (!remoteId && !existingOperation) {
+        return;
+      }
+
+      const deletedAt = Date.now();
+      await this.enqueueMutation(db, {
+        accountId: input.accountId,
+        ownerScope,
+        resource: 'NOTE',
+        mutationType: 'DELETE',
+        localId: note.id,
+        remoteId,
+        payload: {
+          verseKey: note.verse_key,
+          surahNumber: note.surah_number,
+          ayahNumber: note.ayah_number,
+          content: note.content,
+          verseKeys: parseVerseKeys(note.verse_keys),
+          rewayahId: note.rewayah_id ?? DEFAULT_REWAYAH_ID,
+          clientCreatedAt: note.created_at,
+          clientUpdatedAt: deletedAt,
+        } satisfies NoteOutboxPayload,
+        createdAt: deletedAt,
+        baseServerUpdatedAt: note.server_updated_at ?? undefined,
+      });
+    });
+  }
+
+  async upsertReadingLocation(input: UpsertReadingLocationInput): Promise<void> {
+    const db = await this.database.getConnection();
+    const ownerScope = ownerScopeFromAccountId(input.accountId);
+    const rewayahId = input.rewayahId ?? DEFAULT_REWAYAH_ID;
+
+    await db.withTransactionAsync(async () => {
       const existing = await this.getLatestReadingLocationRow(db, ownerScope);
+      if (existing && input.lastReadAt <= existing.last_read_at) {
+        return;
+      }
+
       const rowId = existing?.id ?? generateId();
       const createdAt = existing?.created_at ?? input.lastReadAt;
 
@@ -459,7 +530,7 @@ export class QfSyncDatabaseService {
             input.ayahNumber,
             input.verseKey,
             input.pageNumber ?? null,
-            input.rewayahId ?? null,
+            rewayahId,
             input.lastReadAt,
             input.lastReadAt,
             rowId,
@@ -479,7 +550,7 @@ export class QfSyncDatabaseService {
             input.ayahNumber,
             input.verseKey,
             input.pageNumber ?? null,
-            input.rewayahId ?? null,
+            rewayahId,
             input.lastReadAt,
             null,
             createdAt,
@@ -593,6 +664,32 @@ export class QfSyncDatabaseService {
         }
       }
 
+      if (
+        row.resource === 'NOTE' &&
+        row.mutation_type === 'CREATE' &&
+        row.local_id &&
+        input.acknowledgedPayloadJson &&
+        input.acknowledgedPayloadJson !== row.payload_json
+      ) {
+        const currentPayload = JSON.parse(row.payload_json) as NoteOutboxPayload;
+        await db.runAsync(
+          `DELETE FROM qf_sync_outbox WHERE owner_scope = ? AND local_operation_id = ?`,
+          [ownerScope, input.localOperationId],
+        );
+        await this.enqueueMutation(db, {
+          accountId: input.accountId,
+          ownerScope,
+          resource: 'NOTE',
+          mutationType: 'UPDATE',
+          localId: row.local_id,
+          remoteId: input.resourceId,
+          payload: {...currentPayload},
+          createdAt: currentPayload.clientUpdatedAt,
+          baseServerUpdatedAt: input.serverUpdatedAt,
+        });
+        return;
+      }
+
       await db.runAsync(
         `DELETE FROM qf_sync_outbox WHERE owner_scope = ? AND local_operation_id = ?`,
         [ownerScope, input.localOperationId],
@@ -626,12 +723,19 @@ export class QfSyncDatabaseService {
             input.verseKeys?.join(',') ?? null,
             input.serverCreatedAt ?? input.serverUpdatedAt,
             input.serverUpdatedAt,
-            null,
+            DEFAULT_REWAYAH_ID,
             input.remoteId,
             input.serverCreatedAt ?? null,
             input.serverUpdatedAt,
           ],
         );
+        return;
+      }
+
+      if (
+        canonical.server_updated_at !== null &&
+        input.serverUpdatedAt <= canonical.server_updated_at
+      ) {
         return;
       }
 
@@ -644,6 +748,16 @@ export class QfSyncDatabaseService {
         pending?.resource === 'NOTE'
           ? (JSON.parse(pending.payloadJson) as NoteOutboxPayload)
           : null;
+      const pendingBaseServerUpdatedAt =
+        pending?.baseServerUpdatedAt ?? canonical.server_updated_at;
+
+      if (
+        pendingPayload &&
+        pendingBaseServerUpdatedAt !== null &&
+        input.serverUpdatedAt <= pendingBaseServerUpdatedAt
+      ) {
+        return;
+      }
 
       await db.runAsync(
         `UPDATE notes
@@ -675,7 +789,7 @@ export class QfSyncDatabaseService {
         pendingPayload.ayahNumber,
         pendingPayload.content,
         pendingPayload.verseKeys,
-        pendingPayload.rewayahId,
+          pendingPayload.rewayahId,
       );
 
       await this.clearNoteOutbox(db, ownerScope, canonical.id);
@@ -710,7 +824,7 @@ export class QfSyncDatabaseService {
           pendingPayload.content,
           input.content,
           input.remoteId,
-          input.serverUpdatedAt,
+          pendingBaseServerUpdatedAt,
           Date.now(),
           null,
         ],

@@ -62,6 +62,25 @@ describe('qfSyncResourceMapper', () => {
     });
   });
 
+  it('rejects bookmark updates because QF only accepts bookmark create or delete intent', () => {
+    const bookmarkUpdate = createOutboxEntry({
+      resource: 'BOOKMARK',
+      mutationType: 'UPDATE',
+      remoteId: 'remote-bookmark-1',
+      payloadJson: JSON.stringify({
+        verseKey: '2:255',
+        surahNumber: 2,
+        ayahNumber: 255,
+        clientCreatedAt: 1713511200000,
+        clientUpdatedAt: 1713514800000,
+      }),
+    });
+
+    expect(() => mapOutboxEntryToSyncMutation(bookmarkUpdate)).toThrow(
+      'BOOKMARK UPDATE is not supported',
+    );
+  });
+
   it('converts note verse keys into deterministic inclusive ranges and pins saveToQR false', () => {
     expect(buildVerseRanges(['2:255'])).toEqual(['2:255-2:255']);
     expect(buildVerseRanges(['2:255', '2:256', '2:257'])).toEqual([
@@ -80,6 +99,18 @@ describe('qfSyncResourceMapper', () => {
     ]);
     expect(() => buildVerseRanges(['2:255', 'invalid'])).toThrow(
       'Invalid verse key: invalid',
+    );
+    expect(() => buildVerseRanges(['0:1'])).toThrow(
+      'Invalid verse key: 0:1',
+    );
+    expect(() => buildVerseRanges(['2:0'])).toThrow(
+      'Invalid verse key: 2:0',
+    );
+    expect(() => buildVerseRanges(['2:287'])).toThrow(
+      'Invalid verse key: 2:287',
+    );
+    expect(() => buildVerseRanges(['115:1'])).toThrow(
+      'Invalid verse key: 115:1',
     );
 
     const noteCreate = createOutboxEntry({

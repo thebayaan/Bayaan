@@ -124,6 +124,10 @@ jest.mock('expo-sqlite', () => ({
   openDatabaseAsync: mockOpenDatabaseAsync,
 }));
 
+const testRunDatabasePrefix = `qf-outbox-${Date.now()}-${Math.random()
+  .toString(36)
+  .slice(2)}`;
+
 async function createServices(name: string) {
   jest.resetModules();
   jest.doMock('expo-sqlite', () => ({
@@ -138,7 +142,9 @@ async function createServices(name: string) {
   const {QfSyncDatabaseService} = require(
     '@/services/sync/qfSyncDatabaseService'
   );
-  const database = new VerseAnnotationDatabase(name);
+  const database = new VerseAnnotationDatabase(
+    `${testRunDatabasePrefix}-${name}`,
+  );
   const annotations = new VerseAnnotationDatabaseService(database);
   const sync = new QfSyncDatabaseService({
     database,
@@ -230,6 +236,119 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       }),
     ]);
     await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([]);
+
+    await database.close();
+  });
+
+  it('rolls back acknowledgement metadata when outbox removal fails in the same SQLite transaction', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-outbox-ack-rollback.db',
+    );
+    await sync.initialize();
+
+    const bookmark = await sync.addBookmark({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      rewayahId: 'warsh',
+    });
+    const [operation] = await sync.getOutboxEntries('reader-a');
+
+    const connection = (await database.getConnection()) as TestDatabase;
+    const originalRunAsync = connection.runAsync.bind(connection);
+    let injected = false;
+    connection.runAsync = async (source, params) => {
+      if (
+        !injected &&
+        source.includes('DELETE FROM qf_sync_outbox') &&
+        Array.isArray(params) &&
+        params[1] === operation.localOperationId
+      ) {
+        injected = true;
+        throw new Error('inject acknowledgement delete failure');
+      }
+
+      return originalRunAsync(source, params);
+    };
+
+    await expect(
+      sync.acknowledgeOperation({
+        accountId: 'reader-a',
+        localOperationId: operation.localOperationId,
+        resourceId: 'remote-bookmark-1',
+        serverCreatedAt: 1701,
+        serverUpdatedAt: 1801,
+      }),
+    ).rejects.toThrow('inject acknowledgement delete failure');
+
+    await expect(
+      annotations.getAllBookmarksInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: bookmark.id,
+        remoteId: undefined,
+        serverCreatedAt: undefined,
+        serverUpdatedAt: undefined,
+      }),
+    ]);
+    await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        localOperationId: operation.localOperationId,
+      }),
+    ]);
+
+    await database.close();
+  });
+
+  it('defaults omitted rewayah to hafs for bookmark, note, and reading-location writes', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-default-rewayah.db',
+    );
+    await sync.initialize();
+
+    const bookmark = await sync.addBookmark({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+    });
+    const note = await sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '18:10',
+      surahNumber: 18,
+      ayahNumber: 10,
+      content: 'No rewayah note',
+    });
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      lastReadAt: 5001,
+    });
+
+    expect(bookmark.rewayahId).toBe('hafs');
+    expect(note.rewayahId).toBe('hafs');
+    await expect(
+      annotations.getAllBookmarksInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        rewayahId: 'hafs',
+      }),
+    ]);
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        rewayahId: 'hafs',
+      }),
+    ]);
+    await expect(sync.getReadingLocations('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        rewayahId: 'hafs',
+      }),
+    ]);
 
     await database.close();
   });
@@ -348,6 +467,251 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     await database.close();
   });
 
+  it('ignores older reading-session events transactionally across restart', async () => {
+    const databaseName = 'qf-reading-location-reversed.db';
+    let services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    await services.sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      pageNumber: 88,
+      rewayahId: 'hafs',
+      lastReadAt: 5002,
+    });
+    const [newestOperation] = await services.sync.getOutboxEntries('reader-a');
+
+    await services.sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      pageNumber: 42,
+      rewayahId: 'warsh',
+      lastReadAt: 5001,
+    });
+
+    await services.database.close();
+    services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    await expect(services.sync.getReadingLocations('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        verseKey: '3:7',
+        surahNumber: 3,
+        ayahNumber: 7,
+        pageNumber: 88,
+        rewayahId: 'hafs',
+        lastReadAt: 5002,
+      }),
+    ]);
+    await expect(services.sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        localOperationId: newestOperation.localOperationId,
+        resource: 'READING_SESSION',
+      }),
+    ]);
+
+    await services.database.close();
+  });
+
+  it('retains a newer local note edit when acknowledging an earlier in-flight create revision', async () => {
+    const databaseName = 'qf-note-create-ack-race.db';
+    let services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    const note = await services.sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'sent v1',
+      verseKeys: ['2:255'],
+      rewayahId: 'warsh',
+    });
+    const [sentCreate] = await services.sync.getOutboxEntries('reader-a');
+
+    await services.sync.updateNote({
+      accountId: 'reader-a',
+      noteId: note.id,
+      content: 'local v2 while create is in flight',
+    });
+
+    await services.sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: sentCreate.localOperationId,
+      resourceId: 'remote-note-1',
+      serverCreatedAt: 6001,
+      serverUpdatedAt: 6001,
+      acknowledgedPayloadJson: sentCreate.payloadJson,
+    });
+
+    await services.database.close();
+    services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    await expect(
+      services.annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: note.id,
+        content: 'local v2 while create is in flight',
+        remoteId: 'remote-note-1',
+        serverCreatedAt: 6001,
+        serverUpdatedAt: 6001,
+      }),
+    ]);
+
+    const entries = await services.sync.getOutboxEntries('reader-a');
+    expect(entries).toEqual([
+      expect.objectContaining({
+        resource: 'NOTE',
+        mutationType: 'UPDATE',
+        remoteId: 'remote-note-1',
+        baseServerUpdatedAt: 6001,
+      }),
+    ]);
+    expect(JSON.parse(entries[0].payloadJson)).toEqual(
+      expect.objectContaining({
+        content: 'local v2 while create is in flight',
+      }),
+    );
+
+    await services.database.close();
+  });
+
+  it('deletes notes and durably enqueues only required delete intent per account', async () => {
+    const databaseName = 'qf-note-delete.db';
+    let services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    const remoteBacked = await services.sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'remote backed note',
+      rewayahId: 'warsh',
+    });
+    const [createOperation] = await services.sync.getOutboxEntries('reader-a');
+    await services.sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      resourceId: 'remote-note-1',
+      serverCreatedAt: 6001,
+      serverUpdatedAt: 6001,
+    });
+
+    const unsent = await services.sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '18:10',
+      surahNumber: 18,
+      ayahNumber: 10,
+      content: 'unsent create',
+    });
+    const otherAccount = await services.sync.addNote({
+      accountId: 'reader-b',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'reader b note',
+    });
+
+    await services.sync.deleteNote({
+      accountId: 'reader-a',
+      noteId: remoteBacked.id,
+    });
+    await services.sync.deleteNote({
+      accountId: 'reader-a',
+      noteId: unsent.id,
+    });
+
+    await services.database.close();
+    services = await createServices(databaseName);
+    await services.sync.initialize();
+
+    await expect(
+      services.annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([]);
+    await expect(
+      services.annotations.getAllNotesInOwnerScope('qf:reader-b'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: otherAccount.id,
+        content: 'reader b note',
+      }),
+    ]);
+    await expect(services.sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        resource: 'NOTE',
+        mutationType: 'DELETE',
+        localId: remoteBacked.id,
+        remoteId: 'remote-note-1',
+        ownerScope: 'qf:reader-a',
+      }),
+    ]);
+
+    await services.database.close();
+  });
+
+  it('rolls back local note deletion when enqueue fails inside the same SQLite transaction', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-note-delete-rollback.db',
+    );
+    await sync.initialize();
+
+    const note = await sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'delete rollback note',
+      rewayahId: 'warsh',
+    });
+    const [createOperation] = await sync.getOutboxEntries('reader-a');
+    await sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      resourceId: 'remote-note-rollback',
+      serverCreatedAt: 6101,
+      serverUpdatedAt: 6101,
+    });
+
+    const connection = (await database.getConnection()) as TestDatabase;
+    const originalRunAsync = connection.runAsync.bind(connection);
+    let injected = false;
+    connection.runAsync = async (source, params) => {
+      if (!injected && source.includes('INSERT INTO qf_sync_outbox')) {
+        injected = true;
+        throw new Error('inject delete enqueue failure');
+      }
+
+      return originalRunAsync(source, params);
+    };
+
+    await expect(
+      sync.deleteNote({
+        accountId: 'reader-a',
+        noteId: note.id,
+      }),
+    ).rejects.toThrow('inject delete enqueue failure');
+
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: note.id,
+        content: 'delete rollback note',
+        remoteId: 'remote-note-rollback',
+      }),
+    ]);
+    await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([]);
+
+    await database.close();
+  });
+
   it('applies a newer remote note as canonical and preserves the pending local edit as a visible conflict copy', async () => {
     const {database, annotations, sync} = await createServices(
       'qf-note-conflict.db',
@@ -430,7 +794,7 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
         local_content: 'pending local edit',
         remote_content: 'remote canonical edit',
         remote_id: 'remote-note-1',
-        base_server_updated_at: 7001,
+        base_server_updated_at: 6001,
       },
     ]);
 
@@ -450,6 +814,87 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       }),
     );
     expect(retryPayload).not.toHaveProperty('remoteId');
+
+    await database.close();
+  });
+
+  it('ignores stale or equal remote notes while a local edit is pending', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-note-stale-remote.db',
+    );
+    await sync.initialize();
+
+    const note = await sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'local draft',
+      verseKeys: ['2:255'],
+      rewayahId: 'warsh',
+    });
+    const [createOperation] = await sync.getOutboxEntries('reader-a');
+    await sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: createOperation.localOperationId,
+      resourceId: 'remote-note-1',
+      serverCreatedAt: 6001,
+      serverUpdatedAt: 6001,
+    });
+    await sync.updateNote({
+      accountId: 'reader-a',
+      noteId: note.id,
+      content: 'pending local edit',
+    });
+
+    await sync.applyRemoteNote({
+      accountId: 'reader-a',
+      remoteId: 'remote-note-1',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'equal stale replay',
+      verseKeys: ['2:255'],
+      serverCreatedAt: 6001,
+      serverUpdatedAt: 6001,
+    });
+    await sync.applyRemoteNote({
+      accountId: 'reader-a',
+      remoteId: 'remote-note-1',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'older stale replay',
+      verseKeys: ['2:255'],
+      serverCreatedAt: 6001,
+      serverUpdatedAt: 5001,
+    });
+
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: note.id,
+        content: 'pending local edit',
+        remoteId: 'remote-note-1',
+        serverUpdatedAt: 6001,
+      }),
+    ]);
+    await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        resource: 'NOTE',
+        mutationType: 'UPDATE',
+        baseServerUpdatedAt: 6001,
+      }),
+    ]);
+
+    const connection = (await database.getConnection()) as TestDatabase;
+    await expect(
+      connection.getFirstAsync<{count: number}>(
+        `SELECT COUNT(*) AS count FROM qf_note_conflicts WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual({count: 0});
 
     await database.close();
   });
