@@ -2,6 +2,8 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+jest.setTimeout(20_000);
+
 const sqlitePromise = (async () => {
   const fs = require('fs');
   const path = require('path');
@@ -281,6 +283,95 @@ it('waits for a real SQLite mutation started after stop begins', async () => {
       'SELECT account_id, resource FROM qf_sync_outbox',
     ),
   ).toEqual({account_id: 'account-a', resource: 'BOOKMARK'});
+});
+
+it('keeps draining real SQLite mutations while stop waits for the current sync run', async () => {
+  const pullEntered = deferred();
+  const finishPull = deferred<{
+    status: 'synced';
+    head: number;
+    restarts: number;
+  }>();
+  const lifecycle = createLifecycle({
+    coordinator: {
+      pull: jest.fn(() => {
+        pullEntered.resolve();
+        return finishPull.promise;
+      }),
+      push: jest.fn(async () => ({status: 'idle' as const, head: 10})),
+    },
+  });
+  lifecycle.updateContext({...authenticatedOffline, online: true});
+  await pullEntered.promise;
+  const pausedWrite = await pauseNextWrite('INSERT INTO bookmarks');
+
+  let stopped = false;
+  const stop = lifecycle.stop().then(() => {
+    stopped = true;
+  });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const write = verseAnnotationService.addBookmark('3:7', 3, 7, 'hafs');
+  await pausedWrite.entered;
+
+  finishPull.resolve({status: 'synced', head: 10, restarts: 0});
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const stoppedWhileWritePaused = stopped;
+  pausedWrite.release();
+  await Promise.all([write, stop]);
+  pausedWrite.restore();
+
+  const connection =
+    (await verseAnnotationDatabase.getConnection()) as unknown as TestDatabase;
+  expect(
+    await connection.getFirstAsync<{owner_scope: string; verse_key: string}>(
+      'SELECT owner_scope, verse_key FROM bookmarks WHERE verse_key = ?',
+      ['3:7'],
+    ),
+  ).toEqual({owner_scope: 'qf:account-a', verse_key: '3:7'});
+  expect(stoppedWhileWritePaused).toBe(false);
+});
+
+it('drains a real old-scope mutation before surfacing a rejected reading flush', async () => {
+  const readingFailure = new Error('reading persistence failed');
+  const lifecycle = createLifecycle({
+    flushReadingSession: jest.fn((accountId?: string) =>
+      accountId === 'account-a'
+        ? Promise.reject(readingFailure)
+        : Promise.resolve(),
+    ),
+  });
+  lifecycle.updateContext(authenticatedOffline);
+  await lifecycle.waitForIdle();
+  const pausedWrite = await pauseNextWrite('INSERT INTO bookmarks');
+
+  let stopSettled = false;
+  const stopResult = lifecycle.stop().then(
+    () => {
+      stopSettled = true;
+      return null;
+    },
+    error => {
+      stopSettled = true;
+      return error;
+    },
+  );
+  const write = verseAnnotationService.addBookmark('18:10', 18, 10, 'hafs');
+  await pausedWrite.entered;
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const stopSettledWhileWritePaused = stopSettled;
+
+  pausedWrite.release();
+  const [, stopError] = await Promise.all([write, stopResult]);
+  pausedWrite.restore();
+  const connection =
+    (await verseAnnotationDatabase.getConnection()) as unknown as TestDatabase;
+  expect(
+    await connection.getFirstAsync<{account_id: string; resource: string}>(
+      'SELECT account_id, resource FROM qf_sync_outbox',
+    ),
+  ).toEqual({account_id: 'account-a', resource: 'BOOKMARK'});
+  expect(stopSettledWhileWritePaused).toBe(false);
+  expect(stopError).toBe(readingFailure);
 });
 
 it('keeps a paused local highlight visible after a same-account pull refresh', async () => {

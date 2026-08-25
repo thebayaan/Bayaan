@@ -302,24 +302,40 @@ export class QfSyncLifecycle {
     const readingFlush = this.options.flushReadingSession(
       accountId ?? undefined,
     );
+    let releaseAnnotationHandoff: () => void = () => undefined;
+    const annotationBarrier = new Promise<void>(resolve => {
+      releaseAnnotationHandoff = resolve;
+    });
     const annotationHandoff = this.beginAnnotationScopeHandoff(
       accountId,
-      readingFlush,
+      annotationBarrier,
     );
     this.stopped = true;
     this.epoch += 1;
     this.rerunRequested = false;
     this.cancelRetry();
-    this.trackMaintenance(annotationHandoff);
-    await readingFlush;
-    await this.waitForIdle();
+    const trackedHandoff = this.trackMaintenance(annotationHandoff);
+    const [readingResult] = await Promise.allSettled([readingFlush]);
+    try {
+      await this.waitForTrackedTasks(trackedHandoff);
+    } finally {
+      releaseAnnotationHandoff();
+    }
+    await annotationHandoff;
+    if (readingResult.status === 'rejected') throw readingResult.reason;
   }
 
   async waitForIdle(): Promise<void> {
+    await this.waitForTrackedTasks();
+  }
+
+  private async waitForTrackedTasks(
+    excludedTask?: Promise<void>,
+  ): Promise<void> {
     for (;;) {
       const tasks = [
         ...(this.currentRun ? [this.currentRun] : []),
-        ...this.maintenanceTasks,
+        ...[...this.maintenanceTasks].filter(task => task !== excludedTask),
       ];
       if (tasks.length === 0) return;
       await Promise.allSettled(tasks);
@@ -567,13 +583,14 @@ export class QfSyncLifecycle {
     useQfSyncStore.setState({status, retryAt: null, errorCode: null});
   }
 
-  private trackMaintenance(task: Promise<void>): void {
+  private trackMaintenance(task: Promise<void>): Promise<void> {
     const tracked = task
       .catch(() => undefined)
       .finally(() => {
         this.maintenanceTasks.delete(tracked);
       });
     this.maintenanceTasks.add(tracked);
+    return tracked;
   }
 
   private invalidateActiveViews(advanceScopeRevision = false): number | null {
