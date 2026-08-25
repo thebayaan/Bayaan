@@ -172,6 +172,16 @@ interface SyncStateRow {
   last_mutation_at: string | null;
 }
 
+interface SyncStatusRow extends SyncStateRow {
+  last_successful_sync_at: number | null;
+}
+
+export interface QfSyncPersistedStatus {
+  lastSuccessfulSyncAt: number | null;
+  pendingCount: number;
+  conflictCount: number;
+}
+
 interface ReconciledRemoteRow {
   id: string;
   remote_id: string | null;
@@ -849,6 +859,39 @@ export class QfSyncDatabaseService {
         throw new Error('Reading location was not persisted');
       }
 
+      const payload = {
+        verseKey: latest.verse_key,
+        surahNumber: latest.surah_number,
+        ayahNumber: latest.ayah_number,
+        pageNumber: latest.page_number ?? undefined,
+        rewayahId: latest.rewayah_id ?? undefined,
+        clientCreatedAt: latest.created_at,
+        clientUpdatedAt: latest.updated_at,
+      } satisfies ReadingSessionOutboxPayload;
+      const existingOperation = await this.getReadingSessionOutboxEntry(
+        db,
+        ownerScope,
+      );
+      if (existingOperation && existingOperation.deliveryState !== 'PENDING') {
+        await db.runAsync(
+          `UPDATE qf_sync_outbox
+           SET mutation_type = ?, local_id = ?, remote_id = ?, payload_json = ?,
+               base_server_updated_at = ?, created_at = ?, revision = revision + 1
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [
+            latest.remote_id ? 'UPDATE' : 'CREATE',
+            latest.id,
+            latest.remote_id,
+            JSON.stringify(payload),
+            latest.server_updated_at,
+            latest.updated_at,
+            ownerScope,
+            existingOperation.localOperationId,
+          ],
+        );
+        return;
+      }
+
       await this.clearReadingSessionOutbox(db, ownerScope);
       await this.enqueueMutation(db, {
         accountId: input.accountId,
@@ -857,15 +900,7 @@ export class QfSyncDatabaseService {
         mutationType: latest.remote_id ? 'UPDATE' : 'CREATE',
         localId: latest.id,
         remoteId: latest.remote_id ?? undefined,
-        payload: {
-          verseKey: latest.verse_key,
-          surahNumber: latest.surah_number,
-          ayahNumber: latest.ayah_number,
-          pageNumber: latest.page_number ?? undefined,
-          rewayahId: latest.rewayah_id ?? undefined,
-          clientCreatedAt: latest.created_at,
-          clientUpdatedAt: latest.updated_at,
-        } satisfies ReadingSessionOutboxPayload,
+        payload,
         createdAt: latest.updated_at,
         baseServerUpdatedAt: latest.server_updated_at ?? undefined,
       });
@@ -899,6 +934,33 @@ export class QfSyncDatabaseService {
     if (!row?.last_mutation_at) return 0;
     const head = Number(row.last_mutation_at);
     return Number.isSafeInteger(head) && head >= 0 ? head : 0;
+  }
+
+  async getSyncStatus(accountId: string): Promise<QfSyncPersistedStatus> {
+    const db = await this.database.getConnection();
+    const ownerScope = ownerScopeFromAccountId(accountId);
+    const [state, pending, conflicts] = await Promise.all([
+      db.getFirstAsync(
+        `SELECT last_mutation_at, last_successful_sync_at
+         FROM qf_sync_state WHERE owner_scope = ?`,
+        [ownerScope],
+      ),
+      db.getFirstAsync(
+        `SELECT COUNT(*) AS count FROM qf_sync_outbox WHERE owner_scope = ?`,
+        [ownerScope],
+      ),
+      db.getFirstAsync(
+        `SELECT COUNT(*) AS count FROM qf_note_conflicts
+         WHERE owner_scope = ? AND resolved_at IS NULL`,
+        [ownerScope],
+      ),
+    ]);
+    return {
+      lastSuccessfulSyncAt:
+        (state as SyncStatusRow | null)?.last_successful_sync_at ?? null,
+      pendingCount: (pending as {count: number} | null)?.count ?? 0,
+      conflictCount: (conflicts as {count: number} | null)?.count ?? 0,
+    };
   }
 
   async markOperationInFlight(
@@ -1562,7 +1624,7 @@ export class QfSyncDatabaseService {
     }
 
     const nextMutationType =
-      row.resource === 'NOTE' &&
+      (row.resource === 'NOTE' || row.resource === 'READING_SESSION') &&
       row.in_flight_mutation_type === 'CREATE' &&
       row.mutation_type === 'CREATE'
         ? 'UPDATE'
@@ -1950,6 +2012,21 @@ export class QfSyncDatabaseService {
     return row ? toOutboxEntry(row) : null;
   }
 
+  private async getReadingSessionOutboxEntry(
+    db: SyncDatabaseConnection,
+    ownerScope: AnnotationOwnerScope,
+  ): Promise<QfOutboxEntry | null> {
+    const row = (await db.getFirstAsync(
+      `SELECT * FROM qf_sync_outbox
+       WHERE owner_scope = ? AND resource = 'READING_SESSION'
+       ORDER BY CASE WHEN delivery_state = 'PENDING' THEN 1 ELSE 0 END,
+                created_at DESC, local_operation_id DESC
+       LIMIT 1`,
+      [ownerScope],
+    )) as OutboxRow | null;
+    return row ? toOutboxEntry(row) : null;
+  }
+
   private async getBookmarkOutboxEntry(
     db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
@@ -2009,7 +2086,8 @@ export class QfSyncDatabaseService {
   ): Promise<void> {
     await db.runAsync(
       `DELETE FROM qf_sync_outbox
-       WHERE owner_scope = ? AND resource = 'READING_SESSION'`,
+       WHERE owner_scope = ? AND resource = 'READING_SESSION'
+         AND delivery_state = 'PENDING'`,
       [ownerScope],
     );
   }

@@ -3,6 +3,7 @@ import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotati
 import type {HighlightColor} from '@/types/verse-annotations';
 
 interface VerseAnnotationsState {
+  scopeRevision: number;
   loadedSurah: number | null;
   bookmarkedVerseKeys: Set<string>;
   notedVerseKeys: Set<string>;
@@ -10,6 +11,7 @@ interface VerseAnnotationsState {
   loading: boolean;
 
   loadAnnotationsForSurah: (surahNumber: number) => Promise<void>;
+  clearActiveView: () => void;
 
   // Optimistic mutations
   addBookmark: (verseKey: string) => void;
@@ -27,6 +29,7 @@ interface VerseAnnotationsState {
 
 export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
   (set, get) => ({
+    scopeRevision: 0,
     loadedSurah: null,
     bookmarkedVerseKeys: new Set<string>(),
     notedVerseKeys: new Set<string>(),
@@ -36,6 +39,8 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
     loadAnnotationsForSurah: async (surahNumber: number) => {
       const state = get();
       if (state.loading || state.loadedSurah === surahNumber) return;
+
+      const scopeRevision = state.scopeRevision;
 
       set({loading: true});
 
@@ -50,21 +55,35 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
           highlightsRecord[h.verseKey] = h.color;
         });
 
-        set({
-          loadedSurah: surahNumber,
-          bookmarkedVerseKeys,
-          notedVerseKeys,
-          highlights: highlightsRecord,
-          loading: false,
-        });
+        if (get().scopeRevision === scopeRevision) {
+          set({
+            loadedSurah: surahNumber,
+            bookmarkedVerseKeys,
+            notedVerseKeys,
+            highlights: highlightsRecord,
+            loading: false,
+          });
+        }
       } catch (error) {
         console.error(
           '[VerseAnnotationsStore] Failed to load annotations:',
           error,
         );
-        set({loading: false});
+        if (get().scopeRevision === scopeRevision) {
+          set({loading: false});
+        }
       }
     },
+
+    clearActiveView: () =>
+      set(state => ({
+        scopeRevision: state.scopeRevision + 1,
+        loadedSurah: null,
+        bookmarkedVerseKeys: new Set<string>(),
+        notedVerseKeys: new Set<string>(),
+        highlights: {},
+        loading: false,
+      })),
 
     // Optimistic mutations
     addBookmark: (verseKey: string) => {

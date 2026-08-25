@@ -51,11 +51,17 @@ import {USE_GLASS} from '@/hooks/useGlassProps';
 import * as Sentry from '@sentry/react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
+import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
+import {useNetworkStore} from '@/store/networkStore';
+import {useQfSyncStore} from '@/store/qfSyncStore';
+import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {GuestDataMergeSheet} from '@/components/auth/GuestDataMergeSheet';
 
-type GestureHandlerRootViewWithOverrideProps =
-  React.ComponentProps<typeof GestureHandlerRootView> & {
-    overrideUserInterfaceStyle?: 'light' | 'dark';
-  };
+type GestureHandlerRootViewWithOverrideProps = React.ComponentProps<
+  typeof GestureHandlerRootView
+> & {
+  overrideUserInterfaceStyle?: 'light' | 'dark';
+};
 
 const GestureHandlerRootViewWithOverride =
   GestureHandlerRootView as React.ComponentType<GestureHandlerRootViewWithOverrideProps>;
@@ -119,6 +125,43 @@ function AnalyticsConnector(): null {
   }, []);
 
   return null;
+}
+
+function QfSyncLifecycleBridge() {
+  const authStatus = useBayaanAuthStore(state => state.status);
+  const accountId = useBayaanAuthStore(
+    state => state.profile?.accountId ?? null,
+  );
+  const online = useNetworkStore(state => state.isOnline);
+  const syncRequestId = useQfSyncStore(state => state.syncRequestId);
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', setAppState);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    qfSyncLifecycle.updateContext({
+      authStatus,
+      accountId,
+      online,
+      appActive: appState === 'active',
+    });
+  }, [accountId, appState, authStatus, online]);
+
+  useEffect(() => {
+    if (syncRequestId > 0) qfSyncLifecycle.requestSync();
+  }, [syncRequestId]);
+
+  useEffect(
+    () => () => {
+      qfSyncLifecycle.stop().catch(() => undefined);
+    },
+    [],
+  );
+
+  return <GuestDataMergeSheet />;
 }
 
 function RootLayout() {
@@ -467,6 +510,7 @@ function RootLayout() {
                   onLayout={onLayoutRootView}>
                   <NetworkStatusMonitor />
                   <SheetProvider>
+                    <QfSyncLifecycleBridge />
                     <Stack
                       screenOptions={{
                         headerShown: false,

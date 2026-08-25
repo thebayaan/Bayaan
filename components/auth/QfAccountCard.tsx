@@ -10,6 +10,8 @@ import {
 } from '@/services/auth/bayaanAuthService';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import type {Theme} from '@/utils/themeUtils';
+import {QfSyncStatusRow} from './QfSyncStatusRow';
+import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 
 export function QfAccountCard() {
   const {theme} = useTheme();
@@ -29,6 +31,7 @@ export function QfAccountCard() {
   }, [setError, setSigningIn]);
 
   const signOut = useCallback(async () => {
+    await qfSyncLifecycle.stop().catch(() => undefined);
     try {
       await bayaanAuthService.logout();
     } finally {
@@ -41,6 +44,7 @@ export function QfAccountCard() {
       <View style={styles.card}>
         <Text style={styles.title}>Quran.Foundation account</Text>
         <Text style={styles.description}>Account sync is not enabled yet.</Text>
+        <QfSyncStatusRow />
       </View>
     );
   }
@@ -53,6 +57,7 @@ export function QfAccountCard() {
           <Text style={styles.description}>
             Signed in{profile.email ? ` as ${profile.email}` : ''}
           </Text>
+          <QfSyncStatusRow />
           <Pressable style={styles.button} onPress={signOut}>
             <Text style={styles.buttonText}>Sign out</Text>
           </Pressable>
@@ -62,6 +67,7 @@ export function QfAccountCard() {
           <Text style={styles.description}>
             Sign in to sync bookmarks, private notes, and reading progress.
           </Text>
+          <QfSyncStatusRow />
           {status === 'error' && errorCode ? (
             <Text style={styles.error}>
               Could not sign in. Please try again.

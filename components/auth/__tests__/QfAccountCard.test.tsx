@@ -2,6 +2,10 @@ const mockOpenBrowserAsync = jest.fn();
 const mockDismissBrowser = jest.fn();
 const mockSecureStore = new Map<string, string>();
 
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+
 jest.mock('expo-web-browser', () => ({
   openBrowserAsync: (...args: unknown[]) => mockOpenBrowserAsync(...args),
   dismissBrowser: () => mockDismissBrowser(),
@@ -46,6 +50,7 @@ import renderer, {act} from 'react-test-renderer';
 import {QfAccountCard} from '../QfAccountCard';
 import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
 import {getPendingBayaanAuthState} from '@/services/auth/bayaanSessionStorage';
+import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
 function findButton(screen: renderer.ReactTestRenderer) {
@@ -174,6 +179,36 @@ describe('QfAccountCard', () => {
       },
       errorCode: null,
     });
+    await act(async () => {
+      renderedScreen.unmount();
+    });
+  });
+
+  it('stops account lifecycle work before logging out', async () => {
+    const events: string[] = [];
+    jest.spyOn(qfSyncLifecycle, 'stop').mockImplementation(async () => {
+      events.push('stop');
+    });
+    jest.spyOn(bayaanAuthService, 'logout').mockImplementation(async () => {
+      events.push('logout');
+    });
+    useBayaanAuthStore.getState().setAuthenticated({
+      accountId: 'bayaan-account-id',
+    });
+
+    let screen: renderer.ReactTestRenderer | undefined;
+    await act(async () => {
+      screen = renderer.create(<QfAccountCard />);
+    });
+    if (!screen) throw new Error('Expected account card to render');
+
+    const renderedScreen = screen;
+    await act(async () => {
+      await findButton(renderedScreen).props.onPress();
+    });
+
+    expect(events).toEqual(['stop', 'logout']);
+    expect(useBayaanAuthStore.getState().status).toBe('signed_out');
     await act(async () => {
       renderedScreen.unmount();
     });

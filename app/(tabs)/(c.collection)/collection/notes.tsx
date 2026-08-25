@@ -24,6 +24,7 @@ import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useCollectionNativeHeader} from '@/hooks/useCollectionNativeHeader';
 import type {VerseNote} from '@/types/verse-annotations';
+import {useQfSyncStore} from '@/store/qfSyncStore';
 
 interface NoteData {
   note: VerseNote;
@@ -38,6 +39,11 @@ const NotesScreen = () => {
   const [notes, setNotes] = useState<NoteData[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
+  const loadRequestRef = useRef(0);
+  const activeScopeKey = useQfSyncStore(
+    state => state.activeAccountId ?? 'guest',
+  );
+  const dataRevision = useQfSyncStore(state => state.dataRevision);
 
   useCollectionNativeHeader({
     title: 'Notes',
@@ -46,8 +52,11 @@ const NotesScreen = () => {
   });
 
   const loadNotes = useCallback(async () => {
+    const requestId = ++loadRequestRef.current;
+    const requestDataRevision = dataRevision;
     try {
       setLoading(true);
+      setNotes([]);
       const allNotes = await verseAnnotationService.getAllNotes();
       const enriched = allNotes.map(note => {
         const surah = getSurahById(note.surahNumber);
@@ -56,30 +65,49 @@ const NotesScreen = () => {
           surahName: surah?.name ?? `Surah ${note.surahNumber}`,
         };
       });
-      setNotes(enriched);
+      if (
+        requestId === loadRequestRef.current &&
+        useQfSyncStore.getState().dataRevision === requestDataRevision &&
+        (useQfSyncStore.getState().activeAccountId ?? 'guest') ===
+          activeScopeKey
+      ) {
+        setNotes(enriched);
+      }
     } catch (error) {
       console.error('Failed to load notes:', error);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
-  }, []);
+  }, [activeScopeKey, dataRevision]);
 
   useFocusEffect(
     useCallback(() => {
       loadNotes();
+      return () => {
+        loadRequestRef.current += 1;
+      };
     }, [loadNotes]),
   );
 
-  const handleDeleteNote = useCallback(async (note: VerseNote) => {
-    await verseAnnotationService.deleteNoteById(note.id);
-    const remaining = await verseAnnotationService.getNotesCountForVerse(
-      note.verseKey,
-    );
-    if (remaining === 0) {
-      useVerseAnnotationsStore.getState().removeNote(note.verseKey);
-    }
-    setNotes(prev => prev.filter(n => n.note.id !== note.id));
-  }, []);
+  const handleDeleteNote = useCallback(
+    async (note: VerseNote) => {
+      if (
+        (useQfSyncStore.getState().activeAccountId ?? 'guest') !==
+        activeScopeKey
+      ) {
+        return;
+      }
+      await verseAnnotationService.deleteNoteById(note.id);
+      const remaining = await verseAnnotationService.getNotesCountForVerse(
+        note.verseKey,
+      );
+      if (remaining === 0) {
+        useVerseAnnotationsStore.getState().removeNote(note.verseKey);
+      }
+      setNotes(prev => prev.filter(n => n.note.id !== note.id));
+    },
+    [activeScopeKey],
+  );
 
   const handleNotePress = useCallback((item: NoteData) => {
     SheetManager.show('verse-note', {

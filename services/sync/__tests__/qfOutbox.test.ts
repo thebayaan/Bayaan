@@ -480,6 +480,111 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     await database.close();
   });
 
+  it('preserves immutable in-flight reading evidence when a newer visible verse is stored', async () => {
+    const {database, sync} = await createServices(
+      'qf-reading-in-flight-revision.db',
+    );
+    await sync.initialize();
+
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      lastReadAt: 5001,
+    });
+    const [original] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: original.localOperationId,
+      startedAt: 5002,
+    });
+
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      lastReadAt: 5003,
+    });
+
+    const [current] = await sync.getOutboxEntries('reader-a');
+    expect(current).toMatchObject({
+      localOperationId: original.localOperationId,
+      deliveryState: 'IN_FLIGHT',
+      revision: 2,
+      inFlightRevision: 1,
+      inFlightMutationType: 'CREATE',
+    });
+    expect(JSON.parse(current.inFlightPayloadJson ?? '{}')).toMatchObject({
+      verseKey: '2:255',
+    });
+    expect(JSON.parse(current.payloadJson)).toMatchObject({verseKey: '3:7'});
+
+    await sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: original.localOperationId,
+      resourceId: 'remote-reading-1',
+      serverUpdatedAt: 5004,
+    });
+    await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        localOperationId: original.localOperationId,
+        deliveryState: 'PENDING',
+        mutationType: 'UPDATE',
+        remoteId: 'remote-reading-1',
+      }),
+    ]);
+
+    await database.close();
+  });
+
+  it('preserves ambiguous reading evidence when another visible verse is stored', async () => {
+    const {database, sync} = await createServices(
+      'qf-reading-ambiguous-revision.db',
+    );
+    await sync.initialize();
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      lastReadAt: 6001,
+    });
+    const [original] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: original.localOperationId,
+      startedAt: 6002,
+    });
+    const db = (await database.getConnection()) as TestDatabase;
+    await db.runAsync(
+      `UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS'
+       WHERE owner_scope = ? AND local_operation_id = ?`,
+      ['qf:reader-a', original.localOperationId],
+    );
+
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      lastReadAt: 6003,
+    });
+    const [current] = await sync.getOutboxEntries('reader-a');
+    expect(current).toMatchObject({
+      localOperationId: original.localOperationId,
+      deliveryState: 'AMBIGUOUS',
+      revision: 2,
+      inFlightRevision: 1,
+    });
+    expect(JSON.parse(current.inFlightPayloadJson ?? '{}')).toMatchObject({
+      verseKey: '2:255',
+    });
+    expect(JSON.parse(current.payloadJson)).toMatchObject({verseKey: '3:7'});
+    await database.close();
+  });
+
   it('ignores older reading-session events transactionally across restart', async () => {
     const databaseName = 'qf-reading-location-reversed.db';
     let services = await createServices(databaseName);
