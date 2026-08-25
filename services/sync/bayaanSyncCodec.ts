@@ -17,6 +17,18 @@ export interface BayaanSyncPullPage {
   hasMore?: boolean;
 }
 
+export interface BayaanSyncRequestMutation {
+  resource: QfSyncResource;
+  type: QfMutationType;
+  resourceId?: string;
+  data?: Record<string, string | number | boolean | string[]>;
+}
+
+export interface BayaanSyncPushResult {
+  lastMutationAt: number;
+  mutations: BayaanSyncMutation[];
+}
+
 export interface BayaanSyncPullDecodeRequest {
   limit?: number;
   page?: number;
@@ -50,6 +62,12 @@ const MUTATION_KEYS = new Set([
   'resourceId',
   'data',
   'timestamp',
+]);
+const REQUEST_MUTATION_KEYS = new Set([
+  'resource',
+  'type',
+  'resourceId',
+  'data',
 ]);
 const DATA_KEYS: Record<QfSyncResource, ReadonlySet<string>> = {
   BOOKMARK: new Set([
@@ -223,6 +241,51 @@ function decodeMutation(value: unknown): BayaanSyncMutation {
   };
 }
 
+export function decodeBayaanSyncRequestMutation(
+  value: unknown,
+): BayaanSyncRequestMutation {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, REQUEST_MUTATION_KEYS) ||
+    typeof value.resource !== 'string' ||
+    !RESOURCES.has(value.resource as QfSyncResource) ||
+    typeof value.type !== 'string' ||
+    !MUTATION_TYPES.has(value.type as QfMutationType)
+  ) {
+    return invalid();
+  }
+  const resource = value.resource as QfSyncResource;
+  const type = value.type as QfMutationType;
+  const resourceId = value.resourceId;
+  if (
+    resourceId !== undefined &&
+    (typeof resourceId !== 'string' ||
+      resourceId.length === 0 ||
+      resourceId.length > 256)
+  ) {
+    return invalid();
+  }
+  if ((type === 'UPDATE' || type === 'DELETE') && !resourceId) {
+    return invalid();
+  }
+  if (type === 'DELETE') {
+    if (
+      value.data !== undefined &&
+      (!isObject(value.data) || Object.keys(value.data).length > 0)
+    ) {
+      return invalid();
+    }
+    return {resource, type, resourceId: resourceId as string};
+  }
+  if (value.data === undefined) return invalid();
+  return {
+    resource,
+    type,
+    ...(typeof resourceId === 'string' ? {resourceId} : {}),
+    data: decodeData(resource, value.data),
+  };
+}
+
 export function decodeBayaanSyncPullResponse(
   value: unknown,
   request: BayaanSyncPullDecodeRequest = {},
@@ -304,5 +367,26 @@ export function decodeBayaanSyncPullResponse(
     ...(data.limit === undefined ? {} : {limit: data.limit as number}),
     ...(data.total === undefined ? {} : {total: data.total as number}),
     ...(data.hasMore === undefined ? {} : {hasMore: data.hasMore}),
+  };
+}
+
+export function decodeBayaanSyncPushResponse(
+  value: unknown,
+): BayaanSyncPushResult {
+  if (
+    !isObject(value) ||
+    !hasOnlyKeys(value, ENVELOPE_KEYS) ||
+    value.success !== true ||
+    !isObject(value.data) ||
+    !hasOnlyKeys(value.data, new Set(['lastMutationAt', 'mutations'])) ||
+    !Array.isArray(value.data.mutations)
+  ) {
+    return invalid();
+  }
+
+  const decoded = decodeBayaanSyncPullResponse(value);
+  return {
+    lastMutationAt: decoded.lastMutationAt,
+    mutations: decoded.mutations,
   };
 }

@@ -12,6 +12,7 @@ import {
   VerseAnnotationDatabaseService,
 } from '@/services/database/VerseAnnotationDatabaseService';
 import type {QfMutationType, QfSyncResource} from '@/types/qf-sync';
+import type {BayaanSyncPushResult} from '@/services/sync/bayaanSyncCodec';
 
 interface AddBookmarkInput {
   accountId: string;
@@ -83,10 +84,33 @@ interface MarkOperationInFlightInput {
   startedAt: number;
 }
 
+interface CommitPushSuccessInput {
+  accountId: string;
+  expectedHead: number;
+  sent: QfOutboxEntry[];
+  result: BayaanSyncPushResult;
+  syncedAt: number;
+}
+
+interface ReleaseInFlightOperationsInput {
+  accountId: string;
+  localOperationIds: string[];
+  retryAt: number;
+}
+
+interface ReconcileUncertainOperationsInput {
+  accountId: string;
+  reconciledAt: number;
+}
+
 interface QfSyncDatabaseServiceOptions {
   database?: VerseAnnotationDatabase;
   annotations?: VerseAnnotationDatabaseService;
 }
+
+type SyncDatabaseConnection = Awaited<
+  ReturnType<VerseAnnotationDatabase['getConnection']>
+>;
 
 export interface QfOutboxEntry {
   localOperationId: string;
@@ -128,6 +152,17 @@ interface OutboxRow {
   in_flight_mutation_type: QfMutationType | null;
   in_flight_payload_json: string | null;
   in_flight_started_at: number | null;
+}
+
+interface SyncStateRow {
+  last_mutation_at: string | null;
+}
+
+interface ReconciledRemoteRow {
+  id: string;
+  remote_id: string | null;
+  server_created_at: number | null;
+  server_updated_at: number | null;
 }
 
 interface BookmarkRow {
@@ -294,6 +329,11 @@ export class QfSyncDatabaseService {
     let bookmark: VerseBookmark | undefined;
 
     await db.withTransactionAsync(async () => {
+      const existingOperation = await this.getBookmarkOutboxEntry(
+        db,
+        ownerScope,
+        input.verseKey,
+      );
       bookmark = await this.annotations.addBookmarkForOwnerScope(
         ownerScope,
         input.verseKey,
@@ -301,6 +341,51 @@ export class QfSyncDatabaseService {
         input.ayahNumber,
         rewayahId,
       );
+
+      const payload = {
+        verseKey: input.verseKey,
+        surahNumber: input.surahNumber,
+        ayahNumber: input.ayahNumber,
+        rewayahId,
+        clientCreatedAt: bookmark.createdAt,
+        clientUpdatedAt: bookmark.createdAt,
+      } satisfies BookmarkOutboxPayload;
+      if (
+        existingOperation?.deliveryState === 'PENDING' &&
+        existingOperation.mutationType === 'DELETE' &&
+        existingOperation.remoteId
+      ) {
+        await db.runAsync(
+          `UPDATE bookmarks
+           SET remote_id = ?, server_updated_at = ?
+           WHERE owner_scope = ? AND id = ?`,
+          [
+            existingOperation.remoteId,
+            existingOperation.baseServerUpdatedAt,
+            ownerScope,
+            bookmark.id,
+          ],
+        );
+        await this.clearBookmarkOutbox(db, ownerScope, input.verseKey);
+        return;
+      }
+      if (existingOperation && existingOperation.deliveryState !== 'PENDING') {
+        await db.runAsync(
+          `UPDATE qf_sync_outbox
+           SET mutation_type = 'CREATE', local_id = ?, remote_id = NULL,
+               payload_json = ?, base_server_updated_at = NULL,
+               created_at = ?, revision = revision + 1
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [
+            bookmark.id,
+            JSON.stringify(payload),
+            bookmark.createdAt,
+            ownerScope,
+            existingOperation.localOperationId,
+          ],
+        );
+        return;
+      }
 
       await this.clearBookmarkOutbox(db, ownerScope, input.verseKey);
       await this.enqueueMutation(db, {
@@ -310,14 +395,7 @@ export class QfSyncDatabaseService {
         mutationType: 'CREATE',
         localId: bookmark.id,
         remoteId: bookmark.remoteId,
-        payload: {
-          verseKey: input.verseKey,
-          surahNumber: input.surahNumber,
-          ayahNumber: input.ayahNumber,
-          rewayahId,
-          clientCreatedAt: bookmark.createdAt,
-          clientUpdatedAt: bookmark.createdAt,
-        } satisfies BookmarkOutboxPayload,
+        payload,
         createdAt: bookmark.createdAt,
       });
     });
@@ -343,10 +421,53 @@ export class QfSyncDatabaseService {
         return;
       }
 
+      const existingOperation = await this.getBookmarkOutboxEntry(
+        db,
+        ownerScope,
+        input.verseKey,
+      );
+
       await this.annotations.removeBookmarkInOwnerScope(
         ownerScope,
         input.verseKey,
       );
+      const deletedAt = Date.now();
+      const payload = {
+        verseKey: bookmark.verse_key,
+        surahNumber: bookmark.surah_number,
+        ayahNumber: bookmark.ayah_number,
+        rewayahId: bookmark.rewayah_id ?? undefined,
+        clientCreatedAt: bookmark.created_at,
+        clientUpdatedAt: deletedAt,
+      } satisfies BookmarkOutboxPayload;
+      if (
+        existingOperation?.mutationType === 'CREATE' &&
+        existingOperation.deliveryState === 'PENDING' &&
+        !existingOperation.remoteId
+      ) {
+        await this.clearBookmarkOutbox(db, ownerScope, input.verseKey);
+        return;
+      }
+      if (existingOperation && existingOperation.deliveryState !== 'PENDING') {
+        await db.runAsync(
+          `UPDATE qf_sync_outbox
+           SET mutation_type = 'DELETE', local_id = ?, remote_id = ?,
+               payload_json = ?, base_server_updated_at = ?, created_at = ?,
+               revision = revision + 1
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [
+            bookmark.id,
+            bookmark.remote_id ?? existingOperation.remoteId,
+            JSON.stringify(payload),
+            bookmark.server_updated_at,
+            deletedAt,
+            ownerScope,
+            existingOperation.localOperationId,
+          ],
+        );
+        return;
+      }
+
       await this.clearBookmarkOutbox(db, ownerScope, input.verseKey);
       await this.enqueueMutation(db, {
         accountId: input.accountId,
@@ -355,15 +476,9 @@ export class QfSyncDatabaseService {
         mutationType: 'DELETE',
         localId: bookmark.id,
         remoteId: bookmark.remote_id ?? undefined,
-        payload: {
-          verseKey: bookmark.verse_key,
-          surahNumber: bookmark.surah_number,
-          ayahNumber: bookmark.ayah_number,
-          rewayahId: bookmark.rewayah_id ?? undefined,
-          clientCreatedAt: bookmark.created_at,
-          clientUpdatedAt: Date.now(),
-        } satisfies BookmarkOutboxPayload,
-        createdAt: Date.now(),
+        payload,
+        createdAt: deletedAt,
+        baseServerUpdatedAt: bookmark.server_updated_at ?? undefined,
       });
     });
   }
@@ -676,6 +791,17 @@ export class QfSyncDatabaseService {
     return rows.map(toOutboxEntry);
   }
 
+  async getStoredHead(accountId: string): Promise<number> {
+    const db = await this.database.getConnection();
+    const row = (await db.getFirstAsync(
+      `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
+      [ownerScopeFromAccountId(accountId)],
+    )) as SyncStateRow | null;
+    if (!row?.last_mutation_at) return 0;
+    const head = Number(row.last_mutation_at);
+    return Number.isSafeInteger(head) && head >= 0 ? head : 0;
+  }
+
   async markOperationInFlight(
     input: MarkOperationInFlightInput,
   ): Promise<QfOutboxEntry> {
@@ -739,97 +865,165 @@ export class QfSyncDatabaseService {
           `Outbox operation ${input.localOperationId} was not found`,
         );
       }
-      if (
-        row.delivery_state !== 'IN_FLIGHT' ||
-        row.in_flight_revision === null ||
-        row.in_flight_mutation_type === null ||
-        row.in_flight_payload_json === null
-      ) {
-        throw new Error(
-          `Outbox operation ${input.localOperationId} has no durable in-flight revision`,
-        );
-      }
+      await this.acknowledgeOperationInTransaction(db, ownerScope, row, input);
+    });
+  }
 
-      if (row.in_flight_mutation_type !== 'DELETE' && row.local_id) {
-        if (row.resource === 'BOOKMARK') {
-          await db.runAsync(
-            `UPDATE bookmarks
-             SET remote_id = ?, server_created_at = ?, server_updated_at = ?
-             WHERE owner_scope = ? AND id = ?`,
-            [
-              input.resourceId,
-              input.serverCreatedAt ?? null,
-              input.serverUpdatedAt ?? null,
-              ownerScope,
-              row.local_id,
-            ],
-          );
+  async commitPushSuccess(input: CommitPushSuccessInput): Promise<boolean> {
+    if (input.sent.length !== input.result.mutations.length) {
+      throw new Error('Push response does not correlate to the sent batch');
+    }
+    const db = await this.database.getConnection();
+    const ownerScope = ownerScopeFromAccountId(input.accountId);
+    let committed = false;
+
+    await db.withTransactionAsync(async () => {
+      const state = (await db.getFirstAsync(
+        `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
+        [ownerScope],
+      )) as SyncStateRow | null;
+      const currentHead = state?.last_mutation_at
+        ? Number(state.last_mutation_at)
+        : 0;
+      if (currentHead !== input.expectedHead) return;
+
+      for (const [index, sent] of input.sent.entries()) {
+        const mutation = input.result.mutations[index];
+        if (
+          sent.inFlightMutationType === null ||
+          mutation.resource !== sent.resource ||
+          mutation.type !== sent.inFlightMutationType
+        ) {
+          throw new Error('Push response mutation does not match sent intent');
         }
-
-        if (row.resource === 'NOTE') {
-          await db.runAsync(
-            `UPDATE notes
-             SET remote_id = ?, server_created_at = ?, server_updated_at = ?
-             WHERE owner_scope = ? AND id = ?`,
-            [
-              input.resourceId,
-              input.serverCreatedAt ?? null,
-              input.serverUpdatedAt ?? null,
-              ownerScope,
-              row.local_id,
-            ],
-          );
-        }
-
-        if (row.resource === 'READING_SESSION') {
-          await db.runAsync(
-            `UPDATE qf_reading_locations
-             SET remote_id = ?, server_updated_at = ?
-             WHERE owner_scope = ? AND id = ?`,
-            [
-              input.resourceId,
-              input.serverUpdatedAt ?? null,
-              ownerScope,
-              row.local_id,
-            ],
-          );
-        }
-      }
-
-      const currentRevisionWasAcknowledged =
-        row.revision === row.in_flight_revision &&
-        row.mutation_type === row.in_flight_mutation_type &&
-        row.payload_json === row.in_flight_payload_json;
-      if (!currentRevisionWasAcknowledged) {
-        const nextMutationType =
-          row.resource === 'NOTE' &&
-          row.in_flight_mutation_type === 'CREATE' &&
-          row.mutation_type === 'CREATE'
-            ? 'UPDATE'
-            : row.mutation_type;
-        await db.runAsync(
-          `UPDATE qf_sync_outbox
-           SET mutation_type = ?, remote_id = ?, base_server_updated_at = ?,
-               delivery_state = 'PENDING', in_flight_revision = NULL,
-               in_flight_mutation_type = NULL, in_flight_payload_json = NULL,
-               in_flight_started_at = NULL
+        const row = (await db.getFirstAsync(
+          `SELECT * FROM qf_sync_outbox
            WHERE owner_scope = ? AND local_operation_id = ?`,
-          [
-            nextMutationType,
-            input.resourceId,
-            input.serverUpdatedAt ?? null,
-            ownerScope,
-            input.localOperationId,
-          ],
-        );
-        return;
+          [ownerScope, sent.localOperationId],
+        )) as OutboxRow | null;
+        if (
+          !row ||
+          row.delivery_state !== 'IN_FLIGHT' ||
+          row.in_flight_revision !== sent.inFlightRevision ||
+          row.in_flight_mutation_type !== sent.inFlightMutationType ||
+          row.in_flight_payload_json !== sent.inFlightPayloadJson ||
+          !mutation.resourceId
+        ) {
+          throw new Error('Push acknowledgement has no durable sent evidence');
+        }
+        await this.acknowledgeOperationInTransaction(db, ownerScope, row, {
+          accountId: input.accountId,
+          localOperationId: sent.localOperationId,
+          resourceId: mutation.resourceId,
+          serverCreatedAt:
+            mutation.type === 'CREATE' ? mutation.timestamp : undefined,
+          serverUpdatedAt: mutation.timestamp,
+        });
       }
 
       await db.runAsync(
-        `DELETE FROM qf_sync_outbox WHERE owner_scope = ? AND local_operation_id = ?`,
-        [ownerScope, input.localOperationId],
+        `INSERT INTO qf_sync_state
+           (owner_scope, last_mutation_at, last_successful_sync_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(owner_scope) DO UPDATE SET
+           last_mutation_at = excluded.last_mutation_at,
+           last_successful_sync_at = excluded.last_successful_sync_at,
+           updated_at = excluded.updated_at`,
+        [
+          ownerScope,
+          String(input.result.lastMutationAt),
+          input.syncedAt,
+          input.syncedAt,
+          input.syncedAt,
+        ],
       );
+      committed = true;
     });
+    return committed;
+  }
+
+  async releaseInFlightOperations(
+    input: ReleaseInFlightOperationsInput,
+  ): Promise<void> {
+    if (input.localOperationIds.length === 0) return;
+    const db = await this.database.getConnection();
+    const ownerScope = ownerScopeFromAccountId(input.accountId);
+    await db.withTransactionAsync(async () => {
+      for (const localOperationId of input.localOperationIds) {
+        await db.runAsync(
+          `UPDATE qf_sync_outbox
+           SET delivery_state = 'PENDING', attempts = attempts + 1,
+               next_attempt_at = ?, in_flight_revision = NULL,
+               in_flight_mutation_type = NULL, in_flight_payload_json = NULL,
+               in_flight_started_at = NULL
+           WHERE owner_scope = ? AND local_operation_id = ?
+             AND delivery_state = 'IN_FLIGHT'`,
+          [input.retryAt, ownerScope, localOperationId],
+        );
+      }
+    });
+  }
+
+  async reconcileUncertainOperations(
+    input: ReconcileUncertainOperationsInput,
+  ): Promise<{acknowledged: number; ambiguous: number}> {
+    const db = await this.database.getConnection();
+    const ownerScope = ownerScopeFromAccountId(input.accountId);
+    let acknowledged = 0;
+    let ambiguous = 0;
+
+    await db.withTransactionAsync(async () => {
+      const rows = (await db.getAllAsync(
+        `SELECT * FROM qf_sync_outbox
+         WHERE owner_scope = ? AND delivery_state IN ('IN_FLIGHT', 'AMBIGUOUS')
+         ORDER BY created_at, local_operation_id`,
+        [ownerScope],
+      )) as OutboxRow[];
+      for (const row of rows) {
+        if (
+          row.in_flight_revision === null ||
+          row.in_flight_mutation_type === null ||
+          row.in_flight_payload_json === null
+        ) {
+          ambiguous += 1;
+          continue;
+        }
+        const remote = await this.findReconciledRemote(db, ownerScope, row);
+        if (remote?.remote_id) {
+          await this.acknowledgeOperationInTransaction(db, ownerScope, row, {
+            accountId: input.accountId,
+            localOperationId: row.local_operation_id,
+            resourceId: remote.remote_id,
+            serverCreatedAt: remote.server_created_at ?? undefined,
+            serverUpdatedAt: remote.server_updated_at ?? undefined,
+          });
+          acknowledged += 1;
+          continue;
+        }
+        if (
+          row.resource === 'NOTE' &&
+          row.in_flight_mutation_type === 'CREATE'
+        ) {
+          await db.runAsync(
+            `UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS'
+             WHERE owner_scope = ? AND local_operation_id = ?`,
+            [ownerScope, row.local_operation_id],
+          );
+          ambiguous += 1;
+          continue;
+        }
+        await db.runAsync(
+          `UPDATE qf_sync_outbox
+           SET delivery_state = 'PENDING', attempts = attempts + 1,
+               next_attempt_at = ?, in_flight_revision = NULL,
+               in_flight_mutation_type = NULL, in_flight_payload_json = NULL,
+               in_flight_started_at = NULL
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [input.reconciledAt, ownerScope, row.local_operation_id],
+        );
+      }
+    });
+    return {acknowledged, ambiguous};
   }
 
   async applyRemoteNote(input: ApplyRemoteNoteInput): Promise<void> {
@@ -967,6 +1161,180 @@ export class QfSyncDatabaseService {
     });
   }
 
+  private async acknowledgeOperationInTransaction(
+    db: SyncDatabaseConnection,
+    ownerScope: `qf:${string}`,
+    row: OutboxRow,
+    input: AcknowledgeOperationInput,
+  ): Promise<void> {
+    if (
+      row.delivery_state !== 'IN_FLIGHT' &&
+      row.delivery_state !== 'AMBIGUOUS'
+    ) {
+      throw new Error(
+        `Outbox operation ${input.localOperationId} has no durable in-flight revision`,
+      );
+    }
+    if (
+      row.in_flight_revision === null ||
+      row.in_flight_mutation_type === null ||
+      row.in_flight_payload_json === null
+    ) {
+      throw new Error(
+        `Outbox operation ${input.localOperationId} has no durable in-flight revision`,
+      );
+    }
+
+    if (row.in_flight_mutation_type !== 'DELETE' && row.local_id) {
+      if (row.resource === 'BOOKMARK') {
+        await db.runAsync(
+          `UPDATE bookmarks
+           SET remote_id = ?, server_created_at = ?, server_updated_at = ?
+           WHERE owner_scope = ? AND id = ?`,
+          [
+            input.resourceId,
+            input.serverCreatedAt ?? null,
+            input.serverUpdatedAt ?? null,
+            ownerScope,
+            row.local_id,
+          ],
+        );
+      } else if (row.resource === 'NOTE') {
+        await db.runAsync(
+          `UPDATE notes
+           SET remote_id = ?, server_created_at = ?, server_updated_at = ?
+           WHERE owner_scope = ? AND id = ?`,
+          [
+            input.resourceId,
+            input.serverCreatedAt ?? null,
+            input.serverUpdatedAt ?? null,
+            ownerScope,
+            row.local_id,
+          ],
+        );
+      } else {
+        await db.runAsync(
+          `UPDATE qf_reading_locations
+           SET remote_id = ?, server_updated_at = ?
+           WHERE owner_scope = ? AND id = ?`,
+          [
+            input.resourceId,
+            input.serverUpdatedAt ?? null,
+            ownerScope,
+            row.local_id,
+          ],
+        );
+      }
+    }
+
+    const currentRevisionWasAcknowledged =
+      row.revision === row.in_flight_revision &&
+      row.mutation_type === row.in_flight_mutation_type &&
+      row.payload_json === row.in_flight_payload_json;
+    const bookmarkCreateStillPresent =
+      row.resource === 'BOOKMARK' &&
+      row.in_flight_mutation_type === 'CREATE' &&
+      row.mutation_type === 'CREATE';
+    if (currentRevisionWasAcknowledged || bookmarkCreateStillPresent) {
+      await db.runAsync(
+        `DELETE FROM qf_sync_outbox
+         WHERE owner_scope = ? AND local_operation_id = ?`,
+        [ownerScope, input.localOperationId],
+      );
+      return;
+    }
+
+    const nextMutationType =
+      row.resource === 'NOTE' &&
+      row.in_flight_mutation_type === 'CREATE' &&
+      row.mutation_type === 'CREATE'
+        ? 'UPDATE'
+        : row.mutation_type;
+    const nextRemoteId =
+      row.in_flight_mutation_type === 'DELETE' && row.mutation_type === 'CREATE'
+        ? null
+        : input.resourceId;
+    await db.runAsync(
+      `UPDATE qf_sync_outbox
+       SET mutation_type = ?, remote_id = ?, base_server_updated_at = ?,
+           delivery_state = 'PENDING', in_flight_revision = NULL,
+           in_flight_mutation_type = NULL, in_flight_payload_json = NULL,
+           in_flight_started_at = NULL
+       WHERE owner_scope = ? AND local_operation_id = ?`,
+      [
+        nextMutationType,
+        nextRemoteId,
+        input.serverUpdatedAt ?? null,
+        ownerScope,
+        input.localOperationId,
+      ],
+    );
+  }
+
+  private async findReconciledRemote(
+    db: SyncDatabaseConnection,
+    ownerScope: `qf:${string}`,
+    row: OutboxRow,
+  ): Promise<ReconciledRemoteRow | null> {
+    if (row.local_id) {
+      const table =
+        row.resource === 'BOOKMARK'
+          ? 'bookmarks'
+          : row.resource === 'NOTE'
+          ? 'notes'
+          : 'qf_reading_locations';
+      const createdColumn =
+        row.resource === 'READING_SESSION'
+          ? 'NULL AS server_created_at'
+          : 'server_created_at';
+      const local = (await db.getFirstAsync(
+        `SELECT id, remote_id, ${createdColumn}, server_updated_at
+         FROM ${table} WHERE owner_scope = ? AND id = ?`,
+        [ownerScope, row.local_id],
+      )) as ReconciledRemoteRow | null;
+      const updateWasObserved =
+        row.in_flight_mutation_type !== 'UPDATE' ||
+        (local?.server_updated_at !== null &&
+          local?.server_updated_at !== undefined &&
+          (row.base_server_updated_at === null ||
+            local.server_updated_at > row.base_server_updated_at));
+      if (local?.remote_id && updateWasObserved) return local;
+    }
+
+    if (
+      row.resource !== 'NOTE' ||
+      row.in_flight_mutation_type !== 'CREATE' ||
+      !row.in_flight_payload_json
+    ) {
+      return null;
+    }
+    const payload = JSON.parse(row.in_flight_payload_json) as NoteOutboxPayload;
+    const matches = (await db.getAllAsync(
+      `SELECT id, remote_id, server_created_at, server_updated_at
+       FROM notes
+       WHERE owner_scope = ? AND remote_id IS NOT NULL AND id <> ?
+         AND verse_key = ? AND content = ? AND created_at = ?
+         AND COALESCE(verse_keys, '') = ?`,
+      [
+        ownerScope,
+        row.local_id ?? '',
+        payload.verseKey,
+        payload.content,
+        payload.clientCreatedAt,
+        (payload.verseKeys?.length
+          ? payload.verseKeys
+          : [payload.verseKey]
+        ).join(','),
+      ],
+    )) as ReconciledRemoteRow[];
+    if (matches.length !== 1) return null;
+    await db.runAsync(`DELETE FROM notes WHERE owner_scope = ? AND id = ?`, [
+      ownerScope,
+      matches[0].id,
+    ]);
+    return matches[0];
+  }
+
   private async enqueueMutation(
     db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
     {
@@ -1095,6 +1463,24 @@ export class QfSyncDatabaseService {
     return row ? toOutboxEntry(row) : null;
   }
 
+  private async getBookmarkOutboxEntry(
+    db: SyncDatabaseConnection,
+    ownerScope: AnnotationOwnerScope,
+    verseKey: string,
+  ): Promise<QfOutboxEntry | null> {
+    const rows = (await db.getAllAsync(
+      `SELECT * FROM qf_sync_outbox
+       WHERE owner_scope = ? AND resource = 'BOOKMARK'
+       ORDER BY created_at DESC, local_operation_id DESC`,
+      [ownerScope],
+    )) as OutboxRow[];
+    for (const row of rows) {
+      const payload = JSON.parse(row.payload_json) as BookmarkOutboxPayload;
+      if (payload.verseKey === verseKey) return toOutboxEntry(row);
+    }
+    return null;
+  }
+
   private async clearBookmarkOutbox(
     db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
     ownerScope: AnnotationOwnerScope,
@@ -1103,7 +1489,8 @@ export class QfSyncDatabaseService {
     const rows = (await db.getAllAsync(
       `SELECT local_operation_id, payload_json
        FROM qf_sync_outbox
-       WHERE owner_scope = ? AND resource = 'BOOKMARK'`,
+       WHERE owner_scope = ? AND resource = 'BOOKMARK'
+         AND delivery_state = 'PENDING'`,
       [ownerScope],
     )) as Array<{local_operation_id: string; payload_json: string}>;
 

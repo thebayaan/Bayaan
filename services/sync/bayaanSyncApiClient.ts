@@ -1,7 +1,11 @@
 import {
   BayaanSyncDecodeError,
   decodeBayaanSyncPullResponse,
+  decodeBayaanSyncPushResponse,
+  decodeBayaanSyncRequestMutation,
+  type BayaanSyncRequestMutation,
   type BayaanSyncPullPage,
+  type BayaanSyncPushResult,
 } from './bayaanSyncCodec';
 
 export type BayaanSyncApiErrorCode =
@@ -29,6 +33,11 @@ export interface BayaanSyncPullRequest {
   page?: number;
 }
 
+export interface BayaanSyncPushRequest {
+  lastMutationAt: number;
+  mutations: BayaanSyncRequestMutation[];
+}
+
 interface BayaanSyncApiClientOptions {
   apiUrl: string;
   fetchImpl?: typeof fetch;
@@ -49,6 +58,12 @@ function syncUrl(apiUrl: string, request: BayaanSyncPullRequest): string {
   if (request.page !== undefined) {
     url.searchParams.set('page', String(request.page));
   }
+  return url.toString();
+}
+
+function pushUrl(apiUrl: string, lastMutationAt: number): string {
+  const url = new URL('/v1/qf/sync', `${apiUrl.replace(/\/+$/, '')}/`);
+  url.searchParams.set('lastMutationAt', String(lastMutationAt));
   return url.toString();
 }
 
@@ -103,6 +118,64 @@ export class BayaanSyncApiClient {
       ) {
         throw new BayaanSyncApiError('invalid_response', response.status);
       }
+      throw new BayaanSyncApiError('invalid_response', response.status);
+    }
+  }
+
+  async push(
+    opaqueSessionToken: string,
+    request: BayaanSyncPushRequest,
+  ): Promise<BayaanSyncPushResult> {
+    if (!opaqueSessionToken) {
+      throw new BayaanSyncApiError('session_revoked', 401);
+    }
+    if (
+      !Number.isSafeInteger(request.lastMutationAt) ||
+      request.lastMutationAt <= 0 ||
+      request.mutations.length < 1 ||
+      request.mutations.length > 100
+    ) {
+      throw new BayaanSyncApiError('request_failed', 400);
+    }
+
+    let mutations: BayaanSyncRequestMutation[];
+    try {
+      mutations = request.mutations.map(decodeBayaanSyncRequestMutation);
+    } catch {
+      throw new BayaanSyncApiError('request_failed', 400);
+    }
+
+    let response: Response;
+    try {
+      response = await this.fetchImpl(
+        pushUrl(this.options.apiUrl, request.lastMutationAt),
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${opaqueSessionToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            mutations,
+          }),
+        },
+      );
+    } catch {
+      throw new BayaanSyncApiError('service_unavailable', 0);
+    }
+
+    if (!response.ok) {
+      throw mapStatus(response.status);
+    }
+
+    try {
+      const result = decodeBayaanSyncPushResponse(await response.json());
+      if (result.lastMutationAt < request.lastMutationAt) {
+        throw new BayaanSyncDecodeError();
+      }
+      return result;
+    } catch {
       throw new BayaanSyncApiError('invalid_response', response.status);
     }
   }

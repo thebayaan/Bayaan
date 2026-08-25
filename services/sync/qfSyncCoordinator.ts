@@ -1,5 +1,15 @@
-import type {BayaanSyncPullRequest} from './bayaanSyncApiClient';
-import type {BayaanSyncMutation, BayaanSyncPullPage} from './bayaanSyncCodec';
+import {
+  BayaanSyncApiError,
+  type BayaanSyncPullRequest,
+  type BayaanSyncPushRequest,
+} from './bayaanSyncApiClient';
+import type {
+  BayaanSyncMutation,
+  BayaanSyncPullPage,
+  BayaanSyncPushResult,
+} from './bayaanSyncCodec';
+import type {QfOutboxEntry} from './qfSyncDatabaseService';
+import {mapOutboxEntryToSyncMutation} from './qfSyncResourceMapper';
 import surahData from '@/data/surahData.json';
 
 const DEFAULT_PAGE_LIMIT = 1000;
@@ -12,6 +22,43 @@ export interface QfSyncPullTransport {
     opaqueSessionToken: string,
     request: BayaanSyncPullRequest,
   ): Promise<BayaanSyncPullPage>;
+}
+
+export interface QfSyncPushTransport {
+  push(
+    opaqueSessionToken: string,
+    request: BayaanSyncPushRequest,
+  ): Promise<BayaanSyncPushResult>;
+}
+
+export interface QfSyncTransport
+  extends QfSyncPullTransport,
+    QfSyncPushTransport {}
+
+export interface QfSyncPushStore {
+  getStoredHead(accountId: string): Promise<number>;
+  getOutboxEntries(accountId: string): Promise<QfOutboxEntry[]>;
+  markOperationInFlight(input: {
+    accountId: string;
+    localOperationId: string;
+    startedAt: number;
+  }): Promise<QfOutboxEntry>;
+  commitPushSuccess(input: {
+    accountId: string;
+    expectedHead: number;
+    sent: QfOutboxEntry[];
+    result: BayaanSyncPushResult;
+    syncedAt: number;
+  }): Promise<boolean>;
+  releaseInFlightOperations(input: {
+    accountId: string;
+    localOperationIds: string[];
+    retryAt: number;
+  }): Promise<void>;
+  reconcileUncertainOperations(input: {
+    accountId: string;
+    reconciledAt: number;
+  }): Promise<{acknowledged: number; ambiguous: number}>;
 }
 
 export interface QfSyncPullStore {
@@ -661,8 +708,9 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
 }
 
 interface QfSyncCoordinatorOptions {
-  transport: QfSyncPullTransport;
+  transport: QfSyncPullTransport & Partial<QfSyncPushTransport>;
   store: QfSyncPullStore;
+  pushStore?: QfSyncPushStore;
   maxRestarts?: number;
   maxPages?: number;
   baseBackoffMs?: number;
@@ -674,6 +722,31 @@ interface PullInput {
   accountId: string;
   sessionToken: string;
 }
+
+interface PushInput {
+  accountId: string;
+  sessionToken: string;
+}
+
+export type QfSyncPushCoordinatorResult =
+  | {status: 'synced'; head: number; pushed: number}
+  | {status: 'idle'; head: number}
+  | {
+      status: 'recovered';
+      head: number;
+      acknowledged: number;
+      ambiguous: number;
+    }
+  | {
+      status: 'deferred';
+      reason:
+        | 'initial_pull_required'
+        | 'concurrent_sync'
+        | 'conflict'
+        | 'pull_deferred'
+        | 'transport_unavailable';
+      retryAfterMs: number;
+    };
 
 export type QfSyncPullResult =
   | {status: 'synced'; head: number; restarts: number}
@@ -737,6 +810,25 @@ function nextPageDecision(
   }
   if (page.mutations.length >= requestedLimit) return null;
   return false;
+}
+
+function immutableInFlightEntry(entry: QfOutboxEntry): QfOutboxEntry {
+  if (
+    entry.deliveryState !== 'IN_FLIGHT' ||
+    entry.inFlightRevision === null ||
+    entry.inFlightMutationType === null ||
+    entry.inFlightPayloadJson === null
+  ) {
+    throw new Error(
+      `Outbox operation ${entry.localOperationId} has no durable in-flight revision`,
+    );
+  }
+  return {
+    ...entry,
+    mutationType: entry.inFlightMutationType,
+    payloadJson: entry.inFlightPayloadJson,
+    revision: entry.inFlightRevision,
+  };
 }
 
 export class QfSyncCoordinator {
@@ -849,6 +941,165 @@ export class QfSyncCoordinator {
     }
 
     throw new Error('Unreachable stable pull state');
+  }
+
+  async push(input: PushInput): Promise<QfSyncPushCoordinatorResult> {
+    const store = this.options.pushStore;
+    const transport = this.options.transport;
+    if (!store || !transport.push) {
+      return {
+        status: 'deferred',
+        reason: 'transport_unavailable',
+        retryAfterMs: this.backoffFor(0),
+      };
+    }
+
+    const uncertain = (await store.getOutboxEntries(input.accountId)).some(
+      entry => entry.deliveryState !== 'PENDING',
+    );
+    if (uncertain) {
+      const pulled = await this.pull(input);
+      if (pulled.status !== 'synced') {
+        return {
+          status: 'deferred',
+          reason: 'pull_deferred',
+          retryAfterMs: pulled.retryAfterMs,
+        };
+      }
+      const recovery = await store.reconcileUncertainOperations({
+        accountId: input.accountId,
+        reconciledAt: this.now(),
+      });
+      return {
+        status: 'recovered',
+        head: pulled.head,
+        ...recovery,
+      };
+    }
+
+    for (let conflictAttempt = 0; conflictAttempt <= 1; conflictAttempt += 1) {
+      const head = await store.getStoredHead(input.accountId);
+      if (head <= 0) {
+        return {
+          status: 'deferred',
+          reason: 'initial_pull_required',
+          retryAfterMs: this.backoffFor(0),
+        };
+      }
+
+      const candidates = (await store.getOutboxEntries(input.accountId))
+        .filter(
+          entry =>
+            entry.deliveryState === 'PENDING' &&
+            (entry.nextAttemptAt === null || entry.nextAttemptAt <= this.now()),
+        )
+        .slice(0, 100);
+      if (candidates.length === 0) return {status: 'idle', head};
+
+      const sent: QfOutboxEntry[] = [];
+      for (const candidate of candidates) {
+        sent.push(
+          await store.markOperationInFlight({
+            accountId: input.accountId,
+            localOperationId: candidate.localOperationId,
+            startedAt: this.now(),
+          }),
+        );
+      }
+
+      let responseReceived = false;
+      try {
+        const result = await transport.push(input.sessionToken, {
+          lastMutationAt: head,
+          mutations: sent.map(entry =>
+            mapOutboxEntryToSyncMutation(immutableInFlightEntry(entry)),
+          ) as BayaanSyncPushRequest['mutations'],
+        });
+        responseReceived = true;
+        const committed = await store.commitPushSuccess({
+          accountId: input.accountId,
+          expectedHead: head,
+          sent,
+          result,
+          syncedAt: this.now(),
+        });
+        if (!committed) {
+          return {
+            status: 'deferred',
+            reason: 'concurrent_sync',
+            retryAfterMs: this.backoffFor(0),
+          };
+        }
+        return {
+          status: 'synced',
+          head: result.lastMutationAt,
+          pushed: sent.length,
+        };
+      } catch (error) {
+        if (
+          error instanceof BayaanSyncApiError &&
+          error.code === 'sync_conflict'
+        ) {
+          const retryAfterMs = this.backoffFor(conflictAttempt);
+          await store.releaseInFlightOperations({
+            accountId: input.accountId,
+            localOperationIds: sent.map(entry => entry.localOperationId),
+            retryAt:
+              conflictAttempt === 0 ? this.now() : this.now() + retryAfterMs,
+          });
+          if (conflictAttempt === 1) {
+            return {
+              status: 'deferred',
+              reason: 'conflict',
+              retryAfterMs,
+            };
+          }
+          const pulled = await this.pull(input);
+          if (pulled.status !== 'synced') {
+            return {
+              status: 'deferred',
+              reason: 'pull_deferred',
+              retryAfterMs: pulled.retryAfterMs,
+            };
+          }
+          continue;
+        }
+
+        const outcomeIsAmbiguous =
+          responseReceived ||
+          (error instanceof BayaanSyncApiError &&
+            (error.code === 'service_unavailable' ||
+              error.code === 'invalid_response'));
+        if (outcomeIsAmbiguous) {
+          const pulled = await this.pull(input);
+          if (pulled.status !== 'synced') {
+            return {
+              status: 'deferred',
+              reason: 'pull_deferred',
+              retryAfterMs: pulled.retryAfterMs,
+            };
+          }
+          const recovery = await store.reconcileUncertainOperations({
+            accountId: input.accountId,
+            reconciledAt: this.now(),
+          });
+          return {
+            status: 'recovered',
+            head: pulled.head,
+            ...recovery,
+          };
+        }
+
+        await store.releaseInFlightOperations({
+          accountId: input.accountId,
+          localOperationIds: sent.map(entry => entry.localOperationId),
+          retryAt: this.now() + this.backoffFor(0),
+        });
+        throw error;
+      }
+    }
+
+    throw new Error('Unreachable push conflict state');
   }
 
   private backoffFor(attempt: number): number {
