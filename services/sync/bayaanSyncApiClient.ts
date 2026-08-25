@@ -95,7 +95,7 @@ export class BayaanSyncApiClient {
     }
 
     try {
-      return decodeBayaanSyncPullResponse(await response.json());
+      return decodeBayaanSyncPullResponse(await response.json(), request);
     } catch (error) {
       if (
         error instanceof BayaanSyncDecodeError ||

@@ -17,6 +17,11 @@ export interface BayaanSyncPullPage {
   hasMore?: boolean;
 }
 
+export interface BayaanSyncPullDecodeRequest {
+  limit?: number;
+  page?: number;
+}
+
 export class BayaanSyncDecodeError extends Error {
   constructor() {
     super('Invalid Bayaan Sync response');
@@ -198,7 +203,11 @@ function decodeMutation(value: unknown): BayaanSyncMutation {
 
   const resource = value.resource as QfSyncResource;
   const type = value.type as QfMutationType;
-  if (type === 'DELETE' && value.data !== undefined) {
+  if (
+    type === 'DELETE' &&
+    value.data !== undefined &&
+    (!isObject(value.data) || Object.keys(value.data).length !== 0)
+  ) {
     return invalid();
   }
   if (type !== 'DELETE' && value.data === undefined) {
@@ -210,14 +219,13 @@ function decodeMutation(value: unknown): BayaanSyncMutation {
     type,
     resourceId: value.resourceId,
     timestamp: value.timestamp,
-    ...(value.data === undefined
-      ? {}
-      : {data: decodeData(resource, value.data)}),
+    ...(type === 'DELETE' ? {} : {data: decodeData(resource, value.data)}),
   };
 }
 
 export function decodeBayaanSyncPullResponse(
   value: unknown,
+  request: BayaanSyncPullDecodeRequest = {},
 ): BayaanSyncPullPage {
   if (
     !isObject(value) ||
@@ -252,6 +260,39 @@ export function decodeBayaanSyncPullResponse(
   }
   if (data.hasMore !== undefined && typeof data.hasMore !== 'boolean') {
     return invalid();
+  }
+  const paginationFieldCount = [
+    data.page,
+    data.limit,
+    data.total,
+    data.hasMore,
+  ].filter(field => field !== undefined).length;
+  if (paginationFieldCount !== 0 && paginationFieldCount !== 4) {
+    return invalid();
+  }
+  if (
+    (data.page !== undefined &&
+      request.page !== undefined &&
+      data.page !== request.page) ||
+    (data.limit !== undefined &&
+      request.limit !== undefined &&
+      data.limit !== request.limit)
+  ) {
+    return invalid();
+  }
+  if (
+    data.page !== undefined &&
+    data.limit !== undefined &&
+    data.total !== undefined &&
+    data.hasMore !== undefined
+  ) {
+    const traversed = (data.page as number) * (data.limit as number);
+    if (
+      !Number.isSafeInteger(traversed) ||
+      data.hasMore !== traversed < (data.total as number)
+    ) {
+      return invalid();
+    }
   }
 
   return {

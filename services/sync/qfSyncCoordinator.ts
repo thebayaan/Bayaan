@@ -72,6 +72,10 @@ interface NoteOutboxRow extends Record<string, unknown> {
   base_server_updated_at: number | null;
 }
 
+interface PendingOutboxRow extends Record<string, unknown> {
+  local_operation_id: string;
+}
+
 interface PendingNotePayload {
   verseKey: string;
   surahNumber: number;
@@ -553,16 +557,42 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     mutation: BayaanSyncMutation,
   ): Promise<void> {
     if (mutation.resource === 'BOOKMARK') {
-      await db.runAsync(
-        `DELETE FROM bookmarks WHERE owner_scope = ? AND remote_id = ?`,
+      const bookmark = await db.getFirstAsync<RemoteRow>(
+        `SELECT * FROM bookmarks WHERE owner_scope = ? AND remote_id = ?`,
         [scope, mutation.resourceId],
+      );
+      if (!bookmark || this.isStaleTombstone(bookmark, mutation)) return;
+      if (
+        await this.hasPendingLocalIntent(db, scope, 'BOOKMARK', bookmark.id)
+      ) {
+        return;
+      }
+      await db.runAsync(
+        `DELETE FROM bookmarks WHERE owner_scope = ? AND id = ?`,
+        [scope, bookmark.id],
       );
       return;
     }
     if (mutation.resource === 'READING_SESSION') {
-      await db.runAsync(
-        `DELETE FROM qf_reading_locations WHERE owner_scope = ? AND remote_id = ?`,
+      const reading = await db.getFirstAsync<RemoteRow>(
+        `SELECT * FROM qf_reading_locations
+         WHERE owner_scope = ? AND remote_id = ?`,
         [scope, mutation.resourceId],
+      );
+      if (!reading || this.isStaleTombstone(reading, mutation)) return;
+      if (
+        await this.hasPendingLocalIntent(
+          db,
+          scope,
+          'READING_SESSION',
+          reading.id,
+        )
+      ) {
+        return;
+      }
+      await db.runAsync(
+        `DELETE FROM qf_reading_locations WHERE owner_scope = ? AND id = ?`,
+        [scope, reading.id],
       );
       return;
     }
@@ -571,7 +601,7 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
       `SELECT * FROM notes WHERE owner_scope = ? AND remote_id = ?`,
       [scope, mutation.resourceId],
     );
-    if (!canonical) return;
+    if (!canonical || this.isStaleTombstone(canonical, mutation)) return;
     const pendingRow = await db.getFirstAsync<NoteOutboxRow>(
       `SELECT payload_json, base_server_updated_at FROM qf_sync_outbox
        WHERE owner_scope = ? AND resource = 'NOTE' AND local_id = ?
@@ -581,6 +611,11 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     const pending = pendingRow
       ? parsePendingNote(pendingRow.payload_json)
       : null;
+    const pendingBase =
+      pendingRow?.base_server_updated_at ?? canonical.server_updated_at;
+    if (pending && pendingBase !== null && mutation.timestamp <= pendingBase) {
+      return;
+    }
     await db.runAsync(`DELETE FROM notes WHERE owner_scope = ? AND id = ?`, [
       scope,
       canonical.id,
@@ -593,9 +628,35 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
         canonical,
         pending,
         '',
-        pendingRow?.base_server_updated_at ?? canonical.server_updated_at,
+        pendingBase,
       );
     }
+  }
+
+  private isStaleTombstone(
+    row: RemoteRow,
+    mutation: BayaanSyncMutation,
+  ): boolean {
+    return (
+      row.server_updated_at !== null &&
+      mutation.timestamp <= row.server_updated_at
+    );
+  }
+
+  private async hasPendingLocalIntent(
+    db: SyncSqliteConnection,
+    scope: `qf:${string}`,
+    resource: 'BOOKMARK' | 'READING_SESSION',
+    localId: string,
+  ): Promise<boolean> {
+    const pending = await db.getFirstAsync<PendingOutboxRow>(
+      `SELECT local_operation_id FROM qf_sync_outbox
+       WHERE owner_scope = ? AND resource = ? AND local_id = ?
+         AND mutation_type <> 'DELETE'
+       ORDER BY created_at DESC, local_operation_id DESC LIMIT 1`,
+      [scope, resource, localId],
+    );
+    return pending !== null;
   }
 }
 
@@ -618,7 +679,11 @@ export type QfSyncPullResult =
   | {status: 'synced'; head: number; restarts: number}
   | {
       status: 'deferred';
-      reason: 'unstable_head' | 'concurrent_sync' | 'page_limit';
+      reason:
+        | 'unstable_head'
+        | 'concurrent_sync'
+        | 'page_limit'
+        | 'invalid_pagination';
       retryAfterMs: number;
       restarts: number;
     };
@@ -627,15 +692,50 @@ function defaultSleep(delayMs: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, delayMs));
 }
 
-function hasAnotherPage(page: BayaanSyncPullPage): boolean {
+function nextPageDecision(
+  page: BayaanSyncPullPage,
+  requestedPage: number,
+  requestedLimit: number,
+): boolean | null {
+  const paginationFieldCount = [
+    page.page,
+    page.limit,
+    page.total,
+    page.hasMore,
+  ].filter(field => field !== undefined).length;
+  if (paginationFieldCount !== 0 && paginationFieldCount !== 4) {
+    return null;
+  }
+  if (
+    (page.page !== undefined && page.page !== requestedPage) ||
+    (page.limit !== undefined && page.limit !== requestedLimit)
+  ) {
+    return null;
+  }
+  if (
+    page.hasMore !== undefined &&
+    page.page !== undefined &&
+    page.limit !== undefined &&
+    page.total !== undefined
+  ) {
+    const traversed = page.page * page.limit;
+    if (
+      !Number.isSafeInteger(traversed) ||
+      page.hasMore !== traversed < page.total
+    ) {
+      return null;
+    }
+  }
   if (page.hasMore !== undefined) return page.hasMore;
   if (
     page.page !== undefined &&
     page.limit !== undefined &&
     page.total !== undefined
   ) {
-    return page.page * page.limit < page.total;
+    const traversed = page.page * page.limit;
+    return Number.isSafeInteger(traversed) ? traversed < page.total : null;
   }
+  if (page.mutations.length >= requestedLimit) return null;
   return false;
 }
 
@@ -669,6 +769,19 @@ export class QfSyncCoordinator {
           limit: DEFAULT_PAGE_LIMIT,
           page: pageNumber,
         });
+        const hasNextPage = nextPageDecision(
+          page,
+          pageNumber,
+          DEFAULT_PAGE_LIMIT,
+        );
+        if (hasNextPage === null) {
+          return {
+            status: 'deferred',
+            reason: 'invalid_pagination',
+            retryAfterMs: this.backoffFor(attempt),
+            restarts: attempt,
+          };
+        }
 
         if (traversalHead === undefined) {
           traversalHead = page.lastMutationAt;
@@ -680,7 +793,7 @@ export class QfSyncCoordinator {
         }
 
         await this.options.store.applyPage(input.accountId, page.mutations);
-        if (!hasAnotherPage(page)) break;
+        if (!hasNextPage) break;
       }
 
       if (pageNumber > this.maxPages) {

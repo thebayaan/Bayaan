@@ -133,6 +133,33 @@ function noteDelete(resourceId: string, timestamp: number): BayaanSyncMutation {
   return {resource: 'NOTE', type: 'DELETE', resourceId, timestamp};
 }
 
+function privateNote(
+  resourceId: string,
+  timestamp: number,
+  body: string,
+): BayaanSyncMutation {
+  return {
+    resource: 'NOTE',
+    type: 'UPDATE',
+    resourceId,
+    timestamp,
+    data: {body, ranges: ['2:255-2:255'], saveToQR: false},
+  };
+}
+
+function readingSession(
+  resourceId: string,
+  timestamp: number,
+): BayaanSyncMutation {
+  return {
+    resource: 'READING_SESSION',
+    type: 'UPDATE',
+    resourceId,
+    timestamp,
+    data: {chapterNumber: 3, verseNumber: 7},
+  };
+}
+
 class MemoryPullStore implements QfSyncPullStore {
   readonly heads = new Map<string, number>();
   readonly resources = new Map<string, BayaanSyncMutation>();
@@ -209,16 +236,16 @@ describe('QF stable pull coordinator', () => {
         lastMutationAt: 10,
         mutations: [bookmark('remote-bookmark-1', 8)],
         page: 1,
-        limit: 1,
-        total: 2,
+        limit: 1000,
+        total: 1001,
         hasMore: true,
       },
       {
         lastMutationAt: 10,
         mutations: [noteDelete('remote-note-deleted', 9)],
         page: 2,
-        limit: 1,
-        total: 2,
+        limit: 1000,
+        total: 1001,
         hasMore: false,
       },
       request => {
@@ -334,6 +361,82 @@ describe('QF stable pull coordinator', () => {
       ],
     );
   });
+
+  it.each([
+    [
+      'contradictory hasMore',
+      {
+        lastMutationAt: 10,
+        mutations: [],
+        page: 1,
+        limit: 1000,
+        total: 1500,
+        hasMore: false,
+      },
+    ],
+    [
+      'wrong returned page',
+      {
+        lastMutationAt: 10,
+        mutations: [],
+        page: 2,
+        limit: 1000,
+        total: 0,
+        hasMore: false,
+      },
+    ],
+    [
+      'wrong returned limit',
+      {
+        lastMutationAt: 10,
+        mutations: [],
+        page: 1,
+        limit: 500,
+        total: 0,
+        hasMore: false,
+      },
+    ],
+    [
+      'incomplete continuation metadata',
+      {
+        lastMutationAt: 10,
+        mutations: [],
+        page: 1,
+        limit: 1000,
+        hasMore: false,
+      },
+    ],
+    [
+      'a full page without continuation metadata',
+      {
+        lastMutationAt: 10,
+        mutations: Array.from({length: 1000}, (_, index) =>
+          bookmark(`remote-bookmark-${index}`, index + 1),
+        ),
+      },
+    ],
+  ])(
+    'defers %s without applying it or committing its head',
+    async (_name, page) => {
+      const store = new MemoryPullStore();
+      const transport = new ScriptedTransport([
+        page as BayaanSyncPullPage,
+        {lastMutationAt: 10, mutations: []},
+      ]);
+      const coordinator = new QfSyncCoordinator({transport, store});
+
+      await expect(
+        coordinator.pull({accountId, sessionToken}),
+      ).resolves.toEqual({
+        status: 'deferred',
+        reason: 'invalid_pagination',
+        retryAfterMs: 250,
+        restarts: 0,
+      });
+      expect(store.heads.get(accountId)).toBeUndefined();
+      expect(store.events).toEqual([]);
+    },
+  );
 });
 
 describe('SQLite QF pull store', () => {
@@ -558,6 +661,266 @@ describe('SQLite QF pull store', () => {
         verse_key: '3:7',
         page_number: 22,
         rewayah_id: 'hafs',
+      },
+    ]);
+
+    await database.closeAsync();
+  });
+
+  it('keeps each resource newer replayed update when an older tombstone follows', async () => {
+    const {database, store} = await createSqliteStore(
+      'qf-pull-stale-tombstone-replay.db',
+    );
+
+    await store.applyPage('reader-a', [
+      bookmark('remote-bookmark-replay', 300),
+      privateNote('remote-note-replay', 301, 'newer remote note'),
+      readingSession('remote-reading-replay', 302),
+    ]);
+    await store.applyPage('reader-a', [
+      {
+        resource: 'BOOKMARK',
+        type: 'DELETE',
+        resourceId: 'remote-bookmark-replay',
+        timestamp: 200,
+      },
+      noteDelete('remote-note-replay', 201),
+      {
+        resource: 'READING_SESSION',
+        type: 'DELETE',
+        resourceId: 'remote-reading-replay',
+        timestamp: 202,
+      },
+    ]);
+
+    await expect(
+      database.getFirstAsync(
+        `SELECT remote_id, verse_key, server_updated_at
+         FROM bookmarks WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual({
+      remote_id: 'remote-bookmark-replay',
+      verse_key: '2:255',
+      server_updated_at: 300,
+    });
+    await expect(
+      database.getFirstAsync(
+        `SELECT remote_id, content, server_updated_at
+         FROM notes WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual({
+      remote_id: 'remote-note-replay',
+      content: 'newer remote note',
+      server_updated_at: 301,
+    });
+    await expect(
+      database.getFirstAsync(
+        `SELECT remote_id, verse_key, server_updated_at
+         FROM qf_reading_locations WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual({
+      remote_id: 'remote-reading-replay',
+      verse_key: '3:7',
+      server_updated_at: 302,
+    });
+
+    await database.closeAsync();
+  });
+
+  it('keeps a pending note when a tombstone is not newer than its outbox base', async () => {
+    const {database, store} = await createSqliteStore(
+      'qf-pull-pending-note-tombstone.db',
+    );
+    await database.runAsync(
+      `INSERT INTO notes
+        (id, owner_scope, verse_key, surah_number, ayah_number, content,
+         created_at, updated_at, rewayah_id, remote_id, server_created_at,
+         server_updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'pending-note',
+        'qf:reader-a',
+        '2:255',
+        2,
+        255,
+        'remote base',
+        100,
+        100,
+        'warsh',
+        'remote-note-pending',
+        100,
+        100,
+      ],
+    );
+    await database.runAsync(
+      `INSERT INTO qf_sync_outbox
+        (local_operation_id, owner_scope, account_id, resource, mutation_type,
+         local_id, remote_id, payload_json, base_server_updated_at, attempts,
+         next_attempt_at, created_at, revision, delivery_state)
+       VALUES (?, ?, ?, 'NOTE', 'UPDATE', ?, ?, ?, ?, 0, NULL, ?, 1, 'PENDING')`,
+      [
+        'pending-note-operation',
+        'qf:reader-a',
+        'reader-a',
+        'pending-note',
+        'remote-note-pending',
+        JSON.stringify({
+          verseKey: '2:255',
+          surahNumber: 2,
+          ayahNumber: 255,
+          content: 'pending local note',
+          rewayahId: 'warsh',
+          clientCreatedAt: 100,
+          clientUpdatedAt: 200,
+        }),
+        200,
+        200,
+      ],
+    );
+
+    await store.applyPage('reader-a', [noteDelete('remote-note-pending', 150)]);
+
+    await expect(
+      database.getAllAsync(
+        `SELECT id, remote_id, content, server_updated_at
+         FROM notes WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual([
+      {
+        id: 'pending-note',
+        remote_id: 'remote-note-pending',
+        content: 'remote base',
+        server_updated_at: 100,
+      },
+    ]);
+    await expect(
+      database.getAllAsync(
+        `SELECT local_operation_id, mutation_type, local_id
+         FROM qf_sync_outbox WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual([
+      {
+        local_operation_id: 'pending-note-operation',
+        mutation_type: 'UPDATE',
+        local_id: 'pending-note',
+      },
+    ]);
+    await expect(
+      database.getFirstAsync<{count: number}>(
+        `SELECT COUNT(*) AS count FROM qf_note_conflicts WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual({count: 0});
+
+    await database.closeAsync();
+  });
+
+  it('preserves bookmark and reading rows while their local outbox intent is pending', async () => {
+    const {database, store} = await createSqliteStore(
+      'qf-pull-pending-resource-tombstone.db',
+    );
+    await database.runAsync(
+      `INSERT INTO bookmarks
+        (id, owner_scope, verse_key, surah_number, ayah_number, created_at,
+         rewayah_id, remote_id, server_created_at, server_updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'pending-bookmark',
+        'qf:reader-a',
+        '2:255',
+        2,
+        255,
+        100,
+        'warsh',
+        'remote-bookmark-pending',
+        100,
+        100,
+      ],
+    );
+    await database.runAsync(
+      `INSERT INTO qf_reading_locations
+        (id, owner_scope, remote_id, surah_number, ayah_number, verse_key,
+         page_number, rewayah_id, last_read_at, server_updated_at, created_at,
+         updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        'pending-reading',
+        'qf:reader-a',
+        'remote-reading-pending',
+        3,
+        7,
+        '3:7',
+        50,
+        'warsh',
+        150,
+        100,
+        100,
+        150,
+      ],
+    );
+    const outboxInsert = `INSERT INTO qf_sync_outbox
+      (local_operation_id, owner_scope, account_id, resource, mutation_type,
+       local_id, remote_id, payload_json, base_server_updated_at, attempts,
+       next_attempt_at, created_at, revision, delivery_state)
+      VALUES (?, 'qf:reader-a', 'reader-a', ?, 'UPDATE', ?, ?, '{}', 100,
+              0, NULL, 150, 1, 'PENDING')`;
+    await database.runAsync(outboxInsert, [
+      'pending-bookmark-operation',
+      'BOOKMARK',
+      'pending-bookmark',
+      'remote-bookmark-pending',
+    ]);
+    await database.runAsync(outboxInsert, [
+      'pending-reading-operation',
+      'READING_SESSION',
+      'pending-reading',
+      'remote-reading-pending',
+    ]);
+
+    await store.applyPage('reader-a', [
+      {
+        resource: 'BOOKMARK',
+        type: 'DELETE',
+        resourceId: 'remote-bookmark-pending',
+        timestamp: 200,
+      },
+      {
+        resource: 'READING_SESSION',
+        type: 'DELETE',
+        resourceId: 'remote-reading-pending',
+        timestamp: 201,
+      },
+    ]);
+
+    await expect(
+      database.getFirstAsync<{count: number}>(
+        `SELECT
+           (SELECT COUNT(*) FROM bookmarks WHERE owner_scope = ?) +
+           (SELECT COUNT(*) FROM qf_reading_locations WHERE owner_scope = ?) AS count`,
+        ['qf:reader-a', 'qf:reader-a'],
+      ),
+    ).resolves.toEqual({count: 2});
+    await expect(
+      database.getAllAsync(
+        `SELECT resource, mutation_type, local_id
+         FROM qf_sync_outbox WHERE owner_scope = ? ORDER BY resource`,
+        ['qf:reader-a'],
+      ),
+    ).resolves.toEqual([
+      {
+        resource: 'BOOKMARK',
+        mutation_type: 'UPDATE',
+        local_id: 'pending-bookmark',
+      },
+      {
+        resource: 'READING_SESSION',
+        mutation_type: 'UPDATE',
+        local_id: 'pending-reading',
       },
     ]);
 

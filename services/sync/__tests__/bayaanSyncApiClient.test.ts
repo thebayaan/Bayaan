@@ -121,6 +121,126 @@ describe('Bayaan Sync BFF client', () => {
     });
   });
 
+  it('accepts and normalizes empty BFF delete data for every synced resource', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      jsonResponse({
+        success: true,
+        data: {
+          lastMutationAt: 7001,
+          mutations: [
+            {
+              resource: 'BOOKMARK',
+              type: 'DELETE',
+              resourceId: 'remote-bookmark-1',
+              timestamp: 6998,
+              data: {},
+            },
+            {
+              resource: 'NOTE',
+              type: 'DELETE',
+              resourceId: 'remote-note-1',
+              timestamp: 6999,
+              data: {},
+            },
+            {
+              resource: 'READING_SESSION',
+              type: 'DELETE',
+              resourceId: 'remote-reading-1',
+              timestamp: 7000,
+              data: {},
+            },
+          ],
+          page: 1,
+          limit: 1000,
+          total: 3,
+          hasMore: false,
+        },
+      }),
+    );
+    const client = new BayaanSyncApiClient({apiUrl});
+
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 0, page: 1, limit: 1000}),
+    ).resolves.toEqual({
+      lastMutationAt: 7001,
+      mutations: [
+        {
+          resource: 'BOOKMARK',
+          type: 'DELETE',
+          resourceId: 'remote-bookmark-1',
+          timestamp: 6998,
+        },
+        {
+          resource: 'NOTE',
+          type: 'DELETE',
+          resourceId: 'remote-note-1',
+          timestamp: 6999,
+        },
+        {
+          resource: 'READING_SESSION',
+          type: 'DELETE',
+          resourceId: 'remote-reading-1',
+          timestamp: 7000,
+        },
+      ],
+      page: 1,
+      limit: 1000,
+      total: 3,
+      hasMore: false,
+    });
+  });
+
+  it('rejects non-empty delete data', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      jsonResponse({
+        success: true,
+        data: {
+          lastMutationAt: 1,
+          mutations: [
+            {
+              resource: 'BOOKMARK',
+              type: 'DELETE',
+              resourceId: 'remote-bookmark-1',
+              timestamp: 1,
+              data: {key: 2},
+            },
+          ],
+        },
+      }),
+    );
+    const client = new BayaanSyncApiClient({apiUrl});
+
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 0, page: 1, limit: 1000}),
+    ).rejects.toMatchObject({code: 'invalid_response'});
+  });
+
+  it.each([
+    [
+      'contradictory hasMore',
+      {page: 1, limit: 1000, total: 1500, hasMore: false},
+    ],
+    ['wrong returned page', {page: 2, limit: 1000, total: 0, hasMore: false}],
+    ['wrong returned limit', {page: 1, limit: 500, total: 0, hasMore: false}],
+    ['incomplete pagination', {page: 1, limit: 1000, hasMore: false}],
+  ])('rejects %s pagination metadata', async (_name, pagination) => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      jsonResponse({
+        success: true,
+        data: {
+          lastMutationAt: 1,
+          mutations: [],
+          ...pagination,
+        },
+      }),
+    );
+    const client = new BayaanSyncApiClient({apiUrl});
+
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 0, page: 1, limit: 1000}),
+    ).rejects.toMatchObject({code: 'invalid_response'});
+  });
+
   it.each([
     [
       'unknown response field',
