@@ -134,6 +134,7 @@ export class QfSyncLifecycle {
   private stopped = false;
   private currentRun: Promise<void> | null = null;
   private readonly maintenanceTasks = new Set<Promise<void>>();
+  private readonly annotationHandoffTasks = new Set<Promise<void>>();
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private rerunRequested = false;
 
@@ -188,7 +189,7 @@ export class QfSyncLifecycle {
         guestMergePrompt: null,
       });
       const loadedSurah = this.invalidateActiveViews(true);
-      this.trackMaintenance(
+      this.trackAnnotationHandoff(
         this.completeAnnotationHandoff(
           annotationHandoff ?? Promise.resolve(),
           nextAccount,
@@ -314,10 +315,10 @@ export class QfSyncLifecycle {
     this.epoch += 1;
     this.rerunRequested = false;
     this.cancelRetry();
-    const trackedHandoff = this.trackMaintenance(annotationHandoff);
+    this.trackAnnotationHandoff(annotationHandoff);
     const [readingResult] = await Promise.allSettled([readingFlush]);
     try {
-      await this.waitForTrackedTasks(trackedHandoff);
+      await this.waitForTrackedTasks(false);
     } finally {
       releaseAnnotationHandoff();
     }
@@ -330,12 +331,13 @@ export class QfSyncLifecycle {
   }
 
   private async waitForTrackedTasks(
-    excludedTask?: Promise<void>,
+    includeAnnotationHandoffs = true,
   ): Promise<void> {
     for (;;) {
       const tasks = [
         ...(this.currentRun ? [this.currentRun] : []),
-        ...[...this.maintenanceTasks].filter(task => task !== excludedTask),
+        ...this.maintenanceTasks,
+        ...(includeAnnotationHandoffs ? this.annotationHandoffTasks : []),
       ];
       if (tasks.length === 0) return;
       await Promise.allSettled(tasks);
@@ -590,6 +592,16 @@ export class QfSyncLifecycle {
         this.maintenanceTasks.delete(tracked);
       });
     this.maintenanceTasks.add(tracked);
+    return tracked;
+  }
+
+  private trackAnnotationHandoff(task: Promise<void>): Promise<void> {
+    const tracked = task
+      .catch(() => undefined)
+      .finally(() => {
+        this.annotationHandoffTasks.delete(tracked);
+      });
+    this.annotationHandoffTasks.add(tracked);
     return tracked;
   }
 

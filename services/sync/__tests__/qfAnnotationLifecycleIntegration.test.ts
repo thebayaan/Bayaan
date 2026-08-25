@@ -331,6 +331,39 @@ it('keeps draining real SQLite mutations while stop waits for the current sync r
   expect(stoppedWhileWritePaused).toBe(false);
 });
 
+it('finishes stop when the account changes while its current sync run is pending', async () => {
+  const pullEntered = deferred();
+  const finishPull = deferred<{
+    status: 'synced';
+    head: number;
+    restarts: number;
+  }>();
+  const lifecycle = createLifecycle({
+    coordinator: {
+      pull: jest.fn(() => {
+        pullEntered.resolve();
+        return finishPull.promise;
+      }),
+      push: jest.fn(async () => ({status: 'idle' as const, head: 10})),
+    },
+  });
+  lifecycle.updateContext({...authenticatedOffline, online: true});
+  await pullEntered.promise;
+
+  let stopSettled = false;
+  const stop = lifecycle.stop().then(() => {
+    stopSettled = true;
+  });
+  lifecycle.updateContext({...authenticatedOffline, accountId: 'account-b'});
+  finishPull.resolve({status: 'synced', head: 10, restarts: 0});
+  await new Promise(resolve => setTimeout(resolve, 0));
+
+  expect(stopSettled).toBe(true);
+  await stop;
+  await lifecycle.waitForIdle();
+  expect(useQfSyncStore.getState().activeAccountId).toBe('account-b');
+});
+
 it('drains a real old-scope mutation before surfacing a rejected reading flush', async () => {
   const readingFailure = new Error('reading persistence failed');
   const lifecycle = createLifecycle({
