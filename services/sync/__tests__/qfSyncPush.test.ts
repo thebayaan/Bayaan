@@ -276,6 +276,78 @@ describe('Bayaan Sync exact-head push transport', () => {
     });
   });
 
+  it('preserves returned tombstones and reading client time for atomic application', async () => {
+    const client = new BayaanSyncApiClient({
+      apiUrl: 'https://api-prelive.thebayaan.com',
+      fetchImpl: jest.fn().mockResolvedValue(
+        jsonResponse({
+          success: true,
+          data: {
+            lastMutationAt: 7003,
+            mutations: [
+              {
+                resource: 'BOOKMARK',
+                type: 'DELETE',
+                resourceId: 'remote-bookmark-1',
+                timestamp: 7002,
+              },
+              {
+                resource: 'READING_SESSION',
+                type: 'CREATE',
+                resourceId: 'remote-reading-1',
+                timestamp: 7003,
+                data: {
+                  chapterNumber: 3,
+                  verseNumber: 8,
+                  clientUpdatedAt: '1970-01-01T00:00:09.000Z',
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    });
+
+    await expect(
+      client.push(sessionToken, {
+        lastMutationAt: 7001,
+        mutations: [
+          {
+            resource: 'BOOKMARK',
+            type: 'DELETE',
+            resourceId: 'remote-bookmark-1',
+          },
+          {
+            resource: 'READING_SESSION',
+            type: 'CREATE',
+            data: {chapterNumber: 3, verseNumber: 8},
+          },
+        ],
+      }),
+    ).resolves.toEqual({
+      lastMutationAt: 7003,
+      mutations: [
+        {
+          resource: 'BOOKMARK',
+          type: 'DELETE',
+          resourceId: 'remote-bookmark-1',
+          timestamp: 7002,
+        },
+        {
+          resource: 'READING_SESSION',
+          type: 'CREATE',
+          resourceId: 'remote-reading-1',
+          timestamp: 7003,
+          data: {
+            chapterNumber: 3,
+            verseNumber: 8,
+            clientUpdatedAt: '1970-01-01T00:00:09.000Z',
+          },
+        },
+      ],
+    });
+  });
+
   it('rejects local-only outbound fields before starting a request', async () => {
     const fetchImpl = jest.fn();
     const client = new BayaanSyncApiClient({

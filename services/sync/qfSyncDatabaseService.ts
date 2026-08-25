@@ -326,6 +326,12 @@ function parseVerseKeys(value: string | null): string[] | undefined {
   return value.split(',');
 }
 
+function returnedClientDate(value: unknown, fallback: number): number {
+  if (typeof value !== 'string') return fallback;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function returnedVerseOrdinal(verseKey: string): number {
   const match = /^(\d+):(\d+)$/.exec(verseKey);
   if (!match) throw new Error('Invalid returned verse range');
@@ -1189,13 +1195,7 @@ export class QfSyncDatabaseService {
             [ownerScope, payload.verseKey],
           )) as BookmarkRow | null;
           if (row.mutation_type === 'DELETE') {
-            if (!bookmark) {
-              await db.runAsync(
-                `DELETE FROM qf_sync_outbox
-                 WHERE owner_scope = ? AND local_operation_id = ?`,
-                [ownerScope, row.local_operation_id],
-              );
-            } else if (bookmark.remote_id) {
+            if (bookmark?.remote_id) {
               await db.runAsync(
                 `UPDATE qf_sync_outbox
                  SET remote_id = ?, base_server_updated_at = ?,
@@ -1216,6 +1216,88 @@ export class QfSyncDatabaseService {
                WHERE owner_scope = ? AND local_operation_id = ?`,
               [ownerScope, row.local_operation_id],
             );
+          }
+          continue;
+        }
+
+        if (row.resource === 'NOTE') {
+          const payload = JSON.parse(row.payload_json) as NoteOutboxPayload;
+          const verseKeys = (
+            payload.verseKeys?.length ? payload.verseKeys : [payload.verseKey]
+          ).join(',');
+          const note = row.local_id
+            ? ((await db.getFirstAsync(
+                `SELECT * FROM notes WHERE owner_scope = ? AND id = ?`,
+                [ownerScope, row.local_id],
+              )) as NoteRow | null)
+            : null;
+          if (row.mutation_type === 'CREATE') {
+            const matches = (await db.getAllAsync(
+              `SELECT * FROM notes
+               WHERE owner_scope = ? AND remote_id IS NOT NULL AND id <> ?
+                 AND verse_key = ? AND content = ? AND created_at = ?
+                 AND COALESCE(verse_keys, '') = ?`,
+              [
+                ownerScope,
+                row.local_id ?? '',
+                payload.verseKey,
+                payload.content,
+                payload.clientCreatedAt,
+                verseKeys,
+              ],
+            )) as NoteRow[];
+            if (matches.length === 1 && note) {
+              await db.runAsync(
+                `UPDATE notes
+                 SET remote_id = ?, server_created_at = ?, server_updated_at = ?
+                 WHERE owner_scope = ? AND id = ?`,
+                [
+                  matches[0].remote_id,
+                  matches[0].server_created_at,
+                  matches[0].server_updated_at,
+                  ownerScope,
+                  note.id,
+                ],
+              );
+              await db.runAsync(
+                `DELETE FROM notes WHERE owner_scope = ? AND id = ?`,
+                [ownerScope, matches[0].id],
+              );
+              await db.runAsync(
+                `DELETE FROM qf_sync_outbox
+                 WHERE owner_scope = ? AND local_operation_id = ?`,
+                [ownerScope, row.local_operation_id],
+              );
+            }
+            continue;
+          }
+          if (row.mutation_type === 'UPDATE' && note?.remote_id) {
+            const remoteMatchesIntent =
+              note.content === payload.content &&
+              (note.verse_keys ?? note.verse_key) === verseKeys &&
+              note.server_updated_at !== null &&
+              (row.base_server_updated_at === null ||
+                note.server_updated_at > row.base_server_updated_at);
+            if (remoteMatchesIntent) {
+              await db.runAsync(
+                `DELETE FROM qf_sync_outbox
+                 WHERE owner_scope = ? AND local_operation_id = ?`,
+                [ownerScope, row.local_operation_id],
+              );
+            } else {
+              await db.runAsync(
+                `UPDATE qf_sync_outbox
+                 SET remote_id = ?, base_server_updated_at = ?, next_attempt_at = ?
+                 WHERE owner_scope = ? AND local_operation_id = ?`,
+                [
+                  note.remote_id,
+                  note.server_updated_at,
+                  input.rebasedAt,
+                  ownerScope,
+                  row.local_operation_id,
+                ],
+              );
+            }
           }
           continue;
         }
@@ -1514,13 +1596,32 @@ export class QfSyncDatabaseService {
       row.revision === row.in_flight_revision &&
       row.mutation_type === row.in_flight_mutation_type &&
       row.payload_json === row.in_flight_payload_json;
-    if (
-      !currentStillEqualsSent ||
-      mutation.type === 'DELETE' ||
-      !row.local_id
-    ) {
+    if (!currentStillEqualsSent) {
       return;
     }
+    if (mutation.type === 'DELETE') {
+      if (mutation.resource === 'BOOKMARK') {
+        await db.runAsync(
+          `DELETE FROM bookmarks
+           WHERE owner_scope = ? AND (id = ? OR remote_id = ?)`,
+          [ownerScope, row.local_id, mutation.resourceId],
+        );
+      } else if (mutation.resource === 'NOTE') {
+        await db.runAsync(
+          `DELETE FROM notes
+           WHERE owner_scope = ? AND (id = ? OR remote_id = ?)`,
+          [ownerScope, row.local_id, mutation.resourceId],
+        );
+      } else {
+        await db.runAsync(
+          `DELETE FROM qf_reading_locations
+           WHERE owner_scope = ? AND (id = ? OR remote_id = ?)`,
+          [ownerScope, row.local_id, mutation.resourceId],
+        );
+      }
+      return;
+    }
+    if (!row.local_id) return;
     const data = mutation.data;
     if (!data) throw new Error('Returned mutation data is required');
     if (mutation.resource === 'BOOKMARK') {
@@ -1595,7 +1696,7 @@ export class QfSyncDatabaseService {
         surah,
         ayah,
         `${surah}:${ayah}`,
-        mutation.timestamp,
+        returnedClientDate(data.clientUpdatedAt, mutation.timestamp),
         mutation.timestamp,
         ownerScope,
         row.local_id,
@@ -1608,6 +1709,33 @@ export class QfSyncDatabaseService {
     ownerScope: `qf:${string}`,
     row: OutboxRow,
   ): Promise<ReconciledRemoteRow | null> {
+    if (
+      row.local_id &&
+      row.resource === 'NOTE' &&
+      row.in_flight_mutation_type === 'UPDATE' &&
+      row.in_flight_payload_json
+    ) {
+      const payload = JSON.parse(
+        row.in_flight_payload_json,
+      ) as NoteOutboxPayload;
+      const note = (await db.getFirstAsync(
+        `SELECT * FROM notes WHERE owner_scope = ? AND id = ?`,
+        [ownerScope, row.local_id],
+      )) as NoteRow | null;
+      const verseKeys = (
+        payload.verseKeys?.length ? payload.verseKeys : [payload.verseKey]
+      ).join(',');
+      const updateWasObserved =
+        note?.remote_id &&
+        note.content === payload.content &&
+        (note.verse_keys ?? note.verse_key) === verseKeys &&
+        note.server_updated_at !== null &&
+        (row.base_server_updated_at === null ||
+          note.server_updated_at > row.base_server_updated_at);
+      if (updateWasObserved) return note;
+      return null;
+    }
+
     if (row.local_id) {
       const table =
         row.resource === 'BOOKMARK'

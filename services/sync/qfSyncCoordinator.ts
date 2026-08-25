@@ -527,6 +527,10 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
       return;
     }
 
+    if (uncertain) {
+      return;
+    }
+
     await db.runAsync(
       `UPDATE notes
        SET verse_key = ?, surah_number = ?, ayah_number = ?, content = ?, verse_keys = ?,
@@ -749,7 +753,7 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     );
     if (!canonical || this.isStaleTombstone(canonical, mutation)) return;
     const pendingRow = await db.getFirstAsync<NoteOutboxRow>(
-      `SELECT payload_json, base_server_updated_at FROM qf_sync_outbox
+      `SELECT * FROM qf_sync_outbox
        WHERE owner_scope = ? AND resource = 'NOTE' AND local_id = ?
        ORDER BY created_at DESC, local_operation_id DESC LIMIT 1`,
       [scope, canonical.id],
@@ -760,6 +764,12 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     const pendingBase =
       pendingRow?.base_server_updated_at ?? canonical.server_updated_at;
     if (pending && pendingBase !== null && mutation.timestamp <= pendingBase) {
+      return;
+    }
+    if (
+      pendingRow?.delivery_state === 'IN_FLIGHT' ||
+      pendingRow?.delivery_state === 'AMBIGUOUS'
+    ) {
       return;
     }
     await db.runAsync(`DELETE FROM notes WHERE owner_scope = ? AND id = ?`, [
