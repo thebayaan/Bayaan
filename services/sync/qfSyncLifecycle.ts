@@ -75,6 +75,7 @@ interface QfSyncLifecycleOptions {
   flushReadingSession: (accountId?: string) => Promise<void>;
   beginAnnotationScopeHandoff?: (
     previousAccountId: string | null,
+    barrier?: Promise<unknown>,
   ) => Promise<void>;
   clearActiveViews?: () => void;
   now?: () => number;
@@ -126,6 +127,7 @@ export class QfSyncLifecycle {
   private readonly clearActiveViews: () => void;
   private readonly beginAnnotationScopeHandoff: (
     previousAccountId: string | null,
+    barrier?: Promise<unknown>,
   ) => Promise<void>;
   private context: QfSyncLifecycleContext | null = null;
   private epoch = 0;
@@ -146,8 +148,8 @@ export class QfSyncLifecycle {
       });
     this.beginAnnotationScopeHandoff =
       options.beginAnnotationScopeHandoff ??
-      (previousAccountId =>
-        verseAnnotationService.beginScopeHandoff(previousAccountId));
+      ((previousAccountId, barrier) =>
+        verseAnnotationService.beginScopeHandoff(previousAccountId, barrier));
   }
 
   updateContext(context: QfSyncLifecycleContext): void {
@@ -185,7 +187,7 @@ export class QfSyncLifecycle {
           : {errorCode: null, diagnostics: emptyDiagnostics()}),
         guestMergePrompt: null,
       });
-      const loadedSurah = this.invalidateActiveViews();
+      const loadedSurah = this.invalidateActiveViews(true);
       this.trackMaintenance(
         this.completeAnnotationHandoff(
           annotationHandoff ?? Promise.resolve(),
@@ -297,13 +299,19 @@ export class QfSyncLifecycle {
 
   async stop(): Promise<void> {
     const accountId = activeAccount(this.context);
-    const annotationHandoff = this.beginAnnotationScopeHandoff(accountId);
+    const readingFlush = this.options.flushReadingSession(
+      accountId ?? undefined,
+    );
+    const annotationHandoff = this.beginAnnotationScopeHandoff(
+      accountId,
+      readingFlush,
+    );
     this.stopped = true;
     this.epoch += 1;
     this.rerunRequested = false;
     this.cancelRetry();
     this.trackMaintenance(annotationHandoff);
-    await this.options.flushReadingSession(accountId ?? undefined);
+    await readingFlush;
     await this.waitForIdle();
   }
 
@@ -568,11 +576,13 @@ export class QfSyncLifecycle {
     this.maintenanceTasks.add(tracked);
   }
 
-  private invalidateActiveViews(): number | null {
+  private invalidateActiveViews(advanceScopeRevision = false): number | null {
     const loadedSurah = useVerseAnnotationsStore.getState().loadedSurah;
-    useQfSyncStore.setState(state => ({
-      scopeRevision: state.scopeRevision + 1,
-    }));
+    if (advanceScopeRevision) {
+      useQfSyncStore.setState(state => ({
+        scopeRevision: state.scopeRevision + 1,
+      }));
+    }
     this.clearActiveViews();
     return loadedSurah;
   }

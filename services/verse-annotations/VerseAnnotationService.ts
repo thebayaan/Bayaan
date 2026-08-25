@@ -76,6 +76,10 @@ class VerseAnnotationService {
     Set<Promise<unknown>>
   >();
   private handoffGate: Promise<void> = Promise.resolve();
+  private readonly handoffStartGates = new Map<
+    AnnotationOwnerScope,
+    Promise<void>
+  >();
 
   async initialize(): Promise<void> {
     await verseAnnotationDatabaseService.initialize();
@@ -86,21 +90,35 @@ class VerseAnnotationService {
   ): Promise<T> {
     const token = this.captureOperationToken();
     const operation = this.createOperation(token);
-    const pending = this.handoffGate.then(() => work(operation));
+    const startGate =
+      this.handoffStartGates.get(token.ownerScope) ?? this.handoffGate;
+    const pending = startGate.then(() => work(operation));
     this.trackOperation(token.ownerScope, pending);
     return pending;
   }
 
-  beginScopeHandoff(previousAccountId: string | null): Promise<void> {
+  beginScopeHandoff(
+    previousAccountId: string | null,
+    barrier: Promise<unknown> = Promise.resolve(),
+  ): Promise<void> {
+    const scope = ownerScope(previousAccountId);
     const previousGate = this.handoffGate;
-    const operations = [
-      ...(this.activeOperations.get(ownerScope(previousAccountId)) ?? []),
-    ];
+    this.handoffStartGates.set(scope, previousGate);
     const handoff = previousGate.then(async () => {
-      await Promise.allSettled(operations);
+      await barrier;
+      for (;;) {
+        const operations = [...(this.activeOperations.get(scope) ?? [])];
+        if (operations.length === 0) return;
+        await Promise.allSettled(operations);
+      }
     });
-    this.handoffGate = handoff.catch(() => undefined);
-    return handoff;
+    const finalized = handoff.finally(() => {
+      if (this.handoffStartGates.get(scope) === previousGate) {
+        this.handoffStartGates.delete(scope);
+      }
+    });
+    this.handoffGate = finalized.catch(() => undefined);
+    return finalized;
   }
 
   async toggleBookmark(
