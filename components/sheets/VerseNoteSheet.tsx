@@ -62,24 +62,26 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
   const handleSave = useCallback(async () => {
     if (!noteText.trim()) return;
 
-    if (isEditMode && noteId) {
-      await verseAnnotationService.updateNote(noteId, noteText.trim());
-    } else {
-      const allKeys = isRange ? verseKeys : [verseKey];
-      await verseAnnotationService.addNote(
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        noteText.trim(),
-        isRange ? verseKeys : undefined,
-        rewayah,
-      );
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        store.addNote(vk);
+    await verseAnnotationService.runInScope(async operation => {
+      if (isEditMode && noteId) {
+        await operation.updateNote(noteId, noteText.trim());
+      } else {
+        const allKeys = isRange ? verseKeys : [verseKey];
+        await operation.addNote(
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          noteText.trim(),
+          isRange ? verseKeys : undefined,
+          rewayah,
+        );
+        if (operation.isCurrent()) {
+          const store = useVerseAnnotationsStore.getState();
+          for (const vk of allKeys) store.addNote(vk);
+        }
       }
-    }
-    SheetManager.hideAll();
+      if (operation.isCurrent()) SheetManager.hideAll();
+    });
   }, [
     verseKey,
     verseKeys,
@@ -94,13 +96,15 @@ export const VerseNoteSheet = (props: SheetProps<'verse-note'>) => {
 
   const handleDelete = useCallback(async () => {
     if (!noteId) return;
-    await verseAnnotationService.deleteNoteById(noteId);
-    const remaining =
-      await verseAnnotationService.getNotesCountForVerse(verseKey);
-    if (remaining === 0) {
-      useVerseAnnotationsStore.getState().removeNote(verseKey);
-    }
-    SheetManager.hideAll();
+    await verseAnnotationService.runInScope(async operation => {
+      await operation.deleteNoteById(noteId);
+      const remaining = await operation.getNotesCountForVerse(verseKey);
+      if (!operation.isCurrent()) return;
+      if (remaining === 0) {
+        useVerseAnnotationsStore.getState().removeNote(verseKey);
+      }
+      SheetManager.hideAll();
+    });
   }, [verseKey, noteId]);
 
   const canSave = noteText.trim().length > 0;

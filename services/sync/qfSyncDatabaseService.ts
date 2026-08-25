@@ -180,6 +180,12 @@ export interface QfSyncPersistedStatus {
   lastSuccessfulSyncAt: number | null;
   pendingCount: number;
   conflictCount: number;
+  nextPendingAttemptAt: number | null;
+}
+
+interface PendingStatusRow {
+  count: number;
+  next_pending_attempt_at: number | null;
 }
 
 interface ReconciledRemoteRow {
@@ -946,7 +952,11 @@ export class QfSyncDatabaseService {
         [ownerScope],
       ),
       db.getFirstAsync(
-        `SELECT COUNT(*) AS count FROM qf_sync_outbox WHERE owner_scope = ?`,
+        `SELECT COUNT(*) AS count,
+                MIN(CASE WHEN delivery_state = 'PENDING'
+                         THEN COALESCE(next_attempt_at, 0) END)
+                  AS next_pending_attempt_at
+         FROM qf_sync_outbox WHERE owner_scope = ?`,
         [ownerScope],
       ),
       db.getFirstAsync(
@@ -958,8 +968,10 @@ export class QfSyncDatabaseService {
     return {
       lastSuccessfulSyncAt:
         (state as SyncStatusRow | null)?.last_successful_sync_at ?? null,
-      pendingCount: (pending as {count: number} | null)?.count ?? 0,
+      pendingCount: (pending as PendingStatusRow | null)?.count ?? 0,
       conflictCount: (conflicts as {count: number} | null)?.count ?? 0,
+      nextPendingAttemptAt:
+        (pending as PendingStatusRow | null)?.next_pending_attempt_at ?? null,
     };
   }
 

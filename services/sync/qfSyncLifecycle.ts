@@ -20,6 +20,7 @@ import {
   type QfSyncPersistedStatus,
 } from './qfSyncDatabaseService';
 import {qfReadingSessionService} from './qfReadingSessionService';
+import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {
   useBayaanAuthStore,
   type BayaanAuthStatus,
@@ -72,6 +73,9 @@ interface QfSyncLifecycleOptions {
   getSession: () => Promise<BayaanOpaqueSession | null>;
   onSessionRevoked: () => Promise<void>;
   flushReadingSession: (accountId?: string) => Promise<void>;
+  beginAnnotationScopeHandoff?: (
+    previousAccountId: string | null,
+  ) => Promise<void>;
   clearActiveViews?: () => void;
   now?: () => number;
   setTimer?: (
@@ -120,6 +124,9 @@ export class QfSyncLifecycle {
   private readonly setTimer: QfSyncLifecycleOptions['setTimer'];
   private readonly clearTimer: QfSyncLifecycleOptions['clearTimer'];
   private readonly clearActiveViews: () => void;
+  private readonly beginAnnotationScopeHandoff: (
+    previousAccountId: string | null,
+  ) => Promise<void>;
   private context: QfSyncLifecycleContext | null = null;
   private epoch = 0;
   private stopped = false;
@@ -135,16 +142,12 @@ export class QfSyncLifecycle {
     this.clearActiveViews =
       options.clearActiveViews ??
       (() => {
-        const annotations = useVerseAnnotationsStore.getState();
-        const loadedSurah = annotations.loadedSurah;
-        annotations.clearActiveView();
-        if (loadedSurah !== null) {
-          useVerseAnnotationsStore
-            .getState()
-            .loadAnnotationsForSurah(loadedSurah)
-            .catch(() => undefined);
-        }
+        useVerseAnnotationsStore.getState().clearActiveView();
       });
+    this.beginAnnotationScopeHandoff =
+      options.beginAnnotationScopeHandoff ??
+      (previousAccountId =>
+        verseAnnotationService.beginScopeHandoff(previousAccountId));
   }
 
   updateContext(context: QfSyncLifecycleContext): void {
@@ -152,22 +155,25 @@ export class QfSyncLifecycle {
     const previous = this.context;
     const previousAccount = activeAccount(previous);
     const nextAccount = activeAccount(context);
+    const accountChanged = previousAccount !== nextAccount;
     this.stopped = false;
     this.context = context;
     this.epoch += 1;
+    const epoch = this.epoch;
     this.rerunRequested = false;
     this.cancelRetry();
 
-    if (
-      previousAccount !== nextAccount ||
-      (previous?.appActive && !context.appActive)
-    ) {
+    const annotationHandoff = accountChanged
+      ? this.beginAnnotationScopeHandoff(previousAccount)
+      : null;
+
+    if (accountChanged || (previous?.appActive && !context.appActive)) {
       this.trackMaintenance(
         this.options.flushReadingSession(previousAccount ?? undefined),
       );
     }
 
-    if (previousAccount !== nextAccount) {
+    if (accountChanged) {
       const preserveAuthExpired =
         !nextAccount && useQfSyncStore.getState().status === 'auth_expired';
       useQfSyncStore.setState({
@@ -179,12 +185,15 @@ export class QfSyncLifecycle {
           : {errorCode: null, diagnostics: emptyDiagnostics()}),
         guestMergePrompt: null,
       });
-      this.clearActiveViews();
-      if (nextAccount) {
-        this.trackMaintenance(
-          this.hydratePersistedStatus(nextAccount, this.epoch),
-        );
-      }
+      const loadedSurah = this.invalidateActiveViews();
+      this.trackMaintenance(
+        this.completeAnnotationHandoff(
+          annotationHandoff ?? Promise.resolve(),
+          nextAccount,
+          epoch,
+          loadedSurah,
+        ),
+      );
     }
 
     if (!this.options.enabled) {
@@ -203,6 +212,10 @@ export class QfSyncLifecycle {
       return;
     }
     if (!context.appActive) {
+      this.setAvailabilityStatus('idle');
+      return;
+    }
+    if (annotationHandoff) {
       this.setAvailabilityStatus('idle');
       return;
     }
@@ -261,7 +274,9 @@ export class QfSyncLifecycle {
       if (activeAccount(this.context) !== accountId) return;
       useQfSyncStore.setState({guestMergePrompt: null});
       if (decision === 'merge') {
-        this.clearActiveViews();
+        const loadedSurah = this.invalidateActiveViews();
+        await this.reloadActiveViews(loadedSurah);
+        if (activeAccount(this.context) !== accountId) return;
         useQfSyncStore.getState().refreshData();
         this.requestSync();
       }
@@ -282,10 +297,12 @@ export class QfSyncLifecycle {
 
   async stop(): Promise<void> {
     const accountId = activeAccount(this.context);
+    const annotationHandoff = this.beginAnnotationScopeHandoff(accountId);
     this.stopped = true;
     this.epoch += 1;
     this.rerunRequested = false;
     this.cancelRetry();
+    this.trackMaintenance(annotationHandoff);
     await this.options.flushReadingSession(accountId ?? undefined);
     await this.waitForIdle();
   }
@@ -329,7 +346,9 @@ export class QfSyncLifecycle {
         return;
       }
 
-      this.clearActiveViews();
+      const loadedSurah = this.invalidateActiveViews();
+      await this.reloadActiveViews(loadedSurah);
+      if (!this.isCurrent(epoch, accountId)) return;
       useQfSyncStore.getState().refreshData();
 
       const offer = await this.options.guestImportService.getOffer(accountId);
@@ -368,11 +387,27 @@ export class QfSyncLifecycle {
       const pushedCount = push.status === 'synced' ? push.pushed : 0;
       const ambiguousCount = push.status === 'recovered' ? push.ambiguous : 0;
       const hasConflict = ambiguousCount > 0 || persisted.conflictCount > 0;
+      const nextPendingAttemptAt = persisted.nextPendingAttemptAt;
+      const retryDelayMs =
+        nextPendingAttemptAt === null
+          ? null
+          : Math.max(0, nextPendingAttemptAt - this.now());
+      const waitingForPendingRetry = retryDelayMs !== null && retryDelayMs > 0;
+      const status: QfSyncStatus = hasConflict
+        ? 'conflict'
+        : waitingForPendingRetry
+        ? 'retry'
+        : 'idle';
+      const errorCode = hasConflict
+        ? 'conflict'
+        : waitingForPendingRetry
+        ? 'pending_retry'
+        : null;
       this.setForCurrent(epoch, accountId, {
-        status: hasConflict ? 'conflict' : 'idle',
+        status,
         lastSuccessAt: persisted.lastSuccessfulSyncAt ?? this.now(),
-        retryAt: null,
-        errorCode: hasConflict ? 'conflict' : null,
+        retryAt: waitingForPendingRetry ? nextPendingAttemptAt : null,
+        errorCode,
         diagnostics: emptyDiagnostics({
           pendingCount: persisted.pendingCount,
           pushedCount,
@@ -380,11 +415,15 @@ export class QfSyncLifecycle {
           conflictCount: persisted.conflictCount,
           durationMs: Math.max(0, this.now() - startedAt),
           httpClass: '2xx',
-          errorCode: hasConflict ? 'conflict' : null,
+          errorCode,
         }),
       });
-      if (push.status === 'synced' && push.pushed >= 100) {
-        this.scheduleRetry(epoch, accountId, 0);
+      if (retryDelayMs !== null) {
+        if (retryDelayMs === 0) {
+          this.requestSync();
+        } else {
+          this.scheduleRetry(epoch, accountId, retryDelayMs);
+        }
       }
     } catch (error) {
       if (!this.isCurrent(epoch, accountId)) return;
@@ -527,6 +566,47 @@ export class QfSyncLifecycle {
         this.maintenanceTasks.delete(tracked);
       });
     this.maintenanceTasks.add(tracked);
+  }
+
+  private invalidateActiveViews(): number | null {
+    const loadedSurah = useVerseAnnotationsStore.getState().loadedSurah;
+    useQfSyncStore.setState(state => ({
+      scopeRevision: state.scopeRevision + 1,
+    }));
+    this.clearActiveViews();
+    return loadedSurah;
+  }
+
+  private async reloadActiveViews(loadedSurah: number | null): Promise<void> {
+    if (loadedSurah !== null) {
+      await useVerseAnnotationsStore
+        .getState()
+        .loadAnnotationsForSurah(loadedSurah);
+    }
+  }
+
+  private async completeAnnotationHandoff(
+    handoff: Promise<void>,
+    nextAccountId: string | null,
+    epoch: number,
+    loadedSurah: number | null,
+  ): Promise<void> {
+    await handoff;
+    if (
+      this.stopped ||
+      this.epoch !== epoch ||
+      activeAccount(this.context) !== nextAccountId
+    ) {
+      return;
+    }
+    this.clearActiveViews();
+    await this.reloadActiveViews(loadedSurah);
+    if (nextAccountId) {
+      this.trackMaintenance(this.hydratePersistedStatus(nextAccountId, epoch));
+    }
+    if (this.epoch === epoch && this.canRun()) {
+      this.requestSync();
+    }
   }
 
   private async hydratePersistedStatus(

@@ -212,25 +212,30 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const handleToggleBookmark = useCallback(async () => {
     lightHaptics();
     const keys = isRange ? verseKeys : [verseKey];
-    const store = useVerseAnnotationsStore.getState();
-    if (isBookmarked) {
-      for (const vk of keys) {
-        await verseAnnotationService.removeBookmark(vk);
-        store.removeBookmark(vk);
+    await verseAnnotationService.runInScope(async operation => {
+      if (isBookmarked) {
+        for (const vk of keys) {
+          await operation.removeBookmark(vk);
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().removeBookmark(vk);
+          }
+        }
+      } else {
+        for (const vk of keys) {
+          const [s, a] = vk.split(':');
+          await operation.addBookmark(
+            vk,
+            parseInt(s, 10),
+            parseInt(a, 10),
+            resolvedRewayah,
+          );
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().addBookmark(vk);
+          }
+        }
       }
-    } else {
-      for (const vk of keys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.addBookmark(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          resolvedRewayah,
-        );
-        store.addBookmark(vk);
-      }
-    }
-    await SheetManager.hide(props.sheetId);
+      if (operation.isCurrent()) await SheetManager.hide(props.sheetId);
+    });
   }, [
     verseKey,
     verseKeys,
@@ -244,12 +249,15 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     if (isHighlighted) {
       lightHaptics();
       const keys = isRange ? verseKeys : [verseKey];
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of keys) {
-        await verseAnnotationService.removeHighlight(vk);
-        store.removeHighlight(vk);
-      }
-      hideCurrentSheet();
+      await verseAnnotationService.runInScope(async operation => {
+        for (const vk of keys) {
+          await operation.removeHighlight(vk);
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().removeHighlight(vk);
+          }
+        }
+        if (operation.isCurrent()) hideCurrentSheet();
+      });
     } else {
       setActiveScreen('highlight');
     }

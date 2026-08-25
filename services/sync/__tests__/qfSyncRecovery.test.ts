@@ -2,6 +2,10 @@ import {
   BayaanSyncApiError,
   type BayaanSyncPushRequest,
 } from '@/services/sync/bayaanSyncApiClient';
+
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
 import {
   QfSyncCoordinator,
   type QfSyncPullStore,
@@ -582,6 +586,123 @@ async function createRemoteBackedNote(
 }
 
 describe('SQLite push recovery store', () => {
+  it('drains a newer pending revision after restart recovery without another external trigger', async () => {
+    const databaseName = 'lifecycle-restart-newer-bookmark-delete.db';
+    let services = await createServices(databaseName);
+    await services.sync.initialize();
+    await seedHead(services.database, 7001);
+    await services.sync.addBookmark({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+    });
+    const [created] = await services.sync.getOutboxEntries(accountId);
+    await services.sync.markOperationInFlight({
+      accountId,
+      localOperationId: created.localOperationId,
+      startedAt: 7001,
+    });
+    await services.sync.removeBookmark({accountId, verseKey: '2:255'});
+    await services.database.close();
+
+    services = await createServices(databaseName);
+    await services.sync.initialize();
+    const pushRequests: BayaanSyncPushRequest[] = [];
+    const transport = {
+      pull: async (
+        _token: string,
+        request: {metadataOnly?: boolean},
+      ): Promise<BayaanSyncPullPage> =>
+        request.metadataOnly
+          ? {lastMutationAt: 7002, mutations: []}
+          : {
+              lastMutationAt: 7002,
+              mutations: [
+                {
+                  resource: 'BOOKMARK',
+                  type: 'CREATE',
+                  resourceId: 'remote-bookmark-1',
+                  timestamp: 7002,
+                  data: {key: 2, verseNumber: 255},
+                },
+              ],
+              page: 1,
+              limit: 1000,
+              total: 1,
+              hasMore: false,
+            },
+      push: async (
+        _token: string,
+        request: BayaanSyncPushRequest,
+      ): Promise<BayaanSyncPushResult> => {
+        pushRequests.push(request);
+        return {
+          lastMutationAt: 7003,
+          mutations: request.mutations.map(mutation => {
+            if (!mutation.resourceId) {
+              throw new Error('expected a remote-backed delete');
+            }
+            return {
+              resource: mutation.resource,
+              type: mutation.type,
+              resourceId: mutation.resourceId,
+              timestamp: 7003,
+            };
+          }),
+        };
+      },
+    };
+    const coordinator = new services.IntegratedCoordinator({
+      transport,
+      store: new services.SqliteQfSyncPullStore(services.database),
+      pushStore: services.sync,
+      now: () => 8001,
+    });
+    const {QfSyncLifecycle} = require('@/services/sync/qfSyncLifecycle');
+    const {useQfSyncStore} = require('@/store/qfSyncStore');
+    useQfSyncStore.getState().resetForTesting();
+    const lifecycle = new QfSyncLifecycle({
+      enabled: true,
+      coordinator,
+      guestImportService: {
+        getOffer: async () => null,
+        merge: async () => undefined,
+        keepSeparate: async () => undefined,
+      },
+      database: services.sync,
+      getSession: async () => ({
+        token: sessionToken,
+        expiresAt: 99_999,
+        profile: {accountId},
+      }),
+      onSessionRevoked: async () => undefined,
+      flushReadingSession: async () => undefined,
+      now: () => 8001,
+    });
+
+    lifecycle.updateContext({
+      authStatus: 'authenticated',
+      accountId,
+      online: true,
+      appActive: true,
+    });
+    await lifecycle.waitForIdle();
+
+    expect(pushRequests).toHaveLength(1);
+    expect(pushRequests[0].mutations).toEqual([
+      expect.objectContaining({
+        resource: 'BOOKMARK',
+        type: 'DELETE',
+        resourceId: 'remote-bookmark-1',
+      }),
+    ]);
+    await expect(services.sync.getOutboxEntries(accountId)).resolves.toEqual(
+      [],
+    );
+    await services.database.close();
+  });
+
   it('preserves an uncertain NOTE UPDATE when pull observes a different remote update', async () => {
     const {database, annotations, sync, SqliteQfSyncPullStore} =
       await createServices('nonmatching-note-update.db');

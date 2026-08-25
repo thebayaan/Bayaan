@@ -15,6 +15,10 @@ import {useQfSyncStore} from '@/store/qfSyncStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {verseAnnotationDatabaseService} from '@/services/database/VerseAnnotationDatabaseService';
 import {qfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
+import React from 'react';
+import renderer, {act} from 'react-test-renderer';
+import {useVerseActions} from '@/hooks/useVerseActions';
+import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 
 const authenticatedOnline: QfSyncLifecycleContext = {
   authStatus: 'authenticated',
@@ -69,6 +73,7 @@ function createLifecycle(overrides: Record<string, unknown> = {}) {
       lastSuccessfulSyncAt: 5000,
       pendingCount: 0,
       conflictCount: 0,
+      nextPendingAttemptAt: null,
     })),
   };
   const lifecycle = new QfSyncLifecycle({
@@ -88,6 +93,7 @@ function createLifecycle(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   jest.restoreAllMocks();
   useQfSyncStore.getState().resetForTesting();
+  useVerseAnnotationsStore.getState().clearActiveView();
 });
 
 describe('QfSyncLifecycle', () => {
@@ -219,7 +225,8 @@ describe('QfSyncLifecycle', () => {
     const {lifecycle} = createLifecycle({coordinator, getSession});
 
     lifecycle.updateContext(authenticatedOnline);
-    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(coordinator.pull).toHaveBeenCalledTimes(1);
     lifecycle.updateContext({...authenticatedOnline, accountId: 'account-b'});
     finishAccountAPull(stablePull());
     await lifecycle.waitForIdle();
@@ -248,6 +255,32 @@ describe('QfSyncLifecycle', () => {
     await restarted.lifecycle.waitForIdle();
     expect(restarted.events.slice(0, 2)).toEqual(['pull', 'guest-offer']);
     expect(restarted.events.at(-1)).toBe('push');
+  });
+
+  it('schedules the earliest durable pending retry after an idle push', async () => {
+    const setTimer = jest.fn(
+      () => 42 as unknown as ReturnType<typeof setTimeout>,
+    );
+    const database = {
+      getSyncStatus: jest.fn(async () => ({
+        lastSuccessfulSyncAt: 5000,
+        pendingCount: 1,
+        conflictCount: 0,
+        nextPendingAttemptAt: 6500,
+      })),
+    };
+    const {lifecycle} = createLifecycle({database, setTimer});
+
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+
+    expect(setTimer).toHaveBeenCalledTimes(1);
+    expect(setTimer).toHaveBeenCalledWith(expect.any(Function), 500);
+    expect(useQfSyncStore.getState()).toMatchObject({
+      status: 'retry',
+      retryAt: 6500,
+      errorCode: 'pending_retry',
+    });
   });
 
   it('honors the kill switch even when authenticated and online', async () => {
@@ -410,6 +443,86 @@ describe('QfReadingSessionService', () => {
 });
 
 describe('VerseAnnotationService active scope', () => {
+  it('quiesces a paused account write and rejects its stale post-await view update on switch', async () => {
+    jest
+      .spyOn(verseAnnotationDatabaseService, 'isBookmarkedInOwnerScope')
+      .mockResolvedValue(false);
+    let finishWrite: (value: {
+      id: string;
+      ownerScope: 'qf:account-a';
+      verseKey: string;
+      surahNumber: number;
+      ayahNumber: number;
+      createdAt: number;
+      rewayahId: 'hafs';
+    }) => void = () => undefined;
+    const accountAdd = jest
+      .spyOn(qfSyncDatabaseService, 'addBookmark')
+      .mockImplementation(
+        () =>
+          new Promise(resolve => {
+            finishWrite = resolve;
+          }),
+      );
+    let actions: ReturnType<typeof useVerseActions> | null = null;
+    function ActionsHarness() {
+      actions = useVerseActions();
+      return null;
+    }
+    let screen: renderer.ReactTestRenderer | null = null;
+    await act(async () => {
+      screen = renderer.create(React.createElement(ActionsHarness) as never);
+    });
+    const {lifecycle} = createLifecycle();
+    lifecycle.updateContext({...authenticatedOnline, online: false});
+    await lifecycle.waitForIdle();
+    const capturedActions = actions as ReturnType<
+      typeof useVerseActions
+    > | null;
+    if (!capturedActions) throw new Error('verse actions hook did not render');
+
+    let write: Promise<void> = Promise.resolve();
+    await act(async () => {
+      write = capturedActions.toggleBookmark('2:255', 2, 255);
+      await Promise.resolve();
+    });
+    lifecycle.updateContext({
+      ...authenticatedOnline,
+      accountId: 'account-b',
+      online: false,
+    });
+    let handoffFinished = false;
+    const handoff = lifecycle.waitForIdle().then(() => {
+      handoffFinished = true;
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(handoffFinished).toBe(false);
+    finishWrite({
+      id: 'account-a-bookmark',
+      ownerScope: 'qf:account-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      createdAt: 7001,
+      rewayahId: 'hafs',
+    });
+    await act(async () => {
+      await write;
+      await handoff;
+    });
+
+    expect(accountAdd).toHaveBeenCalledWith(
+      expect.objectContaining({accountId: 'account-a'}),
+    );
+    expect(useVerseAnnotationsStore.getState().isBookmarked('2:255')).toBe(
+      false,
+    );
+    await act(async () => {
+      screen?.unmount();
+    });
+  });
+
   it('keeps guest writes local and queues authenticated offline writes in only that account', async () => {
     const guestAdd = jest
       .spyOn(verseAnnotationDatabaseService, 'addBookmark')
@@ -449,6 +562,48 @@ describe('VerseAnnotationService active scope', () => {
       rewayahId: 'hafs',
     });
     expect(useQfSyncStore.getState().syncRequestId).toBe(1);
+  });
+
+  it('waits for the current account annotation transaction when stopped', async () => {
+    let finishWrite: (value: {
+      id: string;
+      ownerScope: 'qf:account-a';
+      verseKey: string;
+      surahNumber: number;
+      ayahNumber: number;
+      createdAt: number;
+      rewayahId: 'hafs';
+    }) => void = () => undefined;
+    jest.spyOn(qfSyncDatabaseService, 'addBookmark').mockImplementation(
+      () =>
+        new Promise(resolve => {
+          finishWrite = resolve;
+        }),
+    );
+    const {lifecycle} = createLifecycle();
+    lifecycle.updateContext({...authenticatedOnline, online: false});
+    await lifecycle.waitForIdle();
+
+    const write = verseAnnotationService.addBookmark('2:255', 2, 255, 'hafs');
+    await Promise.resolve();
+    let stopped = false;
+    const stop = lifecycle.stop().then(() => {
+      stopped = true;
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(stopped).toBe(false);
+
+    finishWrite({
+      id: 'account-a-bookmark',
+      ownerScope: 'qf:account-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      createdAt: 7001,
+      rewayahId: 'hafs',
+    });
+    await Promise.all([write, stop]);
+    expect(stopped).toBe(true);
   });
 
   it('queries only the currently active A-to-B-to-guest scope', async () => {

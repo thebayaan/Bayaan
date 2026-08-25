@@ -41,30 +41,36 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
-      const store = useVerseAnnotationsStore.getState();
-      for (const vk of allKeys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.upsertHighlight(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          color,
-          rewayah,
-        );
-        store.setHighlight(vk, color);
-      }
-      onDone();
+      await verseAnnotationService.runInScope(async operation => {
+        for (const vk of allKeys) {
+          const [s, a] = vk.split(':');
+          await operation.upsertHighlight(
+            vk,
+            parseInt(s, 10),
+            parseInt(a, 10),
+            color,
+            rewayah,
+          );
+          if (operation.isCurrent()) {
+            useVerseAnnotationsStore.getState().setHighlight(vk, color);
+          }
+        }
+        if (operation.isCurrent()) onDone();
+      });
     },
     [allKeys, onDone, rewayah],
   );
 
   const handleRemove = useCallback(async () => {
-    const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      await verseAnnotationService.removeHighlight(vk);
-      store.removeHighlight(vk);
-    }
-    onDone();
+    await verseAnnotationService.runInScope(async operation => {
+      for (const vk of allKeys) {
+        await operation.removeHighlight(vk);
+        if (operation.isCurrent()) {
+          useVerseAnnotationsStore.getState().removeHighlight(vk);
+        }
+      }
+      if (operation.isCurrent()) onDone();
+    });
   }, [allKeys, onDone]);
 
   return (

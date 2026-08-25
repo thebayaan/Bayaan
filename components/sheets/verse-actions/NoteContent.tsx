@@ -40,19 +40,20 @@ export const NoteContent: React.FC<NoteContentProps> = ({
     if (!noteText.trim()) return;
 
     const allKeys = isRange ? verseKeys! : [verseKey];
-    await verseAnnotationService.addNote(
-      verseKey,
-      surahNumber,
-      ayahNumber,
-      noteText.trim(),
-      isRange ? verseKeys : undefined,
-      rewayah,
-    );
-    const store = useVerseAnnotationsStore.getState();
-    for (const vk of allKeys) {
-      store.addNote(vk);
-    }
-    onDone();
+    await verseAnnotationService.runInScope(async operation => {
+      await operation.addNote(
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        noteText.trim(),
+        isRange ? verseKeys : undefined,
+        rewayah,
+      );
+      if (!operation.isCurrent()) return;
+      const store = useVerseAnnotationsStore.getState();
+      for (const vk of allKeys) store.addNote(vk);
+      onDone();
+    });
   }, [
     verseKey,
     verseKeys,

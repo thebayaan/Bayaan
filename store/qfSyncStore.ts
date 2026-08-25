@@ -33,6 +33,7 @@ export interface QfGuestMergePrompt {
 
 interface QfSyncState {
   activeAccountId: string | null;
+  scopeRevision: number;
   status: QfSyncStatus;
   lastSuccessAt: number | null;
   retryAt: number | null;
@@ -58,6 +59,7 @@ export const EMPTY_QF_SYNC_DIAGNOSTICS: QfSyncDiagnostics = {
 
 const initialState = {
   activeAccountId: null,
+  scopeRevision: 0,
   status: 'signed_out' as const,
   lastSuccessAt: null,
   retryAt: null,

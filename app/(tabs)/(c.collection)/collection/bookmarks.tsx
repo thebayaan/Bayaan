@@ -101,9 +101,12 @@ const BookmarksScreen = () => {
       ) {
         return;
       }
-      await verseAnnotationService.removeBookmark(bookmark.verseKey);
-      useVerseAnnotationsStore.getState().removeBookmark(bookmark.verseKey);
-      setBookmarks(prev => prev.filter(b => b.bookmark.id !== bookmark.id));
+      await verseAnnotationService.runInScope(async operation => {
+        await operation.removeBookmark(bookmark.verseKey);
+        if (!operation.isCurrent()) return;
+        useVerseAnnotationsStore.getState().removeBookmark(bookmark.verseKey);
+        setBookmarks(prev => prev.filter(b => b.bookmark.id !== bookmark.id));
+      });
     },
     [activeScopeKey],
   );

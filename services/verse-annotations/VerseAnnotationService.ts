@@ -20,12 +20,87 @@ function ownerScope(accountId: string | null): AnnotationOwnerScope {
 }
 
 function requestSync(accountId: string | null): void {
-  if (accountId) useQfSyncStore.getState().requestSync();
+  const state = useQfSyncStore.getState();
+  if (accountId && state.activeAccountId === accountId) state.requestSync();
+}
+
+interface AnnotationOperationToken {
+  accountId: string | null;
+  ownerScope: AnnotationOwnerScope;
+  scopeRevision: number;
+}
+
+export interface VerseAnnotationOperation {
+  readonly accountId: string | null;
+  readonly ownerScope: AnnotationOwnerScope;
+  isCurrent(): boolean;
+  toggleBookmark(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    rewayahId?: string,
+  ): Promise<boolean>;
+  addBookmark(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    rewayahId?: string,
+  ): ReturnType<typeof qfSyncDatabaseService.addBookmark>;
+  removeBookmark(verseKey: string): Promise<void>;
+  addNote(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    content: string,
+    verseKeys?: string[],
+    rewayahId?: string,
+  ): ReturnType<typeof qfSyncDatabaseService.addNote>;
+  updateNote(noteId: string, content: string): Promise<void>;
+  deleteNoteById(noteId: string): Promise<void>;
+  getNotesCountForVerse(verseKey: string): Promise<number>;
+  upsertHighlight(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    color: HighlightColor,
+    rewayahId?: string,
+  ): ReturnType<
+    typeof verseAnnotationDatabaseService.upsertHighlightForOwnerScope
+  >;
+  removeHighlight(verseKey: string): Promise<void>;
 }
 
 class VerseAnnotationService {
+  private readonly activeOperations = new Map<
+    AnnotationOwnerScope,
+    Set<Promise<unknown>>
+  >();
+  private handoffGate: Promise<void> = Promise.resolve();
+
   async initialize(): Promise<void> {
     await verseAnnotationDatabaseService.initialize();
+  }
+
+  runInScope<T>(
+    work: (operation: VerseAnnotationOperation) => Promise<T>,
+  ): Promise<T> {
+    const token = this.captureOperationToken();
+    const operation = this.createOperation(token);
+    const pending = this.handoffGate.then(() => work(operation));
+    this.trackOperation(token.ownerScope, pending);
+    return pending;
+  }
+
+  beginScopeHandoff(previousAccountId: string | null): Promise<void> {
+    const previousGate = this.handoffGate;
+    const operations = [
+      ...(this.activeOperations.get(ownerScope(previousAccountId)) ?? []),
+    ];
+    const handoff = previousGate.then(async () => {
+      await Promise.allSettled(operations);
+    });
+    this.handoffGate = handoff.catch(() => undefined);
+    return handoff;
   }
 
   async toggleBookmark(
@@ -34,41 +109,9 @@ class VerseAnnotationService {
     ayahNumber: number,
     rewayahId?: string,
   ): Promise<boolean> {
-    const accountId = activeAccountId();
-    const scope = ownerScope(accountId);
-    const exists =
-      await verseAnnotationDatabaseService.isBookmarkedInOwnerScope(
-        scope,
-        verseKey,
-      );
-    if (exists) {
-      if (accountId) {
-        await qfSyncDatabaseService.removeBookmark({accountId, verseKey});
-      } else {
-        await verseAnnotationDatabaseService.removeBookmark(verseKey);
-      }
-      requestSync(accountId);
-      return false;
-    }
-    const resolvedRewayah = rewayahId ?? currentRewayah();
-    if (accountId) {
-      await qfSyncDatabaseService.addBookmark({
-        accountId,
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        rewayahId: resolvedRewayah,
-      });
-    } else {
-      await verseAnnotationDatabaseService.addBookmark(
-        verseKey,
-        surahNumber,
-        ayahNumber,
-        resolvedRewayah,
-      );
-    }
-    requestSync(accountId);
-    return true;
+    return this.runInScope(operation =>
+      operation.toggleBookmark(verseKey, surahNumber, ayahNumber, rewayahId),
+    );
   }
 
   async getBookmarksBySurah(surahNumber: number) {
@@ -97,11 +140,199 @@ class VerseAnnotationService {
     ayahNumber: number,
     rewayahId?: string,
   ) {
-    const accountId = activeAccountId();
+    return this.runInScope(operation =>
+      operation.addBookmark(verseKey, surahNumber, ayahNumber, rewayahId),
+    );
+  }
+
+  async removeBookmark(verseKey: string): Promise<void> {
+    return this.runInScope(operation => operation.removeBookmark(verseKey));
+  }
+
+  async addNote(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    content: string,
+    verseKeys?: string[],
+    rewayahId?: string,
+  ) {
+    return this.runInScope(operation =>
+      operation.addNote(
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        content,
+        verseKeys,
+        rewayahId,
+      ),
+    );
+  }
+
+  async updateNote(noteId: string, content: string): Promise<void> {
+    return this.runInScope(operation => operation.updateNote(noteId, content));
+  }
+
+  async deleteNoteById(noteId: string): Promise<void> {
+    return this.runInScope(operation => operation.deleteNoteById(noteId));
+  }
+
+  async upsertHighlight(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    color: HighlightColor,
+    rewayahId?: string,
+  ) {
+    return this.runInScope(operation =>
+      operation.upsertHighlight(
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        color,
+        rewayahId,
+      ),
+    );
+  }
+
+  async removeHighlight(verseKey: string): Promise<void> {
+    return this.runInScope(operation => operation.removeHighlight(verseKey));
+  }
+
+  async setHighlight(
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    color: HighlightColor,
+    rewayahId?: string,
+  ) {
+    return this.upsertHighlight(
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      color,
+      rewayahId,
+    );
+  }
+
+  private captureOperationToken(): AnnotationOperationToken {
+    const state = useQfSyncStore.getState();
+    return {
+      accountId: state.activeAccountId,
+      ownerScope: ownerScope(state.activeAccountId),
+      scopeRevision: state.scopeRevision,
+    };
+  }
+
+  private createOperation(
+    token: AnnotationOperationToken,
+  ): VerseAnnotationOperation {
+    return {
+      accountId: token.accountId,
+      ownerScope: token.ownerScope,
+      isCurrent: () => {
+        const state = useQfSyncStore.getState();
+        return (
+          state.activeAccountId === token.accountId &&
+          state.scopeRevision === token.scopeRevision
+        );
+      },
+      toggleBookmark: (verseKey, surahNumber, ayahNumber, rewayahId) =>
+        this.toggleBookmarkInScope(
+          token,
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          rewayahId,
+        ),
+      addBookmark: (verseKey, surahNumber, ayahNumber, rewayahId) =>
+        this.addBookmarkInScope(
+          token,
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          rewayahId,
+        ),
+      removeBookmark: verseKey => this.removeBookmarkInScope(token, verseKey),
+      addNote: (
+        verseKey,
+        surahNumber,
+        ayahNumber,
+        content,
+        verseKeys,
+        rewayahId,
+      ) =>
+        this.addNoteInScope(
+          token,
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          content,
+          verseKeys,
+          rewayahId,
+        ),
+      updateNote: (noteId, content) =>
+        this.updateNoteInScope(token, noteId, content),
+      deleteNoteById: noteId => this.deleteNoteInScope(token, noteId),
+      getNotesCountForVerse: verseKey =>
+        verseAnnotationDatabaseService.getNotesCountForVerseInOwnerScope(
+          token.ownerScope,
+          verseKey,
+        ),
+      upsertHighlight: (verseKey, surahNumber, ayahNumber, color, rewayahId) =>
+        verseAnnotationDatabaseService.upsertHighlightForOwnerScope(
+          token.ownerScope,
+          verseKey,
+          surahNumber,
+          ayahNumber,
+          color,
+          rewayahId ?? currentRewayah(),
+        ),
+      removeHighlight: verseKey =>
+        verseAnnotationDatabaseService.removeHighlightInOwnerScope(
+          token.ownerScope,
+          verseKey,
+        ),
+    };
+  }
+
+  private async toggleBookmarkInScope(
+    token: AnnotationOperationToken,
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    rewayahId?: string,
+  ): Promise<boolean> {
+    const exists =
+      await verseAnnotationDatabaseService.isBookmarkedInOwnerScope(
+        token.ownerScope,
+        verseKey,
+      );
+    if (exists) {
+      await this.removeBookmarkInScope(token, verseKey);
+      return false;
+    }
+    await this.addBookmarkInScope(
+      token,
+      verseKey,
+      surahNumber,
+      ayahNumber,
+      rewayahId,
+    );
+    return true;
+  }
+
+  private async addBookmarkInScope(
+    token: AnnotationOperationToken,
+    verseKey: string,
+    surahNumber: number,
+    ayahNumber: number,
+    rewayahId?: string,
+  ) {
     const resolvedRewayah = rewayahId ?? currentRewayah();
-    const bookmark = accountId
+    const bookmark = token.accountId
       ? await qfSyncDatabaseService.addBookmark({
-          accountId,
+          accountId: token.accountId,
           verseKey,
           surahNumber,
           ayahNumber,
@@ -113,21 +344,27 @@ class VerseAnnotationService {
           ayahNumber,
           resolvedRewayah,
         );
-    requestSync(accountId);
+    requestSync(token.accountId);
     return bookmark;
   }
 
-  async removeBookmark(verseKey: string): Promise<void> {
-    const accountId = activeAccountId();
-    if (accountId) {
-      await qfSyncDatabaseService.removeBookmark({accountId, verseKey});
+  private async removeBookmarkInScope(
+    token: AnnotationOperationToken,
+    verseKey: string,
+  ): Promise<void> {
+    if (token.accountId) {
+      await qfSyncDatabaseService.removeBookmark({
+        accountId: token.accountId,
+        verseKey,
+      });
     } else {
       await verseAnnotationDatabaseService.removeBookmark(verseKey);
     }
-    requestSync(accountId);
+    requestSync(token.accountId);
   }
 
-  async addNote(
+  private async addNoteInScope(
+    token: AnnotationOperationToken,
     verseKey: string,
     surahNumber: number,
     ayahNumber: number,
@@ -135,11 +372,10 @@ class VerseAnnotationService {
     verseKeys?: string[],
     rewayahId?: string,
   ) {
-    const accountId = activeAccountId();
     const resolvedRewayah = rewayahId ?? currentRewayah();
-    const note = accountId
+    const note = token.accountId
       ? await qfSyncDatabaseService.addNote({
-          accountId,
+          accountId: token.accountId,
           verseKey,
           surahNumber,
           ayahNumber,
@@ -155,18 +391,54 @@ class VerseAnnotationService {
           verseKeys,
           resolvedRewayah,
         );
-    requestSync(accountId);
+    requestSync(token.accountId);
     return note;
   }
 
-  async updateNote(noteId: string, content: string): Promise<void> {
-    const accountId = activeAccountId();
-    if (accountId) {
-      await qfSyncDatabaseService.updateNote({accountId, noteId, content});
+  private async updateNoteInScope(
+    token: AnnotationOperationToken,
+    noteId: string,
+    content: string,
+  ): Promise<void> {
+    if (token.accountId) {
+      await qfSyncDatabaseService.updateNote({
+        accountId: token.accountId,
+        noteId,
+        content,
+      });
     } else {
       await verseAnnotationDatabaseService.updateNote(noteId, content);
     }
-    requestSync(accountId);
+    requestSync(token.accountId);
+  }
+
+  private async deleteNoteInScope(
+    token: AnnotationOperationToken,
+    noteId: string,
+  ): Promise<void> {
+    if (token.accountId) {
+      await qfSyncDatabaseService.deleteNote({
+        accountId: token.accountId,
+        noteId,
+      });
+    } else {
+      await verseAnnotationDatabaseService.deleteNoteById(noteId);
+    }
+    requestSync(token.accountId);
+  }
+
+  private trackOperation(
+    scope: AnnotationOwnerScope,
+    operation: Promise<unknown>,
+  ): void {
+    const operations = this.activeOperations.get(scope) ?? new Set();
+    operations.add(operation);
+    this.activeOperations.set(scope, operations);
+    const remove = () => {
+      operations.delete(operation);
+      if (operations.size === 0) this.activeOperations.delete(scope);
+    };
+    operation.then(remove, remove);
   }
 
   async getNoteById(noteId: string) {
@@ -181,16 +453,6 @@ class VerseAnnotationService {
       ownerScope(activeAccountId()),
       verseKey,
     );
-  }
-
-  async deleteNoteById(noteId: string): Promise<void> {
-    const accountId = activeAccountId();
-    if (accountId) {
-      await qfSyncDatabaseService.deleteNote({accountId, noteId});
-    } else {
-      await verseAnnotationDatabaseService.deleteNoteById(noteId);
-    }
-    requestSync(accountId);
   }
 
   async getNotesCountForVerse(verseKey: string) {
@@ -213,30 +475,6 @@ class VerseAnnotationService {
     );
   }
 
-  async upsertHighlight(
-    verseKey: string,
-    surahNumber: number,
-    ayahNumber: number,
-    color: HighlightColor,
-    rewayahId?: string,
-  ) {
-    return verseAnnotationDatabaseService.upsertHighlightForOwnerScope(
-      ownerScope(activeAccountId()),
-      verseKey,
-      surahNumber,
-      ayahNumber,
-      color,
-      rewayahId ?? currentRewayah(),
-    );
-  }
-
-  async removeHighlight(verseKey: string): Promise<void> {
-    await verseAnnotationDatabaseService.removeHighlightInOwnerScope(
-      ownerScope(activeAccountId()),
-      verseKey,
-    );
-  }
-
   async getHighlightsBySurah(surahNumber: number) {
     return verseAnnotationDatabaseService.getHighlightsBySurahInOwnerScope(
       ownerScope(activeAccountId()),
@@ -248,22 +486,6 @@ class VerseAnnotationService {
     return verseAnnotationDatabaseService.getAnnotationsForSurahInOwnerScope(
       ownerScope(activeAccountId()),
       surahNumber,
-    );
-  }
-
-  async setHighlight(
-    verseKey: string,
-    surahNumber: number,
-    ayahNumber: number,
-    color: HighlightColor,
-    rewayahId?: string,
-  ) {
-    return this.upsertHighlight(
-      verseKey,
-      surahNumber,
-      ayahNumber,
-      color,
-      rewayahId,
     );
   }
 }

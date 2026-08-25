@@ -97,14 +97,15 @@ const NotesScreen = () => {
       ) {
         return;
       }
-      await verseAnnotationService.deleteNoteById(note.id);
-      const remaining = await verseAnnotationService.getNotesCountForVerse(
-        note.verseKey,
-      );
-      if (remaining === 0) {
-        useVerseAnnotationsStore.getState().removeNote(note.verseKey);
-      }
-      setNotes(prev => prev.filter(n => n.note.id !== note.id));
+      await verseAnnotationService.runInScope(async operation => {
+        await operation.deleteNoteById(note.id);
+        const remaining = await operation.getNotesCountForVerse(note.verseKey);
+        if (!operation.isCurrent()) return;
+        if (remaining === 0) {
+          useVerseAnnotationsStore.getState().removeNote(note.verseKey);
+        }
+        setNotes(prev => prev.filter(n => n.note.id !== note.id));
+      });
     },
     [activeScopeKey],
   );
