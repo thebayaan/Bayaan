@@ -6,6 +6,42 @@ import {
   BayaanSyncApiError,
 } from '@/services/sync/bayaanSyncApiClient';
 import {readBayaanAuthConfig} from '@/config/bayaanAuth';
+import {analyticsService} from '@/services/analytics/AnalyticsService';
+
+const mockSentryCaptureException = jest.fn();
+const mockSentryCaptureMessage = jest.fn();
+const mockSentryAddBreadcrumb = jest.fn();
+
+jest.mock('@sentry/react-native', () => ({
+  captureException: (...args: unknown[]) => mockSentryCaptureException(...args),
+  captureMessage: (...args: unknown[]) => mockSentryCaptureMessage(...args),
+  addBreadcrumb: (...args: unknown[]) => mockSentryAddBreadcrumb(...args),
+}));
+
+jest.mock('react-native-mmkv', () => ({
+  createMMKV: () => ({
+    getString: jest.fn(),
+    set: jest.fn(),
+    getAllKeys: () => [],
+  }),
+}));
+
+jest.mock('expo-crypto', () => ({
+  randomUUID: () => 'task-13-device-id',
+}));
+
+jest.mock('@/services/analytics/LocalAggregationStore', () => ({
+  localAggregationStore: {
+    getToday: () => '2026-08-25',
+    addListeningTime: jest.fn(),
+    addPagesRead: jest.fn(),
+    addPagesOpened: jest.fn(),
+    incrementMeaningfulListens: jest.fn(),
+    incrementAdhkarSessions: jest.fn(),
+    addTasbeehCount: jest.fn(),
+    markSurahCompleted: jest.fn(),
+  },
+}));
 
 const REPOSITORY_ROOT = resolve(__dirname, '../../../..');
 const BFF_ORIGIN = 'https://bff.task-13.example';
@@ -221,9 +257,18 @@ describe('QF user sync mobile pre-live acceptance', () => {
     expect([...new Set(matches)].sort()).toEqual(['config/bayaanAuth.ts']);
   });
 
-  it('maps raw transport failures to stable errors without logs or analytics output', async () => {
+  it('maps raw failures without emitting them from this layer to console, PostHog, or Sentry', async () => {
     const upstreamSecret = 'task-13-upstream-error-secret';
     const logs: string[] = [];
+    const posthogCapture = jest.fn();
+    const posthogRegister = jest.fn();
+    analyticsService.setPostHogInstance({
+      capture: posthogCapture,
+      register: posthogRegister,
+    } as unknown as Parameters<typeof analyticsService.setPostHogInstance>[0]);
+    mockSentryCaptureException.mockClear();
+    mockSentryCaptureMessage.mockClear();
+    mockSentryAddBreadcrumb.mockClear();
     const originalLog = console.log;
     const originalWarn = console.warn;
     const originalError = console.error;
@@ -244,6 +289,18 @@ describe('QF user sync mobile pre-live acceptance', () => {
       await expect(
         client.pull(OPAQUE_SESSION, {mutationsSince: 0}),
       ).rejects.toEqual(new BayaanSyncApiError('service_unavailable', 0));
+      await expect(
+        client.push(OPAQUE_SESSION, {
+          lastMutationAt: 73,
+          mutations: [
+            {
+              resource: 'BOOKMARK',
+              type: 'DELETE',
+              resourceId: 'task-13-bookmark',
+            },
+          ],
+        }),
+      ).rejects.toEqual(new BayaanSyncApiError('service_unavailable', 0));
     } finally {
       console.log = originalLog;
       console.warn = originalWarn;
@@ -252,6 +309,11 @@ describe('QF user sync mobile pre-live acceptance', () => {
 
     expect(logs).toEqual([]);
     expect(JSON.stringify(logs)).not.toContain(upstreamSecret);
+    expect(posthogRegister).toHaveBeenCalledWith({platform: 'mobile'});
+    expect(posthogCapture).not.toHaveBeenCalled();
+    expect(mockSentryCaptureException).not.toHaveBeenCalled();
+    expect(mockSentryCaptureMessage).not.toHaveBeenCalled();
+    expect(mockSentryAddBreadcrumb).not.toHaveBeenCalled();
     const stableError = new BayaanSyncApiError('service_unavailable', 0);
     expect(stableError.message).toBe('Bayaan Sync request failed');
     expect(JSON.stringify(stableError)).not.toContain(upstreamSecret);
