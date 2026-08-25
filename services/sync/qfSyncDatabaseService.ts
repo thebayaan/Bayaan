@@ -1035,7 +1035,9 @@ export class QfSyncDatabaseService {
         if (
           sent.inFlightMutationType === null ||
           mutation.resource !== sent.resource ||
-          mutation.type !== sent.inFlightMutationType
+          mutation.type !== sent.inFlightMutationType ||
+          (mutation.type !== 'CREATE' &&
+            (!sent.remoteId || mutation.resourceId !== sent.remoteId))
         ) {
           throw new Error('Push response mutation does not match sent intent');
         }

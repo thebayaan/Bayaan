@@ -1378,7 +1378,8 @@ describe('SQLite push recovery store', () => {
       `INSERT INTO bookmarks
          (id, owner_scope, verse_key, surah_number, ayah_number, created_at,
           rewayah_id, remote_id, server_created_at, server_updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?),
+              (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         'pulled-bookmark',
         'qf:reader-a',
@@ -1390,6 +1391,16 @@ describe('SQLite push recovery store', () => {
         'remote-bookmark-1',
         7000,
         7000,
+        'unrelated-bookmark',
+        'qf:reader-a',
+        '2:256',
+        2,
+        256,
+        7000,
+        'hafs',
+        'remote-bookmark-2',
+        7000,
+        7000,
       ],
     );
     const sent = await sync.reservePushBatch({
@@ -1398,6 +1409,41 @@ describe('SQLite push recovery store', () => {
       startedAt: 7001,
       dueAt: 7001,
     });
+
+    await expect(
+      sync.commitPushSuccess({
+        accountId,
+        expectedHead: 7001,
+        sent,
+        result: {
+          lastMutationAt: 7002,
+          mutations: [
+            {
+              resource: 'BOOKMARK',
+              type: 'DELETE',
+              resourceId: 'remote-bookmark-2',
+              timestamp: 7002,
+            },
+          ],
+        },
+        syncedAt: 7002,
+      }),
+    ).rejects.toThrow('Push response mutation does not match sent intent');
+    await expect(sync.getStoredHead(accountId)).resolves.toBe(7001);
+    await expect(sync.getOutboxEntries(accountId)).resolves.toEqual([
+      expect.objectContaining({
+        deliveryState: 'IN_FLIGHT',
+        remoteId: 'remote-bookmark-1',
+      }),
+    ]);
+    await expect(
+      annotations.getAllBookmarksInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({remoteId: 'remote-bookmark-1'}),
+        expect.objectContaining({remoteId: 'remote-bookmark-2'}),
+      ]),
+    );
 
     await expect(
       sync.commitPushSuccess({
@@ -1421,7 +1467,9 @@ describe('SQLite push recovery store', () => {
     await expect(sync.getStoredHead(accountId)).resolves.toBe(7002);
     await expect(
       annotations.getAllBookmarksInOwnerScope('qf:reader-a'),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual([
+      expect.objectContaining({remoteId: 'remote-bookmark-2'}),
+    ]);
     await expect(sync.getOutboxEntries(accountId)).resolves.toEqual([]);
     await database.close();
   });
