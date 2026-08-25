@@ -81,31 +81,32 @@ class PushStore implements QfSyncPushStore {
     return this.entries;
   }
 
-  async markOperationInFlight(input: {
-    localOperationId: string;
+  async reservePushBatch(input: {
     startedAt: number;
-  }): Promise<QfOutboxEntry> {
-    this.marked.push(input.localOperationId);
-    const candidate = this.entries.find(
-      entry => entry.localOperationId === input.localOperationId,
-    );
-    if (!candidate) throw new Error('missing candidate');
-    const payload = JSON.parse(candidate.payloadJson) as Record<
-      string,
-      unknown
-    >;
-    return {
-      ...candidate,
-      deliveryState: 'IN_FLIGHT',
-      inFlightRevision: candidate.revision,
-      inFlightMutationType: candidate.mutationType,
-      payloadJson: JSON.stringify({
-        ...payload,
-        clientUpdatedAt: 1_800_000_000_000,
-      }),
-      inFlightPayloadJson: candidate.payloadJson,
-      inFlightStartedAt: input.startedAt,
-    };
+    limit: number;
+  }): Promise<QfOutboxEntry[]> {
+    const candidates = this.entries
+      .filter(entry => entry.deliveryState === 'PENDING')
+      .slice(0, input.limit);
+    return candidates.map(candidate => {
+      this.marked.push(candidate.localOperationId);
+      const payload = JSON.parse(candidate.payloadJson) as Record<
+        string,
+        unknown
+      >;
+      return {
+        ...candidate,
+        deliveryState: 'IN_FLIGHT' as const,
+        inFlightRevision: candidate.revision,
+        inFlightMutationType: candidate.mutationType,
+        payloadJson: JSON.stringify({
+          ...payload,
+          clientUpdatedAt: 1_800_000_000_000,
+        }),
+        inFlightPayloadJson: candidate.payloadJson,
+        inFlightStartedAt: input.startedAt,
+      };
+    });
   }
 
   async commitPushSuccess(input: {
@@ -127,6 +128,10 @@ class PushStore implements QfSyncPushStore {
     ambiguous: number;
   }> {
     return {acknowledged: 0, ambiguous: 0};
+  }
+
+  async rebasePendingOperations(): Promise<void> {
+    return undefined;
   }
 }
 
@@ -377,5 +382,48 @@ describe('QF push coordinator', () => {
     });
     expect(transport.pushes).toEqual([]);
     expect(store.marked).toEqual([]);
+  });
+
+  it('serializes overlapping pushes for the same account', async () => {
+    const store = new PushStore();
+    store.entries = [outboxEntry(0)];
+    let releaseFirst!: () => void;
+    const firstMayFinish = new Promise<void>(resolve => {
+      releaseFirst = resolve;
+    });
+    let activePushes = 0;
+    let maximumActivePushes = 0;
+    const transport = new Transport();
+    transport.push = async (_token, request) => {
+      activePushes += 1;
+      maximumActivePushes = Math.max(maximumActivePushes, activePushes);
+      await firstMayFinish;
+      activePushes -= 1;
+      store.entries = [];
+      return {
+        lastMutationAt: 7101,
+        mutations: request.mutations.map(mutation => ({
+          ...mutation,
+          resourceId: 'remote-1',
+          timestamp: 7101,
+        })),
+      };
+    };
+    const coordinator = new QfSyncCoordinator({
+      transport,
+      store: store as never,
+      pushStore: store,
+    });
+
+    const first = coordinator.push({accountId, sessionToken});
+    const second = coordinator.push({accountId, sessionToken});
+    await Promise.resolve();
+    releaseFirst();
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      {status: 'synced', head: 7101, pushed: 1},
+      {status: 'idle', head: 7101},
+    ]);
+    expect(maximumActivePushes).toBe(1);
   });
 });

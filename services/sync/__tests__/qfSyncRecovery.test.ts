@@ -84,7 +84,7 @@ class RecoveryStore implements QfSyncPullStore, QfSyncPushStore {
     return this.entries;
   }
 
-  async markOperationInFlight(): Promise<QfOutboxEntry> {
+  async reservePushBatch(): Promise<QfOutboxEntry[]> {
     const marked = {
       ...this.entries[0],
       deliveryState: 'IN_FLIGHT' as const,
@@ -95,7 +95,7 @@ class RecoveryStore implements QfSyncPullStore, QfSyncPushStore {
     };
     this.entries = [marked];
     this.events.push('mark');
-    return marked;
+    return [marked];
   }
 
   async commitPushSuccess(input: {
@@ -135,6 +135,10 @@ class RecoveryStore implements QfSyncPullStore, QfSyncPushStore {
     }
     return this.reconcileResult;
   }
+
+  async rebasePendingOperations(): Promise<void> {
+    this.events.push('rebase');
+  }
 }
 
 class RecoveryTransport implements QfSyncTransport {
@@ -173,7 +177,10 @@ class RecoveryTransport implements QfSyncTransport {
   }
 }
 
-function coordinator(store: RecoveryStore, transport: RecoveryTransport) {
+function createRecoveryCoordinator(
+  store: RecoveryStore,
+  transport: RecoveryTransport,
+) {
   return new QfSyncCoordinator({
     transport,
     store,
@@ -192,7 +199,10 @@ describe('QF push recovery', () => {
     const transport = new RecoveryTransport();
 
     await expect(
-      coordinator(store, transport).push({accountId, sessionToken}),
+      createRecoveryCoordinator(store, transport).push({
+        accountId,
+        sessionToken,
+      }),
     ).resolves.toEqual({
       status: 'recovered',
       head: 7002,
@@ -228,7 +238,10 @@ describe('QF push recovery', () => {
     ];
 
     await expect(
-      coordinator(store, transport).push({accountId, sessionToken}),
+      createRecoveryCoordinator(store, transport).push({
+        accountId,
+        sessionToken,
+      }),
     ).resolves.toEqual({status: 'synced', head: 7003, pushed: 1});
 
     expect(
@@ -239,6 +252,7 @@ describe('QF push recovery', () => {
       'release:10000',
       'apply:0',
       'pull-head:7002',
+      'rebase',
       'mark',
       'push-head:7003',
     ]);
@@ -253,7 +267,10 @@ describe('QF push recovery', () => {
     ];
 
     await expect(
-      coordinator(store, transport).push({accountId, sessionToken}),
+      createRecoveryCoordinator(store, transport).push({
+        accountId,
+        sessionToken,
+      }),
     ).resolves.toEqual({
       status: 'deferred',
       reason: 'conflict',
@@ -277,7 +294,10 @@ describe('QF push recovery', () => {
     transport.pushSteps = [new BayaanSyncApiError('service_unavailable', 503)];
 
     await expect(
-      coordinator(store, transport).push({accountId, sessionToken}),
+      createRecoveryCoordinator(store, transport).push({
+        accountId,
+        sessionToken,
+      }),
     ).resolves.toEqual({
       status: 'recovered',
       head: 7002,
@@ -301,7 +321,10 @@ describe('QF push recovery', () => {
     transport.pushSteps = [new BayaanSyncApiError('invalid_response', 200)];
 
     await expect(
-      coordinator(store, transport).push({accountId, sessionToken}),
+      createRecoveryCoordinator(store, transport).push({
+        accountId,
+        sessionToken,
+      }),
     ).resolves.toEqual({
       status: 'recovered',
       head: 7002,
@@ -324,7 +347,10 @@ describe('QF push recovery', () => {
     transport.pushSteps = [new BayaanSyncApiError('service_unavailable', 0)];
 
     await expect(
-      coordinator(store, transport).push({accountId, sessionToken}),
+      createRecoveryCoordinator(store, transport).push({
+        accountId,
+        sessionToken,
+      }),
     ).resolves.toEqual({
       status: 'recovered',
       head: 7002,
@@ -472,13 +498,527 @@ async function createServices(name: string) {
   const {
     QfSyncDatabaseService,
   } = require('@/services/sync/qfSyncDatabaseService');
+  const {
+    QfSyncCoordinator: IntegratedCoordinator,
+    SqliteQfSyncPullStore,
+  } = require('@/services/sync/qfSyncCoordinator');
+  const {
+    BayaanSyncApiError: IntegratedApiError,
+  } = require('@/services/sync/bayaanSyncApiClient');
   const database = new VerseAnnotationDatabase(`${databasePrefix}-${name}`);
   const annotations = new VerseAnnotationDatabaseService(database);
   const sync = new QfSyncDatabaseService({database, annotations});
-  return {database, annotations, sync};
+  return {
+    database,
+    annotations,
+    sync,
+    IntegratedCoordinator,
+    SqliteQfSyncPullStore,
+    IntegratedApiError,
+  };
+}
+
+async function seedHead(
+  database: {getConnection(): Promise<TestDatabase>},
+  head: number,
+): Promise<void> {
+  const connection = await database.getConnection();
+  await connection.runAsync(
+    `INSERT INTO qf_sync_state
+       (owner_scope, last_mutation_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?)`,
+    ['qf:reader-a', String(head), head, head],
+  );
 }
 
 describe('SQLite push recovery store', () => {
+  it('preserves a newer local NOTE revision when pull proves a lost UPDATE succeeded', async () => {
+    const {
+      database,
+      annotations,
+      sync,
+      IntegratedCoordinator,
+      SqliteQfSyncPullStore,
+      IntegratedApiError,
+    } = await createServices('integrated-lost-note-update.db');
+    await sync.initialize();
+    await seedHead(database, 7001);
+    const note = await sync.addNote({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'initial remote note',
+      verseKeys: ['2:255'],
+    });
+    let [create] = await sync.getOutboxEntries(accountId);
+    await sync.markOperationInFlight({
+      accountId,
+      localOperationId: create.localOperationId,
+      startedAt: 6999,
+    });
+    await sync.acknowledgeOperation({
+      accountId,
+      localOperationId: create.localOperationId,
+      resourceId: 'remote-note-1',
+      serverCreatedAt: 7000,
+      serverUpdatedAt: 7000,
+    });
+    await sync.updateNote({
+      accountId,
+      noteId: note.id,
+      content: 'sent revision',
+    });
+    [create] = await sync.getOutboxEntries(accountId);
+    let sentMutation: BayaanSyncPushRequest['mutations'][number] | undefined;
+    const transport = {
+      push: async (_token: string, request: BayaanSyncPushRequest) => {
+        sentMutation = request.mutations[0];
+        await sync.updateNote({
+          accountId,
+          noteId: note.id,
+          content: 'newer local revision',
+        });
+        throw new IntegratedApiError('service_unavailable', 503);
+      },
+      pull: async (
+        _token: string,
+        request: {metadataOnly?: boolean},
+      ): Promise<BayaanSyncPullPage> => {
+        if (request.metadataOnly) {
+          return {lastMutationAt: 7002, mutations: []};
+        }
+        if (!sentMutation) throw new Error('Expected sent NOTE update');
+        return {
+          lastMutationAt: 7002,
+          mutations: [
+            {
+              ...sentMutation,
+              resourceId: 'remote-note-1',
+              timestamp: 7002,
+            } as BayaanSyncMutation,
+          ],
+          page: 1,
+          limit: 1000,
+          total: 1,
+          hasMore: false,
+        };
+      },
+    };
+    const coordinator = new IntegratedCoordinator({
+      transport,
+      store: new SqliteQfSyncPullStore(database),
+      pushStore: sync,
+      now: () => 8001,
+    });
+
+    await expect(coordinator.push({accountId, sessionToken})).resolves.toEqual({
+      status: 'recovered',
+      head: 7002,
+      acknowledged: 0,
+      ambiguous: 0,
+    });
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: note.id,
+        remoteId: 'remote-note-1',
+        content: 'newer local revision',
+      }),
+    ]);
+    await expect(sync.getOutboxEntries(accountId)).resolves.toEqual([
+      expect.objectContaining({
+        localOperationId: create.localOperationId,
+        mutationType: 'UPDATE',
+        remoteId: 'remote-note-1',
+        deliveryState: 'PENDING',
+        revision: 2,
+        inFlightRevision: null,
+      }),
+    ]);
+    await database.close();
+  });
+
+  it('rebases a bookmark create already satisfied by the 409 pull without retrying it', async () => {
+    const {
+      database,
+      sync,
+      IntegratedCoordinator,
+      SqliteQfSyncPullStore,
+      IntegratedApiError,
+    } = await createServices('integrated-409-bookmark.db');
+    await sync.initialize();
+    await seedHead(database, 7001);
+    await sync.addBookmark({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+    });
+    let pushes = 0;
+    const transport = {
+      push: async () => {
+        pushes += 1;
+        throw new IntegratedApiError('sync_conflict', 409);
+      },
+      pull: async (
+        _token: string,
+        request: {metadataOnly?: boolean},
+      ): Promise<BayaanSyncPullPage> =>
+        request.metadataOnly
+          ? {lastMutationAt: 7002, mutations: []}
+          : {
+              lastMutationAt: 7002,
+              mutations: [
+                {
+                  resource: 'BOOKMARK',
+                  type: 'CREATE',
+                  resourceId: 'remote-bookmark-1',
+                  timestamp: 7002,
+                  data: {key: 2, verseNumber: 255},
+                },
+              ],
+              page: 1,
+              limit: 1000,
+              total: 1,
+              hasMore: false,
+            },
+    };
+    const coordinator = new IntegratedCoordinator({
+      transport,
+      store: new SqliteQfSyncPullStore(database),
+      pushStore: sync,
+      now: () => 8001,
+    });
+
+    await expect(coordinator.push({accountId, sessionToken})).resolves.toEqual({
+      status: 'idle',
+      head: 7002,
+    });
+    expect(pushes).toBe(1);
+    await expect(sync.getOutboxEntries(accountId)).resolves.toEqual([]);
+    await database.close();
+  });
+
+  it('rebases reading intent changed during the 409 pull into one remote-backed UPDATE retry', async () => {
+    const {
+      database,
+      sync,
+      IntegratedCoordinator,
+      SqliteQfSyncPullStore,
+      IntegratedApiError,
+    } = await createServices('integrated-409-reading.db');
+    await sync.initialize();
+    await seedHead(database, 7001);
+    await sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      lastReadAt: 1000,
+    });
+    const pushed: BayaanSyncPushRequest[] = [];
+    let changed = false;
+    const transport = {
+      push: async (_token: string, request: BayaanSyncPushRequest) => {
+        pushed.push(request);
+        if (pushed.length === 1) {
+          throw new IntegratedApiError('sync_conflict', 409);
+        }
+        return {
+          lastMutationAt: 7003,
+          mutations: request.mutations.map(mutation => ({
+            ...mutation,
+            resourceId: 'remote-reading-1',
+            timestamp: 7003,
+          })),
+        };
+      },
+      pull: async (
+        _token: string,
+        request: {metadataOnly?: boolean},
+      ): Promise<BayaanSyncPullPage> => {
+        if (request.metadataOnly) {
+          return {lastMutationAt: 7002, mutations: []};
+        }
+        if (!changed) {
+          changed = true;
+          await sync.upsertReadingLocation({
+            accountId,
+            verseKey: '3:8',
+            surahNumber: 3,
+            ayahNumber: 8,
+            lastReadAt: 2000,
+          });
+        }
+        return {
+          lastMutationAt: 7002,
+          mutations: [
+            {
+              resource: 'READING_SESSION',
+              type: 'CREATE',
+              resourceId: 'remote-reading-1',
+              timestamp: 7002,
+              data: {
+                chapterNumber: 3,
+                verseNumber: 7,
+                clientCreatedAt: '1970-01-01T00:00:01.000Z',
+                clientUpdatedAt: '1970-01-01T00:00:01.000Z',
+              },
+            },
+          ],
+          page: 1,
+          limit: 1000,
+          total: 1,
+          hasMore: false,
+        };
+      },
+    };
+    const coordinator = new IntegratedCoordinator({
+      transport,
+      store: new SqliteQfSyncPullStore(database),
+      pushStore: sync,
+      now: () => 8001,
+    });
+
+    await expect(coordinator.push({accountId, sessionToken})).resolves.toEqual({
+      status: 'synced',
+      head: 7003,
+      pushed: 1,
+    });
+    expect(pushed).toHaveLength(2);
+    expect(pushed[1]).toMatchObject({
+      lastMutationAt: 7002,
+      mutations: [
+        {
+          resource: 'READING_SESSION',
+          type: 'UPDATE',
+          resourceId: 'remote-reading-1',
+          data: {chapterNumber: 3, verseNumber: 8},
+        },
+      ],
+    });
+    await database.close();
+  });
+
+  it('reserves a whole batch atomically when a later row cannot be marked', async () => {
+    const {database, sync} = await createServices('atomic-reservation.db');
+    await sync.initialize();
+    await sync.addNote({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'first',
+    });
+    await sync.addNote({
+      accountId,
+      verseKey: '2:256',
+      surahNumber: 2,
+      ayahNumber: 256,
+      content: 'second',
+    });
+    const connection = (await database.getConnection()) as TestDatabase;
+    const originalRunAsync = connection.runAsync.bind(connection);
+    let marks = 0;
+    connection.runAsync = async (source, params) => {
+      if (
+        source.includes("SET delivery_state = 'IN_FLIGHT'") &&
+        ++marks === 2
+      ) {
+        throw new Error('inject second reservation failure');
+      }
+      return originalRunAsync(source, params);
+    };
+
+    await expect(
+      sync.reservePushBatch({
+        accountId,
+        limit: 100,
+        startedAt: 7001,
+        dueAt: 7001,
+      }),
+    ).rejects.toThrow('inject second reservation failure');
+    await expect(sync.getOutboxEntries(accountId)).resolves.toEqual([
+      expect.objectContaining({deliveryState: 'PENDING'}),
+      expect.objectContaining({deliveryState: 'PENDING'}),
+    ]);
+    await database.close();
+  });
+
+  it('applies canonical returned data for every resource before advancing the success head', async () => {
+    const {database, annotations, sync} = await createServices(
+      'success-returned-data.db',
+    );
+    await sync.initialize();
+    await seedHead(database, 7001);
+    await sync.addBookmark({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+    });
+    await sync.addNote({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'local note',
+    });
+    await sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      lastReadAt: 1000,
+    });
+    const sent = await sync.reservePushBatch({
+      accountId,
+      limit: 100,
+      startedAt: 7001,
+      dueAt: 7001,
+    });
+    const mutations = sent.map((entry: QfOutboxEntry): BayaanSyncMutation => {
+      if (entry.resource === 'BOOKMARK') {
+        return {
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: 'remote-bookmark-1',
+          timestamp: 7002,
+          data: {key: 2, verseNumber: 256},
+        };
+      }
+      if (entry.resource === 'NOTE') {
+        return {
+          resource: 'NOTE',
+          type: 'CREATE',
+          resourceId: 'remote-note-1',
+          timestamp: 7002,
+          data: {
+            body: 'canonical server note',
+            ranges: ['2:256-2:256'],
+            saveToQR: false,
+          },
+        };
+      }
+      return {
+        resource: 'READING_SESSION',
+        type: 'CREATE',
+        resourceId: 'remote-reading-1',
+        timestamp: 7002,
+        data: {chapterNumber: 3, verseNumber: 8},
+      };
+    });
+
+    await expect(
+      sync.commitPushSuccess({
+        accountId,
+        expectedHead: 7001,
+        sent,
+        result: {lastMutationAt: 7002, mutations},
+        syncedAt: 7002,
+      }),
+    ).resolves.toBe(true);
+    await expect(sync.getStoredHead(accountId)).resolves.toBe(7002);
+    await expect(
+      annotations.getAllBookmarksInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        verseKey: '2:256',
+        remoteId: 'remote-bookmark-1',
+      }),
+    ]);
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        content: 'canonical server note',
+        verseKey: '2:256',
+        remoteId: 'remote-note-1',
+      }),
+    ]);
+    await expect(sync.getReadingLocations(accountId)).resolves.toEqual([
+      expect.objectContaining({
+        verseKey: '3:8',
+        remoteId: 'remote-reading-1',
+      }),
+    ]);
+    await database.close();
+  });
+
+  it('correlates a lost bookmark CREATE by verse and preserves a newer DELETE', async () => {
+    const {
+      database,
+      annotations,
+      sync,
+      IntegratedCoordinator,
+      SqliteQfSyncPullStore,
+      IntegratedApiError,
+    } = await createServices('integrated-lost-bookmark-delete.db');
+    await sync.initialize();
+    await seedHead(database, 7001);
+    await sync.addBookmark({
+      accountId,
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+    });
+    const transport = {
+      push: async () => {
+        await sync.removeBookmark({accountId, verseKey: '2:255'});
+        throw new IntegratedApiError('service_unavailable', 503);
+      },
+      pull: async (
+        _token: string,
+        request: {metadataOnly?: boolean},
+      ): Promise<BayaanSyncPullPage> =>
+        request.metadataOnly
+          ? {lastMutationAt: 7002, mutations: []}
+          : {
+              lastMutationAt: 7002,
+              mutations: [
+                {
+                  resource: 'BOOKMARK',
+                  type: 'CREATE',
+                  resourceId: 'remote-bookmark-1',
+                  timestamp: 7002,
+                  data: {key: 2, verseNumber: 255},
+                },
+              ],
+              page: 1,
+              limit: 1000,
+              total: 1,
+              hasMore: false,
+            },
+    };
+    const coordinator = new IntegratedCoordinator({
+      transport,
+      store: new SqliteQfSyncPullStore(database),
+      pushStore: sync,
+      now: () => 8001,
+    });
+
+    await expect(coordinator.push({accountId, sessionToken})).resolves.toEqual({
+      status: 'recovered',
+      head: 7002,
+      acknowledged: 1,
+      ambiguous: 0,
+    });
+    await expect(
+      annotations.getAllBookmarksInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([]);
+    await expect(sync.getOutboxEntries(accountId)).resolves.toEqual([
+      expect.objectContaining({
+        mutationType: 'DELETE',
+        remoteId: 'remote-bookmark-1',
+        deliveryState: 'PENDING',
+        inFlightRevision: null,
+      }),
+    ]);
+    await database.close();
+  });
+
   it('rolls back acknowledgements and remote metadata when head advancement fails', async () => {
     const {database, annotations, sync} = await createServices(
       'atomic-rollback.db',

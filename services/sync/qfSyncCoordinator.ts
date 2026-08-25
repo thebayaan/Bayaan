@@ -38,11 +38,12 @@ export interface QfSyncTransport
 export interface QfSyncPushStore {
   getStoredHead(accountId: string): Promise<number>;
   getOutboxEntries(accountId: string): Promise<QfOutboxEntry[]>;
-  markOperationInFlight(input: {
+  reservePushBatch(input: {
     accountId: string;
-    localOperationId: string;
+    limit: number;
     startedAt: number;
-  }): Promise<QfOutboxEntry>;
+    dueAt: number;
+  }): Promise<QfOutboxEntry[]>;
   commitPushSuccess(input: {
     accountId: string;
     expectedHead: number;
@@ -59,6 +60,10 @@ export interface QfSyncPushStore {
     accountId: string;
     reconciledAt: number;
   }): Promise<{acknowledged: number; ambiguous: number}>;
+  rebasePendingOperations(input: {
+    accountId: string;
+    rebasedAt: number;
+  }): Promise<void>;
 }
 
 export interface QfSyncPullStore {
@@ -115,8 +120,15 @@ interface NoteRow extends RemoteRow {
 }
 
 interface NoteOutboxRow extends Record<string, unknown> {
+  local_operation_id: string;
   payload_json: string;
   base_server_updated_at: number | null;
+  revision: number;
+  mutation_type: 'CREATE' | 'UPDATE' | 'DELETE';
+  delivery_state: 'PENDING' | 'IN_FLIGHT' | 'AMBIGUOUS';
+  in_flight_revision: number | null;
+  in_flight_mutation_type: 'CREATE' | 'UPDATE' | 'DELETE' | null;
+  in_flight_payload_json: string | null;
 }
 
 interface PendingOutboxRow extends Record<string, unknown> {
@@ -414,7 +426,7 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     }
 
     const pendingRow = await db.getFirstAsync<NoteOutboxRow>(
-      `SELECT payload_json, base_server_updated_at FROM qf_sync_outbox
+      `SELECT * FROM qf_sync_outbox
        WHERE owner_scope = ? AND resource = 'NOTE' AND local_id = ?
        ORDER BY created_at DESC, local_operation_id DESC LIMIT 1`,
       [scope, canonical.id],
@@ -425,6 +437,93 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     const pendingBase =
       pendingRow?.base_server_updated_at ?? canonical.server_updated_at;
     if (pending && pendingBase !== null && mutation.timestamp <= pendingBase) {
+      return;
+    }
+
+    const uncertain =
+      pendingRow?.delivery_state === 'IN_FLIGHT' ||
+      pendingRow?.delivery_state === 'AMBIGUOUS';
+    const sent = pendingRow?.in_flight_payload_json
+      ? parsePendingNote(pendingRow.in_flight_payload_json)
+      : null;
+    const sentVerseKeys = sent
+      ? sent.verseKeys?.length
+        ? sent.verseKeys
+        : [sent.verseKey]
+      : [];
+    const pulledMatchesSentRevision =
+      uncertain &&
+      pendingRow?.in_flight_mutation_type === mutation.type &&
+      sent !== null &&
+      sent.content === data.body &&
+      sentVerseKeys.join(',') === verseKeys.join(',');
+    if (pulledMatchesSentRevision && pendingRow && sent) {
+      const currentStillEqualsSent =
+        pendingRow.revision === pendingRow.in_flight_revision &&
+        pendingRow.mutation_type === pendingRow.in_flight_mutation_type &&
+        pendingRow.payload_json === pendingRow.in_flight_payload_json;
+      if (currentStillEqualsSent) {
+        await db.runAsync(
+          `UPDATE notes
+           SET verse_key = ?, surah_number = ?, ayah_number = ?, content = ?,
+               verse_keys = ?, remote_id = ?,
+               server_created_at = COALESCE(server_created_at, ?),
+               server_updated_at = ?, updated_at = ?
+           WHERE owner_scope = ? AND id = ?`,
+          [
+            verseKeys[0],
+            surahNumber,
+            ayahNumber,
+            data.body,
+            verseKeys.join(','),
+            mutation.resourceId,
+            createdAt,
+            mutation.timestamp,
+            mutation.timestamp,
+            scope,
+            canonical.id,
+          ],
+        );
+        await db.runAsync(
+          `DELETE FROM qf_sync_outbox
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [scope, pendingRow.local_operation_id],
+        );
+      } else {
+        const nextMutationType =
+          pendingRow.in_flight_mutation_type === 'CREATE' &&
+          pendingRow.mutation_type === 'CREATE'
+            ? 'UPDATE'
+            : pendingRow.mutation_type;
+        await db.runAsync(
+          `UPDATE notes
+           SET remote_id = ?, server_created_at = COALESCE(server_created_at, ?),
+               server_updated_at = ?
+           WHERE owner_scope = ? AND id = ?`,
+          [
+            mutation.resourceId,
+            createdAt,
+            mutation.timestamp,
+            scope,
+            canonical.id,
+          ],
+        );
+        await db.runAsync(
+          `UPDATE qf_sync_outbox
+           SET mutation_type = ?, remote_id = ?, base_server_updated_at = ?,
+               delivery_state = 'PENDING', in_flight_revision = NULL,
+               in_flight_mutation_type = NULL, in_flight_payload_json = NULL,
+               in_flight_started_at = NULL
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [
+            nextMutationType,
+            mutation.resourceId,
+            mutation.timestamp,
+            scope,
+            pendingRow.local_operation_id,
+          ],
+        );
+      }
       return;
     }
 
@@ -448,7 +547,7 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
         canonical.id,
       ],
     );
-    if (pending) {
+    if (pending && !uncertain) {
       await this.preservePendingNote(
         db,
         scope,
@@ -831,6 +930,30 @@ function immutableInFlightEntry(entry: QfOutboxEntry): QfOutboxEntry {
   };
 }
 
+const accountPushTails = new Map<string, Promise<void>>();
+
+async function serializeAccountPush<T>(
+  accountId: string,
+  task: () => Promise<T>,
+): Promise<T> {
+  const previous = accountPushTails.get(accountId) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  const tail = previous.then(() => current);
+  accountPushTails.set(accountId, tail);
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release();
+    if (accountPushTails.get(accountId) === tail) {
+      accountPushTails.delete(accountId);
+    }
+  }
+}
+
 export class QfSyncCoordinator {
   private readonly maxRestarts: number;
   private readonly maxPages: number;
@@ -944,6 +1067,12 @@ export class QfSyncCoordinator {
   }
 
   async push(input: PushInput): Promise<QfSyncPushCoordinatorResult> {
+    return serializeAccountPush(input.accountId, () => this.pushAccount(input));
+  }
+
+  private async pushAccount(
+    input: PushInput,
+  ): Promise<QfSyncPushCoordinatorResult> {
     const store = this.options.pushStore;
     const transport = this.options.transport;
     if (!store || !transport.push) {
@@ -987,25 +1116,14 @@ export class QfSyncCoordinator {
         };
       }
 
-      const candidates = (await store.getOutboxEntries(input.accountId))
-        .filter(
-          entry =>
-            entry.deliveryState === 'PENDING' &&
-            (entry.nextAttemptAt === null || entry.nextAttemptAt <= this.now()),
-        )
-        .slice(0, 100);
-      if (candidates.length === 0) return {status: 'idle', head};
-
-      const sent: QfOutboxEntry[] = [];
-      for (const candidate of candidates) {
-        sent.push(
-          await store.markOperationInFlight({
-            accountId: input.accountId,
-            localOperationId: candidate.localOperationId,
-            startedAt: this.now(),
-          }),
-        );
-      }
+      const reservedAt = this.now();
+      const sent = await store.reservePushBatch({
+        accountId: input.accountId,
+        limit: 100,
+        startedAt: reservedAt,
+        dueAt: reservedAt,
+      });
+      if (sent.length === 0) return {status: 'idle', head};
 
       let responseReceived = false;
       try {
@@ -1062,6 +1180,10 @@ export class QfSyncCoordinator {
               retryAfterMs: pulled.retryAfterMs,
             };
           }
+          await store.rebasePendingOperations({
+            accountId: input.accountId,
+            rebasedAt: this.now(),
+          });
           continue;
         }
 
