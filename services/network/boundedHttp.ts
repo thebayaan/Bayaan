@@ -116,9 +116,10 @@ async function readJson(
   }
 
   const readable = response.body as ReadableStream<Uint8Array> | null;
-  const text = readable
-    ? await readStream(readable, options.maxResponseBytes, signal)
-    : await response.text();
+  if (!readable) {
+    throw new BoundedHttpError('response_too_large');
+  }
+  const text = await readStream(readable, options.maxResponseBytes, signal);
   if (utf8ByteLength(text) > options.maxResponseBytes) {
     throw new BoundedHttpError('response_too_large');
   }

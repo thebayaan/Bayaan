@@ -21,6 +21,11 @@ jest.mock('expo-secure-store', () => ({
   }),
 }));
 
+jest.mock('expo/fetch', () => ({
+  fetch: (...args: unknown[]) =>
+    (global.fetch as (...values: unknown[]) => unknown)(...args),
+}));
+
 import {BayaanAuthError, createBayaanAuthService} from '../bayaanAuthService';
 import {BayaanBffClient} from '../bayaanBffClient';
 import {
@@ -39,10 +44,17 @@ const profile = {
 
 function jsonResponse(body: unknown, status = 200) {
   const text = JSON.stringify(body);
+  const bytes = new TextEncoder().encode(text);
   return {
     ok: status >= 200 && status < 300,
     status,
     headers: new Headers({'content-length': String(Buffer.byteLength(text))}),
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    }),
     text: () => Promise.resolve(text),
     json: () => Promise.resolve(body),
   } as Response;

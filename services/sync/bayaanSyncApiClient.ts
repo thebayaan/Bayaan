@@ -53,6 +53,11 @@ const SYNC_RESOURCES = ['BOOKMARK', 'NOTE', 'READING_SESSION'] as const;
 const SYNC_TIMEOUT_MS = 8_000;
 const SYNC_MAX_RESPONSE_BYTES = 1024 * 1024;
 
+function expoFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  const module = require('expo/fetch') as {fetch: typeof fetch};
+  return module.fetch(input, init);
+}
+
 function syncUrl(apiUrl: string, request: BayaanSyncPullRequest): string {
   const url = new URL('/v1/qf/sync', `${apiUrl.replace(/\/+$/, '')}/`);
   url.searchParams.set('mutationsSince', String(request.mutationsSince));
@@ -89,7 +94,7 @@ export class BayaanSyncApiClient {
   private readonly fetchImpl: typeof fetch;
 
   constructor(private readonly options: BayaanSyncApiClientOptions) {
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? expoFetch;
   }
 
   private async request(

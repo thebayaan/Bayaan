@@ -8,6 +8,11 @@ import {
 const AUTH_TIMEOUT_MS = 8_000;
 const AUTH_MAX_RESPONSE_BYTES = 64 * 1024;
 
+function expoFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  const module = require('expo/fetch') as {fetch: typeof fetch};
+  return module.fetch(input, init);
+}
+
 interface StartAuthResponse {
   authorizationUrl: string;
   state: string;
@@ -59,8 +64,7 @@ export class BayaanBffClient {
     private readonly apiUrl: string,
     options: {fetchImpl?: typeof fetch; timeoutMs?: number} = {},
   ) {
-    this.fetchImpl =
-      options.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
+    this.fetchImpl = options.fetchImpl ?? expoFetch;
     this.timeoutMs = options.timeoutMs ?? AUTH_TIMEOUT_MS;
   }
 
