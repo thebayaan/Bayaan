@@ -1,5 +1,6 @@
 import type {BayaanAuthProfile, BayaanOpaqueSession} from '@/types/bayaan-auth';
 import {
+  type BoundedFetch,
   BoundedHttpError,
   boundedJsonRequest,
   boundedRequest,
@@ -8,8 +9,8 @@ import {
 const AUTH_TIMEOUT_MS = 8_000;
 const AUTH_MAX_RESPONSE_BYTES = 64 * 1024;
 
-function expoFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-  const module = require('expo/fetch') as {fetch: typeof fetch};
+function expoFetch(input: string, init?: RequestInit): Promise<Response> {
+  const module = require('expo/fetch') as {fetch: BoundedFetch};
   return module.fetch(input, init);
 }
 
@@ -57,12 +58,12 @@ export class BayaanBffError extends Error {
 }
 
 export class BayaanBffClient {
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: BoundedFetch;
   private readonly timeoutMs: number;
 
   constructor(
     private readonly apiUrl: string,
-    options: {fetchImpl?: typeof fetch; timeoutMs?: number} = {},
+    options: {fetchImpl?: BoundedFetch; timeoutMs?: number} = {},
   ) {
     this.fetchImpl = options.fetchImpl ?? expoFetch;
     this.timeoutMs = options.timeoutMs ?? AUTH_TIMEOUT_MS;

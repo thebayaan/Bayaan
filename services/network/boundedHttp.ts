@@ -11,6 +11,11 @@ export class BoundedHttpError extends Error {
   }
 }
 
+export type BoundedFetch = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
+
 type StreamReadResult = Awaited<
   ReturnType<ReadableStreamDefaultReader<Uint8Array>['read']>
 >;
@@ -150,7 +155,7 @@ async function withDeadline<T>(
 }
 
 export async function boundedJsonRequest(
-  fetchImpl: typeof fetch,
+  fetchImpl: BoundedFetch,
   input: string,
   init: RequestInit,
   options: BoundedRequestOptions,
@@ -170,7 +175,7 @@ export async function boundedJsonRequest(
 }
 
 export async function boundedRequest(
-  fetchImpl: typeof fetch,
+  fetchImpl: BoundedFetch,
   input: string,
   init: RequestInit,
   timeoutMs: number,

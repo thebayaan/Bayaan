@@ -8,6 +8,7 @@ import {
   type BayaanSyncPushResult,
 } from './bayaanSyncCodec';
 import {
+  type BoundedFetch,
   BoundedHttpError,
   boundedJsonRequest,
 } from '@/services/network/boundedHttp';
@@ -44,7 +45,7 @@ export interface BayaanSyncPushRequest {
 
 interface BayaanSyncApiClientOptions {
   apiUrl: string;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: BoundedFetch;
   timeoutMs?: number;
   maxResponseBytes?: number;
 }
@@ -53,8 +54,8 @@ const SYNC_RESOURCES = ['BOOKMARK', 'NOTE', 'READING_SESSION'] as const;
 const SYNC_TIMEOUT_MS = 8_000;
 const SYNC_MAX_RESPONSE_BYTES = 1024 * 1024;
 
-function expoFetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
-  const module = require('expo/fetch') as {fetch: typeof fetch};
+function expoFetch(input: string, init?: RequestInit): Promise<Response> {
+  const module = require('expo/fetch') as {fetch: BoundedFetch};
   return module.fetch(input, init);
 }
 
@@ -91,7 +92,7 @@ function mapStatus(status: number): BayaanSyncApiError {
 }
 
 export class BayaanSyncApiClient {
-  private readonly fetchImpl: typeof fetch;
+  private readonly fetchImpl: BoundedFetch;
 
   constructor(private readonly options: BayaanSyncApiClientOptions) {
     this.fetchImpl = options.fetchImpl ?? expoFetch;
