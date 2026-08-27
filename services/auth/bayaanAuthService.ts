@@ -1,7 +1,11 @@
 import * as WebBrowser from 'expo-web-browser';
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
 import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
-import {BayaanBffClient, BayaanBffError} from './bayaanBffClient';
+import {
+  BayaanBffClient,
+  BayaanBffError,
+  parseExpiresAt as parseFiniteExpiresAt,
+} from './bayaanBffClient';
 import {
   clearBayaanSession,
   clearPendingBayaanAuthState,
@@ -59,8 +63,8 @@ interface BayaanAuthServiceOptions {
 }
 
 function parseExpiresAt(value: string): number {
-  const parsed = Date.parse(value);
-  if (!Number.isFinite(parsed)) {
+  const parsed = parseFiniteExpiresAt(value);
+  if (parsed === undefined) {
     throw new BayaanAuthError('network_error', 'Invalid auth response');
   }
   return parsed;
@@ -150,10 +154,7 @@ export function createBayaanAuthService(
           ) {
             return;
           }
-          throw new BayaanAuthError(
-            'access_denied',
-            'Sign-in was cancelled',
-          );
+          throw new BayaanAuthError('access_denied', 'Sign-in was cancelled');
         }
       } catch (error) {
         await clearPendingBayaanAuthState();

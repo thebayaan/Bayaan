@@ -1390,7 +1390,10 @@ export class QfSyncDatabaseService {
           const remoteMatchesIntent =
             reading.verse_key === payload.verseKey &&
             reading.surah_number === payload.surahNumber &&
-            reading.ayah_number === payload.ayahNumber;
+            reading.ayah_number === payload.ayahNumber &&
+            reading.server_updated_at !== null &&
+            (row.base_server_updated_at === null ||
+              reading.server_updated_at > row.base_server_updated_at);
           if (remoteMatchesIntent) {
             await db.runAsync(
               `DELETE FROM qf_sync_outbox
@@ -1593,7 +1596,9 @@ export class QfSyncDatabaseService {
       } else if (row.resource === 'NOTE') {
         await db.runAsync(
           `UPDATE notes
-           SET remote_id = ?, server_created_at = ?, server_updated_at = ?
+           SET remote_id = ?,
+               server_created_at = COALESCE(?, server_created_at),
+               server_updated_at = ?
            WHERE owner_scope = ? AND id = ?`,
           [
             input.resourceId,
@@ -1813,12 +1818,19 @@ export class QfSyncDatabaseService {
     }
 
     if (row.local_id) {
+      if (
+        row.resource === 'READING_SESSION' &&
+        row.in_flight_mutation_type === 'CREATE' &&
+        row.in_flight_revision !== row.revision
+      ) {
+        return null;
+      }
       const table =
         row.resource === 'BOOKMARK'
           ? 'bookmarks'
           : row.resource === 'NOTE'
-          ? 'notes'
-          : 'qf_reading_locations';
+            ? 'notes'
+            : 'qf_reading_locations';
       const createdColumn =
         row.resource === 'READING_SESSION'
           ? 'NULL AS server_created_at'

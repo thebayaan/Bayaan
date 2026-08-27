@@ -200,9 +200,8 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
   });
 
   it('updates bookmark remote metadata and removes the outbox row in one acknowledgement transaction', async () => {
-    const {database, annotations, sync} = await createServices(
-      'qf-outbox-ack.db',
-    );
+    const {database, annotations, sync} =
+      await createServices('qf-outbox-ack.db');
     await sync.initialize();
 
     const bookmark = await sync.addBookmark({
@@ -245,6 +244,261 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
     ]);
     await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([]);
 
+    await database.close();
+  });
+
+  it('preserves a note creation timestamp when acknowledging a later UPDATE', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-note-update-ack-created-at.db',
+    );
+    await sync.initialize();
+    const note = await sync.addNote({
+      accountId: 'reader-a',
+      verseKey: '2:255',
+      surahNumber: 2,
+      ayahNumber: 255,
+      content: 'initial note',
+    });
+    let [operation] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: operation.localOperationId,
+      startedAt: 1700,
+    });
+    await sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: operation.localOperationId,
+      resourceId: 'remote-note-1',
+      serverCreatedAt: 1701,
+      serverUpdatedAt: 1702,
+    });
+    await sync.updateNote({
+      accountId: 'reader-a',
+      noteId: note.id,
+      content: 'updated note',
+    });
+    [operation] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: operation.localOperationId,
+      startedAt: 1800,
+    });
+    await sync.acknowledgeOperation({
+      accountId: 'reader-a',
+      localOperationId: operation.localOperationId,
+      resourceId: 'remote-note-1',
+      serverUpdatedAt: 1801,
+    });
+
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:reader-a'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: note.id,
+        serverCreatedAt: 1701,
+        serverUpdatedAt: 1801,
+      }),
+    ]);
+    await database.close();
+  });
+
+  it('rebases a newer pending initial reading CREATE to UPDATE across restart and push', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-reading-initial-pull-rebase.db',
+    );
+    await sync.initialize();
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '18:10',
+      surahNumber: 18,
+      ayahNumber: 10,
+      pageNumber: 293,
+      rewayahId: 'warsh',
+      lastReadAt: 9000,
+    });
+    const {
+      SqliteQfSyncPullStore,
+      QfSyncCoordinator,
+    } = require('@/services/sync/qfSyncCoordinator');
+    const pullStore = new SqliteQfSyncPullStore(database);
+    await pullStore.applyPage('reader-a', [
+      {
+        resource: 'READING_SESSION',
+        type: 'CREATE',
+        resourceId: 'remote-reading-existing',
+        timestamp: 6000,
+        data: {
+          chapterNumber: 2,
+          verseNumber: 1,
+          clientUpdatedAt: new Date(5000).toISOString(),
+        },
+      },
+    ]);
+    await pullStore.commitStableHead('reader-a', 0, 6000, 6001);
+
+    await expect(sync.getReadingLocations('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        remoteId: 'remote-reading-existing',
+        verseKey: '18:10',
+        pageNumber: 293,
+        rewayahId: 'warsh',
+        lastReadAt: 9000,
+      }),
+    ]);
+    await expect(sync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        mutationType: 'UPDATE',
+        remoteId: 'remote-reading-existing',
+        deliveryState: 'PENDING',
+      }),
+    ]);
+
+    const {
+      QfSyncDatabaseService,
+    } = require('@/services/sync/qfSyncDatabaseService');
+    const restartedSync = new QfSyncDatabaseService({database, annotations});
+    const pushed: Array<Record<string, unknown>> = [];
+    const coordinator = new QfSyncCoordinator({
+      store: new SqliteQfSyncPullStore(database),
+      pushStore: restartedSync,
+      now: () => 7000,
+      transport: {
+        pull: jest.fn(),
+        push: jest.fn(
+          async (
+            _session: string,
+            request: {mutations: Array<Record<string, unknown>>},
+          ) => {
+            pushed.push(...request.mutations);
+            return {
+              lastMutationAt: 7001,
+              mutations: request.mutations.map(mutation => ({
+                ...mutation,
+                resourceId: 'remote-reading-existing',
+                timestamp: 7001,
+              })),
+            };
+          },
+        ),
+      },
+    });
+
+    await expect(
+      coordinator.push({
+        accountId: 'reader-a',
+        sessionToken: 'opaque-session',
+      }),
+    ).resolves.toMatchObject({status: 'synced', pushed: 1});
+    expect(pushed).toEqual([
+      expect.objectContaining({
+        resource: 'READING_SESSION',
+        type: 'UPDATE',
+        resourceId: 'remote-reading-existing',
+        data: expect.objectContaining({chapterNumber: 18, verseNumber: 10}),
+      }),
+    ]);
+    await database.close();
+  });
+
+  it('does not acknowledge an uncertain reading CREATE from an older pre-existing remote session', async () => {
+    const {database, annotations, sync} = await createServices(
+      'qf-reading-uncertain-initial-pull-rebase.db',
+    );
+    await sync.initialize();
+    await sync.upsertReadingLocation({
+      accountId: 'reader-a',
+      verseKey: '18:10',
+      surahNumber: 18,
+      ayahNumber: 10,
+      pageNumber: 293,
+      rewayahId: 'warsh',
+      lastReadAt: 9000,
+    });
+    const [created] = await sync.getOutboxEntries('reader-a');
+    await sync.markOperationInFlight({
+      accountId: 'reader-a',
+      localOperationId: created.localOperationId,
+      startedAt: 9500,
+    });
+
+    const {
+      SqliteQfSyncPullStore,
+      QfSyncCoordinator,
+    } = require('@/services/sync/qfSyncCoordinator');
+    const pullStore = new SqliteQfSyncPullStore(database);
+    await pullStore.applyPage('reader-a', [
+      {
+        resource: 'READING_SESSION',
+        type: 'CREATE',
+        resourceId: 'remote-reading-existing',
+        timestamp: 6000,
+        data: {
+          chapterNumber: 2,
+          verseNumber: 1,
+          clientUpdatedAt: new Date(5000).toISOString(),
+        },
+      },
+    ]);
+    await pullStore.commitStableHead('reader-a', 0, 6000, 6001);
+
+    const {
+      QfSyncDatabaseService,
+    } = require('@/services/sync/qfSyncDatabaseService');
+    const restartedSync = new QfSyncDatabaseService({database, annotations});
+    await expect(
+      restartedSync.reconcileUncertainOperations({
+        accountId: 'reader-a',
+        reconciledAt: 7000,
+      }),
+    ).resolves.toEqual({acknowledged: 0, ambiguous: 0});
+    await expect(restartedSync.getOutboxEntries('reader-a')).resolves.toEqual([
+      expect.objectContaining({
+        mutationType: 'UPDATE',
+        remoteId: 'remote-reading-existing',
+        deliveryState: 'PENDING',
+      }),
+    ]);
+
+    const pushed: Array<Record<string, unknown>> = [];
+    const coordinator = new QfSyncCoordinator({
+      store: pullStore,
+      pushStore: restartedSync,
+      now: () => 8000,
+      transport: {
+        pull: jest.fn(),
+        push: jest.fn(
+          async (
+            _session: string,
+            request: {mutations: Array<Record<string, unknown>>},
+          ) => {
+            pushed.push(...request.mutations);
+            return {
+              lastMutationAt: 8001,
+              mutations: request.mutations.map(mutation => ({
+                ...mutation,
+                resourceId: 'remote-reading-existing',
+                timestamp: 8001,
+              })),
+            };
+          },
+        ),
+      },
+    });
+
+    await expect(
+      coordinator.push({
+        accountId: 'reader-a',
+        sessionToken: 'opaque-session',
+      }),
+    ).resolves.toMatchObject({status: 'synced', pushed: 1});
+    expect(pushed).toEqual([
+      expect.objectContaining({
+        resource: 'READING_SESSION',
+        type: 'UPDATE',
+        resourceId: 'remote-reading-existing',
+        data: expect.objectContaining({chapterNumber: 18, verseNumber: 10}),
+      }),
+    ]);
     await database.close();
   });
 

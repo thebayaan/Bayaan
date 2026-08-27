@@ -7,6 +7,7 @@ const mockDb = {
 jest.mock('@/services/rewayah/RewayahIdentity', () => ({
   ALL_REWAYAH_IDS: ['hafs', 'warsh'],
   PERSISTED_ID_MIGRATIONS: {},
+  migratePersistedId: (value: string) => value,
 }));
 
 import {verseAnnotationDatabase} from '@/services/database/VerseAnnotationDatabase';
@@ -83,10 +84,11 @@ describe('VerseAnnotationDatabaseService owner-scoped local APIs', () => {
       ['18:10', '18:11'],
       'hafs',
     );
-    const notes = await verseAnnotationDatabaseService.getNotesForVerseInOwnerScope(
-      'qf:reader-1',
-      '18:10',
-    );
+    const notes =
+      await verseAnnotationDatabaseService.getNotesForVerseInOwnerScope(
+        'qf:reader-1',
+        '18:10',
+      );
     await verseAnnotationDatabaseService.updateNoteInOwnerScope(
       'qf:reader-1',
       'note-1',
@@ -121,7 +123,9 @@ describe('VerseAnnotationDatabaseService owner-scoped local APIs', () => {
     );
     expect(mockDb.runAsync).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('UPDATE notes SET content = ?, updated_at = ? WHERE owner_scope = ? AND id = ?'),
+      expect.stringContaining(
+        'UPDATE notes SET content = ?, updated_at = ? WHERE owner_scope = ? AND id = ?',
+      ),
       ['updated account note', expect.any(Number), 'qf:reader-1', 'note-1'],
     );
   });
@@ -145,11 +149,20 @@ describe('VerseAnnotationDatabaseService owner-scoped local APIs', () => {
     expect(mockDb.runAsync).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('INSERT INTO highlights'),
-      expect.arrayContaining(['qf:reader-1', '55:13', 55, 13, 'purple', 'hafs']),
+      expect.arrayContaining([
+        'qf:reader-1',
+        '55:13',
+        55,
+        13,
+        'purple',
+        'hafs',
+      ]),
     );
     expect(mockDb.runAsync).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('DELETE FROM highlights WHERE owner_scope = ? AND verse_key = ?'),
+      expect.stringContaining(
+        'DELETE FROM highlights WHERE owner_scope = ? AND verse_key = ?',
+      ),
       ['qf:reader-1', '55:13'],
     );
   });

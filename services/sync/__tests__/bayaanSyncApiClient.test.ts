@@ -7,9 +7,12 @@ const apiUrl = 'https://api-prelive.thebayaan.com';
 const opaqueSession = 'opaque-bayaan-session';
 
 function jsonResponse(body: unknown, status = 200): Response {
+  const text = JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers({'content-length': String(Buffer.byteLength(text))}),
+    text: () => Promise.resolve(text),
     json: () => Promise.resolve(body),
   } as Response;
 }
@@ -50,13 +53,15 @@ describe('Bayaan Sync BFF client', () => {
     expect(url).toBe(
       'https://api-prelive.thebayaan.com/v1/qf/sync?mutationsSince=0&resources=BOOKMARK%2CNOTE%2CREADING_SESSION&metadataOnly=false&limit=1000&page=1',
     );
-    expect(init).toEqual({
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        Authorization: 'Bearer opaque-bayaan-session',
-      },
-    });
+    expect(init).toEqual(
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer opaque-bayaan-session',
+        },
+      }),
+    );
     const requestText = JSON.stringify({url, init});
     expect(requestText).not.toContain('x-auth-token');
     expect(requestText).not.toContain('x-client-id');
@@ -324,5 +329,37 @@ describe('Bayaan Sync BFF client', () => {
       status,
       message: 'Bayaan Sync request failed',
     });
+  });
+
+  it('aborts a stalled sync request at its deadline', async () => {
+    let observedSignal: AbortSignal | undefined;
+    const fetchImpl = jest.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          observedSignal = init?.signal ?? undefined;
+          setTimeout(() => reject(new Error('late network failure')), 25);
+        }),
+    ) as unknown as typeof fetch;
+    const client = new BayaanSyncApiClient({apiUrl, fetchImpl, timeoutMs: 5});
+
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 0}),
+    ).rejects.toMatchObject({code: 'service_unavailable'});
+    expect(observedSignal?.aborted).toBe(true);
+  });
+
+  it('rejects oversized successful sync JSON without parsing it', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({'content-length': '1048577'}),
+      text: jest.fn(),
+    } as unknown as Response);
+    const client = new BayaanSyncApiClient({apiUrl, fetchImpl});
+
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 0}),
+    ).rejects.toMatchObject({code: 'invalid_response'});
+    expect(fetchImpl.mock.results[0]).toBeDefined();
   });
 });

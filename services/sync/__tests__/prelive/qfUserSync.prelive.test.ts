@@ -71,9 +71,12 @@ interface CapturedRequest {
 }
 
 function jsonResponse(body: unknown, status = 200) {
+  const text = JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers({'content-length': String(Buffer.byteLength(text))}),
+    text: () => Promise.resolve(text),
     json: () => Promise.resolve(body),
   } as Response;
 }

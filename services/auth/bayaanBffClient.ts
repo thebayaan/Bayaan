@@ -1,4 +1,12 @@
 import type {BayaanAuthProfile, BayaanOpaqueSession} from '@/types/bayaan-auth';
+import {
+  BoundedHttpError,
+  boundedJsonRequest,
+  boundedRequest,
+} from '@/services/network/boundedHttp';
+
+const AUTH_TIMEOUT_MS = 8_000;
+const AUTH_MAX_RESPONSE_BYTES = 64 * 1024;
 
 interface StartAuthResponse {
   authorizationUrl: string;
@@ -27,12 +35,9 @@ function parseProfile(value: unknown): BayaanAuthProfile {
   };
 }
 
-async function parseJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
+export function parseExpiresAt(value: string): number | undefined {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export class BayaanBffError extends Error {
@@ -47,14 +52,55 @@ export class BayaanBffError extends Error {
 }
 
 export class BayaanBffClient {
-  constructor(private readonly apiUrl: string) {}
+  private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
+
+  constructor(
+    private readonly apiUrl: string,
+    options: {fetchImpl?: typeof fetch; timeoutMs?: number} = {},
+  ) {
+    this.fetchImpl =
+      options.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
+    this.timeoutMs = options.timeoutMs ?? AUTH_TIMEOUT_MS;
+  }
+
+  private async jsonRequest(
+    path: string,
+    init: RequestInit,
+    invalidCode: string,
+    requestCode: string,
+  ): Promise<{response: Response; body: unknown | null}> {
+    try {
+      return await boundedJsonRequest(
+        this.fetchImpl,
+        joinUrl(this.apiUrl, path),
+        init,
+        {
+          timeoutMs: this.timeoutMs,
+          maxResponseBytes: AUTH_MAX_RESPONSE_BYTES,
+        },
+      );
+    } catch (error) {
+      throw new BayaanBffError(
+        0,
+        error instanceof BoundedHttpError &&
+          (error.code === 'response_too_large' || error.code === 'invalid_json')
+          ? invalidCode
+          : requestCode,
+      );
+    }
+  }
 
   async startAuth(): Promise<StartAuthResponse> {
-    const response = await fetch(joinUrl(this.apiUrl, '/v1/qf/auth/start'), {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-    });
-    const body = await parseJson(response);
+    const {response, body} = await this.jsonRequest(
+      '/v1/qf/auth/start',
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+      },
+      'invalid_start_response',
+      'start_failed',
+    );
 
     if (!response.ok) {
       throw new BayaanBffError(response.status, 'start_failed');
@@ -80,12 +126,16 @@ export class BayaanBffClient {
     handoff: string,
     state: string,
   ): Promise<BayaanOpaqueSession> {
-    const response = await fetch(joinUrl(this.apiUrl, '/v1/qf/auth/complete'), {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({handoff, state}),
-    });
-    const body = await parseJson(response);
+    const {response, body} = await this.jsonRequest(
+      '/v1/qf/auth/complete',
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({handoff, state}),
+      },
+      'invalid_complete_response',
+      'complete_failed',
+    );
 
     if (!response.ok) {
       throw new BayaanBffError(
@@ -94,10 +144,14 @@ export class BayaanBffClient {
       );
     }
 
+    const expiresAt =
+      isObject(body) && typeof body.expiresAt === 'string'
+        ? parseExpiresAt(body.expiresAt)
+        : undefined;
     if (
       !isObject(body) ||
       typeof body.sessionToken !== 'string' ||
-      typeof body.expiresAt !== 'string' ||
+      expiresAt === undefined ||
       !('profile' in body)
     ) {
       throw new BayaanBffError(response.status, 'invalid_complete_response');
@@ -105,16 +159,18 @@ export class BayaanBffClient {
 
     return {
       token: body.sessionToken,
-      expiresAt: Date.parse(body.expiresAt),
+      expiresAt,
       profile: parseProfile(body.profile),
     };
   }
 
   async getSession(token: string): Promise<Omit<BayaanOpaqueSession, 'token'>> {
-    const response = await fetch(joinUrl(this.apiUrl, '/v1/qf/auth/session'), {
-      headers: {Authorization: `Bearer ${token}`},
-    });
-    const body = await parseJson(response);
+    const {response, body} = await this.jsonRequest(
+      '/v1/qf/auth/session',
+      {headers: {Authorization: `Bearer ${token}`}},
+      'invalid_session_response',
+      'session_failed',
+    );
 
     if (!response.ok) {
       throw new BayaanBffError(
@@ -123,25 +179,35 @@ export class BayaanBffClient {
       );
     }
 
-    if (
-      !isObject(body) ||
-      typeof body.expiresAt !== 'string' ||
-      !('profile' in body)
-    ) {
+    const expiresAt =
+      isObject(body) && typeof body.expiresAt === 'string'
+        ? parseExpiresAt(body.expiresAt)
+        : undefined;
+    if (!isObject(body) || expiresAt === undefined || !('profile' in body)) {
       throw new BayaanBffError(response.status, 'invalid_session_response');
     }
 
     return {
-      expiresAt: Date.parse(body.expiresAt),
+      expiresAt,
       profile: parseProfile(body.profile),
     };
   }
 
   async logout(token: string): Promise<void> {
-    const response = await fetch(joinUrl(this.apiUrl, '/v1/qf/auth/logout'), {
-      method: 'POST',
-      headers: {Authorization: `Bearer ${token}`},
-    });
+    let response: Response;
+    try {
+      response = await boundedRequest(
+        this.fetchImpl,
+        joinUrl(this.apiUrl, '/v1/qf/auth/logout'),
+        {
+          method: 'POST',
+          headers: {Authorization: `Bearer ${token}`},
+        },
+        this.timeoutMs,
+      );
+    } catch {
+      throw new BayaanBffError(0, 'logout_failed');
+    }
 
     if (!response.ok && response.status !== 401) {
       throw new BayaanBffError(response.status, 'logout_failed');

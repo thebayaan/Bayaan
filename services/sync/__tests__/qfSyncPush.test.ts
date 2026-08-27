@@ -17,9 +17,12 @@ const accountId = 'reader-a';
 const sessionToken = 'opaque-bayaan-session';
 
 function jsonResponse(body: unknown, status = 200): Response {
+  const text = JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers({'content-length': String(Buffer.byteLength(text))}),
+    text: () => Promise.resolve(text),
     json: () => Promise.resolve(body),
   } as Response;
 }
@@ -226,7 +229,7 @@ describe('Bayaan Sync exact-head push transport', () => {
 
     expect(fetchImpl).toHaveBeenCalledWith(
       'https://api-prelive.thebayaan.com/v1/qf/sync?lastMutationAt=7001',
-      {
+      expect.objectContaining({
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -248,7 +251,7 @@ describe('Bayaan Sync exact-head push transport', () => {
             },
           ],
         }),
-      },
+      }),
     );
   });
 

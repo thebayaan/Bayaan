@@ -7,6 +7,10 @@ import {
   type BayaanSyncPullPage,
   type BayaanSyncPushResult,
 } from './bayaanSyncCodec';
+import {
+  BoundedHttpError,
+  boundedJsonRequest,
+} from '@/services/network/boundedHttp';
 
 export type BayaanSyncApiErrorCode =
   | 'session_revoked'
@@ -41,9 +45,13 @@ export interface BayaanSyncPushRequest {
 interface BayaanSyncApiClientOptions {
   apiUrl: string;
   fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  maxResponseBytes?: number;
 }
 
 const SYNC_RESOURCES = ['BOOKMARK', 'NOTE', 'READING_SESSION'] as const;
+const SYNC_TIMEOUT_MS = 8_000;
+const SYNC_MAX_RESPONSE_BYTES = 1024 * 1024;
 
 function syncUrl(apiUrl: string, request: BayaanSyncPullRequest): string {
   const url = new URL('/v1/qf/sync', `${apiUrl.replace(/\/+$/, '')}/`);
@@ -84,6 +92,27 @@ export class BayaanSyncApiClient {
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
+  private async request(
+    input: string,
+    init: RequestInit,
+  ): Promise<{response: Response; body: unknown | null}> {
+    try {
+      return await boundedJsonRequest(this.fetchImpl, input, init, {
+        timeoutMs: this.options.timeoutMs ?? SYNC_TIMEOUT_MS,
+        maxResponseBytes:
+          this.options.maxResponseBytes ?? SYNC_MAX_RESPONSE_BYTES,
+      });
+    } catch (error) {
+      if (
+        error instanceof BoundedHttpError &&
+        (error.code === 'response_too_large' || error.code === 'invalid_json')
+      ) {
+        throw new BayaanSyncApiError('invalid_response', 0);
+      }
+      throw new BayaanSyncApiError('service_unavailable', 0);
+    }
+  }
+
   async pull(
     opaqueSessionToken: string,
     request: BayaanSyncPullRequest,
@@ -92,25 +121,23 @@ export class BayaanSyncApiClient {
       throw new BayaanSyncApiError('session_revoked', 401);
     }
 
-    let response: Response;
-    try {
-      response = await this.fetchImpl(syncUrl(this.options.apiUrl, request), {
+    const {response, body} = await this.request(
+      syncUrl(this.options.apiUrl, request),
+      {
         method: 'GET',
         headers: {
           Accept: 'application/json',
           Authorization: `Bearer ${opaqueSessionToken}`,
         },
-      });
-    } catch {
-      throw new BayaanSyncApiError('service_unavailable', 0);
-    }
+      },
+    );
 
     if (!response.ok) {
       throw mapStatus(response.status);
     }
 
     try {
-      return decodeBayaanSyncPullResponse(await response.json(), request);
+      return decodeBayaanSyncPullResponse(body, request);
     } catch (error) {
       if (
         error instanceof BayaanSyncDecodeError ||
@@ -145,32 +172,27 @@ export class BayaanSyncApiClient {
       throw new BayaanSyncApiError('request_failed', 400);
     }
 
-    let response: Response;
-    try {
-      response = await this.fetchImpl(
-        pushUrl(this.options.apiUrl, request.lastMutationAt),
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            Authorization: `Bearer ${opaqueSessionToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            mutations,
-          }),
+    const {response, body} = await this.request(
+      pushUrl(this.options.apiUrl, request.lastMutationAt),
+      {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${opaqueSessionToken}`,
+          'Content-Type': 'application/json',
         },
-      );
-    } catch {
-      throw new BayaanSyncApiError('service_unavailable', 0);
-    }
+        body: JSON.stringify({
+          mutations,
+        }),
+      },
+    );
 
     if (!response.ok) {
       throw mapStatus(response.status);
     }
 
     try {
-      const result = decodeBayaanSyncPushResponse(await response.json());
+      const result = decodeBayaanSyncPushResponse(body);
       if (result.lastMutationAt < request.lastMutationAt) {
         throw new BayaanSyncDecodeError();
       }

@@ -22,6 +22,7 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 import {BayaanAuthError, createBayaanAuthService} from '../bayaanAuthService';
+import {BayaanBffClient} from '../bayaanBffClient';
 import {
   getBayaanSession,
   getPendingBayaanAuthState,
@@ -37,9 +38,12 @@ const profile = {
 };
 
 function jsonResponse(body: unknown, status = 200) {
+  const text = JSON.stringify(body);
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers({'content-length': String(Buffer.byteLength(text))}),
+    text: () => Promise.resolve(text),
     json: () => Promise.resolve(body),
   } as Response;
 }
@@ -251,23 +255,83 @@ describe('Bayaan BFF auth service', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it('surfaces cancellation without leaking provider details', async () => {
-    await savePendingBayaanAuthState({
-      state: 'state-123',
-      expiresAt: Date.now() + 300_000,
-    });
-    const service = createBayaanAuthService({apiUrl});
+  it.each([
+    ['access_denied', 'access_denied', 'Sign-in was cancelled'],
+    ['oauth_failed', 'oauth_failed', 'Sign-in failed'],
+  ])(
+    'accepts the backend validated-state %s redirect contract',
+    async (backendError, expectedCode, expectedMessage) => {
+      await savePendingBayaanAuthState({
+        state: 'state-123',
+        expiresAt: Date.now() + 300_000,
+      });
+      const service = createBayaanAuthService({apiUrl});
 
-    await expect(
-      service.handleCallbackUrl(
-        'bayaan://oauth/callback?error=access_denied&state=state-123&error_description=secret',
-      ),
-    ).rejects.toMatchObject({
-      code: 'access_denied',
-      message: 'Sign-in was cancelled',
+      await expect(
+        service.handleCallbackUrl(
+          `bayaan://oauth/callback?error=${backendError}&state=state-123`,
+        ),
+      ).rejects.toMatchObject({
+        code: expectedCode,
+        message: expectedMessage,
+      });
+      await expect(getPendingBayaanAuthState()).resolves.toBeNull();
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [
+      'complete',
+      () => new BayaanBffClient(apiUrl).completeAuth('handoff', 'state'),
+    ],
+    ['session', () => new BayaanBffClient(apiUrl).getSession('session')],
+  ])(
+    'rejects an invalid %s expiry instead of returning NaN',
+    async (_name, request) => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'opaque-session',
+          expiresAt: 'not-a-date',
+          profile,
+        }),
+      );
+
+      await expect(request()).rejects.toMatchObject({
+        code: expect.stringMatching(/^invalid_(complete|session)_response$/),
+      });
+    },
+  );
+
+  it('aborts a stalled auth request at the configured deadline', async () => {
+    let observedSignal: AbortSignal | undefined;
+    const fetchImpl = jest.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          observedSignal = init?.signal ?? undefined;
+          setTimeout(() => reject(new Error('late network failure')), 25);
+        }),
+    ) as unknown as typeof fetch;
+    const client = new BayaanBffClient(apiUrl, {fetchImpl, timeoutMs: 5});
+
+    await expect(client.startAuth()).rejects.toMatchObject({
+      code: 'start_failed',
     });
-    await expect(getPendingBayaanAuthState()).resolves.toBeNull();
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(observedSignal?.aborted).toBe(true);
+  });
+
+  it('rejects oversized auth JSON with a stable redacted error', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      headers: new Headers({'content-length': '65537'}),
+      text: jest.fn(),
+    } as unknown as Response);
+    const client = new BayaanBffClient(apiUrl);
+
+    const error = await client.startAuth().catch(value => value);
+    expect(error).toMatchObject({code: 'invalid_start_response'});
+    expect(error.message).toBe('Bayaan auth request failed');
   });
 
   it('maps expired or replayed handoff responses to a stable error and clears pending state', async () => {

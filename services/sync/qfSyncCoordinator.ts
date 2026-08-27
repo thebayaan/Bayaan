@@ -32,8 +32,7 @@ export interface QfSyncPushTransport {
 }
 
 export interface QfSyncTransport
-  extends QfSyncPullTransport,
-    QfSyncPushTransport {}
+  extends QfSyncPullTransport, QfSyncPushTransport {}
 
 export interface QfSyncPushStore {
   getStoredHead(accountId: string): Promise<number>;
@@ -109,6 +108,7 @@ interface RemoteRow extends Record<string, unknown> {
   created_at: number;
   updated_at?: number;
   rewayah_id: string | null;
+  last_read_at?: number;
 }
 
 interface NoteRow extends RemoteRow {
@@ -133,6 +133,10 @@ interface NoteOutboxRow extends Record<string, unknown> {
 
 interface PendingOutboxRow extends Record<string, unknown> {
   local_operation_id: string;
+}
+
+interface ReadingOutboxRow extends PendingOutboxRow {
+  delivery_state: 'PENDING' | 'IN_FLIGHT' | 'AMBIGUOUS';
 }
 
 interface PendingNotePayload {
@@ -640,6 +644,8 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     if (ayah > (SURAH_VERSE_COUNTS.get(surah) ?? 0)) {
       throw new Error('Invalid remote reading verse');
     }
+    const lastReadAt = remoteDate(data.clientUpdatedAt, mutation.timestamp);
+    const createdAt = remoteDate(data.clientCreatedAt, lastReadAt);
     const existing = await db.getFirstAsync<RemoteRow>(
       `SELECT * FROM (
          SELECT *, 0 AS match_priority FROM qf_reading_locations
@@ -651,6 +657,17 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
        ORDER BY match_priority, last_read_at DESC LIMIT 1`,
       [scope, mutation.resourceId, scope],
     );
+    const localIntent =
+      existing?.remote_id === null
+        ? await db.getFirstAsync<ReadingOutboxRow>(
+            `SELECT local_operation_id, delivery_state
+             FROM qf_sync_outbox
+             WHERE owner_scope = ? AND resource = 'READING_SESSION'
+               AND local_id = ? AND mutation_type <> 'DELETE'
+             ORDER BY created_at DESC, local_operation_id DESC LIMIT 1`,
+            [scope, existing.id],
+          )
+        : null;
     if (
       existing?.server_updated_at !== null &&
       existing?.server_updated_at !== undefined &&
@@ -658,8 +675,32 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     ) {
       return;
     }
-    const lastReadAt = remoteDate(data.clientUpdatedAt, mutation.timestamp);
-    const createdAt = remoteDate(data.clientCreatedAt, lastReadAt);
+    if (
+      existing &&
+      localIntent &&
+      existing.last_read_at !== undefined &&
+      existing.last_read_at > lastReadAt
+    ) {
+      await db.runAsync(
+        `UPDATE qf_reading_locations
+         SET remote_id = ?, server_updated_at = ?
+         WHERE owner_scope = ? AND id = ?`,
+        [mutation.resourceId, mutation.timestamp, scope, existing.id],
+      );
+      await db.runAsync(
+        `UPDATE qf_sync_outbox
+         SET mutation_type = 'UPDATE', remote_id = ?,
+             base_server_updated_at = ?, revision = revision + 1
+         WHERE owner_scope = ? AND local_operation_id = ?`,
+        [
+          mutation.resourceId,
+          mutation.timestamp,
+          scope,
+          localIntent.local_operation_id,
+        ],
+      );
+      return;
+    }
     if (existing) {
       await db.runAsync(
         `UPDATE qf_reading_locations
@@ -678,6 +719,13 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
           existing.id,
         ],
       );
+      if (localIntent?.delivery_state === 'PENDING') {
+        await db.runAsync(
+          `DELETE FROM qf_sync_outbox
+           WHERE owner_scope = ? AND local_operation_id = ?`,
+          [scope, localIntent.local_operation_id],
+        );
+      }
       return;
     }
     await db.runAsync(
