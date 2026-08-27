@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useRef} from 'react';
 import {Text, View} from 'react-native';
 import * as Linking from 'expo-linking';
 import {useRouter} from 'expo-router';
@@ -8,16 +8,29 @@ import {
 } from '@/services/auth/bayaanAuthService';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
+const CALLBACK_URL_WAIT_MS = 2_000;
+
 export default function OAuthCallbackScreen() {
   const router = useRouter();
   const currentUrl = Linking.useURL();
+  const callbackHandled = useRef(false);
 
   useEffect(() => {
-    if (!currentUrl) {
-      useBayaanAuthStore.getState().setError('malformed_callback');
-      router.replace('/(tabs)/(d.settings)');
+    if (callbackHandled.current) {
       return;
     }
+
+    if (!currentUrl) {
+      const timeout = setTimeout(() => {
+        callbackHandled.current = true;
+        useBayaanAuthStore.getState().setError('malformed_callback');
+        router.replace('/(tabs)/(d.settings)');
+      }, CALLBACK_URL_WAIT_MS);
+
+      return () => clearTimeout(timeout);
+    }
+
+    callbackHandled.current = true;
 
     bayaanAuthService
       .handleCallbackUrl(currentUrl)

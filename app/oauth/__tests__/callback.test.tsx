@@ -44,6 +44,42 @@ beforeEach(() => {
 });
 
 describe('OAuth callback route', () => {
+  it('waits for a callback URL after an initial null and authenticates exactly once', async () => {
+    const callbackUrl =
+      'bayaan://oauth/callback?handoff=handoff-123&state=state-123';
+    mockUseURL.mockReturnValueOnce(null).mockReturnValue(callbackUrl);
+
+    let tree: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<OAuthCallbackScreen />);
+      await Promise.resolve();
+    });
+
+    expect(mockHandleCallbackUrl).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(useBayaanAuthStore.getState().status).toBe('initializing');
+
+    await act(async () => {
+      tree.update(<OAuthCallbackScreen />);
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      tree.update(<OAuthCallbackScreen />);
+      await Promise.resolve();
+    });
+
+    expect(mockHandleCallbackUrl).toHaveBeenCalledTimes(1);
+    expect(mockHandleCallbackUrl).toHaveBeenCalledWith(callbackUrl);
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-1'},
+      errorCode: null,
+    });
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith('/(tabs)/(d.settings)');
+  });
+
   it('passes the original inbound URL to callback validation without rebuilding it from params', async () => {
     const originalUrl =
       'bayaan://quran/1?handoff=handoff-123&state=state-123#access_token=secret';
@@ -62,23 +98,37 @@ describe('OAuth callback route', () => {
     expect(mockHandleCallbackUrl).toHaveBeenCalledWith(originalUrl);
   });
 
-  it('rejects missing original callback URLs instead of reconstructing a sanitized callback', async () => {
-    mockUseURL.mockReturnValue(null);
-    mockUseLocalSearchParams.mockReturnValue({
-      handoff: 'handoff-123',
-      state: 'state-123',
-    });
+  it('fails closed after a bounded wait when no callback URL arrives', async () => {
+    jest.useFakeTimers();
+    try {
+      mockUseURL.mockReturnValue(null);
+      mockUseLocalSearchParams.mockReturnValue({
+        handoff: 'handoff-123',
+        state: 'state-123',
+      });
 
-    await act(async () => {
-      renderer.create(<OAuthCallbackScreen />);
-      await Promise.resolve();
-    });
+      await act(async () => {
+        renderer.create(<OAuthCallbackScreen />);
+        await Promise.resolve();
+      });
 
-    expect(mockHandleCallbackUrl).not.toHaveBeenCalled();
-    expect(useBayaanAuthStore.getState()).toMatchObject({
-      status: 'error',
-      errorCode: 'malformed_callback',
-    });
-    expect(mockReplace).toHaveBeenCalledWith('/(tabs)/(d.settings)');
+      expect(mockHandleCallbackUrl).not.toHaveBeenCalled();
+      expect(mockReplace).not.toHaveBeenCalled();
+      expect(useBayaanAuthStore.getState().status).toBe('initializing');
+
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(5_000);
+      });
+
+      expect(mockHandleCallbackUrl).not.toHaveBeenCalled();
+      expect(useBayaanAuthStore.getState()).toMatchObject({
+        status: 'error',
+        errorCode: 'malformed_callback',
+      });
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith('/(tabs)/(d.settings)');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
