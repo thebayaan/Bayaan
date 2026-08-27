@@ -1,8 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
 
-const SESSION_KEY = 'bayaan:qf-session:v1';
-const PENDING_STATE_KEY = 'bayaan:qf-pending-state:v1';
+const SESSION_KEY = 'bayaan_qf_session_v1';
+const PENDING_STATE_KEY = 'bayaan_qf_pending_state_v1';
 const STORAGE_VERSION = 1;
 
 export interface PendingBayaanAuthState {

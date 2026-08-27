@@ -1,14 +1,26 @@
 const mockSecureStore = new Map<string, string>();
+const mockSecureStoreKeyPattern = /^[A-Za-z0-9._-]+$/;
+
+function mockAssertValidSecureStoreKey(key: string): void {
+  if (!key || !mockSecureStoreKeyPattern.test(key)) {
+    throw new Error(
+      'Invalid key provided to SecureStore. Keys must not be empty and contain only alphanumeric characters, ".", "-", and "_".',
+    );
+  }
+}
 
 jest.mock('expo-secure-store', () => ({
-  getItemAsync: jest.fn((key: string) =>
-    Promise.resolve(mockSecureStore.get(key) ?? null),
-  ),
+  getItemAsync: jest.fn((key: string) => {
+    mockAssertValidSecureStoreKey(key);
+    return Promise.resolve(mockSecureStore.get(key) ?? null);
+  }),
   setItemAsync: jest.fn((key: string, value: string) => {
+    mockAssertValidSecureStoreKey(key);
     mockSecureStore.set(key, value);
     return Promise.resolve();
   }),
   deleteItemAsync: jest.fn((key: string) => {
+    mockAssertValidSecureStoreKey(key);
     mockSecureStore.delete(key);
     return Promise.resolve();
   }),
@@ -31,6 +43,16 @@ beforeEach(() => {
 });
 
 describe('Bayaan SecureStore session storage', () => {
+  it('uses SecureStore-compatible keys for Bayaan auth data', async () => {
+    await expect(
+      saveBayaanSession({
+        token: 'opaque-bayaan-session',
+        expiresAt: future,
+        profile: {accountId: 'bayaan-account-id'},
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it('round-trips only the versioned opaque Bayaan session', async () => {
     await saveBayaanSession({
       token: 'opaque-bayaan-session',
@@ -62,10 +84,10 @@ describe('Bayaan SecureStore session storage', () => {
   });
 
   it('treats malformed stored values as signed out and clears them', async () => {
-    mockSecureStore.set('bayaan:qf-session:v1', '{not-json');
+    mockSecureStore.set('bayaan_qf_session_v1', '{not-json');
 
     await expect(getBayaanSession()).resolves.toBeNull();
-    expect(mockSecureStore.has('bayaan:qf-session:v1')).toBe(false);
+    expect(mockSecureStore.has('bayaan_qf_session_v1')).toBe(false);
   });
 
   it('clears expired sessions before returning to callers', async () => {
@@ -76,7 +98,7 @@ describe('Bayaan SecureStore session storage', () => {
     });
 
     await expect(getBayaanSession()).resolves.toBeNull();
-    expect(mockSecureStore.has('bayaan:qf-session:v1')).toBe(false);
+    expect(mockSecureStore.has('bayaan_qf_session_v1')).toBe(false);
   });
 
   it('stores and clears the pending OAuth state separately from the session', async () => {
