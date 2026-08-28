@@ -1,10 +1,10 @@
 const mockHandleCallbackUrl = jest.fn();
 const mockReplace = jest.fn();
 const mockUseLocalSearchParams = jest.fn();
-const mockUseURL = jest.fn();
+const mockUseLinkingURL = jest.fn();
 
 jest.mock('expo-linking', () => ({
-  useURL: () => mockUseURL(),
+  useLinkingURL: () => mockUseLinkingURL(),
 }));
 
 jest.mock('expo-router', () => ({
@@ -39,15 +39,27 @@ beforeEach(() => {
   });
   mockReplace.mockReset();
   mockUseLocalSearchParams.mockReset();
-  mockUseURL.mockReset();
+  mockUseLinkingURL.mockReset();
+  mockUseLinkingURL.mockReturnValue(null);
   useBayaanAuthStore.getState().resetForTesting();
 });
 
 describe('OAuth callback route', () => {
+  it('processes the native current link synchronously', async () => {
+    mockUseLinkingURL.mockReturnValue('current-callback');
+
+    await act(async () => {
+      renderer.create(<OAuthCallbackScreen />);
+      await Promise.resolve();
+    });
+
+    expect(mockHandleCallbackUrl).toHaveBeenCalledTimes(1);
+  });
+
   it('waits for a callback URL after an initial null and authenticates exactly once', async () => {
     const callbackUrl =
       'bayaan://oauth/callback?handoff=handoff-123&state=state-123';
-    mockUseURL.mockReturnValueOnce(null).mockReturnValue(callbackUrl);
+    mockUseLinkingURL.mockReturnValueOnce(null).mockReturnValue(callbackUrl);
 
     let tree: renderer.ReactTestRenderer;
     await act(async () => {
@@ -83,7 +95,7 @@ describe('OAuth callback route', () => {
   it('passes the original inbound URL to callback validation without rebuilding it from params', async () => {
     const originalUrl =
       'bayaan://quran/1?handoff=handoff-123&state=state-123#access_token=secret';
-    mockUseURL.mockReturnValue(originalUrl);
+    mockUseLinkingURL.mockReturnValue(originalUrl);
     mockUseLocalSearchParams.mockReturnValue({
       handoff: 'handoff-123',
       state: 'state-123',
@@ -101,7 +113,7 @@ describe('OAuth callback route', () => {
   it('fails closed after a bounded wait when no callback URL arrives', async () => {
     jest.useFakeTimers();
     try {
-      mockUseURL.mockReturnValue(null);
+      mockUseLinkingURL.mockReturnValue(null);
       mockUseLocalSearchParams.mockReturnValue({
         handoff: 'handoff-123',
         state: 'state-123',

@@ -12,7 +12,7 @@ const CALLBACK_URL_WAIT_MS = 2_000;
 
 export default function OAuthCallbackScreen() {
   const router = useRouter();
-  const currentUrl = Linking.useURL();
+  const currentUrl = Linking.useLinkingURL();
   const callbackHandled = useRef(false);
 
   useEffect(() => {
