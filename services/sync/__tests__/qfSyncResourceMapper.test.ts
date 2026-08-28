@@ -49,6 +49,7 @@ describe('qfSyncResourceMapper', () => {
       data: {
         key: 2,
         type: 'ayah',
+        mushaf: 4,
         verseNumber: 255,
         clientCreatedAt: '2024-04-19T07:20:00.000Z',
         clientUpdatedAt: '2024-04-19T07:20:00.000Z',

@@ -38,6 +38,7 @@ interface ParsedVerseKey {
 const SURAH_VERSE_COUNTS = new Map<number, number>(
   surahData.map(surah => [surah.id, surah.verses_count]),
 );
+const QF_AYAH_BOOKMARK_MUSHAF = 4;
 
 function toIsoString(timestamp: number): string {
   return new Date(timestamp).toISOString();
@@ -146,6 +147,7 @@ function mapBookmark(entry: QfOutboxEntryLike): QfSyncRequestMutation {
     data: {
       key: payload.surahNumber,
       type: 'ayah',
+      mushaf: QF_AYAH_BOOKMARK_MUSHAF,
       verseNumber: payload.ayahNumber,
       clientCreatedAt: toIsoString(payload.clientCreatedAt),
       clientUpdatedAt: toIsoString(payload.clientUpdatedAt),
