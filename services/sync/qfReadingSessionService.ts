@@ -61,6 +61,7 @@ export class QfReadingSessionService {
   private readonly debounceMs: number;
   private readonly pending = new Map<string, PendingReadingLocation>();
   private readonly flushTails = new Map<string, Promise<void>>();
+  private readonly intentRevisions = new Map<string, number>();
 
   constructor(options: QfReadingSessionServiceOptions = {}) {
     this.database = options.database ?? qfSyncDatabaseService;
@@ -74,9 +75,19 @@ export class QfReadingSessionService {
   }
 
   recordVisibleVerse(verseKey: string): void {
+    this.recordPageIntent(verseKey);
+  }
+
+  recordPageIntent(verseKey?: string, intentAt = this.now()): void {
     const accountId = this.getActiveAccountId();
     if (!accountId) return;
-    const parsed = parseVerseKey(verseKey);
+    const parsed = verseKey ? parseVerseKey(verseKey) : null;
+    if (verseKey && !parsed) return;
+
+    this.intentRevisions.set(
+      accountId,
+      (this.intentRevisions.get(accountId) ?? 0) + 1,
+    );
     if (!parsed) return;
 
     const previous = this.pending.get(accountId);
@@ -84,13 +95,17 @@ export class QfReadingSessionService {
     const next: PendingReadingLocation = {
       accountId,
       ...parsed,
-      lastReadAt: this.now(),
+      lastReadAt: intentAt,
       timer: null,
     };
     next.timer = setTimeout(() => {
       this.flush(accountId).catch(() => undefined);
     }, this.debounceMs);
     this.pending.set(accountId, next);
+  }
+
+  getIntentRevision(accountId: string): number {
+    return this.intentRevisions.get(accountId) ?? 0;
   }
 
   async flush(accountId?: string): Promise<void> {

@@ -173,6 +173,7 @@ function createLifecycle(
     })),
     onSessionRevoked: jest.fn(async () => undefined),
     flushReadingSession: jest.fn(async () => undefined),
+    getReadingIntentRevision: jest.fn(() => 0),
     ...overrides,
   });
 }

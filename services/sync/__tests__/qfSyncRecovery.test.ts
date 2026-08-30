@@ -678,6 +678,7 @@ describe('SQLite push recovery store', () => {
       }),
       onSessionRevoked: async () => undefined,
       flushReadingSession: async () => undefined,
+      getReadingIntentRevision: () => 0,
       now: () => 8001,
     });
 
@@ -1668,9 +1669,8 @@ describe('SQLite push recovery store', () => {
   });
 
   it('rolls back acknowledgements and remote metadata when head advancement fails', async () => {
-    const {database, annotations, sync} = await createServices(
-      'atomic-rollback.db',
-    );
+    const {database, annotations, sync} =
+      await createServices('atomic-rollback.db');
     await sync.initialize();
     const bookmark = await sync.addBookmark({
       accountId,
@@ -1851,9 +1851,8 @@ describe('SQLite push recovery store', () => {
   });
 
   it('correlates one exact pulled note create without replaying or duplicating it', async () => {
-    const {database, annotations, sync} = await createServices(
-      'correlated-note.db',
-    );
+    const {database, annotations, sync} =
+      await createServices('correlated-note.db');
     await sync.initialize();
     const note = await sync.addNote({
       accountId,

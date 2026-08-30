@@ -922,6 +922,17 @@ export class QfSyncDatabaseService {
     return rows.map(toReadingLocation);
   }
 
+  async getLatestReadingLocation(
+    accountId: string,
+  ): Promise<QfReadingLocation | null> {
+    const db = await this.database.getConnection();
+    const row = await this.getLatestReadingLocationRow(
+      db,
+      ownerScopeFromAccountId(accountId),
+    );
+    return row ? toReadingLocation(row) : null;
+  }
+
   async getOutboxEntries(accountId: string): Promise<QfOutboxEntry[]> {
     const db = await this.database.getConnection();
     const rows = (await db.getAllAsync(

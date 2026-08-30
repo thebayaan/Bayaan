@@ -20,6 +20,7 @@ import {
   type QfSyncPersistedStatus,
 } from './qfSyncDatabaseService';
 import {qfReadingSessionService} from './qfReadingSessionService';
+import {mushafSyncedReadingService} from '@/services/mushaf/MushafSyncedReadingService';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {
   useBayaanAuthStore,
@@ -73,6 +74,11 @@ interface QfSyncLifecycleOptions {
   getSession: () => Promise<BayaanOpaqueSession | null>;
   onSessionRevoked: () => Promise<void>;
   flushReadingSession: (accountId?: string) => Promise<void>;
+  getReadingIntentRevision: (accountId: string) => number;
+  applyReadingProgress?: (
+    accountId: string,
+    expectedLocalIntentRevision: number,
+  ) => Promise<unknown>;
   beginAnnotationScopeHandoff?: (
     previousAccountId: string | null,
     barrier?: Promise<unknown>,
@@ -359,6 +365,10 @@ export class QfSyncLifecycle {
       }
 
       const input = {accountId, sessionToken: session.token};
+      const readingIntentRevision =
+        this.options.getReadingIntentRevision(accountId);
+      await this.options.flushReadingSession(accountId);
+      if (!this.isCurrent(epoch, accountId)) return;
       const pull = await this.options.coordinator.pull(input);
       if (!this.isCurrent(epoch, accountId)) return;
       if (pull.status === 'deferred') {
@@ -371,6 +381,16 @@ export class QfSyncLifecycle {
         );
         return;
       }
+
+      try {
+        await this.options.applyReadingProgress?.(
+          accountId,
+          readingIntentRevision,
+        );
+      } catch {
+        // Invalid or unavailable Mushaf data must not fail a stable sync.
+      }
+      if (!this.isCurrent(epoch, accountId)) return;
 
       const loadedSurah = this.invalidateActiveViews();
       await this.reloadActiveViews(loadedSurah);
@@ -422,13 +442,13 @@ export class QfSyncLifecycle {
       const status: QfSyncStatus = hasConflict
         ? 'conflict'
         : waitingForPendingRetry
-        ? 'retry'
-        : 'idle';
+          ? 'retry'
+          : 'idle';
       const errorCode = hasConflict
         ? 'conflict'
         : waitingForPendingRetry
-        ? 'pending_retry'
-        : null;
+          ? 'pending_retry'
+          : null;
       this.setForCurrent(epoch, accountId, {
         status,
         lastSuccessAt: persisted.lastSuccessfulSyncAt ?? this.now(),
@@ -556,10 +576,10 @@ export class QfSyncLifecycle {
     const accountId = activeAccount(this.context);
     return Boolean(
       !this.stopped &&
-        this.options.enabled &&
-        accountId &&
-        this.context?.online &&
-        this.context.appActive,
+      this.options.enabled &&
+      accountId &&
+      this.context?.online &&
+      this.context.appActive,
     );
   }
 
@@ -690,4 +710,11 @@ export const qfSyncLifecycle = new QfSyncLifecycle({
     }
   },
   flushReadingSession: accountId => qfReadingSessionService.flush(accountId),
+  getReadingIntentRevision: accountId =>
+    qfReadingSessionService.getIntentRevision(accountId),
+  applyReadingProgress: (accountId, expectedLocalIntentRevision) =>
+    mushafSyncedReadingService.applyCanonicalForAccount(
+      accountId,
+      expectedLocalIntentRevision,
+    ),
 });

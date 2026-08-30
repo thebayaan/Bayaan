@@ -15,6 +15,7 @@ import {useQfSyncStore} from '@/store/qfSyncStore';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {verseAnnotationDatabaseService} from '@/services/database/VerseAnnotationDatabaseService';
 import {qfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
+import {MushafSyncedReadingService} from '@/services/mushaf/MushafSyncedReadingService';
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import {useVerseActions} from '@/hooks/useVerseActions';
@@ -84,6 +85,8 @@ function createLifecycle(overrides: Record<string, unknown> = {}) {
     getSession: jest.fn(async () => session()),
     onSessionRevoked: jest.fn(async () => undefined),
     flushReadingSession: jest.fn(async () => undefined),
+    getReadingIntentRevision: jest.fn(() => 0),
+    applyReadingProgress: jest.fn(async () => undefined),
     now: () => 6000,
     ...overrides,
   });
@@ -97,6 +100,158 @@ beforeEach(() => {
 });
 
 describe('QfSyncLifecycle', () => {
+  it('applies canonical reading progress after a stable pull before publishing the data revision', async () => {
+    let appliedPage: number | null = null;
+    let revisionWhenApplied: number | null = null;
+    const applyReadingProgress = jest.fn(async () => {
+      appliedPage = 293;
+      revisionWhenApplied = useQfSyncStore.getState().dataRevision;
+    });
+    const {lifecycle} = createLifecycle({applyReadingProgress});
+
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+
+    expect(appliedPage).toBe(293);
+    expect(revisionWhenApplied).toBe(0);
+    expect(useQfSyncStore.getState().dataRevision).toBe(1);
+  });
+
+  it('flushes pending reading intent before pull and guards post-pull application with its revision', async () => {
+    const events: string[] = [];
+    let localIntentRevision = 3;
+    let finishPull: (value: ReturnType<typeof stablePull>) => void = () =>
+      undefined;
+    const coordinator = {
+      pull: jest.fn(
+        () =>
+          new Promise<ReturnType<typeof stablePull>>(resolve => {
+            events.push('pull');
+            finishPull = resolve;
+          }),
+      ),
+      push: jest.fn(async () => idlePush()),
+    };
+    const flushReadingSession = jest.fn(async (accountId?: string) => {
+      events.push(`flush:${accountId ?? 'guest'}`);
+    });
+    const applyReadingProgress = jest.fn(
+      async (_accountId: string, expectedRevision: number) => {
+        events.push(`apply:${expectedRevision}:${localIntentRevision}`);
+      },
+    );
+    const {lifecycle} = createLifecycle({
+      coordinator,
+      flushReadingSession,
+      getReadingIntentRevision: () => localIntentRevision,
+      applyReadingProgress,
+    });
+
+    lifecycle.updateContext(authenticatedOnline);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(events).toEqual(['flush:guest', 'flush:account-a', 'pull']);
+
+    localIntentRevision = 4;
+    finishPull(stablePull());
+    await lifecycle.waitForIdle();
+
+    expect(flushReadingSession).toHaveBeenCalledWith('account-a');
+    expect(applyReadingProgress).toHaveBeenCalledWith('account-a', 3);
+    expect(events).toContain('apply:3:4');
+  });
+
+  it('prevents a newer visible verse recorded during the real pre-pull flush from being overwritten by stale canonical progress', async () => {
+    let finishFirstWrite: () => void = () => undefined;
+    let announceFirstWrite: () => void = () => undefined;
+    const firstWriteStarted = new Promise<void>(resolve => {
+      announceFirstWrite = resolve;
+    });
+    const firstWriteBlocked = new Promise<void>(resolve => {
+      finishFirstWrite = resolve;
+    });
+    let canonicalVerse = '1:1';
+    let writeCount = 0;
+    const database = {
+      upsertReadingLocation: jest.fn(async input => {
+        writeCount += 1;
+        if (writeCount === 1) {
+          announceFirstWrite();
+          await firstWriteBlocked;
+        }
+        canonicalVerse = input.verseKey;
+      }),
+      getLatestReadingLocation: jest.fn(async () => ({
+        id: 'canonical-reading',
+        ownerScope: 'qf:account-a' as const,
+        verseKey: canonicalVerse,
+        surahNumber: Number(canonicalVerse.split(':')[0]),
+        ayahNumber: Number(canonicalVerse.split(':')[1]),
+        lastReadAt: 1_000,
+        createdAt: 1_000,
+        updatedAt: 1_000,
+      })),
+    };
+    const readingService = new QfReadingSessionService({
+      database,
+      getActiveAccountId: () => 'account-a',
+      requestSync: jest.fn(),
+      debounceMs: 60_000,
+    });
+    const setLastReadPageFromSync = jest.fn();
+    const syncedReadingService = new MushafSyncedReadingService({
+      database,
+      resolveVersePage: async verseKey => (verseKey === '2:255' ? 42 : 50),
+      getLocalIntentRevision: accountId =>
+        readingService.getIntentRevision(accountId),
+      getLastReadPageUpdatedAt: () => null,
+      setLastReadPageFromSync,
+    });
+    let releaseHandoff: () => void = () => undefined;
+    const handoff = new Promise<void>(resolve => {
+      releaseHandoff = resolve;
+    });
+    const {lifecycle} = createLifecycle({
+      beginAnnotationScopeHandoff: () => handoff,
+      flushReadingSession: (accountId?: string) =>
+        readingService.flush(accountId),
+      getReadingIntentRevision: (accountId: string) =>
+        readingService.getIntentRevision(accountId),
+      applyReadingProgress: (accountId: string, expectedRevision: number) =>
+        syncedReadingService.applyCanonicalForAccount(
+          accountId,
+          expectedRevision,
+        ),
+    });
+
+    lifecycle.updateContext(authenticatedOnline);
+    readingService.recordVisibleVerse('2:255');
+    releaseHandoff();
+    await firstWriteStarted;
+
+    readingService.recordVisibleVerse('3:7');
+    finishFirstWrite();
+    await lifecycle.waitForIdle();
+
+    expect(setLastReadPageFromSync).not.toHaveBeenCalled();
+    await readingService.flush('account-a');
+  });
+
+  it('keeps an otherwise successful sync cycle healthy when synced reading progress is unresolvable', async () => {
+    const {lifecycle} = createLifecycle({
+      applyReadingProgress: async () => {
+        throw new Error('unresolvable verse');
+      },
+    });
+
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+
+    expect(useQfSyncStore.getState()).toMatchObject({
+      status: 'idle',
+      lastSuccessAt: 5000,
+    });
+  });
+
   it('keeps the active account usable offline and prompts only after a stable pull', async () => {
     const {lifecycle, coordinator, guestImportService, events} =
       createLifecycle();
@@ -410,6 +565,54 @@ describe('QfReadingSessionService', () => {
         (database.upsertReadingLocation as jest.Mock).mock.calls[0][0],
       ),
     ).not.toMatch(/page|rewayah|duration|scroll|analytics|audio/i);
+  });
+
+  it('increments the account-local intent revision for every accepted visible verse', () => {
+    const service = new QfReadingSessionService({
+      database: {upsertReadingLocation: jest.fn(async () => undefined)},
+      getActiveAccountId: () => 'account-a',
+      requestSync: jest.fn(),
+    });
+
+    expect(service.getIntentRevision('account-a')).toBe(0);
+    service.recordVisibleVerse('2:255');
+    expect(service.getIntentRevision('account-a')).toBe(1);
+    service.recordVisibleVerse('3:7');
+    expect(service.getIntentRevision('account-a')).toBe(2);
+    service.recordVisibleVerse('not-a-verse');
+    expect(service.getIntentRevision('account-a')).toBe(2);
+  });
+
+  it('advances local page intent without enqueueing when verse mapping is unavailable', async () => {
+    const database = {upsertReadingLocation: jest.fn(async () => undefined)};
+    const service = new QfReadingSessionService({
+      database,
+      getActiveAccountId: () => 'account-a',
+      requestSync: jest.fn(),
+    });
+
+    service.recordPageIntent();
+    await jest.advanceTimersByTimeAsync(READING_SESSION_DEBOUNCE_MS);
+
+    expect(service.getIntentRevision('account-a')).toBe(1);
+    expect(database.upsertReadingLocation).not.toHaveBeenCalled();
+  });
+
+  it('uses the persistent local page timestamp for the queued reading location', async () => {
+    const database = {upsertReadingLocation: jest.fn(async () => undefined)};
+    const service = new QfReadingSessionService({
+      database,
+      now: () => 9_999,
+      getActiveAccountId: () => 'account-a',
+      requestSync: jest.fn(),
+    });
+
+    service.recordPageIntent('2:255', 1_234);
+    await jest.advanceTimersByTimeAsync(READING_SESSION_DEBOUNCE_MS);
+
+    expect(database.upsertReadingLocation).toHaveBeenCalledWith(
+      expect.objectContaining({lastReadAt: 1_234}),
+    );
   });
 
   it('keeps guest reading usable and flushes old-account work on switch', async () => {
