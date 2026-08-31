@@ -98,34 +98,54 @@ export const SurahCard: React.FC<SurahCardProps> = ({
       : isDownloadedBase
     : isDownloaded; // Fallback to prop if no reciterId
 
-  // Get necessary state slices from player store
-  const playbackStatus = usePlayerStore(state => state.playback.state);
-  const currentIndex = usePlayerStore(state => state.queue.currentIndex);
-  const tracks = usePlayerStore(state => state.queue.tracks);
-
-  // Check if this specific track is playing
-  const isCurrentTrack = React.useMemo(() => {
-    // Get current track
+  // Derive this card's current/playing state with NARROW scalar-boolean
+  // selectors instead of subscribing to the whole `queue.tracks` array +
+  // `currentIndex` and recomputing in a useMemo. `updateQueue(...)` assigns a
+  // NEW tracks array on every play, so an array-reference subscription
+  // re-renders every mounted card on each play (a jank/freeze risk if a
+  // card-mode list ever grows large/unvirtualized). With boolean selectors,
+  // zustand's Object.is equality only re-renders a card when ITS OWN
+  // current/playing state flips.
+  const isCurrentTrack = usePlayerStore(state => {
+    const idx = state.queue.currentIndex;
     const currentTrack =
-      tracks && currentIndex >= 0 && currentIndex < tracks.length
-        ? tracks[currentIndex]
+      idx >= 0 && idx < (state.queue.tracks?.length ?? 0)
+        ? state.queue.tracks[idx]
         : null;
-
-    // Check if this is the active track (regardless of play state)
     if (!reciterId || !currentTrack) return false;
-
-    // For the same reciter and surah, we need to also check rewayatId if present
     const rewayatMatches =
       rewayatId && currentTrack.rewayatId
         ? rewayatId === currentTrack.rewayatId
         : true;
-
     return (
       currentTrack.reciterId === reciterId &&
       currentTrack.surahId === id.toString() &&
       rewayatMatches
     );
-  }, [reciterId, id, rewayatId, currentIndex, tracks]);
+  });
+
+  // Playing/buffering AND this card's track — used by the NowPlayingIndicator.
+  const isCurrentlyPlaying = usePlayerStore(state => {
+    const status = state.playback.state;
+    if ((status !== 'playing' && status !== 'buffering') || !reciterId) {
+      return false;
+    }
+    const idx = state.queue.currentIndex;
+    const currentTrack =
+      idx >= 0 && idx < (state.queue.tracks?.length ?? 0)
+        ? state.queue.tracks[idx]
+        : null;
+    if (!currentTrack) return false;
+    const rewayatMatches =
+      rewayatId && currentTrack.rewayatId
+        ? rewayatId === currentTrack.rewayatId
+        : true;
+    return (
+      currentTrack.reciterId === reciterId &&
+      currentTrack.surahId === id.toString() &&
+      rewayatMatches
+    );
+  });
 
   // --- Conditional Animation Setup ---
   const scale = useSharedValue(enableAnimation ? 1 : 1);
@@ -389,9 +409,7 @@ export const SurahCard: React.FC<SurahCardProps> = ({
           onPress={onOptionsPress ? handleOptionsPressWrapper : undefined}
           activeOpacity={0.7}>
           <NowPlayingIndicator
-            isPlaying={
-              playbackStatus === 'playing' || playbackStatus === 'buffering'
-            }
+            isPlaying={isCurrentlyPlaying}
             barCount={3}
             surahId={id}
           />
