@@ -56,6 +56,7 @@ import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import {useNetworkStore} from '@/store/networkStore';
 import {useQfSyncStore} from '@/store/qfSyncStore';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 import {GuestDataMergeSheet} from '@/components/auth/GuestDataMergeSheet';
 
 type GestureHandlerRootViewWithOverrideProps = React.ComponentProps<
@@ -186,21 +187,29 @@ function QfSyncLifecycleBridge() {
   }, []);
 
   useEffect(() => {
-    qfSyncLifecycle.updateContext({
+    const context = {
       authStatus,
       accountId,
       online,
       appActive: appState === 'active',
-    });
+    };
+    qfSyncLifecycle.updateContext(context);
+    qfSettingsSyncLifecycle.updateContext(context);
   }, [accountId, appState, authStatus, online]);
 
   useEffect(() => {
-    if (syncRequestId > 0) qfSyncLifecycle.requestSync();
+    if (syncRequestId > 0) {
+      qfSyncLifecycle.requestSync();
+      qfSettingsSyncLifecycle.requestSync();
+    }
   }, [syncRequestId]);
 
   useEffect(
     () => () => {
-      qfSyncLifecycle.stop().catch(() => undefined);
+      Promise.allSettled([
+        qfSyncLifecycle.stop(),
+        qfSettingsSyncLifecycle.stop(),
+      ]).catch(() => undefined);
     },
     [],
   );
@@ -388,7 +397,6 @@ function RootLayout() {
     }
 
     prepare();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set native root view background + configure Android navigation bar to match theme

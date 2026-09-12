@@ -275,6 +275,8 @@ describe('QF user sync mobile pre-live acceptance', () => {
     analyticsService.setPostHogInstance({
       capture: posthogCapture,
       register: posthogRegister,
+      optIn: jest.fn(async () => undefined),
+      optOut: jest.fn(async () => undefined),
     } as unknown as Parameters<typeof analyticsService.setPostHogInstance>[0]);
     mockSentryCaptureException.mockClear();
     mockSentryCaptureMessage.mockClear();

@@ -6,7 +6,7 @@ jest.mock('@/services/mushaf/MushafSessionStore', () => ({
   mushafSessionStore: {getLastReadPage: jest.fn(() => null)},
 }));
 
-jest.mock('@react-navigation/native', () => ({
+jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void) =>
     require('react').useEffect(callback, [callback]),
 }));
