@@ -91,6 +91,7 @@ export function captureSettingsDocuments(): SettingsDocuments {
   return {
     appearance: {
       primaryColor: theme.primaryColor,
+      themeMode: theme.themeMode,
     },
     mushaf: {
       showTranslation: mushaf.showTranslation,
@@ -114,6 +115,7 @@ export function captureSettingsDocuments(): SettingsDocuments {
       darkThemeId: mushaf.darkThemeId,
       rewayah: mushaf.rewayah,
       showRewayahDiffs: mushaf.showRewayahDiffs,
+      selectedTranslationId: mushaf.selectedTranslationId,
     },
     audio: {
       defaultReciterId: reciter.defaultReciter.id || null,
@@ -148,7 +150,6 @@ export function captureSettingsDocuments(): SettingsDocuments {
 }
 
 export function capturePreferenceMutations(): PreferenceMutation[] {
-  const theme = useThemeStore.getState();
   const mushaf = useMushafSettingsStore.getState();
   const tafseer = useTafseerStore.getState();
   const mushafPlayer = useMushafPlayerStore.getState();
@@ -157,11 +158,6 @@ export function capturePreferenceMutations(): PreferenceMutation[] {
     : 1;
 
   return [
-    {
-      group: 'theme',
-      key: 'type',
-      value: theme.themeMode === 'system' ? 'auto' : theme.themeMode,
-    },
     {
       group: 'quranReaderStyles',
       key: 'quranTextFontScale',
@@ -181,11 +177,6 @@ export function capturePreferenceMutations(): PreferenceMutation[] {
       value: mushaf.showTajweed,
     },
     {
-      group: 'reading',
-      key: 'selectedReadingTranslation',
-      value: mushaf.selectedTranslationId,
-    },
-    {
       group: 'tafsirs',
       key: 'selectedTafsirs',
       value: tafseer.selectedTafseerId ? [tafseer.selectedTafseerId] : [],
@@ -201,13 +192,6 @@ export function capturePreferenceMutations(): PreferenceMutation[] {
 export function applyRemotePreferences(
   preferences: Record<string, unknown>,
 ): void {
-  const theme = isObject(preferences.theme) ? preferences.theme : {};
-  if (enumValue(theme.type, ['auto', 'light', 'dark'])) {
-    useThemeStore
-      .getState()
-      .setThemeMode(theme.type === 'auto' ? 'system' : theme.type);
-  }
-
   const styles = isObject(preferences.quranReaderStyles)
     ? preferences.quranReaderStyles
     : {};
@@ -233,13 +217,6 @@ export function applyRemotePreferences(
         : styles.showTajweedRules;
   }
 
-  const reading = isObject(preferences.reading) ? preferences.reading : {};
-  if (
-    typeof reading.selectedReadingTranslation === 'string' &&
-    reading.selectedReadingTranslation.length <= 255
-  ) {
-    mushafPatch.selectedTranslationId = reading.selectedReadingTranslation;
-  }
   if (Object.keys(mushafPatch).length > 0) {
     useMushafSettingsStore.setState(mushafPatch);
   }
@@ -286,6 +263,7 @@ export function sanitizeRemoteDocument(
     ) {
       result.primaryColor = value.primaryColor;
     }
+    enumeration('themeMode', ['system', 'light', 'dark']);
   } else if (key === 'mushaf') {
     [
       'showTranslation',
@@ -320,6 +298,13 @@ export function sanitizeRemoteDocument(
       result.darkThemeId = value.darkThemeId;
     }
     enumeration('rewayah', ALL_REWAYAH_IDS);
+    if (
+      typeof value.selectedTranslationId === 'string' &&
+      value.selectedTranslationId.length > 0 &&
+      value.selectedTranslationId.length <= 255
+    ) {
+      result.selectedTranslationId = value.selectedTranslationId;
+    }
   } else if (key === 'audio') {
     if (optionalString(value.defaultReciterId, 128))
       result.defaultReciterId = value.defaultReciterId;
@@ -369,6 +354,9 @@ export function applySettingsDocuments(
     const patch = sanitizeRemoteDocument('appearance', documents.appearance);
     if (typeof patch.primaryColor === 'string') {
       useThemeStore.getState().setPrimaryColor(patch.primaryColor as never);
+    }
+    if (typeof patch.themeMode === 'string') {
+      useThemeStore.getState().setThemeMode(patch.themeMode as never);
     }
   }
   if (documents.mushaf) {

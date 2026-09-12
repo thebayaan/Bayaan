@@ -50,9 +50,8 @@ function documents(color = 'Blue'): SettingsDocuments {
   };
 }
 
-function preferences(theme = 'auto'): PreferenceMutation[] {
+function preferences(): PreferenceMutation[] {
   return [
-    {group: 'theme', key: 'type', value: theme},
     {
       group: 'quranReaderStyles',
       key: 'quranTextFontScale',
@@ -67,11 +66,6 @@ function preferences(theme = 'auto'): PreferenceMutation[] {
       group: 'quranReaderStyles',
       key: 'showTajweedRules',
       value: false,
-    },
-    {
-      group: 'reading',
-      key: 'selectedReadingTranslation',
-      value: 'saheeh',
     },
     {group: 'tafsirs', key: 'selectedTafsirs', value: ['169']},
     {group: 'audio', key: 'playbackRate', value: 1},
@@ -398,6 +392,52 @@ describe('QfSettingsSyncCoordinator', () => {
     jest.useRealTimers();
   });
 
+  test('preserves a local edit made while a remote pull is in flight', async () => {
+    const api = fakeApi({
+      appearance: {
+        key: 'appearance',
+        value: {primaryColor: 'Green'},
+        etag: '"remote-appearance"',
+      },
+    });
+    let releasePreferences: (() => void) | undefined;
+    api.getPreferences.mockImplementation(
+      () =>
+        new Promise<Record<string, unknown>>(resolve => {
+          releasePreferences = () => resolve({});
+        }),
+    );
+    const storage = new MemoryStorage();
+    const saved = emptyState();
+    saved.initialized = true;
+    saved.localDocuments = documents();
+    saved.localPreferences = preferences();
+    saved.localPreferenceFingerprint = JSON.stringify(saved.localPreferences);
+    storage.states.set('account-a', saved);
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge);
+
+    subject.value.setRemoteAvailable(true);
+    await subject.value.activateLocal('account-a');
+    const syncing = subject.value.syncRemote('account-a', 'opaque-session');
+    for (let attempt = 0; attempt < 10 && !releasePreferences; attempt += 1) {
+      await Promise.resolve();
+    }
+    expect(releasePreferences).toBeDefined();
+    bridge.changeDocument('appearance', {primaryColor: 'Rose'});
+    releasePreferences?.();
+    await syncing;
+
+    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Rose'});
+    const appearance = api.puts.filter(call => call.key === 'appearance');
+    expect(appearance).toHaveLength(1);
+    expect(appearance[0].etag).toBe('"remote-appearance"');
+    expect(JSON.parse(appearance[0].body)).toEqual({
+      value: {primaryColor: 'Rose'},
+      schemaVersion: 1,
+    });
+  });
+
   test('does not apply a completed pull after the account is deactivated', async () => {
     const api = fakeApi({
       appearance: {
@@ -427,6 +467,40 @@ describe('QfSettingsSyncCoordinator', () => {
 
     expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Blue'});
     expect(subject.choose).not.toHaveBeenCalled();
+  });
+
+  test('does not capture new-account values into a stale account operation', async () => {
+    const api = fakeApi();
+    let releaseConfiguration: (() => void) | undefined;
+    api.assertConfiguration.mockImplementation(
+      () =>
+        new Promise<undefined>(resolve => {
+          releaseConfiguration = () => resolve(undefined);
+        }),
+    );
+    const storage = new MemoryStorage();
+    const saved = emptyState();
+    saved.initialized = true;
+    saved.localDocuments = documents();
+    saved.localPreferences = preferences();
+    saved.localPreferenceFingerprint = JSON.stringify(saved.localPreferences);
+    storage.states.set('account-a', saved);
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge);
+
+    await subject.value.activateLocal('account-a');
+    const syncing = subject.value.syncRemote('account-a', 'opaque-session-a');
+    await Promise.resolve();
+    bridge.changeDocument('appearance', {primaryColor: 'Rose'});
+    await new Promise(resolve => setTimeout(resolve, 5));
+    const activating = subject.value.activateLocal('account-b');
+    bridge.currentDocuments.appearance = {primaryColor: 'Green'};
+    releaseConfiguration?.();
+    await Promise.all([syncing, activating]);
+
+    expect(storage.states.get('account-a')?.localDocuments.appearance).toEqual({
+      primaryColor: 'Blue',
+    });
   });
 
   test('restores an initialized account snapshot before subscribing', async () => {

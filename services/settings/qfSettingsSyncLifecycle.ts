@@ -77,13 +77,7 @@ export class QfSettingsSyncLifecycle {
       this.options.coordinator.deactivate().catch(() => undefined);
       return;
     }
-    this.options.coordinator
-      .activateLocal(context.accountId)
-      .then(() => {
-        if (epoch !== this.epoch) return;
-        if (context.online && context.appActive) this.requestSync();
-      })
-      .catch(() => undefined);
+    this.activate(context, epoch);
   }
 
   requestSync(): void {
@@ -124,6 +118,23 @@ export class QfSettingsSyncLifecycle {
       ...(this.currentRun ? [this.currentRun] : []),
       this.options.coordinator.waitForIdle(),
     ]);
+  }
+
+  private activate(context: QfSettingsLifecycleContext, epoch: number): void {
+    if (!context.accountId) return;
+    this.options.coordinator
+      .activateLocal(context.accountId)
+      .then(() => {
+        if (epoch !== this.epoch) return;
+        this.retryAttempts = 0;
+        if (context.online && context.appActive) this.requestSync();
+      })
+      .catch(error => {
+        if (__DEV__) {
+          console.warn('[QfSettingsSync] Local activation deferred:', error);
+        }
+        if (epoch === this.epoch) this.scheduleRetry(epoch, error, true);
+      });
   }
 
   private async run(accountId: string, epoch: number): Promise<void> {
@@ -168,7 +179,11 @@ export class QfSettingsSyncLifecycle {
     this.retryTimer = null;
   }
 
-  private scheduleRetry(epoch: number, error: unknown): void {
+  private scheduleRetry(
+    epoch: number,
+    error: unknown,
+    retryActivation = false,
+  ): void {
     if (this.retryTimer) return;
     const providerDelay =
       error instanceof BayaanSettingsApiError ? (error.retryAfterMs ?? 0) : 0;
@@ -179,7 +194,19 @@ export class QfSettingsSyncLifecycle {
     this.retryAttempts += 1;
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
-      if (epoch === this.epoch) this.requestSync();
+      if (epoch !== this.epoch) return;
+      if (retryActivation) {
+        const context = this.context;
+        if (
+          context &&
+          context.authStatus === 'authenticated' &&
+          context.accountId
+        ) {
+          this.activate(context, epoch);
+        }
+        return;
+      }
+      this.requestSync();
     }, delay);
   }
 }

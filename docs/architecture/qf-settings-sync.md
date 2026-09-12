@@ -26,6 +26,14 @@ stores, captures documents, and applies validated remote fields.
 - `bayaanSettingsApiClient.ts` talks only to the narrow Bayaan BFF routes using
   the opaque Bayaan session.
 
+## Dedicated Preferences versus App State
+
+QF Preferences are used only for Quran/translation font scales, Tajweed
+visibility, selected tafsir, and Mushaf playback rate. Global theme mode and
+the selected Bayaan translation remain in App State: QF's `sepia` theme and QF
+translation resource IDs cannot be mapped losslessly to Bayaan's theme modes,
+bundled translation slugs, and AlQuran Cloud edition identifiers.
+
 ## Conflict policy
 
 On an empty server, local values are uploaded. When first login or account

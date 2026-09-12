@@ -69,11 +69,9 @@ function remotePreferenceEntries(
       entries.push({group, key, value: groupValue[key]});
     }
   };
-  add('theme', 'type');
   add('quranReaderStyles', 'quranTextFontScale');
   add('quranReaderStyles', 'translationFontScale');
   add('quranReaderStyles', 'showTajweedRules');
-  add('reading', 'selectedReadingTranslation');
   add('tafsirs', 'selectedTafsirs');
   add('audio', 'playbackRate');
   return entries;
@@ -128,6 +126,7 @@ export class QfSettingsSyncCoordinator {
   private retryAttempts = 0;
   private operation: Promise<unknown> = Promise.resolve();
   private applyingRemote = false;
+  private localRevision = 0;
   private remoteAllowed = false;
   private remoteSessionToken: string | null = null;
   private generation = 0;
@@ -238,12 +237,15 @@ export class QfSettingsSyncCoordinator {
       if (!state.initialized) {
         await this.firstSync(accountId, sessionToken, generation);
       } else {
-        await this.recordCurrent(accountId);
+        await this.recordCurrent(accountId, generation);
         await this.flush(accountId, sessionToken, generation);
+        // Capture edits made while uploads were in flight before a pull can
+        // apply an older server snapshot over the live stores.
+        await this.recordCurrent(accountId, generation);
         await this.pullCurrent(accountId, sessionToken, generation);
       }
       if (!this.isCurrent(accountId, generation)) return;
-      await this.recordCurrent(accountId);
+      await this.recordCurrent(accountId, generation);
       await this.flush(accountId, sessionToken, generation);
       this.retryAttempts = 0;
       this.cancelRetry();
@@ -263,7 +265,11 @@ export class QfSettingsSyncCoordinator {
   }
 
   private subscribe(): void {
-    this.unsubscribers = this.bridge.subscribe(() => this.scheduleCapture());
+    this.unsubscribers = this.bridge.subscribe(() => {
+      if (this.applyingRemote) return;
+      this.localRevision += 1;
+      this.scheduleCapture();
+    });
   }
 
   private unsubscribe(): void {
@@ -282,7 +288,8 @@ export class QfSettingsSyncCoordinator {
       const generation = this.generation;
       if (!accountId) return;
       this.exclusive(async () => {
-        await this.recordCurrent(accountId);
+        if (!this.isCurrent(accountId, generation)) return;
+        await this.recordCurrent(accountId, generation);
         if (
           this.remoteAllowed &&
           this.remoteSessionToken &&
@@ -350,8 +357,11 @@ export class QfSettingsSyncCoordinator {
     }, delay);
   }
 
-  private async recordCurrent(accountId: string): Promise<void> {
-    if (this.accountId !== accountId || !this.state) return;
+  private async recordCurrent(
+    accountId: string,
+    generation = this.generation,
+  ): Promise<void> {
+    if (!this.isCurrent(accountId, generation) || !this.state) return;
     const documents = this.bridge.captureDocuments();
     const preferences = this.bridge.capturePreferences();
     let changed = false;
@@ -403,11 +413,16 @@ export class QfSettingsSyncCoordinator {
     generation: number,
   ): Promise<void> {
     if (!this.isCurrent(accountId, generation)) return;
-    const localDocuments = this.bridge.captureDocuments();
-    const localPreferences = this.bridge.capturePreferences();
+    let localDocuments = this.bridge.captureDocuments();
+    let localPreferences = this.bridge.capturePreferences();
+    const revision = this.localRevision;
     const remote = await this.fetchRemote(sessionToken);
     const state = this.state;
     if (!this.isCurrent(accountId, generation) || !state) return;
+    if (revision !== this.localRevision) {
+      localDocuments = this.bridge.captureDocuments();
+      localPreferences = this.bridge.capturePreferences();
+    }
     const remoteDocuments: Partial<SettingsDocuments> = {};
     let conflict = hasPreferenceConflict(localPreferences, remote.preferences);
     for (const key of DOCUMENT_KEYS) {
@@ -426,13 +441,21 @@ export class QfSettingsSyncCoordinator {
     const hasRemote =
       Object.keys(remoteDocuments).length > 0 ||
       remotePreferenceEntries(remote.preferences).length > 0;
-    const choice =
+    const decisionRevision = this.localRevision;
+    let choice: ConflictChoice =
       hasRemote && conflict
         ? await this.options.chooseFirstSyncConflict()
         : hasRemote
           ? 'cloud'
           : 'local';
     if (!this.isCurrent(accountId, generation)) return;
+    if (decisionRevision !== this.localRevision) {
+      // A setting changed while the conflict UI was open. Preserve that newer
+      // device edit rather than applying the older fetched snapshot over it.
+      localDocuments = this.bridge.captureDocuments();
+      localPreferences = this.bridge.capturePreferences();
+      choice = 'local';
+    }
 
     if (choice === 'cloud') {
       this.applyingRemote = true;
@@ -549,9 +572,22 @@ export class QfSettingsSyncCoordinator {
     generation: number,
   ): Promise<void> {
     if (!this.isCurrent(accountId, generation)) return;
+    const revision = this.localRevision;
     const remote = await this.fetchRemote(sessionToken);
     const state = this.state;
     if (!this.isCurrent(accountId, generation) || !state) return;
+    if (revision !== this.localRevision) {
+      // Preserve fresh preconditions while deferring the remote application.
+      // The newer local snapshot will then replace only the fields the user
+      // changed, without falling back to an incorrect create-only request.
+      for (const key of DOCUMENT_KEYS) {
+        const document = remote.documents[key];
+        if (document) state.etags[key] = document.etag;
+        else delete state.etags[key];
+      }
+      await this.recordCurrent(accountId, generation);
+      return;
+    }
     const documents: Partial<SettingsDocuments> = {};
     for (const key of DOCUMENT_KEYS) {
       if (state.pending[key]) continue;
