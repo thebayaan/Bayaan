@@ -229,8 +229,14 @@ function measureTextWidth(
   builder.addText(text);
   builder.pop();
   const p = builder.build();
-  p.layout(10000);
-  return Math.ceil(p.getLongestLine()) + 1;
+  // This SkParagraph is built only to measure; dispose its native memory
+  // before returning so it doesn't leak on every recompute.
+  try {
+    p.layout(10000);
+    return Math.ceil(p.getLongestLine()) + 1;
+  } finally {
+    p.dispose();
+  }
 }
 
 function computeColumnWidth(
@@ -564,6 +570,20 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
       showAllahNameHighlight,
       allahNameHighlightColor,
     ]);
+
+    // Each PositionedWord owns Skia paragraphs (native memory JS GC does not
+    // reclaim). Dispose the previous layout's paragraphs when the memo
+    // recomputes (and on unmount). The cleanup runs with the prior
+    // `computedLayout`, so the layout being rendered this frame is untouched.
+    useEffect(() => {
+      return () => {
+        if (!computedLayout) return;
+        for (const item of computedLayout.items) {
+          item.paragraph?.dispose();
+          item.strokeParagraph?.dispose();
+        }
+      };
+    }, [computedLayout]);
 
     // Highlight color for selected word
     const highlightColor = useMemo(

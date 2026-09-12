@@ -21,7 +21,7 @@ import {
   ProfileIcon,
 } from '@/components/Icons';
 import {useUploadsStore} from '@/store/uploadsStore';
-import {useFocusEffect} from '@react-navigation/native';
+import {useFocusEffect} from 'expo-router';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {USE_GLASS} from '@/hooks/useGlassProps';

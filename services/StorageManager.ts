@@ -13,7 +13,7 @@ interface StorageOperation {
 export class StorageManager {
   private static instance: StorageManager;
   private batchQueue: StorageOperation[] = [];
-  private batchTimeout: NodeJS.Timeout | null = null;
+  private batchTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly BATCH_DELAY = 1000; // 1 second
   private readonly HIGH_PRIORITY_DELAY = 100; // 100ms for high priority
   private isProcessing = false;

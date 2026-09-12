@@ -28,7 +28,7 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {dhikrShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
 

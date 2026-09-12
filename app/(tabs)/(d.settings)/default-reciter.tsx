@@ -14,7 +14,7 @@ import {ReciterItem} from '@/components/ReciterItem';
 import {useReciterStore} from '@/store/reciterStore';
 import {useRouter} from 'expo-router';
 import {ReciterImage} from '@/components/ReciterImage';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {getDisplayLabelFromName} from '@/services/rewayah/RewayahIdentity';
 

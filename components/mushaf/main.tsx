@@ -541,6 +541,14 @@ export default function MushafViewer({
   const insets = useSafeAreaInsets();
   const {isTablet} = useResponsive();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+  // A paged, `inverted` FlatList preserves its pixel scroll offset when its
+  // items resize on rotation, so the visible page drifts to a different index
+  // (old offset ÷ new item width); `initialScrollIndex` is mount-only and never
+  // re-fires. Remount the list on an orientation flip via this key so it starts
+  // fresh at `initialScrollIndex = currentPage` and never inherits the stale
+  // offset. Keyed on orientation (not raw dimensions) so the on-screen keyboard
+  // shrinking the height never remounts the reader.
+  const orientationKey = windowWidth > windowHeight ? 'landscape' : 'portrait';
 
   // Measured size of the FlatList container. Using `useWindowDimensions()`
   // alone overestimates the available space on iPad because the stack
@@ -1036,6 +1044,7 @@ export default function MushafViewer({
       {/* Content area: horizontal FlatList or vertical continuous view */}
       {isVertical && viewMode === 'mushaf' ? (
         <ContinuousMushafView
+          key={orientationKey}
           ref={continuousListRef}
           textColor={readingColors.text}
           dividerColor={readingColors.textSecondary}
@@ -1046,6 +1055,7 @@ export default function MushafViewer({
         />
       ) : isVertical && viewMode === 'list' ? (
         <ContinuousListView
+          key={orientationKey}
           ref={continuousListRef}
           textColor={readingColors.text}
           labelColor={readingColors.textSecondary}
@@ -1056,6 +1066,7 @@ export default function MushafViewer({
         />
       ) : metrics.facingPages && viewMode === 'mushaf' ? (
         <FlatList
+          key={orientationKey}
           ref={flatListRef}
           data={spreads}
           renderItem={({item}) => (
@@ -1096,6 +1107,7 @@ export default function MushafViewer({
         />
       ) : (
         <FlatList
+          key={orientationKey}
           ref={flatListRef}
           data={pages}
           renderItem={({item}) => {

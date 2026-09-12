@@ -19,7 +19,7 @@ import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {Feather} from '@expo/vector-icons';
 import {FlashList, type ListRenderItemInfo} from '@shopify/flash-list';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useNavigation} from 'expo-router';
 import TabSelector from '@/components/TabSelector';
@@ -44,6 +44,13 @@ import {AVAILABLE_TAFASEER} from '@/data/availableTafaseer';
 
 type ActiveTab = 'Translations' | 'Tafaseer';
 const TAB_OPTIONS: ActiveTab[] = ['Translations', 'Tafaseer'];
+
+// Shared so the translation and tafseer download handlers stay in sync.
+const showDownloadInProgressAlert = () =>
+  Alert.alert(
+    'Download In Progress',
+    'Please wait until the current download completes before starting another.',
+  );
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
@@ -194,7 +201,16 @@ export default function TranslationsContent() {
 
   const handleDownload = useCallback(
     async (editionId: string) => {
+      // Fire before the guard so a blocked tap still buzzes — acknowledge the tap.
       lightHaptics();
+      // Guard on this download type's own in-flight state. translations and
+      // tafaseer write separate DBs (no shared write path) so they can run
+      // concurrently; the store already no-ops a double-tap — this Alert just
+      // makes that refusal visible to the user.
+      if (downloadingId) {
+        showDownloadInProgressAlert();
+        return;
+      }
       try {
         await downloadTranslation(editionId);
       } catch {
@@ -204,7 +220,7 @@ export default function TranslationsContent() {
         );
       }
     },
-    [downloadTranslation],
+    [downloadTranslation, downloadingId],
   );
 
   const handleDelete = useCallback(
@@ -241,7 +257,14 @@ export default function TranslationsContent() {
 
   const handleDownloadTafseer = useCallback(
     async (editionId: string) => {
+      // Fire before the guard so a blocked tap still buzzes — acknowledge the tap.
       lightHaptics();
+      // Own-state guard (see handleDownload) — tafaseer.db is separate from
+      // translations.db, so a running translation download must not block this.
+      if (tafseerDownloadingId) {
+        showDownloadInProgressAlert();
+        return;
+      }
       try {
         await downloadTafseer(editionId);
       } catch {
@@ -251,7 +274,7 @@ export default function TranslationsContent() {
         );
       }
     },
-    [downloadTafseer],
+    [downloadTafseer, tafseerDownloadingId],
   );
 
   const handleDeleteTafseer = useCallback(
@@ -774,7 +797,7 @@ export default function TranslationsContent() {
         <View style={{flex: 1}}>
           <View
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               {opacity: activeTab === 'Translations' ? 1 : 0},
             ]}
             pointerEvents={activeTab === 'Translations' ? 'auto' : 'none'}>
@@ -793,7 +816,7 @@ export default function TranslationsContent() {
           </View>
           <View
             style={[
-              StyleSheet.absoluteFillObject,
+              StyleSheet.absoluteFill,
               {opacity: activeTab === 'Tafaseer' ? 1 : 0},
             ]}
             pointerEvents={activeTab === 'Tafaseer' ? 'auto' : 'none'}>

@@ -158,10 +158,9 @@ module.exports = {
           }
         : {}),
     },
-    // React Compiler disabled - causes performance issues with Zustand subscriptions
-    // experiments: {
-    //   reactCompiler: true,
-    // },
+    experiments: {
+      reactCompiler: true,
+    },
     updates: OTA_UPDATES_ENABLED
       ? {
           enabled: true,

@@ -24,6 +24,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
+import {AyahCommunityReflections} from '@/components/mushaf/AyahCommunityReflections';
 import {
   isBundledTranslation,
   getBundledFootnotes,
@@ -485,6 +486,18 @@ export const VerseItem = memo<VerseItemProps>(
           </View>
         )}
         {/* ---> End Conditional Rendering <--- */}
+        {/* RFC-018 — inline community-reflections slot, directly under the
+         *  Arabic line. Default-noop for Bayaan (no
+         *  branding.ayahCommunityReflectionsComponent wired → returns null).
+         *  Mounted unconditionally here, which means it appears in ALL THREE
+         *  VerseItem callers (player QuranView, ContinuousListView,
+         *  ReadingPageView) — intentional: a fork's reflections surface in
+         *  every verse-list context. The noop + the toggle/provider gates
+         *  inside the component keep it free for forks that don't opt in. */}
+        <AyahCommunityReflections
+          surahNumber={verse.surah_number}
+          ayahNumber={verse.ayah_number}
+        />
         {showTransliteration && verse.transliteration && (
           <FormattedTextRenderer
             text={verse.transliteration}

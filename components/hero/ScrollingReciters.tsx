@@ -381,11 +381,11 @@ function createStyles(theme: Theme) {
       borderRadius: moderateScale(4),
     },
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       borderRadius: moderateScale(20),
     },
     contentOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       justifyContent: 'center',
       alignItems: 'center',
     },

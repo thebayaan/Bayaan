@@ -34,7 +34,7 @@ import {useSettings} from '@/hooks/useSettings';
 import {QIRAAT_TEACHERS, resolveRewayatName} from '@/data/rewayat';
 import {resolveRewayahFromName} from '@/services/rewayah/RewayahIdentity';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import branding from '@/config/branding';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {useBottomInset} from '@/hooks/useBottomInset';

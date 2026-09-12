@@ -375,6 +375,16 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     [],
   );
 
+  // Callback for SkiaLine to evict its paragraph from the hit-test map right
+  // before it disposes the native memory. Without this, a line that recomputes
+  // to null or unmounts (page still mounted) would leave a freed pointer in the
+  // map, since the map is otherwise only cleared on a pageNumber change. The
+  // recompute-to-new-paragraph case re-registers via handleParagraphReady in
+  // the same commit (effects flush after cleanups), so it stays consistent.
+  const handleParagraphDisposed = useCallback((lineIndex: number) => {
+    paragraphMapRef.current.delete(lineIndex);
+  }, []);
+
   // Find which line a Y coordinate falls within
   const findLineAtY = useCallback(
     (canvasY: number): number => {
@@ -791,6 +801,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
               onParagraphReady={handleParagraphReady}
+              onParagraphDisposed={handleParagraphDisposed}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
               lineHeight={
                 lineIndex < lineYPositions.length - 1

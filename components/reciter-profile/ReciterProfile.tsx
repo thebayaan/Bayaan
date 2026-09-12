@@ -18,6 +18,7 @@ import {
   InteractionManager,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
@@ -37,7 +38,13 @@ import {shuffleArray} from '@/utils/arrayUtils';
 import {useRecentlyPlayedStore} from '@/services/player/store/recentlyPlayedStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {useFavoriteReciters} from '@/hooks/useFavoriteReciters';
-import {useDownloadQueries} from '@/services/player/store/downloadSelectors';
+import {
+  useDownloadQueries,
+  useDownloadActions,
+  useAreAllSurahsDownloaded,
+} from '@/services/player/store/downloadSelectors';
+import {downloadSurah} from '@/services/downloadService';
+import {bulkDownloadSurahs} from '@/services/player/bulkDownloadSurahs';
 import {createSharedStyles} from './styles';
 import {useSettings} from '@/hooks/useSettings';
 import {Feather} from '@expo/vector-icons';
@@ -61,7 +68,7 @@ import {moderateScale} from 'react-native-size-matters';
 import {useBottomInset} from '@/hooks/useBottomInset';
 import {HAFS_REWAYAT_NAME} from '@/data/rewayat';
 import {useNavigation} from 'expo-router';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import {reciterShareUrl, shareUrl} from '@/utils/shareUtils';
 import branding from '@/config/branding';
@@ -291,7 +298,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                   const slug = reciter?.slug ?? currentReciterId;
                   shareUrl(
                     reciterShareUrl(slug),
-                    `Listen to ${reciter?.name ?? 'this reciter'} on ${branding.appName}`,
+                    `Listen to ${reciter?.name ?? 'this reciter'} on ${
+                      branding.appName
+                    }`,
                   );
                 }}
                 hitSlop={8}>
@@ -339,7 +348,33 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   // iOS: offset below transparent native header; Android: below custom sticky title
   const stickyPinOffset = isGlass ? headerHeight : stickyTitleHeight;
   const {isLovedWithRewayat} = useLoved();
-  const {isDownloaded} = useDownloadQueries();
+  const {
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    isDownloadingWithRewayat,
+  } = useDownloadQueries();
+  // @ai-start
+  const {setDownloading, clearDownloading, addDownload, setDownloadProgress} =
+    useDownloadActions();
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadAllProgress, setDownloadAllProgress] = useState(0);
+  const downloadAllCancelledRef = useRef(false);
+  // Tracks mount state so a long batch's deferred setState/Alert never fire
+  // after the screen is gone; the in-flight ref also closes the same-frame
+  // double-tap window that React state alone leaves open.
+  const isMountedRef = useRef(true);
+  const downloadAllInFlightRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Signal any in-flight batch to stop when the user leaves the screen.
+      downloadAllCancelledRef.current = true;
+    };
+  }, []);
+  // @ai-end
   const {startNewChain} = useRecentlyPlayedStore();
   const {reciterPreferences, setReciterPreference} = useSettings();
 
@@ -564,6 +599,127 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
     shuffleEnabled,
     toggleShuffleAction,
   ]);
+
+  // @ai-start
+  // Subscribe through a primitive-returning store selector so this (heavy)
+  // screen only re-renders when the boolean flips — not on every mutation of
+  // the downloads array (single-surah downloads, removals, each batch item).
+  const surahIdsForRewayat = useMemo(
+    () => filteredSurahs.map(s => s.id.toString()),
+    [filteredSurahs],
+  );
+  const allDownloaded = useAreAllSurahsDownloaded(
+    currentReciterId,
+    surahIdsForRewayat,
+    selectedRewayat?.id,
+  );
+
+  const handleDownloadAll = useCallback(async () => {
+    if (!reciter || !selectedRewayat) return;
+
+    // A tap while a batch is in flight requests cancellation. Read the ref
+    // (not `isDownloadingAll` state) so a rapid second tap in the same frame
+    // is caught before the setIsDownloadingAll(true) re-render lands, which
+    // otherwise lets two concurrent batches start.
+    if (downloadAllInFlightRef.current) {
+      downloadAllCancelledRef.current = true;
+      return;
+    }
+
+    if (filteredSurahs.length === 0) return;
+
+    if (allDownloaded) {
+      Alert.alert(
+        'Already Downloaded',
+        'Every surah shown is already downloaded for this rewayah.',
+      );
+      return;
+    }
+
+    downloadAllInFlightRef.current = true;
+    downloadAllCancelledRef.current = false;
+    setIsDownloadingAll(true);
+    setDownloadAllProgress(0);
+
+    try {
+      const items = filteredSurahs.map(s => ({
+        surahId: s.id,
+        reciterId: reciter.id,
+        rewayatId: selectedRewayat.id,
+      }));
+
+      const summary = await bulkDownloadSurahs(
+        items,
+        {
+          downloadSurah,
+          isDownloaded,
+          isDownloadedWithRewayat,
+          isDownloading,
+          isDownloadingWithRewayat,
+          setDownloading,
+          clearDownloading,
+          addDownload,
+          setDownloadProgress,
+        },
+        {
+          onProgress: (completed, total) => {
+            // Skip progress writes once the screen is gone.
+            if (!isMountedRef.current) return;
+            setDownloadAllProgress(total > 0 ? completed / total : 1);
+          },
+          isCancelled: () =>
+            downloadAllCancelledRef.current || !isMountedRef.current,
+        },
+      );
+
+      // Don't surface result alerts on an unrelated screen if the user
+      // navigated away from the reciter profile mid-batch.
+      if (!isMountedRef.current) return;
+
+      if (summary.cancelled) {
+        Alert.alert(
+          'Download Stopped',
+          `Downloaded ${summary.downloaded} surah(s) before stopping.`,
+        );
+      } else if (summary.failed > 0) {
+        Alert.alert(
+          'Download Finished',
+          `${summary.downloaded} downloaded, ${summary.failed} failed. Tap again to retry the rest.`,
+        );
+      } else if (summary.downloaded > 0) {
+        Alert.alert(
+          'Download Complete',
+          `All surahs for ${reciter.name} are now available offline.`,
+        );
+      }
+    } catch (error) {
+      console.error('Error downloading all surahs:', error);
+      if (isMountedRef.current) {
+        Alert.alert('Download Error', 'Some downloads may have failed.');
+      }
+    } finally {
+      downloadAllInFlightRef.current = false;
+      downloadAllCancelledRef.current = false;
+      if (isMountedRef.current) {
+        setIsDownloadingAll(false);
+        setDownloadAllProgress(0);
+      }
+    }
+  }, [
+    reciter,
+    selectedRewayat,
+    filteredSurahs,
+    allDownloaded,
+    isDownloaded,
+    isDownloadedWithRewayat,
+    isDownloading,
+    isDownloadingWithRewayat,
+    setDownloading,
+    clearDownloading,
+    addDownload,
+    setDownloadProgress,
+  ]);
+  // @ai-end
 
   const handleToggleFavorite = useCallback(() => {
     if (reciter) {
@@ -849,11 +1005,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
   if (!reciter) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar
-          style={theme.isDarkMode ? 'light' : 'dark'}
-          translucent
-          backgroundColor="transparent"
-        />
+        <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
         <LoadingIndicator />
       </SafeAreaView>
     );
@@ -861,11 +1013,7 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        style={theme.isDarkMode ? 'light' : 'dark'}
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar style={theme.isDarkMode ? 'light' : 'dark'} />
       {/* Main content — always mounted to preserve pager scroll position */}
       <View style={{flex: 1}} pointerEvents={showSearch ? 'none' : 'auto'}>
         <>
@@ -921,6 +1069,10 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                   onShufflePress={handleShuffleAll}
                   onPlayPress={handlePlayAll}
                   isFavoriteReciter={isFavoriteReciter(reciter.id)}
+                  onDownloadAllPress={handleDownloadAll}
+                  isDownloadingAll={isDownloadingAll}
+                  downloadAllProgress={downloadAllProgress}
+                  allDownloaded={allDownloaded}
                 />
               </View>
             </View>
@@ -1163,7 +1315,9 @@ const ReciterProfileContent: React.FC<ReciterProfileProps> = ({
                 const slug = reciter?.slug ?? currentReciterId;
                 shareUrl(
                   reciterShareUrl(slug),
-                  `Listen to ${reciter?.name ?? 'this reciter'} on ${branding.appName}`,
+                  `Listen to ${reciter?.name ?? 'this reciter'} on ${
+                    branding.appName
+                  }`,
                 );
               }}
             />

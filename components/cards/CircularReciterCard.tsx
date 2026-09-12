@@ -79,7 +79,7 @@ export const CircularReciterCard: React.FC<CircularReciterCardProps> = ({
           height: '100%',
         },
         selectedOverlay: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: Color(theme.colors.text).alpha(0.25).toString(),
           justifyContent: 'center',
           alignItems: 'center',

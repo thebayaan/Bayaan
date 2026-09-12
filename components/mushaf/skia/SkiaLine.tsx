@@ -50,6 +50,7 @@ interface SkiaLineProps {
     paragraph: SkParagraph,
     xPos: number,
   ) => void;
+  onParagraphDisposed?: (lineIndex: number) => void;
   backgroundHighlights?: Array<{start: number; end: number; color: string}>;
 }
 
@@ -69,6 +70,7 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
   fontFamily = 'DigitalKhatt',
   arabicTextWeight = 'normal',
   onParagraphReady,
+  onParagraphDisposed,
   backgroundHighlights,
 }) => {
   const paragraphs = useMemo(() => {
@@ -204,6 +206,27 @@ const SkiaLine: React.FC<SkiaLineProps> = ({
 
   const paragraph = paragraphs?.paragraph;
   const strokeParagraph = paragraphs?.strokeParagraph;
+
+  // SkParagraph holds native memory that JS GC does not reclaim. Dispose the
+  // previous paragraphs when the memo recomputes (and on unmount). The cleanup
+  // runs with the prior `paragraphs` value, so the set being rendered this
+  // frame is never disposed early.
+  //
+  // Evict the parent's hit-test map entry in the SAME synchronous cleanup,
+  // BEFORE disposing, so the map never points at freed native memory. The
+  // recompute-to-new-paragraph path re-registers via `onParagraphReady`
+  // immediately after this cleanup; the recompute-to-null and unmount paths
+  // leave the entry evicted (the cases the parent's pageNumber-only clear
+  // misses).
+  useEffect(() => {
+    return () => {
+      if (paragraphs) {
+        onParagraphDisposed?.(lineIndex);
+      }
+      paragraphs?.paragraph?.dispose();
+      paragraphs?.strokeParagraph?.dispose();
+    };
+  }, [paragraphs, lineIndex, onParagraphDisposed]);
 
   const lineInfo = quranTextService.getLineInfo(pageNumber, lineIndex);
   const maxWidth = pageWidth * 2;
