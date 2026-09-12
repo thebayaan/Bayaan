@@ -27,6 +27,7 @@ import {
 import type {QfSettingsStoreBridge} from '../qfSettingsStoreBridge';
 import {QfSettingsSyncCoordinator} from '../qfSettingsSyncCoordinator';
 import type {
+  PersistedSettingsDeviceContext,
   PersistedSettingsSyncState,
   QfSettingsStorage,
 } from '../qfSettingsStorage';
@@ -88,6 +89,17 @@ function emptyState(): PersistedSettingsSyncState {
 
 class MemoryStorage {
   states = new Map<string, PersistedSettingsSyncState>();
+  deviceContext: PersistedSettingsDeviceContext | null = null;
+
+  async loadDeviceContext(): Promise<PersistedSettingsDeviceContext | null> {
+    return this.deviceContext ? structuredClone(this.deviceContext) : null;
+  }
+
+  async saveDeviceContext(
+    context: PersistedSettingsDeviceContext,
+  ): Promise<void> {
+    this.deviceContext = structuredClone(context);
+  }
 
   async load(accountId: string): Promise<PersistedSettingsSyncState> {
     return structuredClone(this.states.get(accountId) ?? emptyState());
@@ -467,6 +479,31 @@ describe('QfSettingsSyncCoordinator', () => {
 
     expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Blue'});
     expect(subject.choose).not.toHaveBeenCalled();
+  });
+
+  test('restores an account-neutral baseline before syncing a new account', async () => {
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge);
+
+    subject.value.setRemoteAvailable(true);
+    await subject.value.activateLocal('account-a');
+    await subject.value.syncRemote('account-a', 'opaque-session-a');
+    bridge.currentDocuments.appearance = {primaryColor: 'Green'};
+    await subject.value.deactivate();
+    api.puts.length = 0;
+
+    await subject.value.activateLocal('account-b');
+    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Blue'});
+    await subject.value.syncRemote('account-b', 'opaque-session-b');
+
+    const appearance = api.puts.find(call => call.key === 'appearance');
+    expect(JSON.parse(appearance?.body ?? '{}')).toEqual({
+      value: {primaryColor: 'Blue'},
+      schemaVersion: 1,
+    });
+    expect(storage.deviceContext?.ownerAccountId).toBe('account-b');
   });
 
   test('does not capture new-account values into a stale account operation', async () => {

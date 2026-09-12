@@ -36,11 +36,15 @@ bundled translation slugs, and AlQuran Cloud edition identifiers.
 
 ## Conflict policy
 
-On an empty server, local values are uploaded. When first login or account
-activation finds conflicting device/account settings, the user chooses “Use
-cloud settings” or “Keep this device.” Server fields are retained where they
-exist and local fields are retained where the server has no value. Subsequent
-ETag conflicts preserve the newest local complete-document replacement.
+On an empty server, local values are uploaded. Before the first sync of a newly
+encountered second account, Bayaan restores the device baseline captured before
+any account settings were applied; this prevents values left in shared Zustand
+stores by another account from being copied silently. When first login or
+account activation finds conflicting device/account settings, the user chooses
+“Use cloud settings” or “Keep this device.” Server fields are retained where
+they exist and local fields are retained where the server has no value.
+Subsequent ETag conflicts preserve the newest local complete-document
+replacement.
 
 ## Explicit exclusions
 

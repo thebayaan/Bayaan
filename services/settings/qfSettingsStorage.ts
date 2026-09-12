@@ -6,12 +6,20 @@ import type {
 import type {SettingsDocuments} from './qfSettingsSnapshot';
 
 const STORAGE_PREFIX = 'qf-settings-sync-v1:';
+const DEVICE_CONTEXT_KEY = 'qf-settings-device-context-v1';
 const STORAGE_VERSION = 1;
 
 export interface PendingSettingsDocument {
   body: string;
   idempotencyKey: string;
   etag?: string;
+}
+
+export interface PersistedSettingsDeviceContext {
+  version: typeof STORAGE_VERSION;
+  ownerAccountId: string;
+  baselineDocuments: SettingsDocuments;
+  baselinePreferences: PreferenceMutation[];
 }
 
 export interface PersistedSettingsSyncState {
@@ -51,6 +59,32 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 export class QfSettingsStorage {
+  async loadDeviceContext(): Promise<PersistedSettingsDeviceContext | null> {
+    const raw = await AsyncStorage.getItem(DEVICE_CONTEXT_KEY);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (
+        !isObject(parsed) ||
+        parsed.version !== STORAGE_VERSION ||
+        typeof parsed.ownerAccountId !== 'string' ||
+        !isObject(parsed.baselineDocuments) ||
+        !Array.isArray(parsed.baselinePreferences)
+      ) {
+        return null;
+      }
+      return parsed as unknown as PersistedSettingsDeviceContext;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveDeviceContext(
+    context: PersistedSettingsDeviceContext,
+  ): Promise<void> {
+    await AsyncStorage.setItem(DEVICE_CONTEXT_KEY, JSON.stringify(context));
+  }
+
   async load(accountId: string): Promise<PersistedSettingsSyncState> {
     const raw = await AsyncStorage.getItem(storageKey(accountId));
     if (!raw) return emptyState();

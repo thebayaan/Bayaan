@@ -13,6 +13,7 @@ import {
 } from './qfSettingsStoreBridge';
 import {
   qfSettingsStorage,
+  type PersistedSettingsDeviceContext,
   type PersistedSettingsSyncState,
   type QfSettingsStorage,
 } from './qfSettingsStorage';
@@ -160,8 +161,38 @@ export class QfSettingsSyncCoordinator {
       this.remoteSessionToken = null;
       this.cancelRetry();
       await this.bridge.waitForHydration();
-      const state = await this.storage.load(accountId);
+      const [state, storedDeviceContext] = await Promise.all([
+        this.storage.load(accountId),
+        this.storage.loadDeviceContext(),
+      ]);
       if (generation !== this.generation) return;
+
+      const deviceContext: PersistedSettingsDeviceContext =
+        storedDeviceContext ?? {
+          version: 1,
+          ownerAccountId: accountId,
+          baselineDocuments: this.bridge.captureDocuments(),
+          baselinePreferences: this.bridge.capturePreferences(),
+        };
+      if (
+        storedDeviceContext &&
+        storedDeviceContext.ownerAccountId !== accountId &&
+        !state.initialized
+      ) {
+        // A new account must not inherit the previous account's values left in
+        // the shared Zustand stores. Restore the device's pre-account baseline
+        // before this account performs its first reconciliation.
+        this.applyingRemote = true;
+        try {
+          this.bridge.applyDocuments(deviceContext.baselineDocuments);
+          this.bridge.applyPreferences(
+            preferencesRecord(deviceContext.baselinePreferences),
+          );
+        } finally {
+          this.applyingRemote = false;
+        }
+      }
+
       this.accountId = accountId;
       this.state = state;
       if (state.initialized && Object.keys(state.localDocuments).length > 0) {
@@ -209,6 +240,10 @@ export class QfSettingsSyncCoordinator {
           await this.storage.save(accountId, state);
         }
       }
+      if (generation !== this.generation) return;
+      deviceContext.ownerAccountId = accountId;
+      await this.storage.saveDeviceContext(deviceContext);
+      if (generation !== this.generation) return;
       this.subscribe();
     });
   }
