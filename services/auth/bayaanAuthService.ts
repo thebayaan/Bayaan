@@ -265,8 +265,13 @@ export function createBayaanAuthService(
           error.code === 'session_revoked'
         ) {
           await clearBayaanSession();
+          return null;
         }
-        return null;
+
+        // The opaque session is locally expiry-checked by getBayaanSession().
+        // Keep its account context while offline so durable settings writes can
+        // remain account-scoped and resume when connectivity returns.
+        return stored;
       }
     },
 

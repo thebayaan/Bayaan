@@ -393,6 +393,23 @@ describe('Bayaan BFF auth service', () => {
     );
   });
 
+  it('keeps an unexpired stored session when offline during restore', async () => {
+    const stored = {
+      token: 'opaque-bayaan-session',
+      expiresAt: Date.now() + 3_600_000,
+      profile,
+    };
+    await saveBayaanSession(stored);
+    (global.fetch as jest.Mock).mockRejectedValueOnce(
+      new TypeError('Network request failed'),
+    );
+
+    const service = createBayaanAuthService({apiUrl});
+
+    await expect(service.restore()).resolves.toEqual(stored);
+    await expect(getBayaanSession()).resolves.toEqual(stored);
+  });
+
   it('clears local state when restore sees a revoked session and never blocks app init', async () => {
     await saveBayaanSession({
       token: 'revoked-session',
