@@ -1,4 +1,4 @@
-import React, {useMemo, useCallback, useState} from 'react';
+import React, {useMemo, useCallback, useEffect, useState} from 'react';
 import {Alert, View, Text, StyleSheet, Switch, Pressable} from 'react-native';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -602,6 +602,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     showRewayahDiffs,
     setRewayah,
     toggleRewayahDiffs,
+    rewayahExperimentalNoticeSeen,
+    markRewayahExperimentalNoticeSeen,
     setAllahNameHighlightColor,
   } = useMushafSettingsStore();
 
@@ -616,8 +618,8 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     mushafRenderer === 'dk_indopak'
       ? 'DigitalKhattIndoPak'
       : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+      ? 'DigitalKhattV1'
+      : 'DigitalKhattV2';
   const subscribedFontMgr = useMushafFontMgr();
   const fontMgr =
     mushafPreloadService.initialized && digitalKhattDataService.initialized
@@ -694,6 +696,12 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   const handleRewayahSelect = useCallback(
     async (value: RewayahId) => {
       if (value === rewayah) return;
+      // Mushaf 1440 pins the text to Hafs, and the store's setRewayah refuses
+      // the write under qcf_v2. Bail before doing anything observable: without
+      // this the row still fires when the picker was left expanded across a
+      // renderer switch, loading a words DB for nothing and then reporting a
+      // switch that never happened.
+      if (isQCF1440) return;
       // Defense in depth: the UI should have already disabled the row for
       // rewayat without bundled DK data, but guard here too so we never
       // call switchRewayah for an id that will throw from
@@ -709,8 +717,27 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       }
       setRewayah(value);
       showToast('Now reading', getRewayahShortLabel(value));
+
+      // Non-Hafs text is derived by applying diffs to the Hafs baseline and is
+      // still being verified, so say so once on the first such switch. The
+      // Experimental badge on the row carries the reminder from then on.
+      if (hasDiffData(value) && !rewayahExperimentalNoticeSeen) {
+        markRewayahExperimentalNoticeSeen();
+        Alert.alert(
+          'Experimental Rewayah',
+          `${getLongLabel(value)} text is experimental. ${
+            branding.appName
+          } builds it by applying differences to the Hafs text, and we are still verifying it. Please confirm against a printed mushaf before relying on it.`,
+        );
+      }
     },
-    [rewayah, setRewayah],
+    [
+      rewayah,
+      setRewayah,
+      isQCF1440,
+      rewayahExperimentalNoticeSeen,
+      markRewayahExperimentalNoticeSeen,
+    ],
   );
 
   return (
@@ -868,9 +895,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           <Text style={styles.settingRowLabel}>
             {themeMode === 'system'
               ? 'System'
-              : (getReadingThemeById(
+              : getReadingThemeById(
                   themeMode === 'light' ? lightThemeId : darkThemeId,
-                )?.name ?? 'System')}
+                )?.name ?? 'System'}
           </Text>
           <Feather
             name="chevron-right"
@@ -1166,6 +1193,12 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           selected rewayah; the diff toggle sits above it so it's reachable
           without scrolling past 20 radio options. */}
       <Text style={styles.sectionHeader}>REWAYAH</Text>
+      {!isQCF1440 && (
+        <Text style={styles.helperText}>
+          Non-Hafs rewayat are experimental. The text is still being verified,
+          so please confirm against a printed mushaf.
+        </Text>
+      )}
       {isQCF1440 ? (
         <View style={styles.card}>
           <Text style={styles.helperText}>
@@ -1195,6 +1228,19 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
   );
 };
 
+/**
+ * Marks a rewayah whose mushaf text is derived by diffing against the Hafs
+ * baseline and has not been fully verified yet. Gated on `hasDiffData`, so the
+ * badge set tracks the bundled data and cannot drift from it.
+ */
+const ExperimentalBadge: React.FC<{
+  styles: ReturnType<typeof createStyles>;
+}> = ({styles}) => (
+  <View style={styles.experimentalBadge}>
+    <Text style={styles.experimentalBadgeText}>Experimental</Text>
+  </View>
+);
+
 interface RewayahAccordionProps {
   selectedId: RewayahId;
   onSelect: (id: RewayahId) => void;
@@ -1212,6 +1258,13 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
 }) => {
   const [expanded, setExpanded] = useState(false);
 
+  // The header Pressable's `disabled` only stops the picker being opened. If it
+  // was already open when the renderer switched to Mushaf 1440, the row list
+  // stays mounted and tappable, so collapse it as soon as switching is barred.
+  useEffect(() => {
+    if (disabled) setExpanded(false);
+  }, [disabled]);
+
   return (
     <View style={styles.card}>
       <Pressable
@@ -1222,14 +1275,22 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
         ]}
         accessibilityRole="button"
         accessibilityState={{expanded, disabled}}
-        accessibilityLabel={`Rewayah: ${getLongLabel(selectedId)}. ${expanded ? 'Collapse' : 'Expand'} to change.`}
+        accessibilityLabel={`Rewayah: ${getLongLabel(selectedId)}.${
+          hasDiffData(selectedId) ? ' Experimental text.' : ''
+        } ${expanded ? 'Collapse' : 'Expand'} to change.`}
         disabled={disabled}
         onPress={() => setExpanded(e => !e)}>
         <View style={styles.radioTextContainer}>
           <Text style={styles.accordionHeaderEyebrow}>Currently reading</Text>
-          <Text style={styles.accordionHeaderTitle}>
-            {getLongLabel(selectedId)}
-          </Text>
+          <View style={styles.labelWithBadgeRow}>
+            <Text style={styles.accordionHeaderTitle}>
+              {getLongLabel(selectedId)}
+            </Text>
+            {/* Visible while collapsed, so a reader who selected a non-Hafs
+                rewayah long ago still sees the caveat without opening the
+                picker. */}
+            {hasDiffData(selectedId) && <ExperimentalBadge styles={styles} />}
+          </View>
         </View>
         <Feather
           name={expanded ? 'chevron-up' : 'chevron-down'}
@@ -1249,7 +1310,14 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
                   style={({pressed}) => [
                     styles.radioRow,
                     pressed && styles.radioRowPressed,
+                    disabled && styles.radioRowDisabled,
                   ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{selected: isSelected, disabled}}
+                  accessibilityLabel={`${getLongLabel(id)}.${
+                    hasDiffData(id) ? ' Experimental text.' : ''
+                  }`}
+                  disabled={disabled}
                   onPress={() => onSelect(id)}>
                   <View
                     style={[
@@ -1259,13 +1327,16 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
                     {isSelected && <View style={styles.radioCircleFill} />}
                   </View>
                   <View style={styles.radioTextContainer}>
-                    <Text
-                      style={[
-                        styles.radioLabel,
-                        isSelected && styles.radioLabelSelected,
-                      ]}>
-                      {getLongLabel(id)}
-                    </Text>
+                    <View style={styles.labelWithBadgeRow}>
+                      <Text
+                        style={[
+                          styles.radioLabel,
+                          isSelected && styles.radioLabelSelected,
+                        ]}>
+                        {getLongLabel(id)}
+                      </Text>
+                      {hasDiffData(id) && <ExperimentalBadge styles={styles} />}
+                    </View>
                     <Text style={styles.radioDescription}>
                       {getDescription(id)}
                     </Text>
@@ -1284,7 +1355,9 @@ const RewayahAccordion: React.FC<RewayahAccordionProps> = ({
               <View
                 style={[styles.radioRow, styles.radioRowDisabled]}
                 accessibilityRole="text"
-                accessibilityLabel={`${getLongLabel(id)}, text preview not yet available`}>
+                accessibilityLabel={`${getLongLabel(
+                  id,
+                )}, text preview not yet available`}>
                 <View style={styles.radioCircle} />
                 <View style={styles.radioTextContainer}>
                   <Text style={[styles.radioLabel, styles.radioLabelDisabled]}>
@@ -1832,6 +1905,29 @@ const createStyles = (theme: Theme) =>
       textTransform: 'uppercase',
       paddingTop: verticalScale(12),
       paddingBottom: verticalScale(6),
+    },
+
+    // --- Experimental (non-Hafs rewayah) badge ---
+    labelWithBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: moderateScale(6),
+    },
+    experimentalBadge: {
+      paddingHorizontal: moderateScale(6),
+      paddingVertical: verticalScale(1.5),
+      borderRadius: moderateScale(4),
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: Color(theme.colors.text).alpha(0.18).toString(),
+    },
+    experimentalBadgeText: {
+      fontSize: moderateScale(9),
+      fontFamily: 'Manrope-SemiBold',
+      color: Color(theme.colors.textSecondary).alpha(0.7).toString(),
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
     },
 
     // --- Rewayah legend styles ---
