@@ -44,6 +44,18 @@ export default function MushafScreen() {
     return 1;
   }, [page, surah, surahStartPages]);
 
+  // @ai-start
+  // The surah the user asked for, when the page was resolved from it. A page
+  // can hold the end of one surah and the start of another (or three, on
+  // 601-604), so the page number alone cannot name the surah — this keeps
+  // the header honest until the reader turns the page.
+  const initialSurahId = useMemo(() => {
+    if (page || !surah) return undefined;
+    const s = parseInt(surah, 10);
+    return !isNaN(s) && surahStartPages[s] ? s : undefined;
+  }, [page, surah, surahStartPages]);
+  // @ai-end
+
   // Build initial verse key for highlight
   const initialVerseKey = useMemo(() => {
     if (surah && ayah) return `${surah}:${ayah}`;
@@ -105,7 +117,11 @@ export default function MushafScreen() {
     <View
       style={[styles.container, {backgroundColor: theme.colors.background}]}>
       {USE_GLASS && <MushafToolbar />}
-      <MushafViewer pageNumber={pageNumber} initialVerseKey={initialVerseKey} />
+      <MushafViewer
+        pageNumber={pageNumber}
+        initialSurahId={initialSurahId} // @ai
+        initialVerseKey={initialVerseKey}
+      />
     </View>
   );
 }
