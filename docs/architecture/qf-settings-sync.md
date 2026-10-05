@@ -18,9 +18,13 @@ it as a preference or excluded local/runtime state.
 - `qfSettingsStoreBridge.ts` waits for Zustand hydration, observes the approved
 stores, captures documents, and applies validated remote fields.
 - `qfSettingsStorage.ts` persists reconciliation metadata per Bayaan account.
-- `qfSettingsSyncCoordinator.ts` records complete-replacement intent before
-  network delivery, preserves exact request bytes/idempotency keys on ambiguous
-  retries, rebases HTTP 412 responses, and isolates account snapshots.
+- `qfSettingsSyncCoordinator.ts` persists raw server values, their ETags, and
+  the corresponding known-field device projection per account. It records
+  local leaf-level changes before building a complete PUT, preserves exact
+  bytes/idempotency keys on ambiguous retries, and rebases HTTP 412 responses.
+- `qfSettingsMerge.ts` applies only changed local leaves to raw server values.
+  Nested maps merge recursively (including explicit leaf removals); arrays are
+  atomic. Unknown fields are retained, not applied to the UI.
 - `qfSettingsSyncLifecycle.ts` follows authentication, network, and foreground
   state and retries transient failures with bounded backoff.
 - `bayaanSettingsApiClient.ts` talks only to the narrow Bayaan BFF routes using
@@ -43,8 +47,43 @@ stores by another account from being copied silently. When first login or
 account activation finds conflicting device/account settings, the user chooses
 “Use cloud settings” or “Keep this device.” Server fields are retained where
 they exist and local fields are retained where the server has no value.
-Subsequent ETag conflicts preserve the newest local complete-document
-replacement.
+A present remote value unsupported by this device (for example a future reading
+theme ID) is not an absent field: the device fallback becomes its synchronized
+projection, while the raw value survives until an actual local edit. This also
+applies to the explicit cloud choice during legacy reconciliation.
+Subsequent writes change only fields edited locally since the last synchronized
+projection. Complete PUT bodies overlay that local intent onto the raw
+last-synced document, preserving unknown fields and unrelated known fields.
+On HTTP 412, fetch both the fresh value and ETag, apply only the pending local
+leaf changes, persist a new body/idempotency key, and retry with that ETag.
+For example, if offline device B changes `showWBW` while device A changes
+`pageLayout`, B's retry keeps A's `pageLayout`. Same-leaf conflicts retain B's
+explicit local intent; a later pull converges the local stores to the merged
+server document.
+
+Edits during requests remain a separate durable mutation: acknowledged values
+are applied locally with only newer local edits overlaid. Ambiguous deliveries
+must finish their exact-byte replay before that newer intent is sent. Pulls
+capture in-flight edits and merge them onto fetched values before applying UI
+state. Capture runs again synchronously after the final persistence await,
+with no await before application, so edits during storage I/O are not lost.
+Pulls and acknowledgments replace understood maps, including empty maps, rather
+than additively retaining remotely removed siblings; unsupported fields keep
+their device fallback and unknown fields remain only in the raw baseline.
+Account/generation guards prevent stale operations applying another
+account's values.
+
+Legacy v1 records contain only ETags and complete pending bodies, so their
+changed-field provenance cannot be recovered reliably. Keep their account-local
+snapshot but discard blind replay intent and require the existing explicit
+cloud/device reconciliation before writing. The selected known fields are
+merged onto freshly fetched raw documents; unknown remote fields survive both
+choices. No account metadata is shared with another account.
+
+The mobile preservation algorithm must roll out with the BFF bounded opaque
+extension contract described in the backend settings runbook. Known BFF field
+validation, retired/sensitive exclusions, authentication, ETags, and idempotency
+remain enforced; forward compatibility does not authorize arbitrary local state.
 
 ## Explicit exclusions
 

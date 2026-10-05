@@ -167,6 +167,7 @@ export class QfSettingsSyncLifecycle {
         (!(error instanceof BayaanSettingsApiError) ||
           error.status === 0 ||
           error.status === 429 ||
+          error.status === 412 ||
           error.status >= 500)
       ) {
         this.scheduleRetry(epoch, error);

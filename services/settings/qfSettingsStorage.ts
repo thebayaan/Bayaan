@@ -4,12 +4,16 @@ import type {
   SettingsDocumentKey,
 } from './bayaanSettingsApiClient';
 import type {SettingsDocuments} from './qfSettingsSnapshot';
+import type {SettingsChange} from './qfSettingsMerge';
 
 const STORAGE_PREFIX = 'qf-settings-sync-v1:';
 const DEVICE_CONTEXT_KEY = 'qf-settings-device-context-v1';
 const STORAGE_VERSION = 1;
 
 export interface PendingSettingsDocument {
+  changes: SettingsChange[];
+  localSnapshot: Record<string, unknown>;
+  attempted?: boolean;
   body: string;
   idempotencyKey: string;
   etag?: string;
@@ -25,6 +29,11 @@ export interface PersistedSettingsDeviceContext {
 export interface PersistedSettingsSyncState {
   version: typeof STORAGE_VERSION;
   initialized: boolean;
+  needsReconciliation: boolean;
+  // Raw server value preserves fields this app version does not understand.
+  syncedDocuments: Partial<SettingsDocuments>;
+  // Full device projection at the last acknowledged synchronization.
+  syncedLocalDocuments: Partial<SettingsDocuments>;
   etags: Partial<Record<SettingsDocumentKey, string>>;
   pending: Partial<Record<SettingsDocumentKey, PendingSettingsDocument>>;
   localDocuments: Partial<SettingsDocuments>;
@@ -38,6 +47,9 @@ function emptyState(): PersistedSettingsSyncState {
   return {
     version: STORAGE_VERSION,
     initialized: false,
+    needsReconciliation: false,
+    syncedDocuments: {},
+    syncedLocalDocuments: {},
     etags: {},
     pending: {},
     localDocuments: {},
@@ -56,6 +68,30 @@ function storageKey(accountId: string): string {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validPending(value: unknown): boolean {
+  if (!isObject(value)) return false;
+  return Object.values(value).every(
+    item =>
+      isObject(item) &&
+      typeof item.body === 'string' &&
+      typeof item.idempotencyKey === 'string' &&
+      isObject(item.localSnapshot) &&
+      Array.isArray(item.changes) &&
+      item.changes.every(
+        change =>
+          isObject(change) &&
+          Array.isArray(change.path) &&
+          change.path.length > 0 &&
+          change.path.every(
+            segment =>
+              typeof segment === 'string' &&
+              !['__proto__', 'prototype', 'constructor'].includes(segment),
+          ) &&
+          (change.remove === true || Object.hasOwn(change, 'value')),
+      ),
+  );
 }
 
 export class QfSettingsStorage {
@@ -92,11 +128,26 @@ export class QfSettingsStorage {
       const parsed = JSON.parse(raw) as unknown;
       if (!isObject(parsed) || parsed.version !== STORAGE_VERSION)
         return emptyState();
+      const requiresMigration =
+        !isObject(parsed.syncedDocuments) ||
+        !isObject(parsed.syncedLocalDocuments) ||
+        !validPending(parsed.pending);
       return {
         ...emptyState(),
         initialized: parsed.initialized === true,
+        // v1 had neither raw baselines nor field intent. Do not replay its
+        // stale full bodies: retain the local snapshot and ask at first sync.
+        needsReconciliation:
+          parsed.needsReconciliation === true ||
+          (parsed.initialized === true && requiresMigration),
+        syncedDocuments: isObject(parsed.syncedDocuments)
+          ? (parsed.syncedDocuments as never)
+          : {},
+        syncedLocalDocuments: isObject(parsed.syncedLocalDocuments)
+          ? (parsed.syncedLocalDocuments as never)
+          : {},
         etags: isObject(parsed.etags) ? (parsed.etags as never) : {},
-        pending: isObject(parsed.pending) ? (parsed.pending as never) : {},
+        pending: !requiresMigration ? (parsed.pending as never) : {},
         localDocuments: isObject(parsed.localDocuments)
           ? (parsed.localDocuments as never)
           : {},

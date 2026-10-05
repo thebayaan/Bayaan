@@ -10,6 +10,20 @@ describe('QfSettingsStorage device context', () => {
     await AsyncStorage.clear();
   });
 
+  test('migrates legacy full pending bodies to explicit reconciliation without losing the local snapshot', async () => {
+    const storage = new QfSettingsStorage();
+    const localDocuments = {mushaf: {showWBW: true, pageLayout: 'fullscreen'}};
+    await AsyncStorage.setItem('qf-settings-sync-v1:account-a', JSON.stringify({
+      version: 1, initialized: true, localDocuments,
+      pending: {mushaf: {body: JSON.stringify({value: localDocuments.mushaf, schemaVersion: 1}), idempotencyKey: 'legacy'}},
+    }));
+    await expect(storage.load('account-a')).resolves.toMatchObject({
+      initialized: true, needsReconciliation: true, pending: {}, localDocuments,
+      syncedDocuments: {}, syncedLocalDocuments: {},
+    });
+    await expect(storage.load('account-b')).resolves.toMatchObject({needsReconciliation: false, localDocuments: {}});
+  });
+
   test('persists the account-neutral baseline independently of account state', async () => {
     const storage = new QfSettingsStorage();
     const context = {
@@ -35,6 +49,9 @@ describe('QfSettingsStorage device context', () => {
     await storage.save('account-a', {
       version: 1,
       initialized: false,
+      needsReconciliation: false,
+      syncedDocuments: {},
+      syncedLocalDocuments: {},
       etags: {},
       pending: {},
       localDocuments: {},

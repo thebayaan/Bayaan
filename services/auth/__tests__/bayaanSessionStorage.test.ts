@@ -104,11 +104,13 @@ describe('Bayaan SecureStore session storage', () => {
   it('stores and clears the pending OAuth state separately from the session', async () => {
     await savePendingBayaanAuthState({
       state: 'state-value',
+      deviceVerifier: '01'.repeat(32),
       expiresAt: future,
     });
 
     await expect(getPendingBayaanAuthState()).resolves.toEqual({
       state: 'state-value',
+      deviceVerifier: '01'.repeat(32),
       expiresAt: future,
     });
 

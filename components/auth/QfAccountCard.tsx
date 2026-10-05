@@ -20,22 +20,27 @@ export function QfAccountCard() {
     useBayaanAuthStore();
 
   const signIn = useCallback(async () => {
-    setSigningIn();
+    const attempt = setSigningIn();
     try {
-      await bayaanAuthService.signIn();
+      const session = await bayaanAuthService.signIn();
+      useBayaanAuthStore.getState().setAuthenticated(session.profile, attempt);
     } catch (error) {
       setError(
         error instanceof BayaanAuthError ? error.code : 'sign_in_failed',
+        attempt,
       );
     }
   }, [setError, setSigningIn]);
 
   const signOut = useCallback(async () => {
+    const attempt = useBayaanAuthStore.getState().invalidateAttempt();
     await qfSyncLifecycle.stop().catch(() => undefined);
+    // A newer login may have started while lifecycle shutdown yielded.
+    if (attempt !== useBayaanAuthStore.getState().authAttempt) return;
     try {
       await bayaanAuthService.logout();
     } finally {
-      setSignedOut();
+      setSignedOut(attempt);
     }
   }, [setSignedOut]);
 

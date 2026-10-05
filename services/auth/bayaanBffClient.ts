@@ -96,12 +96,13 @@ export class BayaanBffClient {
     }
   }
 
-  async startAuth(): Promise<StartAuthResponse> {
+  async startAuth(deviceChallenge: string): Promise<StartAuthResponse> {
     const {response, body} = await this.jsonRequest(
       '/v1/qf/auth/start',
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({deviceChallenge}),
       },
       'invalid_start_response',
       'start_failed',
@@ -130,13 +131,14 @@ export class BayaanBffClient {
   async completeAuth(
     handoff: string,
     state: string,
+    deviceVerifier: string,
   ): Promise<BayaanOpaqueSession> {
     const {response, body} = await this.jsonRequest(
       '/v1/qf/auth/complete',
       {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({handoff, state}),
+        body: JSON.stringify({handoff, state, deviceVerifier}),
       },
       'invalid_complete_response',
       'complete_failed',

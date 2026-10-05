@@ -1,14 +1,30 @@
 const mockOpenBrowserAsync = jest.fn();
 const mockDismissBrowser = jest.fn();
 const mockSecureStore = new Map<string, string>();
+const mockUseLinkingURL = jest.fn();
+const mockReplace = jest.fn();
+
+jest.mock('expo-linking', () => ({
+  useLinkingURL: () => mockUseLinkingURL(),
+}));
+
+jest.mock('expo-router', () => ({
+  useRouter: () => ({replace: mockReplace}),
+}));
 
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
 jest.mock('expo-web-browser', () => ({
-  openBrowserAsync: (...args: unknown[]) => mockOpenBrowserAsync(...args),
+  openAuthSessionAsync: (...args: unknown[]) => mockOpenBrowserAsync(...args),
   dismissBrowser: () => mockDismissBrowser(),
+}));
+
+jest.mock('expo-crypto', () => ({
+  getRandomBytesAsync: async () => new Uint8Array(32).fill(1),
+  CryptoDigestAlgorithm: {SHA256: 'SHA-256'},
+  digestStringAsync: async () => 'a'.repeat(64),
 }));
 
 jest.mock('expo-secure-store', () => ({
@@ -53,8 +69,18 @@ jest.mock('@/hooks/useTheme', () => ({
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import {QfAccountCard} from '../QfAccountCard';
-import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
-import {getPendingBayaanAuthState} from '@/services/auth/bayaanSessionStorage';
+import OAuthCallbackScreen from '@/app/oauth/callback';
+import {
+  bayaanAuthService,
+  createBayaanAuthService,
+} from '@/services/auth/bayaanAuthService';
+import {
+  getBayaanSession,
+  getPendingBayaanAuthState,
+  saveBayaanSession,
+  savePendingBayaanAuthState,
+} from '@/services/auth/bayaanSessionStorage';
+import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
@@ -80,16 +106,108 @@ function jsonResponse(body: unknown, status = 200) {
   } as Response;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  jest.restoreAllMocks();
+  mockUseLinkingURL.mockReset();
+  mockReplace.mockReset();
+  mockSecureStore.clear();
+  await bayaanAuthService.logout();
   mockOpenBrowserAsync.mockReset();
   mockDismissBrowser.mockReset();
   mockSecureStore.clear();
-  useBayaanAuthStore.getState().resetForTesting();
-  useBayaanAuthStore.getState().setSignedOut();
+  await act(async () => {
+    useBayaanAuthStore.getState().resetForTesting();
+    useBayaanAuthStore.getState().setSignedOut();
+  });
   global.fetch = jest.fn();
 });
 
 describe('QfAccountCard', () => {
+  it.each(['success', 'revoked'])(
+    'keeps cold-start callback B in real provider/store/storage after delayed restore %s',
+    async result => {
+      await saveBayaanSession({
+        token: 'session-A',
+        expiresAt: Date.now() + 3_600_000,
+        profile: {accountId: 'account-A'},
+      });
+      await savePendingBayaanAuthState({
+        state: 'cold-state',
+        deviceVerifier: '01'.repeat(32),
+        expiresAt: Date.now() + 300_000,
+      });
+      const service = createBayaanAuthService({
+        apiUrl: 'https://api-prelive.thebayaan.com',
+      });
+      jest
+        .spyOn(bayaanAuthService, 'restore')
+        .mockImplementation(service.restore);
+      jest
+        .spyOn(bayaanAuthService, 'handleCallbackUrl')
+        .mockImplementation(service.handleCallbackUrl);
+      let releaseRestore!: (response: Response) => void;
+      const restoreReached = new Promise<void>(reached => {
+        (global.fetch as jest.Mock).mockImplementationOnce(
+          () =>
+            new Promise<Response>(resolve => {
+              releaseRestore = resolve;
+              reached();
+            }),
+        );
+      });
+      (global.fetch as jest.Mock).mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'session-B',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile: {accountId: 'account-B'},
+        }),
+      );
+      useBayaanAuthStore.getState().setInitializing();
+      let provider!: renderer.ReactTestRenderer;
+      let callback!: renderer.ReactTestRenderer;
+      await act(async () => {
+        provider = renderer.create(
+          <BayaanAuthProvider>{null}</BayaanAuthProvider>,
+        );
+      });
+      await restoreReached;
+      mockUseLinkingURL.mockReturnValue(
+        'bayaan://oauth/callback?handoff=cold-handoff&state=cold-state',
+      );
+      await act(async () => {
+        callback = renderer.create(<OAuthCallbackScreen />);
+      });
+      await expect(getBayaanSession()).resolves.toMatchObject({
+        token: 'session-B',
+      });
+      await act(async () => {
+        releaseRestore(
+          result === 'revoked'
+            ? jsonResponse({error: {code: 'UNAUTHORIZED'}}, 401)
+            : jsonResponse({
+                expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+                profile: {accountId: 'account-A'},
+              }),
+        );
+      });
+      expect(useBayaanAuthStore.getState()).toMatchObject({
+        status: 'authenticated',
+        profile: {accountId: 'account-B'},
+        errorCode: null,
+      });
+      await expect(getBayaanSession()).resolves.toMatchObject({
+        token: 'session-B',
+        profile: {accountId: 'account-B'},
+      });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockOpenBrowserAsync).not.toHaveBeenCalled();
+      await act(async () => {
+        callback.unmount();
+        provider.unmount();
+      });
+    },
+  );
+
   it('returns to a retryable sign-in state when the auth browser is cancelled', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(
       jsonResponse({
@@ -175,13 +293,17 @@ describe('QfAccountCard', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
     });
 
+    const attempt = useBayaanAuthStore.getState().authAttempt;
+    let callback!: renderer.ReactTestRenderer;
+    mockUseLinkingURL.mockReturnValue(
+      'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+    );
     await act(async () => {
-      const session = await bayaanAuthService.handleCallbackUrl(
-        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
-      );
-      useBayaanAuthStore.getState().setAuthenticated(session.profile);
+      callback = renderer.create(<OAuthCallbackScreen />);
     });
+    expect(useBayaanAuthStore.getState().authAttempt).toBe(attempt);
 
+    await act(async () => callback.unmount());
     resolveBrowser({type: 'dismiss'});
     await act(async () => {
       await signInPromise;
@@ -197,6 +319,187 @@ describe('QfAccountCard', () => {
     await act(async () => {
       renderedScreen.unmount();
     });
+  });
+
+  it.each([
+    ['cancel', false],
+    ['success', true],
+  ] as const)(
+    'ignores superseded browser %s after router A, logout and login B (remount=%s)',
+    async (browserResult, remount) => {
+      jest.spyOn(qfSyncLifecycle, 'stop').mockResolvedValue();
+      const start = (state: string) =>
+        jsonResponse({
+          authorizationUrl: `https://api-prelive.thebayaan.com/v1/qf/auth/launch?state=${state}`,
+          state,
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        });
+      const session = (accountId: string) =>
+        jsonResponse({
+          sessionToken: `opaque-${accountId}`,
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile: {accountId},
+        });
+      (global.fetch as jest.Mock)
+        .mockResolvedValueOnce(start('state-A'))
+        .mockResolvedValueOnce(session('account-A'))
+        .mockResolvedValueOnce(jsonResponse({success: true}))
+        .mockResolvedValueOnce(start('state-B'))
+        .mockResolvedValueOnce(session('account-B'));
+      let releaseBrowser!: (result: unknown) => void;
+      const browserReached = new Promise<void>(reached => {
+        mockOpenBrowserAsync.mockImplementationOnce(
+          () =>
+            new Promise(resolve => {
+              releaseBrowser = resolve;
+              reached();
+            }),
+        );
+      });
+      let card!: renderer.ReactTestRenderer;
+      let callback!: renderer.ReactTestRenderer;
+      await act(async () => {
+        card = renderer.create(<QfAccountCard />);
+      });
+      let oldSignIn!: Promise<void>;
+      await act(async () => {
+        oldSignIn = findButton(card).props.onPress();
+        await browserReached;
+      });
+      mockUseLinkingURL.mockReturnValue(
+        'bayaan://oauth/callback?handoff=handoff-A&state=state-A',
+      );
+      await act(async () => {
+        callback = renderer.create(<OAuthCallbackScreen />);
+      });
+      expect(useBayaanAuthStore.getState()).toMatchObject({
+        status: 'authenticated',
+        profile: {accountId: 'account-A'},
+      });
+      await act(async () => {
+        await findButton(card).props.onPress();
+        callback.unmount();
+        if (remount) {
+          card.unmount();
+          card = renderer.create(<QfAccountCard />);
+        }
+      });
+      mockOpenBrowserAsync.mockResolvedValueOnce({
+        type: 'success',
+        url: 'bayaan://oauth/callback?handoff=handoff-B&state=state-B',
+      });
+      await act(async () => {
+        await findButton(card).props.onPress();
+      });
+      const transitions: string[] = [];
+      const unsubscribe = useBayaanAuthStore.subscribe(auth => {
+        transitions.push(
+          `${auth.status}:${auth.profile?.accountId ?? 'guest'}`,
+        );
+      });
+      await act(async () => {
+        releaseBrowser({
+          type: browserResult,
+          url: 'bayaan://oauth/callback?handoff=handoff-A&state=state-A',
+        });
+        await oldSignIn;
+      });
+      unsubscribe();
+      expect(transitions).toEqual([]); // No bridge transition into guest scope.
+      expect(useBayaanAuthStore.getState()).toMatchObject({
+        status: 'authenticated',
+        profile: {accountId: 'account-B'},
+        errorCode: null,
+      });
+      expect(
+        card.root.findAllByProps({children: 'Sign out'}).length,
+      ).toBeGreaterThan(0);
+      expect(global.fetch).toHaveBeenCalledTimes(5);
+      await act(async () => card.unmount());
+    },
+  );
+
+  it.each(['success', 'error'])(
+    'guards a retained card handler even if an obsolete service result is %s',
+    async result => {
+      let release!: (
+        session: Awaited<ReturnType<typeof bayaanAuthService.signIn>>,
+      ) => void;
+      let reject!: (error: unknown) => void;
+      jest.spyOn(bayaanAuthService, 'signIn').mockImplementationOnce(
+        () =>
+          new Promise((resolve, rejectPromise) => {
+            release = resolve;
+            reject = rejectPromise;
+          }),
+      );
+      let card!: renderer.ReactTestRenderer;
+      await act(async () => {
+        card = renderer.create(<QfAccountCard />);
+      });
+      let oldSignIn!: Promise<void>;
+      await act(async () => {
+        oldSignIn = findButton(card).props.onPress();
+      });
+      await act(async () => {
+        card.unmount();
+        useBayaanAuthStore.getState().setSignedOut();
+        const attempt = useBayaanAuthStore.getState().setSigningIn();
+        useBayaanAuthStore
+          .getState()
+          .setAuthenticated({accountId: 'account-B'}, attempt);
+        card = renderer.create(<QfAccountCard />);
+      });
+      await act(async () => {
+        if (result === 'success') {
+          release({
+            token: 'old-opaque-session',
+            expiresAt: Date.now() + 3_600_000,
+            profile: {accountId: 'account-A'},
+          });
+        } else reject(new Error('obsolete browser failure'));
+        await oldSignIn;
+      });
+      expect(useBayaanAuthStore.getState()).toMatchObject({
+        status: 'authenticated',
+        profile: {accountId: 'account-B'},
+        errorCode: null,
+      });
+      await act(async () => card.unmount());
+    },
+  );
+
+  it('does not let an obsolete sign-out finally overwrite a newer login', async () => {
+    jest.spyOn(qfSyncLifecycle, 'stop').mockResolvedValue();
+    let releaseLogout!: () => void;
+    jest.spyOn(bayaanAuthService, 'logout').mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          releaseLogout = resolve;
+        }),
+    );
+    useBayaanAuthStore.getState().setAuthenticated({accountId: 'account-A'});
+    let card!: renderer.ReactTestRenderer;
+    await act(async () => {
+      card = renderer.create(<QfAccountCard />);
+    });
+    let signOut!: Promise<void>;
+    await act(async () => {
+      signOut = findButton(card).props.onPress();
+    });
+    await act(async () => {
+      const attempt = useBayaanAuthStore.getState().setSigningIn();
+      useBayaanAuthStore
+        .getState()
+        .setAuthenticated({accountId: 'account-B'}, attempt);
+      releaseLogout();
+      await signOut;
+    });
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-B'},
+    });
+    await act(async () => card.unmount());
   });
 
   it('stops account lifecycle work before logging out', async () => {

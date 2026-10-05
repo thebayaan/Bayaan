@@ -7,6 +7,8 @@ const STORAGE_VERSION = 1;
 
 export interface PendingBayaanAuthState {
   state: string;
+  // Device-held proof, never put into a browser/deep-link URL.
+  deviceVerifier: string;
   expiresAt: number;
 }
 
@@ -48,6 +50,8 @@ function isPending(value: unknown): value is PendingBayaanAuthState {
   return (
     isObject(value) &&
     typeof value.state === 'string' &&
+    typeof value.deviceVerifier === 'string' &&
+    /^[a-f0-9]{64}$/.test(value.deviceVerifier) &&
     typeof value.expiresAt === 'number' &&
     Number.isFinite(value.expiresAt)
   );

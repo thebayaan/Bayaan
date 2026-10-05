@@ -1,4 +1,5 @@
 const mockHandleCallbackUrl = jest.fn();
+const mockRestore = jest.fn();
 const mockReplace = jest.fn();
 const mockUseLocalSearchParams = jest.fn();
 const mockUseLinkingURL = jest.fn();
@@ -23,6 +24,7 @@ jest.mock('@/services/auth/bayaanAuthService', () => ({
     }
   },
   bayaanAuthService: {
+    restore: () => mockRestore(),
     handleCallbackUrl: (...args: unknown[]) => mockHandleCallbackUrl(...args),
   },
 }));
@@ -30,9 +32,11 @@ jest.mock('@/services/auth/bayaanAuthService', () => ({
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import OAuthCallbackScreen from '../callback';
+import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
 beforeEach(() => {
+  mockRestore.mockReset();
   mockHandleCallbackUrl.mockReset();
   mockHandleCallbackUrl.mockResolvedValue({
     profile: {accountId: 'account-1'},
@@ -155,6 +159,98 @@ describe('OAuth callback route', () => {
       status: 'error',
       errorCode: 'state_mismatch',
     });
+  });
+
+  it.each(['success', 'error'])(
+    'ignores obsolete callback %s after shared ownership changes',
+    async result => {
+      let resolve!: (value: unknown) => void;
+      let reject!: (error: unknown) => void;
+      mockHandleCallbackUrl.mockImplementationOnce(
+        () =>
+          new Promise((resolvePromise, rejectPromise) => {
+            resolve = resolvePromise;
+            reject = rejectPromise;
+          }),
+      );
+      mockUseLinkingURL.mockReturnValue('old-callback');
+      let tree!: renderer.ReactTestRenderer;
+      await act(async () => {
+        tree = renderer.create(<OAuthCallbackScreen />);
+      });
+      await act(async () => {
+        useBayaanAuthStore.getState().setSignedOut();
+        const attempt = useBayaanAuthStore.getState().setSigningIn();
+        useBayaanAuthStore
+          .getState()
+          .setAuthenticated({accountId: 'account-B'}, attempt);
+        if (result === 'success') resolve({profile: {accountId: 'account-A'}});
+        else reject(new Error('old callback failed'));
+      });
+      expect(useBayaanAuthStore.getState()).toMatchObject({
+        status: 'authenticated',
+        profile: {accountId: 'account-B'},
+        errorCode: null,
+      });
+      expect(mockReplace).not.toHaveBeenCalled();
+      await act(async () => tree.unmount());
+    },
+  );
+
+  it('lets a cold-start callback supersede a pending provider restore', async () => {
+    let resolveRestore!: (value: unknown) => void;
+    mockRestore.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveRestore = resolve;
+        }),
+    );
+    let provider!: renderer.ReactTestRenderer;
+    let callback!: renderer.ReactTestRenderer;
+    await act(async () => {
+      provider = renderer.create(
+        <BayaanAuthProvider>{null}</BayaanAuthProvider>,
+      );
+    });
+    const restoreAttempt = useBayaanAuthStore.getState().authAttempt;
+    mockUseLinkingURL.mockReturnValue('cold-callback');
+    await act(async () => {
+      callback = renderer.create(<OAuthCallbackScreen />);
+    });
+    expect(useBayaanAuthStore.getState().authAttempt).toBeGreaterThan(
+      restoreAttempt,
+    );
+    await act(async () => {
+      resolveRestore({profile: {accountId: 'old-account'}});
+    });
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-1'},
+      errorCode: null,
+    });
+    await act(async () => {
+      callback.unmount();
+      provider.unmount();
+    });
+  });
+
+  it('keeps cold-start callback ownership when child effects run before the provider', async () => {
+    mockUseLinkingURL.mockReturnValue('cold-callback');
+    mockRestore.mockResolvedValueOnce(null);
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(
+        <BayaanAuthProvider>
+          <OAuthCallbackScreen />
+        </BayaanAuthProvider>,
+      );
+    });
+    expect(mockRestore).not.toHaveBeenCalled();
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-1'},
+    });
+    await act(async () => tree.unmount());
   });
 
   it('fails closed after a bounded wait when no callback URL arrives', async () => {
