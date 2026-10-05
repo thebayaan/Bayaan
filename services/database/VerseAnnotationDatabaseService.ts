@@ -286,8 +286,13 @@ class VerseAnnotationDatabaseService {
       rewayahId: rewayahId as VerseBookmark['rewayahId'],
     };
 
+    // OR IGNORE: `verse_key` is UNIQUE, so a plain INSERT of an
+    // already-bookmarked verse raises SQLITE_CONSTRAINT and rejects. That is
+    // reachable whenever the caller's `isBookmarked` is stale, and the
+    // rejection used to abort the toggle handler mid-way (leaving the sheet
+    // open). Bookmarking is idempotent by intent — swallow the duplicate. @ai
     await db.runAsync(
-      `INSERT INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
+      `INSERT OR IGNORE INTO bookmarks (id, verse_key, surah_number, ayah_number, created_at, rewayah_id)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         bookmark.id,
