@@ -94,7 +94,7 @@ export const PlayerSheet = () => {
 
   // Effect to handle sleep timer remaining time
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
     if (settings.sleepTimerEnd) {
       interval = setInterval(() => {
         // Calculate remaining time based on the end timestamp
@@ -156,15 +156,31 @@ export const PlayerSheet = () => {
   );
 
   const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-      />
-    ),
-    [],
+    (props: BottomSheetBackdropProps) => {
+      // Slow-Android play-time freeze fix: gorhom's BottomSheetBackdrop mounts
+      // pointerEvents:'auto' (full-screen absoluteFillObject, opacity-0 but still
+      // hit-testable, wrapped in a Tap GestureDetector) and only flips to 'none'
+      // via a useAnimatedReaction -> runOnJS -> setState chain gated on its
+      // internal animatedIndex settling to disappearsOnIndex (-1). On a slow CPU
+      // the *closed* sheet's container-height layout race delays that settle, so
+      // the backdrop keeps eating EVERY touch while the sheet is logically hidden
+      // -> the whole app is unresponsive though audio keeps playing and only the
+      // hardware BACK key works. Don't render the backdrop at all unless the sheet
+      // is the full player; keyed off the LOGICAL sheetMode (set synchronously
+      // before expand()), so it is immune to gorhom's racing animatedIndex.
+      if (sheetMode !== 'full') {
+        return null;
+      }
+      return (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+          opacity={0.5}
+        />
+      );
+    },
+    [sheetMode],
   );
 
   const handleSpeedChange = useCallback(
@@ -356,7 +372,7 @@ export const PlayerSheet = () => {
         handleComponent={renderHandleComponent}
         enableContentPanningGesture
         enableOverDrag={false}
-        style={styles.sheet}
+        style={[styles.sheet, sheetMode !== 'full' && styles.sheetUntouchable]}
         backgroundStyle={[styles.background, {backgroundColor: 'transparent'}]}>
         {showTabletSplit ? (
           <View style={styles.tabletSplitRoot}>
@@ -407,6 +423,15 @@ const styles = StyleSheet.create({
   sheet: {
     zIndex: 2000,
     elevation: 20,
+  },
+  // Slow-Android play-time freeze fix (sibling guard of the backdrop gate above).
+  // gorhom applies this `style` to BottomSheetBody (an Animated.View), so the
+  // elevation:20 lives there; on a slow CPU a mis-positioned *closed* sheet's
+  // elevated Body can also capture touches (Android elevation drives touch order).
+  // pointerEvents:'none' removes it from hit-testing whenever the sheet is not the
+  // full player — keyed off logical sheetMode, not gorhom's racing animatedIndex.
+  sheetUntouchable: {
+    pointerEvents: 'none',
   },
   background: {
     borderTopLeftRadius: 0,

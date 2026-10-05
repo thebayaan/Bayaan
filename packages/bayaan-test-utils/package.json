@@ -1,0 +1,17 @@
+{
+  "name": "@bayaan/test-utils",
+  "version": "0.1.0",
+  "description": "Shared Jest test helpers for @bayaan/* packages.",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bayaan/types": "*"
+  }
+}

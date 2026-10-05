@@ -49,6 +49,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import branding from '@/config/branding';
 import {HighlightContent} from './verse-actions/HighlightContent';
 import {NoteContent} from './verse-actions/NoteContent';
 import {ShareContent} from './verse-actions/ShareContent';
@@ -57,6 +58,7 @@ import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
+import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
 const surahData = require('@/data/surahData.json');
 const quranVerses = require('@/data/quran.json');
@@ -72,6 +74,7 @@ type ActiveScreen =
   | 'tafseer'
   | 'theme'
   | 'wbw'
+  | 'community-reflections'
   | null;
 
 const SCREEN_TITLES: Record<string, string> = {
@@ -84,6 +87,7 @@ const SCREEN_TITLES: Record<string, string> = {
   tafseer: 'Tafseer',
   theme: 'Theme',
   wbw: 'Word by Word',
+  'community-reflections': 'Community Reflections',
 };
 
 const SHEET_HEIGHT = Dimensions.get('window').height * 0.85;
@@ -107,6 +111,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     );
     setActiveScreenRaw(screen);
   }, []);
+
+  const hideCurrentSheet = useCallback(() => {
+    SheetManager.hide(props.sheetId).catch(error => {
+      console.warn('[VerseActionsSheet] Failed to hide sheet:', error);
+    });
+  }, [props.sheetId]);
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
@@ -224,8 +234,15 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         store.addBookmark(vk);
       }
     }
-    SheetManager.hideAll();
-  }, [verseKey, verseKeys, isRange, isBookmarked, resolvedRewayah]);
+    await SheetManager.hide(props.sheetId);
+  }, [
+    verseKey,
+    verseKeys,
+    isRange,
+    isBookmarked,
+    resolvedRewayah,
+    props.sheetId,
+  ]);
 
   const handleHighlight = useCallback(async () => {
     if (isHighlighted) {
@@ -236,11 +253,11 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         await verseAnnotationService.removeHighlight(vk);
         store.removeHighlight(vk);
       }
-      SheetManager.hideAll();
+      hideCurrentSheet();
     } else {
       setActiveScreen('highlight');
     }
-  }, [verseKey, verseKeys, isRange, isHighlighted]);
+  }, [verseKey, verseKeys, isRange, isHighlighted, hideCurrentSheet]);
 
   const handleNote = useCallback(() => {
     setActiveScreen('note');
@@ -257,8 +274,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         : `Quran ${verseRefText} · ${getRewayahShortLabel(resolvedRewayah)}`;
     parts.push(ref);
     await Clipboard.setStringAsync(parts.join('\n\n'));
-    SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText, resolvedRewayah]);
+    await SheetManager.hide(props.sheetId);
+  }, [arabicText, translation, verseRefText, resolvedRewayah, props.sheetId]);
 
   const handleShare = useCallback(() => {
     lightHaptics();
@@ -279,6 +296,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleWBW = useCallback(() => {
     setActiveScreen('wbw');
+  }, []);
+
+  // RFC-018 — open the community-reflections popup. Only reachable when a
+  // fork wires branding.communityReflectionsProvider (the row is gated).
+  const handleCommunityReflections = useCallback(() => {
+    setActiveScreen('community-reflections');
   }, []);
 
   // QUL data: theme label and per-feature availability
@@ -329,7 +352,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
           currentPage: page,
           pendingStartVerseKey: firstKey,
         });
-        await SheetManager.hideAll();
+        await SheetManager.hide(props.sheetId);
         SheetManager.show('mushaf-player-options', {
           payload: {currentPage: page},
         });
@@ -367,10 +390,10 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
         store.setRangeRepeatCount(1);
       }
 
-      SheetManager.hideAll();
+      hideCurrentSheet();
       store.startPlayback(page, firstKey);
     },
-    [verseKey, verseKeys, isRange],
+    [verseKey, verseKeys, isRange, props.sheetId, hideCurrentSheet],
   );
 
   const handlePlaySelection = useCallback(
@@ -394,9 +417,9 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleShowFollowAlong = useCallback(async () => {
     lightHaptics();
-    await SheetManager.hideAll();
+    await SheetManager.hide(props.sheetId);
     SheetManager.show('follow-along');
-  }, []);
+  }, [props.sheetId]);
 
   const handlePlayerPlayFromHere = useCallback(() => {
     lightHaptics();
@@ -424,8 +447,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       timestampTo: ts.timestampTo,
     });
 
-    SheetManager.hideAll();
-  }, [verseKey, verseKeys, isRange]);
+    hideCurrentSheet();
+  }, [verseKey, verseKeys, isRange, hideCurrentSheet]);
 
   const handlePlayerRepeat = useCallback(async () => {
     lightHaptics();
@@ -456,7 +479,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
       playerState.pause();
     }
 
-    await SheetManager.hideAll();
+    await SheetManager.hide(props.sheetId);
     playerState.setSheetMode('hidden');
 
     useMushafPlayerStore.setState({
@@ -476,7 +499,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     SheetManager.show('mushaf-player-options', {
       payload: {currentPage: page},
     });
-  }, [verseKey, verseKeys, isRange]);
+  }, [verseKey, verseKeys, isRange, props.sheetId]);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || !activeScreen) return;
@@ -494,8 +517,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   }, []);
 
   const handleDismiss = useCallback(() => {
-    SheetManager.hideAll();
-  }, []);
+    hideCurrentSheet();
+  }, [hideCurrentSheet]);
 
   const handleBack = useCallback(() => {
     setActiveScreen(null);
@@ -508,7 +531,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'translation' ||
     activeScreen === 'tafseer' ||
     activeScreen === 'theme' ||
-    activeScreen === 'wbw';
+    activeScreen === 'wbw' ||
+    activeScreen === 'community-reflections';
 
   return (
     <ActionSheet
@@ -552,7 +576,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                 <Pressable
                   onPress={() => {
                     lightHaptics();
-                    SheetManager.hideAll();
+                    hideCurrentSheet();
                     usePlayerStore.getState().setSheetMode('hidden');
                     setTimeout(() => {
                       router.push('/(tabs)/(a.home)/translations');
@@ -601,6 +625,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'community-reflections' && (
+                  <CommunityReflectionsContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
                   />
                 )}
               </View>
@@ -813,6 +843,28 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       color={theme.colors.text}
                     />
                     <Text style={styles.optionText}>Word by Word</Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {/* RFC-018 — Community Reflections row. Gated on a fork wiring
+                  branding.communityReflectionsProvider (so Bayaan never shows
+                  it) and single-ayah selection. Same predicate as the inline
+                  slot + settings toggle; no new seam. */}
+              {branding.communityReflectionsProvider && !isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleCommunityReflections}>
+                    <MaterialCommunityIcons
+                      name="comment-quote-outline"
+                      size={moderateScale(19)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Community Reflections</Text>
                   </Pressable>
                 </>
               ) : null}

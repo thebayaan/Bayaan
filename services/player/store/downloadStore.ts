@@ -11,7 +11,7 @@ import {analyticsService} from '@/services/analytics/AnalyticsService';
 // Throttle utility to prevent excessive state updates during downloads
 const throttleMap = new Map<
   string,
-  {timer: NodeJS.Timeout | null; lastValue: number}
+  {timer: ReturnType<typeof setTimeout> | null; lastValue: number}
 >();
 
 function throttledSetProgress(

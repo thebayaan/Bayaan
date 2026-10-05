@@ -35,9 +35,10 @@ import {Dhikr, SuperCategory} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {shortenCategoryTitle} from '@/utils/adhkarUtils';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {adhkarShareUrl, shareUrl} from '@/utils/shareUtils';
 import {analyticsService} from '@/services/analytics/AnalyticsService';
+import branding from '@/config/branding';
 
 interface DhikrItem {
   dhikr: Dhikr;
@@ -172,7 +173,7 @@ const SuperCategoryListScreen: React.FC = () => {
   const handleShare = useCallback(() => {
     if (!superId) return;
     const url = adhkarShareUrl(superId);
-    shareUrl(url, `Check out ${displayTitle} on Bayaan`);
+    shareUrl(url, `Check out ${displayTitle} on ${branding.appName}`);
   }, [superId, displayTitle]);
 
   // Play All handler

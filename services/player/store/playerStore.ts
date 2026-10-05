@@ -261,6 +261,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
           analyticsService.trackPlaybackSkipped({
             surah_id: parseInt(currentTrack.surahId, 10),
             reciter_id: currentTrack.reciterId,
+            reciter_name: currentTrack.reciterName,
             position_ms: Math.round(state.playback.position * 1000),
             listened_ms: Math.round(state.playback.position * 1000),
             direction: 'next',
@@ -339,6 +340,7 @@ export const usePlayerStore = create<PlayerStoreState>()(
           analyticsService.trackPlaybackSkipped({
             surah_id: parseInt(currentTrack.surahId, 10),
             reciter_id: currentTrack.reciterId,
+            reciter_name: currentTrack.reciterName,
             position_ms: Math.round(state.playback.position * 1000),
             listened_ms: Math.round(state.playback.position * 1000),
             direction: 'prev',

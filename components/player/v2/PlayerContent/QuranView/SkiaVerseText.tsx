@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {
   Canvas,
   Paragraph,
@@ -9,17 +9,26 @@ import {
   TextDirection,
   type SkTypefaceFontProvider,
   type SkTextStyle,
+  type SkColor,
 } from '@shopify/react-native-skia';
+import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {getVerseTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
+import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
 import {
   tajweedColors,
   REWAYAH_DIFF_BACKGROUND,
 } from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import type {
+  MushafArabicTextWeight,
+  RewayahId,
+} from '@/store/mushafSettingsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 import {useRewayahWords} from '@/hooks/useRewayahWords';
-import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
+import {
+  createTextStrokePaint,
+  getArabicTextWeightStrokeWidth,
+} from '@/utils/skiaTextWeight';
 
 const paragraphStyle = {
   textHeightBehavior: TextHeightBehavior.DisableAll,
@@ -40,9 +49,12 @@ interface SkiaVerseTextProps {
   showTajweed: boolean;
   width: number;
   indexedTajweedData: IndexedTajweedData | null;
-  /** Rewayah the Arabic text is rendered in. If omitted, falls back to the
-   *  mushaf settings store's active rewayah. Ignored if `text` prop is
-   *  provided (which short-circuits the lookup entirely). */
+  arabicTextWeight?: MushafArabicTextWeight;
+  showAllahNameHighlight?: boolean;
+  allahNameHighlightColor?: string;
+  /** Render text from this rewayah's DK words DB instead of the active
+   *  mushaf one. Used by the player to show text matching the currently
+   *  playing reciter's rewayah. Ignored if `text` prop is provided. */
   rewayah?: RewayahId;
 }
 
@@ -56,17 +68,22 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   showTajweed,
   width,
   indexedTajweedData,
+  arabicTextWeight = 'normal',
+  showAllahNameHighlight = false,
+  allahNameHighlightColor,
   rewayah,
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
-  const effectiveRewayah: RewayahId = rewayah ?? mushafRewayah;
+  const effectiveRewayah = (rewayah ?? mushafRewayah) as Parameters<
+    typeof useRewayahWords
+  >[1];
 
   // Reactive read; re-renders when the requested rewayah's cache transitions
   // from loading → ready. Only queried when `text` isn't provided directly.
   const {words, status} = useRewayahWords(
-    text !== undefined ? null : (verseKey ?? null),
+    text !== undefined ? null : verseKey ?? null,
     effectiveRewayah,
   );
   const verseText =
@@ -107,41 +124,109 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return merged;
   }, [verseKey, showTajweed, indexedTajweedData, rewayahFgApplies, words]);
 
-  const {paragraph, height} = useMemo(() => {
-    if (!verseText || width <= 0) return {paragraph: null, height: 0};
+  const charToAllahHighlight = useMemo(() => {
+    if (!showAllahNameHighlight || !allahNameHighlightColor || !verseText) {
+      return null;
+    }
+    return getTextAllahNameCharMap(verseText);
+  }, [showAllahNameHighlight, allahNameHighlightColor, verseText]);
+
+  const built = useMemo(() => {
+    if (!verseText || width <= 0) {
+      return {paragraph: null, strokeParagraph: null, height: 0, yOffset: 0};
+    }
 
     const color = Skia.Color(textColor);
+    const strokeWidth = getArabicTextWeightStrokeWidth(
+      arabicTextWeight,
+      fontSize,
+    );
+    const yOffset = Math.ceil(strokeWidth);
     const baseStyle: SkTextStyle = {
       color,
       fontFamilies: [fontFamily],
       fontSize,
     };
 
-    const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
-    builder.pushStyle(baseStyle);
+    const buildParagraph = (withStroke: boolean) => {
+      const builder = Skia.ParagraphBuilder.Make(paragraphStyle, fontMgr);
 
-    for (let i = 0; i < verseText.length; i++) {
-      const char = verseText.charAt(i);
-      const rule = charToRule?.get(i);
+      const pushStyle = (style: SkTextStyle, styleColor: SkColor) => {
+        const strokePaint = withStroke
+          ? createTextStrokePaint(styleColor, strokeWidth)
+          : undefined;
+        if (strokePaint) {
+          builder.pushStyle(style, strokePaint);
+        } else {
+          builder.pushStyle(style);
+        }
+      };
 
-      if (rule && tajweedColors[rule]) {
-        const charStyle: SkTextStyle = {
-          ...baseStyle,
-          color: Skia.Color(tajweedColors[rule]),
-        };
-        builder.pushStyle(charStyle);
-        builder.addText(char);
-        builder.pop();
-      } else {
-        builder.addText(char);
+      pushStyle(baseStyle, color);
+
+      for (let i = 0; i < verseText.length; i++) {
+        const char = verseText.charAt(i);
+        const allahHighlight = charToAllahHighlight?.has(i);
+        const rule = charToRule?.get(i);
+        const resolvedColor = allahHighlight
+          ? allahNameHighlightColor
+          : rule && tajweedColors[rule]
+          ? tajweedColors[rule]
+          : null;
+
+        if (resolvedColor) {
+          const charColor = Skia.Color(resolvedColor);
+          const charStyle: SkTextStyle = {
+            ...baseStyle,
+            color: charColor,
+          };
+          pushStyle(charStyle, charColor);
+          builder.addText(char);
+          builder.pop();
+        } else {
+          builder.addText(char);
+        }
       }
-    }
 
-    builder.pop();
-    const p = builder.build();
-    p.layout(width);
-    return {paragraph: p, height: p.getHeight()};
-  }, [verseText, width, textColor, fontFamily, fontSize, fontMgr, charToRule]);
+      builder.pop();
+      const p = builder.build();
+      p.layout(width);
+      return p;
+    };
+
+    const p = buildParagraph(false);
+    const strokeP = strokeWidth > 0 ? buildParagraph(true) : null;
+    return {
+      paragraph: p,
+      strokeParagraph: strokeP,
+      height: p.getHeight() + yOffset * 2,
+      yOffset,
+    };
+  }, [
+    verseText,
+    width,
+    textColor,
+    fontFamily,
+    fontSize,
+    fontMgr,
+    charToRule,
+    charToAllahHighlight,
+    arabicTextWeight,
+    allahNameHighlightColor,
+  ]);
+
+  const {paragraph, strokeParagraph, height, yOffset} = built;
+
+  // SkParagraph holds native memory that JS GC does not reclaim. Dispose the
+  // previous paragraphs when the memo recomputes (and on unmount). The cleanup
+  // runs with the prior `built` value, so the paragraph being rendered this
+  // frame is never disposed early.
+  useEffect(() => {
+    return () => {
+      built.paragraph?.dispose();
+      built.strokeParagraph?.dispose();
+    };
+  }, [built]);
 
   // Rewayah diff backgrounds; highlights words that differ from Hafs.
   // Mirrors the SkiaPage pipeline (which uses getDiffRangesForLine) but
@@ -201,24 +286,15 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
 
   return (
     <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>
-      {diffBgRects ? (
-        <Group>
-          {diffBgRects.map((rect, i) => (
-            <RoundedRect
-              key={i}
-              x={rect.x}
-              y={rect.y}
-              width={rect.width}
-              height={rect.height}
-              r={DIFF_BG_RADIUS}
-              color={REWAYAH_DIFF_BACKGROUND}
-            />
-          ))}
-          <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
-        </Group>
-      ) : (
-        <Paragraph paragraph={paragraph} x={0} y={0} width={width} />
+      {strokeParagraph && (
+        <Paragraph
+          paragraph={strokeParagraph}
+          x={0}
+          y={yOffset}
+          width={width}
+        />
       )}
+      <Paragraph paragraph={paragraph} x={0} y={yOffset} width={width} />
     </Canvas>
   );
 };

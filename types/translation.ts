@@ -25,7 +25,11 @@ export const BUNDLED_TRANSLATIONS: Record<
   },
 };
 
-// Remote translation edition from Al Quran Cloud API
+// Shared translation edition contract (RFC-009). Used by
+// `TranslationProvider` implementations (Bayaan's alQuran.cloud-backed
+// default + any fork override) and by the SQLite cache layer.
+// Provider implementations are responsible for mapping their upstream
+// API shape into this shape.
 export interface RemoteTranslationEdition {
   identifier: string;
   language: string;
@@ -34,6 +38,16 @@ export interface RemoteTranslationEdition {
   format: string;
   type: string;
   direction: 'ltr' | 'rtl';
+}
+
+// A single translated verse, as returned by a TranslationProvider.
+// (Moved here from TranslationApiService.ts in RFC-009 so the provider
+// interface and its implementations can share the type.)
+export interface TranslationVerse {
+  surahNumber: number;
+  ayahNumber: number;
+  verseKey: string;
+  text: string;
 }
 
 // Metadata for a downloaded translation stored in SQLite

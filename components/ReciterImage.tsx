@@ -15,7 +15,7 @@ interface ReciterImageProps {
 }
 
 export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
-  ({reciterName = '', style, profileIconSize, blurRadius}) => {
+  ({imageUrl, reciterName = '', style, profileIconSize, blurRadius}) => {
     const {theme} = useTheme();
 
     const styles = useMemo(
@@ -55,15 +55,21 @@ export const ReciterImage: React.FC<ReciterImageProps> = React.memo(
       return reciterImages[formattedName];
     }, [formattedName]);
 
+    // Prefer the catalog-supplied `imageUrl` over the bundled local headshot.
+    // Catalog entries with `image_url` should win so reciters without a bundled
+    // asset still render their photo. Local stays as a fallback for reciters
+    // whose catalog entry has no image_url.
+    const imageSource = imageUrl ? {uri: imageUrl} : localImageSource ?? null;
+
     return (
       <View style={[styles.container, style]}>
         <View style={styles.squircleMask} />
-        {localImageSource ? (
+        {imageSource ? (
           <Image
-            source={localImageSource}
+            source={imageSource}
             style={styles.image}
             contentFit="cover"
-            recyclingKey={formattedName}
+            recyclingKey={imageUrl || formattedName}
             transition={100}
             {...(blurRadius ? {blurRadius} : {})}
           />

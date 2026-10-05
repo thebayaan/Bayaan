@@ -7,7 +7,12 @@ import {SURAHS} from '@/data/surahData';
 export default function BrowseScreen() {
   const router = useRouter();
   const {theme} = useTheme();
-  const {surahId} = useLocalSearchParams<{surahId: string}>();
+  // RFC-012 — composable Search-tab filter chips. Tiles can deeplink in
+  // with chips pre-applied (e.g. `?hasPhoto=1`).
+  const {surahId, hasPhoto} = useLocalSearchParams<{
+    surahId: string;
+    hasPhoto: string;
+  }>();
 
   const handleBack = () => {
     router.back();
@@ -24,6 +29,7 @@ export default function BrowseScreen() {
       onBack={handleBack}
       surahId={surahId ? parseInt(surahId, 10) : undefined}
       title={title}
+      initialHasPhoto={hasPhoto === '1' || hasPhoto === 'true'}
     />
   );
 }

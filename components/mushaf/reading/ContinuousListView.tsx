@@ -9,10 +9,12 @@ import {View} from 'react-native';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
+import {useTheme} from '@/hooks/useTheme';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import {
@@ -24,6 +26,7 @@ import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import {SCREEN_WIDTH} from '../constants';
 
 const surahData = require('@/data/surahData.json') as Array<{
@@ -161,6 +164,7 @@ const ContinuousListView = forwardRef<
     },
     ref,
   ) => {
+    const {theme} = useTheme();
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
 
@@ -202,6 +206,13 @@ const ContinuousListView = forwardRef<
       s => s.wbwShowTransliteration,
     );
     const arabicFontSize = useMushafSettingsStore(s => s.arabicFontSize);
+    const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+    const showAllahNameHighlight = useMushafSettingsStore(
+      s => s.showAllahNameHighlight,
+    );
+    const allahNameHighlightColorSetting = useMushafSettingsStore(
+      s => s.allahNameHighlightColor,
+    );
     const translationFontSize = useMushafSettingsStore(
       s => s.translationFontSize,
     );
@@ -213,6 +224,14 @@ const ContinuousListView = forwardRef<
       s => s.selectedTranslationId,
     );
     const translationName = getTranslationName(selectedTranslationId);
+    const allahNameHighlightColor = useMemo(
+      () =>
+        getAllahNameHighlightColorHex(
+          allahNameHighlightColorSetting,
+          theme.isDarkMode,
+        ),
+      [allahNameHighlightColorSetting, theme.isDarkMode],
+    );
 
     const dkFontFamily =
       mushafRenderer === 'dk_indopak'
@@ -226,7 +245,8 @@ const ContinuousListView = forwardRef<
         mushafRenderer === 'dk_indopak') &&
       mushafPreloadService.initialized &&
       digitalKhattDataService.initialized;
-    const fontMgr = isDK ? mushafPreloadService.fontMgr : null;
+    const subscribedFontMgr = useMushafFontMgr();
+    const fontMgr = isDK ? subscribedFontMgr : null;
     const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
     const items = useMemo(() => buildContinuousListItems(), []);
@@ -287,6 +307,9 @@ const ContinuousListView = forwardRef<
                 fontMgr={fontMgr}
                 dkFontFamily={dkFontFamily}
                 indexedTajweedData={indexedTajweedData}
+                arabicTextWeight={arabicTextWeight}
+                showAllahNameHighlight={showAllahNameHighlight}
+                allahNameHighlightColor={allahNameHighlightColor}
               />
             </View>
           );
@@ -327,6 +350,7 @@ const ContinuousListView = forwardRef<
         showTransliteration,
         showTajweed,
         arabicFontSize,
+        arabicTextWeight,
         translationFontSize,
         transliterationFontSize,
         fontMgr,
@@ -340,6 +364,8 @@ const ContinuousListView = forwardRef<
         showWBW,
         wbwShowTranslation,
         wbwShowTransliteration,
+        showAllahNameHighlight,
+        allahNameHighlightColor,
       ],
     );
 
@@ -361,7 +387,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={items}
         renderItem={renderItem}
-        extraData={currentVerseKey}
+        extraData={`${currentVerseKey}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}
@@ -377,6 +403,7 @@ const ContinuousListView = forwardRef<
     );
   },
 );
+ContinuousListView.displayName = 'ContinuousListView';
 
 export default React.memo(ContinuousListView);
 

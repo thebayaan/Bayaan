@@ -1,12 +1,13 @@
 import {Platform, Linking} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import branding from '@/config/branding';
 
 // App Store IDs
 const APP_STORE_ID = '6648769980'; // iOS App Store ID
-const PLAY_STORE_ID = 'com.bayaan.app'; // Android package name
+const PLAY_STORE_ID = branding.bundleId.android; // Android package name
 
 // Storage key for tracking if user has rated the app
-const RATED_KEY = '@Bayaan:hasRated';
+const RATED_KEY = `@${branding.appSlug}:hasRated`;
 
 /**
  * Opens the appropriate app store for the user to write a review

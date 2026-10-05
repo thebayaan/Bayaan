@@ -19,7 +19,7 @@ import {Dhikr, SavedDhikr} from '@/types/adhkar';
 import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkarAudioStore} from '@/store/adhkarAudioStore';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
