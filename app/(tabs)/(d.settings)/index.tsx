@@ -28,6 +28,7 @@ import {
   ShieldLockIcon,
 } from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
 import branding from '@/config/branding';
 
@@ -220,6 +221,13 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
+  const {analyticsEnabled, setAnalyticsEnabled} = useAnalyticsConsentStore();
+
+  const handleAnalyticsToggle = (value: boolean): void => {
+    // The analytics service subscribes to this store and pushes the choice
+    // straight to the PostHog SDK, so flipping the flag is all we do here.
+    setAnalyticsEnabled(value);
+  };
 
   const iconColor = theme.colors.text;
   const chevronColor = theme.colors.textSecondary;
@@ -359,6 +367,39 @@ export default function SettingsScreen() {
             )}
           </View>
         ))}
+
+        {/* Privacy Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>PRIVACY</Text>
+          {renderCard(
+            <View style={styles.settingsRow}>
+              <View style={styles.settingsItemIcon}>
+                <Feather
+                  name="bar-chart-2"
+                  size={moderateScale(20)}
+                  color={iconColor}
+                />
+              </View>
+              <View style={styles.settingsTextContainer}>
+                <Text style={styles.settingsTitle}>
+                  Share anonymous usage data
+                </Text>
+                <Text style={styles.settingsDescription}>
+                  Help improve {branding.appName} with anonymous, non-personal
+                  analytics. Your name and account are never shared.
+                </Text>
+              </View>
+              <Switch
+                value={analyticsEnabled}
+                onValueChange={handleAnalyticsToggle}
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                style={styles.switchStyle}
+              />
+            </View>,
+          )}
+        </View>
 
         {/* Developer Section */}
         {__DEV__ && (

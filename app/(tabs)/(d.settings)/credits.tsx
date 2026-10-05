@@ -146,10 +146,10 @@ export default function CreditsScreen() {
         showsVerticalScrollIndicator={false}>
         <View>
           <Text style={styles.introText}>
-            Bayaan wouldn&apos;t be possible without the incredible work of
-            these projects, organizations, and individuals. We&apos;re deeply
-            grateful for their contributions to the Muslim community and the
-            tech world.
+            {branding.appName} wouldn&apos;t be possible without the incredible
+            work of these projects, organizations, and individuals. We&apos;re
+            deeply grateful for their contributions to the Muslim community and
+            the tech world.
           </Text>
 
           {credits.map(section => (
@@ -190,7 +190,9 @@ export default function CreditsScreen() {
             </View>
           ))}
 
-          <Text style={styles.footerText}>Made with ❤️ by the Bayaan team</Text>
+          <Text style={styles.footerText}>
+            Made with ❤️ by the {branding.appName} team
+          </Text>
         </View>
       </ScrollView>
     </View>

@@ -34,7 +34,10 @@ import {useTheme} from '@/hooks/useTheme';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
+import {
+  BOOKMARK_HIGHLIGHT_COLOR,
+  HIGHLIGHT_COLORS,
+} from '@/types/verse-annotations';
 import {REWAYAH_DIFF_BACKGROUND} from '@/constants/tajweedColors';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import Color from 'color';
@@ -180,6 +183,12 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   );
 
   const persistentHighlights = useVerseAnnotationsStore(s => s.highlights);
+  // @ai — bookmarked verses paint a persistent tint (Layer 0.5 below) so a
+  // bookmark leaves a visible trace on the page; explicit colored highlights,
+  // playback, and selection all paint over it.
+  const bookmarkedVerseKeys = useVerseAnnotationsStore(
+    s => s.bookmarkedVerseKeys,
+  );
 
   // Mushaf playback highlighting: only subscribe when verse is on this page
   const {isDarkMode} = useTheme();
@@ -374,6 +383,16 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     },
     [],
   );
+
+  // Callback for SkiaLine to evict its paragraph from the hit-test map right
+  // before it disposes the native memory. Without this, a line that recomputes
+  // to null or unmounts (page still mounted) would leave a freed pointer in the
+  // map, since the map is otherwise only cleared on a pageNumber change. The
+  // recompute-to-new-paragraph case re-registers via handleParagraphReady in
+  // the same commit (effects flush after cleanups), so it stays consistent.
+  const handleParagraphDisposed = useCallback((lineIndex: number) => {
+    paragraphMapRef.current.delete(lineIndex);
+  }, []);
 
   // Find which line a Y coordinate falls within
   const findLineAtY = useCallback(
@@ -608,6 +627,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     Map<number, Array<{start: number; end: number; color: string}>>
   >(() => {
     const hasAnnotations = Object.keys(persistentHighlights).length > 0;
+    const hasBookmarks = bookmarkedVerseKeys.size > 0;
     const hasPlayback = !!playbackVerseKey;
     const hasRewayahDiffs =
       showRewayahDiffs && rewayah !== 'hafs' && rewayahDiffService.hasDiffs;
@@ -618,6 +638,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
     if (
       !hasAnnotations &&
+      !hasBookmarks &&
       !hasPlayback &&
       !selectedSet &&
       !showThemes &&
@@ -674,6 +695,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
       for (const vk of pageVerseKeys) {
         // Skip verses that will be painted by a higher layer
         if (persistentHighlights[vk]) continue;
+        if (bookmarkedVerseKeys.has(vk)) continue;
         if (playbackVerseKey === vk) continue;
         if (selectedSet?.has(vk)) continue;
 
@@ -685,6 +707,16 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
 
         addVerseHighlight(vk, themeColor);
       }
+    }
+
+    // Layer 0.5: Bookmark highlights. @ai — a bookmarked verse keeps a
+    // persistent tint so the marker survives the sheet closing; an explicit
+    // colored highlight, playback, or selection paints over it instead.
+    for (const verseKey of bookmarkedVerseKeys) {
+      if (persistentHighlights[verseKey]) continue;
+      if (playbackVerseKey === verseKey) continue;
+      if (selectedSet?.has(verseKey)) continue;
+      addVerseHighlight(verseKey, BOOKMARK_HIGHLIGHT_COLOR);
     }
 
     // Layer 1: Persistent annotation highlights (lowest priority)
@@ -711,6 +743,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     return map;
   }, [
     persistentHighlights,
+    bookmarkedVerseKeys,
     playbackVerseKey,
     playbackBgColor,
     selectedVerseKeys,
@@ -722,7 +755,6 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     textColor,
     rewayah,
     showRewayahDiffs,
-    pageNumber,
   ]);
 
   const pageStyle = {width: SCREEN_WIDTH, height: SCREEN_HEIGHT};
@@ -791,6 +823,7 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
               fontFamily={fontFamily}
               arabicTextWeight={arabicTextWeight}
               onParagraphReady={handleParagraphReady}
+              onParagraphDisposed={handleParagraphDisposed}
               backgroundHighlights={lineBackgroundHighlightsMap.get(lineIndex)}
               lineHeight={
                 lineIndex < lineYPositions.length - 1

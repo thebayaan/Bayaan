@@ -2,6 +2,8 @@ import type {ComponentType} from 'react';
 import type {Track} from '@/types/audio';
 import type {TranslationProvider} from '@/types/TranslationProvider';
 import type {TafsirProvider} from '@/types/TafsirProvider';
+import type {CommunityReflectionsProvider} from '@/types/CommunityReflection';
+import type {AyahTimestamp} from '@/types/timestamps';
 
 /** Catalog source config for the active branding. */
 export interface BrandingCatalogConfig {
@@ -191,6 +193,54 @@ export interface Branding {
    */
   tafsirProvider?: TafsirProvider;
   /**
+   * RFC-018 — optional fetcher for community-authored reflections on an
+   * ayah. Paired with `ayahCommunityReflectionsComponent` below.
+   *
+   * `undefined` (Bayaan default) → the entire community-reflections
+   * surface is off: the Mushaf-settings toggle row never renders, the
+   * inline slot returns nothing, and the action-sheet row is hidden.
+   * A fork supplies a provider (e.g. Qariah's QuranReflect-backed
+   * fetcher) to light it up without forking the verse-render path.
+   *
+   * Resolves to a possibly-empty array of reflections for the
+   * (surahNumber, ayahNumber). The provider owns filtering/sorting and
+   * caching — the consuming component calls it freely. Throws/rejects on
+   * network or auth/scope errors; the consumer renders an empty/error
+   * state silently.
+   *
+   * See docs/rfcs/018-community-reflections-provider.md.
+   */
+  communityReflectionsProvider?: CommunityReflectionsProvider;
+  /**
+   * RFC-018 — optional render slot (RFC-008 component-slot pattern)
+   * mounted under the Arabic line in the verse list when the user's
+   * `MushafSettingsStore.showCommunityReflections` toggle is on.
+   *
+   * `undefined` (Bayaan default) → nothing renders even if
+   * `communityReflectionsProvider` is set (a fork can supply data
+   * without inline UI, e.g. to power only the action-sheet popup). The
+   * upstream default-noop `<AyahCommunityReflections />` wrapper checks
+   * this field and returns null when unset, so mounting it in `VerseItem`
+   * is free for Bayaan.
+   *
+   * The component is responsible for calling
+   * `communityReflectionsProvider` itself (provider-internal caching is
+   * what keeps that from being a second fetch). It runs per-ayah on a
+   * recycling FlashList, so it must be non-blocking and tolerate rapid
+   * mount/unmount/key churn; the upstream wrapper additionally guards it
+   * with an error boundary at the mount site.
+   *
+   * Props start at `{surahNumber, ayahNumber}` only; future additions
+   * (theme context, an open-popup callback) must default to optional so
+   * existing implementations keep compiling.
+   *
+   * See docs/rfcs/018-community-reflections-provider.md.
+   */
+  ayahCommunityReflectionsComponent?: ComponentType<{
+    surahNumber: number;
+    ayahNumber: number;
+  }>;
+  /**
    * RFC-014 — strategy for wiring the player Mushaf FlashList's scroll
    * handling.
    *
@@ -237,6 +287,58 @@ export interface Branding {
    * See docs/rfcs/015-timestamp-cdn-seam.md.
    */
   timestampCdnBase?: string;
+  /**
+   * RFC-019 — optional provider for **bundled** ayah-timing data, for forks
+   * that ship their own offline-authored timestamps for a reciter rather than
+   * serving them from a CDN (see `timestampCdnBase`, RFC-015).
+   *
+   * Called by `TimestampFetchService.fetchAndCache` (the data path) before any
+   * network fetch, and only for a `(rewayatId, surahNumber)` the companion
+   * `timestampLocalSurahList` claims. Return the surah's timestamps (validated
+   * with the same first-element shape guard the R2 path uses, then written to
+   * the cache with source `'local'`), or `null` to fall through to the
+   * existing R2/CDN path.
+   *
+   * Field absent → consumer applies `?? null` at the call site →
+   * byte-equivalent to today's behavior (network-only resolution). Bayaan
+   * ships this unset.
+   *
+   * Must be synchronous and side-effect-free. Read bundled data from a
+   * module-level import, not I/O.
+   *
+   * See docs/rfcs/019-timestamp-local-provider.md.
+   */
+  timestampLocalProvider?: (
+    rewayatId: string,
+    surahNumber: number,
+  ) => AyahTimestamp[] | null;
+  /**
+   * RFC-019 — optional **coverage signal** companion to
+   * `timestampLocalProvider`: the list of surah numbers the bundle covers for
+   * a rewayat, or `null` / `[]` for a rewayat with no local coverage.
+   *
+   * This is what `hasSource` / `hasSurah` consult to gate the follow-along UI —
+   * NOT a presence probe against the data provider. Coverage is an **exact
+   * allow-list**: a surah counts as locally covered only when this list
+   * includes it. Unlike the R2 path, an empty list does NOT mean "all surahs";
+   * it means "no local coverage". Keying coverage by rewayat (rather than
+   * probing a fixed sentinel surah) is required for **partial-coverage**
+   * reciters whose `surah_list` lacks surah 1 — a surah-1 probe would falsely
+   * suppress the feature for them.
+   *
+   * Mirrors the catalog's existing `Rewayat.timestamps_surah_list?: number[]`
+   * one-to-one, so the local path answers coverage the same way the R2 path
+   * already does. A fork sets this alongside `timestampLocalProvider`; the two
+   * must agree (every surah in the list must have data from the provider).
+   *
+   * Field absent → consumer applies `?? null` at the call site →
+   * byte-equivalent to today's behavior. Bayaan ships this unset.
+   *
+   * Must be synchronous and side-effect-free.
+   *
+   * See docs/rfcs/019-timestamp-local-provider.md.
+   */
+  timestampLocalSurahList?: (rewayatId: string) => number[] | null;
 }
 
 declare const branding: Branding;

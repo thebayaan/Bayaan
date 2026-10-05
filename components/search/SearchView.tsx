@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modeOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1,
   },
   flexFill: {

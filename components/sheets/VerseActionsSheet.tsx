@@ -49,6 +49,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+import branding from '@/config/branding';
 import {HighlightContent} from './verse-actions/HighlightContent';
 import {NoteContent} from './verse-actions/NoteContent';
 import {ShareContent} from './verse-actions/ShareContent';
@@ -57,6 +58,7 @@ import {TranslationContent} from './verse-actions/TranslationContent';
 import {TafseerContent} from './verse-actions/TafseerContent';
 import {ThemeContent} from './verse-actions/ThemeContent';
 import {WBWContent} from './verse-actions/WBWContent';
+import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
 const surahData = require('@/data/surahData.json');
 const quranVerses = require('@/data/quran.json');
@@ -72,6 +74,7 @@ type ActiveScreen =
   | 'tafseer'
   | 'theme'
   | 'wbw'
+  | 'community-reflections'
   | null;
 
 const SCREEN_TITLES: Record<string, string> = {
@@ -84,6 +87,7 @@ const SCREEN_TITLES: Record<string, string> = {
   tafseer: 'Tafseer',
   theme: 'Theme',
   wbw: 'Word by Word',
+  'community-reflections': 'Community Reflections',
 };
 
 const SHEET_HEIGHT = Dimensions.get('window').height * 0.85;
@@ -213,22 +217,32 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lightHaptics();
     const keys = isRange ? verseKeys : [verseKey];
     const store = useVerseAnnotationsStore.getState();
-    if (isBookmarked) {
-      for (const vk of keys) {
-        await verseAnnotationService.removeBookmark(vk);
-        store.removeBookmark(vk);
+    // A persistence failure must never strand the sheet open: without this
+    // guard a rejected write skipped both the optimistic store update and
+    // SheetManager.hide, freezing the sheet with no feedback. The DB write is
+    // now idempotent (INSERT OR IGNORE) so the duplicate case can't reject at
+    // all; this is the belt-and-braces for anything else (disk, migration).
+    // @ai
+    try {
+      if (isBookmarked) {
+        for (const vk of keys) {
+          await verseAnnotationService.removeBookmark(vk);
+          store.removeBookmark(vk);
+        }
+      } else {
+        for (const vk of keys) {
+          const [s, a] = vk.split(':');
+          await verseAnnotationService.addBookmark(
+            vk,
+            parseInt(s, 10),
+            parseInt(a, 10),
+            resolvedRewayah,
+          );
+          store.addBookmark(vk);
+        }
       }
-    } else {
-      for (const vk of keys) {
-        const [s, a] = vk.split(':');
-        await verseAnnotationService.addBookmark(
-          vk,
-          parseInt(s, 10),
-          parseInt(a, 10),
-          resolvedRewayah,
-        );
-        store.addBookmark(vk);
-      }
+    } catch (error) {
+      console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
     }
     await SheetManager.hide(props.sheetId);
   }, [
@@ -292,6 +306,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
 
   const handleWBW = useCallback(() => {
     setActiveScreen('wbw');
+  }, []);
+
+  // RFC-018 — open the community-reflections popup. Only reachable when a
+  // fork wires branding.communityReflectionsProvider (the row is gated).
+  const handleCommunityReflections = useCallback(() => {
+    setActiveScreen('community-reflections');
   }, []);
 
   // QUL data: theme label and per-feature availability
@@ -521,7 +541,8 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     activeScreen === 'translation' ||
     activeScreen === 'tafseer' ||
     activeScreen === 'theme' ||
-    activeScreen === 'wbw';
+    activeScreen === 'wbw' ||
+    activeScreen === 'community-reflections';
 
   return (
     <ActionSheet
@@ -614,6 +635,12 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     onBack={handleBack}
+                  />
+                )}
+                {activeScreen === 'community-reflections' && (
+                  <CommunityReflectionsContent
+                    surahNumber={surahNumber}
+                    ayahNumber={ayahNumber}
                   />
                 )}
               </View>
@@ -826,6 +853,28 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                       color={theme.colors.text}
                     />
                     <Text style={styles.optionText}>Word by Word</Text>
+                  </Pressable>
+                </>
+              ) : null}
+              {/* RFC-018 — Community Reflections row. Gated on a fork wiring
+                  branding.communityReflectionsProvider (so Bayaan never shows
+                  it) and single-ayah selection. Same predicate as the inline
+                  slot + settings toggle; no new seam. */}
+              {branding.communityReflectionsProvider && !isRange ? (
+                <>
+                  <View style={styles.divider} />
+                  <Pressable
+                    style={({pressed}) => [
+                      styles.option,
+                      pressed && styles.optionPressed,
+                    ]}
+                    onPress={handleCommunityReflections}>
+                    <MaterialCommunityIcons
+                      name="comment-quote-outline"
+                      size={moderateScale(19)}
+                      color={theme.colors.text}
+                    />
+                    <Text style={styles.optionText}>Community Reflections</Text>
                   </Pressable>
                 </>
               ) : null}

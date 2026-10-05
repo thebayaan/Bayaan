@@ -15,7 +15,8 @@
  */
 
 import {createAudioPlayer, AudioPlayer, AudioStatus} from 'expo-audio';
-import {EventSubscription} from 'expo-modules-core';
+
+type EventSubscription = {remove(): void};
 import {
   AmbientSoundType,
   AMBIENT_SOUNDS,

@@ -56,6 +56,13 @@ class QuranTextService {
   clearCaches(): void {
     this.lineTextCache.clear();
     this.lineTextInfoCache.clear();
+    // Page layouts are keyed by rewayah/font/ratio; clear them on the same
+    // transitions (e.g. rewayah change) so stale partitions don't accumulate.
+    // Required lazily to avoid a JustificationService ⇄ QuranTextService
+    // import cycle (JustificationService imports from this module).
+    const {JustService} =
+      require('./JustificationService') as typeof import('./JustificationService');
+    JustService.clearPageLayoutCache();
   }
 
   private initBases(): void {

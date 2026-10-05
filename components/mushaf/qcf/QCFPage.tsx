@@ -166,7 +166,7 @@ const QCFPage: React.FC<QCFPageProps> = ({
     // Reference glyph U+E000 in QuranCommon. Using the explicit escape
     // (not the literal char) so editors / Edit tools can't strip the
     // invisible PUA character and silently break the calc.
-    const ids = refFont.getGlyphIDs('');
+    const ids = refFont.getGlyphIDs('\uE000');
     const widths = refFont.getGlyphWidths(ids);
     const measuredW = widths[0] || 1;
     const scaledSize = (CONTENT_WIDTH / measuredW) * 100;

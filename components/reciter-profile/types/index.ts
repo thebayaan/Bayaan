@@ -120,4 +120,14 @@ export interface ActionButtonsProps {
   onPlayPress: () => void;
   /** Whether the reciter is in the user's favorites */
   isFavoriteReciter: boolean;
+  // @ai-start
+  /** Handler for the "download all surahs" button (tap again to cancel). */
+  onDownloadAllPress?: () => void;
+  /** Whether a bulk download is currently running. */
+  isDownloadingAll?: boolean;
+  /** Aggregate bulk-download progress, 0–1. */
+  downloadAllProgress?: number;
+  /** Whether every surah in the current view is already downloaded. */
+  allDownloaded?: boolean;
+  // @ai-end
 }

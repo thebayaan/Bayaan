@@ -29,14 +29,28 @@ type FakePostHog = {
   capture: jest.Mock;
   identify: jest.Mock;
   register: jest.Mock;
+  optIn: jest.Mock;
+  optOut: jest.Mock;
 };
 
 function makeFakePostHog(): FakePostHog {
-  return {capture: jest.fn(), identify: jest.fn(), register: jest.fn()};
+  return {
+    capture: jest.fn(),
+    identify: jest.fn(),
+    register: jest.fn(),
+    // optIn()/optOut() return Promise<void> on the real SDK; mirror that so
+    // applyConsent's rejection-guard (`.catch`) has a promise to attach to.
+    optIn: jest.fn(() => Promise.resolve()),
+    optOut: jest.fn(() => Promise.resolve()),
+  };
 }
+
+type ConsentStore =
+  typeof import('@/store/analyticsConsentStore').useAnalyticsConsentStore;
 
 async function loadService(envEnabled: string | undefined): Promise<{
   analyticsService: typeof import('../AnalyticsService').analyticsService;
+  consentStore: ConsentStore;
 }> {
   const original = process.env.EXPO_PUBLIC_ANALYTICS_ENABLED;
   if (envEnabled === undefined) {
@@ -48,15 +62,31 @@ async function loadService(envEnabled: string | undefined): Promise<{
   mockStorage.clear();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const mod = require('../AnalyticsService');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const consentMod = require('@/store/analyticsConsentStore');
+  const consentStore: ConsentStore = consentMod.useAnalyticsConsentStore;
   // Initialize while the env flag is still set — the service latches `enabled`
   // inside initialize(), so the env var is only read once.
   await mod.analyticsService.initialize();
+  // The consent store persists over AsyncStorage and hydrates asynchronously;
+  // the service fails closed until then. Wait so assertions see the real flag.
+  await waitForConsentHydration(consentStore);
   if (original === undefined) {
     delete process.env.EXPO_PUBLIC_ANALYTICS_ENABLED;
   } else {
     process.env.EXPO_PUBLIC_ANALYTICS_ENABLED = original;
   }
-  return {analyticsService: mod.analyticsService};
+  return {analyticsService: mod.analyticsService, consentStore};
+}
+
+function waitForConsentHydration(store: ConsentStore): Promise<void> {
+  if (store.persist.hasHydrated()) return Promise.resolve();
+  return new Promise<void>(resolve => {
+    const unsub = store.persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
 }
 
 describe('AnalyticsService', () => {
@@ -147,6 +177,100 @@ describe('AnalyticsService', () => {
       });
 
       expect(posthog.capture).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when the user opts out at runtime (Settings → Privacy)', () => {
+    it('pushes optOut() to the SDK and optIn() when re-enabled', async () => {
+      const {analyticsService, consentStore} = await loadService(undefined);
+
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+      // Default consent is enabled, so connecting opts in.
+      expect(posthog.optIn).toHaveBeenCalledTimes(1);
+      expect(posthog.optOut).not.toHaveBeenCalled();
+
+      consentStore.getState().setAnalyticsEnabled(false);
+      expect(posthog.optOut).toHaveBeenCalledTimes(1);
+
+      consentStore.getState().setAnalyticsEnabled(true);
+      expect(posthog.optIn).toHaveBeenCalledTimes(2);
+    });
+
+    it('suppresses capture and identify while opted out', async () => {
+      const {analyticsService, consentStore} = await loadService(undefined);
+
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+
+      consentStore.getState().setAnalyticsEnabled(false);
+
+      analyticsService.trackPlaybackStarted({
+        surah_id: 1,
+        reciter_id: 'r-1',
+        reciter_name: 'Reciter One',
+        rewayah_id: 'rw-1',
+        source: 'direct',
+        position_ms: 0,
+      });
+      analyticsService.identifyUser('user-123');
+
+      expect(posthog.capture).not.toHaveBeenCalled();
+      expect(posthog.identify).not.toHaveBeenCalled();
+    });
+
+    it('resumes capture and identify after opting back in', async () => {
+      const {analyticsService, consentStore} = await loadService(undefined);
+
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+
+      consentStore.getState().setAnalyticsEnabled(false);
+      consentStore.getState().setAnalyticsEnabled(true);
+
+      analyticsService.identifyUser('user-123');
+
+      expect(posthog.identify).toHaveBeenCalledWith('user-123');
+    });
+  });
+
+  describe('applyConsent', () => {
+    it('calls optOut() when disabled and optIn() when enabled', async () => {
+      const {analyticsService} = await loadService(undefined);
+
+      const posthog = makeFakePostHog();
+      analyticsService.setPostHogInstance(
+        posthog as unknown as Parameters<
+          typeof analyticsService.setPostHogInstance
+        >[0],
+      );
+      posthog.optIn.mockClear();
+      posthog.optOut.mockClear();
+
+      analyticsService.applyConsent(false);
+      expect(posthog.optOut).toHaveBeenCalledTimes(1);
+      expect(posthog.optIn).not.toHaveBeenCalled();
+
+      analyticsService.applyConsent(true);
+      expect(posthog.optIn).toHaveBeenCalledTimes(1);
+    });
+
+    it('no-ops before a PostHog instance is connected', async () => {
+      const {analyticsService} = await loadService(undefined);
+
+      expect(() => analyticsService.applyConsent(false)).not.toThrow();
     });
   });
 });

@@ -390,6 +390,15 @@ def main() -> None:
     #   - full token stream (with markers in their Bazzi-native positions),
     #     used to decide what marker text to emit for each Hafs marker slot
     #     so users see Bazzi's verse numbers, not Hafs's.
+    # Standalone ruku' marker (U+06DE ۞) that appears mid-verse in some KFGQPC
+    # source files (e.g. "... جَمِيعاً ۞ وَلَقَدْ ..."). After split() it becomes
+    # a bare '۞' token. It is NOT an ayah marker (no digits), so the old code
+    # included it in the content stream, confusing the sequence aligner: it would
+    # be matched to a Hafs '۞word' slot and the following content word would be
+    # dropped. Fix: treat a standalone ruku' token as a structural marker and
+    # exclude it from the content stream, just like ayah markers.
+    _STANDALONE_RUKU = "۞"  # ۞ alone (no following letters in same token)
+
     target_data = json.loads(source_json.read_text(encoding="utf-8"))
     target_by_surah: dict[int, list[str]] = {}
     target_full_by_surah: dict[int, list[str]] = {}  # tokens in Bazzi order
@@ -398,7 +407,7 @@ def main() -> None:
         normalized = normalize_verse(row["aya_text"], wrap_ayah=True)
         for tok in normalized.split():
             target_full_by_surah.setdefault(s, []).append(tok)
-            if not is_ayah_marker(tok):
+            if not is_ayah_marker(tok) and tok != _STANDALONE_RUKU:
                 target_by_surah.setdefault(s, []).append(tok)
 
     # Group base rows by surah preserving (id, original_text, is_marker).
@@ -447,7 +456,7 @@ def main() -> None:
         classifier_mode = "abu_amr"
 
     patched_words = 0
-    blanked_markers = 0
+    blanked_markers = 0  # Hafs marker slots with no matching target marker (merged verses)
     unmatched_base = 0  # Hafs slots the aligner couldn't map
     dropped_target = 0  # Bazzi content words that fell outside alignment
 
@@ -528,8 +537,12 @@ def main() -> None:
                 base_content_cursor += 1
             else:
                 # Marker slot. The "target content position" we've reached
-                # is last_target_idx + 1. If Bazzi has a marker at that
-                # position, use it; otherwise blank (Bazzi merged here).
+                # is last_target_idx + 1. If the target has a marker at that
+                # position, use it (preserving the target rewayah's verse
+                # number). If not, blank it — this Hafs verse boundary does
+                # not exist in the target rewayah (merged verses / different
+                # verse-count tradition). A blank word renders as nothing,
+                # which is correct: no verse number should appear here.
                 target_pos = last_target_idx + 1
                 target_marker_text = target_markers_by_pos.get(target_pos)
                 if target_marker_text is not None:
@@ -572,7 +585,7 @@ def main() -> None:
     for cat in sorted(category_counts.keys()):
         print(f"  -> {cat}: {category_counts[cat]}")
     print(f"  -> total flagged verses: {len(compact_diff_map)}")
-    print(f"Blanked markers (merged verses): {blanked_markers}")
+    print(f"Blanked markers (merged verses / no target boundary): {blanked_markers}")
     print(f"Unmatched base slots (kept Hafs text): {unmatched_base}")
     print(f"Dropped target words (no base slot): {dropped_target}")
     print()

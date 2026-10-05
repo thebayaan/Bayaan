@@ -1,4 +1,4 @@
-import React, {useMemo} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {
   Canvas,
   Paragraph,
@@ -131,7 +131,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     return getTextAllahNameCharMap(verseText);
   }, [showAllahNameHighlight, allahNameHighlightColor, verseText]);
 
-  const {paragraph, strokeParagraph, height, yOffset} = useMemo(() => {
+  const built = useMemo(() => {
     if (!verseText || width <= 0) {
       return {paragraph: null, strokeParagraph: null, height: 0, yOffset: 0};
     }
@@ -214,6 +214,19 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     arabicTextWeight,
     allahNameHighlightColor,
   ]);
+
+  const {paragraph, strokeParagraph, height, yOffset} = built;
+
+  // SkParagraph holds native memory that JS GC does not reclaim. Dispose the
+  // previous paragraphs when the memo recomputes (and on unmount). The cleanup
+  // runs with the prior `built` value, so the paragraph being rendered this
+  // frame is never disposed early.
+  useEffect(() => {
+    return () => {
+      built.paragraph?.dispose();
+      built.strokeParagraph?.dispose();
+    };
+  }, [built]);
 
   // Rewayah diff backgrounds; highlights words that differ from Hafs.
   // Mirrors the SkiaPage pipeline (which uses getDiffRangesForLine) but
