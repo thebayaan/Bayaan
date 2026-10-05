@@ -41,9 +41,9 @@ const KEYS: SettingsDocumentKey[] = [
   'browsing',
 ];
 
-function documents(color = 'Blue'): SettingsDocuments {
+function documents(themeMode = 'system'): SettingsDocuments {
   return {
-    appearance: {primaryColor: color},
+    appearance: {themeMode},
     mushaf: {showTranslation: true},
     audio: {shuffle: false},
     adhkar: {showTranslation: true},
@@ -244,7 +244,7 @@ describe('QfSettingsSyncCoordinator', () => {
     const api = fakeApi({
       appearance: {
         key: 'appearance',
-        value: {primaryColor: 'Green'},
+        value: {themeMode: 'dark'},
         etag: '"remote-appearance"',
       },
     });
@@ -259,14 +259,14 @@ describe('QfSettingsSyncCoordinator', () => {
     expect(api.puts.find(call => call.key === 'appearance')?.etag).toBe(
       '"remote-appearance"',
     );
-    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Blue'});
+    expect(bridge.currentDocuments.appearance).toEqual({themeMode: 'system'});
   });
 
   test('merges cloud values and uploads only documents absent from the server', async () => {
     const api = fakeApi({
       appearance: {
         key: 'appearance',
-        value: {primaryColor: 'Green'},
+        value: {themeMode: 'dark'},
         etag: '"remote-appearance"',
       },
     });
@@ -277,7 +277,7 @@ describe('QfSettingsSyncCoordinator', () => {
     await subject.value.activateLocal('account-a');
     await subject.value.syncRemote('account-a', 'opaque-session');
 
-    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Green'});
+    expect(bridge.currentDocuments.appearance).toEqual({themeMode: 'dark'});
     expect(api.puts.map(call => call.key)).toEqual([
       'mushaf',
       'audio',
@@ -323,7 +323,7 @@ describe('QfSettingsSyncCoordinator', () => {
       if (input.key === 'appearance' && attempts++ === 0) {
         api.getDocument.mockImplementationOnce(async () => ({
           key: 'appearance',
-          value: {primaryColor: 'Green'},
+          value: {themeMode: 'dark'},
           etag: '"remote-after-conflict"',
         }));
         throw new BayaanSettingsApiError(412, 'QF_SETTINGS_CONFLICT');
@@ -354,14 +354,14 @@ describe('QfSettingsSyncCoordinator', () => {
     await subject.value.syncRemote('account-a', 'opaque-session');
     api.puts.length = 0;
 
-    bridge.changeDocument('appearance', {primaryColor: 'Rose'});
+    bridge.changeDocument('appearance', {themeMode: 'light'});
     jest.advanceTimersByTime(2);
     await subject.value.waitForIdle();
 
     expect(api.puts).toHaveLength(1);
     expect(api.puts[0].key).toBe('appearance');
     expect(JSON.parse(api.puts[0].body)).toEqual({
-      value: {primaryColor: 'Rose'},
+      value: {themeMode: 'light'},
       schemaVersion: 1,
     });
     jest.useRealTimers();
@@ -387,7 +387,7 @@ describe('QfSettingsSyncCoordinator', () => {
       return '"retry-success"';
     });
 
-    bridge.changeDocument('appearance', {primaryColor: 'Green'});
+    bridge.changeDocument('appearance', {themeMode: 'dark'});
     jest.advanceTimersByTime(2);
     await subject.value.waitForIdle();
     await Promise.resolve();
@@ -408,7 +408,7 @@ describe('QfSettingsSyncCoordinator', () => {
     const api = fakeApi({
       appearance: {
         key: 'appearance',
-        value: {primaryColor: 'Green'},
+        value: {themeMode: 'dark'},
         etag: '"remote-appearance"',
       },
     });
@@ -436,16 +436,16 @@ describe('QfSettingsSyncCoordinator', () => {
       await Promise.resolve();
     }
     expect(releasePreferences).toBeDefined();
-    bridge.changeDocument('appearance', {primaryColor: 'Rose'});
+    bridge.changeDocument('appearance', {themeMode: 'light'});
     releasePreferences?.();
     await syncing;
 
-    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Rose'});
+    expect(bridge.currentDocuments.appearance).toEqual({themeMode: 'light'});
     const appearance = api.puts.filter(call => call.key === 'appearance');
     expect(appearance).toHaveLength(1);
     expect(appearance[0].etag).toBe('"remote-appearance"');
     expect(JSON.parse(appearance[0].body)).toEqual({
-      value: {primaryColor: 'Rose'},
+      value: {themeMode: 'light'},
       schemaVersion: 1,
     });
   });
@@ -454,7 +454,7 @@ describe('QfSettingsSyncCoordinator', () => {
     const api = fakeApi({
       appearance: {
         key: 'appearance',
-        value: {primaryColor: 'Green'},
+        value: {themeMode: 'dark'},
         etag: '"remote-appearance"',
       },
     });
@@ -477,7 +477,7 @@ describe('QfSettingsSyncCoordinator', () => {
     await syncing;
     await deactivating;
 
-    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Blue'});
+    expect(bridge.currentDocuments.appearance).toEqual({themeMode: 'system'});
     expect(subject.choose).not.toHaveBeenCalled();
   });
 
@@ -490,17 +490,17 @@ describe('QfSettingsSyncCoordinator', () => {
     subject.value.setRemoteAvailable(true);
     await subject.value.activateLocal('account-a');
     await subject.value.syncRemote('account-a', 'opaque-session-a');
-    bridge.currentDocuments.appearance = {primaryColor: 'Green'};
+    bridge.currentDocuments.appearance = {themeMode: 'dark'};
     await subject.value.deactivate();
     api.puts.length = 0;
 
     await subject.value.activateLocal('account-b');
-    expect(bridge.currentDocuments.appearance).toEqual({primaryColor: 'Blue'});
+    expect(bridge.currentDocuments.appearance).toEqual({themeMode: 'system'});
     await subject.value.syncRemote('account-b', 'opaque-session-b');
 
     const appearance = api.puts.find(call => call.key === 'appearance');
     expect(JSON.parse(appearance?.body ?? '{}')).toEqual({
-      value: {primaryColor: 'Blue'},
+      value: {themeMode: 'system'},
       schemaVersion: 1,
     });
     expect(storage.deviceContext?.ownerAccountId).toBe('account-b');
@@ -528,15 +528,15 @@ describe('QfSettingsSyncCoordinator', () => {
     await subject.value.activateLocal('account-a');
     const syncing = subject.value.syncRemote('account-a', 'opaque-session-a');
     await Promise.resolve();
-    bridge.changeDocument('appearance', {primaryColor: 'Rose'});
+    bridge.changeDocument('appearance', {themeMode: 'light'});
     await new Promise(resolve => setTimeout(resolve, 5));
     const activating = subject.value.activateLocal('account-b');
-    bridge.currentDocuments.appearance = {primaryColor: 'Green'};
+    bridge.currentDocuments.appearance = {themeMode: 'dark'};
     releaseConfiguration?.();
     await Promise.all([syncing, activating]);
 
     expect(storage.states.get('account-a')?.localDocuments.appearance).toEqual({
-      primaryColor: 'Blue',
+      themeMode: 'system',
     });
   });
 
@@ -545,7 +545,7 @@ describe('QfSettingsSyncCoordinator', () => {
     const storage = new MemoryStorage();
     const saved = emptyState();
     saved.initialized = true;
-    saved.localDocuments = documents('Emerald');
+    saved.localDocuments = documents('sepia');
     storage.states.set('account-b', saved);
     const bridge = new MemoryBridge();
     saved.localPreferences = preferences();
@@ -555,7 +555,7 @@ describe('QfSettingsSyncCoordinator', () => {
     await subject.value.activateLocal('account-b');
 
     expect(bridge.currentDocuments.appearance).toEqual({
-      primaryColor: 'Emerald',
+      themeMode: 'sepia',
     });
     expect(api.puts).toHaveLength(0);
   });

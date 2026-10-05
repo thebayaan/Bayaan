@@ -144,7 +144,7 @@ describe('BayaanSettingsApiClient', () => {
       }),
     });
     const body = JSON.stringify({
-      value: {primaryColor: 'Blue'},
+      value: {themeMode: 'dark'},
       schemaVersion: 1,
     });
 

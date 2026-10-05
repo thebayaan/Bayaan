@@ -16,7 +16,7 @@ describe('QfSettingsStorage device context', () => {
       version: 1 as const,
       ownerAccountId: 'account-a',
       baselineDocuments: {
-        appearance: {primaryColor: 'Blue', themeMode: 'system'},
+        appearance: {themeMode: 'system'},
         mushaf: {selectedTranslationId: 'saheeh'},
         audio: {},
         adhkar: {},

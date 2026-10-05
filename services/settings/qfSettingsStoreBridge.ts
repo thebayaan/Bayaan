@@ -3,7 +3,6 @@ import {useSettings} from '@/hooks/useSettings';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
-import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useReciterStore} from '@/store/reciterStore';
@@ -47,7 +46,6 @@ const stores = [
   useMushafSettingsStore,
   useAdhkarSettingsStore,
   useAmbientStore,
-  useAnalyticsConsentStore,
   useReciterStore,
   useTafseerStore,
   useMushafPlayerStore,
@@ -96,7 +94,7 @@ export const qfSettingsStoreBridge: QfSettingsStoreBridge = {
   subscribe: onChange => [
     observePreference(
       useThemeStore,
-      state => values(state.themeMode, state.primaryColor),
+      state => values(state.themeMode),
       onChange,
     ),
     observePreference(
@@ -107,7 +105,6 @@ export const qfSettingsStoreBridge: QfSettingsStoreBridge = {
           state.showTransliteration,
           state.showTajweed,
           state.showThemes,
-          state.showCommunityReflections,
           state.showWBW,
           state.wbwShowTranslation,
           state.wbwShowTransliteration,
@@ -146,11 +143,6 @@ export const qfSettingsStoreBridge: QfSettingsStoreBridge = {
     observePreference(
       useAmbientStore,
       state => values(state.currentSound, state.volume),
-      onChange,
-    ),
-    observePreference(
-      useAnalyticsConsentStore,
-      state => values(state.analyticsEnabled),
       onChange,
     ),
     observePreference(

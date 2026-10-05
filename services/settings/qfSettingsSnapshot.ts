@@ -3,10 +3,8 @@ import {getReadingThemeById} from '@/constants/readingThemes';
 import {RECITERS} from '@/data/reciterData';
 import {ALL_REWAYAH_IDS} from '@/services/rewayah/RewayahIdentity';
 import {usePlayerStore} from '@/services/player/store/playerStore';
-import {primaryColors} from '@/styles/colorSchemes';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
-import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {
   getActualFontSize,
@@ -86,18 +84,15 @@ export function captureSettingsDocuments(): SettingsDocuments {
   const mushafPlayer = useMushafPlayerStore.getState();
   const player = usePlayerStore.getState();
   const settings = useSettings.getState();
-  const analyticsConsent = useAnalyticsConsentStore.getState();
 
   return {
     appearance: {
-      primaryColor: theme.primaryColor,
       themeMode: theme.themeMode,
     },
     mushaf: {
       showTranslation: mushaf.showTranslation,
       showTransliteration: mushaf.showTransliteration,
       showThemes: mushaf.showThemes,
-      showCommunityReflections: mushaf.showCommunityReflections,
       showWBW: mushaf.showWBW,
       wbwShowTranslation: mushaf.wbwShowTranslation,
       wbwShowTransliteration: mushaf.wbwShowTransliteration,
@@ -144,7 +139,6 @@ export function captureSettingsDocuments(): SettingsDocuments {
       browseSortOption: settings.browseSortOption,
       reciterProfileViewMode: settings.reciterProfileViewMode,
       reciterProfileSortOption: settings.reciterProfileSortOption,
-      analyticsEnabled: analyticsConsent.analyticsEnabled,
     },
   };
 }
@@ -257,19 +251,12 @@ export function sanitizeRemoteDocument(
   };
 
   if (key === 'appearance') {
-    if (
-      typeof value.primaryColor === 'string' &&
-      value.primaryColor in primaryColors
-    ) {
-      result.primaryColor = value.primaryColor;
-    }
     enumeration('themeMode', ['system', 'light', 'dark']);
   } else if (key === 'mushaf') {
     [
       'showTranslation',
       'showTransliteration',
       'showThemes',
-      'showCommunityReflections',
       'showWBW',
       'wbwShowTranslation',
       'wbwShowTransliteration',
@@ -342,7 +329,6 @@ export function sanitizeRemoteDocument(
     enumeration('browseSortOption', ['asc', 'desc', 'revelation']);
     enumeration('reciterProfileViewMode', ['card', 'list']);
     enumeration('reciterProfileSortOption', ['asc', 'desc', 'revelation']);
-    boolean('analyticsEnabled');
   }
   return result;
 }
@@ -352,9 +338,6 @@ export function applySettingsDocuments(
 ): void {
   if (documents.appearance) {
     const patch = sanitizeRemoteDocument('appearance', documents.appearance);
-    if (typeof patch.primaryColor === 'string') {
-      useThemeStore.getState().setPrimaryColor(patch.primaryColor as never);
-    }
     if (typeof patch.themeMode === 'string') {
       useThemeStore.getState().setThemeMode(patch.themeMode as never);
     }
@@ -442,11 +425,8 @@ export function applySettingsDocuments(
     );
   }
   if (documents.browsing) {
-    const patch = sanitizeRemoteDocument('browsing', documents.browsing);
-    const {analyticsEnabled, ...browsingSettings} = patch;
-    useSettings.setState(browsingSettings);
-    if (typeof analyticsEnabled === 'boolean') {
-      useAnalyticsConsentStore.getState().setAnalyticsEnabled(analyticsEnabled);
-    }
+    useSettings.setState(
+      sanitizeRemoteDocument('browsing', documents.browsing),
+    );
   }
 }

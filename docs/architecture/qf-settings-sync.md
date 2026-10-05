@@ -50,7 +50,10 @@ replacement.
 
 Do not add downloads, queues, playback position, recent reading/search/play
 history, sleep timers, onboarding counters, developer controls, analytics
-identifiers, cache metadata, derived theme objects, transient UI state, or
-runtime errors. Bookmark/note/reading progress and content collections use
+identifiers or consent, cache metadata, derived theme objects, transient UI
+state, or runtime errors. Analytics consent stays device-local so a new
+device's default cannot override an opt-out made elsewhere. The deprecated
+primary/accent color and the unreleased community-reflections toggle are also
+excluded. Bookmark/note/reading progress and content collections use
 other ownership/synchronization contracts and do not belong in settings App
 State.
