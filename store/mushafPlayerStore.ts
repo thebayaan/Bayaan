@@ -404,9 +404,7 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
           const available: AvailableReciter[] = [];
           for (const reciter of RECITERS) {
             for (const rewayat of reciter.rewayat) {
-              if (
-                timestampFetchService.getSourceForRewayat(rewayat.id) !== null
-              ) {
+              if (timestampFetchService.hasSource(rewayat.id)) {
                 available.push({
                   rewayatId: rewayat.id,
                   reciterName: reciter.name,

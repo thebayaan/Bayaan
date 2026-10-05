@@ -10,8 +10,8 @@ import {
   SettingsIcon,
 } from '@/components/Icons';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {CommonActions} from '@react-navigation/native';
-import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {CommonActions} from 'expo-router/build/react-navigation/routers';
+import {BottomTabBarProps} from 'expo-router/build/react-navigation/bottom-tabs';
 import {Theme} from '@/utils/themeUtils';
 import Color from 'color';
 import {

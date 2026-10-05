@@ -30,6 +30,25 @@ export function paletteForSurah(surahId: number): MeshPalette {
   return MESH_PALETTES[(surahId - 1) % MESH_PALETTES.length];
 }
 
+/**
+ * Deterministic palette for any string key.
+ *
+ * Pairs with `paletteForSurah` for callers keying on something other
+ * than a surah id — e.g. a rewaya display name, an ISO country code, or
+ * a reciter slug — so each tile reads with a distinct color the way
+ * surah tiles already do.
+ *
+ * djb2 hash — cheap, well-distributed for short ASCII keys.
+ */
+export function paletteForKey(key: string): MeshPalette {
+  let hash = 5381;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 33) ^ key.charCodeAt(i);
+  }
+  const index = Math.abs(hash) % MESH_PALETTES.length;
+  return MESH_PALETTES[index];
+}
+
 interface SurahGradientMeshProps {
   palette: MeshPalette | readonly string[];
   isDark: boolean;

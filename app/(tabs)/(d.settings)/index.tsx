@@ -28,7 +28,9 @@ import {
   ShieldLockIcon,
 } from '@/components/Icons';
 import {useDevSettingsStore} from '@/store/devSettingsStore';
+import {useAnalyticsConsentStore} from '@/store/analyticsConsentStore';
 import {ThemePicker} from '@/components/settings/ThemePicker';
+import branding from '@/config/branding';
 
 const isExternalLink = (type: string): boolean => {
   return [
@@ -112,14 +114,14 @@ const settingsItems = [
       {
         title: 'Help & Support',
         type: 'support',
-        description: 'Get assistance with using Bayaan',
+        description: `Get assistance with using ${branding.appName}`,
         icon: 'chatBubble',
         iconType: 'custom',
       },
     ],
   },
   {
-    section: 'About Bayaan',
+    section: `About ${branding.appName}`,
     items: [
       {
         title: "What's New",
@@ -129,7 +131,7 @@ const settingsItems = [
         iconType: 'custom',
       },
       {
-        title: 'About Bayaan',
+        title: `About ${branding.appName}`,
         type: 'about',
         description: 'Learn more about our mission',
         icon: 'infoRounded',
@@ -145,8 +147,7 @@ const settingsItems = [
       {
         title: 'Contribute on GitHub',
         type: 'github',
-        description:
-          'Bayaan is now open source. Star, report issues, or submit a PR',
+        description: `${branding.appName} is now open source. Star, report issues, or submit a PR`,
         icon: 'github',
         iconType: 'feather',
       },
@@ -220,6 +221,13 @@ export default function SettingsScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const glassColorScheme = useGlassColorScheme();
   const {showFloatingDevMenu, toggleFloatingDevMenu} = useDevSettingsStore();
+  const {analyticsEnabled, setAnalyticsEnabled} = useAnalyticsConsentStore();
+
+  const handleAnalyticsToggle = (value: boolean): void => {
+    // The analytics service subscribes to this store and pushes the choice
+    // straight to the PostHog SDK, so flipping the flag is all we do here.
+    setAnalyticsEnabled(value);
+  };
 
   const iconColor = theme.colors.text;
   const chevronColor = theme.colors.textSecondary;
@@ -260,16 +268,16 @@ export default function SettingsScreen() {
         router.push('/(d.settings)/whats-new');
         break;
       case 'support':
-        await Linking.openURL('https://thebayaan.com/support');
+        await Linking.openURL(branding.supportUrl);
         break;
       case 'featureRequest':
-        await Linking.openURL('https://thebayaan.com/support');
+        await Linking.openURL(branding.supportUrl);
         break;
       case 'terms':
-        await Linking.openURL('https://thebayaan.com/terms');
+        await Linking.openURL(branding.termsUrl);
         break;
       case 'privacy':
-        await Linking.openURL('https://thebayaan.com/privacy');
+        await Linking.openURL(branding.privacyUrl);
         break;
       case 'about':
         router.push('/(d.settings)/about');
@@ -359,6 +367,39 @@ export default function SettingsScreen() {
             )}
           </View>
         ))}
+
+        {/* Privacy Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>PRIVACY</Text>
+          {renderCard(
+            <View style={styles.settingsRow}>
+              <View style={styles.settingsItemIcon}>
+                <Feather
+                  name="bar-chart-2"
+                  size={moderateScale(20)}
+                  color={iconColor}
+                />
+              </View>
+              <View style={styles.settingsTextContainer}>
+                <Text style={styles.settingsTitle}>
+                  Share anonymous usage data
+                </Text>
+                <Text style={styles.settingsDescription}>
+                  Help improve {branding.appName} with anonymous, non-personal
+                  analytics. Your name and account are never shared.
+                </Text>
+              </View>
+              <Switch
+                value={analyticsEnabled}
+                onValueChange={handleAnalyticsToggle}
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                style={styles.switchStyle}
+              />
+            </View>,
+          )}
+        </View>
 
         {/* Developer Section */}
         {__DEV__ && (

@@ -14,6 +14,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+import branding from '@/config/branding';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const isGlass = USE_GLASS;
@@ -98,7 +99,7 @@ export const SystemPlaylistHeader: React.FC<SystemPlaylistHeaderProps> = ({
         <View style={styles.contentContainer}>
           {/* System Playlist Badge */}
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Bayaan Curated</Text>
+            <Text style={styles.badgeText}>{`${branding.appName} Curated`}</Text>
           </View>
 
           {/* Title and Description */}

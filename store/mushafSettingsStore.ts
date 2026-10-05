@@ -29,10 +29,16 @@ export const getDisplayValue = (actualFontSize: number): number => {
   );
 };
 
-export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak';
+export type MushafRenderer = 'dk_v1' | 'dk_v2' | 'dk_indopak' | 'qcf_v2';
 export type MushafPageLayout = 'fullscreen' | 'book';
 export type MushafViewMode = 'mushaf' | 'list';
 export type MushafScrollDirection = 'horizontal' | 'vertical';
+export type MushafArabicTextWeight = 'normal' | 'medium' | 'bold';
+export type MushafAllahNameHighlightColor =
+  | 'gold'
+  | 'emerald'
+  | 'blue'
+  | 'rose';
 export interface RecentRead {
   surahId: number;
   page: number;
@@ -46,6 +52,11 @@ interface MushafSettingsState {
   showTajweed: boolean;
   showThemes: boolean;
 
+  // RFC-018 — inline community reflections under each ayah. Opt-in,
+  // default off. The toggle row only renders when a fork supplies
+  // `branding.communityReflectionsProvider`; inert for Bayaan.
+  showCommunityReflections: boolean;
+
   // Word-by-word settings
   showWBW: boolean;
   wbwShowTranslation: boolean;
@@ -58,6 +69,9 @@ interface MushafSettingsState {
   arabicFontSize: number;
   translationFontSize: number;
   transliterationFontSize: number;
+  arabicTextWeight: MushafArabicTextWeight;
+  showAllahNameHighlight: boolean;
+  allahNameHighlightColor: MushafAllahNameHighlightColor;
 
   // Font family (legacy — kept for backward compatibility)
   arabicFontFamily: 'Uthmani';
@@ -91,12 +105,16 @@ interface MushafSettingsState {
   toggleTransliteration: () => void;
   toggleTajweed: () => void;
   toggleThemes: () => void;
+  toggleCommunityReflections: () => void;
   toggleWBW: () => void;
   toggleWBWTranslation: () => void;
   toggleWBWTransliteration: () => void;
+  toggleAllahNameHighlight: () => void;
   setArabicFontSize: (size: number) => void;
   setTranslationFontSize: (size: number) => void;
   setTransliterationFontSize: (size: number) => void;
+  setArabicTextWeight: (weight: MushafArabicTextWeight) => void;
+  setAllahNameHighlightColor: (color: MushafAllahNameHighlightColor) => void;
   setArabicFontFamily: (font: 'Uthmani') => void;
   setUthmaniFont: (font: 'v1' | 'v2') => void;
   setMushafRenderer: (renderer: MushafRenderer) => void;
@@ -121,12 +139,16 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       showTransliteration: false,
       showTajweed: false,
       showThemes: false,
+      showCommunityReflections: false,
       showWBW: false,
       wbwShowTranslation: true,
       wbwShowTransliteration: false,
       arabicFontSize: getActualFontSize(5), // Default: middle of scale
       translationFontSize: getActualFontSize(3),
       transliterationFontSize: getActualFontSize(3),
+      arabicTextWeight: 'normal' as MushafArabicTextWeight,
+      showAllahNameHighlight: false,
+      allahNameHighlightColor: 'gold' as MushafAllahNameHighlightColor,
       arabicFontFamily: 'Uthmani', // Default font
       uthmaniFont: 'v1', // Default to V1
       mushafRenderer: 'dk_v1' as MushafRenderer, // Default to DK V1 (Madani 1405)
@@ -145,31 +167,51 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
         set(state => ({showTranslation: !state.showTranslation})),
       toggleTransliteration: () =>
         set(state => ({showTransliteration: !state.showTransliteration})),
-      toggleTajweed: () => set(state => ({showTajweed: !state.showTajweed})),
+      toggleTajweed: () =>
+        set(state =>
+          state.mushafRenderer === 'qcf_v2'
+            ? state
+            : {showTajweed: !state.showTajweed},
+        ),
       toggleThemes: () => set(state => ({showThemes: !state.showThemes})),
+      toggleCommunityReflections: () =>
+        set(state => ({
+          showCommunityReflections: !state.showCommunityReflections,
+        })),
       toggleWBW: () => set(state => ({showWBW: !state.showWBW})),
       toggleWBWTranslation: () =>
         set(state => ({wbwShowTranslation: !state.wbwShowTranslation})),
       toggleWBWTransliteration: () =>
         set(state => ({wbwShowTransliteration: !state.wbwShowTransliteration})),
+      toggleAllahNameHighlight: () =>
+        set(state => ({showAllahNameHighlight: !state.showAllahNameHighlight})),
       setArabicFontSize: (size: number) => set({arabicFontSize: size}),
       setTranslationFontSize: (size: number) =>
         set({translationFontSize: size}),
       setTransliterationFontSize: (size: number) =>
         set({transliterationFontSize: size}),
+      setArabicTextWeight: (weight: MushafArabicTextWeight) =>
+        set({arabicTextWeight: weight}),
+      setAllahNameHighlightColor: (color: MushafAllahNameHighlightColor) =>
+        set({allahNameHighlightColor: color}),
       setArabicFontFamily: (font: 'Uthmani') => set({arabicFontFamily: font}),
       setUthmaniFont: (font: 'v1' | 'v2') => set({uthmaniFont: font}),
       setMushafRenderer: (renderer: MushafRenderer) =>
-        set({
+        set(state => ({
           mushafRenderer: renderer,
           arabicFontFamily: 'Uthmani',
+          showTajweed:
+            renderer === 'qcf_v2' ? false : state.showTajweed,
+          rewayah: renderer === 'qcf_v2' ? 'hafs' : state.rewayah,
+          showRewayahDiffs:
+            renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
           uthmaniFont:
             renderer === 'dk_v1'
               ? 'v1'
               : renderer === 'dk_indopak'
                 ? 'v2'
                 : 'v2',
-        }),
+        })),
       setPageLayout: (layout: MushafPageLayout) => set({pageLayout: layout}),
       setViewMode: (mode: MushafViewMode) => set({viewMode: mode}),
       setScrollDirection: (direction: MushafScrollDirection) =>
@@ -210,14 +252,21 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             ? {lightThemeId: themeId}
             : {darkThemeId: themeId};
         }),
-      setRewayah: (rewayah: RewayahId) => set({rewayah}),
+      setRewayah: (rewayah: RewayahId) =>
+        set(state =>
+          state.mushafRenderer === 'qcf_v2' ? state : {rewayah},
+        ),
       toggleRewayahDiffs: () =>
-        set(state => ({showRewayahDiffs: !state.showRewayahDiffs})),
+        set(state =>
+          state.mushafRenderer === 'qcf_v2'
+            ? state
+            : {showRewayahDiffs: !state.showRewayahDiffs},
+        ),
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 13,
+      version: 17,
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
@@ -278,16 +327,31 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
           state.rewayah = 'hafs';
           state.showRewayahDiffs = true;
         }
-        if (version < 13) {
-          // Canonical rewayah slugs — see RewayahIdentity.PERSISTED_ID_MIGRATIONS.
-          // Pre-canonical slugs (qumbul, shouba, qaloon, doori, soosi, bazzi)
-          // shipped only in TestFlight; remap to the canonical forms. Unknown
-          // values fall back to 'hafs'.
-          if (typeof state.rewayah === 'string') {
-            state.rewayah = migratePersistedId(state.rewayah);
-          } else {
-            state.rewayah = 'hafs';
-          }
+        if (
+          version < 13 ||
+          !['normal', 'medium', 'bold'].includes(
+            state.arabicTextWeight as string,
+          )
+        ) {
+          state.arabicTextWeight = 'normal';
+        }
+        if (version < 14) {
+          state.showAllahNameHighlight = false;
+          state.allahNameHighlightColor = 'gold';
+        }
+        if (version < 15) {
+          state.rewayah = migratePersistedId(
+            typeof state.rewayah === 'string' ? state.rewayah : 'hafs',
+          );
+        }
+        if (version < 16 && state.mushafRenderer === 'qcf_v2') {
+          state.showTajweed = false;
+          state.rewayah = 'hafs';
+          state.showRewayahDiffs = false;
+        }
+        if (version < 17) {
+          // RFC-018 — new opt-in inline community reflections, default off.
+          state.showCommunityReflections = false;
         }
         return state as unknown as MushafSettingsState;
       },

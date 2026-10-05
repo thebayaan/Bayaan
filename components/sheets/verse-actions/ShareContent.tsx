@@ -21,6 +21,7 @@ import Color from 'color';
 import * as Sharing from 'expo-sharing';
 import {useCanvasRef} from '@shopify/react-native-skia';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import ShareCardPreview from '@/components/share/ShareCardPreview';
 import {captureShareCard} from '@/components/share/captureShareCard';
 import {lightHaptics} from '@/utils/haptics';
@@ -78,7 +79,7 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const [isCapturing, setIsCapturing] = useState(false);
 
   const verseKeys = verseKeysProp ?? [verseKey];
-  const fontMgr = mushafPreloadService.fontMgr;
+  const fontMgr = useMushafFontMgr();
   const quranCommonTypeface = mushafPreloadService.quranCommonTypeface;
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);

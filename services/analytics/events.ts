@@ -36,6 +36,7 @@ export const ANALYTICS_EVENTS = {
 export interface PlaybackStartedProps {
   surah_id: number;
   reciter_id: string;
+  reciter_name: string;
   rewayah_id: string;
   source: 'queue' | 'direct' | 'autoplay' | 'playlist';
   position_ms: number;
@@ -44,6 +45,7 @@ export interface PlaybackStartedProps {
 export interface PlaybackPausedProps {
   surah_id: number;
   reciter_id: string;
+  reciter_name: string;
   position_ms: number;
   listened_ms: number;
 }
@@ -51,12 +53,14 @@ export interface PlaybackPausedProps {
 export interface PlaybackResumedProps {
   surah_id: number;
   reciter_id: string;
+  reciter_name: string;
   position_ms: number;
 }
 
 export interface PlaybackCompletedProps {
   surah_id: number;
   reciter_id: string;
+  reciter_name: string;
   duration_ms: number;
   listened_ms: number;
   completion_pct: number;
@@ -65,6 +69,7 @@ export interface PlaybackCompletedProps {
 export interface PlaybackSkippedProps {
   surah_id: number;
   reciter_id: string;
+  reciter_name: string;
   position_ms: number;
   listened_ms: number;
   direction: 'next' | 'prev';
@@ -79,6 +84,7 @@ export interface PlaybackSeekedProps {
 export interface MeaningfulListenProps {
   surah_id: number;
   reciter_id: string;
+  reciter_name: string;
   rewayah_id: string;
 }
 

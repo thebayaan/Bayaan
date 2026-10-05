@@ -60,8 +60,7 @@ module.exports = {
             CFBundleURLSchemes: ['bayaan'],
           },
         ],
-        NSPrivacyPolicyURL:
-          'https://osmansaeday.github.io/bayaan-privacy-policy',
+        NSPrivacyPolicyURL: PRIVACY_POLICY_URL,
         UISupportedInterfaceOrientations: [
           'UIInterfaceOrientationPortrait',
           'UIInterfaceOrientationLandscapeLeft',
@@ -154,10 +153,9 @@ module.exports = {
           }
         : {}),
     },
-    // React Compiler disabled - causes performance issues with Zustand subscriptions
-    // experiments: {
-    //   reactCompiler: true,
-    // },
+    experiments: {
+      reactCompiler: true,
+    },
     updates: OTA_UPDATES_ENABLED
       ? {
           enabled: true,
@@ -170,7 +168,6 @@ module.exports = {
       'expo-router',
       ['expo-audio', {enableBackgroundPlayback: true}],
       'expo-sqlite',
-      'expo-media-library',
       [
         'expo-splash-screen',
         {

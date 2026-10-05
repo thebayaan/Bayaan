@@ -32,6 +32,7 @@ import {CircularProgress} from '@/components/CircularProgress';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {getReciterByIdSync} from '@/services/dataService';
 import {recitationShareUrl, shareUrl} from '@/utils/shareUtils';
+import branding from '@/config/branding';
 import RenderHtml, {
   MixedStyleDeclaration,
   RenderHTMLProps,
@@ -274,7 +275,7 @@ export const PlayerOptionsSheet = (props: SheetProps<'player-options'>) => {
       rewayat.id,
       timestampSec,
     );
-    shareUrl(url, `Listen to Surah ${surahNum} on Bayaan`);
+    shareUrl(url, `Listen to Surah ${surahNum} on ${branding.appName}`);
   }, [reciterId, rewayatId, surah]);
 
   const handleSheetChange = useCallback((index: number) => {

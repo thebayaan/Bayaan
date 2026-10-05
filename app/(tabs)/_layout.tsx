@@ -9,7 +9,7 @@ import {NativeTabs} from 'expo-router/unstable-native-tabs';
 import {MiniPlayer} from '@/components/player/v2/MiniPlayer';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import BottomTabBar from '@/components/BottomTabBar';
-import {BottomTabBarProps} from '@react-navigation/bottom-tabs';
+import {BottomTabBarProps} from 'expo-router/build/react-navigation/bottom-tabs';
 import {FloatingPlayer} from '@/components/player/v2/FloatingPlayer';
 import {TabletSidebar} from '@/components/tablet/TabletSidebar';
 import {useResponsive} from '@/hooks/useResponsive';
@@ -176,11 +176,7 @@ export default function TabsLayout() {
 
   return (
     <>
-      <StatusBar
-        style={isDarkMode ? 'light' : 'dark'}
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       {isTablet ? <TabletTabs /> : USE_GLASS ? <IOSTabs /> : <AndroidTabs />}
     </>
   );

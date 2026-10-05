@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Pressable} from 'react-native';
+import {View, Pressable, Text} from 'react-native';
 import {moderateScale} from 'react-native-size-matters';
 import {ScaledSheet} from 'react-native-size-matters';
 import {Theme} from '@/utils/themeUtils';
@@ -16,9 +16,19 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onShufflePress,
   onPlayPress,
   isFavoriteReciter,
+  onDownloadAllPress,
+  isDownloadingAll = false,
+  downloadAllProgress = 0,
+  allDownloaded = false,
 }) => {
   const {theme} = useTheme();
   const styles = createStyles(theme);
+
+  const getDownloadAllLabel = () => {
+    if (isDownloadingAll) return 'Cancel downloading all surahs';
+    if (allDownloaded) return 'All surahs downloaded';
+    return 'Download all surahs';
+  };
 
   return (
     <View style={styles.actionButtons}>
@@ -39,6 +49,31 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       <Pressable style={styles.circleButton} onPress={onShufflePress}>
         <ShuffleIcon color={theme.colors.text} size={moderateScale(20)} />
       </Pressable>
+      {/* @ai-start */}
+      {onDownloadAllPress ? (
+        <Pressable
+          style={styles.circleButton}
+          onPress={onDownloadAllPress}
+          accessibilityRole="button"
+          accessibilityLabel={getDownloadAllLabel()}>
+          {isDownloadingAll ? (
+            <Text style={styles.progressText} numberOfLines={1}>
+              {`${Math.round(downloadAllProgress * 100)}%`}
+            </Text>
+          ) : (
+            <Ionicons
+              name={allDownloaded ? 'checkmark-circle' : 'download-outline'}
+              size={moderateScale(20)}
+              color={
+                allDownloaded
+                  ? theme.colors.text
+                  : Color(theme.colors.text).alpha(0.7).toString()
+              }
+            />
+          )}
+        </Pressable>
+      ) : null}
+      {/* @ai-end */}
     </View>
   );
 };
@@ -70,4 +105,11 @@ const createStyles = (theme: Theme) =>
     playIconContainer: {
       paddingLeft: moderateScale(4),
     },
+    // @ai-start
+    progressText: {
+      fontSize: moderateScale(11),
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    // @ai-end
   });

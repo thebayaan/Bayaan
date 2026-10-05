@@ -14,6 +14,7 @@ Thank you for contributing to Bayaan. This guide covers everything you need to g
 6. [AI-assisted development](#ai-assisted-development)
 7. [Architecture navigation](#architecture-navigation)
 8. [Pull request workflow](#pull-request-workflow)
+9. [Architectural RFCs](#architectural-rfcs)
 
 ---
 
@@ -195,6 +196,29 @@ export const MyComponent: React.FC<MyComponentProps> = ({ title, onPress }) => {
 - Use `usePlayerActions` for audio controls, not the deprecated `useUnifiedPlayer`
 - Name variables/functions camelCase, components PascalCase, directories lowercase-with-hyphens
 
+### Scripts: common pitfalls
+
+When writing Node scripts under `scripts/` that shell out to binaries (`ffmpeg`, `sharp`, `imagemagick`, etc.), avoid passing large binary buffers via `child_process.spawnSync(cmd, args, { input: bigBuffer })`. Once `input` exceeds the OS pipe buffer (~64 KB on macOS / Linux), `spawnSync` deadlocks: the child blocks waiting for stdin to drain while Node blocks waiting for the child to exit. The script appears to "succeed" — the child emits a tiny empty output and no error is raised — which makes the failure mode silent and easy to ship.
+
+Safer pattern: write the input to a temp file, pass the path as an argument, and clean up in `finally`:
+
+```js
+import { spawnSync } from 'node:child_process';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const tmp = join(tmpdir(), `script-${process.pid}-${Date.now()}.bin`);
+writeFileSync(tmp, bigBuffer);
+try {
+  spawnSync('ffmpeg', ['-i', tmp, /* ... */ outPath], { stdio: 'inherit' });
+} finally {
+  try { unlinkSync(tmp); } catch {}
+}
+```
+
+For streaming use cases, prefer the async `spawn` with an explicit `child.stdin.end(buffer)` and an awaited `'close'` event — `spawnSync` is the wrong primitive for >64 KB of stdin. See the [Node `child_process` docs](https://nodejs.org/api/child_process.html#child_processspawnsynccommand-args-options) for the underlying buffer behavior.
+
 ---
 
 ## Design system
@@ -243,6 +267,18 @@ AI tools (Cursor, Copilot, Claude, etc.) are welcome and encouraged. See [docs/c
 - You are responsible for every line you submit — review and understand AI output before pushing
 - The PR template includes an AI disclosure checkbox
 
+### Forks and Claude Code tooling
+
+Bayaan's `.gitignore` excludes the entire `.claude/` directory because it can contain operational paths private to a maintainer's machine. Forks that want to ship their own project-versioned Claude Code skills or scheduled tasks (so they survive across machines and collaborators) can opt-in by adding negation rules to the fork's own `.gitignore`, e.g.:
+
+```gitignore
+# Un-ignore project-versioned Claude Code tooling
+!.claude/skills/
+!.claude/scheduled-tasks/
+```
+
+Keep machine-local Claude state ignored: `.claude/settings.local.json`, `scheduled_tasks.lock`, `.claude/projects/`. The convention separates project tooling (versioned, shared) from per-developer state (machine-local).
+
 ---
 
 ## Architecture navigation
@@ -282,6 +318,7 @@ Full architecture documentation: [docs/architecture/current-state.md](docs/archi
   - `fix/description` — bug fix
   - `chore/description` — tooling, dependencies, cleanup
   - `docs/description` — documentation only
+  - `rfc/NNN-short-title` — Architectural RFC (see [Architectural RFCs](#architectural-rfcs) below)
 3. **Before submitting:**
   ```bash
    npx prettier --write .
@@ -303,6 +340,16 @@ docs: update player architecture doc
 ```
 
 Do not include AI tool names or attributions in commit messages.
+
+---
+
+## Architectural RFCs
+
+Larger architectural changes — extracting modules into packages, defining cross-cutting interfaces, modifying governance — go through a lightweight RFC process before implementation lands.
+
+An RFC PR adds a single document under [`docs/rfcs/`](docs/rfcs/) using the [template](docs/rfcs/000-template.md) and may include scaffolding the design enables (new types, contract test fixtures, CI workflow files) as long as no existing service behavior changes. Refactors of existing code land in named follow-up PRs that reference the merged RFC.
+
+If you're not sure whether your change warrants an RFC: when in doubt, open a regular PR. Reviewers will redirect to the RFC track if the scope justifies it.
 
 ---
 

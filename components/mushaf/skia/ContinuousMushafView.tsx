@@ -11,11 +11,11 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {
   Canvas,
   Skia,
-  useFonts,
   type SkFont,
   type SkParagraph,
   type SkTypefaceFontProvider,
 } from '@shopify/react-native-skia';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {runOnJS} from 'react-native-worklets';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +24,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {verticalScale} from 'react-native-size-matters';
 import Color from 'color';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
@@ -38,6 +39,7 @@ import {
 import {JustService} from '@/services/mushaf/JustificationService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
 import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
+import {getLineAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {
   quranTextService,
   PAGE_WIDTH,
@@ -47,6 +49,7 @@ import {
 import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
+import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
 import {type MushafLayoutMetrics} from '../constants';
@@ -164,6 +167,9 @@ interface MushafPageContentProps {
   showTajweed: boolean;
   indexedTajweedData: IndexedTajweedData | null;
   fontFamily: string;
+  arabicTextWeight: MushafArabicTextWeight;
+  showAllahNameHighlight: boolean;
+  allahNameHighlightColor: string;
   rewayah: string;
   showRewayahDiffs: boolean;
   dividerFont: SkFont | null;
@@ -187,6 +193,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     showTajweed,
     indexedTajweedData,
     fontFamily,
+    arabicTextWeight,
+    showAllahNameHighlight,
+    allahNameHighlightColor,
     rewayah,
     showRewayahDiffs,
     dividerFont,
@@ -241,6 +250,24 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         getLineTajweedMap(pageNumber, i, indexedTajweedData),
       );
     }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
+
+    const lineAllahNameColorMaps = useMemo(() => {
+      if (!showAllahNameHighlight) return null;
+      return pageLines.map((_, i) => {
+        const charMap = getLineAllahNameCharMap(pageNumber, i);
+        if (!charMap) return null;
+        const colorMap = new Map<number, string>();
+        for (const key of charMap.keys()) {
+          colorMap.set(key, allahNameHighlightColor);
+        }
+        return colorMap;
+      });
+    }, [
+      showAllahNameHighlight,
+      pageNumber,
+      pageLines,
+      allahNameHighlightColor,
+    ]);
 
     // Merged tajweed + rewayah foreground rules. Mirrors SkiaPage:
     // identical helper, identical precedence (tajweed base → rewayah
@@ -670,8 +697,10 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 margin={lineMargin}
                 yPos={yPos}
                 textColor={textColor}
+                charToColor={lineAllahNameColorMaps?.[lineIndex] ?? undefined}
                 charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
+                arabicTextWeight={arabicTextWeight}
                 lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
                 backgroundHighlights={lineBackgroundHighlightsMap.get(
@@ -689,6 +718,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     );
   },
 );
+MushafPageContent.displayName = 'MushafPageContent';
 
 // ── Main component ───────────────────────────────────────
 
@@ -701,29 +731,20 @@ const ContinuousMushafView = forwardRef<
     ref,
   ) => {
     const insets = useSafeAreaInsets();
+    const {theme} = useTheme();
     const flashListRef = useRef<FlashListRef<number>>(null);
-
-    // Re-derive rendering constants from live metrics so iPad / rotation /
-    // split-view updates never render at stale frozen dimensions.
     const render = useMemo(() => buildRenderConstants(metrics), [metrics]);
+    const {lineWidth} = render;
 
-    // Font loading (fallback — prefer preloaded fontMgr)
-    const hookFontMgr = useFonts({
-      DigitalKhattV1: [
-        require('@/data/mushaf/legacy/DigitalKhattQuranicV1.otf'),
-      ],
-      DigitalKhattV2: [
-        require('@/data/mushaf/digitalkhatt/DigitalKhattFont.otf'),
-      ],
-      DigitalKhattIndoPak: [
-        require('@/data/mushaf/indopak/DigitalKhattIndoPak.otf'),
-      ],
-      QuranCommon: [require('@/data/mushaf/quran-common.ttf')],
-      SurahNameV4: [require('@/data/mushaf/surah-name-v4.ttf')],
-    });
-    const fontMgr = mushafPreloadService.fontMgr || hookFontMgr;
+    // Subscribe to preloaded fontMgr; no useFonts fallback that races
+    // at first-mount.
+    const fontMgr = useMushafFontMgr();
 
-    // Surah header fonts (re-computed when lineWidth changes, e.g. rotation).
+    // Surah header fonts (computed once from quranCommon typeface).
+    // `fontMgr` dep mirrors the SkiaPage memo: when the preload completes
+    // after this view mounted, the subscription re-renders but `lineWidth`
+    // hasn't changed, so without `fontMgr` in deps the memo would stay on
+    // its cached null-divider snapshot.
     const surahHeaderFonts = useMemo(() => {
       const qcTypeface = mushafPreloadService.quranCommonTypeface;
       if (!qcTypeface) return {dividerFont: null, nameFontSize: 0};
@@ -731,27 +752,44 @@ const ContinuousMushafView = forwardRef<
       const ids = refFont.getGlyphIDs('\uE000');
       const widths = refFont.getGlyphWidths(ids);
       const measuredW = widths[0] || 1;
-      const scaledSize = (render.lineWidth / measuredW) * 100;
+      const scaledSize = (lineWidth / measuredW) * 100;
       return {
         dividerFont: Skia.Font(qcTypeface, scaledSize),
         nameFontSize: scaledSize * 0.4,
       };
-    }, [render.lineWidth]);
+    }, [lineWidth, fontMgr]);
 
     // Settings subscriptions
     const showTajweed = useMushafSettingsStore(s => s.showTajweed);
     const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+    const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+    const showAllahNameHighlight = useMushafSettingsStore(
+      s => s.showAllahNameHighlight,
+    );
+    const allahNameHighlightColorSetting = useMushafSettingsStore(
+      s => s.allahNameHighlightColor,
+    );
     const rewayah = useMushafSettingsStore(s => s.rewayah);
     const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
     const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
     const fontFamily =
-      getRewayahFontFamily(rewayah) ??
+      getRewayahFontFamily(
+        rewayah as Parameters<typeof getRewayahFontFamily>[0],
+      ) ??
       (mushafRenderer === 'dk_indopak'
         ? 'DigitalKhattIndoPak'
         : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2');
+          ? 'DigitalKhattV1'
+          : 'DigitalKhattV2');
+    const allahNameHighlightColor = useMemo(
+      () =>
+        getAllahNameHighlightColorHex(
+          allahNameHighlightColorSetting,
+          theme.isDarkMode,
+        ),
+      [allahNameHighlightColorSetting, theme.isDarkMode],
+    );
 
     // Navigation
     const surahStartPages = digitalKhattDataService.initialized
@@ -810,6 +848,9 @@ const ContinuousMushafView = forwardRef<
             showTajweed={showTajweed}
             indexedTajweedData={indexedTajweedData}
             fontFamily={fontFamily}
+            arabicTextWeight={arabicTextWeight}
+            showAllahNameHighlight={showAllahNameHighlight}
+            allahNameHighlightColor={allahNameHighlightColor}
             rewayah={rewayah}
             showRewayahDiffs={showRewayahDiffs}
             dividerFont={surahHeaderFonts.dividerFont}
@@ -826,6 +867,9 @@ const ContinuousMushafView = forwardRef<
         showTajweed,
         indexedTajweedData,
         fontFamily,
+        arabicTextWeight,
+        showAllahNameHighlight,
+        allahNameHighlightColor,
         rewayah,
         showRewayahDiffs,
         surahHeaderFonts,
@@ -841,6 +885,7 @@ const ContinuousMushafView = forwardRef<
         ref={flashListRef}
         data={pages}
         renderItem={renderItem}
+        extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}`}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialPage - 1}
         contentContainerStyle={{
@@ -854,5 +899,6 @@ const ContinuousMushafView = forwardRef<
     );
   },
 );
+ContinuousMushafView.displayName = 'ContinuousMushafView';
 
 export default React.memo(ContinuousMushafView);

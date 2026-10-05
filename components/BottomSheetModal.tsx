@@ -86,14 +86,29 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
   }, [isVisible, onClose]);
 
   const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-      />
-    ),
-    [],
+    (props: BottomSheetBackdropProps) => {
+      // gorhom's BottomSheetBackdrop mounts with pointerEvents:'auto' (a
+      // full-screen, opacity-0-but-hit-testable Tap GestureDetector) and only
+      // flips to 'none' via a reanimated useAnimatedReaction -> runOnJS ->
+      // setState chain gated on its internal animatedIndex settling to -1. On
+      // slow Android CPUs the closed-sheet layout race delays that settle, so
+      // the backdrop keeps eating every touch while the sheet is LOGICALLY
+      // closed -> the entire host screen goes touch-dead until the next
+      // re-render. Gate on the logical `isVisible` prop so the backdrop never
+      // renders while closed, immune to gorhom's racing animatedIndex. Same
+      // touch-eater fix shipped for the PlayerSheet backdrop in #308.
+      if (!isVisible) {
+        return null;
+      }
+      return (
+        <BottomSheetBackdrop
+          {...props}
+          disappearsOnIndex={-1}
+          appearsOnIndex={0}
+        />
+      );
+    },
+    [isVisible],
   );
 
   return (
@@ -112,10 +127,15 @@ const BottomSheetModal: React.FC<BottomSheetModalProps> = ({
       handleComponent={CustomHandle}
       enableContentPanningGesture
       onClose={onClose}
-      style={{
-        zIndex: 3000,
-        elevation: 3000,
-      }}>
+      // The elevated BottomSheet Body is a SEPARATE sibling from the backdrop
+      // above; gorhom drops its touch-interactivity asynchronously too, so on
+      // slow CPUs it can still swallow touches while the sheet is logically
+      // closed. Gate its pointerEvents on `isVisible` as well — the proven fix
+      // is BOTH siblings gated (matches the PlayerSheet guard in #308).
+      style={[
+        {zIndex: 3000, elevation: 3000},
+        !isVisible && {pointerEvents: 'none' as const},
+      ]}>
       <View style={[styles(theme).contentContainer, contentContainerStyle]}>
         {children}
       </View>

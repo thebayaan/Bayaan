@@ -202,12 +202,14 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
         Math.round(status.duration * 1000),
         parseInt(currentTrack.surahId, 10),
         currentTrack.reciterId,
+        currentTrack.reciterName,
         currentTrack.rewayatId ?? '',
       );
 
       analyticsService.trackPlaybackStarted({
         surah_id: parseInt(currentTrack.surahId, 10),
         reciter_id: currentTrack.reciterId,
+        reciter_name: currentTrack.reciterName,
         rewayah_id: currentTrack.rewayatId ?? '',
         source: 'queue',
         position_ms: Math.round(status.currentTime * 1000),
@@ -257,6 +259,7 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
           analyticsService.trackPlaybackResumed({
             surah_id: surahId,
             reciter_id: analyticsTrack.reciterId,
+            reciter_name: analyticsTrack.reciterName,
             position_ms: Math.round(status.currentTime * 1000),
           });
         } else if (
@@ -270,6 +273,7 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
           analyticsService.trackPlaybackPaused({
             surah_id: surahId,
             reciter_id: analyticsTrack.reciterId,
+            reciter_name: analyticsTrack.reciterName,
             position_ms: Math.round(status.currentTime * 1000),
             listened_ms: sessionMs,
           });
@@ -348,6 +352,7 @@ export function ExpoAudioProvider({children}: ExpoAudioProviderProps) {
         analyticsService.trackPlaybackCompleted({
           surah_id: parseInt(completedTrack.surahId, 10),
           reciter_id: completedTrack.reciterId,
+          reciter_name: completedTrack.reciterName,
           duration_ms: durationMs,
           listened_ms: totalListened,
           completion_pct:

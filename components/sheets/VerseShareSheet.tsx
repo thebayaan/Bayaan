@@ -26,6 +26,7 @@ import {Feather} from '@expo/vector-icons';
 import * as Sharing from 'expo-sharing';
 import {useCanvasRef} from '@shopify/react-native-skia';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import ShareCardPreview from '@/components/share/ShareCardPreview';
 import {captureShareCard} from '@/components/share/captureShareCard';
 import {lightHaptics} from '@/utils/haptics';
@@ -68,7 +69,7 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
   const verseKey = payload?.verseKey ?? '';
   const verseKeys = payload?.verseKeys ?? [verseKey];
 
-  const fontMgr = mushafPreloadService.fontMgr;
+  const fontMgr = useMushafFontMgr();
   const quranCommonTypeface = mushafPreloadService.quranCommonTypeface;
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);

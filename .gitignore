@@ -162,6 +162,11 @@ CLAUDE.md
 GEMINI.md
 AGENTS.md
 .claude/
+# Forks may opt into project-versioned Claude Code skills / scheduled tasks
+# by un-ignoring those subfolders in the fork's own .gitignore (e.g.
+# `!.claude/skills/`, `!.claude/scheduled-tasks/`). Machine-local Claude
+# state — `.claude/settings.local.json`, `scheduled_tasks.lock`,
+# `.claude/projects/` — should always remain ignored.
 
 # Build/release configs (contain owner-specific IDs)
 ExportOptions.plist

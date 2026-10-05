@@ -10,9 +10,10 @@ import Social
 import UIKit
 
 class ShareViewController: UIViewController {
-  let hostAppGroupIdentifier = "group.com.bayaan.app"
-  let shareProtocol = "bayaan"
-  let sharedKey = "bayaanShareKey"
+  let hostAppGroupIdentifier: String = "group.com.bayaan.app"
+  let shareProtocol: String = "bayaan"
+  let sharedKey: String = "bayaanShareKey"
+  let hideView: Bool = true
   var sharedMedia: [SharedMediaFile] = []
   var sharedWebUrl: [WebUrl] = []
   var sharedText: [String] = []
@@ -28,10 +29,21 @@ class ShareViewController: UIViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    if hideView {
+      view.backgroundColor = .clear
+      view.isOpaque = false
+      handleViewLoad()
+    }
   }
 
   override func viewDidAppear(_ animated: Bool) {
     super.viewDidAppear(animated)
+    if !hideView {
+      handleViewLoad()
+    }
+  }
+
+  private func handleViewLoad() {
     Task {
       guard let extensionContext = self.extensionContext,
         let content = extensionContext.inputItems.first as? NSExtensionItem,
@@ -478,7 +490,8 @@ class ShareViewController: UIViewController {
   }
 
   private func redirectToHostApp(type: RedirectType) {
-    let url = URL(string: "\(shareProtocol)://dataUrl=\(sharedKey)#\(type)")!
+    let nonce = UUID().uuidString
+    let url = URL(string: "\(shareProtocol)://dataUrl=\(sharedKey)?nonce=\(nonce)#\(type)")!
     var responder = self as UIResponder?
 
     while responder != nil {

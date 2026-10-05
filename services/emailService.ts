@@ -1,6 +1,7 @@
 // @ts-nocheck
 import * as Postmark from 'postmark';
 import Constants from 'expo-constants';
+import branding from '@/config/branding';
 
 const POSTMARK_API_KEY = Constants.expoConfig?.extra?.postmarkApiKey;
 const POSTMARK_FROM_EMAIL = Constants.expoConfig?.extra?.postmarkFromEmail;
@@ -20,7 +21,7 @@ export async function sendVerificationEmail(
       TemplateAlias: POSTMARK_TEMPLATE_ALIAS,
       TemplateModel: {
         verification_code: verificationCode,
-        product_name: 'Bayaan',
+        product_name: branding.emailProductName,
       },
     });
     console.log('Verification email sent successfully');

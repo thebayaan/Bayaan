@@ -19,7 +19,7 @@ import {adhkarService} from '@/services/adhkar/AdhkarService';
 import {useAdhkar} from '@/hooks/useAdhkar';
 import {useAdhkarPlayAllStore} from '@/store/adhkarPlayAllStore';
 import {useBottomInset} from '@/hooks/useBottomInset';
-import {useHeaderHeight} from '@react-navigation/elements';
+import {useHeaderHeight} from 'expo-router/react-navigation';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 
 const SavedAdhkarScreen: React.FC = () => {
