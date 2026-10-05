@@ -10,6 +10,15 @@ import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
 const CALLBACK_URL_WAIT_MS = 2_000;
 
+// A failed callback must not disturb an existing session: any app or web page
+// can open bayaan://oauth/callback, so a forged or stale link would otherwise
+// drop a signed-in user into guest scope until restart.
+function reportCallbackFailure(code: string): void {
+  const auth = useBayaanAuthStore.getState();
+  if (auth.status === 'authenticated') return;
+  auth.setError(code);
+}
+
 export default function OAuthCallbackScreen() {
   const router = useRouter();
   const currentUrl = Linking.useLinkingURL();
@@ -23,7 +32,7 @@ export default function OAuthCallbackScreen() {
     if (!currentUrl) {
       const timeout = setTimeout(() => {
         callbackHandled.current = true;
-        useBayaanAuthStore.getState().setError('malformed_callback');
+        reportCallbackFailure('malformed_callback');
         router.replace('/(tabs)/(d.settings)');
       }, CALLBACK_URL_WAIT_MS);
 
@@ -39,11 +48,9 @@ export default function OAuthCallbackScreen() {
         router.replace('/(tabs)/(d.settings)');
       })
       .catch(error => {
-        useBayaanAuthStore
-          .getState()
-          .setError(
-            error instanceof BayaanAuthError ? error.code : 'auth_failed',
-          );
+        reportCallbackFailure(
+          error instanceof BayaanAuthError ? error.code : 'auth_failed',
+        );
         router.replace('/(tabs)/(d.settings)');
       });
   }, [currentUrl, router]);

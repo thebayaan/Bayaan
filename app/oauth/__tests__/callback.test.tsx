@@ -110,6 +110,53 @@ describe('OAuth callback route', () => {
     expect(mockHandleCallbackUrl).toHaveBeenCalledWith(originalUrl);
   });
 
+  it('leaves a signed-in user untouched when a callback fails', async () => {
+    useBayaanAuthStore.getState().setAuthenticated({accountId: 'account-1'});
+    mockUseLinkingURL.mockReturnValue(
+      'bayaan://oauth/callback?handoff=forged&state=attacker-state',
+    );
+    const {BayaanAuthError} = jest.requireMock(
+      '@/services/auth/bayaanAuthService',
+    );
+    mockHandleCallbackUrl.mockRejectedValueOnce(
+      new BayaanAuthError('state_mismatch', 'Sign-in state mismatch'),
+    );
+
+    await act(async () => {
+      renderer.create(<OAuthCallbackScreen />);
+      await Promise.resolve();
+    });
+
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-1'},
+      errorCode: null,
+    });
+    expect(mockReplace).toHaveBeenCalledWith('/(tabs)/(d.settings)');
+  });
+
+  it('reports a failed callback when not signed in', async () => {
+    mockUseLinkingURL.mockReturnValue(
+      'bayaan://oauth/callback?handoff=forged&state=attacker-state',
+    );
+    const {BayaanAuthError} = jest.requireMock(
+      '@/services/auth/bayaanAuthService',
+    );
+    mockHandleCallbackUrl.mockRejectedValueOnce(
+      new BayaanAuthError('state_mismatch', 'Sign-in state mismatch'),
+    );
+
+    await act(async () => {
+      renderer.create(<OAuthCallbackScreen />);
+      await Promise.resolve();
+    });
+
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'error',
+      errorCode: 'state_mismatch',
+    });
+  });
+
   it('fails closed after a bounded wait when no callback URL arrives', async () => {
     jest.useFakeTimers();
     try {

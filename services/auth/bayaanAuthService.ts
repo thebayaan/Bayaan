@@ -171,6 +171,10 @@ export function createBayaanAuthService(
     async handleCallbackUrl(url: string): Promise<BayaanOpaqueSession> {
       const callback = parseCallback(url);
       let pending = await getPendingBayaanAuthState();
+      // Only a callback carrying this attempt's state (or arriving after the
+      // attempt expired) may end it. Anything else is an unrelated or forged
+      // link and must not cancel a sign-in that is still in progress.
+      let endsPendingAttempt = false;
 
       try {
         assertNoForbiddenArtifacts(callback);
@@ -181,6 +185,7 @@ export function createBayaanAuthService(
         }
 
         if (pending.expiresAt <= now()) {
+          endsPendingAttempt = true;
           throw new BayaanAuthError('expired_state', 'Sign-in state expired');
         }
 
@@ -195,6 +200,7 @@ export function createBayaanAuthService(
         if (!constantTimeEqual(pending.state, callbackState)) {
           throw new BayaanAuthError('state_mismatch', 'Sign-in state mismatch');
         }
+        endsPendingAttempt = true;
 
         const providerError = callback.searchParams.get('error');
         if (providerError) {
@@ -227,7 +233,9 @@ export function createBayaanAuthService(
         WebBrowser.dismissBrowser();
         return session;
       } catch (error) {
-        await clearPendingBayaanAuthState();
+        if (endsPendingAttempt) {
+          await clearPendingBayaanAuthState();
+        }
         if (pending) {
           pending = null;
         }

@@ -263,6 +263,55 @@ describe('Bayaan BFF auth service', () => {
     const service = createBayaanAuthService({apiUrl});
 
     await expect(service.handleCallbackUrl(url)).rejects.toMatchObject({code});
+    // An unrelated or forged link must not cancel the real attempt.
+    await expect(getPendingBayaanAuthState()).resolves.toMatchObject({
+      state: 'state-123',
+    });
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('still completes the real sign-in after a forged callback arrives first', async () => {
+    await savePendingBayaanAuthState({
+      state: 'state-123',
+      expiresAt: Date.now() + 300_000,
+    });
+    (global.fetch as jest.Mock).mockResolvedValueOnce(
+      jsonResponse({
+        sessionToken: 'opaque-bayaan-session',
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        profile,
+      }),
+    );
+    const service = createBayaanAuthService({apiUrl});
+
+    await expect(
+      service.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=forged&state=attacker-state',
+      ),
+    ).rejects.toMatchObject({code: 'state_mismatch'});
+    await expect(
+      service.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+      ),
+    ).resolves.toMatchObject({profile});
+    await expect(getPendingBayaanAuthState()).resolves.toBeNull();
+  });
+
+  it('clears an attempt that expires while the callback is handled', async () => {
+    await savePendingBayaanAuthState({
+      state: 'state-123',
+      expiresAt: Date.now() + 300_000,
+    });
+    const service = createBayaanAuthService({
+      apiUrl,
+      now: () => Date.now() + 600_000,
+    });
+
+    await expect(
+      service.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+      ),
+    ).rejects.toMatchObject({code: 'expired_state'});
     await expect(getPendingBayaanAuthState()).resolves.toBeNull();
     expect(global.fetch).not.toHaveBeenCalled();
   });
