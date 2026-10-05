@@ -49,30 +49,42 @@ function MiniPlayerInner() {
   const textColor = theme.colors.text;
 
   return (
-    <Pressable onPress={handlePress} style={styles.row}>
-      <ReciterImage
-        reciterName={currentTrack.reciterName}
-        style={styles.artwork}
-      />
+    // a11y — plain View row (not a grouping Pressable) so the play/pause
+    // control is INDIVIDUALLY focusable by VoiceOver; the expand action lives
+    // on the inner body only.
+    <View style={styles.row}>
+      <Pressable
+        onPress={handlePress}
+        style={styles.body}
+        accessibilityRole="button"
+        accessibilityLabel={`${currentTrack.title}, ${currentTrack.artist}`}
+        accessibilityHint="Opens the full player">
+        <ReciterImage
+          reciterName={currentTrack.reciterName}
+          style={styles.artwork}
+        />
 
-      <View style={styles.trackInfo}>
-        <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
-          {currentTrack.title}
-        </Text>
-        <Text
-          style={[
-            styles.subtitle,
-            {color: Color(textColor).alpha(0.5).toString()},
-          ]}
-          numberOfLines={1}>
-          {currentTrack.artist}
-        </Text>
-      </View>
+        <View style={styles.trackInfo}>
+          <Text style={[styles.title, {color: textColor}]} numberOfLines={1}>
+            {currentTrack.title}
+          </Text>
+          <Text
+            style={[
+              styles.subtitle,
+              {color: Color(textColor).alpha(0.5).toString()},
+            ]}
+            numberOfLines={1}>
+            {currentTrack.artist}
+          </Text>
+        </View>
+      </Pressable>
 
       <Pressable
         onPress={handlePlayPause}
         style={styles.playButton}
-        hitSlop={10}>
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={playbackState === 'playing' ? 'Pause' : 'Play'}>
         {isLoadingNewTrack ? (
           <LoadingIndicator color={textColor} />
         ) : playbackState === 'playing' ? (
@@ -81,7 +93,7 @@ function MiniPlayerInner() {
           <PlayIcon color={textColor} size={22} />
         )}
       </Pressable>
-    </Pressable>
+    </View>
   );
 }
 
@@ -94,6 +106,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 8,
     paddingBottom: 20,
+    gap: 10,
+  },
+  body: {
+    // a11y — expand-to-full-player hit target (artwork + track info). Same
+    // `gap` as the row it was split out of, so the artwork|trackInfo rhythm is
+    // unchanged: this refactor is a11y-only, with no visual delta.
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
   },
   artwork: {

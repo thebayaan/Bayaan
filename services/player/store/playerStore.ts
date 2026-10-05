@@ -78,20 +78,46 @@ export interface PlayerStoreState extends Omit<UnifiedPlayerState, 'ui'> {
   cleanup: () => Promise<void>;
 }
 
+// Monotonic id for the in-flight play operation. Every loadTrackAtIndex()
+// claims a fresh id at entry; cleanup() bumps it via invalidatePlayOps().
+// Without this, two overlapping loads both run to completion: a second tap (a
+// rapid skip, or re-queueing while the first load is still awaiting the
+// network) starts its own load, then the OLDER one's play() lands after the
+// newer one's and its caller's trailing set() clobbers the newer track's state
+// — audible track A over a queue that says track B. loadTrackAtIndex re-checks
+// the id after each await and returns false when superseded, so callers skip
+// their trailing state writes and the last legitimate operation wins.
+let playOpId = 0;
+
+/** Invalidate any in-flight loadTrackAtIndex (see playOpId above). */
+function invalidatePlayOps(): void {
+  playOpId++;
+}
+
 /**
- * Helper to load and optionally play a track from the queue
+ * Helper to load and optionally play a track from the queue.
+ *
+ * Returns `false` when the operation was superseded mid-flight (a cleanup() or
+ * a newer load won the race) — the caller MUST skip its trailing state write in
+ * that case so the superseding action's state stands.
  */
 async function loadTrackAtIndex(
   tracks: Track[],
   index: number,
   startPosition = 0,
   autoPlay = false,
-): Promise<void> {
+): Promise<boolean> {
   const track = tracks[index];
   if (!track?.url) {
     if (__DEV__) console.warn('[PlayerStore] No track at index:', index);
-    return;
+    // Not superseded — nothing was loaded, but the caller's op is still the
+    // current one, so let it finalize its loading flags as before.
+    return true;
   }
+
+  // Claim the op: any older load still awaiting the network is now stale
+  // (last legitimate operation wins — matches the optimistic-set ordering).
+  const opId = ++playOpId;
 
   if (__DEV__)
     console.log('[PlayerStore] Loading track:', {
@@ -103,6 +129,11 @@ async function loadTrackAtIndex(
     });
 
   await expoAudioService.loadTrack(track.url);
+  if (opId !== playOpId) {
+    // cleanup() or a newer load landed while we awaited the network — do NOT
+    // seek or play; the superseding action's state is authoritative.
+    return false;
+  }
 
   if (startPosition > 0) {
     if (__DEV__)
@@ -120,12 +151,17 @@ async function loadTrackAtIndex(
   }
 
   if (autoPlay) {
+    if (opId !== playOpId) {
+      // Superseded during the seek await — same contract as above.
+      return false;
+    }
     await expoAudioService.play();
     if (__DEV__ && startPosition > 0)
       console.log('[PlayerStore] POST-PLAY state:', {
         currentTime: expoAudioService.getCurrentTime(),
       });
   }
+  return true;
 }
 
 export const usePlayerStore = create<PlayerStoreState>()(
@@ -265,7 +301,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
           // Load and play the next track
           audioCoordinator.mainWillPlay();
-          await loadTrackAtIndex(tracks, nextIndex, 0, true);
+          const stillCurrent = await loadTrackAtIndex(
+            tracks,
+            nextIndex,
+            0,
+            true,
+          );
+          if (!stillCurrent) return; // superseded by cleanup()/a newer load
 
           set(state => ({
             playback: {
@@ -352,7 +394,13 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
           // Load and play the previous track
           audioCoordinator.mainWillPlay();
-          await loadTrackAtIndex(tracks, prevIndex, 0, true);
+          const stillCurrent = await loadTrackAtIndex(
+            tracks,
+            prevIndex,
+            0,
+            true,
+          );
+          if (!stillCurrent) return; // superseded by cleanup()/a newer load
 
           set(state => ({
             playback: {
@@ -464,7 +512,17 @@ export const usePlayerStore = create<PlayerStoreState>()(
             currentIndex < tracks.length
           ) {
             audioCoordinator.mainWillPlay();
-            await loadTrackAtIndex(tracks, currentIndex, startPosition, true);
+            const stillCurrent = await loadTrackAtIndex(
+              tracks,
+              currentIndex,
+              startPosition,
+              true,
+            );
+            // A cleanup() or a newer play landed while the load awaited the
+            // network — keep ITS state; writing 'ready' here would report the
+            // superseded track as the ready one (or resurrect a playing state
+            // over a queue that has already moved on).
+            if (!stillCurrent) return;
           }
 
           set(state => ({
@@ -557,12 +615,16 @@ export const usePlayerStore = create<PlayerStoreState>()(
                   newCurrentIndex = tracks.length - 1;
                 }
                 if (tracks.length > 0) {
-                  await loadTrackAtIndex(
+                  const stillCurrent = await loadTrackAtIndex(
                     tracks,
                     newCurrentIndex,
                     0,
                     state.playback.state === 'playing',
                   );
+                  // Superseded by cleanup()/a newer load — bail before the
+                  // trailing set() below re-writes queue.tracks (that would
+                  // resurrect the queue the superseding action replaced).
+                  if (!stillCurrent) return;
                 }
               }
             }
@@ -783,6 +845,8 @@ export const usePlayerStore = create<PlayerStoreState>()(
 
       // Cleanup method
       cleanup: async () => {
+        // In-flight loads must not play()/write state into a cleaned service.
+        invalidatePlayOps();
         const state = get();
         if (
           typeof state.settings.sleepTimerInterval === 'object' &&
@@ -855,7 +919,13 @@ export const updateQueue = async (tracks: Track[], targetIndex: number) => {
 
     // Load the target track
     if (tracks.length > 0 && targetIndex >= 0 && targetIndex < tracks.length) {
-      await loadTrackAtIndex(tracks, targetIndex, 0, false);
+      const stillCurrent = await loadTrackAtIndex(
+        tracks,
+        targetIndex,
+        0,
+        false,
+      );
+      if (!stillCurrent) return; // superseded — its owner manages the flags
     }
 
     store.updateLoadingState({
