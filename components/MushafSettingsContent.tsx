@@ -589,11 +589,13 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
     wbwShowTranslation,
     wbwShowTransliteration,
     showThemes,
+    showCommunityReflections,
     toggleWBW,
     toggleWBWTranslation,
     toggleWBWTransliteration,
     toggleAllahNameHighlight,
     toggleThemes,
+    toggleCommunityReflections,
     lightThemeId,
     darkThemeId,
     rewayah,
@@ -1074,6 +1076,32 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           Alternating highlights by thematic passage
         </Text>
       </View>
+
+      {/* RFC-018 — COMMUNITY REFLECTIONS toggle. Gated on BOTH the provider and
+          the inline render slot: the helper text promises the under-each-ayah
+          display, which only `ayahCommunityReflectionsComponent` provides. A
+          fork that ships only a provider (action-sheet surface, no inline slot)
+          gets no toggle whose description does nothing; Bayaan wires neither,
+          so it shows no orphan toggle. */}
+      {branding.communityReflectionsProvider != null &&
+        branding.ayahCommunityReflectionsComponent != null && (
+          <View style={styles.card}>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>Community Reflections</Text>
+              <Switch
+                trackColor={trackColor}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor={trackColor.false}
+                onValueChange={toggleCommunityReflections}
+                value={showCommunityReflections}
+                style={styles.switchStyle}
+              />
+            </View>
+            <Text style={styles.helperText}>
+              Show community reflections under each ayah in list view
+            </Text>
+          </View>
+        )}
 
       {/* FONT Section */}
       <Text style={styles.sectionHeader}>FONT</Text>

@@ -42,4 +42,10 @@ module.exports = {
     {id: 'rewayat', enabled: true},
     {id: 'collection', enabled: true},
   ],
+  // RFC-018 — community-reflections seam. Bayaan ships no community-content
+  // backend, so both `communityReflectionsProvider` and
+  // `ayahCommunityReflectionsComponent` are left undefined: the whole
+  // surface (Mushaf-settings toggle, inline render, action-sheet row) stays
+  // off. A fork sets both to its own provider + render component (see
+  // docs/rfcs/018-community-reflections-provider.md).
 };

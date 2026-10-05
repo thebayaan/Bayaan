@@ -486,14 +486,33 @@ const DKSpreadView: React.FC<{
 // ============================================================================
 interface MushafViewerProps {
   pageNumber: number;
+  /** Surah the viewer was opened for, when `pageNumber` was derived from it. */
+  initialSurahId?: number; // @ai
   initialVerseKey?: string;
 }
 
+/** A surah the reader was explicitly sent to, pinned to the page it starts on. */
+type AskedSurah = {surahId: number; page: number}; // @ai
+
 export default function MushafViewer({
   pageNumber: initialPage,
+  initialSurahId,
 }: MushafViewerProps) {
   useKeepAwake();
   const [currentPage, setCurrentPage] = useState(initialPage);
+  // @ai-start
+  // Twelve pages open one surah and start another (591 has At-Tariq and
+  // Al-A'la; 601-604 start three apiece). `pageToSurah` can only name one
+  // surah per page, so it names the last one to start there. When the
+  // reader was sent to a specific surah, remember it for as long as they
+  // stay on that page; turning the page makes the question moot.
+  const [askedSurah, setAskedSurah] = useState<AskedSurah | null>(() =>
+    initialSurahId ? {surahId: initialSurahId, page: initialPage} : null,
+  );
+  useEffect(() => {
+    setAskedSurah(prev => (prev && prev.page !== currentPage ? null : prev));
+  }, [currentPage]);
+  // @ai-end
   const [isImmersive, setIsImmersive] = useState(false);
   const [isSearchMode, setIsSearchModeRaw] = useState(false);
   const [autoFocusSearch, setAutoFocusSearch] = useState(false);
@@ -637,7 +656,10 @@ export default function MushafViewer({
     ? digitalKhattDataService.getSurahStartPages()
     : {};
 
-  const currentSurahId = pageToSurah[currentPage] || 1;
+  const currentSurahId =
+    askedSurah && askedSurah.page === currentPage
+      ? askedSurah.surahId // @ai
+      : pageToSurah[currentPage] || 1;
 
   // @ai — load verse annotations for every surah on the current page.
   // Nothing in the horizontal paged pipeline loaded the store before, so
@@ -937,11 +959,12 @@ export default function MushafViewer({
   const navigateToSurah = useCallback(
     (surahId: number) => {
       setIsSearchMode(false);
+      const targetPage = surahStartPages[surahId];
+      if (targetPage) setAskedSurah({surahId, page: targetPage}); // @ai
       if (isVertical) {
         continuousListRef.current?.scrollToSurah(surahId);
-      } else {
-        const targetPage = surahStartPages[surahId];
-        if (targetPage) navigateToPage(targetPage);
+      } else if (targetPage) {
+        navigateToPage(targetPage);
       }
     },
     [isVertical, surahStartPages, navigateToPage],

@@ -2,6 +2,7 @@ import type {ComponentType} from 'react';
 import type {Track} from '@/types/audio';
 import type {TranslationProvider} from '@/types/TranslationProvider';
 import type {TafsirProvider} from '@/types/TafsirProvider';
+import type {CommunityReflectionsProvider} from '@/types/CommunityReflection';
 import type {AyahTimestamp} from '@/types/timestamps';
 
 /** Catalog source config for the active branding. */
@@ -191,6 +192,54 @@ export interface Branding {
    * `quranComTafsirProvider`).
    */
   tafsirProvider?: TafsirProvider;
+  /**
+   * RFC-018 — optional fetcher for community-authored reflections on an
+   * ayah. Paired with `ayahCommunityReflectionsComponent` below.
+   *
+   * `undefined` (Bayaan default) → the entire community-reflections
+   * surface is off: the Mushaf-settings toggle row never renders, the
+   * inline slot returns nothing, and the action-sheet row is hidden.
+   * A fork supplies a provider (e.g. Qariah's QuranReflect-backed
+   * fetcher) to light it up without forking the verse-render path.
+   *
+   * Resolves to a possibly-empty array of reflections for the
+   * (surahNumber, ayahNumber). The provider owns filtering/sorting and
+   * caching — the consuming component calls it freely. Throws/rejects on
+   * network or auth/scope errors; the consumer renders an empty/error
+   * state silently.
+   *
+   * See docs/rfcs/018-community-reflections-provider.md.
+   */
+  communityReflectionsProvider?: CommunityReflectionsProvider;
+  /**
+   * RFC-018 — optional render slot (RFC-008 component-slot pattern)
+   * mounted under the Arabic line in the verse list when the user's
+   * `MushafSettingsStore.showCommunityReflections` toggle is on.
+   *
+   * `undefined` (Bayaan default) → nothing renders even if
+   * `communityReflectionsProvider` is set (a fork can supply data
+   * without inline UI, e.g. to power only the action-sheet popup). The
+   * upstream default-noop `<AyahCommunityReflections />` wrapper checks
+   * this field and returns null when unset, so mounting it in `VerseItem`
+   * is free for Bayaan.
+   *
+   * The component is responsible for calling
+   * `communityReflectionsProvider` itself (provider-internal caching is
+   * what keeps that from being a second fetch). It runs per-ayah on a
+   * recycling FlashList, so it must be non-blocking and tolerate rapid
+   * mount/unmount/key churn; the upstream wrapper additionally guards it
+   * with an error boundary at the mount site.
+   *
+   * Props start at `{surahNumber, ayahNumber}` only; future additions
+   * (theme context, an open-popup callback) must default to optional so
+   * existing implementations keep compiling.
+   *
+   * See docs/rfcs/018-community-reflections-provider.md.
+   */
+  ayahCommunityReflectionsComponent?: ComponentType<{
+    surahNumber: number;
+    ayahNumber: number;
+  }>;
   /**
    * RFC-014 — strategy for wiring the player Mushaf FlashList's scroll
    * handling.
