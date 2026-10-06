@@ -29,7 +29,10 @@ import {useTajweedStore} from '@/store/tajweedStore';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
 import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {HIGHLIGHT_COLORS} from '@/types/verse-annotations';
+import {
+  BOOKMARK_HIGHLIGHT_COLOR,
+  HIGHLIGHT_COLORS,
+} from '@/types/verse-annotations';
 import {useTheme} from '@/hooks/useTheme';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {
@@ -343,6 +346,11 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
 
     // ── Playback + annotation highlights ───────────────────
     const persistentHighlights = useVerseAnnotationsStore(s => s.highlights);
+    // @ai — bookmarked verses paint a persistent tint (same layer
+    // ordering as SkiaPage's paged pipeline).
+    const bookmarkedVerseKeys = useVerseAnnotationsStore(
+      s => s.bookmarkedVerseKeys,
+    );
     const playbackVerseKey = useMushafPlayerStore(s => {
       if (!s.currentVerseKey || s.playbackState === 'idle') return null;
       return s.currentVerseKey;
@@ -555,6 +563,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       Map<number, Array<{start: number; end: number; color: string}>>
     >(() => {
       const hasAnnotations = Object.keys(persistentHighlights).length > 0;
+      const hasBookmarks = bookmarkedVerseKeys.size > 0;
       const hasPlayback = !!playbackVerseKey;
       const hasRewayahDiffs =
         showRewayahDiffs && rewayah !== 'hafs' && rewayahDiffService.hasDiffs;
@@ -563,7 +572,13 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
           ? new Set(selectedVerseKeys)
           : null;
 
-      if (!hasAnnotations && !hasPlayback && !selectedSet && !hasRewayahDiffs)
+      if (
+        !hasAnnotations &&
+        !hasBookmarks &&
+        !hasPlayback &&
+        !selectedSet &&
+        !hasRewayahDiffs
+      )
         return EMPTY_BG_MAP;
 
       const map = new Map<
@@ -605,6 +620,15 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         }
       };
 
+      // Layer 0.5: Bookmark highlights. @ai — persistent tint for
+      // bookmarked verses; colored highlights / playback / selection win.
+      for (const verseKey of bookmarkedVerseKeys) {
+        if (persistentHighlights[verseKey]) continue;
+        if (playbackVerseKey === verseKey) continue;
+        if (selectedSet?.has(verseKey)) continue;
+        addVerseHighlight(verseKey, BOOKMARK_HIGHLIGHT_COLOR);
+      }
+
       // Layer 1: Persistent annotation highlights (lowest priority)
       for (const [verseKey, colorName] of Object.entries(
         persistentHighlights,
@@ -631,6 +655,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       return map;
     }, [
       persistentHighlights,
+      bookmarkedVerseKeys,
       playbackVerseKey,
       playbackBgColor,
       selectedVerseKeys,

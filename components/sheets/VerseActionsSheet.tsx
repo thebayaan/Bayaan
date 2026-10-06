@@ -220,37 +220,46 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     if (!isScopeCurrent()) return;
     lightHaptics();
     const keys = isRange ? verseKeys : [verseKey];
-    await verseAnnotationService.runInScope(async operation => {
-      if (isBookmarked) {
-        for (const vk of keys) {
-          await operation.removeBookmark(vk);
-          if (operation.isCurrent()) {
-            useVerseAnnotationsStore.getState().removeBookmark(vk);
+    // @ai-start
+    // Preserve #314's failure dismissal without updating or dismissing a
+    // replacement account's UI after an asynchronous scoped write.
+    try {
+      await verseAnnotationService.runInScope(async operation => {
+        if (isBookmarked) {
+          for (const vk of keys) {
+            await operation.removeBookmark(vk);
+            if (operation.isCurrent()) {
+              useVerseAnnotationsStore.getState().removeBookmark(vk);
+            }
+          }
+        } else {
+          for (const vk of keys) {
+            const [s, a] = vk.split(':');
+            await operation.addBookmark(
+              vk,
+              parseInt(s, 10),
+              parseInt(a, 10),
+              resolvedRewayah,
+            );
+            if (operation.isCurrent()) {
+              useVerseAnnotationsStore.getState().addBookmark(vk);
+            }
           }
         }
-      } else {
-        for (const vk of keys) {
-          const [s, a] = vk.split(':');
-          await operation.addBookmark(
-            vk,
-            parseInt(s, 10),
-            parseInt(a, 10),
-            resolvedRewayah,
-          );
-          if (operation.isCurrent()) {
-            useVerseAnnotationsStore.getState().addBookmark(vk);
-          }
-        }
-      }
-      if (operation.isCurrent()) await SheetManager.hide(props.sheetId);
-    });
+      });
+    } catch (error) {
+      console.error('[VerseActionsSheet] Bookmark toggle failed:', error);
+    } finally {
+      if (isScopeCurrent()) hideCurrentSheet();
+    }
+    // @ai-end
   }, [
     verseKey,
     verseKeys,
     isRange,
     isBookmarked,
     resolvedRewayah,
-    props.sheetId,
+    hideCurrentSheet,
     isScopeCurrent,
   ]);
 

@@ -95,6 +95,13 @@ barrier and retains local leaf intent without uploading a v1 downgrade. A 412
 that discovers such a document also installs the barrier before retry. Other
 settings documents continue to sync normally. Malformed documents still fail
 closed, and ambiguous writes retain their byte/idempotency recovery contract.
+For initialized accounts, reads settle independently: healthy documents are
+applied and persisted even when a sibling document or Preferences fetch fails.
+A failed read is never treated as absence and cannot erase its raw baseline,
+ETag, write barrier or pending intent. The failure still reaches the lifecycle
+for bounded retry, without reporting success. A 401 remains account-wide and
+prevents any remote application. Initial reconciliation requires a complete
+read before establishing baselines, choosing a conflict policy or uploading.
 
 Capture is drained synchronously before account ownership changes. Explicit
 in-app sign-out drains pending capture, removes only that account's persisted

@@ -1,5 +1,5 @@
 import React, {useMemo, useCallback} from 'react';
-import {View, Text, Pressable} from 'react-native';
+import {View, Text, Pressable, Appearance} from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {ThemeMode, Theme} from '@/utils/themeUtils';
@@ -32,6 +32,8 @@ export const ThemePicker: React.FC = () => {
       if (mode === themeMode) return;
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setThemeMode(mode);
+      const effectiveTheme = mode === 'dark' ? 'dark' : 'light';
+      Appearance.setColorScheme(effectiveTheme);
     },
     [themeMode, setThemeMode],
   );

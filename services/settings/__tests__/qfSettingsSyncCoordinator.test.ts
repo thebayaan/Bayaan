@@ -108,6 +108,12 @@ class MemoryStorage {
   states = new Map<string, PersistedSettingsSyncState>();
   deviceContext: PersistedSettingsDeviceContext | null = null;
 
+  requireState(accountId: string): PersistedSettingsSyncState {
+    const state = this.states.get(accountId);
+    if (!state) throw new Error('Expected persisted settings state');
+    return state;
+  }
+
   async loadDeviceContext(): Promise<PersistedSettingsDeviceContext | null> {
     return this.deviceContext ? structuredClone(this.deviceContext) : null;
   }
@@ -247,6 +253,129 @@ function coordinator(
 }
 
 describe('QfSettingsSyncCoordinator', () => {
+  test.each(['document', 'preferences'] as const)(
+    'applies healthy documents without erasing an unavailable %s baseline',
+    async unavailable => {
+      const remote: Partial<
+        Record<SettingsDocumentKey, RemoteSettingsDocument>
+      > = {};
+      const api = fakeApi(remote);
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const subject = coordinator(api, storage, bridge).value;
+      await subject.activateLocal('account-a');
+      await subject.syncRemote('account-a', 'session-a');
+      const before = structuredClone(storage.requireState('account-a'));
+      api.puts.length = 0;
+      api.preferencePuts.length = 0;
+      remote.appearance = {
+        key: 'appearance',
+        etag: 'new-appearance-etag',
+        value: {themeMode: 'dark'},
+      };
+      const failure = new BayaanSettingsApiError(503, 'unavailable');
+      if (unavailable === 'document') {
+        api.getDocument.mockImplementation(async (_token, key) => {
+          if (key === 'audio') throw failure;
+          return remote[key] ?? null;
+        });
+      } else {
+        api.getPreferences.mockRejectedValue(failure);
+      }
+      await expect(subject.syncRemote('account-a', 'session-a')).rejects.toBe(
+        failure,
+      );
+      expect(bridge.currentDocuments.appearance.themeMode).toBe('dark');
+      const partial = storage.requireState('account-a');
+      expect(partial.etags.appearance).toBe('new-appearance-etag');
+      expect(partial.syncedDocuments.audio).toEqual(
+        before.syncedDocuments.audio,
+      );
+      expect(partial.etags.audio).toBe(before.etags.audio);
+      expect(partial.readOnlyDocuments?.audio).toBe(
+        before.readOnlyDocuments?.audio,
+      );
+      if (unavailable === 'preferences') {
+        expect(partial.syncedPreferenceFingerprint).toBe(
+          before.syncedPreferenceFingerprint,
+        );
+        expect(partial.preferencePending).toEqual(before.preferencePending);
+      }
+      expect(api.puts).toEqual([]);
+      expect(api.preferencePuts).toEqual([]);
+      api.getDocument.mockImplementation(
+        async (_token, key) => remote[key] ?? null,
+      );
+      api.getPreferences.mockResolvedValue({});
+      await subject.syncRemote('account-a', 'session-a');
+      expect(storage.requireState('account-a').initialized).toBe(true);
+      await subject.deactivate();
+    },
+  );
+
+  test.each(['document', 'preferences'] as const)(
+    'treats a 401 from %s as account-wide revocation before applying any document',
+    async revokedAt => {
+      const remote: Partial<
+        Record<SettingsDocumentKey, RemoteSettingsDocument>
+      > = {};
+      const api = fakeApi(remote);
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const subject = coordinator(api, storage, bridge).value;
+      await subject.activateLocal('account-a');
+      await subject.syncRemote('account-a', 'session-a');
+      const before = structuredClone(storage.requireState('account-a'));
+      remote.appearance = {
+        key: 'appearance',
+        etag: 'must-not-adopt',
+        value: {themeMode: 'dark'},
+      };
+      const failure = new BayaanSettingsApiError(401, 'revoked');
+      if (revokedAt === 'document') {
+        api.getDocument.mockImplementation(async (_token, key) => {
+          if (key === 'audio') throw failure;
+          return remote[key] ?? null;
+        });
+      } else {
+        api.getPreferences.mockRejectedValue(failure);
+      }
+      await expect(subject.syncRemote('account-a', 'session-a')).rejects.toBe(
+        failure,
+      );
+      expect(bridge.currentDocuments.appearance.themeMode).toBe('system');
+      expect(storage.requireState('account-a').etags.appearance).toBe(
+        before.etags.appearance,
+      );
+      await subject.deactivate();
+    },
+  );
+
+  test('keeps initial reconciliation incomplete and writes nothing after a partial fetch failure', async () => {
+    const api = fakeApi({
+      appearance: {
+        key: 'appearance',
+        etag: 'cloud-etag',
+        value: {themeMode: 'dark'},
+      },
+    });
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud');
+    const failure = new BayaanSettingsApiError(503, 'unavailable');
+    api.getDocument.mockRejectedValueOnce(failure);
+    await subject.value.activateLocal('account-a');
+    await expect(
+      subject.value.syncRemote('account-a', 'session-a'),
+    ).rejects.toBe(failure);
+    expect(subject.choose).not.toHaveBeenCalled();
+    expect(api.puts).toEqual([]);
+    expect(api.preferencePuts).toEqual([]);
+    expect(storage.states.get('account-a')?.initialized ?? false).toBe(false);
+    expect(bridge.currentDocuments.appearance.themeMode).toBe('system');
+    await subject.value.deactivate();
+  });
+
   test.each(['debounce', 'retry', 'late-account'] as const)(
     'routes background-owned 401 through token-bound revocation (%s)',
     async path => {

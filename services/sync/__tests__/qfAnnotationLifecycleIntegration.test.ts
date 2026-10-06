@@ -246,6 +246,97 @@ afterAll(async () => {
   await verseAnnotationDatabase.close();
 });
 
+// @ai-start
+it('preserves idempotent guest bookmarks without suppressing another owner scope', async () => {
+  const {
+    verseAnnotationDatabaseService: database,
+  } = require('@/services/database/VerseAnnotationDatabaseService');
+  const first = await database.addBookmarkForOwnerScope(
+    'guest',
+    '114:3',
+    114,
+    3,
+    'hafs',
+  );
+  const duplicate = await database.addBookmarkForOwnerScope(
+    'guest',
+    '114:3',
+    114,
+    3,
+    'hafs',
+  );
+  expect(duplicate.id).toBe(first.id);
+  await database.addBookmarkForOwnerScope(
+    'qf:account-b',
+    '114:3',
+    114,
+    3,
+    'hafs',
+  );
+  const connection =
+    (await verseAnnotationDatabase.getConnection()) as unknown as TestDatabase;
+  expect(
+    await connection.getAllAsync(
+      'SELECT owner_scope, verse_key FROM bookmarks ORDER BY owner_scope',
+    ),
+  ).toEqual([
+    {owner_scope: 'guest', verse_key: '114:3'},
+    {owner_scope: 'qf:account-b', verse_key: '114:3'},
+  ]);
+});
+
+it('reloads every painted surah after a pull and account handoff without leaking annotations', async () => {
+  const lifecycle = createLifecycle();
+  lifecycle.updateContext(authenticatedOffline);
+  await lifecycle.waitForIdle();
+  const {
+    verseAnnotationDatabaseService: database,
+  } = require('@/services/database/VerseAnnotationDatabaseService');
+  await database.addBookmarkForOwnerScope(
+    'qf:account-a',
+    '112:1',
+    112,
+    1,
+    'hafs',
+  );
+  await database.addBookmarkForOwnerScope(
+    'qf:account-a',
+    '114:3',
+    114,
+    3,
+    'hafs',
+  );
+  await database.addBookmarkForOwnerScope(
+    'qf:account-b',
+    '113:2',
+    113,
+    2,
+    'hafs',
+  );
+  await useVerseAnnotationsStore
+    .getState()
+    .loadAnnotationsForSurahs([112, 113, 114]);
+  lifecycle.updateContext({...authenticatedOffline, online: true});
+  await lifecycle.waitForIdle();
+  expect([...useVerseAnnotationsStore.getState().loadedSurahs]).toEqual([
+    112, 113, 114,
+  ]);
+  expect([...useVerseAnnotationsStore.getState().bookmarkedVerseKeys]).toEqual([
+    '112:1',
+    '114:3',
+  ]);
+  lifecycle.updateContext({...authenticatedOffline, accountId: 'account-b'});
+  await lifecycle.waitForIdle();
+  expect([...useVerseAnnotationsStore.getState().loadedSurahs]).toEqual([
+    112, 113, 114,
+  ]);
+  expect([...useVerseAnnotationsStore.getState().bookmarkedVerseKeys]).toEqual([
+    '113:2',
+  ]);
+  await lifecycle.stop();
+});
+// @ai-end
+
 it('waits for a real SQLite mutation started after stop begins', async () => {
   const flush = deferred();
   const lifecycle = createLifecycle({
@@ -255,7 +346,7 @@ it('waits for a real SQLite mutation started after stop begins', async () => {
   });
   lifecycle.updateContext(authenticatedOffline);
   await lifecycle.waitForIdle();
-  const pausedWrite = await pauseNextWrite('INSERT INTO bookmarks');
+  const pausedWrite = await pauseNextWrite('INSERT OR IGNORE INTO bookmarks'); // @ai
 
   let stopped = false;
   const stop = lifecycle.stop().then(() => {
@@ -304,7 +395,7 @@ it('keeps draining real SQLite mutations while stop waits for the current sync r
   });
   lifecycle.updateContext({...authenticatedOffline, online: true});
   await pullEntered.promise;
-  const pausedWrite = await pauseNextWrite('INSERT INTO bookmarks');
+  const pausedWrite = await pauseNextWrite('INSERT OR IGNORE INTO bookmarks'); // @ai
 
   let stopped = false;
   const stop = lifecycle.stop().then(() => {
@@ -376,7 +467,7 @@ it('drains a real old-scope mutation before surfacing a rejected reading flush',
   });
   lifecycle.updateContext(authenticatedOffline);
   await lifecycle.waitForIdle();
-  const pausedWrite = await pauseNextWrite('INSERT INTO bookmarks');
+  const pausedWrite = await pauseNextWrite('INSERT OR IGNORE INTO bookmarks'); // @ai
 
   let stopSettled = false;
   const stopResult = lifecycle.stop().then(

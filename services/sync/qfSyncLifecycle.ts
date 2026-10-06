@@ -644,30 +644,30 @@ export class QfSyncLifecycle {
     return tracked;
   }
 
-  private invalidateActiveViews(advanceScopeRevision = false): number | null {
-    const loadedSurah = useVerseAnnotationsStore.getState().loadedSurah;
+  // @ai-start
+  private invalidateActiveViews(advanceScopeRevision = false): number[] {
+    const loadedSurahs = [...useVerseAnnotationsStore.getState().loadedSurahs];
     if (advanceScopeRevision) {
       useQfSyncStore.setState(state => ({
         scopeRevision: state.scopeRevision + 1,
       }));
     }
     this.clearActiveViews();
-    return loadedSurah;
+    return loadedSurahs;
   }
 
-  private async reloadActiveViews(loadedSurah: number | null): Promise<void> {
-    if (loadedSurah !== null) {
-      await useVerseAnnotationsStore
-        .getState()
-        .loadAnnotationsForSurah(loadedSurah);
-    }
+  private async reloadActiveViews(loadedSurahs: number[]): Promise<void> {
+    await useVerseAnnotationsStore
+      .getState()
+      .loadAnnotationsForSurahs(loadedSurahs);
   }
+  // @ai-end
 
   private async completeAnnotationHandoff(
     handoff: Promise<void>,
     nextAccountId: string | null,
     epoch: number,
-    loadedSurah: number | null,
+    loadedSurah: number[], // @ai
   ): Promise<void> {
     await handoff;
     if (

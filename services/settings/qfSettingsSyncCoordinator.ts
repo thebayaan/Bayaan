@@ -579,19 +579,48 @@ export class QfSettingsSyncCoordinator {
   private async fetchRemote(sessionToken: string): Promise<{
     documents: Partial<Record<SettingsDocumentKey, RemoteSettingsDocument>>;
     preferences: Record<string, unknown>;
+    failedDocuments: Set<SettingsDocumentKey>;
+    preferencesFailed: boolean;
+    errors: unknown[];
   }> {
-    const [preferences, ...documents] = await Promise.all([
-      this.options.api.getPreferences(sessionToken),
-      ...DOCUMENT_KEYS.map(key =>
-        this.options.api.getDocument(sessionToken, key),
+    const [preferenceResults, documentResults] = await Promise.all([
+      Promise.allSettled([this.options.api.getPreferences(sessionToken)]),
+      Promise.allSettled(
+        DOCUMENT_KEYS.map(key =>
+          this.options.api.getDocument(sessionToken, key),
+        ),
       ),
     ]);
     const byKey: Partial<Record<SettingsDocumentKey, RemoteSettingsDocument>> =
       {};
-    for (const document of documents) {
-      if (document) byKey[document.key] = document;
+    const failedDocuments = new Set<SettingsDocumentKey>();
+    const errors: unknown[] = [];
+    documentResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        failedDocuments.add(DOCUMENT_KEYS[index]);
+        errors.push(result.reason);
+      } else if (result.value) {
+        byKey[result.value.key] = result.value;
+      }
+    });
+    const preferenceResult = preferenceResults[0];
+    const preferencesFailed = preferenceResult.status === 'rejected';
+    if (preferenceResult.status === 'rejected') {
+      errors.push(preferenceResult.reason);
     }
-    return {documents: byKey, preferences};
+    // Revocation is account-wide, never a per-document failure to bypass.
+    const revoked = errors.find(
+      error => error instanceof BayaanSettingsApiError && error.status === 401,
+    );
+    if (revoked) throw revoked;
+    return {
+      documents: byKey,
+      preferences:
+        preferenceResult.status === 'fulfilled' ? preferenceResult.value : {},
+      failedDocuments,
+      preferencesFailed,
+      errors,
+    };
   }
 
   private async chooseConflict(): Promise<ConflictChoice | null> {
@@ -622,6 +651,9 @@ export class QfSettingsSyncCoordinator {
     const remote = await this.fetchRemote(sessionToken);
     const state = this.state;
     if (!this.isCurrent(accountId, generation) || !state) return;
+    // Never establish first-sync baselines or replace pending intent from an
+    // incomplete read. A retry must still reconcile the unavailable keys.
+    if (remote.errors.length) throw remote.errors[0];
     if (revision !== this.localRevision) {
       localDocuments = this.bridge.captureDocuments();
       localPreferences = this.bridge.capturePreferences();
@@ -858,6 +890,9 @@ export class QfSettingsSyncCoordinator {
     this.applyingRemote = true;
     try {
       for (const key of DOCUMENT_KEYS) {
+        // A failed read is not a missing document. Keep its raw baseline,
+        // ETag, read-only status and pending local intent unchanged.
+        if (remote.failedDocuments.has(key)) continue;
         const document = remote.documents[key];
         state.readOnlyDocuments ??= {};
         state.readOnlyDocuments[key] = document?.readOnly === true;
@@ -886,7 +921,7 @@ export class QfSettingsSyncCoordinator {
         const local = this.bridge.captureDocuments()[key];
         this.queueDocument(key, local);
       }
-      if (!state.preferencePending) {
+      if (!remote.preferencesFailed && !state.preferencePending) {
         this.bridge.applyPreferences(remote.preferences);
       }
     } finally {
@@ -897,13 +932,18 @@ export class QfSettingsSyncCoordinator {
     const fingerprint = preferenceFingerprint(preferences);
     state.localPreferences = preferences;
     state.localPreferenceFingerprint = fingerprint;
-    if (
-      remotePreferenceEntries(remote.preferences).length < preferences.length
-    ) {
-      state.preferencePending = preferences;
-    } else {
-      state.syncedPreferenceFingerprint = fingerprint;
+    if (!remote.preferencesFailed) {
+      if (
+        remotePreferenceEntries(remote.preferences).length < preferences.length
+      ) {
+        state.preferencePending = preferences;
+      } else {
+        state.syncedPreferenceFingerprint = fingerprint;
+      }
     }
     await this.storage.save(accountId, state);
+    // Healthy documents progress, but the lifecycle still sees the failure
+    // and owns bounded retry/revocation rather than reporting false success.
+    if (remote.errors.length) throw remote.errors[0];
   }
 }

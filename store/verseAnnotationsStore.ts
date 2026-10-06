@@ -1,16 +1,19 @@
+// @ai-generated
 import {create} from 'zustand';
 import {verseAnnotationService} from '@/services/verse-annotations/VerseAnnotationService';
 import type {HighlightColor} from '@/types/verse-annotations';
 
 interface VerseAnnotationsState {
   scopeRevision: number;
-  loadedSurah: number | null;
+  // Accumulate multi-surah pages and mounted neighbours within one scope.
+  loadedSurahs: Set<number>;
   bookmarkedVerseKeys: Set<string>;
   notedVerseKeys: Set<string>;
   highlights: Record<string, HighlightColor>;
   loading: boolean;
 
   loadAnnotationsForSurah: (surahNumber: number) => Promise<void>;
+  loadAnnotationsForSurahs: (surahNumbers: number[]) => Promise<void>;
   clearActiveView: () => void;
 
   // Optimistic mutations
@@ -27,58 +30,88 @@ interface VerseAnnotationsState {
   getHighlightColor: (verseKey: string) => HighlightColor | null;
 }
 
+// Serialize loads instead of dropping concurrent page/per-surah requests.
+let inFlightLoad: Promise<void> | null = null;
+
 export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
   (set, get) => ({
     scopeRevision: 0,
-    loadedSurah: null,
+    loadedSurahs: new Set<number>(),
     bookmarkedVerseKeys: new Set<string>(),
     notedVerseKeys: new Set<string>(),
     highlights: {},
     loading: false,
 
     loadAnnotationsForSurah: async (surahNumber: number) => {
-      const state = get();
-      if (state.loading || state.loadedSurah === surahNumber) return;
+      await get().loadAnnotationsForSurahs([surahNumber]);
+    },
 
-      const scopeRevision = state.scopeRevision;
+    loadAnnotationsForSurahs: async (surahNumbers: number[]) => {
+      const scopeRevision = get().scopeRevision;
+      const wanted = [...new Set(surahNumbers)].sort((a, b) => a - b);
+      if (wanted.length === 0) return;
+      if (wanted.every(n => get().loadedSurahs.has(n))) return;
 
-      set({loading: true});
+      // Recheck the subset after waiting: a wider page load may already have
+      // supplied it. A queued old-account request must not read the new scope.
+      while (inFlightLoad) {
+        await inFlightLoad;
+        if (get().scopeRevision !== scopeRevision) return;
+      }
+      const missing = wanted.filter(n => !get().loadedSurahs.has(n));
+      if (missing.length === 0) return;
 
-      try {
-        const {bookmarks, notes, highlights} =
-          await verseAnnotationService.getAnnotationsForSurah(surahNumber);
+      const load = (async () => {
+        set({loading: true});
+        try {
+          const results = await Promise.all(
+            missing.map(n => verseAnnotationService.getAnnotationsForSurah(n)),
+          );
+          if (get().scopeRevision !== scopeRevision) return;
 
-        const bookmarkedVerseKeys = new Set(bookmarks.map(b => b.verseKey));
-        const notedVerseKeys = new Set(notes.map(n => n.verseKey));
-        const highlightsRecord: Record<string, HighlightColor> = {};
-        highlights.forEach(h => {
-          highlightsRecord[h.verseKey] = h.color;
-        });
-
-        if (get().scopeRevision === scopeRevision) {
+          // Merge at completion time, preserving siblings and optimistic edits.
+          const bookmarkedVerseKeys = new Set(get().bookmarkedVerseKeys);
+          const notedVerseKeys = new Set(get().notedVerseKeys);
+          const highlightsRecord: Record<string, HighlightColor> = {
+            ...get().highlights,
+          };
+          for (const {bookmarks, notes, highlights} of results) {
+            bookmarks.forEach(b => bookmarkedVerseKeys.add(b.verseKey));
+            notes.forEach(n => notedVerseKeys.add(n.verseKey));
+            highlights.forEach(h => {
+              highlightsRecord[h.verseKey] = h.color;
+            });
+          }
+          const loadedSurahs = new Set(get().loadedSurahs);
+          missing.forEach(n => loadedSurahs.add(n));
           set({
-            loadedSurah: surahNumber,
+            loadedSurahs,
             bookmarkedVerseKeys,
             notedVerseKeys,
             highlights: highlightsRecord,
             loading: false,
           });
+        } catch (error) {
+          console.error(
+            '[VerseAnnotationsStore] Failed to load annotations:',
+            error,
+          );
+          if (get().scopeRevision === scopeRevision) set({loading: false});
         }
-      } catch (error) {
-        console.error(
-          '[VerseAnnotationsStore] Failed to load annotations:',
-          error,
-        );
-        if (get().scopeRevision === scopeRevision) {
-          set({loading: false});
-        }
+      })();
+
+      inFlightLoad = load;
+      try {
+        await load;
+      } finally {
+        if (inFlightLoad === load) inFlightLoad = null;
       }
     },
 
     clearActiveView: () =>
       set(state => ({
         scopeRevision: state.scopeRevision + 1,
-        loadedSurah: null,
+        loadedSurahs: new Set<number>(),
         bookmarkedVerseKeys: new Set<string>(),
         notedVerseKeys: new Set<string>(),
         highlights: {},
@@ -122,9 +155,7 @@ export const useVerseAnnotationsStore = create<VerseAnnotationsState>()(
 
     // Query helpers (O(1))
     isBookmarked: (verseKey: string) => get().bookmarkedVerseKeys.has(verseKey),
-
     hasNote: (verseKey: string) => get().notedVerseKeys.has(verseKey),
-
     getHighlightColor: (verseKey: string) => get().highlights[verseKey] ?? null,
   }),
 );

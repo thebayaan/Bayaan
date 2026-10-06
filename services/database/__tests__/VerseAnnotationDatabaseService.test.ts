@@ -46,12 +46,12 @@ describe('VerseAnnotationDatabaseService owner-scoped local APIs', () => {
     expect(accountBookmark.ownerScope).toBe('qf:reader-1');
     expect(mockDb.runAsync).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('INSERT INTO bookmarks'),
+      expect.stringContaining('INSERT OR IGNORE INTO bookmarks'), // @ai
       expect.arrayContaining(['guest', '2:255', 2, 255, 'hafs']),
     );
     expect(mockDb.runAsync).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('INSERT INTO bookmarks'),
+      expect.stringContaining('INSERT OR IGNORE INTO bookmarks'), // @ai
       expect.arrayContaining(['qf:reader-1', '2:255', 2, 255, 'hafs']),
     );
   });

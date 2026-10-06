@@ -133,9 +133,7 @@ function requireOwnerScope(
 }
 
 export class VerseAnnotationDatabaseService {
-  constructor(
-    private readonly database = verseAnnotationDatabase,
-  ) {}
+  constructor(private readonly database = verseAnnotationDatabase) {}
 
   async initialize(): Promise<void> {
     await this.database.initialize();
@@ -182,8 +180,10 @@ export class VerseAnnotationDatabaseService {
       rewayahId: resolvedRewayahId,
     };
 
-    await db.runAsync(
-      `INSERT INTO bookmarks (id, owner_scope, verse_key, surah_number, ayah_number, created_at, rewayah_id)
+    // @ai-start
+    // Keep #314's idempotent insert with the account-scoped unique key.
+    const result = await db.runAsync(
+      `INSERT OR IGNORE INTO bookmarks (id, owner_scope, verse_key, surah_number, ayah_number, created_at, rewayah_id)
       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         bookmark.id,
@@ -196,7 +196,18 @@ export class VerseAnnotationDatabaseService {
       ],
     );
 
+    if (result?.changes === 0) {
+      // An ignored duplicate must return its real ID/remote metadata so the
+      // sync outbox never references a generated ID that was not persisted.
+      const existing = await db.getFirstAsync<BookmarkRow>(
+        'SELECT * FROM bookmarks WHERE owner_scope = ? AND verse_key = ?',
+        [resolvedOwnerScope, verseKey],
+      );
+      if (!existing) throw new Error('Bookmark was not persisted');
+      return mapBookmarkRow(existing);
+    }
     return bookmark;
+    // @ai-end
   }
 
   async removeBookmark(verseKey: string): Promise<void> {
@@ -514,7 +525,10 @@ export class VerseAnnotationDatabaseService {
   }
 
   async getHighlightsBySurah(surahNumber: number): Promise<VerseHighlight[]> {
-    return this.getHighlightsBySurahInOwnerScope(GUEST_OWNER_SCOPE, surahNumber);
+    return this.getHighlightsBySurahInOwnerScope(
+      GUEST_OWNER_SCOPE,
+      surahNumber,
+    );
   }
 
   async getHighlightsBySurahInOwnerScope(

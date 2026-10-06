@@ -165,6 +165,62 @@ beforeEach(() => {
   useVerseAnnotationsStore.getState().clearActiveView();
 });
 
+// @ai-start
+it.each([true, false])(
+  'dismisses failed bookmark persistence only in the original scope (current=%s)',
+  async scopeCurrent => {
+    let reject!: (error: Error) => void;
+    const accountAdd = jest
+      .spyOn(qfSyncDatabaseService, 'addBookmark')
+      .mockImplementation(
+        () =>
+          new Promise((_, fail) => {
+            reject = fail;
+          }),
+      );
+    const errorLog = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    let screen!: renderer.ReactTestRenderer;
+    await act(async () => {
+      screen = renderer.create(
+        <VerseActionsSheet
+          sheetId="verse-actions"
+          payload={{verseKey: '2:255', surahNumber: 2, ayahNumber: 255}}
+        />,
+      );
+    });
+    let button = screen.root.findByProps({children: 'Bookmark'});
+    while (button.parent && typeof button.props.onPress !== 'function')
+      button = button.parent;
+    let action!: Promise<void>;
+    await act(async () => {
+      action = button.props.onPress();
+      await Promise.resolve();
+    });
+    expect(accountAdd).toHaveBeenCalledTimes(1);
+    if (!scopeCurrent)
+      await act(async () =>
+        useQfSyncStore.setState({activeAccountId: 'account-b'}),
+      );
+    mockSheetHide.mockClear(); // Ignore the scope hook's earlier dismissal.
+    await act(async () => {
+      reject(new Error('disk write failed'));
+      await action;
+    });
+    expect(mockSheetHide).toHaveBeenCalledTimes(scopeCurrent ? 1 : 0);
+    expect(useVerseAnnotationsStore.getState().isBookmarked('2:255')).toBe(
+      false,
+    );
+    expect(errorLog).toHaveBeenCalledWith(
+      '[VerseActionsSheet] Bookmark toggle failed:',
+      expect.any(Error),
+    );
+    await act(async () => screen.unmount());
+  },
+);
+// @ai-end
+
 it('rejects a retained bookmark press after its opening account changes', async () => {
   const accountAdd = jest.spyOn(qfSyncDatabaseService, 'addBookmark');
   let screen!: renderer.ReactTestRenderer;
