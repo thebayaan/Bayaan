@@ -2,11 +2,13 @@
 
 | Field    | Value                                                                       |
 | -------- | --------------------------------------------------------------------------- |
-| Status   | Proposed                                                                    |
+| Status   | Proposed — no conforming implementation (see status note)                   |
 | Date     | 2026-05-26                                                                  |
 | Author   | Omar Zarka (@omar-zarka)                                                    |
 | Reviewer | @osmansaeday                                                                |
 | Related  | RFC-007 (multi-tenancy seam), RFC-010 (catalog version endpoint), RFC-016 (server-driven home rows) |
+
+> **Status note (2026-10-05).** This RFC was written as if RFC-016's `/v1/home-config` endpoint and `hooks/useRemoteHomeConfig.ts` had shipped. They have not. The client half (PR #289) was closed without merging, and the backend half (thebayaan/bayaan-backend#23) was never merged. There is no `useRemoteHomeConfig.ts` in this repo and no `/v1/home-config` route on the backend. Wherever this document says "shipped", "deployed", or "the shipped hook/endpoint", read it as describing that unmerged proposal. `services/catalogVersionPoll.ts` (RFC-010) is still the only server-driven config poller in the codebase, and the envelope below is a proposal with no conforming implementation yet. Listen-tab row order still comes only from `branding.homeRowConfig`.
 
 ## Summary
 
@@ -14,7 +16,7 @@ Codify the wire-shape and client-side polling contract that RFC-010 (`/v1/catalo
 
 Also codify the **platform-parity rule** that RFC-016 introduced as a first-class contract on envelope endpoints: no `?platform=` query parameter, no per-platform variance in the response, and a defined escape hatch for the rare case where a row or feature genuinely cannot exist on a given surface.
 
-Doc only. Zero code change. The envelope, auth, and status-code rules below are written to match what the shipped RFC-016 `/v1/home-config` endpoint and `hooks/useRemoteHomeConfig.ts` already do — the deployed code conforms to this contract as documented. The one forward-looking item (a CDN `Cache-Control` header) is called out explicitly as a recommendation, not a claim about the current backend.
+Doc only. Zero code change. The envelope, auth, and status-code rules below were written to match the RFC-016 `/v1/home-config` endpoint and `hooks/useRemoteHomeConfig.ts` proposed in PR #289 / bayaan-backend#23. Neither was merged (see the status note above), so nothing in the codebase conforms to this contract today. The one forward-looking item (a CDN `Cache-Control` header) is called out explicitly as a recommendation, not a claim about the current backend.
 
 ## Motivation
 
@@ -168,7 +170,7 @@ Rejected per RFC-016 alternative C: home row order and the candidate future seam
 
 **Neutral:**
 
-- The shipped RFC-016 `/v1/home-config` endpoint and `useRemoteHomeConfig.ts` hook conform to the envelope, auth, and 404-on-missing-row rules as documented above — this RFC describes the deployed reality, not a target state. No code change to either is required to satisfy the contract. The only non-shipped item is the `Cache-Control` recommendation, which is explicitly flagged as a follow-up rather than a conformance claim.
+- The RFC-016 `/v1/home-config` endpoint and `useRemoteHomeConfig.ts` hook this RFC was modelled on were never merged (PR #289 closed, bayaan-backend#23 unmerged). The contract therefore describes a target state, not deployed code. The only non-shipped item is the `Cache-Control` recommendation, which is explicitly flagged as a follow-up rather than a conformance claim.
 - The escape hatch (new id) for genuine platform-only features is the same pattern RFC-016 already implies; this RFC just names it.
 
 **Negative / risks:**
@@ -196,6 +198,6 @@ cc @osmansaeday. This RFC directly responds to the two specific questions in RFC
 1. **No `?platform=` from day 1** — endorsed, with the escape-hatch pattern named explicitly.
 2. **Wire shape as future standard** — yes, formalized as the `data`-wrapped envelope (`{ data: { version, updated_at, ...payload } }`), matching exactly what the shipped `/v1/home-config` serves and `useRemoteHomeConfig.ts` parses, with four candidate future consumers listed.
 
-If you accept this RFC, RFC-016 ships as-is — the envelope, Bearer auth, and 404-on-missing-row rules above are written to describe the deployed `/v1/home-config` + `useRemoteHomeConfig.ts`, so the conformance claim is now literal rather than aspirational. The only forward-looking item is the optional `Cache-Control` header, flagged as a recommendation, not a current claim. If you want adjustments to the envelope before locking it in, this is the cheapest moment to make them — zero code change either way.
+*(Superseded: the RFC-016 home-config implementation was closed without merging, so the conformance claim in this paragraph no longer applies. See the status note at the top.)* If you accept this RFC, RFC-016 ships as-is — the envelope, Bearer auth, and 404-on-missing-row rules above are written to describe the proposed `/v1/home-config` + `useRemoteHomeConfig.ts`. The only forward-looking item is the optional `Cache-Control` header, flagged as a recommendation, not a current claim. If you want adjustments to the envelope before locking it in, this is the cheapest moment to make them — zero code change either way.
 
 Happy to fold this into RFC-016 directly if you would rather have one document instead of two. The argument for keeping it separate is that the envelope contract outlives any single seam.
