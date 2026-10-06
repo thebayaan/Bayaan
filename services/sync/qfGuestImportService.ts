@@ -3,6 +3,11 @@ import {
   type VerseAnnotationDatabase,
 } from '@/services/database/VerseAnnotationDatabase';
 
+import {
+  withQfSyncTransaction,
+  type QfSyncSqliteExecutor,
+} from './qfSyncTransaction';
+
 export type QfGuestImportDecision = 'merge' | 'keep_separate';
 
 export interface QfGuestImportOffer {
@@ -28,9 +33,7 @@ interface QfGuestImportServiceOptions {
   generateId?: () => string;
 }
 
-type SyncDatabaseConnection = Awaited<
-  ReturnType<VerseAnnotationDatabase['getConnection']>
->;
+type SyncDatabaseConnection = QfSyncSqliteExecutor;
 
 interface DecisionRow {
   guest_owner_scope: string;
@@ -72,6 +75,11 @@ function decisionId(accountId: string): string {
   return `guest-decision:${accountId}`;
 }
 
+function guestRowPrefix(accountId: string, resource: string): string {
+  // Length-prefix the account so arbitrary opaque IDs cannot collide.
+  return `guest-row:${accountId.length}:${accountId}:${resource}:`;
+}
+
 function decisionFromRow(
   row: DecisionRow | null,
 ): QfGuestImportDecision | null {
@@ -100,25 +108,30 @@ export class QfGuestImportService {
   async getOffer(accountId: string): Promise<QfGuestImportOffer | null> {
     const db = await this.database.getConnection();
     const scope = ownerScope(accountId);
-    if (await this.getDecisionInTransaction(db, scope)) return null;
-    const counts = await this.getGuestCounts(db);
+    const counts = await this.getGuestCounts(db, accountId, scope);
     return counts.totalCount > 0 ? counts : null;
   }
 
   async keepSeparate(accountId: string): Promise<QfGuestImportResult> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const scope = ownerScope(accountId);
     let result: QfGuestImportResult = {status: 'kept_separate'};
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const existing = await this.getDecisionInTransaction(db, scope);
-      if (existing) {
+      const counts = await this.getGuestCounts(db, accountId, scope);
+      if (existing && counts.totalCount === 0) {
         result = {status: 'already_decided', decision: existing};
         return;
       }
+      await this.recordCoveredRows(db, accountId, scope);
       await db.runAsync(
         `INSERT INTO qf_guest_imports
            (id, owner_scope, guest_owner_scope, imported_at, bookmark_count, note_count, highlight_count)
-         VALUES (?, ?, 'guest:keep_separate', ?, 0, 0, 0)`,
+         VALUES (?, ?, 'guest:keep_separate', ?, 0, 0, 0)
+         ON CONFLICT(id) DO UPDATE SET
+           guest_owner_scope = excluded.guest_owner_scope,
+           imported_at = excluded.imported_at,
+           bookmark_count = 0, note_count = 0, highlight_count = 0`,
         [decisionId(accountId), scope, this.now()],
       );
     });
@@ -126,7 +139,7 @@ export class QfGuestImportService {
   }
 
   async merge(accountId: string): Promise<QfGuestImportResult> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const scope = ownerScope(accountId);
     let result: QfGuestImportResult = {
       status: 'merged',
@@ -135,20 +148,27 @@ export class QfGuestImportService {
       highlightCount: 0,
     };
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const existing = await this.getDecisionInTransaction(db, scope);
-      if (existing) {
+      const counts = await this.getGuestCounts(db, accountId, scope);
+      if (existing && counts.totalCount === 0) {
         result = {status: 'already_decided', decision: existing};
         return;
       }
 
       const bookmarkCount = await this.copyBookmarks(db, accountId, scope);
       const noteCount = await this.copyNotes(db, accountId, scope);
-      const highlightCount = await this.copyHighlights(db, scope);
+      const highlightCount = await this.copyHighlights(db, accountId, scope);
       await db.runAsync(
         `INSERT INTO qf_guest_imports
            (id, owner_scope, guest_owner_scope, imported_at, bookmark_count, note_count, highlight_count)
-         VALUES (?, ?, 'guest:merge', ?, ?, ?, ?)`,
+         VALUES (?, ?, 'guest:merge', ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           guest_owner_scope = excluded.guest_owner_scope,
+           imported_at = excluded.imported_at,
+           bookmark_count = excluded.bookmark_count,
+           note_count = excluded.note_count,
+           highlight_count = excluded.highlight_count`,
         [
           decisionId(accountId),
           scope,
@@ -174,24 +194,57 @@ export class QfGuestImportService {
   ): Promise<QfGuestImportDecision | null> {
     const row = (await db.getFirstAsync(
       `SELECT guest_owner_scope FROM qf_guest_imports
-       WHERE owner_scope = ? ORDER BY imported_at, id LIMIT 1`,
-      [scope],
+       WHERE owner_scope = ? AND id = ?`,
+      [scope, decisionId(scope.slice(3))],
     )) as DecisionRow | null;
     return decisionFromRow(row);
   }
 
+  private async recordCoveredRows(
+    db: SyncDatabaseConnection,
+    accountId: string,
+    scope: `qf:${string}`,
+  ): Promise<void> {
+    for (const [table, resource] of [
+      ['bookmarks', 'BOOKMARK'],
+      ['notes', 'NOTE'],
+      ['highlights', 'HIGHLIGHT'],
+    ]) {
+      // Row-level consent uses the existing durable import ledger. Existing
+      // legacy decisions have no membership evidence, so re-offer, not auto-copy.
+      await db.runAsync(
+        `INSERT OR IGNORE INTO qf_guest_imports
+           (id, owner_scope, guest_owner_scope, imported_at)
+         SELECT ? || id, ?, 'guest:keep_separate', ? FROM ${table}
+         WHERE owner_scope = 'guest'`,
+        [guestRowPrefix(accountId, resource), scope, this.now()],
+      );
+    }
+  }
+
   private async getGuestCounts(
     db: SyncDatabaseConnection,
+    accountId: string,
+    scope: `qf:${string}`,
   ): Promise<QfGuestImportOffer> {
     const [bookmarks, notes, highlights] = await Promise.all([
       db.getFirstAsync(
-        `SELECT COUNT(*) AS count FROM bookmarks WHERE owner_scope = 'guest'`,
+        `SELECT COUNT(*) AS count FROM bookmarks AS guest
+         WHERE owner_scope = 'guest' AND NOT EXISTS
+           (SELECT 1 FROM qf_guest_imports WHERE owner_scope = ? AND id = ? || guest.id)`,
+        [scope, guestRowPrefix(accountId, 'BOOKMARK')],
       ),
       db.getFirstAsync(
-        `SELECT COUNT(*) AS count FROM notes WHERE owner_scope = 'guest'`,
+        `SELECT COUNT(*) AS count FROM notes AS guest
+         WHERE owner_scope = 'guest' AND NOT EXISTS
+           (SELECT 1 FROM qf_guest_imports WHERE owner_scope = ? AND id = ? || guest.id)`,
+        [scope, guestRowPrefix(accountId, 'NOTE')],
       ),
       db.getFirstAsync(
-        `SELECT COUNT(*) AS count FROM highlights WHERE owner_scope = 'guest'`,
+        `SELECT COUNT(*) AS count FROM highlights AS guest
+         WHERE owner_scope = 'guest' AND NOT EXISTS
+           (SELECT 1 FROM qf_guest_imports WHERE owner_scope = ? AND id = ? || guest.id)`,
+        [scope, guestRowPrefix(accountId, 'HIGHLIGHT')],
       ),
     ]);
     const bookmarkCount = (bookmarks as CountRow | null)?.count ?? 0;
@@ -212,7 +265,10 @@ export class QfGuestImportService {
   ): Promise<number> {
     const rows = (await db.getAllAsync(
       `SELECT id, verse_key, surah_number, ayah_number, created_at, rewayah_id
-       FROM bookmarks WHERE owner_scope = 'guest' ORDER BY created_at, id`,
+       FROM bookmarks AS guest WHERE owner_scope = 'guest' AND NOT EXISTS
+         (SELECT 1 FROM qf_guest_imports WHERE owner_scope = ? AND id = ? || guest.id)
+       ORDER BY created_at, id`,
+      [scope, guestRowPrefix(accountId, 'BOOKMARK')],
     )) as GuestBookmarkRow[];
     let copied = 0;
     for (const row of rows) {
@@ -276,7 +332,10 @@ export class QfGuestImportService {
     const rows = (await db.getAllAsync(
       `SELECT id, verse_key, surah_number, ayah_number, content, verse_keys,
               created_at, updated_at, rewayah_id
-       FROM notes WHERE owner_scope = 'guest' ORDER BY created_at, id`,
+       FROM notes AS guest WHERE owner_scope = 'guest' AND NOT EXISTS
+         (SELECT 1 FROM qf_guest_imports WHERE owner_scope = ? AND id = ? || guest.id)
+       ORDER BY created_at, id`,
+      [scope, guestRowPrefix(accountId, 'NOTE')],
     )) as GuestNoteRow[];
     for (const row of rows) {
       const id = this.generateId();
@@ -324,11 +383,15 @@ export class QfGuestImportService {
 
   private async copyHighlights(
     db: SyncDatabaseConnection,
+    accountId: string,
     scope: `qf:${string}`,
   ): Promise<number> {
     const rows = (await db.getAllAsync(
       `SELECT id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id
-       FROM highlights WHERE owner_scope = 'guest' ORDER BY created_at, id`,
+       FROM highlights AS guest WHERE owner_scope = 'guest' AND NOT EXISTS
+         (SELECT 1 FROM qf_guest_imports WHERE owner_scope = ? AND id = ? || guest.id)
+       ORDER BY created_at, id`,
+      [scope, guestRowPrefix(accountId, 'HIGHLIGHT')],
     )) as GuestHighlightRow[];
     let copied = 0;
     for (const row of rows) {

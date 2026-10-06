@@ -420,7 +420,21 @@ export class QfSyncLifecycle {
         }
       }
 
-      const push = await this.options.coordinator.push(input);
+      let push: Awaited<ReturnType<QfSyncCoordinator['push']>> | undefined;
+      try {
+        push = await this.options.coordinator.push(input);
+      } finally {
+        // Conflict/uncertain-result recovery can pull additional remote rows,
+        // even before a deferred result or error. Publish those persisted rows
+        // without letting an old account cycle repopulate the active views.
+        if (this.isCurrent(epoch, accountId) && push?.status !== 'idle') {
+          const loadedSurahs = this.invalidateActiveViews();
+          await this.reloadActiveViews(loadedSurahs);
+          if (this.isCurrent(epoch, accountId)) {
+            useQfSyncStore.getState().refreshData();
+          }
+        }
+      }
       if (!this.isCurrent(epoch, accountId)) return;
       if (push.status === 'deferred') {
         this.handleDeferred(

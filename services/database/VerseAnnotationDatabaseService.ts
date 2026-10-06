@@ -12,6 +12,12 @@ import {
 } from '@/services/rewayah/RewayahIdentity';
 import {verseAnnotationDatabase} from '@/services/database/VerseAnnotationDatabase';
 import {GUEST_OWNER_SCOPE} from '@/services/database/migrations/userSyncV1';
+import type {SQLiteDatabase} from 'expo-sqlite';
+
+type AnnotationSqliteExecutor = Pick<
+  SQLiteDatabase,
+  'runAsync' | 'getFirstAsync'
+>;
 
 // Database row types (snake_case)
 interface BookmarkRow {
@@ -165,8 +171,9 @@ export class VerseAnnotationDatabaseService {
     surahNumber: number,
     ayahNumber: number,
     rewayahId?: string,
+    transaction?: AnnotationSqliteExecutor,
   ): Promise<VerseBookmark> {
-    const db = await this.ensureReady();
+    const db = transaction ?? (await this.ensureReady());
     const resolvedOwnerScope = requireOwnerScope(ownerScope);
     const resolvedRewayahId = resolveRewayahId(rewayahId);
 
@@ -217,8 +224,9 @@ export class VerseAnnotationDatabaseService {
   async removeBookmarkInOwnerScope(
     ownerScope: AnnotationOwnerScope,
     verseKey: string,
+    transaction?: AnnotationSqliteExecutor,
   ): Promise<void> {
-    const db = await this.ensureReady();
+    const db = transaction ?? (await this.ensureReady());
     await db.runAsync(
       `DELETE FROM bookmarks WHERE owner_scope = ? AND verse_key = ?`,
       [requireOwnerScope(ownerScope), verseKey],
@@ -300,8 +308,9 @@ export class VerseAnnotationDatabaseService {
     content: string,
     verseKeys?: string[],
     rewayahId?: string,
+    transaction?: AnnotationSqliteExecutor,
   ): Promise<VerseNote> {
-    const db = await this.ensureReady();
+    const db = transaction ?? (await this.ensureReady());
     const resolvedOwnerScope = requireOwnerScope(ownerScope);
 
     const now = Date.now();
@@ -347,8 +356,9 @@ export class VerseAnnotationDatabaseService {
     ownerScope: AnnotationOwnerScope,
     noteId: string,
     content: string,
+    transaction?: AnnotationSqliteExecutor,
   ): Promise<void> {
-    const db = await this.ensureReady();
+    const db = transaction ?? (await this.ensureReady());
     await db.runAsync(
       `UPDATE notes SET content = ?, updated_at = ? WHERE owner_scope = ? AND id = ?`,
       [content, Date.now(), requireOwnerScope(ownerScope), noteId],
@@ -394,8 +404,9 @@ export class VerseAnnotationDatabaseService {
   async deleteNoteByIdInOwnerScope(
     ownerScope: AnnotationOwnerScope,
     noteId: string,
+    transaction?: AnnotationSqliteExecutor,
   ): Promise<void> {
-    const db = await this.ensureReady();
+    const db = transaction ?? (await this.ensureReady());
     await db.runAsync(`DELETE FROM notes WHERE owner_scope = ? AND id = ?`, [
       requireOwnerScope(ownerScope),
       noteId,

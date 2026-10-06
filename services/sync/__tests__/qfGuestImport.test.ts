@@ -32,13 +32,16 @@ type TestDatabase = {
     params?: unknown[] | Record<string, unknown>,
   ): Promise<T | null>;
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
+  withExclusiveTransactionAsync(
+    task: (db: ExpoSqliteWasmDatabase) => Promise<void>,
+  ): Promise<void>;
   closeAsync(): Promise<void>;
 };
 
 class ExpoSqliteWasmDatabase implements TestDatabase {
   private readonly dbPromise: Promise<number>;
 
-  constructor(databaseName: string) {
+  constructor(private readonly databaseName: string) {
     this.dbPromise = sqlitePromise.then(({sqlite3}) =>
       sqlite3.open_v2(databaseName),
     );
@@ -104,6 +107,20 @@ class ExpoSqliteWasmDatabase implements TestDatabase {
     } catch (error) {
       await this.execAsync('ROLLBACK');
       throw error;
+    }
+  }
+
+  async withExclusiveTransactionAsync(
+    task: (db: ExpoSqliteWasmDatabase) => Promise<void>,
+  ): Promise<void> {
+    const txn = new ExpoSqliteWasmDatabase(this.databaseName);
+    // Preserve fixture hooks while executing SQL against the private handle.
+    const sharedRun = this.runAsync;
+    txn.runAsync = (source, params) => sharedRun.call(txn, source, params);
+    try {
+      await txn.withTransactionAsync(() => task(txn));
+    } finally {
+      await txn.closeAsync();
     }
   }
 
@@ -245,13 +262,6 @@ describe('QfGuestImportService', () => {
     await expect(
       annotations.getAllNotesInOwnerScope('qf:account-b'),
     ).resolves.toEqual([]);
-    // Only a genuinely new guest batch is available to another account.
-    await annotations.addNote('1:1', 1, 1, 'New guest draft');
-    await expect(guestImport.getOffer('account-b')).resolves.toMatchObject({
-      noteCount: 1,
-      totalCount: 1,
-    });
-
     await expect(guestImport.keepSeparate('account-a')).resolves.toEqual({
       status: 'already_decided',
       decision: 'merge',
@@ -266,6 +276,25 @@ describe('QfGuestImportService', () => {
         ['qf:account-a'],
       ),
     ).resolves.toEqual({count: 2});
+    // An earlier merge covers only the claimed batch, not future guest drafts.
+    await annotations.addNote('1:1', 1, 1, 'New guest draft');
+    await expect(guestImport.getOffer('account-a')).resolves.toMatchObject({
+      noteCount: 1,
+      totalCount: 1,
+    });
+    await expect(guestImport.getOffer('account-b')).resolves.toMatchObject({
+      noteCount: 1,
+      totalCount: 1,
+    });
+    await expect(guestImport.merge('account-a')).resolves.toMatchObject({
+      status: 'merged',
+      noteCount: 1,
+    });
+    await expect(guestImport.getOffer('account-a')).resolves.toBeNull();
+    await expect(annotations.getAllNotes()).resolves.toHaveLength(0);
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:account-a'),
+    ).resolves.toHaveLength(2);
     await database.close();
   });
 
@@ -288,17 +317,98 @@ describe('QfGuestImportService', () => {
     await database.close();
   });
 
+  it('offers new rows after keep-separate and merges only the newly consented batch', async () => {
+    const {database, annotations, guestImport} = await createServices(
+      'new-batch-after-separate.db',
+    );
+    await annotations.addBookmark('2:255', 2, 255);
+    await annotations.addNote('1:1', 1, 1, 'Keep this guest-only');
+    await annotations.upsertHighlight('3:7', 3, 7, 'yellow');
+    await guestImport.keepSeparate('account-a');
+    await expect(guestImport.getOffer('account-a')).resolves.toBeNull();
+
+    await annotations.addBookmark('18:10', 18, 10);
+    await annotations.addNote('1:2', 1, 2, 'New guest draft');
+    await annotations.upsertHighlight('3:8', 3, 8, 'green');
+    await expect(guestImport.getOffer('account-a')).resolves.toEqual({
+      bookmarkCount: 1,
+      noteCount: 1,
+      highlightCount: 1,
+      totalCount: 3,
+    });
+    // Decisions are account-scoped, not global claims on guest-only rows.
+    await expect(guestImport.getOffer('account-b')).resolves.toMatchObject({
+      totalCount: 6,
+    });
+    await expect(guestImport.merge('account-a')).resolves.toMatchObject({
+      status: 'merged',
+      bookmarkCount: 1,
+      noteCount: 1,
+      highlightCount: 1,
+    });
+    await expect(annotations.getAllBookmarks()).resolves.toMatchObject([
+      {verseKey: '2:255'},
+    ]);
+    await expect(annotations.getAllNotes()).resolves.toMatchObject([
+      {content: 'Keep this guest-only'},
+    ]);
+    await expect(annotations.getHighlightsBySurah(3)).resolves.toMatchObject([
+      {verseKey: '3:7'},
+    ]);
+    await expect(guestImport.getOffer('account-a')).resolves.toBeNull();
+    await expect(guestImport.merge('account-a')).resolves.toEqual({
+      status: 'already_decided',
+      decision: 'merge',
+    });
+    // Persisted membership still applies after a service/database reopen.
+    await database.close();
+    await expect(guestImport.getOffer('account-a')).resolves.toBeNull();
+    await annotations.addNote('1:3', 1, 3, 'Third guest batch');
+    await expect(guestImport.getOffer('account-a')).resolves.toMatchObject({
+      noteCount: 1,
+      totalCount: 1,
+    });
+    await guestImport.keepSeparate('account-a');
+    await expect(guestImport.getOffer('account-a')).resolves.toBeNull();
+    await database.close();
+  });
+
+  it('reconfirms legacy decisions with no batch membership rather than silently importing', async () => {
+    const {database, annotations, guestImport} =
+      await createServices('legacy-batch.db');
+    await annotations.addNote('1:1', 1, 1, 'Unclassified guest draft');
+    const db = await database.getConnection();
+    await db.runAsync(
+      `INSERT INTO qf_guest_imports (id, owner_scope, guest_owner_scope, imported_at)
+       VALUES (?, ?, 'guest:keep_separate', 1)`,
+      ['guest-decision:account-a', 'qf:account-a'],
+    );
+    await expect(guestImport.getDecision('account-a')).resolves.toBe(
+      'keep_separate',
+    );
+    await expect(guestImport.getOffer('account-a')).resolves.toMatchObject({
+      noteCount: 1,
+      totalCount: 1,
+    });
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:account-a'),
+    ).resolves.toEqual([]);
+    await guestImport.keepSeparate('account-a');
+    await expect(guestImport.getOffer('account-a')).resolves.toBeNull();
+    await database.close();
+  });
+
   it('rolls back copied rows, outbox rows, and the decision when enqueue fails', async () => {
     const {database, annotations, guestImport} =
       await createServices('rollback.db');
     await annotations.addBookmark('2:255', 2, 255);
     const db = (await database.getConnection()) as TestDatabase;
-    const originalRunAsync = db.runAsync.bind(db);
-    db.runAsync = async (source, params) => {
+    const originalRunAsync = db.runAsync;
+    db.runAsync = async function (source, params) {
       if (source.includes('INSERT INTO qf_sync_outbox')) {
         throw new Error('injected enqueue failure');
       }
-      return originalRunAsync(source, params);
+      return originalRunAsync.call(this, source, params);
     };
 
     await expect(guestImport.merge('account-c')).rejects.toThrow(

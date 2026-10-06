@@ -15,6 +15,10 @@ import type {QfMutationType, QfSyncResource} from '@/types/qf-sync';
 import type {BayaanSyncPushResult} from '@/services/sync/bayaanSyncCodec';
 import type {BayaanSyncMutation} from '@/services/sync/bayaanSyncCodec';
 import surahData from '@/data/surahData.json';
+import {
+  withQfSyncTransaction,
+  type QfSyncSqliteExecutor,
+} from './qfSyncTransaction';
 
 interface AddBookmarkInput {
   accountId: string;
@@ -122,9 +126,7 @@ interface QfSyncDatabaseServiceOptions {
   annotations?: VerseAnnotationDatabaseService;
 }
 
-type SyncDatabaseConnection = Awaited<
-  ReturnType<VerseAnnotationDatabase['getConnection']>
->;
+type SyncDatabaseConnection = QfSyncSqliteExecutor;
 
 export interface QfOutboxEntry {
   localOperationId: string;
@@ -409,12 +411,12 @@ export class QfSyncDatabaseService {
   }
 
   async addBookmark(input: AddBookmarkInput): Promise<VerseBookmark> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     const rewayahId = input.rewayahId ?? DEFAULT_REWAYAH_ID;
     let bookmark: VerseBookmark | undefined;
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const existingOperation = await this.getBookmarkOutboxEntry(
         db,
         ownerScope,
@@ -426,6 +428,7 @@ export class QfSyncDatabaseService {
         input.surahNumber,
         input.ayahNumber,
         rewayahId,
+        db,
       );
 
       const payload = {
@@ -494,10 +497,10 @@ export class QfSyncDatabaseService {
   }
 
   async removeBookmark(input: RemoveBookmarkInput): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const bookmark = await this.getBookmarkRow(
         db,
         ownerScope,
@@ -516,6 +519,7 @@ export class QfSyncDatabaseService {
       await this.annotations.removeBookmarkInOwnerScope(
         ownerScope,
         input.verseKey,
+        db,
       );
       const deletedAt = Date.now();
       const payload = {
@@ -570,12 +574,12 @@ export class QfSyncDatabaseService {
   }
 
   async addNote(input: AddNoteInput): Promise<VerseNote> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     const rewayahId = input.rewayahId ?? DEFAULT_REWAYAH_ID;
     let note: VerseNote | undefined;
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       note = await this.annotations.addNoteForOwnerScope(
         ownerScope,
         input.verseKey,
@@ -584,6 +588,7 @@ export class QfSyncDatabaseService {
         input.content,
         input.verseKeys,
         rewayahId,
+        db,
       );
 
       await this.enqueueMutation(db, {
@@ -615,10 +620,10 @@ export class QfSyncDatabaseService {
   }
 
   async updateNote(input: UpdateNoteInput): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const before = await this.getNoteRow(db, ownerScope, input.noteId);
       if (!before) {
         throw new Error(`Note ${input.noteId} was not found`);
@@ -628,6 +633,7 @@ export class QfSyncDatabaseService {
         ownerScope,
         input.noteId,
         input.content,
+        db,
       );
 
       const after = await this.getNoteRow(db, ownerScope, input.noteId);
@@ -722,10 +728,10 @@ export class QfSyncDatabaseService {
   }
 
   async deleteNote(input: DeleteNoteInput): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const note = await this.getNoteRow(db, ownerScope, input.noteId);
       if (!note) {
         return;
@@ -740,6 +746,7 @@ export class QfSyncDatabaseService {
       await this.annotations.deleteNoteByIdInOwnerScope(
         ownerScope,
         input.noteId,
+        db,
       );
       const remoteId =
         note.remote_id ?? existingOperation?.remoteId ?? undefined;
@@ -804,11 +811,11 @@ export class QfSyncDatabaseService {
   async upsertReadingLocation(
     input: UpsertReadingLocationInput,
   ): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     const rewayahId = input.rewayahId ?? DEFAULT_REWAYAH_ID;
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const existing = await this.getLatestReadingLocationRow(db, ownerScope);
       if (existing && input.lastReadAt <= existing.last_read_at) {
         return;
@@ -989,11 +996,11 @@ export class QfSyncDatabaseService {
   async markOperationInFlight(
     input: MarkOperationInFlightInput,
   ): Promise<QfOutboxEntry> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     let marked: OutboxRow | null = null;
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const row = (await db.getFirstAsync(
         `SELECT * FROM qf_sync_outbox
          WHERE owner_scope = ? AND local_operation_id = ?`,
@@ -1038,10 +1045,10 @@ export class QfSyncDatabaseService {
   async reservePushBatch(
     input: ReservePushBatchInput,
   ): Promise<QfOutboxEntry[]> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     const reserved: QfOutboxEntry[] = [];
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const candidates = (await db.getAllAsync(
         `SELECT * FROM qf_sync_outbox
          WHERE owner_scope = ? AND delivery_state = 'PENDING'
@@ -1080,10 +1087,10 @@ export class QfSyncDatabaseService {
   }
 
   async acknowledgeOperation(input: AcknowledgeOperationInput): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const row = (await db.getFirstAsync(
         `SELECT * FROM qf_sync_outbox WHERE owner_scope = ? AND local_operation_id = ?`,
         [ownerScope, input.localOperationId],
@@ -1101,11 +1108,11 @@ export class QfSyncDatabaseService {
     if (input.sent.length !== input.result.mutations.length) {
       throw new Error('Push response does not correlate to the sent batch');
     }
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     let committed = false;
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const state = (await db.getFirstAsync(
         `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
         [ownerScope],
@@ -1182,9 +1189,9 @@ export class QfSyncDatabaseService {
     input: ReleaseInFlightOperationsInput,
   ): Promise<void> {
     if (input.localOperationIds.length === 0) return;
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       for (const localOperationId of input.localOperationIds) {
         await db.runAsync(
           `UPDATE qf_sync_outbox
@@ -1203,12 +1210,12 @@ export class QfSyncDatabaseService {
   async reconcileUncertainOperations(
     input: ReconcileUncertainOperationsInput,
   ): Promise<{acknowledged: number; ambiguous: number}> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     let acknowledged = 0;
     let ambiguous = 0;
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const rows = (await db.getAllAsync(
         `SELECT * FROM qf_sync_outbox
          WHERE owner_scope = ? AND delivery_state IN ('IN_FLIGHT', 'AMBIGUOUS')
@@ -1297,9 +1304,9 @@ export class QfSyncDatabaseService {
   async rebasePendingOperations(
     input: RebasePendingOperationsInput,
   ): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const rows = (await db.getAllAsync(
         `SELECT * FROM qf_sync_outbox
          WHERE owner_scope = ? AND delivery_state = 'PENDING'
@@ -1464,10 +1471,10 @@ export class QfSyncDatabaseService {
   }
 
   async applyRemoteNote(input: ApplyRemoteNoteInput): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
 
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const canonical = await this.getNoteRowByRemoteId(
         db,
         ownerScope,
@@ -1556,6 +1563,7 @@ export class QfSyncDatabaseService {
         pendingPayload.content,
         pendingPayload.verseKeys,
         pendingPayload.rewayahId,
+        db,
       );
 
       await this.clearNoteOutbox(db, ownerScope, canonical.id);
@@ -1978,7 +1986,7 @@ export class QfSyncDatabaseService {
   }
 
   private async enqueueMutation(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     {
       accountId,
       ownerScope,
@@ -2036,7 +2044,7 @@ export class QfSyncDatabaseService {
   }
 
   private async getBookmarkRow(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     verseKey: string,
   ): Promise<BookmarkRow | null> {
@@ -2047,7 +2055,7 @@ export class QfSyncDatabaseService {
   }
 
   private async getNoteRow(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     noteId: string,
   ): Promise<NoteRow | null> {
@@ -2058,7 +2066,7 @@ export class QfSyncDatabaseService {
   }
 
   private async getNoteRowByRemoteId(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     remoteId: string,
   ): Promise<NoteRow | null> {
@@ -2069,7 +2077,7 @@ export class QfSyncDatabaseService {
   }
 
   private async getLatestReadingLocationRow(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
   ): Promise<ReadingLocationRow | null> {
     return (await db.getFirstAsync(
@@ -2079,7 +2087,7 @@ export class QfSyncDatabaseService {
   }
 
   private async getReadingLocationRowById(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     id: string,
   ): Promise<ReadingLocationRow | null> {
@@ -2090,7 +2098,7 @@ export class QfSyncDatabaseService {
   }
 
   private async getLatestNoteOutboxEntry(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     noteId: string,
   ): Promise<QfOutboxEntry | null> {
@@ -2139,7 +2147,7 @@ export class QfSyncDatabaseService {
   }
 
   private async clearBookmarkOutbox(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     verseKey: string,
   ): Promise<void> {
@@ -2162,7 +2170,7 @@ export class QfSyncDatabaseService {
   }
 
   private async clearNoteOutbox(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
     noteId: string,
   ): Promise<void> {
@@ -2174,7 +2182,7 @@ export class QfSyncDatabaseService {
   }
 
   private async clearReadingSessionOutbox(
-    db: Awaited<ReturnType<VerseAnnotationDatabase['getConnection']>>,
+    db: SyncDatabaseConnection,
     ownerScope: AnnotationOwnerScope,
   ): Promise<void> {
     await db.runAsync(

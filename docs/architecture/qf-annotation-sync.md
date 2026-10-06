@@ -13,6 +13,38 @@ only returning to the same account resumes them. This is not a device-data purge
 The shared-device retention/purge policy still needs a product decision before
 launch; no destructive cleanup is inferred from signing out.
 
+## Guest decisions cover rows, not an account's lifetime
+
+Guest-import consent applies to the offered rows. A prior merge does not silently
+import future signed-out drafts. A keep-separate decision records account-scoped
+row membership in the existing `qf_guest_imports` ledger; those rows remain guest
+only and are not offered repeatedly. New guest bookmarks, notes, or highlights
+are offered again, including when returning to the same account. Merging that
+new batch excludes the rows previously kept separate. Copy, outbox enqueue,
+row claiming, and the decision are atomic. Another account's decision cannot
+suppress its own offer. Legacy decisions have no reliable batch-membership
+proof, so remaining guest rows require explicit reconfirmation rather than an
+automatic import. Editing an already kept-separate row does not revoke that
+row's guest-only disposition.
+
+## Transaction boundaries and view refresh
+
+Pull-page application, stable-head commits, outbox changes and guest-import
+claims use a private SQLite transaction connection. Native platforms use Expo's
+exclusive transaction callback handle; web opens a new connection to the same
+database. All SQL and annotation helpers inside a transaction use that handle,
+not the shared live-annotation connection. Lock failures surface as failures;
+there is no fallback to a shared transaction that could silently roll back a
+successful live write. This is rollback isolation, not a claim of unlimited
+concurrent write availability.
+
+The lifecycle refreshes every loaded surah after its initial pull, and again
+after non-idle push/recovery completion, deferral, or failure. Push can pull
+additional remote rows after a conflict or uncertain result. Those persisted
+rows must update annotation sets and `dataRevision` even if later recovery does
+not finish successfully. Account-epoch checks prevent an old cycle from
+repopulating a newer account's active views.
+
 ## Bookmark projection and cursor meaning
 
 QF supports `page`, `juz`, `surah`, and `ayah` bookmarks. Non-ayah bookmarks may

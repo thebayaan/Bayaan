@@ -13,6 +13,7 @@ import {
   type QfSyncTransport,
 } from '@/services/sync/qfSyncCoordinator';
 import type {QfOutboxEntry} from '@/services/sync/qfSyncDatabaseService';
+import type {QfSyncSqliteExecutor} from '@/services/sync/qfSyncTransaction';
 import type {
   BayaanSyncMutation,
   BayaanSyncPullPage,
@@ -468,6 +469,19 @@ class ExpoSqliteWasmDatabase implements TestDatabase {
       await this.execAsync('ROLLBACK');
       throw error;
     }
+  }
+
+  async withExclusiveTransactionAsync(
+    task: (txn: QfSyncSqliteExecutor) => Promise<void>,
+  ): Promise<void> {
+    // Existing fault-injection tests use this executor; isolation has its own suite.
+    await this.withTransactionAsync(() =>
+      task({
+        runAsync: this.runAsync.bind(this),
+        getAllAsync: this.getAllAsync.bind(this),
+        getFirstAsync: this.getFirstAsync.bind(this),
+      } as QfSyncSqliteExecutor),
+    );
   }
 
   async closeAsync(): Promise<void> {

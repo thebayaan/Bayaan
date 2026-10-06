@@ -1,3 +1,5 @@
+import type {QfSyncSqliteExecutor} from '@/services/sync/qfSyncTransaction';
+
 const sqlitePromise = (async () => {
   const fs = require('fs');
   const path = require('path');
@@ -110,6 +112,19 @@ class ExpoSqliteWasmDatabase implements TestDatabase {
       await this.execAsync('ROLLBACK');
       throw error;
     }
+  }
+
+  async withExclusiveTransactionAsync(
+    task: (txn: QfSyncSqliteExecutor) => Promise<void>,
+  ): Promise<void> {
+    // Existing fault-injection tests use this executor; isolation has its own suite.
+    await this.withTransactionAsync(() =>
+      task({
+        runAsync: this.runAsync.bind(this),
+        getAllAsync: this.getAllAsync.bind(this),
+        getFirstAsync: this.getFirstAsync.bind(this),
+      } as QfSyncSqliteExecutor),
+    );
   }
 
   async closeAsync(): Promise<void> {

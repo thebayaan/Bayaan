@@ -38,13 +38,16 @@ type TestDatabase = {
     params?: unknown[] | Record<string, unknown>,
   ): Promise<T | null>;
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
+  withExclusiveTransactionAsync(
+    task: (db: ExpoSqliteWasmDatabase) => Promise<void>,
+  ): Promise<void>;
   closeAsync(): Promise<void>;
 };
 
 class ExpoSqliteWasmDatabase implements TestDatabase {
   private readonly dbPromise: Promise<number>;
 
-  constructor(databaseName: string) {
+  constructor(private readonly databaseName: string) {
     this.dbPromise = sqlitePromise.then(({sqlite3}) =>
       sqlite3.open_v2(databaseName),
     );
@@ -105,6 +108,20 @@ class ExpoSqliteWasmDatabase implements TestDatabase {
     } catch (error) {
       await this.execAsync('ROLLBACK');
       throw error;
+    }
+  }
+
+  async withExclusiveTransactionAsync(
+    task: (db: ExpoSqliteWasmDatabase) => Promise<void>,
+  ): Promise<void> {
+    const txn = new ExpoSqliteWasmDatabase(this.databaseName);
+    // Preserve fixture hooks while executing SQL against the private handle.
+    const sharedRun = this.runAsync;
+    txn.runAsync = (source, params) => sharedRun.call(txn, source, params);
+    try {
+      await txn.withTransactionAsync(() => task(txn));
+    } finally {
+      await txn.closeAsync();
     }
   }
 
@@ -181,17 +198,17 @@ function createLifecycle(
 async function pauseNextWrite(sqlFragment: string) {
   const connection =
     (await verseAnnotationDatabase.getConnection()) as unknown as TestDatabase;
-  const originalRunAsync = connection.runAsync.bind(connection);
+  const originalRunAsync = connection.runAsync;
   const entered = deferred();
   const release = deferred();
   let paused = false;
-  connection.runAsync = async (source, params) => {
+  connection.runAsync = async function (source, params) {
     if (!paused && source.includes(sqlFragment)) {
       paused = true;
       entered.resolve();
       await release.promise;
     }
-    return originalRunAsync(source, params);
+    return originalRunAsync.call(this, source, params);
   };
   return {
     entered: entered.promise,
@@ -336,6 +353,80 @@ it('reloads every painted surah after a pull and account handoff without leaking
   await lifecycle.stop();
 });
 // @ai-end
+
+it.each(['recovered', 'synced', 'deferred', 'error'] as const)(
+  'refreshes all loaded annotation views after push recovery persists remote rows (%s)',
+  async outcome => {
+    const {
+      verseAnnotationDatabaseService: database,
+    } = require('@/services/database/VerseAnnotationDatabaseService');
+    const push = jest.fn(async () => {
+      // Represents rows persisted by the coordinator's conflict/uncertain pull,
+      // after the lifecycle's initial-pull refresh has already finished.
+      await database.addBookmarkForOwnerScope(
+        'qf:account-a',
+        '114:3',
+        114,
+        3,
+        'hafs',
+      );
+      await database.addNoteForOwnerScope(
+        'qf:account-a',
+        '112:1',
+        112,
+        1,
+        'From another device',
+        ['112:1'],
+        'hafs',
+      );
+      if (outcome === 'error')
+        throw new Error('recovery reconciliation failed');
+      if (outcome === 'deferred')
+        return {
+          status: 'deferred' as const,
+          reason: 'pull_deferred' as const,
+          retryAfterMs: 10_000,
+        };
+      if (outcome === 'recovered')
+        return {
+          status: 'recovered' as const,
+          head: 11,
+          acknowledged: 0,
+          ambiguous: 1,
+        };
+      return {status: 'synced' as const, head: 11, pushed: 1};
+    });
+    const lifecycle = createLifecycle({
+      coordinator: {
+        pull: jest.fn(async () => ({
+          status: 'synced' as const,
+          head: 10,
+          restarts: 0,
+        })),
+        push,
+      },
+    });
+    lifecycle.updateContext(authenticatedOffline);
+    await lifecycle.waitForIdle();
+    await useVerseAnnotationsStore
+      .getState()
+      .loadAnnotationsForSurahs([112, 114]);
+    lifecycle.updateContext({...authenticatedOffline, online: true});
+    await lifecycle.waitForIdle();
+    expect(push).toHaveBeenCalledTimes(1);
+    expect([...useVerseAnnotationsStore.getState().loadedSurahs]).toEqual([
+      112, 114,
+    ]);
+    expect([
+      ...useVerseAnnotationsStore.getState().bookmarkedVerseKeys,
+    ]).toEqual(['114:3']);
+    expect([...useVerseAnnotationsStore.getState().notedVerseKeys]).toEqual([
+      '112:1',
+    ]);
+    expect(useQfSyncStore.getState().dataRevision).toBe(2);
+    await lifecycle.stop();
+  },
+);
 
 it('waits for a real SQLite mutation started after stop begins', async () => {
   const flush = deferred();

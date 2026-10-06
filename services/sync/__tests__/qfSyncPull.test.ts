@@ -11,6 +11,7 @@ import {
 import type {BayaanSyncPullRequest} from '@/services/sync/bayaanSyncApiClient';
 import {migrateUserSyncV1} from '@/services/database/migrations/userSyncV1';
 import {migrateUserSyncV2} from '@/services/database/migrations/userSyncV2';
+import type {QfSyncSqliteExecutor} from '@/services/sync/qfSyncTransaction';
 
 const sqlitePromise = (async () => {
   const fs = require('fs');
@@ -35,7 +36,10 @@ class TestSqliteDatabase {
   private readonly dbPromise: Promise<number>;
   transactionCount = 0;
 
-  constructor(databaseName: string) {
+  readonly options = {};
+
+  constructor(readonly databasePath: string) {
+    const databaseName = databasePath;
     this.dbPromise = sqlitePromise.then(({sqlite3}) =>
       sqlite3.open_v2(databaseName),
     );
@@ -98,6 +102,19 @@ class TestSqliteDatabase {
       await this.execAsync('ROLLBACK');
       throw error;
     }
+  }
+
+  async withExclusiveTransactionAsync(
+    task: (txn: QfSyncSqliteExecutor) => Promise<void>,
+  ): Promise<void> {
+    // Distinct callback executor; two-connection isolation is covered separately.
+    await this.withTransactionAsync(() =>
+      task({
+        runAsync: this.runAsync.bind(this),
+        getAllAsync: this.getAllAsync.bind(this),
+        getFirstAsync: this.getFirstAsync.bind(this),
+      } as QfSyncSqliteExecutor),
+    );
   }
 
   async closeAsync(): Promise<void> {

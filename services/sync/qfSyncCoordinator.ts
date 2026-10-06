@@ -9,6 +9,10 @@ import type {
   BayaanSyncPushResult,
 } from './bayaanSyncCodec';
 import type {QfOutboxEntry} from './qfSyncDatabaseService';
+import {
+  withQfSyncTransaction,
+  type QfSyncTransactionDatabase,
+} from './qfSyncTransaction';
 import {mapOutboxEntryToSyncMutation} from './qfSyncResourceMapper';
 import surahData from '@/data/surahData.json';
 
@@ -89,11 +93,12 @@ interface SyncSqliteConnection {
     source: string,
     params?: unknown[] | Record<string, unknown>,
   ): Promise<T | null>;
-  withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }
 
+type SyncTransactionDatabase = SyncSqliteConnection & QfSyncTransactionDatabase;
+
 interface SyncDatabaseProvider {
-  getConnection(): Promise<SyncSqliteConnection>;
+  getConnection(): Promise<SyncTransactionDatabase>;
 }
 
 interface SyncStateRow extends Record<string, unknown> {
@@ -285,10 +290,10 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     stableHead: number,
     syncedAt: number,
   ): Promise<boolean> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const scope = ownerScope(accountId);
     let committed = false;
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       const row = await db.getFirstAsync<SyncStateRow>(
         `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
         [scope],
@@ -317,9 +322,9 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     accountId: string,
     mutations: BayaanSyncMutation[],
   ): Promise<void> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const scope = ownerScope(accountId);
-    await db.withTransactionAsync(async () => {
+    await withQfSyncTransaction(connection, async db => {
       for (const mutation of mutations) {
         if (mutation.type === 'DELETE') {
           await this.applyTombstone(db, scope, accountId, mutation);
