@@ -57,6 +57,7 @@ import {
   SqliteQfSyncPullStore,
 } from '@/services/sync/qfSyncCoordinator';
 import {
+  BayaanSyncApiClient,
   BayaanSyncApiError,
   type BayaanSyncPullRequest,
 } from '@/services/sync/bayaanSyncApiClient';
@@ -227,6 +228,304 @@ for (const platform of ['ios', 'web']) {
       mockPlatform = platform;
       mockOpenDatabaseAsync.mockClear();
     });
+
+    it('mixed-range add preserves existing remote and pending identities and enqueues only inserted rows', async () => {
+      const {root, annotations, sync, pull} = await createServices();
+      root.forbidSharedSql = true;
+      await pull.applyPage('reader', [
+        {
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: 'remote-existing',
+          timestamp: 100,
+          data: {type: 'ayah', key: 2, verseNumber: 255},
+        },
+      ]);
+      const [remoteBefore] =
+        await annotations.getAllBookmarksInOwnerScope('qf:reader');
+      await sync.addBookmark(bookmarkInput);
+      expect(await sync.getOutboxEntries('reader')).toEqual([]);
+      expect(
+        await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+      ).toEqual([remoteBefore]);
+      const next = {...bookmarkInput, verseKey: '2:256', ayahNumber: 256};
+      await sync.addBookmark(next);
+      const [pending] = await sync.getOutboxEntries('reader');
+      await sync.reservePushBatch({
+        accountId: 'reader',
+        limit: 1,
+        dueAt: Date.now(),
+        startedAt: 101,
+      });
+      await sync.releaseInFlightOperations({
+        accountId: 'reader',
+        localOperationIds: [pending.localOperationId],
+        retryAt: Date.now() + 60_000,
+      });
+      const before = await sync.getOutboxEntries('reader');
+      await sync.addBookmark(bookmarkInput);
+      await sync.addBookmark(next);
+      expect(await sync.getOutboxEntries('reader')).toEqual(before);
+      expect(
+        await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+      ).toHaveLength(2);
+      expect(root.transactions.every(txn => txn.closed)).toBe(true);
+      await root.closeAsync();
+    });
+
+    it('overlapping private transactions retain one bookmark and CREATE, or surface a safe lock rejection', async () => {
+      const {root, annotations, sync} = await createServices();
+      await sync.addBookmark(bookmarkInput);
+      const before = await sync.getOutboxEntries('reader');
+      const beforeRows =
+        await annotations.getAllBookmarksInOwnerScope('qf:reader');
+      const entered = gate();
+      const release = gate();
+      root.beforeTransactionSql = async () => {
+        entered.resolve();
+        await release.promise;
+      };
+      const original = sync.addBookmark(bookmarkInput);
+      await entered.promise;
+      // Pause after BEGIN on one private handle and overlap a distinct handle.
+      // SQLite can admit this ordering or reject it; neither permits loss.
+      const overlapping = await sync.addBookmark(bookmarkInput).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      if (overlapping !== null) {
+        expect(overlapping).toBeInstanceOf(Error);
+        expect((overlapping as Error).message).toMatch(
+          /transaction|locked|busy/i,
+        );
+      }
+      expect(root.transactions.at(-1)).not.toBe(root.transactions.at(-2));
+      release.resolve();
+      await original;
+      expect(await sync.getOutboxEntries('reader')).toEqual(before);
+      expect(
+        await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+      ).toEqual(beforeRows);
+      expect(root.transactions.every(txn => txn.closed)).toBe(true);
+      await root.closeAsync();
+    });
+
+    it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS'] as const)(
+      'repeated existing CREATE add retains exact identity and uncertainty (%s)',
+      async deliveryState => {
+        const {root, sync} = await createServices();
+        await sync.addBookmark(bookmarkInput);
+        const [created] = await sync.getOutboxEntries('reader');
+        if (deliveryState !== 'PENDING') {
+          await sync.markOperationInFlight({
+            accountId: 'reader',
+            localOperationId: created.localOperationId,
+            startedAt: 101,
+          });
+          if (deliveryState === 'AMBIGUOUS')
+            await root.runAsync(
+              "UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS' WHERE local_operation_id = ?",
+              [created.localOperationId],
+            );
+        }
+        const before = await sync.getOutboxEntries('reader');
+        await sync.addBookmark(bookmarkInput);
+        await sync.addBookmark(bookmarkInput);
+        expect(await sync.getOutboxEntries('reader')).toEqual(before);
+        await root.closeAsync();
+      },
+    );
+
+    it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS'] as const)(
+      're-add cancels only unsent DELETE and retains uncertain evidence (%s)',
+      async deliveryState => {
+        const {root, annotations, sync, pull} = await createServices();
+        root.forbidSharedSql = true;
+        await pull.applyPage('reader', [
+          {
+            resource: 'BOOKMARK',
+            type: 'CREATE',
+            resourceId: 'remote-existing',
+            timestamp: 100,
+            data: {type: 'ayah', key: 2, verseNumber: 255},
+          },
+        ]);
+        await sync.removeBookmark({accountId: 'reader', verseKey: '2:255'});
+        const [deleted] = await sync.getOutboxEntries('reader');
+        if (deliveryState !== 'PENDING') {
+          await sync.markOperationInFlight({
+            accountId: 'reader',
+            localOperationId: deleted.localOperationId,
+            startedAt: 101,
+          });
+          if (deliveryState === 'AMBIGUOUS')
+            await root.runAsync(
+              "UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS' WHERE local_operation_id = ?",
+              [deleted.localOperationId],
+            );
+        }
+        const [before] = await sync.getOutboxEntries('reader');
+        await sync.addBookmark(bookmarkInput);
+        const after = await sync.getOutboxEntries('reader');
+        if (deliveryState === 'PENDING') {
+          expect(after).toEqual([]);
+          expect(
+            await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+          ).toEqual([
+            expect.objectContaining({
+              remoteId: 'remote-existing',
+              serverUpdatedAt: 100,
+            }),
+          ]);
+        } else {
+          expect(after).toEqual([
+            expect.objectContaining({
+              localOperationId: before.localOperationId,
+              deliveryState,
+              inFlightPayloadJson: before.inFlightPayloadJson,
+              inFlightRevision: before.inFlightRevision,
+              inFlightMutationType: 'DELETE',
+              revision: before.revision + 1,
+              mutationType: 'CREATE',
+            }),
+          ]);
+          await sync.addBookmark(bookmarkInput);
+          expect(await sync.getOutboxEntries('reader')).toEqual(after);
+        }
+        await root.closeAsync();
+      },
+    );
+
+    it('filtered pages retain raw cardinality and commit no head until full traversal and head-only metadata', async () => {
+      const {root, annotations, pull} = await createServices();
+      await pull.commitStableHead('reader', 0, 100, 100);
+      const observed: string[] = [];
+      const transport = new BayaanSyncApiClient({
+        apiUrl: 'https://fixture.invalid',
+        fetchImpl: async url => {
+          const query = new URL(url).searchParams;
+          expect(await pull.getStoredHead('reader')).toBe(100);
+          const metadata = query.get('metadataOnly') === 'true';
+          const page = Number(query.get('page'));
+          observed.push(metadata ? 'metadata' : `page-${page}`);
+          const data = metadata
+            ? {lastMutationAt: 200}
+            : {
+                lastMutationAt: 200,
+                page,
+                limit: 1000,
+                total: 1001,
+                hasMore: page === 1,
+                mutations:
+                  page === 1
+                    ? Array.from({length: 1000}, (_, index) => ({
+                        resource: 'BOOKMARK',
+                        type: 'CREATE',
+                        resourceId: `favorite-${index}`,
+                        timestamp: 200,
+                        data: {
+                          type: 'ayah',
+                          key: 2,
+                          verseNumber: 255,
+                          isInDefaultCollection: true,
+                        },
+                      }))
+                    : [
+                        {
+                          resource: 'BOOKMARK',
+                          type: 'CREATE',
+                          resourceId: 'standalone',
+                          timestamp: 200,
+                          data: {type: 'ayah', key: 2, verseNumber: 256},
+                        },
+                      ],
+              };
+          const bytes = new TextEncoder().encode(
+            JSON.stringify({success: true, data}),
+          );
+          return {
+            ok: true,
+            status: 200,
+            headers: new Headers(),
+            body: new ReadableStream({
+              start(controller) {
+                controller.enqueue(bytes);
+                controller.close();
+              },
+            }),
+          } as Response;
+        },
+      });
+      const coordinator = new QfSyncCoordinator({transport, store: pull});
+      await expect(
+        coordinator.pull({accountId: 'reader', sessionToken: 'fixture'}),
+      ).resolves.toEqual({status: 'synced', head: 200, restarts: 0});
+      expect(observed).toEqual(['page-1', 'page-2', 'metadata']);
+      expect(await pull.getStoredHead('reader')).toBe(200);
+      expect(
+        await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+      ).toEqual([
+        expect.objectContaining({remoteId: 'standalone', verseKey: '2:256'}),
+      ]);
+      await root.closeAsync();
+    });
+
+    it.each([undefined, null, {}, 'wrong-type'])(
+      'invalid ordinary mutations=%j preserves SQLite annotations, cursor and outbox',
+      async mutations => {
+        const {root, annotations, sync, pull} = await createServices();
+        await sync.addBookmark(bookmarkInput);
+        await sync.addNote(noteInput);
+        await pull.commitStableHead('reader', 0, 100, 100);
+        const beforeBookmarks =
+          await annotations.getAllBookmarksInOwnerScope('qf:reader');
+        const beforeNotes = await annotations.getNotesForVerseInOwnerScope(
+          'qf:reader',
+          '2:255',
+        );
+        const beforeOutbox = await sync.getOutboxEntries('reader');
+        const transport = new BayaanSyncApiClient({
+          apiUrl: 'https://fixture.invalid',
+          fetchImpl: async url => {
+            const metadata =
+              new URL(url).searchParams.get('metadataOnly') === 'true';
+            const bytes = new TextEncoder().encode(
+              JSON.stringify({
+                success: true,
+                data: {
+                  lastMutationAt: 200,
+                  ...(metadata ? {} : {mutations}),
+                },
+              }),
+            );
+            return {
+              ok: true,
+              status: 200,
+              headers: new Headers(),
+              body: new ReadableStream({
+                start(controller) {
+                  controller.enqueue(bytes);
+                  controller.close();
+                },
+              }),
+            } as Response;
+          },
+        });
+        const coordinator = new QfSyncCoordinator({transport, store: pull});
+        await expect(
+          coordinator.pull({accountId: 'reader', sessionToken: 'fixture'}),
+        ).rejects.toMatchObject({code: 'invalid_response'});
+        expect(await pull.getStoredHead('reader')).toBe(100);
+        expect(
+          await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+        ).toEqual(beforeBookmarks);
+        expect(
+          await annotations.getNotesForVerseInOwnerScope('qf:reader', '2:255'),
+        ).toEqual(beforeNotes);
+        expect(await sync.getOutboxEntries('reader')).toEqual(beforeOutbox);
+        await root.closeAsync();
+      },
+    );
 
     it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS'] as const)(
       'retains a locally deleted bookmark identity across CREATE/UPDATE pulls (%s)',

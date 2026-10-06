@@ -23,6 +23,7 @@ jest.mock('../qfSettingsStoreBridge', () => ({
 }));
 
 import {
+  BayaanSettingsApiClient,
   BayaanSettingsApiError,
   type PreferenceMutation,
   type RemoteSettingsDocument,
@@ -31,11 +32,12 @@ import {
 import type {QfSettingsStoreBridge} from '../qfSettingsStoreBridge';
 import {QfSettingsSyncCoordinator} from '../qfSettingsSyncCoordinator';
 import {QfSettingsSyncLifecycle} from '../qfSettingsSyncLifecycle';
-import type {
-  PersistedSettingsDeviceContext,
-  PersistedSettingsSyncState,
+import {
+  type PersistedSettingsDeviceContext,
+  type PersistedSettingsSyncState,
   QfSettingsStorage,
 } from '../qfSettingsStorage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // Keep the real sanitizer and theme catalog; native playback stores are not
 // involved in these bridge-based coordinator tests.
 jest.mock('@/services/player/store/playerStore', () => ({usePlayerStore: {}}));
@@ -101,6 +103,8 @@ function emptyState(): PersistedSettingsSyncState {
     pending: {},
     localDocuments: {},
     preferencePending: null,
+    syncedPreferences: {},
+    syncedLocalPreferences: preferences(),
     localPreferences: [],
     localPreferenceFingerprint: null,
     syncedPreferenceFingerprint: null,
@@ -178,8 +182,38 @@ class MemoryBridge implements QfSettingsStoreBridge {
     }
   }
 
-  applyPreferences(): void {
-    return undefined;
+  applyPreferences(remote: Record<string, unknown>): void {
+    this.currentPreferences = this.currentPreferences.map(item => {
+      const group = remote[item.group];
+      if (
+        !group ||
+        typeof group !== 'object' ||
+        Array.isArray(group) ||
+        !Object.hasOwn(group, item.key)
+      )
+        return item;
+      const value = (group as Record<string, unknown>)[item.key];
+      // Fixture projection only: keep unsupported cloud values opaque.
+      if (
+        item.key === 'playbackRate' &&
+        ![0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].includes(value as number)
+      )
+        return item;
+      if (
+        typeof value !== typeof item.value ||
+        (Array.isArray(item.value) && !Array.isArray(value))
+      )
+        return item;
+      return {...item, value: structuredClone(value)};
+    });
+    this.listeners.forEach(listener => listener());
+  }
+
+  changePreference(group: string, key: string, value: unknown): void {
+    this.currentPreferences = this.currentPreferences.map(item =>
+      item.group === group && item.key === key ? {...item, value} : item,
+    );
+    this.listeners.forEach(listener => listener());
   }
 
   sanitizeDocument(
@@ -210,14 +244,25 @@ function fakeApi(
 ) {
   const puts: PutCall[] = [];
   const preferencePuts: PreferenceMutation[][] = [];
+  const cloudPreferences: Record<string, Record<string, unknown>> = {};
   return {
+    cloudPreferences,
     puts,
     preferencePuts,
     assertConfiguration: jest.fn(async () => undefined),
-    getPreferences: jest.fn(async () => ({})),
+    getPreferences: jest.fn(
+      async (): Promise<Record<string, unknown>> =>
+        structuredClone(cloudPreferences),
+    ),
     putPreferences: jest.fn(
       async (_token: string, value: PreferenceMutation[]) => {
         preferencePuts.push(structuredClone(value));
+        for (const item of value) {
+          cloudPreferences[item.group] = {
+            ...(cloudPreferences[item.group] ?? {}),
+            [item.key]: structuredClone(item.value),
+          };
+        }
       },
     ),
     getDocument: jest.fn(
@@ -256,6 +301,506 @@ function coordinator(
 }
 
 describe('QfSettingsSyncCoordinator', () => {
+  test('real API decoding of BFF-shaped opaque known keys never uploads the fallback', async () => {
+    const bffPreferences = {
+      quranReaderStyles: {
+        quranTextFontScale: 5,
+        translationFontScale: 3,
+        showTajweedRules: false,
+      },
+      tafsirs: {selectedTafsirs: ['169']},
+      audio: {playbackRate: 4},
+    };
+    const posts: PreferenceMutation[][] = [];
+    const fetchImpl = async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname;
+      if (init?.method === 'POST') {
+        const batch = JSON.parse(String(init.body))
+          .mutations as PreferenceMutation[];
+        posts.push(batch);
+        const record = bffPreferences as Record<
+          string,
+          Record<string, unknown>
+        >;
+        for (const item of batch) record[item.group][item.key] = item.value;
+      }
+      const data = path.endsWith('/config')
+        ? {collections: [{name: 'settings', requiresPrecondition: true}]}
+        : bffPreferences;
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({success: true, data}),
+      );
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({etag: 'fixture'}),
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+          },
+        }),
+      } as Response;
+    };
+    const api = new BayaanSettingsApiClient('https://fixture.invalid', {
+      fetchImpl,
+    });
+    // App State is absent for this fixture; its existing PUT path is separate.
+    jest.spyOn(api, 'getDocument').mockResolvedValue(null);
+    jest.spyOn(api, 'putDocument').mockResolvedValue('fixture-etag');
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const subject = new QfSettingsSyncCoordinator({
+      api,
+      storage: storage as unknown as QfSettingsStorage,
+      bridge,
+      chooseFirstSyncConflict: async () => 'cloud',
+    });
+    await subject.activateLocal('reader');
+    await subject.syncRemote('reader', 'session');
+    expect(posts).toEqual([]);
+    expect(
+      bridge.currentPreferences.find(item => item.key === 'playbackRate')
+        ?.value,
+    ).toBe(1);
+    expect(storage.requireState('reader').syncedPreferences).toEqual(
+      bffPreferences,
+    );
+    await subject.deactivate();
+    const resumed = new QfSettingsSyncCoordinator({
+      api,
+      storage: storage as unknown as QfSettingsStorage,
+      bridge,
+      chooseFirstSyncConflict: async () => 'cloud',
+    });
+    await resumed.activateLocal('reader');
+    bridge.changePreference('quranReaderStyles', 'showTajweedRules', true);
+    await resumed.syncRemote('reader', 'session');
+    expect(
+      posts.every(batch => batch.every(item => item.key !== 'playbackRate')),
+    ).toBe(true);
+    expect(posts[0]).toEqual([
+      {group: 'quranReaderStyles', key: 'showTajweedRules', value: true},
+    ]);
+    expect(storage.requireState('reader').syncedPreferences?.audio).toEqual({
+      playbackRate: 4,
+    });
+    await resumed.deactivate();
+  });
+
+  test.each(['local', 'cloud'] as const)(
+    'legacy preference snapshots persist a barrier across activation/restart until explicit %s reconciliation',
+    async choice => {
+      await AsyncStorage.clear();
+      const storage = new QfSettingsStorage();
+      const saved = emptyState();
+      saved.initialized = true;
+      saved.localDocuments = documents();
+      saved.localPreferences = preferences();
+      saved.localPreferenceFingerprint = JSON.stringify(preferences());
+      saved.preferencePending = preferences();
+      delete saved.syncedPreferences;
+      delete saved.syncedLocalPreferences;
+      await storage.save('legacy-reader', saved);
+      const api = fakeApi();
+      api.cloudPreferences.audio = {playbackRate: 1.5, future: {kept: true}};
+      const bridge = new MemoryBridge();
+      const choose = jest.fn(async () => choice);
+      const create = () =>
+        new QfSettingsSyncCoordinator({
+          api: api as never,
+          storage,
+          bridge,
+          chooseFirstSyncConflict: choose,
+        });
+      const first = create();
+      await first.activateLocal('legacy-reader');
+      expect(await storage.load('legacy-reader')).toMatchObject({
+        needsReconciliation: true,
+        preferencePending: preferences(),
+      });
+      expect(api.preferencePuts).toEqual([]);
+      await first.deactivate();
+      const resumed = create();
+      await resumed.activateLocal('legacy-reader');
+      api.getPreferences.mockRejectedValueOnce(
+        new BayaanSettingsApiError(503, 'unavailable'),
+      );
+      await expect(
+        resumed.syncRemote('legacy-reader', 'session'),
+      ).rejects.toMatchObject({status: 503});
+      expect(choose).not.toHaveBeenCalled();
+      expect(api.preferencePuts).toEqual([]);
+      expect(await storage.load('legacy-reader')).toMatchObject({
+        needsReconciliation: true,
+        preferencePending: preferences(),
+      });
+      await resumed.syncRemote('legacy-reader', 'session');
+      expect(choose).toHaveBeenCalledTimes(1);
+      expect(api.cloudPreferences.audio.playbackRate).toBe(
+        choice === 'local' ? 1 : 1.5,
+      );
+      expect(api.cloudPreferences.audio.future).toEqual({kept: true});
+      expect(await storage.load('legacy-reader')).toMatchObject({
+        needsReconciliation: false,
+        preferencePending: null,
+      });
+      expect((await storage.load('other-reader')).initialized).toBe(false);
+      await resumed.deactivate();
+      const last = create();
+      await last.activateLocal('legacy-reader');
+      await last.syncRemote('legacy-reader', 'session');
+      expect(choose).toHaveBeenCalledTimes(1);
+      await last.deactivate();
+    },
+  );
+
+  test.each(['healthy', 'unavailable', 'revoked'] as const)(
+    'pending preference pull retains opaque values and applies only healthy siblings (%s)',
+    async outcome => {
+      const api = fakeApi();
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const subject = coordinator(api, storage, bridge).value;
+      await subject.activateLocal('reader');
+      await subject.syncRemote('reader', 'session');
+      api.preferencePuts.length = 0;
+      bridge.changePreference('quranReaderStyles', 'quranTextFontScale', 8);
+      await subject.deactivate();
+      await subject.activateLocal('reader');
+      const before = storage.requireState('reader');
+      api.cloudPreferences.audio.playbackRate = 1.5;
+      api.cloudPreferences.quranReaderStyles.quranTextFontScale = {
+        future: 'opaque',
+      };
+      api.cloudPreferences.tafsirs.selectedTafsirs = 'unsupported';
+      if (outcome !== 'healthy')
+        api.getPreferences.mockRejectedValueOnce(
+          new BayaanSettingsApiError(
+            outcome === 'revoked' ? 401 : 503,
+            outcome,
+          ),
+        );
+      const boundary = subject as unknown as {
+        generation: number;
+        pullCurrent(
+          account: string,
+          token: string,
+          generation: number,
+        ): Promise<void>;
+      };
+      const pull = boundary.pullCurrent(
+        'reader',
+        'session',
+        boundary.generation,
+      );
+      if (outcome === 'healthy') await pull;
+      else
+        await expect(pull).rejects.toMatchObject({
+          status: outcome === 'revoked' ? 401 : 503,
+        });
+      const after = storage.requireState('reader');
+      expect(after.preferencePending).toEqual(before.preferencePending);
+      expect(api.preferencePuts).toEqual([]);
+      if (outcome === 'healthy') {
+        expect(
+          bridge.currentPreferences.find(item => item.key === 'playbackRate')
+            ?.value,
+        ).toBe(1.5);
+        expect(after.syncedPreferences).toMatchObject({
+          quranReaderStyles: {quranTextFontScale: {future: 'opaque'}},
+          tafsirs: {selectedTafsirs: 'unsupported'},
+        });
+        expect(
+          after.syncedLocalPreferences?.find(
+            item => item.key === 'quranTextFontScale',
+          )?.value,
+        ).toBe(5);
+        await subject.syncRemote('reader', 'session');
+        expect(api.preferencePuts).toEqual([
+          [{group: 'quranReaderStyles', key: 'quranTextFontScale', value: 8}],
+        ]);
+        expect(api.cloudPreferences.audio.playbackRate).toBe(1.5);
+        expect(api.cloudPreferences.tafsirs.selectedTafsirs).toBe(
+          'unsupported',
+        );
+      } else {
+        expect(after.syncedPreferences).toEqual(before.syncedPreferences);
+        expect(after.syncedLocalPreferences).toEqual(
+          before.syncedLocalPreferences,
+        );
+      }
+      await subject.deactivate();
+    },
+  );
+
+  test('preference retry timer honors backoff, replays the whole submitted delta and sends later edits separately', async () => {
+    jest.useFakeTimers();
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge).value;
+    await subject.activateLocal('reader');
+    await subject.syncRemote('reader', 'session');
+    subject.setRemoteAvailable(true);
+    api.preferencePuts.length = 0;
+    const normal = api.putPreferences.getMockImplementation()!;
+    api.putPreferences.mockImplementationOnce(async (_token, batch) => {
+      api.preferencePuts.push(structuredClone(batch));
+      throw new BayaanSettingsApiError(429, 'backoff', 20_000);
+    });
+    bridge.changePreference('audio', 'playbackRate', 1.5);
+    bridge.changePreference('quranReaderStyles', 'showTajweedRules', true);
+    await jest.advanceTimersByTimeAsync(1);
+    await subject.waitForIdle();
+    const submitted = storage.requireState('reader').preferenceInFlight;
+    expect(submitted).toHaveLength(2);
+    await jest.advanceTimersByTimeAsync(19_999);
+    expect(api.preferencePuts).toHaveLength(1);
+    // Make a live edit without advancing the debounce; the retry must ACK only
+    // submitted keys and queue the newer value for a separate capture delivery.
+    bridge.changePreference('audio', 'playbackRate', 2);
+    await jest.advanceTimersByTimeAsync(1);
+    await subject.waitForIdle();
+    expect(api.preferencePuts[1]).toEqual(submitted);
+    await jest.advanceTimersByTimeAsync(2);
+    await subject.waitForIdle();
+    expect(api.preferencePuts[2]).toEqual([
+      {group: 'audio', key: 'playbackRate', value: 2},
+    ]);
+    expect(api.preferencePuts).toHaveLength(3);
+    expect(storage.requireState('reader').preferencePending).toBeNull();
+    expect(normal).toBeDefined();
+    await subject.deactivate();
+  });
+  test.each([false, true])(
+    'two offline devices submit only changed keys, retaining remote siblings and opaque values (restart=%s)',
+    async restart => {
+      const api = fakeApi();
+      const aStorage = new MemoryStorage();
+      const bStorage = new MemoryStorage();
+      const aBridge = new MemoryBridge();
+      const bBridge = new MemoryBridge();
+      const a = coordinator(api, aStorage, aBridge).value;
+      let b = coordinator(api, bStorage, bBridge, 'cloud').value;
+      await a.activateLocal('reader');
+      await a.syncRemote('reader', 'a');
+      await b.activateLocal('reader');
+      await b.syncRemote('reader', 'b');
+      api.preferencePuts.length = 0;
+      bBridge.changePreference('quranReaderStyles', 'quranTextFontScale', 8);
+      await b.deactivate();
+      expect(bStorage.requireState('reader').preferencePending).toEqual([
+        {group: 'quranReaderStyles', key: 'quranTextFontScale', value: 8},
+      ]);
+      aBridge.changePreference('audio', 'playbackRate', 1.5);
+      await a.syncRemote('reader', 'a');
+      api.cloudPreferences.future = {unknownKey: {nested: ['keep']}};
+      api.cloudPreferences.tafsirs.selectedTafsirs = 'future-opaque-format';
+      b = restart ? coordinator(api, bStorage, bBridge, 'cloud').value : b;
+      await b.activateLocal('reader');
+      await b.syncRemote('reader', 'b');
+      expect(api.preferencePuts).toEqual([
+        [{group: 'audio', key: 'playbackRate', value: 1.5}],
+        [{group: 'quranReaderStyles', key: 'quranTextFontScale', value: 8}],
+      ]);
+      expect(
+        bBridge.currentPreferences.find(item => item.key === 'playbackRate')
+          ?.value,
+      ).toBe(1.5);
+      expect(api.cloudPreferences.tafsirs.selectedTafsirs).toBe(
+        'future-opaque-format',
+      );
+      expect(bStorage.requireState('reader').syncedPreferences).toMatchObject({
+        future: {unknownKey: {nested: ['keep']}},
+        tafsirs: {selectedTafsirs: 'future-opaque-format'},
+      });
+      await b.syncRemote('reader', 'b');
+      expect(api.preferencePuts).toHaveLength(2);
+      await a.deactivate();
+      await b.deactivate();
+    },
+  );
+
+  test('coalesces multiple local keys, retries the complete saved submitted delta, and retains newer edits after restart', async () => {
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const first = coordinator(api, storage, bridge).value;
+    await first.activateLocal('reader');
+    await first.syncRemote('reader', 'session');
+    api.preferencePuts.length = 0;
+    bridge.changePreference('audio', 'playbackRate', 1.25);
+    bridge.changePreference('audio', 'playbackRate', 1.5);
+    bridge.changePreference('quranReaderStyles', 'showTajweedRules', true);
+    const normal = api.putPreferences.getMockImplementation()!;
+    api.putPreferences.mockImplementationOnce(async (_token, batch) => {
+      api.preferencePuts.push(structuredClone(batch));
+      // Provider applied only the first submitted key before losing its reply.
+      const firstKey = batch[0];
+      api.cloudPreferences[firstKey.group][firstKey.key] = firstKey.value;
+      throw new BayaanSettingsApiError(503, 'failed-batch');
+    });
+    await expect(first.syncRemote('reader', 'session')).rejects.toMatchObject({
+      status: 503,
+    });
+    const submitted = storage.requireState('reader').preferenceInFlight;
+    expect(api.cloudPreferences.quranReaderStyles.showTajweedRules).toBe(true);
+    expect(api.cloudPreferences.audio.playbackRate).toBe(1);
+    expect(submitted).toEqual([
+      {group: 'quranReaderStyles', key: 'showTajweedRules', value: true},
+      {group: 'audio', key: 'playbackRate', value: 1.5},
+    ]);
+    bridge.changePreference('audio', 'playbackRate', 2);
+    bridge.changePreference('quranReaderStyles', 'translationFontScale', 6);
+    await first.deactivate();
+    const resumed = coordinator(api, storage, bridge).value;
+    await resumed.activateLocal('reader');
+    await resumed.syncRemote('reader', 'session');
+    expect(api.preferencePuts[1]).toEqual(submitted);
+    expect(api.preferencePuts[2]).toEqual([
+      {group: 'quranReaderStyles', key: 'translationFontScale', value: 6},
+      {group: 'audio', key: 'playbackRate', value: 2},
+    ]);
+    expect(storage.requireState('reader')).toMatchObject({
+      preferencePending: null,
+      preferenceInFlight: null,
+    });
+    expect(normal).toBeDefined();
+    await resumed.deactivate();
+  });
+
+  test.each(['send', 'handoff', 'switch'] as const)(
+    'preserves newer preference edits during %s without acknowledging unsent values',
+    async stage => {
+      const api = fakeApi();
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const subject = coordinator(api, storage, bridge).value;
+      await subject.activateLocal('reader');
+      await subject.syncRemote('reader', 'session');
+      api.preferencePuts.length = 0;
+      let release!: () => void;
+      let reached!: () => void;
+      const started = new Promise<void>(resolve => {
+        reached = resolve;
+      });
+      const normal = api.putPreferences.getMockImplementation()!;
+      api.putPreferences.mockImplementationOnce(async (token, batch) => {
+        await new Promise<void>(resolve => {
+          release = resolve;
+          reached();
+        });
+        await normal(token, batch);
+      });
+      bridge.changePreference('audio', 'playbackRate', 1.5);
+      const syncing = subject.syncRemote('reader', 'session');
+      await started;
+      bridge.changePreference('audio', 'playbackRate', 1);
+      bridge.changePreference('quranReaderStyles', 'translationFontScale', 7);
+      const departure =
+        stage === 'handoff'
+          ? subject.deactivate()
+          : stage === 'switch'
+            ? subject.activateLocal('other-reader')
+            : null;
+      release();
+      await syncing;
+      if (departure) {
+        await departure;
+        expect(storage.requireState('reader').preferenceInFlight).toEqual([
+          {group: 'audio', key: 'playbackRate', value: 1.5},
+        ]);
+        if (stage === 'switch') {
+          expect(
+            storage.states.get('other-reader')?.preferencePending ?? null,
+          ).toBeNull();
+          await subject.deactivate();
+        }
+        const resumed = coordinator(api, storage, bridge).value;
+        await resumed.activateLocal('reader');
+        await resumed.syncRemote('reader', 'session');
+        await resumed.deactivate();
+      } else await subject.deactivate();
+      expect(api.cloudPreferences.audio.playbackRate).toBe(1);
+      expect(api.cloudPreferences.quranReaderStyles.translationFontScale).toBe(
+        7,
+      );
+      expect(storage.requireState('reader')).toMatchObject({
+        preferencePending: null,
+        preferenceInFlight: null,
+      });
+    },
+  );
+
+  test.each([false, true])(
+    'cloud unsupported reading retains raw identity across restart, healthy siblings and later edits (readOnly=%s)',
+    async readOnly => {
+      const remote = {
+        mushaf: {
+          key: 'mushaf' as const,
+          etag: 'hisham-etag',
+          readOnly,
+          ...(readOnly ? {schemaVersion: 2} : {}),
+          value: {
+            rewayah: 'hisham',
+            showTranslation: false,
+            future: {kept: true},
+          },
+        },
+      };
+      const api = fakeApi(remote);
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      bridge.currentDocuments.mushaf = {rewayah: 'hafs', showTranslation: true};
+      bridge.sanitizeDocument = sanitizeRemoteDocument;
+      api.cloudPreferences.audio = {playbackRate: 1.5};
+      let subject = coordinator(api, storage, bridge, 'cloud').value;
+      await subject.activateLocal('reader');
+      await subject.syncRemote('reader', 'session');
+      expect(bridge.currentDocuments.mushaf).toEqual({
+        rewayah: 'hafs',
+        showTranslation: false,
+      });
+      expect(api.puts.filter(item => item.key === 'mushaf')).toEqual([]);
+      expect(storage.requireState('reader')).toMatchObject({
+        syncedDocuments: {mushaf: remote.mushaf.value},
+        syncedLocalDocuments: {mushaf: {rewayah: 'hafs'}},
+        etags: {mushaf: 'hisham-etag'},
+      });
+      await subject.deactivate();
+      subject = coordinator(api, storage, bridge, 'cloud').value;
+      await subject.activateLocal('reader');
+      api.cloudPreferences.audio.playbackRate = 1.75;
+      await subject.syncRemote('reader', 'session');
+      expect(
+        bridge.currentPreferences.find(item => item.key === 'playbackRate')
+          ?.value,
+      ).toBe(1.75);
+      expect(api.puts.filter(item => item.key === 'mushaf')).toEqual([]);
+      bridge.changeDocument('mushaf', {
+        ...bridge.currentDocuments.mushaf,
+        showTranslation: true,
+      });
+      await subject.syncRemote('reader', 'session');
+      const mushafPuts = api.puts.filter(item => item.key === 'mushaf');
+      if (readOnly) {
+        expect(mushafPuts).toEqual([]);
+        expect(storage.requireState('reader').pending.mushaf?.changes).toEqual([
+          {path: ['showTranslation'], value: true},
+        ]);
+      } else {
+        expect(mushafPuts).toHaveLength(1);
+        expect(mushafPuts[0].etag).toBe('hisham-etag');
+        expect(JSON.parse(mushafPuts[0].body).value).toEqual({
+          rewayah: 'hisham',
+          showTranslation: true,
+          future: {kept: true},
+        });
+      }
+      await subject.deactivate();
+    },
+  );
   test.each(['document', 'preferences'] as const)(
     'applies healthy documents without erasing an unavailable %s baseline',
     async unavailable => {
@@ -1815,6 +2360,38 @@ function applicationGate(bridge: DeferredApplicationBridge) {
 }
 
 describe('async settings application boundaries', () => {
+  test('preference edits during muted document application remain local delta while healthy siblings converge', async () => {
+    const remote = {
+      mushaf: {
+        key: 'mushaf' as const,
+        value: {showTranslation: false},
+        etag: 'first',
+      },
+    };
+    const api = fakeApi(remote);
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('reader');
+    await subject.syncRemote('reader', 'session');
+    api.preferencePuts.length = 0;
+    api.cloudPreferences.audio.playbackRate = 1.5;
+    const gate = applicationGate(bridge);
+    const syncing = subject.syncRemote('reader', 'session');
+    await gate.reached;
+    bridge.changePreference('quranReaderStyles', 'translationFontScale', 8);
+    gate.release();
+    await syncing;
+    expect(api.preferencePuts).toEqual([
+      [{group: 'quranReaderStyles', key: 'translationFontScale', value: 8}],
+    ]);
+    expect(
+      bridge.currentPreferences.find(item => item.key === 'playbackRate')
+        ?.value,
+    ).toBe(1.5);
+    expect(storage.requireState('reader').preferencePending).toBeNull();
+    await subject.deactivate();
+  });
   const cloud = () => ({
     mushaf: {
       key: 'mushaf' as const,

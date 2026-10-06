@@ -108,6 +108,80 @@ describe('Bayaan Sync BFF client', () => {
     expect(requestText).not.toContain('client-secret');
   });
 
+  it.each([undefined, null, {}, 'not-an-array'])(
+    'rejects ordinary pull mutations=%j, but permits only omitted metadata mutations',
+    async mutations => {
+      const fetchImpl = jest.fn().mockImplementation(async () =>
+        jsonResponse({
+          success: true,
+          data: {lastMutationAt: 7001, mutations},
+        }),
+      );
+      const client = new BayaanSyncApiClient({apiUrl, fetchImpl});
+      await expect(
+        client.pull(opaqueSession, {mutationsSince: 7001}),
+      ).rejects.toMatchObject({
+        code: 'invalid_response',
+      });
+      const metadata = client.pull(opaqueSession, {
+        mutationsSince: 7001,
+        metadataOnly: true,
+      });
+      if (mutations === undefined) {
+        await expect(metadata).resolves.toEqual({
+          lastMutationAt: 7001,
+          mutations: [],
+        });
+      } else {
+        await expect(metadata).rejects.toMatchObject({
+          code: 'invalid_response',
+        });
+      }
+    },
+  );
+
+  it.each([
+    {mutations: null},
+    {page: 'invalid'},
+    {limit: null},
+    {hasMore: 'false'},
+    {upstreamToken: 'forbidden'},
+  ])(
+    'metadata head-only allowance never ignores malformed present fields (%j)',
+    async extra => {
+      const client = new BayaanSyncApiClient({
+        apiUrl,
+        fetchImpl: jest.fn().mockResolvedValue(
+          jsonResponse({
+            success: true,
+            data: {lastMutationAt: 7001, ...extra},
+          }),
+        ),
+      });
+      await expect(
+        client.pull(opaqueSession, {mutationsSince: 7001, metadataOnly: true}),
+      ).rejects.toMatchObject({code: 'invalid_response'});
+    },
+  );
+
+  it('accepts a genuine empty ordinary mutations array without pagination', async () => {
+    const client = new BayaanSyncApiClient({
+      apiUrl,
+      fetchImpl: jest.fn().mockResolvedValue(
+        jsonResponse({
+          success: true,
+          data: {lastMutationAt: 7001, mutations: []},
+        }),
+      ),
+    });
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 7001}),
+    ).resolves.toEqual({
+      lastMutationAt: 7001,
+      mutations: [],
+    });
+  });
+
   it('decodes only the allowlisted pull response and mutation fields', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(
       jsonResponse({

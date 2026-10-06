@@ -38,6 +38,19 @@ the selected Bayaan translation remain in App State: QF's `sepia` theme and QF
 translation resource IDs cannot be mapped losslessly to Bayaan's theme modes,
 bundled translation slugs, and AlQuran Cloud edition identifiers.
 
+Preferences uploads contain only changed group/key intent compared with the
+acknowledged device projection, not all five historical device values. Persist
+the submitted delta before sending; if delivery is partial or uncertain, retry
+the **whole submitted batch**, keeping its keys/values unchanged. Newer edits
+remain separate and acknowledgment advances only submitted keys. The provider's
+whole-batch last-write-wins retry policy and backoff are unchanged. Healthy
+remote siblings still apply while another key is pending. Raw opaque values
+remain in the baseline, never uploaded as fallback values. The BFF must retain
+opaque JSON for the five allowlisted known preference keys on GET (while still
+dropping unknown keys/groups and strictly validating POST); mobile cannot infer
+unsupported values that the BFF omits. Local contract fixtures are not live
+provider or two-device QA.
+
 ## Conflict policy
 
 On an empty server, local values are uploaded. Before the first sync of a newly
@@ -54,7 +67,7 @@ as an app update or a missed debounce) is a normal local edit, not a prompt.
 An account change or sign-out cancels a pending first-reconciliation choice so
 shutdown never waits for the alert.
 A present remote value unsupported by this device (for example a future reading
-theme ID) is not an absent field: the device fallback becomes its synchronized
+theme ID or a taxonomy-only rewayah without bundled text) is not an absent field: the device fallback becomes its synchronized
 projection, while the raw value survives until an actual local edit. This also
 applies to the explicit cloud choice during legacy reconciliation.
 Subsequent writes change only fields edited locally since the last synchronized
@@ -79,12 +92,16 @@ their device fallback and unknown fields remain only in the raw baseline.
 Account/generation guards prevent stale operations applying another
 account's values.
 
-Legacy v1 records contain only ETags and complete pending bodies, so their
-changed-field provenance cannot be recovered reliably. Keep their account-local
-snapshot but discard blind replay intent and require the existing explicit
-cloud/device reconciliation before writing. The selected known fields are
-merged onto freshly fetched raw documents; unknown remote fields survive both
-choices. No account metadata is shared with another account.
+Legacy records without raw Preferences and acknowledged projection evidence
+cannot prove that a full preference snapshot is per-key intent. Preserve the
+account-local snapshot and pending/submitted preference evidence behind a
+persisted reconciliation barrier; a fingerprint alone does not prove provenance.
+A complete read and the existing explicit cloud/device choice are required
+before new delivery. Failed reads and offline restarts retain the barrier.
+The decision may replace legacy unsubmitted intent, but never discards an
+immutable submitted retry batch. The selected known fields are merged onto
+freshly fetched raw documents; unknown remote fields survive both choices.
+No account metadata is shared with another account.
 
 The BFF enforces exact write allowlists; its allowlist must ship before any app
 version adds a setting. Reads tolerate and omit unsupported/invalid fields while

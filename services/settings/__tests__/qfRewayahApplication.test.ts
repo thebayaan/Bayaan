@@ -175,13 +175,43 @@ test('an unloaded same reading must finish initialization before publication', a
   expect(mushaf.getState().mushafRenderer).toBe('dk_v2');
 });
 
-test('taxonomy-only reading does not publish a label without bundled words', async () => {
-  await expect(
-    applySettingsDocuments({mushaf: {rewayah: 'hisham'}}),
-  ).rejects.toThrow('No text data bundled');
-  expect(mushaf.getState().rewayah).toBe('hafs');
+test('taxonomy-only cloud reading projects a usable fallback without poisoning healthy settings', async () => {
+  const applied = await applySettingsDocuments({
+    appearance: {themeMode: 'dark'},
+    mushaf: {rewayah: 'hisham', showTranslation: false},
+  });
+  expect(applied.mushaf.rewayah).toBe('hafs');
+  expect(mushaf.getState()).toMatchObject({
+    rewayah: 'hafs',
+    showTranslation: false,
+  });
+  expect(useThemeStore.getState().themeMode).toBe('dark');
   expect(cache.rewayah).toBe('hafs');
+  expect(mockOpen).not.toHaveBeenCalled();
+  // Manual unsupported requests remain guarded at the cache boundary.
+  await expect(cache.switchRewayah('hisham')).rejects.toThrow(
+    'No text data bundled',
+  );
 });
+
+test.each([
+  'hafs',
+  'shubah',
+  'al-bazzi',
+  'qunbul',
+  'warsh',
+  'qalun',
+  'al-duri-abi-amr',
+  'al-susi',
+] as const)(
+  'cloud %s publishes only after loading supported bundled text',
+  async rewayah => {
+    await applySettingsDocuments({mushaf: {rewayah}});
+    expect(mushaf.getState().rewayah).toBe(rewayah);
+    expect(cache.rewayah).toBe(rewayah);
+    expect(cache.getVerseWords('1:1')).toHaveLength(1);
+  },
+);
 
 test('QCF forces loaded Hafs before renderer publication, even with remote Warsh', async () => {
   await cache.switchRewayah('warsh');

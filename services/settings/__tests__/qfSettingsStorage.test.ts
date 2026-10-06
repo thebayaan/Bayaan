@@ -44,6 +44,52 @@ describe('QfSettingsStorage device context', () => {
     });
   });
 
+  test.each(['missing', 'forged-fingerprint', 'invalid-projection'] as const)(
+    'retains legacy preference and submitted evidence behind a durable barrier (%s)',
+    async kind => {
+      const storage = new QfSettingsStorage();
+      const local = [{group: 'audio', key: 'playbackRate', value: 2}];
+      const submitted = [
+        {group: 'quranReaderStyles', key: 'showTajweedRules', value: true},
+      ];
+      await AsyncStorage.setItem(
+        'qf-settings-sync-v1:reader',
+        JSON.stringify({
+          version: 1,
+          initialized: true,
+          syncedDocuments: {},
+          syncedLocalDocuments: {},
+          pending: {},
+          localDocuments: {},
+          localPreferences: local,
+          preferencePending: local,
+          preferenceInFlight: submitted,
+          ...(kind === 'forged-fingerprint'
+            ? {syncedPreferenceFingerprint: JSON.stringify(local)}
+            : {}),
+          ...(kind === 'invalid-projection'
+            ? {syncedPreferences: {}, syncedLocalPreferences: 'bad'}
+            : {}),
+        }),
+      );
+      const loaded = await storage.load('reader');
+      expect(loaded).toMatchObject({
+        needsReconciliation: true,
+        localPreferences: local,
+        preferencePending: local,
+        preferenceInFlight: submitted,
+      });
+      expect(loaded.syncedLocalPreferences).toBeUndefined();
+      await storage.save('reader', loaded);
+      expect(await storage.load('reader')).toMatchObject({
+        needsReconciliation: true,
+        preferencePending: local,
+        preferenceInFlight: submitted,
+      });
+      expect((await storage.load('other')).needsReconciliation).toBe(false);
+    },
+  );
+
   test.each([
     'invalid-json',
     'wrong-schema',

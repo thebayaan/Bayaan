@@ -96,6 +96,17 @@ projection and apply them only to matching account-local remote IDs, subject to
 existing stale-timestamp and pending-intent guards. Unobserved IDs have no local
 effect; they are not inferred to be ayah bookmarks.
 
+Ordinary pulls require a present mutations array, including a genuine empty
+array. Omitted, null or wrong-type arrays fail closed without advancing the
+stored cursor. Only an explicitly requested metadata pull may be head-only;
+present malformed fields and non-allowlisted fields still fail validation.
+
+Repeated bookmark adds read the persisted row inside the same private/exclusive
+transaction as INSERT OR IGNORE. Existing rows keep their operation identity,
+backoff and uncertain delivery evidence; only newly inserted rows enqueue a
+CREATE. Re-adding an unsent DELETE can cancel that delete, while uncertain
+DELETE evidence is retained rather than destructively cleared.
+
 Provider `page`, `limit`, `total`, and `hasMore` describe the unprojected stream.
 They are never recomputed from the local effect count. An empty projected page
 can have a continuation. Without explicit pagination, the received raw count

@@ -32,6 +32,7 @@ export interface BayaanSyncPushResult {
 }
 
 export interface BayaanSyncPullDecodeRequest {
+  metadataOnly?: boolean;
   limit?: number;
   page?: number;
 }
@@ -348,8 +349,9 @@ function decodeResponse(
     return invalid();
   }
   if (
-    data.mutations !== undefined &&
-    (!Array.isArray(data.mutations) || data.mutations.length > 1000)
+    (data.mutations === undefined && request.metadataOnly !== true) ||
+    (data.mutations !== undefined &&
+      (!Array.isArray(data.mutations) || data.mutations.length > 1000))
   ) {
     return invalid();
   }

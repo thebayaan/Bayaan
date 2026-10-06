@@ -3,6 +3,7 @@ import {getReadingThemeById} from '@/constants/readingThemes';
 import {RECITERS} from '@/data/reciterData';
 import {
   ALL_REWAYAH_IDS,
+  hasTextData,
   type RewayahId,
 } from '@/services/rewayah/RewayahIdentity';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
@@ -290,7 +291,14 @@ export function sanitizeRemoteDocument(
     ) {
       result.darkThemeId = value.darkThemeId;
     }
-    enumeration('rewayah', ALL_REWAYAH_IDS);
+    // Taxonomy identity is broader than this build's actual text capability.
+    // Omit unsupported cloud readings from the projection, not the raw record.
+    if (
+      enumValue(value.rewayah, ALL_REWAYAH_IDS) &&
+      hasTextData(value.rewayah)
+    ) {
+      result.rewayah = value.rewayah;
+    }
     if (
       typeof value.selectedTranslationId === 'string' &&
       value.selectedTranslationId.length > 0 &&

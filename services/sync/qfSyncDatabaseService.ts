@@ -417,6 +417,13 @@ export class QfSyncDatabaseService {
     let bookmark: VerseBookmark | undefined;
 
     await withQfSyncTransaction(connection, async db => {
+      // Read and INSERT OR IGNORE share the private/exclusive transaction.
+      // A persisted row is not new intent: retain its retry/uncertain evidence.
+      const existingBookmark = await this.getBookmarkRow(
+        db,
+        ownerScope,
+        input.verseKey,
+      );
       const existingOperation = await this.getBookmarkOutboxEntry(
         db,
         ownerScope,
@@ -430,6 +437,8 @@ export class QfSyncDatabaseService {
         rewayahId,
         db,
       );
+
+      if (existingBookmark) return;
 
       const payload = {
         verseKey: input.verseKey,

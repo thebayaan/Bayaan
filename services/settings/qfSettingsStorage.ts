@@ -48,6 +48,10 @@ export interface PersistedSettingsSyncState {
   pending: Partial<Record<SettingsDocumentKey, PendingSettingsDocument>>;
   localDocuments: Partial<SettingsDocuments>;
   preferencePending: PreferenceMutation[] | null;
+  // Immutable submitted delta batch; retries replay every submitted key.
+  preferenceInFlight?: PreferenceMutation[] | null;
+  syncedPreferences?: Record<string, unknown>;
+  syncedLocalPreferences?: PreferenceMutation[];
   localPreferences: PreferenceMutation[];
   localPreferenceFingerprint: string | null;
   syncedPreferenceFingerprint: string | null;
@@ -64,6 +68,9 @@ function emptyState(): PersistedSettingsSyncState {
     pending: {},
     localDocuments: {},
     preferencePending: null,
+    preferenceInFlight: null,
+    syncedPreferences: {},
+    syncedLocalPreferences: [],
     localPreferences: [],
     localPreferenceFingerprint: null,
     syncedPreferenceFingerprint: null,
@@ -189,6 +196,9 @@ export class QfSettingsStorage {
       const parsed = JSON.parse(raw) as unknown;
       if (!isObject(parsed) || parsed.version !== STORAGE_VERSION)
         return emptyState();
+      const preferencesRequireReconciliation =
+        !isObject(parsed.syncedPreferences) ||
+        !validPreferences(parsed.syncedLocalPreferences);
       const requiresMigration =
         !validDocuments(parsed.syncedDocuments) ||
         !validDocuments(parsed.syncedLocalDocuments) ||
@@ -200,7 +210,8 @@ export class QfSettingsStorage {
         // stale full bodies: retain the local snapshot and ask at first sync.
         needsReconciliation:
           parsed.needsReconciliation === true ||
-          (parsed.initialized === true && requiresMigration),
+          (parsed.initialized === true &&
+            (requiresMigration || preferencesRequireReconciliation)),
         syncedDocuments: validDocuments(parsed.syncedDocuments)
           ? parsed.syncedDocuments
           : {},
@@ -232,10 +243,18 @@ export class QfSettingsStorage {
         localDocuments: validDocuments(parsed.localDocuments)
           ? parsed.localDocuments
           : {},
-        preferencePending:
-          !requiresMigration && validPreferences(parsed.preferencePending)
-            ? parsed.preferencePending
-            : null,
+        preferencePending: validPreferences(parsed.preferencePending)
+          ? parsed.preferencePending
+          : null,
+        preferenceInFlight: validPreferences(parsed.preferenceInFlight)
+          ? parsed.preferenceInFlight
+          : null,
+        syncedPreferences: isObject(parsed.syncedPreferences)
+          ? parsed.syncedPreferences
+          : {},
+        syncedLocalPreferences: validPreferences(parsed.syncedLocalPreferences)
+          ? parsed.syncedLocalPreferences
+          : undefined,
         localPreferences: validPreferences(parsed.localPreferences)
           ? parsed.localPreferences
           : [],

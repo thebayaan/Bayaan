@@ -234,6 +234,13 @@ export class QfSettingsSyncCoordinator {
         }
       }
 
+      // Legacy full snapshots cannot prove per-key intent. Persist a decision
+      // barrier, preserving pending/submitted evidence through offline restarts.
+      if (state.initialized && !state.syncedLocalPreferences) {
+        state.needsReconciliation = true;
+      }
+      if (state.needsReconciliation) await this.storage.save(accountId, state);
+      if (generation !== this.generation) return;
       this.accountId = accountId;
       this.state = state;
       if (state.initialized && Object.keys(state.localDocuments).length > 0) {
@@ -538,10 +545,33 @@ export class QfSettingsSyncCoordinator {
     if (fingerprint !== this.state.localPreferenceFingerprint) {
       this.state.localPreferences = preferences;
       this.state.localPreferenceFingerprint = fingerprint;
-      this.state.preferencePending = preferences;
+      this.queuePreferences(preferences);
       changed = true;
     }
     return changed;
+  }
+
+  private queuePreferences(
+    local: PreferenceMutation[],
+    reconciled = false,
+  ): void {
+    const state = this.state!;
+    // Capture newer local values, but do not reinterpret a legacy full batch
+    // until the existing explicit device/cloud decision establishes evidence.
+    if (state.needsReconciliation && !reconciled) return;
+    const baseline = new Map(
+      (state.syncedLocalPreferences ?? []).map(item => [
+        `${item.group}.${item.key}`,
+        item.value,
+      ]),
+    );
+    const changes = local.filter(
+      item =>
+        !baseline.has(`${item.group}.${item.key}`) ||
+        JSON.stringify(baseline.get(`${item.group}.${item.key}`)) !==
+          JSON.stringify(item.value),
+    );
+    state.preferencePending = changes.length ? changes : null;
   }
 
   private projectDocument(
@@ -684,7 +714,7 @@ export class QfSettingsSyncCoordinator {
       remotePreferenceEntries(remote.preferences).length > 0;
     const decisionRevision = this.localRevision;
     let choice: ConflictChoice | null =
-      hasRemote && conflict
+      state.needsReconciliation || (hasRemote && conflict)
         ? await this.chooseConflict()
         : hasRemote
           ? 'cloud'
@@ -698,23 +728,26 @@ export class QfSettingsSyncCoordinator {
       choice = 'local';
     }
 
+    // The complete read and explicit decision authorize replacing legacy
+    // unsubmitted intent, never erasing a durable submitted retry batch.
     if (choice === 'cloud') {
       this.applyingRemote = true;
       let applied: SettingsDocuments | void;
+      let appliedPreferences: PreferenceMutation[] = [];
       const preferencesBefore = this.bridge.capturePreferences();
       try {
         applied = await this.bridge.applyDocuments(remoteDocuments, () =>
           this.isCurrent(accountId, generation),
         );
         if (!this.isCurrent(accountId, generation)) return;
+        const preferenceChanges = settingsChanges(
+          preferencesRecord(preferencesBefore),
+          preferencesRecord(this.bridge.capturePreferences()),
+        );
+        this.bridge.applyPreferences(remote.preferences);
+        appliedPreferences = this.bridge.capturePreferences();
         this.bridge.applyPreferences(
-          applySettingsChanges(
-            remote.preferences,
-            settingsChanges(
-              preferencesRecord(preferencesBefore),
-              preferencesRecord(this.bridge.capturePreferences()),
-            ),
-          ),
+          applySettingsChanges(remote.preferences, preferenceChanges),
         );
       } catch (error) {
         this.applyingRemote = false;
@@ -743,7 +776,18 @@ export class QfSettingsSyncCoordinator {
       state.localPreferences = mergedPreferences;
       state.localPreferenceFingerprint =
         preferenceFingerprint(mergedPreferences);
-      state.preferencePending = mergedPreferences;
+      state.syncedPreferences = remote.preferences;
+      // Present opaque/unsupported values use the device fallback as baseline;
+      // only genuinely missing keys and edits during application are intent.
+      const remoteKeys = new Set(
+        remotePreferenceEntries(remote.preferences).map(
+          item => `${item.group}.${item.key}`,
+        ),
+      );
+      state.syncedLocalPreferences = appliedPreferences.filter(item =>
+        remoteKeys.has(`${item.group}.${item.key}`),
+      );
+      this.queuePreferences(mergedPreferences, true);
     } else {
       this.establishRemoteBaselines(state, remote.documents);
       state.localDocuments = localDocuments;
@@ -753,7 +797,10 @@ export class QfSettingsSyncCoordinator {
       state.localPreferences = localPreferences;
       state.localPreferenceFingerprint =
         preferenceFingerprint(localPreferences);
-      state.preferencePending = localPreferences;
+      state.syncedPreferences = remote.preferences;
+      // Explicit Use device consent intentionally submits all understood keys.
+      state.syncedLocalPreferences = [];
+      this.queuePreferences(localPreferences, true);
     }
     state.initialized = true;
     state.needsReconciliation = false;
@@ -919,13 +966,39 @@ export class QfSettingsSyncCoordinator {
       if (state.pending[key]) this.scheduleCapture();
     }
     if (!this.isCurrent(accountId, generation)) return;
-    if (state.preferencePending) {
-      const pending = state.preferencePending;
+    if (state.preferenceInFlight || state.preferencePending) {
+      // Whole-batch last-write-wins applies to the submitted DELTA, never the
+      // historical five-key device snapshot. Persist before any provider await.
+      const pending = state.preferenceInFlight ?? state.preferencePending!;
+      state.preferenceInFlight = pending;
+      await this.storage.save(accountId, state);
+      if (!this.isCurrent(accountId, generation)) return;
       await this.options.api.putPreferences(sessionToken, pending);
       if (!this.isCurrent(accountId, generation)) return;
-      state.syncedPreferenceFingerprint = preferenceFingerprint(pending);
-      state.preferencePending = null;
+      const changes = pending.map(item => ({
+        path: [item.group, item.key],
+        value: item.value,
+      }));
+      state.syncedPreferences = applySettingsChanges(
+        state.syncedPreferences ?? {},
+        changes,
+      );
+      state.syncedLocalPreferences = remotePreferenceEntries(
+        applySettingsChanges(
+          preferencesRecord(state.syncedLocalPreferences ?? []),
+          changes,
+        ),
+      );
+      state.syncedPreferenceFingerprint = preferenceFingerprint(
+        state.syncedLocalPreferences,
+      );
+      state.preferenceInFlight = null;
+      // Capture newer edits, including a revert of a submitted key, without
+      // promoting them to acknowledged baselines or losing them on handoff.
+      this.captureCurrent();
+      this.queuePreferences(this.bridge.capturePreferences());
       await this.storage.save(accountId, state);
+      if (state.preferencePending) this.scheduleCapture();
     }
   }
 
@@ -990,8 +1063,23 @@ export class QfSettingsSyncCoordinator {
         this.queueDocument(key, local);
         this.captureCurrent();
       }
-      if (!remote.preferencesFailed && !state.preferencePending) {
+      if (!remote.preferencesFailed) {
+        // Project healthy remote siblings even while a different key is pending.
+        // The synchronous capture catches edits made during document awaits.
+        this.captureCurrent();
+        const pending = state.preferencePending ?? [];
+        // Start from the acknowledged projection, not pending UI values, so an
+        // opaque remote value cannot accidentally acknowledge an unsent edit.
+        this.bridge.applyPreferences(
+          preferencesRecord(
+            state.syncedLocalPreferences ?? state.localPreferences,
+          ),
+        );
         this.bridge.applyPreferences(remote.preferences);
+        state.syncedPreferences = remote.preferences;
+        state.syncedLocalPreferences = this.bridge.capturePreferences();
+        this.bridge.applyPreferences(preferencesRecord(pending));
+        this.queuePreferences(this.bridge.capturePreferences());
       }
     } catch (error) {
       this.applyingRemote = false;
@@ -1006,13 +1094,9 @@ export class QfSettingsSyncCoordinator {
     state.localPreferences = preferences;
     state.localPreferenceFingerprint = fingerprint;
     if (!remote.preferencesFailed) {
-      if (
-        remotePreferenceEntries(remote.preferences).length < preferences.length
-      ) {
-        state.preferencePending = preferences;
-      } else {
-        state.syncedPreferenceFingerprint = fingerprint;
-      }
+      state.syncedPreferenceFingerprint = preferenceFingerprint(
+        state.syncedLocalPreferences ?? [],
+      );
     }
     await this.storage.save(accountId, state);
     // Healthy documents progress, but the lifecycle still sees the failure
