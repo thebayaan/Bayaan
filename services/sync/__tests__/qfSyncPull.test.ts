@@ -407,6 +407,10 @@ describe('QF stable pull coordinator', () => {
       },
     ],
     [
+      'a fully projected page without continuation metadata',
+      {lastMutationAt: 10, mutations: [], receivedMutationCount: 1000},
+    ],
+    [
       'a full page without continuation metadata',
       {
         lastMutationAt: 10,

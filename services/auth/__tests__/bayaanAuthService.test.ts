@@ -147,6 +147,24 @@ describe('Bayaan BFF auth service', () => {
     });
   });
 
+  it.each(['missing', 'expired'] as const)(
+    'publishes revocation when the current request session is %s in storage',
+    async mode => {
+      const service = createBayaanAuthService({apiUrl});
+      if (mode === 'expired')
+        await saveBayaanSession({
+          token: 'session-a',
+          expiresAt: Date.now() - 1,
+          profile: {...profile, accountId: 'account-a'},
+        });
+      const signedOut = jest.fn();
+      await service.revokeSession('account-a', 'session-a', signedOut);
+      expect(signedOut).toHaveBeenCalledTimes(1);
+      await expect(getBayaanSession()).resolves.toBeNull();
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(['matching', 'new-token', 'new-account', 'delete-error'])(
     'binds scheduled/direct session revocation to persisted account and token (%s)',
     async mode => {

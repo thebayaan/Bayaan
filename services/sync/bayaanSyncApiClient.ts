@@ -19,6 +19,7 @@ export type BayaanSyncApiErrorCode =
   | 'rate_limited'
   | 'service_unavailable'
   | 'invalid_response'
+  | 'response_too_large'
   | 'request_failed';
 
 export class BayaanSyncApiError extends Error {
@@ -53,7 +54,10 @@ interface BayaanSyncApiClientOptions {
 
 const SYNC_RESOURCES = ['BOOKMARK', 'NOTE', 'READING_SESSION'] as const;
 const SYNC_TIMEOUT_MS = 8_000;
-const SYNC_MAX_RESPONSE_BYTES = 1024 * 1024;
+// One supported 200k-character note can require 1.2MB when JSON escapes
+// control characters. Admit one such mutation while bounding every response;
+// the coordinator halves oversized pull pages and restarts their traversal.
+const SYNC_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 function expoFetch(input: string, init?: RequestInit): Promise<Response> {
   const module = require('expo/fetch') as {fetch: BoundedFetch};
@@ -80,6 +84,20 @@ function pushUrl(apiUrl: string, lastMutationAt: number): string {
   const url = new URL('/v1/qf/sync', `${apiUrl.replace(/\/+$/, '')}/`);
   url.searchParams.set('lastMutationAt', String(lastMutationAt));
   return url.toString();
+}
+
+function isBffPullSizeError(body: unknown): boolean {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const envelope = body as Record<string, unknown>;
+  if (Object.keys(envelope).some(key => key !== 'error')) return false;
+  const error = envelope.error;
+  if (!error || typeof error !== 'object' || Array.isArray(error)) return false;
+  const detail = error as Record<string, unknown>;
+  return (
+    Object.keys(detail).every(key => key === 'code' || key === 'message') &&
+    detail.code === 'QF_SYNC_RESPONSE_TOO_LARGE' &&
+    (detail.message === undefined || typeof detail.message === 'string')
+  );
 }
 
 function mapStatus(response: Response): BayaanSyncApiError {
@@ -120,13 +138,17 @@ export class BayaanSyncApiClient {
         timeoutMs: this.options.timeoutMs ?? SYNC_TIMEOUT_MS,
         maxResponseBytes:
           this.options.maxResponseBytes ?? SYNC_MAX_RESPONSE_BYTES,
+        ...(init.method === 'GET' ? {readErrorBodyStatus: 502} : {}),
       });
     } catch (error) {
       if (
         error instanceof BoundedHttpError &&
-        (error.code === 'response_too_large' || error.code === 'invalid_json')
+        error.code === 'response_too_large'
       ) {
-        throw new BayaanSyncApiError('invalid_response', 0);
+        throw new BayaanSyncApiError('response_too_large', 200);
+      }
+      if (error instanceof BoundedHttpError && error.code === 'invalid_json') {
+        throw new BayaanSyncApiError('invalid_response', 200);
       }
       throw new BayaanSyncApiError('service_unavailable', 0);
     }
@@ -152,6 +174,9 @@ export class BayaanSyncApiClient {
     );
 
     if (!response.ok) {
+      if (response.status === 502 && isBffPullSizeError(body)) {
+        throw new BayaanSyncApiError('response_too_large', 502);
+      }
       throw mapStatus(response);
     }
 

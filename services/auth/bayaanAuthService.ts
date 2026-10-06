@@ -369,8 +369,9 @@ export function createBayaanAuthService(
         if (
           owner !== epoch ||
           logoutPromise ||
-          stored?.token !== sessionToken ||
-          stored.profile.accountId !== accountId
+          (stored !== null &&
+            (stored.token !== sessionToken ||
+              stored.profile.accountId !== accountId))
         )
           return;
         // A late 401 from account A must never delete account B's session or

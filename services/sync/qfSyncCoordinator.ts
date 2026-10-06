@@ -430,6 +430,15 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
       return;
     }
     if (!canonical) {
+      // Deleting locally removes the row before delivery. Its durable outbox
+      // tombstone still owns this identity, including uncertain deliveries.
+      const deleted = await db.getFirstAsync<PendingOutboxRow>(
+        `SELECT local_operation_id FROM qf_sync_outbox
+         WHERE owner_scope = ? AND resource = 'NOTE' AND remote_id = ?
+           AND mutation_type = 'DELETE' LIMIT 1`,
+        [scope, mutation.resourceId],
+      );
+      if (deleted) return;
       await db.runAsync(
         `INSERT INTO notes
            (id, owner_scope, verse_key, surah_number, ayah_number, content, verse_keys, created_at, updated_at, rewayah_id, remote_id, server_created_at, server_updated_at)
@@ -1017,7 +1026,8 @@ function nextPageDecision(
     const traversed = page.page * page.limit;
     return Number.isSafeInteger(traversed) ? traversed < page.total : null;
   }
-  if (page.mutations.length >= requestedLimit) return null;
+  if ((page.receivedMutationCount ?? page.mutations.length) >= requestedLimit)
+    return null;
   return false;
 }
 
@@ -1080,6 +1090,30 @@ export class QfSyncCoordinator {
   }
 
   async pull(input: PullInput): Promise<QfSyncPullResult> {
+    // OFFSET pagination must restart from the stored head when changing limit.
+    // Pages already applied are idempotent; no cursor was committed on failure.
+    for (
+      let limit = DEFAULT_PAGE_LIMIT;
+      ;
+      limit = Math.max(1, Math.floor(limit / 2))
+    ) {
+      try {
+        return await this.pullAtLimit(input, limit);
+      } catch (error) {
+        if (
+          !(error instanceof BayaanSyncApiError) ||
+          error.code !== 'response_too_large' ||
+          limit === 1
+        )
+          throw error;
+      }
+    }
+  }
+
+  private async pullAtLimit(
+    input: PullInput,
+    limit: number,
+  ): Promise<QfSyncPullResult> {
     const storedHead = await this.options.store.getStoredHead(input.accountId);
 
     for (let attempt = 0; attempt <= this.maxRestarts; attempt += 1) {
@@ -1091,14 +1125,10 @@ export class QfSyncCoordinator {
         const page = await this.options.transport.pull(input.sessionToken, {
           mutationsSince: storedHead,
           metadataOnly: false,
-          limit: DEFAULT_PAGE_LIMIT,
+          limit,
           page: pageNumber,
         });
-        const hasNextPage = nextPageDecision(
-          page,
-          pageNumber,
-          DEFAULT_PAGE_LIMIT,
-        );
+        const hasNextPage = nextPageDecision(page, pageNumber, limit);
         if (hasNextPage === null) {
           return {
             status: 'deferred',
@@ -1301,7 +1331,8 @@ export class QfSyncCoordinator {
           responseReceived ||
           (error instanceof BayaanSyncApiError &&
             (error.code === 'service_unavailable' ||
-              error.code === 'invalid_response'));
+              error.code === 'invalid_response' ||
+              error.code === 'response_too_large'));
         if (outcomeIsAmbiguous) {
           const pulled = await this.pull(input);
           if (pulled.status !== 'synced') {

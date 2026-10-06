@@ -23,6 +23,8 @@ type StreamReadResult = Awaited<
 interface BoundedRequestOptions {
   timeoutMs: number;
   maxResponseBytes: number;
+  // Opt-in for a typed BFF error contract; other callers never read error bodies.
+  readErrorBodyStatus?: number;
 }
 
 function utf8ByteLength(value: string): number {
@@ -167,10 +169,23 @@ export async function boundedJsonRequest(
     } catch {
       throw new BoundedHttpError(signal.aborted ? 'timeout' : 'network');
     }
-    return {
-      response,
-      body: response.ok ? await readJson(response, options, signal) : null,
-    };
+    let body: unknown | null = null;
+    if (response.ok) {
+      body = await readJson(response, options, signal);
+    } else if (response.status === options.readErrorBodyStatus) {
+      try {
+        body = await readJson(response, options, signal);
+      } catch (error) {
+        // An unreadable error body is not proof of an upstream size rejection.
+        // Preserve its HTTP classification, but never swallow timeout/network.
+        if (
+          !(error instanceof BoundedHttpError) ||
+          !['invalid_json', 'response_too_large'].includes(error.code)
+        )
+          throw error;
+      }
+    }
+    return {response, body};
   });
 }
 

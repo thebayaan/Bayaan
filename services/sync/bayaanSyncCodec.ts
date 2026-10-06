@@ -15,6 +15,8 @@ export interface BayaanSyncPullPage {
   limit?: number;
   total?: number;
   hasMore?: boolean;
+  // Provider cardinality before the mobile ayah-only bookmark projection.
+  receivedMutationCount?: number;
 }
 
 export interface BayaanSyncRequestMutation {
@@ -136,7 +138,8 @@ function isOptionalDate(value: unknown): value is string | undefined {
 function decodeData(
   resource: QfSyncResource,
   value: unknown,
-): Record<string, string | number | boolean | string[]> {
+  projectBookmarks = false,
+): Record<string, string | number | boolean | string[]> | null {
   if (!isObject(value) || !hasOnlyKeys(value, DATA_KEYS[resource])) {
     return invalid();
   }
@@ -149,9 +152,24 @@ function decodeData(
   }
 
   if (resource === 'BOOKMARK') {
+    const bookmarkType = value.type ?? value.bookmarkType ?? 'ayah';
     if (
-      !isPositiveSafeInteger(value.key) ||
-      !isPositiveSafeInteger(value.verseNumber)
+      !['ayah', 'page', 'juz', 'surah'].includes(String(bookmarkType)) ||
+      (value.type !== undefined &&
+        value.bookmarkType !== undefined &&
+        value.type !== value.bookmarkType) ||
+      !isPositiveSafeInteger(value.key)
+    ) {
+      return invalid();
+    }
+    const unsupported = bookmarkType !== 'ayah';
+    if (
+      unsupported
+        ? !projectBookmarks ||
+          (value.verseNumber !== undefined &&
+            value.verseNumber !== null &&
+            !isPositiveSafeInteger(value.verseNumber))
+        : !isPositiveSafeInteger(value.verseNumber)
     ) {
       return invalid();
     }
@@ -161,7 +179,11 @@ function decodeData(
       }
     }
     for (const key of ['isReading', 'isInDefaultCollection'] as const) {
-      if (value[key] !== undefined && typeof value[key] !== 'boolean') {
+      if (
+        value[key] !== undefined &&
+        !(projectBookmarks && key === 'isReading' && value[key] === null) &&
+        typeof value[key] !== 'boolean'
+      ) {
         return invalid();
       }
     }
@@ -175,6 +197,9 @@ function decodeData(
         return invalid();
       }
     }
+    // Recognized non-ayah bookmarks are valid provider data, not deletions.
+    // Validate them fully, then omit only their unsupported local effect.
+    if (unsupported) return null;
   } else if (resource === 'NOTE') {
     if (
       typeof value.body !== 'string' ||
@@ -202,7 +227,10 @@ function decodeData(
   return value as Record<string, string | number | boolean | string[]>;
 }
 
-function decodeMutation(value: unknown): BayaanSyncMutation {
+function decodeMutation(
+  value: unknown,
+  projectBookmarks = false,
+): BayaanSyncMutation | null {
   if (!isObject(value) || !hasOnlyKeys(value, MUTATION_KEYS)) {
     return invalid();
   }
@@ -232,12 +260,17 @@ function decodeMutation(value: unknown): BayaanSyncMutation {
     return invalid();
   }
 
+  const data =
+    type === 'DELETE'
+      ? undefined
+      : decodeData(resource, value.data, projectBookmarks);
+  if (data === null) return null;
   return {
     resource,
     type,
     resourceId: value.resourceId,
     timestamp: value.timestamp,
-    ...(type === 'DELETE' ? {} : {data: decodeData(resource, value.data)}),
+    ...(data === undefined ? {} : {data}),
   };
 }
 
@@ -278,17 +311,20 @@ export function decodeBayaanSyncRequestMutation(
     return {resource, type, resourceId: resourceId as string};
   }
   if (value.data === undefined) return invalid();
+  const data = decodeData(resource, value.data);
+  if (data === null) return invalid();
   return {
     resource,
     type,
     ...(typeof resourceId === 'string' ? {resourceId} : {}),
-    data: decodeData(resource, value.data),
+    data,
   };
 }
 
-export function decodeBayaanSyncPullResponse(
+function decodeResponse(
   value: unknown,
-  request: BayaanSyncPullDecodeRequest = {},
+  request: BayaanSyncPullDecodeRequest,
+  projectBookmarks: boolean,
 ): BayaanSyncPullPage {
   if (
     !isObject(value) ||
@@ -358,16 +394,28 @@ export function decodeBayaanSyncPullResponse(
     }
   }
 
+  const received = Array.isArray(data.mutations) ? data.mutations : [];
+  const mutations = received
+    .map(mutation => decodeMutation(mutation, projectBookmarks))
+    .filter((mutation): mutation is BayaanSyncMutation => mutation !== null);
   return {
     lastMutationAt: data.lastMutationAt,
-    mutations: Array.isArray(data.mutations)
-      ? data.mutations.map(decodeMutation)
-      : [],
+    mutations,
+    ...(mutations.length === received.length
+      ? {}
+      : {receivedMutationCount: received.length}),
     ...(data.page === undefined ? {} : {page: data.page as number}),
     ...(data.limit === undefined ? {} : {limit: data.limit as number}),
     ...(data.total === undefined ? {} : {total: data.total as number}),
     ...(data.hasMore === undefined ? {} : {hasMore: data.hasMore}),
   };
+}
+
+export function decodeBayaanSyncPullResponse(
+  value: unknown,
+  request: BayaanSyncPullDecodeRequest = {},
+): BayaanSyncPullPage {
+  return decodeResponse(value, request, true);
 }
 
 export function decodeBayaanSyncPushResponse(
@@ -384,7 +432,8 @@ export function decodeBayaanSyncPushResponse(
     return invalid();
   }
 
-  const decoded = decodeBayaanSyncPullResponse(value);
+  // Push receipts must describe supported effects; never filter acknowledgements.
+  const decoded = decodeResponse(value, {}, false);
   return {
     lastMutationAt: decoded.lastMutationAt,
     mutations: decoded.mutations,

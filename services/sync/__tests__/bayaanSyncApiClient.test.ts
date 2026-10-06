@@ -369,6 +369,169 @@ describe('Bayaan Sync BFF client', () => {
     });
   });
 
+  it.each([
+    {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}},
+    {
+      error: {
+        code: 'QF_SYNC_RESPONSE_TOO_LARGE',
+        message: 'Bounded provider page',
+      },
+    },
+  ])('recognizes only the typed GET 502 size envelope (%j)', async body => {
+    const client = new BayaanSyncApiClient({
+      apiUrl,
+      fetchImpl: jest.fn().mockResolvedValue(jsonResponse(body, 502)),
+    });
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 7001}),
+    ).rejects.toMatchObject({
+      code: 'response_too_large',
+      status: 502,
+      message: 'Bayaan Sync request failed',
+    });
+  });
+
+  it.each([
+    [502, {error: {code: 'QF_SYNC_INVALID_RESPONSE'}}, 'service_unavailable'],
+    [502, {error: {code: 'QF_SYNC_UPSTREAM_ERROR'}}, 'service_unavailable'],
+    [503, {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}}, 'service_unavailable'],
+    [413, {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}}, 'request_failed'],
+    [200, {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}}, 'invalid_response'],
+    [502, {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}, 'service_unavailable'],
+    [502, {error: 'QF_SYNC_RESPONSE_TOO_LARGE'}, 'service_unavailable'],
+    [
+      502,
+      {error: [{code: 'QF_SYNC_RESPONSE_TOO_LARGE'}]},
+      'service_unavailable',
+    ],
+    [
+      502,
+      {error: {code: ['QF_SYNC_RESPONSE_TOO_LARGE']}},
+      'service_unavailable',
+    ],
+    [
+      502,
+      {
+        error: {
+          code: 'QF_SYNC_RESPONSE_TOO_LARGE',
+          message: {private: 'not-a-string'},
+        },
+      },
+      'service_unavailable',
+    ],
+    [
+      502,
+      {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE', upstreamToken: 'private'}},
+      'service_unavailable',
+    ],
+    [
+      502,
+      {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}, upstreamBody: 'private'},
+      'service_unavailable',
+    ],
+    [502, null, 'service_unavailable'],
+  ])(
+    'does not classify status %s or a malformed/other error envelope as oversized (%j)',
+    async (status, body, code) => {
+      const client = new BayaanSyncApiClient({
+        apiUrl,
+        fetchImpl: jest
+          .fn()
+          .mockResolvedValue(jsonResponse(body, Number(status))),
+      });
+      const error = await client
+        .pull(opaqueSession, {mutationsSince: 7001})
+        .catch(value => value);
+      expect(error).toMatchObject({
+        code,
+        status,
+        message: 'Bayaan Sync request failed',
+      });
+      expect(JSON.stringify(error)).not.toContain('private');
+    },
+  );
+
+  it.each(['declared', 'stream', 'invalid-json'] as const)(
+    'keeps an unreadable GET 502 %s error body generic and bounded',
+    async mode => {
+      const cancel = jest.fn();
+      const bytes = new TextEncoder().encode(
+        mode === 'invalid-json' ? '{not-json' : 'x'.repeat(2 * 1024 * 1024 + 1),
+      );
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(bytes);
+          if (mode === 'invalid-json') c.close();
+        },
+        cancel,
+      });
+      const response = {
+        ok: false,
+        status: 502,
+        headers: new Headers(
+          mode === 'declared' ? {'content-length': String(bytes.length)} : {},
+        ),
+        body: stream,
+      } as Response;
+      const client = new BayaanSyncApiClient({
+        apiUrl,
+        fetchImpl: jest.fn().mockResolvedValue(response),
+      });
+      await expect(
+        client.pull(opaqueSession, {mutationsSince: 7001}),
+      ).rejects.toMatchObject({code: 'service_unavailable', status: 502});
+      if (mode !== 'invalid-json') expect(cancel).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('keeps the deadline active while reading the opt-in GET 502 error body', async () => {
+    const response = jsonResponse(
+      {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}},
+      502,
+    );
+    const stalled = new ReadableStream<Uint8Array>();
+    const fetchImpl = jest.fn(
+      async (_url: string, init?: RequestInit) =>
+        ({...response, body: stalled, signal: init?.signal}) as Response,
+    );
+    const client = new BayaanSyncApiClient({apiUrl, fetchImpl, timeoutMs: 5});
+    await expect(
+      client.pull(opaqueSession, {mutationsSince: 7001}),
+    ).rejects.toMatchObject({code: 'service_unavailable', status: 0});
+    expect(fetchImpl.mock.calls[0][1]?.signal?.aborted).toBe(true);
+  });
+
+  it('does not read or reinterpret a typed POST 502 error as a pull size hint', async () => {
+    const response = jsonResponse(
+      {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}},
+      502,
+    );
+    const stream = response.body;
+    if (!stream) throw new Error('Expected a readable test response');
+    const read = jest.spyOn(stream, 'getReader');
+    const client = new BayaanSyncApiClient({
+      apiUrl,
+      fetchImpl: jest.fn().mockResolvedValue(response),
+    });
+    await expect(
+      client.push(opaqueSession, {
+        lastMutationAt: 7001,
+        mutations: [
+          {
+            resource: 'NOTE',
+            type: 'CREATE',
+            data: {
+              body: 'private reflection',
+              ranges: ['2:255-2:255'],
+              saveToQR: false,
+            },
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({code: 'service_unavailable', status: 502});
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it('aborts a stalled sync request at its deadline', async () => {
     let observedSignal: AbortSignal | undefined;
     const fetchImpl = jest.fn(
@@ -386,18 +549,118 @@ describe('Bayaan Sync BFF client', () => {
     expect(observedSignal?.aborted).toBe(true);
   });
 
+  it.each([
+    {type: 'ayah', key: 2, verseNumber: null},
+    {type: 'unknownType', key: 10, verseNumber: null},
+    {type: 'page', bookmarkType: 'ayah', key: 10, verseNumber: null},
+    {type: 'juz', key: 0, verseNumber: null},
+    {type: 'surah', key: 10, verseNumber: 'invalid'},
+    {type: 'page', key: 10, verseNumber: null, unknownField: true},
+    {type: 'page', key: 10, verseNumber: null, clientUpdatedAt: 'invalid'},
+  ])(
+    'rejects malformed bookmark data rather than projecting it: %j',
+    async data => {
+      const fetchImpl = jest.fn().mockResolvedValue(
+        jsonResponse({
+          success: true,
+          data: {
+            lastMutationAt: 1,
+            mutations: [
+              {
+                resource: 'BOOKMARK',
+                type: 'CREATE',
+                resourceId: 'malformed',
+                timestamp: 1,
+                data,
+              },
+            ],
+          },
+        }),
+      );
+      await expect(
+        new BayaanSyncApiClient({apiUrl, fetchImpl}).pull(opaqueSession, {
+          mutationsSince: 0,
+        }),
+      ).rejects.toMatchObject({code: 'invalid_response'});
+    },
+  );
+
+  it.each(['type', 'bookmarkType'] as const)(
+    'projects only recognized non-ayah %s while retaining unprojected count',
+    async field => {
+      const mutations = ['page', 'juz', 'surah'].map((type, index) => ({
+        resource: 'BOOKMARK',
+        type: 'CREATE',
+        resourceId: type,
+        timestamp: 1,
+        data: {
+          [field]: type,
+          key: 10,
+          ...(index === 0 ? {} : {verseNumber: index === 1 ? null : 1}),
+        },
+      }));
+      const fetchImpl = jest
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({success: true, data: {lastMutationAt: 1, mutations}}),
+        );
+      await expect(
+        new BayaanSyncApiClient({apiUrl, fetchImpl}).pull(opaqueSession, {
+          mutationsSince: 0,
+        }),
+      ).resolves.toEqual({
+        lastMutationAt: 1,
+        mutations: [],
+        receivedMutationCount: 3,
+      });
+    },
+  );
+
+  it('never filters unsupported push receipts or authorizes non-ayah outbound effects', async () => {
+    const mutation = {
+      resource: 'BOOKMARK' as const,
+      type: 'CREATE' as const,
+      resourceId: 'page',
+      timestamp: 2,
+      data: {type: 'page', key: 10},
+    };
+    const fetchImpl = jest.fn().mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: {lastMutationAt: 2, mutations: [mutation]},
+      }),
+    );
+    const client = new BayaanSyncApiClient({apiUrl, fetchImpl});
+    await expect(
+      client.push(opaqueSession, {
+        lastMutationAt: 1,
+        mutations: [
+          {
+            resource: 'BOOKMARK',
+            type: 'CREATE',
+            data: {type: 'ayah', key: 2, verseNumber: 255},
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({code: 'invalid_response'});
+    await expect(
+      client.push(opaqueSession, {lastMutationAt: 1, mutations: [mutation]}),
+    ).rejects.toMatchObject({code: 'request_failed'});
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects oversized successful sync JSON without parsing it', async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      headers: new Headers({'content-length': '1048577'}),
+      headers: new Headers({'content-length': '2097153'}),
       text: jest.fn(),
     } as unknown as Response);
     const client = new BayaanSyncApiClient({apiUrl, fetchImpl});
 
     await expect(
       client.pull(opaqueSession, {mutationsSince: 0}),
-    ).rejects.toMatchObject({code: 'invalid_response'});
+    ).rejects.toMatchObject({code: 'response_too_large', status: 200});
     expect(fetchImpl.mock.results[0]).toBeDefined();
   });
 });

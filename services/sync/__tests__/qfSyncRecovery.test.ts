@@ -586,7 +586,647 @@ async function createRemoteBackedNote(
 }
 
 describe('SQLite push recovery store', () => {
-  it.each([403, 429, 502, 'head-only', 'duplicate-identities'] as const)(
+  it.each([
+    'mixed',
+    'unsupported-only',
+    'changing-head',
+    'single-page',
+  ] as const)(
+    'projects valid non-ayah bookmarks across all provider pages without cloud writes (%s)',
+    async mode => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices(`bookmark-projection-${mode}.db`);
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const store = new SqliteQfSyncPullStore(database);
+      await store.commitStableHead(accountId, 0, 7001, 1000);
+      await store.commitStableHead('reader-b', 0, 9001, 1000);
+      await store.applyPage(accountId, [
+        {
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: 'keep',
+          timestamp: 7000,
+          data: {type: 'ayah', key: 2, verseNumber: 255},
+        },
+      ]);
+      await sync.addNote({
+        accountId: 'reader-b',
+        verseKey: '3:1',
+        surahNumber: 3,
+        ayahNumber: 1,
+        content: 'private-b',
+      });
+      const beforeB = await sync.getOutboxEntries('reader-b');
+      const nonAyah = (type: string, index: number) => ({
+        resource: 'BOOKMARK',
+        type: index % 2 ? 'UPDATE' : 'CREATE',
+        resourceId: `unsupported-${index}`,
+        timestamp: 7002 + index,
+        data: {bookmarkType: type, key: 10, verseNumber: null, isReading: null},
+      });
+      const mutations: unknown[] = Array.from(
+        {length: mode === 'single-page' ? 3 : 1000},
+        (_, index) => nonAyah(['page', 'juz', 'surah'][index % 3], index),
+      );
+      // In paginated modes, the first page projects to zero effects but continues.
+      mutations.push(nonAyah('surah', 1000));
+      if (mode !== 'unsupported-only')
+        mutations.push(
+          {
+            resource: 'BOOKMARK',
+            type: 'CREATE',
+            resourceId: 'delete-me',
+            timestamp: 8101,
+            data: {type: 'ayah', key: 3, verseNumber: 1},
+          },
+          {
+            resource: 'BOOKMARK',
+            type: 'DELETE',
+            resourceId: 'delete-me',
+            timestamp: 8102,
+            data: {},
+          },
+          {
+            resource: 'BOOKMARK',
+            type: 'DELETE',
+            resourceId: 'unsupported-1',
+            timestamp: 8103,
+          },
+          {
+            resource: 'BOOKMARK',
+            type: 'UPDATE',
+            resourceId: 'keep',
+            timestamp: 8104,
+            data: {type: 'page', key: 10, verseNumber: null},
+          },
+          {
+            resource: 'BOOKMARK',
+            type: 'UPDATE',
+            resourceId: 'keep',
+            timestamp: 8105,
+            data: {type: 'ayah', key: 2, verseNumber: 256},
+          },
+          {
+            resource: 'BOOKMARK',
+            type: 'UPDATE',
+            resourceId: 'keep',
+            timestamp: 7000,
+            data: {type: 'ayah', key: 2, verseNumber: 254},
+          },
+          {
+            resource: 'NOTE',
+            type: 'CREATE',
+            resourceId: 'private',
+            timestamp: 8106,
+            data: {body: 'neighbor', ranges: ['2:255-2:255'], saveToQR: false},
+          },
+          {
+            resource: 'READING_SESSION',
+            type: 'UPDATE',
+            resourceId: 'reading',
+            timestamp: 8107,
+            data: {chapterNumber: 3, verseNumber: 7},
+          },
+        );
+      const calls: Array<{
+        page: number | null;
+        metadata: boolean;
+        since: number;
+      }> = [];
+      let metadataChecks = 0;
+      const fetchImpl = jest.fn(async (input: string, init: RequestInit) => {
+        expect(init.method).toBe('GET');
+        const url = new URL(input);
+        const metadata = url.searchParams.get('metadataOnly') === 'true';
+        const page = Number(url.searchParams.get('page'));
+        const limit = Number(url.searchParams.get('limit'));
+        calls.push({
+          page: metadata ? null : page,
+          metadata,
+          since: Number(url.searchParams.get('mutationsSince')),
+        });
+        // No cursor advance before a matching metadata recheck, even on replay.
+        expect(await sync.getStoredHead(accountId)).toBe(7001);
+        const head =
+          mode === 'changing-head' && metadataChecks > 0 ? 9000 : 8999;
+        if (metadata) metadataChecks += 1;
+        const data = metadata
+          ? {lastMutationAt: mode === 'changing-head' ? 9000 : head}
+          : {
+              lastMutationAt: head,
+              mutations: mutations.slice((page - 1) * limit, page * limit),
+              page,
+              limit,
+              total: mutations.length,
+              hasMore: page * limit < mutations.length,
+            };
+        const bytes = new TextEncoder().encode(
+          JSON.stringify({success: true, data}),
+        );
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({'content-length': String(bytes.length)}),
+          body: new ReadableStream({
+            start(c) {
+              c.enqueue(bytes);
+              c.close();
+            },
+          }),
+        } as Response;
+      });
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store,
+        pushStore: sync,
+        sleep: async () => undefined,
+      });
+      await expect(
+        coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+      ).resolves.toMatchObject({
+        status: 'synced',
+        head: mode === 'changing-head' ? 9000 : 8999,
+        restarts: mode === 'changing-head' ? 1 : 0,
+      });
+      expect(calls.map(call => call.page)).toEqual(
+        mode === 'changing-head'
+          ? [1, 2, null, 1, 2, null]
+          : mode === 'single-page'
+            ? [1, null]
+            : [1, 2, null],
+      );
+      expect(calls.every(call => call.since === 7001)).toBe(true);
+      const db = await database.getConnection();
+      expect(
+        await db.getAllAsync(
+          "SELECT remote_id, verse_key FROM bookmarks WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual([
+        {
+          remote_id: 'keep',
+          verse_key: mode === 'unsupported-only' ? '2:255' : '2:256',
+        },
+      ]);
+      expect(
+        await db.getAllAsync(
+          "SELECT content FROM notes WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual(mode === 'unsupported-only' ? [] : [{content: 'neighbor'}]);
+      expect(
+        await db.getAllAsync(
+          "SELECT verse_key FROM qf_reading_locations WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual(mode === 'unsupported-only' ? [] : [{verse_key: '3:7'}]);
+      expect(await sync.getOutboxEntries(accountId)).toEqual([]);
+      expect(await sync.getOutboxEntries('reader-b')).toEqual(beforeB);
+      expect(await sync.getStoredHead('reader-b')).toBe(9001);
+      await expect(
+        coordinator.push({accountId, sessionToken: 'dummy-a'}),
+      ).resolves.toMatchObject({status: 'idle'});
+      expect(
+        fetchImpl.mock.calls.every(([, init]) => init.method === 'GET'),
+      ).toBe(true);
+      await database.close();
+    },
+  );
+
+  it.each(['plain', 'escaped'] as const)(
+    'restarts oversized %s note pages at a smaller limit and reaches the SQLite head',
+    async encoding => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices(`bytes-${encoding}.db`);
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const store = new SqliteQfSyncPullStore(database);
+      await store.commitStableHead('reader-b', 0, 9001, 1000);
+      // Both controls require six JSON bytes; avoid NUL because the test
+      // adapter reads TEXT through a null-terminated WASM string conversion.
+      const body = (encoding === 'plain' ? 'a' : '\u0001').repeat(200_000);
+      const mutations = Array.from({length: 12}, (_, index) => ({
+        resource: 'NOTE',
+        type: 'CREATE',
+        resourceId: `note-${index}`,
+        timestamp: 100 + index,
+        data: {body, ranges: ['2:255-2:255'], saveToQR: false},
+      }));
+      const limits: number[] = [];
+      const fetchImpl = jest.fn(async (input: string, init: RequestInit) => {
+        expect(init.method).toBe('GET');
+        const url = new URL(input);
+        const metadata = url.searchParams.get('metadataOnly') === 'true';
+        const page = Number(url.searchParams.get('page'));
+        const limit = Number(url.searchParams.get('limit'));
+        if (!metadata) limits.push(limit);
+        expect(await sync.getStoredHead(accountId)).toBe(0);
+        const data = metadata
+          ? {lastMutationAt: 200}
+          : {
+              lastMutationAt: 200,
+              mutations: mutations.slice((page - 1) * limit, page * limit),
+              page,
+              limit,
+              total: mutations.length,
+              hasMore: page * limit < mutations.length,
+            };
+        const bytes = new TextEncoder().encode(
+          JSON.stringify({success: true, data}),
+        );
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({'content-length': String(bytes.length)}),
+          body: new ReadableStream({
+            start(c) {
+              c.enqueue(bytes);
+              c.close();
+            },
+          }),
+        } as Response;
+      });
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store,
+        pushStore: sync,
+      });
+      await expect(
+        coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+      ).resolves.toMatchObject({status: 'synced', head: 200});
+      expect(limits[0]).toBe(1000);
+      expect(limits.at(-1)).toBe(encoding === 'plain' ? 7 : 1);
+      const db = await database.getConnection();
+      expect(
+        await db.getFirstAsync(
+          "SELECT COUNT(*) AS count FROM notes WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual({count: 12});
+      expect(
+        await db.getFirstAsync(
+          "SELECT content FROM notes WHERE owner_scope = 'qf:reader-a' AND remote_id = 'note-0'",
+        ),
+      ).toEqual({content: body});
+      expect(await sync.getStoredHead('reader-b')).toBe(9001);
+      expect(await sync.getOutboxEntries(accountId)).toEqual([]);
+      await database.close();
+    },
+  );
+
+  it.each(['declared', 'stream'] as const)(
+    'recovers a BFF GET 502 %s size marker after partial SQLite application and restarts from the uncommitted head',
+    async sizeMode => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices(`bff-size-${sizeMode}.db`);
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const store = new SqliteQfSyncPullStore(database);
+      await store.commitStableHead(accountId, 0, 7001, 1000);
+      await store.commitStableHead('reader-b', 0, 9001, 1000);
+      await sync.addNote({
+        accountId: 'reader-b',
+        verseKey: '3:1',
+        surahNumber: 3,
+        ayahNumber: 1,
+        content: 'private-b',
+      });
+      const beforeB = await sync.getOutboxEntries('reader-b');
+      const body = '\u0001'.repeat(200_000);
+      const mutations = [
+        {
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: 'neighbor',
+          timestamp: 7002,
+          data: {type: 'ayah', key: 2, verseNumber: 255},
+        },
+        ...Array.from({length: 6}, (_, index) => ({
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: `unsupported-${index}`,
+          timestamp: 7003 + index,
+          data: {
+            type: ['page', 'juz', 'surah'][index % 3],
+            key: 10,
+            verseNumber: null,
+          },
+        })),
+        ...Array.from({length: 3}, (_, index) => ({
+          resource: 'NOTE',
+          type: 'CREATE',
+          resourceId: `large-${index}`,
+          timestamp: 7010 + index,
+          data: {body, ranges: ['2:255-2:255'], saveToQR: false},
+        })),
+      ];
+      const calls: Array<{
+        page: number;
+        limit: number;
+        metadata: boolean;
+        since: number;
+      }> = [];
+      const sizesRejected: Array<{page: number; limit: number}> = [];
+      let appliedBeforeSizeError = false;
+      let metadataChecks = 0;
+      const fetchImpl = jest.fn(async (input: string, init: RequestInit) => {
+        expect(init.method).toBe('GET');
+        const url = new URL(input);
+        const metadata = url.searchParams.get('metadataOnly') === 'true';
+        const page = Number(url.searchParams.get('page'));
+        const limit = Number(url.searchParams.get('limit'));
+        calls.push({
+          page,
+          limit,
+          metadata,
+          since: Number(url.searchParams.get('mutationsSince')),
+        });
+        expect(await sync.getStoredHead(accountId)).toBe(7001);
+        expect(await sync.getStoredHead('reader-b')).toBe(9001);
+        const head = metadataChecks ? 9000 : 8999;
+        if (metadata) metadataChecks += 1;
+        const data = metadata
+          ? {lastMutationAt: 9000}
+          : {
+              lastMutationAt: head,
+              mutations: mutations.slice((page - 1) * limit, page * limit),
+              page,
+              limit,
+              total: mutations.length,
+              hasMore: page * limit < mutations.length,
+            };
+        const encoded = new TextEncoder().encode(
+          JSON.stringify({success: true, data}),
+        );
+        // Dummy BFF contract: either declared or streamed upstream bytes cross
+        // the GET-only 2 MiB bound, producing the same small typed 502 envelope.
+        const oversized =
+          sizeMode === 'declared'
+            ? encoded.length > 2 * 1024 * 1024
+            : [encoded.slice(0, 512), encoded.slice(512)].reduce(
+                (sum, chunk) => sum + chunk.length,
+                0,
+              ) >
+              2 * 1024 * 1024;
+        if (oversized) {
+          sizesRejected.push({page, limit});
+          const db = await database.getConnection();
+          appliedBeforeSizeError ||=
+            (await db.getFirstAsync(
+              "SELECT remote_id FROM bookmarks WHERE owner_scope = 'qf:reader-a'",
+            )) !== null;
+          return new Response(
+            JSON.stringify({
+              error: {
+                code: 'QF_SYNC_RESPONSE_TOO_LARGE',
+                message: 'Provider page exceeded the GET response bound',
+              },
+            }),
+            {status: 502, headers: {'content-type': 'application/json'}},
+          );
+        }
+        return new Response(encoded, {
+          status: 200,
+          headers: {'content-length': String(encoded.length)},
+        });
+      });
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store,
+        pushStore: sync,
+        sleep: async () => undefined,
+      });
+      await expect(
+        coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+      ).resolves.toMatchObject({status: 'synced', head: 9000, restarts: 1});
+      expect(appliedBeforeSizeError).toBe(true);
+      expect(sizesRejected).toContainEqual({limit: 7, page: 2});
+      const pages = calls.filter(call => !call.metadata);
+      for (let index = 1; index < pages.length; index += 1)
+        if (pages[index].limit !== pages[index - 1].limit)
+          expect(pages[index].page).toBe(1);
+      expect(pages.at(-1)?.limit).toBe(1);
+      expect(calls.every(call => call.since === 7001)).toBe(true);
+      expect(metadataChecks).toBe(2);
+      const db = await database.getConnection();
+      expect(
+        await db.getAllAsync(
+          "SELECT remote_id FROM bookmarks WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual([{remote_id: 'neighbor'}]);
+      expect(
+        await db.getFirstAsync(
+          "SELECT COUNT(*) AS count FROM notes WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual({count: 3});
+      expect(
+        await db.getFirstAsync(
+          "SELECT content FROM notes WHERE owner_scope = 'qf:reader-a' AND remote_id = 'large-0'",
+        ),
+      ).toEqual({content: body});
+      expect(await sync.getOutboxEntries(accountId)).toEqual([]);
+      expect(await sync.getOutboxEntries('reader-b')).toEqual(beforeB);
+      expect(await sync.getStoredHead('reader-b')).toBe(9001);
+      await expect(
+        coordinator.push({accountId, sessionToken: 'dummy-a'}),
+      ).resolves.toMatchObject({status: 'idle'});
+      expect(
+        fetchImpl.mock.calls.every(([, init]) => init.method === 'GET'),
+      ).toBe(true);
+      await database.close();
+    },
+  );
+
+  it.each([
+    ['generic', 502, {error: {code: 'QF_SYNC_UPSTREAM_ERROR'}}],
+    ['invalid-upstream', 502, {error: {code: 'QF_SYNC_INVALID_RESPONSE'}}],
+    ['wrong-status', 503, {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}}],
+    ['wrong-shape', 502, {code: 'QF_SYNC_RESPONSE_TOO_LARGE'}],
+    [
+      'private-extra',
+      502,
+      {error: {code: 'QF_SYNC_RESPONSE_TOO_LARGE', private: 'never-log'}},
+    ],
+    ['invalid-json', 502, '{not-json'],
+    [
+      'invalid-ayah',
+      200,
+      {
+        success: true,
+        data: {
+          lastMutationAt: 7002,
+          mutations: [
+            {
+              resource: 'BOOKMARK',
+              type: 'CREATE',
+              resourceId: 'invalid',
+              timestamp: 7002,
+              data: {type: 'ayah', key: 2, verseNumber: null},
+            },
+          ],
+          page: 1,
+          limit: 1000,
+          total: 1,
+          hasMore: false,
+        },
+      },
+    ],
+  ])(
+    'does not shrink the pull limit for %s BFF responses',
+    async (name, status, body) => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices(`non-size-${name}.db`);
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const fetchImpl = jest.fn(
+        async () =>
+          new Response(typeof body === 'string' ? body : JSON.stringify(body), {
+            status: Number(status),
+          }),
+      );
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store: new SqliteQfSyncPullStore(database),
+      });
+      await expect(
+        coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+      ).rejects.toMatchObject({
+        code: status === 200 ? 'invalid_response' : 'service_unavailable',
+      });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(await sync.getStoredHead(accountId)).toBe(0);
+      await database.close();
+    },
+  );
+
+  it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS'] as const)(
+    'does not resurrect a locally deleted note while its %s tombstone owns the remote identity',
+    async state => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices(`note-delete-pull-${state}.db`);
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const store = new SqliteQfSyncPullStore(database);
+      const note = await createRemoteBackedNote(sync, 'delete locally');
+      await sync.deleteNote({accountId, noteId: note.id});
+      if (state !== 'PENDING') {
+        const [entry] = await sync.getOutboxEntries(accountId);
+        await sync.markOperationInFlight({
+          accountId,
+          localOperationId: entry.localOperationId,
+          startedAt: 7001,
+        });
+        if (state === 'AMBIGUOUS') {
+          const db = await database.getConnection();
+          await db.runAsync(
+            "UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS' WHERE owner_scope = 'qf:reader-a'",
+          );
+        }
+      }
+      const before = await sync.getOutboxEntries(accountId);
+      const fetchImpl = async (input: string) => {
+        const url = new URL(input);
+        const data =
+          url.searchParams.get('metadataOnly') === 'true'
+            ? {lastMutationAt: 7002}
+            : {
+                lastMutationAt: 7002,
+                mutations: [
+                  {
+                    resource: 'NOTE',
+                    type: 'UPDATE',
+                    resourceId: 'remote-note-1',
+                    timestamp: 7002,
+                    data: {
+                      body: 'other device update',
+                      ranges: ['2:255-2:255'],
+                      saveToQR: false,
+                    },
+                  },
+                ],
+                page: 1,
+                limit: 1000,
+                total: 1,
+                hasMore: false,
+              };
+        const bytes = new TextEncoder().encode(
+          JSON.stringify({success: true, data}),
+        );
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({'content-length': String(bytes.length)}),
+          body: new ReadableStream({
+            start(c) {
+              c.enqueue(bytes);
+              c.close();
+            },
+          }),
+        } as Response;
+      };
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store,
+      });
+      await expect(
+        coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+      ).resolves.toMatchObject({status: 'synced'});
+      const db = await database.getConnection();
+      expect(
+        await db.getAllAsync(
+          "SELECT * FROM notes WHERE owner_scope = 'qf:reader-a'",
+        ),
+      ).toEqual([]);
+      expect(await sync.getOutboxEntries(accountId)).toEqual(before);
+      // The same remote ID in B is not hidden by A's delete.
+      await store.applyPage('reader-b', [
+        {
+          resource: 'NOTE',
+          type: 'UPDATE',
+          resourceId: 'remote-note-1',
+          timestamp: 7002,
+          data: {body: 'private-b', ranges: ['2:255-2:255'], saveToQR: false},
+        },
+      ]);
+      expect(
+        await db.getAllAsync(
+          "SELECT content FROM notes WHERE owner_scope = 'qf:reader-b'",
+        ),
+      ).toEqual([{content: 'private-b'}]);
+      await database.close();
+    },
+  );
+  it.each([
+    403,
+    429,
+    502,
+    'head-only',
+    'duplicate-identities',
+    'oversized',
+    'post-size-marker',
+  ] as const)(
     'real wire %s cannot partially acknowledge a SQLite note batch or mutate another account',
     async fault => {
       const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
@@ -619,14 +1259,26 @@ describe('SQLite push recovery store', () => {
         let status = 200;
         let body: unknown;
         if (init.method === 'POST') {
-          if (typeof fault === 'number' || fault === 'duplicate-identities') {
+          if (fault === 'oversized') {
+            return new Response(null, {
+              status: 200,
+              headers: {'content-length': String(2 * 1024 * 1024 + 1)},
+            });
+          }
+          if (
+            typeof fault === 'number' ||
+            fault === 'duplicate-identities' ||
+            fault === 'post-size-marker'
+          ) {
             status = typeof fault === 'number' ? fault : 502;
             body = {
               error: {
                 code:
                   fault === 403
                     ? 'QF_SYNC_FORBIDDEN'
-                    : 'QF_SYNC_UPSTREAM_ERROR',
+                    : fault === 'post-size-marker'
+                      ? 'QF_SYNC_RESPONSE_TOO_LARGE'
+                      : 'QF_SYNC_UPSTREAM_ERROR',
               },
             };
           } else {
@@ -717,8 +1369,8 @@ describe('SQLite push recovery store', () => {
     },
   );
 
-  it.each(['NOTE', 'BOOKMARK'] as const)(
-    'rejects a poisoned/unsupported %s page through the real codec without advancing either SQLite account cursor',
+  it.each(['NOTE', 'BOOKMARK', 'UNKNOWN', 'CONFLICTING'] as const)(
+    'rejects a malformed %s page through the real codec without advancing either SQLite account cursor',
     async resource => {
       const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
         await createServices('poisoned-page.db');
@@ -736,14 +1388,30 @@ describe('SQLite push recovery store', () => {
             lastMutationAt: 7002,
             mutations: [
               {
-                resource,
+                resource: 'BOOKMARK',
+                type: 'CREATE',
+                resourceId: 'valid-neighbor',
+                timestamp: 7002,
+                data: {type: 'ayah', key: 2, verseNumber: 255},
+              },
+              {
+                resource: resource === 'NOTE' ? 'NOTE' : 'BOOKMARK',
                 type: 'CREATE',
                 resourceId: 'poison',
                 timestamp: 7002,
                 data:
                   resource === 'NOTE'
                     ? {body: 'private', ranges: [], saveToQR: false}
-                    : {type: 'page', key: 10, verseNumber: null},
+                    : resource === 'UNKNOWN'
+                      ? {type: 'unknownType', key: 10, verseNumber: null}
+                      : resource === 'CONFLICTING'
+                        ? {
+                            type: 'page',
+                            bookmarkType: 'ayah',
+                            key: 10,
+                            verseNumber: null,
+                          }
+                        : {type: 'ayah', key: 10, verseNumber: null},
               },
             ],
             page: 1,
@@ -781,6 +1449,7 @@ describe('SQLite push recovery store', () => {
       expect(await sync.getOutboxEntries(accountId)).toEqual([]);
       const db = await database.getConnection();
       expect(await db.getAllAsync('SELECT * FROM notes')).toEqual([]);
+      expect(await db.getAllAsync('SELECT * FROM bookmarks')).toEqual([]);
       await database.close();
     },
   );

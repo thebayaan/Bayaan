@@ -73,6 +73,8 @@ jest.mock('@/hooks/useTheme', () => ({
 import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import {QfAccountCard} from '../QfAccountCard';
+import {QfSyncStatusRow} from '../QfSyncStatusRow';
+import {useQfSyncStore} from '@/store/qfSyncStore';
 import OAuthCallbackScreen from '@/app/oauth/callback';
 import {
   bayaanAuthService,
@@ -128,6 +130,27 @@ beforeEach(async () => {
 });
 
 describe('QfAccountCard', () => {
+  it.each(['retry', 'conflict'] as const)(
+    'routes the %s Retry button through the explicit lifecycle recovery path',
+    async status => {
+      const retry = jest
+        .spyOn(qfSyncLifecycle, 'retryNow')
+        .mockImplementation(() => undefined);
+      useQfSyncStore.getState().resetForTesting();
+      useQfSyncStore.setState({status});
+      let row!: renderer.ReactTestRenderer;
+      await act(async () => {
+        row = renderer.create(<QfSyncStatusRow />);
+      });
+      await act(async () => {
+        findButton(row).props.onPress();
+      });
+      expect(retry).toHaveBeenCalledTimes(1);
+      expect(useQfSyncStore.getState().syncRequestId).toBe(0);
+      await act(async () => row.unmount());
+      useQfSyncStore.getState().resetForTesting();
+    },
+  );
   it.each(['offline revocation', 'secure cleanup'])(
     'handles logout rejection from %s without leaking a press-handler rejection',
     async reason => {

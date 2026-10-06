@@ -10,6 +10,7 @@ import {Feather} from '@expo/vector-icons';
 import {moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
 import {useQfSyncStore, type QfSyncStatus} from '@/store/qfSyncStore';
+import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
 
 function statusText(
   status: QfSyncStatus,
@@ -34,7 +35,6 @@ export function QfSyncStatusRow() {
   const {theme} = useTheme();
   const status = useQfSyncStore(state => state.status);
   const lastSuccessAt = useQfSyncStore(state => state.lastSuccessAt);
-  const requestSync = useQfSyncStore(state => state.requestSync);
   const label = useMemo(
     () => statusText(status, lastSuccessAt),
     [lastSuccessAt, status],
@@ -58,7 +58,10 @@ export function QfSyncStatusRow() {
         {label}
       </Text>
       {canRetry ? (
-        <Pressable accessibilityRole="button" hitSlop={8} onPress={requestSync}>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => qfSyncLifecycle.retryNow()}>
           <Text style={[styles.retry, {color: theme.colors.text}]}>Retry</Text>
         </Pressable>
       ) : null}
