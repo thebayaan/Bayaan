@@ -41,6 +41,9 @@ import type {
 jest.mock('@/services/player/store/playerStore', () => ({usePlayerStore: {}}));
 jest.mock('@/store/ambientStore', () => ({useAmbientStore: {}}));
 jest.mock('@/store/mushafPlayerStore', () => ({useMushafPlayerStore: {}}));
+jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
+  digitalKhattDataService: {},
+}));
 
 import {
   sanitizeRemoteDocument,
@@ -1766,5 +1769,219 @@ describe('QfSettingsSyncCoordinator', () => {
       themeMode: 'sepia',
     });
     expect(api.puts).toHaveLength(0);
+  });
+});
+
+class DeferredApplicationBridge extends MemoryBridge {
+  effect: (() => Promise<void>) | undefined;
+  afterApply: (() => void) | undefined;
+
+  async applyDocuments(
+    remote: Partial<SettingsDocuments>,
+    isCurrent: () => boolean = () => true,
+  ): Promise<SettingsDocuments> {
+    const before = JSON.stringify(this.captureDocuments());
+    if (remote.mushaf && this.effect) {
+      const effect = this.effect;
+      this.effect = undefined;
+      await effect();
+      if (before !== JSON.stringify(this.captureDocuments())) {
+        throw new Error('Settings application superseded');
+      }
+    }
+    if (!isCurrent()) throw new Error('Settings application superseded');
+    super.applyDocuments(remote);
+    this.listeners.forEach(listener => listener());
+    const applied = this.captureDocuments();
+    this.afterApply?.();
+    return applied;
+  }
+}
+
+function applicationGate(bridge: DeferredApplicationBridge) {
+  let started!: () => void;
+  let release!: () => void;
+  const reached = new Promise<void>(resolve => {
+    started = resolve;
+  });
+  const gate = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  bridge.effect = async () => {
+    started();
+    await gate;
+  };
+  return {reached, release};
+}
+
+describe('async settings application boundaries', () => {
+  const cloud = () => ({
+    mushaf: {
+      key: 'mushaf' as const,
+      value: {showTranslation: false},
+      etag: 'cloud-etag',
+    },
+  });
+
+  test('waits for application before committing baselines and suppresses remote notifications', async () => {
+    const api = fakeApi(cloud());
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    const gate = applicationGate(bridge);
+    const syncing = subject.syncRemote('account-a', 'session');
+    await gate.reached;
+    expect(storage.states.get('account-a')?.initialized).not.toBe(true);
+    expect(api.puts).toHaveLength(0);
+    expect(bridge.currentDocuments.mushaf.showTranslation).toBe(true);
+    gate.release();
+    await syncing;
+    expect(
+      storage.requireState('account-a').syncedLocalDocuments.mushaf,
+    ).toEqual({showTranslation: false});
+    expect((subject as unknown as {localRevision: number}).localRevision).toBe(
+      0,
+    );
+    await subject.deactivate();
+  });
+
+  test('failed cache effect cannot initialize or replace reconciliation evidence', async () => {
+    const api = fakeApi(cloud());
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const saved = emptyState();
+    saved.needsReconciliation = true;
+    saved.etags.mushaf = 'prior-etag';
+    storage.states.set('account-a', structuredClone(saved));
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    bridge.effect = async () => {
+      throw new Error('cache unavailable');
+    };
+    await expect(subject.syncRemote('account-a', 'session')).rejects.toThrow(
+      'cache unavailable',
+    );
+    expect(storage.requireState('account-a')).toEqual(saved);
+    expect(bridge.currentDocuments.mushaf.showTranslation).toBe(true);
+    expect(api.puts).toHaveLength(0);
+    await subject.deactivate();
+  });
+
+  test('account departure while applying prevents stale publication and baseline capture', async () => {
+    const api = fakeApi(cloud());
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    const gate = applicationGate(bridge);
+    const syncing = subject.syncRemote('account-a', 'session');
+    const rejection = expect(syncing).rejects.toThrow('superseded');
+    await gate.reached;
+    const departing = subject.activateLocal('account-b');
+    gate.release();
+    await rejection;
+    await departing;
+    expect(bridge.currentDocuments.mushaf.showTranslation).toBe(true);
+    expect(storage.requireState('account-a').initialized).toBe(false);
+    expect(api.puts).toHaveLength(0);
+    await subject.deactivate();
+  });
+
+  test('a manual edit during muted async application survives and remains durable local intent', async () => {
+    const api = fakeApi(cloud());
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    const gate = applicationGate(bridge);
+    const syncing = subject.syncRemote('account-a', 'session');
+    const rejection = expect(syncing).rejects.toThrow('superseded');
+    await gate.reached;
+    bridge.changeDocument('mushaf', {showTranslation: true, showWBW: true});
+    gate.release();
+    await rejection;
+    expect(bridge.currentDocuments.mushaf).toEqual({
+      showTranslation: true,
+      showWBW: true,
+    });
+    expect(api.puts).toHaveLength(0);
+    await subject.deactivate();
+    expect(storage.requireState('account-a').localDocuments.mushaf).toEqual({
+      showTranslation: true,
+      showWBW: true,
+    });
+    expect(storage.requireState('account-a').initialized).toBe(false);
+  });
+
+  test('manual edits just after projection are uploaded as edits, not mistaken for applied cloud baseline', async () => {
+    const remote = cloud();
+    const api = fakeApi(remote);
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    bridge.afterApply = () => {
+      bridge.afterApply = undefined;
+      bridge.changeDocument('mushaf', {showTranslation: true});
+    };
+    await subject.syncRemote('account-a', 'session');
+    expect(api.puts.filter(call => call.key === 'mushaf')).toHaveLength(1);
+    expect(remote.mushaf.value).toEqual({showTranslation: true});
+    expect(storage.requireState('account-a').pending).toEqual({});
+    await subject.deactivate();
+  });
+
+  test('muted edits to a later document survive awaits while pulling earlier keys', async () => {
+    const remote = cloud();
+    const api = fakeApi(remote);
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    await subject.syncRemote('account-a', 'session');
+    bridge.afterApply = () => {
+      bridge.afterApply = undefined;
+      bridge.changeDocument('audio', {shuffle: true});
+    };
+    await subject.syncRemote('account-a', 'session');
+    expect(bridge.currentDocuments.audio.shuffle).toBe(true);
+    expect(
+      api.puts
+        .filter(call => call.key === 'audio')
+        .map(call => JSON.parse(call.body).value),
+    ).toContainEqual({shuffle: true});
+    expect(storage.requireState('account-a').pending).toEqual({});
+    await subject.deactivate();
+  });
+
+  test('initialized pull cache failure keeps the previous durable mushaf baseline and ETag', async () => {
+    const remote = cloud();
+    const api = fakeApi(remote);
+    const storage = new MemoryStorage();
+    const bridge = new DeferredApplicationBridge();
+    const subject = coordinator(api, storage, bridge, 'cloud').value;
+    await subject.activateLocal('account-a');
+    await subject.syncRemote('account-a', 'session');
+    const before = structuredClone(storage.requireState('account-a'));
+    remote.mushaf = {
+      ...remote.mushaf,
+      value: {showTranslation: true},
+      etag: 'new-cloud-etag',
+    };
+    bridge.effect = async () => {
+      throw new Error('cache unavailable');
+    };
+    await expect(subject.syncRemote('account-a', 'session')).rejects.toThrow(
+      'cache unavailable',
+    );
+    expect(
+      storage.requireState('account-a').syncedLocalDocuments.mushaf,
+    ).toEqual(before.syncedLocalDocuments.mushaf);
+    expect(storage.requireState('account-a').etags.mushaf).toBe(
+      before.etags.mushaf,
+    );
+    expect(bridge.currentDocuments.mushaf.showTranslation).toBe(false);
+    await subject.deactivate();
   });
 });

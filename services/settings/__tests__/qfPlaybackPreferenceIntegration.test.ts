@@ -2,6 +2,9 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 jest.mock('expo-audio', () => ({createAudioPlayer: jest.fn()}));
+jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
+  digitalKhattDataService: {},
+}));
 jest.mock('@/services/audio/AudioCoordinator', () => ({
   audioCoordinator: {sourceDidStop: jest.fn()},
 }));
@@ -75,7 +78,9 @@ test('cloud quarter-speed survives real store application, persistence, playback
   expect(
     capturePreferenceMutations().find(item => item.group === 'audio')?.value,
   ).toBe(0.25);
-  applySettingsDocuments({audio: {verseRepeatCount: 0, rangeRepeatCount: 0}});
+  await applySettingsDocuments({
+    audio: {verseRepeatCount: 0, rangeRepeatCount: 0},
+  });
   expect(useMushafPlayerStore.getState()).toMatchObject({
     verseRepeatCount: 0,
     rangeRepeatCount: 0,
@@ -87,14 +92,16 @@ test('cloud quarter-speed survives real store application, persistence, playback
   mushafAudioService.cleanup();
 });
 
-test('synced ambient preferences control active playback but never auto-start an idle device', () => {
+test('synced ambient preferences control active playback but never auto-start an idle device', async () => {
   useAmbientStore.setState({
     currentSound: 'rain',
     volume: 0.3,
     isEnabled: false,
   });
   jest.clearAllMocks();
-  applySettingsDocuments({audio: {ambientSound: 'forest', ambientVolume: 0.7}});
+  await applySettingsDocuments({
+    audio: {ambientSound: 'forest', ambientVolume: 0.7},
+  });
   expect(useAmbientStore.getState()).toMatchObject({
     currentSound: 'forest',
     volume: 0.7,
@@ -104,7 +111,9 @@ test('synced ambient preferences control active playback but never auto-start an
   expect(ambientAudioService.setVolume).toHaveBeenLastCalledWith(0.7);
   useAmbientStore.getState().setEnabled(true);
   jest.clearAllMocks();
-  applySettingsDocuments({audio: {ambientSound: 'ocean', ambientVolume: 0.2}});
+  await applySettingsDocuments({
+    audio: {ambientSound: 'ocean', ambientVolume: 0.2},
+  });
   expect(ambientAudioService.stop).toHaveBeenCalledTimes(1);
   expect(ambientAudioService.loadSound).toHaveBeenLastCalledWith('ocean');
   expect(ambientAudioService.setVolume).toHaveBeenLastCalledWith(0.2);
@@ -114,7 +123,7 @@ test('synced ambient preferences control active playback but never auto-start an
     volume: 0.2,
     isEnabled: true,
   });
-  applySettingsDocuments({audio: {ambientSound: null}});
+  await applySettingsDocuments({audio: {ambientSound: null}});
   expect(ambientAudioService.stop).toHaveBeenCalledTimes(2);
   expect(useAmbientStore.getState()).toMatchObject({
     currentSound: null,

@@ -221,7 +221,11 @@ export class QfSettingsSyncCoordinator {
         // before this account performs its first reconciliation.
         this.applyingRemote = true;
         try {
-          this.bridge.applyDocuments(deviceContext.baselineDocuments);
+          await this.bridge.applyDocuments(
+            deviceContext.baselineDocuments,
+            () => generation === this.generation,
+          );
+          if (generation !== this.generation) return;
           this.bridge.applyPreferences(
             preferencesRecord(deviceContext.baselinePreferences),
           );
@@ -249,7 +253,10 @@ export class QfSettingsSyncCoordinator {
             // another account's shared-store values are never its local edits.
             this.applyingRemote = true;
             try {
-              this.bridge.applyDocuments(state.localDocuments);
+              await this.bridge.applyDocuments(state.localDocuments, () =>
+                this.isCurrent(accountId, generation),
+              );
+              if (!this.isCurrent(accountId, generation)) return;
               this.bridge.applyPreferences(
                 preferencesRecord(state.localPreferences),
               );
@@ -658,25 +665,13 @@ export class QfSettingsSyncCoordinator {
       localDocuments = this.bridge.captureDocuments();
       localPreferences = this.bridge.capturePreferences();
     }
-    // First reconciliation replaces any legacy complete-document intent only
-    // after the existing explicit device/cloud decision.
-    state.pending = {};
     const remoteDocuments: Partial<SettingsDocuments> = {};
     let conflict = hasPreferenceConflict(localPreferences, remote.preferences);
     for (const key of DOCUMENT_KEYS) {
       const document = remote.documents[key];
-      state.readOnlyDocuments ??= {};
-      state.readOnlyDocuments[key] = document?.readOnly === true;
-      state.syncedDocuments[key] = document?.value ?? {};
-      if (!document) {
-        delete state.etags[key];
-        state.syncedLocalDocuments[key] = {};
-        continue;
-      }
+      if (!document) continue;
       const sanitized = this.bridge.sanitizeDocument(key, document.value);
       remoteDocuments[key] = sanitized;
-      state.syncedLocalDocuments[key] = sanitized;
-      state.etags[key] = document.etag;
       if (
         documentFingerprint(sanitized) !==
         documentFingerprint(localDocuments[key])
@@ -705,13 +700,32 @@ export class QfSettingsSyncCoordinator {
 
     if (choice === 'cloud') {
       this.applyingRemote = true;
+      let applied: SettingsDocuments | void;
+      const preferencesBefore = this.bridge.capturePreferences();
       try {
-        this.bridge.applyDocuments(remoteDocuments);
-        this.bridge.applyPreferences(remote.preferences);
+        applied = await this.bridge.applyDocuments(remoteDocuments, () =>
+          this.isCurrent(accountId, generation),
+        );
+        if (!this.isCurrent(accountId, generation)) return;
+        this.bridge.applyPreferences(
+          applySettingsChanges(
+            remote.preferences,
+            settingsChanges(
+              preferencesRecord(preferencesBefore),
+              preferencesRecord(this.bridge.capturePreferences()),
+            ),
+          ),
+        );
+      } catch (error) {
+        this.applyingRemote = false;
+        this.scheduleCapture();
+        throw error;
       } finally {
         this.applyingRemote = false;
       }
+      this.establishRemoteBaselines(state, remote.documents);
       const mergedDocuments = this.bridge.captureDocuments();
+      const appliedDocuments = applied ?? mergedDocuments;
       const mergedPreferences = this.bridge.capturePreferences();
       state.localDocuments = mergedDocuments;
       for (const key of DOCUMENT_KEYS) {
@@ -720,7 +734,7 @@ export class QfSettingsSyncCoordinator {
         // their actual device fallback as baseline so only a later user edit
         // replaces the opaque raw value. Truly absent keys can still be added.
         state.syncedLocalDocuments[key] = Object.fromEntries(
-          Object.entries(mergedDocuments[key]).filter(([field]) =>
+          Object.entries(appliedDocuments[key]).filter(([field]) =>
             Object.hasOwn(raw, field),
           ),
         );
@@ -731,6 +745,7 @@ export class QfSettingsSyncCoordinator {
         preferenceFingerprint(mergedPreferences);
       state.preferencePending = mergedPreferences;
     } else {
+      this.establishRemoteBaselines(state, remote.documents);
       state.localDocuments = localDocuments;
       for (const key of DOCUMENT_KEYS) {
         this.queueDocument(key, localDocuments[key]);
@@ -744,6 +759,26 @@ export class QfSettingsSyncCoordinator {
     state.needsReconciliation = false;
     await this.storage.save(accountId, state);
     await this.flush(accountId, sessionToken, generation);
+  }
+
+  private establishRemoteBaselines(
+    state: PersistedSettingsSyncState,
+    documents: Partial<Record<SettingsDocumentKey, RemoteSettingsDocument>>,
+  ): void {
+    // Commit reconciliation evidence only after the chosen application has
+    // succeeded, never after a failed cache load or an obsolete account await.
+    state.pending = {};
+    state.readOnlyDocuments ??= {};
+    for (const key of DOCUMENT_KEYS) {
+      const document = documents[key];
+      state.readOnlyDocuments[key] = document?.readOnly === true;
+      state.syncedDocuments[key] = document?.value ?? {};
+      state.syncedLocalDocuments[key] = document
+        ? this.bridge.sanitizeDocument(key, document.value)
+        : {};
+      if (document) state.etags[key] = document.etag;
+      else delete state.etags[key];
+    }
   }
 
   private async flush(
@@ -841,23 +876,45 @@ export class QfSettingsSyncCoordinator {
         localAtSend,
         this.bridge.captureDocuments()[key],
       );
-      state.etags[key] = etag;
-      state.syncedDocuments[key] = uploaded;
-      delete state.pending[key];
       this.applyingRemote = true;
+      let baseline: Record<string, unknown>;
       try {
-        this.bridge.applyDocuments({
-          [key]: this.projectDocument(key, uploaded, localAtSend),
-        });
-        state.syncedLocalDocuments[key] = this.bridge.captureDocuments()[key];
-        this.bridge.applyDocuments({
-          [key]: applySettingsChanges(state.syncedLocalDocuments[key]!, newer),
-        });
+        const applied = await this.bridge.applyDocuments(
+          {[key]: this.projectDocument(key, uploaded, localAtSend)},
+          () => this.isCurrent(accountId, generation),
+        );
+        if (!this.isCurrent(accountId, generation)) return;
+        baseline = (applied ?? this.bridge.captureDocuments())[key];
+        const duringApply = settingsChanges(
+          baseline,
+          this.bridge.captureDocuments()[key],
+        );
+        await this.bridge.applyDocuments(
+          {
+            [key]: applySettingsChanges(
+              applySettingsChanges(baseline, newer),
+              duringApply,
+            ),
+          },
+          () => this.isCurrent(accountId, generation),
+        );
+        if (!this.isCurrent(accountId, generation)) return;
+      } catch (error) {
+        this.applyingRemote = false;
+        this.scheduleCapture();
+        throw error;
       } finally {
         this.applyingRemote = false;
       }
+      state.etags[key] = etag;
+      state.syncedDocuments[key] = uploaded;
+      state.syncedLocalDocuments[key] = baseline;
+      delete state.pending[key];
       state.localDocuments[key] = this.bridge.captureDocuments()[key];
       this.queueDocument(key, state.localDocuments[key]!);
+      // A muted await may also contain edits to other documents. Capture them
+      // before processing the next key, not after a stale projection replaces it.
+      this.captureCurrent();
       await this.storage.save(accountId, state);
       if (state.pending[key]) this.scheduleCapture();
     }
@@ -894,36 +951,52 @@ export class QfSettingsSyncCoordinator {
         // ETag, read-only status and pending local intent unchanged.
         if (remote.failedDocuments.has(key)) continue;
         const document = remote.documents[key];
-        state.readOnlyDocuments ??= {};
-        state.readOnlyDocuments[key] = document?.readOnly === true;
         const changes = state.pending[key]?.changes ?? [];
-        state.syncedDocuments[key] = document?.value ?? {};
-        if (document) state.etags[key] = document.etag;
-        else delete state.etags[key];
         const projected = this.projectDocument(
           key,
           document?.value ?? {},
           state.syncedLocalDocuments[key] ??
             this.bridge.captureDocuments()[key],
         );
-        this.bridge.applyDocuments({[key]: projected});
+        const projection = await this.bridge.applyDocuments(
+          {[key]: projected},
+          () => this.isCurrent(accountId, generation),
+        );
+        if (!this.isCurrent(accountId, generation)) return;
         // Missing remote fields are supplied locally on first creation only;
         // existing unknown/unsupported remote values are not rewritten.
-        state.syncedLocalDocuments[key] = document
-          ? this.bridge.captureDocuments()[key]
-          : {};
-        this.bridge.applyDocuments({
-          [key]: applySettingsChanges(
-            this.bridge.captureDocuments()[key],
-            changes,
-          ),
-        });
+        const applied = (projection ?? this.bridge.captureDocuments())[key];
+        const duringApply = settingsChanges(
+          applied,
+          this.bridge.captureDocuments()[key],
+        );
+        await this.bridge.applyDocuments(
+          {
+            [key]: applySettingsChanges(
+              applySettingsChanges(applied, changes),
+              duringApply,
+            ),
+          },
+          () => this.isCurrent(accountId, generation),
+        );
+        if (!this.isCurrent(accountId, generation)) return;
+        state.readOnlyDocuments ??= {};
+        state.readOnlyDocuments[key] = document?.readOnly === true;
+        state.syncedDocuments[key] = document?.value ?? {};
+        if (document) state.etags[key] = document.etag;
+        else delete state.etags[key];
+        state.syncedLocalDocuments[key] = document ? applied : {};
         const local = this.bridge.captureDocuments()[key];
         this.queueDocument(key, local);
+        this.captureCurrent();
       }
       if (!remote.preferencesFailed && !state.preferencePending) {
         this.bridge.applyPreferences(remote.preferences);
       }
+    } catch (error) {
+      this.applyingRemote = false;
+      this.scheduleCapture();
+      throw error;
     } finally {
       this.applyingRemote = false;
     }

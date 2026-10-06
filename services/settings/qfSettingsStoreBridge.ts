@@ -33,7 +33,10 @@ export interface QfSettingsStoreBridge {
   subscribe(onChange: () => void): Array<() => void>;
   captureDocuments(): SettingsDocuments;
   capturePreferences(): PreferenceMutation[];
-  applyDocuments(documents: Partial<SettingsDocuments>): void;
+  applyDocuments(
+    documents: Partial<SettingsDocuments>,
+    isCurrent?: () => boolean,
+  ): void | Promise<SettingsDocuments | void>;
   applyPreferences(preferences: Record<string, unknown>): void;
   sanitizeDocument(
     key: SettingsDocumentKey,

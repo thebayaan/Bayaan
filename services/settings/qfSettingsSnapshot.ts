@@ -1,7 +1,11 @@
 import {useSettings} from '@/hooks/useSettings';
 import {getReadingThemeById} from '@/constants/readingThemes';
 import {RECITERS} from '@/data/reciterData';
-import {ALL_REWAYAH_IDS} from '@/services/rewayah/RewayahIdentity';
+import {
+  ALL_REWAYAH_IDS,
+  type RewayahId,
+} from '@/services/rewayah/RewayahIdentity';
+import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useAdhkarSettingsStore} from '@/store/adhkarSettingsStore';
 import {useAmbientStore} from '@/store/ambientStore';
@@ -335,9 +339,59 @@ export function sanitizeRemoteDocument(
   return result;
 }
 
-export function applySettingsDocuments(
+export async function applySettingsDocuments(
   documents: Partial<SettingsDocuments>,
-): void {
+  isCurrent: () => boolean = () => true,
+): Promise<SettingsDocuments> {
+  const mushafPatch = documents.mushaf
+    ? sanitizeRemoteDocument('mushaf', documents.mushaf)
+    : undefined;
+  const checkCurrent = () => {
+    if (!isCurrent()) throw new Error('Settings application superseded');
+  };
+  checkCurrent();
+  if (mushafPatch) {
+    const state = useMushafSettingsStore.getState();
+    const renderer = mushafPatch.mushafRenderer ?? state.mushafRenderer;
+    const rewayah = (
+      renderer === 'qcf_v2' ? 'hafs' : (mushafPatch.rewayah ?? state.rewayah)
+    ) as RewayahId;
+    if (
+      rewayah !== state.rewayah ||
+      rewayah !== digitalKhattDataService.rewayah ||
+      !digitalKhattDataService.initialized
+    ) {
+      const before = JSON.stringify([
+        captureSettingsDocuments(),
+        capturePreferenceMutations(),
+      ]);
+      const stillCurrent = () =>
+        isCurrent() &&
+        before ===
+          JSON.stringify([
+            captureSettingsDocuments(),
+            capturePreferenceMutations(),
+          ]);
+      // No document is published until the cache is usable. The guard also
+      // protects manual edits made while remote store notifications are muted.
+      await digitalKhattDataService.switchRewayah(rewayah, stillCurrent);
+      if (!stillCurrent()) {
+        // An account/manual edit can invalidate the tiny gap between the
+        // service's guarded cache commit and this promise continuation. Restore
+        // the still-selected reading, unless a queued manual switch supersedes
+        // it in turn. Never publish this obsolete remote document.
+        const selected = useMushafSettingsStore.getState().rewayah;
+        await digitalKhattDataService
+          .switchRewayah(
+            selected,
+            () => useMushafSettingsStore.getState().rewayah === selected,
+          )
+          .catch(() => undefined);
+        throw new Error('Settings application superseded');
+      }
+    }
+  }
+  checkCurrent();
   if (documents.appearance) {
     const patch = sanitizeRemoteDocument('appearance', documents.appearance);
     if (typeof patch.themeMode === 'string') {
@@ -345,7 +399,7 @@ export function applySettingsDocuments(
     }
   }
   if (documents.mushaf) {
-    const patch = sanitizeRemoteDocument('mushaf', documents.mushaf);
+    const patch = mushafPatch!;
     if (typeof patch.mushafRenderer === 'string') {
       useMushafSettingsStore
         .getState()
@@ -457,4 +511,7 @@ export function applySettingsDocuments(
       sanitizeRemoteDocument('browsing', documents.browsing),
     );
   }
+  // Return the exact applied projection, before a caller's await can yield
+  // to another manual edit. Such edits must not become cloud baselines.
+  return captureSettingsDocuments();
 }

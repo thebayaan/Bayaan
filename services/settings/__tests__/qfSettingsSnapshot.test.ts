@@ -56,6 +56,14 @@ jest.mock('@/store/mushafPlayerStore', () => {
   };
 });
 
+jest.mock('@/services/mushaf/DigitalKhattDataService', () => ({
+  digitalKhattDataService: {
+    initialized: true,
+    rewayah: 'hafs',
+    switchRewayah: jest.fn(async () => undefined),
+  },
+}));
+
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useThemeStore} from '@/store/themeStore';
 import {
@@ -95,25 +103,27 @@ describe('QF settings snapshot mapping', () => {
     ).toBe(false);
   });
 
-  test('keeps a usable local translation until a cloud edition is downloaded', () => {
+  test('keeps a usable local translation until a cloud edition is downloaded', async () => {
     useMushafSettingsStore.getState().setSelectedTranslationId('saheeh');
-    applySettingsDocuments({
+    await applySettingsDocuments({
       mushaf: {selectedTranslationId: 'ur.not-downloaded'},
     });
     expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
       'saheeh',
     );
-    applySettingsDocuments({mushaf: {selectedTranslationId: 'ur.dummy'}});
+    await applySettingsDocuments({mushaf: {selectedTranslationId: 'ur.dummy'}});
     expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
       'ur.dummy',
     );
-    applySettingsDocuments({mushaf: {selectedTranslationId: 'clear-quran'}});
+    await applySettingsDocuments({
+      mushaf: {selectedTranslationId: 'clear-quran'},
+    });
     expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
       'clear-quran',
     );
   });
 
-  test('does not apply incompatible QF preference identifiers', () => {
+  test('does not apply incompatible QF preference identifiers', async () => {
     useThemeStore.getState().setThemeMode('light');
     useMushafSettingsStore.getState().setSelectedTranslationId('saheeh');
 
@@ -127,7 +137,7 @@ describe('QF settings snapshot mapping', () => {
       'saheeh',
     );
 
-    applySettingsDocuments({
+    await applySettingsDocuments({
       appearance: {themeMode: 'dark'},
       mushaf: {selectedTranslationId: 'clear-quran'},
     });

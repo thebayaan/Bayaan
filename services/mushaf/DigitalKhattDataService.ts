@@ -153,6 +153,7 @@ class DigitalKhattDataService {
   private sideLoading: Map<RewayahId, Promise<void>> = new Map();
   private _initialized = false;
   private _initializing: Promise<void> | null = null;
+  private rewayahSwitch: Promise<void> = Promise.resolve();
 
   get initialized(): boolean {
     return this._initialized;
@@ -261,34 +262,47 @@ class DigitalKhattDataService {
     this.notifyCacheChange();
   }
 
-  async switchRewayah(rewayah: RewayahId): Promise<void> {
-    if (rewayah === this.currentRewayah) return;
-    const prevCfg = requireRewayahAssets(this.currentRewayah);
-    const nextCfg = requireRewayahAssets(rewayah);
-    this.currentRewayah = rewayah;
-    this.wordsById.clear();
-    this.wordInfoById.clear();
-    this.verseWords.clear();
-    this.verseToPage = null;
-    // The new active rewayah doesn't need its side-cache entry anymore
-    // (it's about to be the main cache). Drop it to reclaim memory.
-    this.sideVerseWords.delete(rewayah);
-    await this.loadWords();
-    // Layout only reloads if the new rewayah uses a different layout DB
-    // (all 8 currently bundled rewayat share the Hafs layout DB; kept the
-    // check because rewayat added in the future may bring their own layout).
-    if (prevCfg.layoutDbName !== nextCfg.layoutDbName) {
-      this.pageLines.clear();
-      this.surahStartPages = {};
-      this.pageToSurah = {};
-      await this.loadLayout();
-    }
-    // Main cache rebuilt + side cache for the new rewayah evicted; notify
-    // reactive consumers (useRewayahWords) before the rewayahListeners fire,
-    // since those listeners (e.g. MushafPreloadService) also react to the
-    // transition and should see a consistent cache.
-    this.notifyCacheChange();
-    for (const listener of this.rewayahListeners) listener(rewayah);
+  switchRewayah(
+    rewayah: RewayahId,
+    isCurrent: () => boolean = () => true,
+  ): Promise<void> {
+    const switchCache = async () => {
+      const checkCurrent = () => {
+        if (!isCurrent()) throw new Error('Rewayah switch superseded');
+      };
+      checkCurrent();
+      const nextCfg = requireRewayahAssets(rewayah);
+      await this.initialize();
+      checkCurrent();
+      if (rewayah === this.currentRewayah) return;
+      const prevCfg = requireRewayahAssets(this.currentRewayah);
+      // Stage separately: a failed/stale load must leave both the active
+      // identity and its words intact. Serialize with manual switches too.
+      const staged = new DigitalKhattDataService();
+      staged.currentRewayah = rewayah;
+      await staged.loadWords();
+      if (prevCfg.layoutDbName !== nextCfg.layoutDbName) {
+        await staged.loadLayout();
+      }
+      checkCurrent();
+      this.currentRewayah = rewayah;
+      this.wordsById = staged.wordsById;
+      this.wordInfoById = staged.wordInfoById;
+      this.verseWords = staged.verseWords;
+      this.verseToPage = null;
+      this.sideVerseWords.delete(rewayah);
+      if (prevCfg.layoutDbName !== nextCfg.layoutDbName) {
+        this.pageLines = staged.pageLines;
+        this.surahStartPages = staged.surahStartPages;
+        this.pageToSurah = staged.pageToSurah;
+      }
+      // Consumers observe a complete cache before the store label changes.
+      this.notifyCacheChange();
+      for (const listener of this.rewayahListeners) listener(rewayah);
+    };
+    const result = this.rewayahSwitch.then(switchCache, switchCache);
+    this.rewayahSwitch = result.catch(() => undefined);
+    return result;
   }
 
   private async loadWords(): Promise<void> {
