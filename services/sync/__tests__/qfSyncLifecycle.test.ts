@@ -100,6 +100,55 @@ beforeEach(() => {
 });
 
 describe('QfSyncLifecycle', () => {
+  it.each([400, 403, 404, 413, 422, 408, 409, 429, 500, 503, 0])(
+    'only schedules retryable HTTP failures (%s)',
+    async status => {
+      const setTimer = jest.fn(
+        () => 42 as unknown as ReturnType<typeof setTimeout>,
+      );
+      const coordinator = {
+        pull: jest.fn(async () => {
+          throw new BayaanSyncApiError('request_failed', status);
+        }),
+        push: jest.fn(),
+      };
+      const {lifecycle} = createLifecycle({coordinator, setTimer});
+      lifecycle.updateContext(authenticatedOnline);
+      await lifecycle.waitForIdle();
+      const retryable = [0, 408, 409, 429, 500, 503].includes(status);
+      expect(setTimer).toHaveBeenCalledTimes(retryable ? 1 : 0);
+      expect(useQfSyncStore.getState().retryAt).toBe(retryable ? 7000 : null);
+      if (!retryable) {
+        const calls = coordinator.pull.mock.calls.length;
+        lifecycle.requestSync();
+        await lifecycle.waitForIdle();
+        expect(coordinator.pull).toHaveBeenCalledTimes(calls); // Annotation writes cannot spin permanent errors.
+        lifecycle.updateContext({...authenticatedOnline, appActive: false});
+        lifecycle.updateContext(authenticatedOnline);
+        await lifecycle.waitForIdle();
+        expect(coordinator.pull).toHaveBeenCalledTimes(calls + 1);
+      }
+      await lifecycle.stop();
+    },
+  );
+  it('honors provider Retry-After rather than retrying a rate limit every second', async () => {
+    const setTimer = jest.fn(
+      () => 42 as unknown as ReturnType<typeof setTimeout>,
+    );
+    const coordinator = {
+      pull: jest.fn(async () => {
+        throw new BayaanSyncApiError('rate_limited', 429, 45_000);
+      }),
+      push: jest.fn(),
+    };
+    const {lifecycle} = createLifecycle({coordinator, setTimer});
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+    expect(setTimer).toHaveBeenCalledWith(expect.any(Function), 45_000);
+    expect(useQfSyncStore.getState().retryAt).toBe(51_000);
+    await lifecycle.stop();
+  });
+
   it('applies canonical reading progress after a stable pull before publishing the data revision', async () => {
     let appliedPage: number | null = null;
     let revisionWhenApplied: number | null = null;
@@ -449,7 +498,10 @@ describe('QfSyncLifecycle', () => {
     expect(getSession).not.toHaveBeenCalled();
     expect(coordinator.pull).not.toHaveBeenCalled();
     expect(coordinator.push).not.toHaveBeenCalled();
-    expect(useQfSyncStore.getState()).toMatchObject({status: 'disabled'});
+    expect(useQfSyncStore.getState()).toMatchObject({
+      status: 'disabled',
+      activeAccountId: null,
+    });
   });
 
   it('expires a revoked session without pushing or exposing raw error data', async () => {

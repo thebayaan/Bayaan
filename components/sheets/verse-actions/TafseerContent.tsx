@@ -92,13 +92,15 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
   const verse = allVerses[currentIndex];
 
   const activeTafseer = useMemo(
-    () => downloadedMeta.find(m => m.identifier === selectedTafseerId),
+    () =>
+      downloadedMeta.find(m => m.identifier === selectedTafseerId) ??
+      downloadedMeta[0],
     [downloadedMeta, selectedTafseerId],
   );
 
   // Load tafseer text when verse or tafseer changes
   useEffect(() => {
-    if (!selectedTafseerId) {
+    if (!activeTafseer) {
       setTafseerResult(null);
       setLoading(false);
       return;
@@ -108,7 +110,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
     setLoading(true);
 
     tafseerDbService
-      .getTafseerForVerse(verse.verseKey, selectedTafseerId)
+      .getTafseerForVerse(verse.verseKey, activeTafseer.identifier)
       .then(result => {
         if (!cancelled) {
           setTafseerResult(result);
@@ -125,7 +127,7 @@ export const TafseerContent: React.FC<TafseerContentProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [verse.verseKey, selectedTafseerId]);
+  }, [verse.verseKey, activeTafseer]);
 
   const isFirst = currentIndex === 0;
   const isLast = currentIndex === TOTAL_VERSES - 1;

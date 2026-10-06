@@ -24,6 +24,9 @@ export interface RemoteSettingsDocument {
   key: SettingsDocumentKey;
   value: Record<string, unknown>;
   etag: string;
+  // Newer schemas can be projected for display, never downgraded on write.
+  schemaVersion?: number;
+  readOnly?: boolean;
 }
 
 function expoFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -178,7 +181,10 @@ export class BayaanSettingsApiClient {
       !data ||
       data.collection !== 'settings' ||
       data.key !== key ||
-      data.schemaVersion !== 1 ||
+      !Number.isSafeInteger(data.schemaVersion) ||
+      (data.schemaVersion as number) < 1 ||
+      ((data.schemaVersion as number) > 1 && data.readOnly !== true) ||
+      (data.readOnly !== undefined && typeof data.readOnly !== 'boolean') ||
       !isObject(data.value) ||
       !etag
     ) {
@@ -187,7 +193,13 @@ export class BayaanSettingsApiClient {
         'invalid_document_response',
       );
     }
-    return {key, value: data.value, etag};
+    return {
+      key,
+      value: data.value,
+      etag,
+      schemaVersion: data.schemaVersion as number,
+      readOnly: data.readOnly === true || (data.schemaVersion as number) > 1,
+    };
   }
 
   async putDocument(

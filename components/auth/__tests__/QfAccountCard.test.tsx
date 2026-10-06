@@ -46,6 +46,10 @@ jest.mock('expo/fetch', () => ({
     (global.fetch as (...values: unknown[]) => unknown)(...args),
 }));
 
+jest.mock('@/services/settings/qfSettingsSyncLifecycle', () => ({
+  qfSettingsSyncLifecycle: {stop: jest.fn(async () => undefined)},
+}));
+
 jest.mock('@/config/bayaanAuth', () => ({
   bayaanAuthConfig: {
     apiUrl: 'https://api-prelive.thebayaan.com',
@@ -82,6 +86,7 @@ import {
 } from '@/services/auth/bayaanSessionStorage';
 import {BayaanAuthProvider} from '@/providers/BayaanAuthProvider';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
 function findButton(screen: renderer.ReactTestRenderer) {
@@ -123,6 +128,26 @@ beforeEach(async () => {
 });
 
 describe('QfAccountCard', () => {
+  it.each(['offline revocation', 'secure cleanup'])(
+    'handles logout rejection from %s without leaking a press-handler rejection',
+    async reason => {
+      jest.spyOn(qfSyncLifecycle, 'stop').mockResolvedValue();
+      jest
+        .spyOn(bayaanAuthService, 'logout')
+        .mockRejectedValueOnce(new Error(reason));
+      useBayaanAuthStore.getState().setAuthenticated({accountId: 'account-A'});
+      let card!: renderer.ReactTestRenderer;
+      await act(async () => {
+        card = renderer.create(<QfAccountCard />);
+      });
+      await act(async () => {
+        await expect(findButton(card).props.onPress()).resolves.toBeUndefined();
+      });
+      expect(useBayaanAuthStore.getState().status).toBe('signed_out');
+      expect(qfSettingsSyncLifecycle.stop).toHaveBeenCalledWith(true);
+      await act(async () => card.unmount());
+    },
+  );
   it.each(['success', 'revoked'])(
     'keeps cold-start callback B in real provider/store/storage after delayed restore %s',
     async result => {

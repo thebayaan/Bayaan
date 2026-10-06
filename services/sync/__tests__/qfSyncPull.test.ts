@@ -440,6 +440,84 @@ describe('QF stable pull coordinator', () => {
 });
 
 describe('SQLite QF pull store', () => {
+  it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS', 'DELETE'])(
+    'adopts a remote bookmark without replaying satisfied creates (%s)',
+    async state => {
+      const {database, store} = await createSqliteStore(
+        `qf-bookmark-adopt-${state}.db`,
+      );
+      await database.runAsync(
+        `INSERT INTO bookmarks (id, owner_scope, verse_key, surah_number, ayah_number, created_at, rewayah_id) VALUES ('local', 'qf:reader-a', '2:255', 2, 255, 100, 'warsh')`,
+      );
+      await database.runAsync(
+        `INSERT INTO qf_sync_outbox (local_operation_id, owner_scope, account_id, resource, mutation_type, local_id, payload_json, created_at, revision, delivery_state) VALUES ('intent', 'qf:reader-a', 'reader-a', 'BOOKMARK', ?, 'local', '{}', 100, 1, ?)`,
+        [
+          state === 'DELETE' ? 'DELETE' : 'CREATE',
+          state === 'DELETE' ? 'PENDING' : state,
+        ],
+      );
+      await store.applyPage('reader-a', [bookmark('remote', 200)]);
+      expect(
+        await database.getFirstAsync(
+          `SELECT id, remote_id, rewayah_id FROM bookmarks WHERE owner_scope = 'qf:reader-a'`,
+        ),
+      ).toEqual({id: 'local', remote_id: 'remote', rewayah_id: 'warsh'});
+      expect(
+        await database.getAllAsync(
+          `SELECT local_operation_id FROM qf_sync_outbox`,
+        ),
+      ).toHaveLength(state === 'PENDING' ? 0 : 1);
+      await database.closeAsync();
+    },
+  );
+  it('resolves an automatic note conflict only after preserving the local copy and its outbox intent', async () => {
+    const {database, store} = await createSqliteStore(
+      'qf-note-auto-resolution.db',
+    );
+    await database.runAsync(
+      `INSERT INTO notes (id, owner_scope, verse_key, surah_number, ayah_number, content, created_at, updated_at, rewayah_id, remote_id, server_updated_at) VALUES ('canonical', 'qf:reader-a', '2:255', 2, 255, 'old', 100, 100, 'warsh', 'remote', 100)`,
+    );
+    await database.runAsync(
+      `INSERT INTO qf_sync_outbox (local_operation_id, owner_scope, account_id, resource, mutation_type, local_id, remote_id, payload_json, base_server_updated_at, created_at, revision, delivery_state) VALUES ('edit', 'qf:reader-a', 'reader-a', 'NOTE', 'UPDATE', 'canonical', 'remote', ?, 100, 150, 1, 'PENDING')`,
+      [
+        JSON.stringify({
+          verseKey: '2:255',
+          surahNumber: 2,
+          ayahNumber: 255,
+          content: 'local edit',
+          clientCreatedAt: 100,
+          clientUpdatedAt: 150,
+        }),
+      ],
+    );
+    await store.applyPage('reader-a', [
+      privateNote('remote', 200, 'remote edit'),
+    ]);
+    const notes = await database.getAllAsync(
+      `SELECT content FROM notes WHERE owner_scope = 'qf:reader-a'`,
+    );
+    expect(notes).toEqual(
+      expect.arrayContaining([
+        {content: 'local edit'},
+        {content: 'remote edit'},
+      ]),
+    );
+    expect(
+      await database.getFirstAsync(
+        `SELECT mutation_type FROM qf_sync_outbox WHERE owner_scope = 'qf:reader-a'`,
+      ),
+    ).toEqual({mutation_type: 'CREATE'});
+    expect(
+      await database.getFirstAsync(
+        `SELECT COUNT(*) AS count FROM qf_note_conflicts WHERE resolved_at IS NULL`,
+      ),
+    ).toEqual({count: 0});
+    expect(
+      await database.getFirstAsync(`SELECT resolved_at FROM qf_note_conflicts`),
+    ).toEqual({resolved_at: expect.any(Number)});
+    await database.closeAsync();
+  });
+
   it('keeps account-scoped heads at zero until a compare-and-set commit succeeds', async () => {
     const {database, store} = await createSqliteStore('qf-pull-head.db');
 

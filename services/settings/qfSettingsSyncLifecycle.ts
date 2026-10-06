@@ -22,7 +22,7 @@ export interface QfSettingsLifecycleContext {
 interface SettingsCoordinator {
   setRemoteAvailable(available: boolean): void;
   activateLocal(accountId: string): Promise<void>;
-  deactivate(): Promise<void>;
+  deactivate(clearAccount?: boolean): Promise<void>;
   syncRemote(accountId: string, sessionToken: string): Promise<void>;
   waitForIdle(): Promise<unknown>;
 }
@@ -108,12 +108,12 @@ export class QfSettingsSyncLifecycle {
     this.currentRun = wrapped;
   }
 
-  async stop(): Promise<void> {
+  async stop(clearAccount = false): Promise<void> {
     this.epoch += 1;
     this.context = null;
     this.rerunRequested = false;
     this.cancelRetry();
-    await this.options.coordinator.deactivate();
+    await this.options.coordinator.deactivate(clearAccount);
     await Promise.allSettled([
       ...(this.currentRun ? [this.currentRun] : []),
       this.options.coordinator.waitForIdle(),
@@ -216,7 +216,7 @@ function chooseFirstSyncConflict(): Promise<'local' | 'cloud'> {
   return new Promise(resolve => {
     Alert.alert(
       'Settings found in your account',
-      'Choose which settings Bayaan should keep. Settings that exist only on one side will be preserved.',
+      'Use cloud settings, retaining device values where the cloud has none, or keep this device’s settings. Fields this app does not understand stay in the cloud.',
       [
         {
           text: 'Use cloud settings',

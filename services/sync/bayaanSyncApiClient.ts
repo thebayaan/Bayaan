@@ -25,6 +25,7 @@ export class BayaanSyncApiError extends Error {
   constructor(
     public readonly code: BayaanSyncApiErrorCode,
     public readonly status: number,
+    public readonly retryAfterMs?: number,
   ) {
     super('Bayaan Sync request failed');
     this.name = 'BayaanSyncApiError';
@@ -81,12 +82,24 @@ function pushUrl(apiUrl: string, lastMutationAt: number): string {
   return url.toString();
 }
 
-function mapStatus(status: number): BayaanSyncApiError {
+function mapStatus(response: Response): BayaanSyncApiError {
+  const status = response.status;
+  const raw = response.headers.get('retry-after');
+  const seconds = raw && /^\d+$/.test(raw) ? Number(raw) : NaN;
+  const deadline = raw && !Number.isFinite(seconds) ? Date.parse(raw) : NaN;
+  const delay = Number.isFinite(seconds)
+    ? seconds * 1000
+    : deadline - Date.now();
+  const retryAfterMs =
+    Number.isFinite(delay) && delay >= 0
+      ? Math.min(delay, 3_600_000)
+      : undefined;
   if (status === 401) return new BayaanSyncApiError('session_revoked', status);
   if (status === 409) return new BayaanSyncApiError('sync_conflict', status);
-  if (status === 429) return new BayaanSyncApiError('rate_limited', status);
+  if (status === 429)
+    return new BayaanSyncApiError('rate_limited', status, retryAfterMs);
   if (status >= 500) {
-    return new BayaanSyncApiError('service_unavailable', status);
+    return new BayaanSyncApiError('service_unavailable', status, retryAfterMs);
   }
   return new BayaanSyncApiError('request_failed', status);
 }
@@ -139,7 +152,7 @@ export class BayaanSyncApiClient {
     );
 
     if (!response.ok) {
-      throw mapStatus(response.status);
+      throw mapStatus(response);
     }
 
     try {
@@ -194,7 +207,7 @@ export class BayaanSyncApiClient {
     );
 
     if (!response.ok) {
-      throw mapStatus(response.status);
+      throw mapStatus(response);
     }
 
     try {

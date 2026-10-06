@@ -43,7 +43,10 @@ import {
   savePendingBayaanAuthState as saveStoredPending,
 } from '../bayaanSessionStorage';
 
-function savePendingBayaanAuthState(pending: {state: string; expiresAt: number}) {
+function savePendingBayaanAuthState(pending: {
+  state: string;
+  expiresAt: number;
+}) {
   return saveStoredPending({...pending, deviceVerifier: '01'.repeat(32)});
 }
 
@@ -73,6 +76,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 beforeEach(() => {
+  jest.clearAllMocks();
   mockOpenBrowserAsync.mockReset();
   mockDismissBrowser.mockReset();
   mockSecureStore.clear();
@@ -91,10 +95,26 @@ beforeEach(() => {
 });
 
 describe('Bayaan BFF auth service', () => {
+  it('skips stored-session reads and refresh entirely when sync is disabled', async () => {
+    await saveBayaanSession({
+      token: 'stored-session',
+      expiresAt: Date.now() + 3_600_000,
+      profile,
+    });
+    jest.mocked(SecureStore.getItemAsync).mockClear();
+    await expect(
+      createBayaanAuthService({apiUrl, enabled: false}).restore(),
+    ).resolves.toBeNull();
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(mockSecureStore.size).toBe(1);
+  });
   it('sends only a SHA-256 challenge and stores the verifier only on this device', async () => {
     mockOpenBrowserAsync.mockImplementationOnce(async () => {
       await expect(getPendingBayaanAuthState()).resolves.toEqual({
-        state: 'state-123', deviceVerifier: '01'.repeat(32), expiresAt: expect.any(Number),
+        state: 'state-123',
+        deviceVerifier: '01'.repeat(32),
+        expiresAt: expect.any(Number),
       });
       return {type: 'cancel'};
     });
@@ -109,14 +129,21 @@ describe('Bayaan BFF auth service', () => {
 
     const service = createBayaanAuthService({apiUrl});
 
-    await expect(service.signIn()).rejects.toMatchObject({code: 'access_denied'});
+    await expect(service.signIn()).rejects.toMatchObject({
+      code: 'access_denied',
+    });
 
     expect(global.fetch).toHaveBeenCalledWith(
       'https://api-prelive.thebayaan.com/v1/qf/auth/start',
       expect.objectContaining({method: 'POST'}),
     );
     const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-    expect(body).toEqual({deviceChallenge: require('node:crypto').createHash('sha256').update('01'.repeat(32)).digest('hex')});
+    expect(body).toEqual({
+      deviceChallenge: require('node:crypto')
+        .createHash('sha256')
+        .update('01'.repeat(32))
+        .digest('hex'),
+    });
     expect(JSON.stringify(body)).not.toContain('01'.repeat(32));
     expect(mockOpenBrowserAsync).toHaveBeenCalledWith(
       'https://api-prelive.thebayaan.com/v1/qf/auth/launch?state=state-123',
@@ -126,38 +153,59 @@ describe('Bayaan BFF auth service', () => {
 
   it('completes a returned redirect and joins simultaneous deep-link delivery', async () => {
     (global.fetch as jest.Mock)
-      .mockResolvedValueOnce(jsonResponse({
-        authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
-        state: 'state-123', expiresAt: new Date(Date.now() + 300_000).toISOString(),
-      }))
-      .mockResolvedValueOnce(jsonResponse({
-        sessionToken: 'opaque-bayaan-session',
-        expiresAt: new Date(Date.now() + 3_600_000).toISOString(), profile,
-      }));
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
+          state: 'state-123',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'opaque-bayaan-session',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile,
+        }),
+      );
     const url = 'bayaan://oauth/callback?handoff=handoff-123&state=state-123';
     const service = createBayaanAuthService({apiUrl});
     mockOpenBrowserAsync.mockImplementationOnce(async () => {
       const delivered = service.handleCallbackUrl(url);
       const duplicate = service.handleCallbackUrl(url);
-      await expect(Promise.all([delivered, duplicate])).resolves.toHaveLength(2);
+      await expect(Promise.all([delivered, duplicate])).resolves.toHaveLength(
+        2,
+      );
       return {type: 'success', url};
     });
-    await expect(service.signIn()).resolves.toMatchObject({token: 'opaque-bayaan-session'});
+    await expect(service.signIn()).resolves.toMatchObject({
+      token: 'opaque-bayaan-session',
+    });
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('handles a successful browser redirect without relying on router delivery', async () => {
     (global.fetch as jest.Mock)
-      .mockResolvedValueOnce(jsonResponse({
-        authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
-        state: 'state-123', expiresAt: new Date(Date.now() + 300_000).toISOString(),
-      }))
-      .mockResolvedValueOnce(jsonResponse({
-        sessionToken: 'opaque-bayaan-session',
-        expiresAt: new Date(Date.now() + 3_600_000).toISOString(), profile,
-      }));
-    mockOpenBrowserAsync.mockResolvedValueOnce({type: 'success', url: 'bayaan://oauth/callback?handoff=handoff-123&state=state-123'});
-    await expect(createBayaanAuthService({apiUrl}).signIn()).resolves.toMatchObject({profile});
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
+          state: 'state-123',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'opaque-bayaan-session',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile,
+        }),
+      );
+    mockOpenBrowserAsync.mockResolvedValueOnce({
+      type: 'success',
+      url: 'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+    });
+    await expect(
+      createBayaanAuthService({apiUrl}).signIn(),
+    ).resolves.toMatchObject({profile});
     await expect(getPendingBayaanAuthState()).resolves.toBeNull();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
@@ -165,37 +213,60 @@ describe('Bayaan BFF auth service', () => {
   it('joins Android cancel while the deep-link exchange is still in flight', async () => {
     let releaseExchange: ((response: Response) => void) | undefined;
     (global.fetch as jest.Mock)
-      .mockResolvedValueOnce(jsonResponse({
-        authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
-        state: 'state-123', expiresAt: new Date(Date.now() + 300_000).toISOString(),
-      }))
-      .mockImplementationOnce(() => new Promise<Response>(resolve => {releaseExchange = resolve;}));
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
+          state: 'state-123',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>(resolve => {
+            releaseExchange = resolve;
+          }),
+      );
     const service = createBayaanAuthService({apiUrl});
     let delivered: Promise<unknown> | undefined;
     mockOpenBrowserAsync.mockImplementationOnce(async () => {
-      delivered = service.handleCallbackUrl('bayaan://oauth/callback?handoff=handoff-123&state=state-123');
+      delivered = service.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+      );
       return {type: 'cancel'};
     });
     const signingIn = service.signIn();
     for (let i = 0; i < 100 && !releaseExchange; i++) await Promise.resolve();
     expect(releaseExchange).toBeDefined();
-    releaseExchange?.(jsonResponse({sessionToken: 'opaque-bayaan-session', expiresAt: new Date(Date.now() + 3_600_000).toISOString(), profile}));
+    releaseExchange?.(
+      jsonResponse({
+        sessionToken: 'opaque-bayaan-session',
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        profile,
+      }),
+    );
     await expect(signingIn).resolves.toMatchObject({profile});
     await expect(delivered).resolves.toMatchObject({profile});
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('clears the verifier on browser failure and restarts with a new attempt', async () => {
-    (global.fetch as jest.Mock).mockImplementation(async () => jsonResponse({
-      authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
-      state: 'state-123', expiresAt: new Date(Date.now() + 300_000).toISOString(),
-    }));
+    (global.fetch as jest.Mock).mockImplementation(async () =>
+      jsonResponse({
+        authorizationUrl: `${apiUrl}/v1/qf/auth/launch?state=state-123`,
+        state: 'state-123',
+        expiresAt: new Date(Date.now() + 300_000).toISOString(),
+      }),
+    );
     mockOpenBrowserAsync.mockRejectedValueOnce(new Error('browser failed'));
     const service = createBayaanAuthService({apiUrl});
-    await expect(service.signIn()).rejects.toMatchObject({code: 'network_error'});
+    await expect(service.signIn()).rejects.toMatchObject({
+      code: 'network_error',
+    });
     await expect(getPendingBayaanAuthState()).resolves.toBeNull();
     mockOpenBrowserAsync.mockResolvedValueOnce({type: 'cancel'});
-    await expect(service.signIn()).rejects.toMatchObject({code: 'access_denied'});
+    await expect(service.signIn()).rejects.toMatchObject({
+      code: 'access_denied',
+    });
   });
 
   it.each(['cancel', 'error'])(
@@ -239,14 +310,15 @@ describe('Bayaan BFF auth service', () => {
         .catch(error => error);
       releaseDelete();
       expect(await signingIn).toBe(storageError);
-      expect(await queuedCallback).toMatchObject({code: 'access_denied'});
+      expect(await queuedCallback).toMatchObject({code: 'missing_state'});
 
       // Storage has recovered, without logout or a new service/process.
       await expect(getPendingBayaanAuthState()).resolves.toMatchObject({
         state: 'cancelled-state',
       });
+      // The retired in-memory proof is authoritative even if disk deletion failed.
       await expect(service.handleCallbackUrl(url)).rejects.toMatchObject({
-        code: 'access_denied',
+        code: 'missing_state',
       });
       await expect(getBayaanSession()).resolves.toBeNull();
       await expect(service.restore()).resolves.toBeNull();
@@ -261,7 +333,7 @@ describe('Bayaan BFF auth service', () => {
         .mockRejectedValueOnce(storageError);
       await expect(service.signIn()).rejects.toBe(storageError);
       await expect(service.handleCallbackUrl(url)).rejects.toMatchObject({
-        code: 'access_denied',
+        code: 'missing_state',
       });
       expect(global.fetch).toHaveBeenCalledTimes(2); // Still only /start calls.
 
@@ -307,13 +379,61 @@ describe('Bayaan BFF auth service', () => {
     },
   );
 
+  it('uses the tenant callback scheme for browser and exact callback validation', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl: `${apiUrl}/launch`,
+          state: 'tenant-state',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'tenant-session',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile,
+        }),
+      );
+    mockOpenBrowserAsync.mockResolvedValueOnce({
+      type: 'success',
+      url: 'qariah://oauth/callback?state=tenant-state&handoff=tenant-handoff',
+    });
+    const service = createBayaanAuthService({apiUrl, urlScheme: 'qariah'});
+    await expect(service.signIn()).resolves.toMatchObject({
+      token: 'tenant-session',
+    });
+    expect(mockOpenBrowserAsync).toHaveBeenCalledWith(
+      `${apiUrl}/launch`,
+      'qariah://oauth/callback',
+    );
+    await expect(
+      service.handleCallbackUrl(
+        'bayaan://oauth/callback?state=tenant-state&handoff=tenant-handoff',
+      ),
+    ).rejects.toMatchObject({code: 'malformed_callback'});
+    await expect(
+      service.handleCallbackUrl(
+        'qariah://oauth/callback?state=tenant-state&handoff=different-handoff',
+      ),
+    ).resolves.toMatchObject({token: 'tenant-session'});
+    expect(global.fetch).toHaveBeenCalledTimes(2); // Deduplication is by state.
+  });
+
   it('fails closed for pre-upgrade pending state with no verifier', async () => {
-    mockSecureStore.set('bayaan_qf_pending_state_v1', JSON.stringify({
-      version: 1, pending: {state: 'state-123', expiresAt: Date.now() + 300_000},
-    }));
+    mockSecureStore.set(
+      'bayaan_qf_pending_state_v1',
+      JSON.stringify({
+        version: 1,
+        pending: {state: 'state-123', expiresAt: Date.now() + 300_000},
+      }),
+    );
     const service = createBayaanAuthService({apiUrl});
-    await expect(service.handleCallbackUrl('bayaan://oauth/callback?handoff=handoff-123&state=state-123'))
-      .rejects.toMatchObject({code: 'missing_state'});
+    await expect(
+      service.handleCallbackUrl(
+        'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+      ),
+    ).rejects.toMatchObject({code: 'missing_state'});
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -376,7 +496,9 @@ describe('Bayaan BFF auth service', () => {
     ).resolves.toMatchObject({token: 'opaque-bayaan-session'});
 
     resolveBrowser({type: 'dismiss'});
-    await expect(signInPromise).resolves.toMatchObject({token: 'opaque-bayaan-session'});
+    await expect(signInPromise).resolves.toMatchObject({
+      token: 'opaque-bayaan-session',
+    });
     expect(mockDismissBrowser).not.toHaveBeenCalled();
   });
 
@@ -407,7 +529,11 @@ describe('Bayaan BFF auth service', () => {
       'https://api-prelive.thebayaan.com/v1/qf/auth/complete',
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({handoff: 'handoff-123', state: 'state-123', deviceVerifier: '01'.repeat(32)}),
+        body: JSON.stringify({
+          handoff: 'handoff-123',
+          state: 'state-123',
+          deviceVerifier: '01'.repeat(32),
+        }),
       }),
     );
     await expect(getBayaanSession()).resolves.toMatchObject({
@@ -566,7 +692,12 @@ describe('Bayaan BFF auth service', () => {
   it.each([
     [
       'complete',
-      () => new BayaanBffClient(apiUrl).completeAuth('handoff', 'state', '01'.repeat(32)),
+      () =>
+        new BayaanBffClient(apiUrl).completeAuth(
+          'handoff',
+          'state',
+          '01'.repeat(32),
+        ),
     ],
     ['session', () => new BayaanBffClient(apiUrl).getSession('session')],
   ])(
@@ -638,20 +769,44 @@ describe('Bayaan BFF auth service', () => {
   });
 
   it('does not persist an exchange that finishes after logout', async () => {
-    await savePendingBayaanAuthState({state: 'state-123', expiresAt: Date.now() + 300_000});
+    await savePendingBayaanAuthState({
+      state: 'state-123',
+      expiresAt: Date.now() + 300_000,
+    });
     let release: ((response: Response) => void) | undefined;
-    (global.fetch as jest.Mock).mockImplementationOnce(() => new Promise<Response>(resolve => {release = resolve;}));
+    (global.fetch as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<Response>(resolve => {
+          release = resolve;
+        }),
+    );
     const service = createBayaanAuthService({apiUrl});
-    const callback = service.handleCallbackUrl('bayaan://oauth/callback?handoff=handoff-123&state=state-123');
-    const rejection = expect(callback).rejects.toMatchObject({code: 'access_denied'});
+    const callback = service.handleCallbackUrl(
+      'bayaan://oauth/callback?handoff=handoff-123&state=state-123',
+    );
+    const rejection = expect(callback).rejects.toMatchObject({
+      code: 'access_denied',
+    });
     for (let i = 0; i < 100 && !release; i++) await Promise.resolve();
     expect(release).toBeDefined();
     const logout = service.logout();
-    release?.(jsonResponse({sessionToken: 'opaque-bayaan-session', expiresAt: new Date(Date.now() + 3_600_000).toISOString(), profile}));
+    release?.(
+      jsonResponse({
+        sessionToken: 'opaque-bayaan-session',
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        profile,
+      }),
+    );
     await rejection;
     await logout;
     await expect(getBayaanSession()).resolves.toBeNull();
     await expect(getPendingBayaanAuthState()).resolves.toBeNull();
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      `${apiUrl}/v1/qf/auth/logout`,
+      expect.objectContaining({
+        headers: {Authorization: 'Bearer opaque-bayaan-session'},
+      }),
+    );
   });
 
   it.each(['cancel', 'success'])(
@@ -804,10 +959,11 @@ describe('Bayaan BFF auth service', () => {
         return result;
       });
       expect(service.logout()).toBe(logout);
-      await pendingDeleteReached;
+      // The single storage queue drains a held save BEFORE deletion.
+      // Cancellation remains synchronous while cleanup waits.
       for (let i = 0; i < 20; i++) await Promise.resolve();
       expect(logoutSettled).toBe(false);
-      expect(events).toEqual(['pending delete 1']);
+      expect(events).toEqual([]);
       await expect(service.signIn()).rejects.toMatchObject({
         code: 'access_denied',
       });
@@ -815,23 +971,18 @@ describe('Bayaan BFF auth service', () => {
         code: 'access_denied',
       });
       releaseSave();
+      await pendingDeleteReached;
       expect(await Promise.all([callback, duplicate])).toEqual(
         Array(2).fill({
           error: expect.objectContaining({code: 'access_denied'}),
         }),
       );
       const result = await outcome;
-      if (finalDeleteFails) {
-        expect(result).toEqual({error: expect.any(AggregateError)});
-        expect(result).toMatchObject({
-          error: {errors: [initialError, finalError]},
-        });
-      } else {
-        expect(result).toEqual({error: initialError});
-      }
+      // Surface the first failure; still attempt every independent cleanup.
+      expect(result).toEqual({error: initialError});
       expect(events).toEqual([
-        'pending delete 1',
         'save settled',
+        'pending delete 1',
         'revoke',
         'session delete',
         'pending delete 2',
@@ -1018,18 +1169,17 @@ describe('Bayaan BFF auth service', () => {
       }
       mockSecureStore.delete(key);
     });
-    await expect(service.logout()).rejects.toMatchObject({
-      name: 'AggregateError',
-      errors: [
-        expect.objectContaining({message: 'storage unavailable'}),
-        expect.objectContaining({message: 'storage unavailable'}),
-      ],
-    });
+    await expect(service.logout()).rejects.toThrow('storage unavailable');
+    expect(
+      jest
+        .mocked(SecureStore.deleteItemAsync)
+        .mock.calls.filter(([key]) => key === 'bayaan_qf_pending_state_v1'),
+    ).toHaveLength(2);
     await expect(
       service.handleCallbackUrl(
         'bayaan://oauth/callback?handoff=old-handoff&state=cancelled-state',
       ),
-    ).rejects.toMatchObject({code: 'access_denied'});
+    ).rejects.toMatchObject({code: 'missing_state'});
     expect(global.fetch).toHaveBeenCalledTimes(1);
     releaseBrowser({type: 'cancel'});
     expect(await signingIn).toMatchObject({code: 'access_denied'});
@@ -1264,11 +1414,13 @@ describe('Bayaan BFF auth service', () => {
         mockSecureStore.delete(key);
       });
       const service = createBayaanAuthService({apiUrl});
-      await expect(service.logout()).rejects.toMatchObject({
-        errors: readFails
-          ? [readError, deleteError, deleteError]
-          : [deleteError, deleteError],
-      });
+      // Retiring proof in memory no longer needs a pending-state discovery read.
+      await expect(service.logout()).rejects.toBe(deleteError);
+      expect(
+        jest
+          .mocked(SecureStore.getItemAsync)
+          .mock.calls.some(([key]) => key === 'bayaan_qf_pending_state_v1'),
+      ).toBe(false);
       jest
         .mocked(SecureStore.getItemAsync)
         .mockImplementation(async key => mockSecureStore.get(key) ?? null);
@@ -1282,7 +1434,7 @@ describe('Bayaan BFF auth service', () => {
         service.handleCallbackUrl(
           'bayaan://oauth/callback?handoff=cold-handoff&state=cold-state',
         ),
-      ).rejects.toMatchObject({code: 'access_denied'});
+      ).rejects.toMatchObject({code: 'missing_state'});
       await expect(service.restore()).resolves.toBeNull();
       await expect(getBayaanSession()).resolves.toBeNull();
       expect(global.fetch).not.toHaveBeenCalled();
@@ -1352,18 +1504,18 @@ describe('Bayaan BFF auth service', () => {
       await deleteReached;
       const delayed = service.handleCallbackUrl(validUrl).catch(error => error);
       releaseDelete();
-      expect(await failed).toBe(storageError);
-      expect(await delayed).toMatchObject({
-        ...(failure === 'consume failure' || failure === 'expired'
-          ? {message: storageError.message}
-          : {code: 'access_denied'}),
-      });
+      const failureResult = await failed;
+      if (failure === 'consume failure')
+        expect(failureResult).toMatchObject({code: 'network_error'});
+      else expect(failureResult).toBe(storageError);
+      // Same-state delivery joins the cached failure, never a second exchange.
+      expect(await delayed).toBe(failureResult);
       jest.mocked(SecureStore.deleteItemAsync).mockImplementation(async key => {
         mockSecureStore.delete(key);
       });
-      await expect(service.handleCallbackUrl(validUrl)).rejects.toMatchObject({
-        code: 'access_denied',
-      });
+      await expect(service.handleCallbackUrl(validUrl)).rejects.toBe(
+        failureResult,
+      );
       await expect(getPendingBayaanAuthState()).resolves.toMatchObject({
         state: 'cold-state',
       });

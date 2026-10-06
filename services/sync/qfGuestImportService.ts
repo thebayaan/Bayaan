@@ -41,6 +41,7 @@ interface CountRow {
 }
 
 interface GuestBookmarkRow {
+  id: string;
   verse_key: string;
   surah_number: number;
   ayah_number: number;
@@ -210,7 +211,7 @@ export class QfGuestImportService {
     scope: `qf:${string}`,
   ): Promise<number> {
     const rows = (await db.getAllAsync(
-      `SELECT verse_key, surah_number, ayah_number, created_at, rewayah_id
+      `SELECT id, verse_key, surah_number, ayah_number, created_at, rewayah_id
        FROM bookmarks WHERE owner_scope = 'guest' ORDER BY created_at, id`,
     )) as GuestBookmarkRow[];
     let copied = 0;
@@ -219,7 +220,13 @@ export class QfGuestImportService {
         `SELECT id FROM bookmarks WHERE owner_scope = ? AND verse_key = ?`,
         [scope, row.verse_key],
       );
-      if (duplicate) continue;
+      if (duplicate) {
+        await db.runAsync(
+          `DELETE FROM bookmarks WHERE owner_scope = 'guest' AND id = ?`,
+          [row.id],
+        );
+        continue;
+      }
       const id = this.generateId();
       await db.runAsync(
         `INSERT INTO bookmarks
@@ -250,6 +257,12 @@ export class QfGuestImportService {
         },
         createdAt: row.created_at,
       });
+      // Claim only the copied row, never a newer guest write that arrived while
+      // this shared connection was awaiting I/O. Deletion rolls back with copy.
+      await db.runAsync(
+        `DELETE FROM bookmarks WHERE owner_scope = 'guest' AND id = ?`,
+        [row.id],
+      );
       copied += 1;
     }
     return copied;
@@ -261,7 +274,7 @@ export class QfGuestImportService {
     scope: `qf:${string}`,
   ): Promise<number> {
     const rows = (await db.getAllAsync(
-      `SELECT verse_key, surah_number, ayah_number, content, verse_keys,
+      `SELECT id, verse_key, surah_number, ayah_number, content, verse_keys,
               created_at, updated_at, rewayah_id
        FROM notes WHERE owner_scope = 'guest' ORDER BY created_at, id`,
     )) as GuestNoteRow[];
@@ -301,6 +314,10 @@ export class QfGuestImportService {
         },
         createdAt: row.updated_at,
       });
+      await db.runAsync(
+        `DELETE FROM notes WHERE owner_scope = 'guest' AND id = ?`,
+        [row.id],
+      );
     }
     return rows.length;
   }
@@ -310,7 +327,7 @@ export class QfGuestImportService {
     scope: `qf:${string}`,
   ): Promise<number> {
     const rows = (await db.getAllAsync(
-      `SELECT verse_key, surah_number, ayah_number, color, created_at, rewayah_id
+      `SELECT id, verse_key, surah_number, ayah_number, color, created_at, rewayah_id
        FROM highlights WHERE owner_scope = 'guest' ORDER BY created_at, id`,
     )) as GuestHighlightRow[];
     let copied = 0;
@@ -319,7 +336,13 @@ export class QfGuestImportService {
         `SELECT id FROM highlights WHERE owner_scope = ? AND verse_key = ?`,
         [scope, row.verse_key],
       );
-      if (duplicate) continue;
+      if (duplicate) {
+        await db.runAsync(
+          `DELETE FROM highlights WHERE owner_scope = 'guest' AND id = ?`,
+          [row.id],
+        );
+        continue;
+      }
       await db.runAsync(
         `INSERT INTO highlights
            (id, owner_scope, verse_key, surah_number, ayah_number, color, created_at, rewayah_id, remote_id, server_created_at, server_updated_at)
@@ -334,6 +357,10 @@ export class QfGuestImportService {
           row.created_at,
           row.rewayah_id ?? 'hafs',
         ],
+      );
+      await db.runAsync(
+        `DELETE FROM highlights WHERE owner_scope = 'guest' AND id = ?`,
+        [row.id],
       );
       copied += 1;
     }

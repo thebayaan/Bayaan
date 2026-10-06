@@ -157,10 +157,9 @@ async function createServices(name: string) {
 }
 
 describe('QfGuestImportService', () => {
-  it('copies guest data and enqueues syncable resources in one at-most-once transaction', async () => {
-    const {database, annotations, guestImport} = await createServices(
-      'merge.db',
-    );
+  it('claims guest data and enqueues syncable resources in one at-most-once transaction', async () => {
+    const {database, annotations, guestImport} =
+      await createServices('merge.db');
     await annotations.addBookmark('2:255', 2, 255, 'warsh');
     await annotations.addNote(
       '18:10',
@@ -239,8 +238,19 @@ describe('QfGuestImportService', () => {
         }),
       ]),
     );
-    await expect(annotations.getAllBookmarks()).resolves.toHaveLength(1);
-    await expect(annotations.getAllNotes()).resolves.toHaveLength(1);
+    await expect(annotations.getAllBookmarks()).resolves.toHaveLength(0);
+    await expect(annotations.getAllNotes()).resolves.toHaveLength(0);
+    await expect(annotations.getHighlightsBySurah(3)).resolves.toHaveLength(0);
+    await expect(guestImport.getOffer('account-b')).resolves.toBeNull();
+    await expect(
+      annotations.getAllNotesInOwnerScope('qf:account-b'),
+    ).resolves.toEqual([]);
+    // Only a genuinely new guest batch is available to another account.
+    await annotations.addNote('1:1', 1, 1, 'New guest draft');
+    await expect(guestImport.getOffer('account-b')).resolves.toMatchObject({
+      noteCount: 1,
+      totalCount: 1,
+    });
 
     await expect(guestImport.keepSeparate('account-a')).resolves.toEqual({
       status: 'already_decided',
@@ -260,9 +270,8 @@ describe('QfGuestImportService', () => {
   });
 
   it('records keep-separate explicitly without copying or prompting again', async () => {
-    const {database, annotations, guestImport} = await createServices(
-      'keep-separate.db',
-    );
+    const {database, annotations, guestImport} =
+      await createServices('keep-separate.db');
     await annotations.addBookmark('2:255', 2, 255);
 
     await expect(guestImport.keepSeparate('account-b')).resolves.toEqual({
@@ -280,9 +289,8 @@ describe('QfGuestImportService', () => {
   });
 
   it('rolls back copied rows, outbox rows, and the decision when enqueue fails', async () => {
-    const {database, annotations, guestImport} = await createServices(
-      'rollback.db',
-    );
+    const {database, annotations, guestImport} =
+      await createServices('rollback.db');
     await annotations.addBookmark('2:255', 2, 255);
     const db = (await database.getConnection()) as TestDatabase;
     const originalRunAsync = db.runAsync.bind(db);

@@ -165,6 +165,33 @@ beforeEach(() => {
   useVerseAnnotationsStore.getState().clearActiveView();
 });
 
+it('rejects a retained bookmark press after its opening account changes', async () => {
+  const accountAdd = jest.spyOn(qfSyncDatabaseService, 'addBookmark');
+  let screen!: renderer.ReactTestRenderer;
+  await act(async () => {
+    screen = renderer.create(
+      <VerseActionsSheet
+        sheetId="verse-actions"
+        payload={{verseKey: '2:255', surahNumber: 2, ayahNumber: 255}}
+      />,
+    );
+  });
+  const label = screen.root.findByProps({children: 'Bookmark'});
+  if (!label.parent) throw new Error('bookmark action missing');
+  let button = label.parent;
+  while (button.parent && typeof button.props.onPress !== 'function')
+    button = button.parent;
+  const retainedPress = button.props.onPress;
+  await act(async () =>
+    useQfSyncStore.setState({activeAccountId: 'account-b'}),
+  );
+  await act(async () => retainedPress());
+  expect(accountAdd).not.toHaveBeenCalled();
+  expect(mockSheetHide).toHaveBeenCalledWith('verse-actions');
+  expect(screen.root.findAllByProps({children: 'Bookmark'})).toHaveLength(0);
+  await act(async () => screen.unmount());
+});
+
 it('keeps a paused bookmark range action in its original account and out of the new view', async () => {
   let finishFirstWrite: (
     value: ReturnType<typeof bookmarkResult>,
@@ -216,10 +243,10 @@ it('keeps a paused bookmark range action in its original account and out of the 
   expect(accountAdd).toHaveBeenCalledTimes(1);
   expect(accountAdd.mock.calls[0][0].accountId).toBe('account-a');
 
-  useQfSyncStore.setState({activeAccountId: 'account-b'});
-  useVerseAnnotationsStore.getState().clearActiveView();
-  finishFirstWrite(bookmarkResult('account-a', '2:255'));
   await act(async () => {
+    useQfSyncStore.setState({activeAccountId: 'account-b'});
+    useVerseAnnotationsStore.getState().clearActiveView();
+    finishFirstWrite(bookmarkResult('account-a', '2:255'));
     await rangeAction;
   });
 

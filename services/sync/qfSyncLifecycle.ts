@@ -143,6 +143,7 @@ export class QfSyncLifecycle {
   private readonly annotationHandoffTasks = new Set<Promise<void>>();
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private rerunRequested = false;
+  private permanentErrorEpoch: number | null = null;
 
   constructor(private readonly options: QfSyncLifecycleOptions) {
     this.now = options.now ?? Date.now;
@@ -160,6 +161,9 @@ export class QfSyncLifecycle {
   }
 
   updateContext(context: QfSyncLifecycleContext): void {
+    if (!this.options.enabled) {
+      context = {...context, authStatus: 'signed_out', accountId: null};
+    }
     if (sameContext(this.context, context) && !this.stopped) return;
     const previous = this.context;
     const previousAccount = activeAccount(previous);
@@ -232,7 +236,7 @@ export class QfSyncLifecycle {
   }
 
   requestSync(): void {
-    if (!this.canRun()) return;
+    if (!this.canRun() || this.permanentErrorEpoch === this.epoch) return;
     if (this.currentRun) {
       this.rerunRequested = true;
       return;
@@ -254,6 +258,7 @@ export class QfSyncLifecycle {
   }
 
   retryNow(): void {
+    this.permanentErrorEpoch = null;
     this.cancelRetry();
     this.requestSync();
   }
@@ -491,9 +496,21 @@ export class QfSyncLifecycle {
         error instanceof BayaanSyncApiError
           ? httpClassForStatus(error.status)
           : 'none';
+      const retryable =
+        error instanceof BayaanSyncApiError &&
+        (error.status === 0 ||
+          error.status === 408 ||
+          error.status === 409 ||
+          error.status === 429 ||
+          error.status >= 500);
+      if (!retryable) this.permanentErrorEpoch = epoch;
+      const retryDelay =
+        error instanceof BayaanSyncApiError
+          ? Math.max(DEFAULT_RETRY_MS, error.retryAfterMs ?? 0)
+          : DEFAULT_RETRY_MS;
       this.setForCurrent(epoch, accountId, {
         status: 'retry',
-        retryAt: this.now() + DEFAULT_RETRY_MS,
+        retryAt: retryable ? this.now() + retryDelay : null,
         errorCode,
         diagnostics: emptyDiagnostics({
           durationMs: Math.max(0, this.now() - startedAt),
@@ -501,7 +518,7 @@ export class QfSyncLifecycle {
           errorCode,
         }),
       });
-      this.scheduleRetry(epoch, accountId, DEFAULT_RETRY_MS);
+      if (retryable) this.scheduleRetry(epoch, accountId, retryDelay);
     }
   }
 

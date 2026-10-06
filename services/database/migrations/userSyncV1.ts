@@ -28,12 +28,11 @@ interface TableInfoRow {
 }
 
 function canonicalRewayahSql(columnName: string): string {
-  let expression = `COALESCE(${columnName}, 'hafs')`;
-  for (const [oldId, newId] of Object.entries(PERSISTED_ID_MIGRATIONS)) {
-    if (oldId === newId) continue;
-    expression = `REPLACE(${expression}, '${oldId}', '${newId}')`;
-  }
-  return expression;
+  const value = `COALESCE(${columnName}, 'hafs')`;
+  const mappings = Object.entries(PERSISTED_ID_MIGRATIONS)
+    .filter(([oldId, newId]) => oldId !== newId)
+    .map(([oldId, newId]) => `WHEN '${oldId}' THEN '${newId}'`);
+  return `CASE ${value} ${mappings.join(' ')} ELSE ${value} END`;
 }
 
 async function tableExists(
@@ -61,7 +60,9 @@ async function getTableColumns(
   tableName: string,
 ): Promise<Set<string>> {
   if (!db.getAllAsync) {
-    throw new Error('Database does not support getAllAsync required for migration');
+    throw new Error(
+      'Database does not support getAllAsync required for migration',
+    );
   }
 
   const rows = (await db.getAllAsync(
@@ -71,7 +72,9 @@ async function getTableColumns(
 }
 
 function legacyRewayahSelect(columns: Set<string>): string {
-  return columns.has('rewayah_id') ? canonicalRewayahSql('rewayah_id') : `'hafs'`;
+  return columns.has('rewayah_id')
+    ? canonicalRewayahSql('rewayah_id')
+    : `'hafs'`;
 }
 
 function legacyVerseKeysSelect(columns: Set<string>): string {

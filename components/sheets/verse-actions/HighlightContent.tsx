@@ -23,6 +23,7 @@ interface HighlightContentProps {
   verseKeys?: string[];
   rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onDone: () => void;
+  isScopeCurrent: () => boolean;
 }
 
 export const HighlightContent: React.FC<HighlightContentProps> = ({
@@ -32,6 +33,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
   verseKeys,
   rewayah,
   onDone,
+  isScopeCurrent,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -41,6 +43,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
 
   const handleSelectColor = useCallback(
     async (color: HighlightColor) => {
+      if (!isScopeCurrent()) return;
       await verseAnnotationService.runInScope(async operation => {
         for (const vk of allKeys) {
           const [s, a] = vk.split(':');
@@ -58,10 +61,11 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
         if (operation.isCurrent()) onDone();
       });
     },
-    [allKeys, onDone, rewayah],
+    [allKeys, onDone, rewayah, isScopeCurrent],
   );
 
   const handleRemove = useCallback(async () => {
+    if (!isScopeCurrent()) return;
     await verseAnnotationService.runInScope(async operation => {
       for (const vk of allKeys) {
         await operation.removeHighlight(vk);
@@ -71,7 +75,7 @@ export const HighlightContent: React.FC<HighlightContentProps> = ({
       }
       if (operation.isCurrent()) onDone();
     });
-  }, [allKeys, onDone]);
+  }, [allKeys, onDone, isScopeCurrent]);
 
   return (
     <View>

@@ -2,17 +2,20 @@ const mockRestore = jest.fn();
 
 jest.mock('@/services/auth/bayaanAuthService', () => ({
   bayaanAuthService: {
-    restore: () => mockRestore(),
+    restore: (onStored: unknown) => mockRestore(onStored),
   },
 }));
 
 import React from 'react';
-import {Text} from 'react-native';
+import {AppState, Text, type AppStateStatus} from 'react-native';
 import renderer, {act} from 'react-test-renderer';
 import {BayaanAuthProvider} from '../BayaanAuthProvider';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
 beforeEach(() => {
+  jest
+    .spyOn(AppState, 'addEventListener')
+    .mockImplementation(() => ({remove: jest.fn()}));
   mockRestore.mockReset();
   useBayaanAuthStore.getState().resetForTesting();
 });
@@ -153,20 +156,56 @@ describe('BayaanAuthProvider', () => {
     await act(async () => tree.unmount());
   });
 
-  it('keeps the app usable as signed out when restore fails', async () => {
-    mockRestore.mockRejectedValueOnce(new Error('network is down'));
-
+  it('does not treat a locked Keychain as guest scope and retries on foreground', async () => {
+    let foreground!: (state: AppStateStatus) => void;
+    const subscription = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_type, callback) => {
+        foreground = callback;
+        return {remove: jest.fn()};
+      });
+    mockRestore
+      .mockRejectedValueOnce(new Error('Keychain unavailable'))
+      .mockResolvedValueOnce({profile: {accountId: 'account-A'}});
+    let tree!: renderer.ReactTestRenderer;
     await act(async () => {
-      renderer.create(
-        <BayaanAuthProvider>
-          <Text>child</Text>
-        </BayaanAuthProvider>,
-      );
+      tree = renderer.create(<BayaanAuthProvider>{null}</BayaanAuthProvider>);
     });
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'initializing',
+      profile: null,
+    });
+    await act(async () => foreground('active'));
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-A'},
+    });
+    expect(mockRestore).toHaveBeenCalledTimes(2);
+    await act(async () => tree.unmount());
+    subscription.mockRestore();
+  });
 
+  it('installs the unexpired local account before revalidation and clears it on revocation', async () => {
+    let release!: (value: unknown) => void;
+    mockRestore.mockImplementationOnce(onStored => {
+      onStored({profile: {accountId: 'account-A'}});
+      return new Promise(resolve => {
+        release = resolve;
+      });
+    });
+    let tree!: renderer.ReactTestRenderer;
+    await act(async () => {
+      tree = renderer.create(<BayaanAuthProvider>{null}</BayaanAuthProvider>);
+    });
+    expect(useBayaanAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      profile: {accountId: 'account-A'},
+    });
+    await act(async () => release(null));
     expect(useBayaanAuthStore.getState()).toMatchObject({
       status: 'signed_out',
       profile: null,
     });
+    await act(async () => tree.unmount());
   });
 });

@@ -46,7 +46,7 @@ import {useShareIntent} from 'expo-share-intent';
 import {useUploadsStore} from '@/store/uploadsStore';
 import {SheetManager} from 'react-native-actions-sheet';
 import {showToast} from '@/utils/toastUtils';
-import {mushafSessionStore} from '@/services/mushaf/MushafSessionStore';
+import {useMushafResumeRestore} from '@/hooks/useMushafResumeRestore';
 import {USE_GLASS} from '@/hooks/useGlassProps';
 import Constants from 'expo-constants';
 import * as Sentry from '@sentry/react-native';
@@ -199,8 +199,8 @@ function QfSyncLifecycleBridge() {
 
   useEffect(() => {
     if (syncRequestId > 0) {
+      // Settings changes are captured by their own store subscriptions.
       qfSyncLifecycle.requestSync();
-      qfSettingsSyncLifecycle.requestSync();
     }
   }, [syncRequestId]);
 
@@ -496,27 +496,10 @@ function RootLayout() {
     resetShareIntent,
   ]);
 
-  // Restore mushaf screen if it was open when the app was killed.
-  // MMKV reads are synchronous — no hydration wait needed.
-  useEffect(() => {
-    if (!appIsReady || !isPlayerReady || hasShareIntent) return;
-
-    const lastScreenWasMushaf = mushafSessionStore.getLastScreenWasMushaf();
-    const lastReadPage = mushafSessionStore.getLastReadPage();
-
-    if (lastScreenWasMushaf) {
-      router.push({
-        pathname: '/mushaf',
-        params: lastReadPage ? {page: String(lastReadPage)} : undefined,
-      });
-      // Let the navigation animation finish behind the splash before revealing
-      InteractionManager.runAfterInteractions(() => {
-        setMushafRestoreHandled(true);
-      });
-    } else {
-      setMushafRestoreHandled(true);
-    }
-  }, [appIsReady, isPlayerReady, hasShareIntent]);
+  useMushafResumeRestore(
+    appIsReady && isPlayerReady && !hasShareIntent,
+    useCallback(() => setMushafRestoreHandled(true), []),
+  );
 
   // Hide splash once mushaf restore (if any) has settled.
   // onLayout only fires once, so this effect covers the case where

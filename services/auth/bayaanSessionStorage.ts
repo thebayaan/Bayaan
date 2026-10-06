@@ -4,6 +4,9 @@ import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
 const SESSION_KEY = 'bayaan_qf_session_v1';
 const PENDING_STATE_KEY = 'bayaan_qf_pending_state_v1';
 const STORAGE_VERSION = 1;
+const STORAGE_OPTIONS = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+};
 
 export interface PendingBayaanAuthState {
   state: string;
@@ -61,7 +64,11 @@ export async function saveBayaanSession(
   session: BayaanOpaqueSession,
 ): Promise<void> {
   const stored: StoredSession = {version: STORAGE_VERSION, session};
-  await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(stored));
+  await SecureStore.setItemAsync(
+    SESSION_KEY,
+    JSON.stringify(stored),
+    STORAGE_OPTIONS,
+  );
 }
 
 export async function getBayaanSession(): Promise<BayaanOpaqueSession | null> {
@@ -101,7 +108,11 @@ export async function savePendingBayaanAuthState(
   pending: PendingBayaanAuthState,
 ): Promise<void> {
   const stored: StoredPendingState = {version: STORAGE_VERSION, pending};
-  await SecureStore.setItemAsync(PENDING_STATE_KEY, JSON.stringify(stored));
+  await SecureStore.setItemAsync(
+    PENDING_STATE_KEY,
+    JSON.stringify(stored),
+    STORAGE_OPTIONS,
+  );
 }
 
 export async function getPendingBayaanAuthState(): Promise<PendingBayaanAuthState | null> {

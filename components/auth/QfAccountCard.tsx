@@ -12,6 +12,7 @@ import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import type {Theme} from '@/utils/themeUtils';
 import {QfSyncStatusRow} from './QfSyncStatusRow';
 import {qfSyncLifecycle} from '@/services/sync/qfSyncLifecycle';
+import {qfSettingsSyncLifecycle} from '@/services/settings/qfSettingsSyncLifecycle';
 
 export function QfAccountCard() {
   const {theme} = useTheme();
@@ -34,11 +35,17 @@ export function QfAccountCard() {
 
   const signOut = useCallback(async () => {
     const attempt = useBayaanAuthStore.getState().invalidateAttempt();
-    await qfSyncLifecycle.stop().catch(() => undefined);
+    await Promise.allSettled([
+      qfSyncLifecycle.stop(),
+      qfSettingsSyncLifecycle.stop(true),
+    ]);
     // A newer login may have started while lifecycle shutdown yielded.
     if (attempt !== useBayaanAuthStore.getState().authAttempt) return;
     try {
       await bayaanAuthService.logout();
+    } catch {
+      // Logout attempts local cleanup even when remote revocation is offline.
+      // Do not leak its rejection from a native press handler.
     } finally {
       setSignedOut(attempt);
     }

@@ -34,6 +34,32 @@ describe('Bayaan Sync BFF client', () => {
     global.fetch = jest.fn();
   });
 
+  it.each(['45', new Date(Date.now() + 45_000).toUTCString()])(
+    'exposes Retry-After from the provider (%s)',
+    async retryAfter => {
+      const response = jsonResponse({error: {code: 'rate_limited'}}, 429);
+      response.headers.set('Retry-After', retryAfter);
+      (global.fetch as jest.Mock).mockResolvedValueOnce(response);
+      const client = new BayaanSyncApiClient({apiUrl});
+      try {
+        await client.pull(opaqueSession, {mutationsSince: 0});
+        throw new Error('Expected rate limit rejection');
+      } catch (error) {
+        expect(error).toMatchObject({
+          code: 'rate_limited',
+          status: 429,
+          retryAfterMs: expect.any(Number),
+        });
+        expect((error as BayaanSyncApiError).retryAfterMs).toBeGreaterThan(
+          40_000,
+        );
+        expect((error as BayaanSyncApiError).retryAfterMs).toBeLessThanOrEqual(
+          45_000,
+        );
+      }
+    },
+  );
+
   it('pulls only through the fixed Bayaan route with the opaque session bearer', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce(
       jsonResponse({

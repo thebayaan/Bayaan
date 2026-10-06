@@ -1560,7 +1560,7 @@ export class QfSyncDatabaseService {
           input.remoteId,
           pendingBaseServerUpdatedAt,
           Date.now(),
-          null,
+          Date.now(), // Transaction preserves both versions and queued copy.
         ],
       );
     });

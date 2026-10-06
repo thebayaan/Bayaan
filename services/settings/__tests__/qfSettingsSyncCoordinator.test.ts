@@ -122,6 +122,10 @@ class MemoryStorage {
     return structuredClone(this.states.get(accountId) ?? emptyState());
   }
 
+  async clear(accountId: string): Promise<void> {
+    this.states.delete(accountId);
+  }
+
   async save(
     accountId: string,
     state: PersistedSettingsSyncState,
@@ -243,6 +247,59 @@ function coordinator(
 }
 
 describe('QfSettingsSyncCoordinator', () => {
+  test.each([false, true])(
+    'retains guest edits for a new account without copying unchanged account settings (restart=%s)',
+    async restart => {
+      const api = fakeApi();
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const first = coordinator(api, storage, bridge);
+      await first.value.activateLocal('account-a');
+      await first.value.syncRemote('account-a', 'session-a');
+      bridge.changeDocument('appearance', {themeMode: 'dark'});
+      bridge.changeDocument('audio', {shuffle: true});
+      await first.value.deactivate();
+      bridge.changeDocument('appearance', {themeMode: 'light'});
+      const next = restart ? coordinator(api, storage, bridge) : first;
+      await next.value.activateLocal('account-b');
+      expect(bridge.currentDocuments.appearance).toEqual({themeMode: 'light'});
+      expect(bridge.currentDocuments.audio).toEqual({shuffle: false});
+      expect(storage.deviceContext?.baselineDocuments.appearance).toEqual({
+        themeMode: 'light',
+      });
+      await next.value.deactivate();
+    },
+  );
+
+  test.each(['deactivate', 'switch'])(
+    'persists edits before the capture debounce on %s without capturing the next account',
+    async action => {
+      jest.useFakeTimers();
+      const api = fakeApi();
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const subject = coordinator(api, storage, bridge);
+      await subject.value.activateLocal('account-a');
+      await subject.value.syncRemote('account-a', 'session');
+      api.puts.length = 0;
+      bridge.changeDocument('appearance', {themeMode: 'dark'});
+      const departure =
+        action === 'deactivate'
+          ? subject.value.deactivate()
+          : subject.value.activateLocal('account-b');
+      // Shared stores can change again while serialized persistence is pending.
+      bridge.currentDocuments.appearance = {themeMode: 'light'};
+      await departure;
+      expect(
+        storage.states.get('account-a')?.localDocuments.appearance,
+      ).toEqual({themeMode: 'dark'});
+      expect(
+        storage.states.get('account-a')?.pending.appearance?.changes,
+      ).toEqual([{path: ['themeMode'], value: 'dark'}]);
+      expect(api.puts).toHaveLength(0);
+      await subject.value.deactivate();
+    },
+  );
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
@@ -400,6 +457,131 @@ describe('QfSettingsSyncCoordinator', () => {
       }
     },
   );
+
+  test('treats same-account upgrade mismatches as local leaf edits without prompting', async () => {
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const initial = coordinator(api, storage, bridge);
+    await initial.value.activateLocal('account-a');
+    await initial.value.syncRemote('account-a', 'session-a');
+    await initial.value.deactivate();
+    // A crash/app update changes the local store without the old subscriber.
+    bridge.currentDocuments.mushaf = {showTranslation: true, showWBW: true};
+    const resumed = coordinator(api, storage, bridge);
+    await resumed.value.activateLocal('account-a');
+    expect(resumed.choose).not.toHaveBeenCalled();
+    expect(storage.states.get('account-a')?.pending.mushaf?.changes).toEqual([
+      {path: ['showWBW'], value: true},
+    ]);
+    await resumed.value.deactivate();
+  });
+
+  test('explicit sign-out drains capture then removes only the departing account state', async () => {
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    storage.states.set('account-b', emptyState());
+    const subject = coordinator(api, storage, bridge);
+    await subject.value.activateLocal('account-a');
+    await subject.value.syncRemote('account-a', 'session-a');
+    bridge.changeDocument('appearance', {themeMode: 'dark'});
+    await subject.value.deactivate(true);
+    expect(storage.states.has('account-a')).toBe(false);
+    expect(storage.states.has('account-b')).toBe(true);
+    expect(storage.deviceContext?.signedOutDocuments?.appearance).toEqual({
+      themeMode: 'dark',
+    });
+  });
+
+  test.each(['initial', '412'] as const)(
+    'never downgrades a future read-only document encountered during %s, including after restart',
+    async stage => {
+      const remote: Partial<
+        Record<SettingsDocumentKey, RemoteSettingsDocument>
+      > = {};
+      if (stage === 'initial')
+        remote.mushaf = {
+          key: 'mushaf',
+          value: {showTranslation: true},
+          etag: 'future',
+          schemaVersion: 2,
+          readOnly: true,
+        };
+      const api = fakeApi(remote);
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const subject = coordinator(api, storage, bridge);
+      await subject.value.activateLocal('account-a');
+      await subject.value.syncRemote('account-a', 'session');
+      api.puts.length = 0;
+      bridge.changeDocument('mushaf', {showTranslation: false});
+      if (stage === '412') {
+        remote.mushaf = {
+          key: 'mushaf',
+          value: {showTranslation: true},
+          etag: 'future',
+          schemaVersion: 2,
+          readOnly: true,
+        };
+        const original = api.putDocument.getMockImplementation()!;
+        api.putDocument.mockImplementation(async (token, input) => {
+          if (input.key === 'mushaf')
+            throw new BayaanSettingsApiError(412, 'changed_schema');
+          return original(token, input);
+        });
+      }
+      await subject.value.syncRemote('account-a', 'session');
+      expect(api.puts.filter(put => put.key === 'mushaf')).toHaveLength(0);
+      expect(storage.states.get('account-a')?.readOnlyDocuments?.mushaf).toBe(
+        true,
+      );
+      expect(storage.states.get('account-a')?.pending.mushaf?.changes).toEqual([
+        {path: ['showTranslation'], value: false},
+      ]);
+      expect(remote.mushaf?.schemaVersion).toBe(2);
+      await subject.value.deactivate();
+      const attempts = api.putDocument.mock.calls.length;
+      const resumed = coordinator(api, storage, bridge);
+      await resumed.value.activateLocal('account-a');
+      await resumed.value.syncRemote('account-a', 'session');
+      expect(api.putDocument.mock.calls).toHaveLength(attempts);
+      expect(bridge.currentDocuments.mushaf.showTranslation).toBe(false);
+      await resumed.value.deactivate();
+    },
+  );
+
+  test('sign-out cancels first reconciliation without waiting for an alert choice', async () => {
+    const api = fakeApi({
+      appearance: {
+        key: 'appearance',
+        value: {themeMode: 'dark'},
+        etag: 'cloud',
+      },
+    });
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    let reached!: () => void;
+    const asked = new Promise<void>(resolve => {
+      reached = resolve;
+    });
+    const subject = new QfSettingsSyncCoordinator({
+      api: api as never,
+      storage: storage as unknown as QfSettingsStorage,
+      bridge,
+      chooseFirstSyncConflict: () => {
+        reached();
+        return new Promise(() => undefined);
+      },
+    });
+    await subject.activateLocal('account-a');
+    const syncing = subject.syncRemote('account-a', 'session-a');
+    await asked;
+    await subject.deactivate(true);
+    await syncing;
+    expect(storage.states.has('account-a')).toBe(false);
+    expect(api.puts).toHaveLength(0);
+  });
 
   test('uploads local settings with durable create-only mutations on an empty account', async () => {
     const api = fakeApi();
@@ -761,7 +943,7 @@ describe('QfSettingsSyncCoordinator', () => {
     await Promise.all([syncing, activating]);
 
     expect(storage.states.get('account-a')?.localDocuments.appearance).toEqual({
-      themeMode: 'system',
+      themeMode: 'light',
     });
   });
 

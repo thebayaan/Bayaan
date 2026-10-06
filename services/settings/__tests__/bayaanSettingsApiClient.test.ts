@@ -114,6 +114,33 @@ describe('BayaanSettingsApiClient', () => {
     );
   });
 
+  test('accepts explicit future-schema read-only documents without relabeling their version', async () => {
+    const client = new BayaanSettingsApiClient('https://bayaan.test', {
+      fetchImpl: jest.fn(async () =>
+        jsonResponse(
+          {
+            success: true,
+            data: {
+              collection: 'settings',
+              key: 'mushaf',
+              schemaVersion: 2,
+              readOnly: true,
+              value: {showWBW: true},
+            },
+          },
+          {headers: {etag: 'future-etag'}},
+        ),
+      ),
+    });
+    await expect(client.getDocument('session', 'mushaf')).resolves.toEqual({
+      key: 'mushaf',
+      value: {showWBW: true},
+      schemaVersion: 2,
+      readOnly: true,
+      etag: 'future-etag',
+    });
+  });
+
   test('bounds and exposes Retry-After for reconciliation backoff', async () => {
     const client = new BayaanSettingsApiClient('https://bayaan.test', {
       fetchImpl: jest.fn(async () =>

@@ -30,7 +30,7 @@ export default function OAuthCallbackScreen() {
     }
 
     const auth = useBayaanAuthStore.getState();
-    const attempt =
+    let attempt =
       currentUrl && auth.status === 'initializing'
         ? auth.setSigningIn() // Cold-start callback supersedes startup restore.
         : auth.authAttempt;
@@ -49,7 +49,16 @@ export default function OAuthCallbackScreen() {
     callbackHandled.current = true;
 
     bayaanAuthService
-      .handleCallbackUrl(currentUrl)
+      .handleCallbackUrl(currentUrl, () => {
+        const current = useBayaanAuthStore.getState();
+        if (
+          attempt === current.authAttempt &&
+          current.status !== 'signing_in'
+        ) {
+          // Only a verified pending state may supersede optimistic restore.
+          attempt = current.setSigningIn();
+        }
+      })
       .then(session => {
         if (attempt !== useBayaanAuthStore.getState().authAttempt) return;
         useBayaanAuthStore

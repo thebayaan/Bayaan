@@ -1280,6 +1280,13 @@ describe('QfSyncDatabaseService atomic outbox writes', () => {
       }),
     );
     expect(retryPayload).not.toHaveProperty('remoteId');
+    expect((await sync.getSyncStatus('reader-a')).conflictCount).toBe(0);
+    expect(
+      await connection.getFirstAsync(
+        `SELECT resolved_at FROM qf_note_conflicts WHERE owner_scope = ?`,
+        ['qf:reader-a'],
+      ),
+    ).toEqual({resolved_at: expect.any(Number)});
 
     await database.close();
   });

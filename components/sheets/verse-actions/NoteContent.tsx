@@ -21,6 +21,7 @@ interface NoteContentProps {
   verseKeys?: string[];
   rewayah?: import('@/store/mushafSettingsStore').RewayahId;
   onDone: () => void;
+  isScopeCurrent: () => boolean;
 }
 
 export const NoteContent: React.FC<NoteContentProps> = ({
@@ -30,6 +31,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
   verseKeys,
   rewayah,
   onDone,
+  isScopeCurrent,
 }) => {
   const {theme} = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -37,7 +39,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
   const [noteText, setNoteText] = useState('');
 
   const handleSave = useCallback(async () => {
-    if (!noteText.trim()) return;
+    if (!isScopeCurrent() || !noteText.trim()) return;
 
     const allKeys = isRange ? verseKeys! : [verseKey];
     await verseAnnotationService.runInScope(async operation => {
@@ -63,6 +65,7 @@ export const NoteContent: React.FC<NoteContentProps> = ({
     noteText,
     onDone,
     rewayah,
+    isScopeCurrent,
   ]);
 
   const canSave = noteText.trim().length > 0;

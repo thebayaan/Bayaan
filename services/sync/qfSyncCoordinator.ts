@@ -362,6 +362,14 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
           existing.id,
         ],
       );
+      // The pulled bookmark satisfies an unsent create for this verse. Never
+      // discard uncertain deliveries: they still need push recovery.
+      await db.runAsync(
+        `DELETE FROM qf_sync_outbox
+         WHERE owner_scope = ? AND resource = 'BOOKMARK' AND local_id = ?
+           AND mutation_type = 'CREATE' AND delivery_state = 'PENDING'`,
+        [scope, existing.id],
+      );
       return;
     }
     await db.runAsync(
@@ -619,7 +627,7 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
       `INSERT INTO qf_note_conflicts
          (id, owner_scope, note_id, local_content, remote_content, remote_id,
           base_server_updated_at, created_at, resolved_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         generateLocalId(),
         scope,
@@ -629,6 +637,7 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
         canonical.remote_id,
         baseServerUpdatedAt,
         Date.now(),
+        Date.now(), // Both versions and the copy's outbox intent are durable.
       ],
     );
   }

@@ -1,11 +1,12 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import branding from '@/config/branding';
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
 import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
 import {
   BayaanBffClient,
   BayaanBffError,
-  parseExpiresAt as parseFiniteExpiresAt,
+  parseExpiresAt,
 } from './bayaanBffClient';
 import {
   clearBayaanSession,
@@ -14,6 +15,7 @@ import {
   getPendingBayaanAuthState,
   saveBayaanSession,
   savePendingBayaanAuthState,
+  type PendingBayaanAuthState,
 } from './bayaanSessionStorage';
 
 export type BayaanAuthErrorCode =
@@ -27,23 +29,6 @@ export type BayaanAuthErrorCode =
   | 'oauth_failed'
   | 'handoff_invalid'
   | 'network_error';
-
-const FORBIDDEN_CALLBACK_PARAMS = new Set([
-  'access_token',
-  'refresh_token',
-  'id_token',
-  'code',
-  'deviceVerifier',
-]);
-
-function getBrowserResultType(result: unknown): 'cancel' | 'dismiss' | null {
-  if (!result || typeof result !== 'object') {
-    return null;
-  }
-
-  const type = (result as {type?: unknown}).type;
-  return type === 'cancel' || type === 'dismiss' ? type : null;
-}
 
 export class BayaanAuthError extends Error {
   constructor(
@@ -62,63 +47,39 @@ interface BayaanAuthServiceOptions {
   client?: BayaanBffClient;
   openAuthSessionAsync?: (url: string, redirectUrl: string) => Promise<unknown>;
   now?: () => number;
+  urlScheme?: string;
 }
 
-function parseExpiresAt(value: string): number {
-  const parsed = parseFiniteExpiresAt(value);
-  if (parsed === undefined) {
-    throw new BayaanAuthError('network_error', 'Invalid auth response');
-  }
-  return parsed;
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-  const max = Math.max(left.length, right.length);
-  let diff = left.length === right.length ? 0 : 1;
-
-  for (let index = 0; index < max; index += 1) {
-    if ((left.charCodeAt(index) || 0) !== (right.charCodeAt(index) || 0)) {
-      diff += 1;
-    }
-  }
-
-  return diff === 0;
-}
-
-function parseCallback(url: string): URL {
+function parseCallback(url: string, scheme: string): URL {
+  let callback: URL;
   try {
-    return new URL(url);
+    callback = new URL(url);
   } catch {
     throw new BayaanAuthError('malformed_callback', 'Invalid auth callback');
   }
-}
-
-function assertNoForbiddenArtifacts(callback: URL): void {
-  if (callback.hash) {
+  if (
+    callback.hash ||
+    [
+      'access_token',
+      'refresh_token',
+      'id_token',
+      'code',
+      'deviceVerifier',
+    ].some(key => callback.searchParams.has(key))
+  ) {
     throw new BayaanAuthError(
       'forbidden_callback_artifact',
       'Unsafe auth callback',
     );
   }
-
-  for (const key of callback.searchParams.keys()) {
-    if (FORBIDDEN_CALLBACK_PARAMS.has(key)) {
-      throw new BayaanAuthError(
-        'forbidden_callback_artifact',
-        'Unsafe auth callback',
-      );
-    }
-  }
-}
-
-function assertExactCallbackRoute(callback: URL): void {
   if (
-    callback.protocol !== 'bayaan:' ||
+    callback.protocol !== `${scheme}:` ||
     callback.hostname !== 'oauth' ||
     callback.pathname !== '/callback'
   ) {
     throw new BayaanAuthError('malformed_callback', 'Invalid auth callback');
   }
+  return callback;
 }
 
 export function createBayaanAuthService(
@@ -127,143 +88,126 @@ export function createBayaanAuthService(
   const apiUrl = options.apiUrl ?? bayaanAuthConfig.apiUrl;
   const enabled = options.enabled ?? Boolean(apiUrl);
   const client = options.client ?? new BayaanBffClient(apiUrl);
-  const openAuthSessionAsync =
+  const openBrowser =
     options.openAuthSessionAsync ?? WebBrowser.openAuthSessionAsync;
   const now = options.now ?? Date.now;
-  let generation = 0;
-  let loggingOut = false;
-  let logoutPromise: Promise<void> | null = null;
+  const scheme = options.urlScheme ?? branding.urlScheme;
+  // One epoch invalidates every asynchronous owner; one queue serializes ALL
+  // SecureStore access (including reads that may delete invalid storage).
+  let epoch = 0;
+  let storageQueue: Promise<unknown> = Promise.resolve();
   let signInPromise: Promise<BayaanOpaqueSession> | null = null;
-  let signInOwner: object | null = null;
-  let lastCallback: {
-    key: string;
-    state: string | null;
-    generation: number;
+  let logoutPromise: Promise<void> | null = null;
+  // undefined means only the initial cold-start proof may be read from disk.
+  // Once consumed/cancelled, null remains authoritative even if deletion fails.
+  let pending: PendingBayaanAuthState | null | undefined;
+  let exchange: {
+    state: string;
+    epoch: number;
     promise: Promise<BayaanOpaqueSession>;
   } | null = null;
-  const callbacksInFlight = new Map<
-    string,
-    {
-      state: string | null;
-      generation: number;
-      promise: Promise<BayaanOpaqueSession>;
-    }
-  >();
-  let callbackQueue: Promise<unknown> = Promise.resolve();
-  let pendingStorageQueue: Promise<unknown> = Promise.resolve();
-  let sessionStorageQueue: Promise<unknown> = Promise.resolve();
-  // Callback delivery supersedes startup restore even without a local signIn.
-  // It must not advance the login generation: router/browser consumers share it.
-  let restoreRevision = 0;
-  let acceptUnknownPending = true;
-  let pendingAttempt: {state: string; generation: number} | null = null;
-  // Local revocations are not unknown cold-start proofs, even when a failed
-  // delete leaves bytes behind and a later login replaces pendingAttempt.
-  const revokedPendingStates = new Set<string>();
 
-  // Serialize pending-state reads/deletes too: an old cleanup must not erase
-  // a newer verifier, and logout must drain writes without waiting on a browser.
-  function pendingStorage<T>(task: () => Promise<T>): Promise<T> {
-    const result = pendingStorageQueue.then(task, task);
-    pendingStorageQueue = result.then(
+  function storage<T>(task: () => Promise<T>): Promise<T> {
+    const result = storageQueue.then(task, task);
+    storageQueue = result.then(
       () => undefined,
       () => undefined,
     );
     return result;
   }
-
-  // Reads can clear invalid/expired storage too. Queue them with all service
-  // writes so a started restore mutation drains before callback save/logout.
-  // These tasks never wait on callbackQueue or pendingStorageQueue.
-  function sessionStorage<T>(task: () => Promise<T>): Promise<T> {
-    const result = sessionStorageQueue.then(task, task);
-    sessionStorageQueue = result.then(
-      () => undefined,
-      () => undefined,
-    );
-    return result;
-  }
-
-  function assertGeneration(expected: number): void {
-    if (loggingOut || expected !== generation) {
+  function assertCurrent(owner: number): void {
+    if (owner !== epoch || logoutPromise) {
       throw new BayaanAuthError('access_denied', 'Sign-in was cancelled');
+    }
+  }
+  function authError(error: unknown): BayaanAuthError {
+    if (error instanceof BayaanAuthError) return error;
+    return new BayaanAuthError(
+      error instanceof BayaanBffError && error.code === 'handoff_invalid'
+        ? 'handoff_invalid'
+        : 'network_error',
+      'Sign-in failed',
+    );
+  }
+  // A backend exchange may finish after cancellation, before it ever reaches
+  // SecureStore. Revoke that token too, not just a token found during logout.
+  async function exchangeSession(
+    handoff: string,
+    proof: PendingBayaanAuthState,
+    owner: number,
+  ): Promise<BayaanOpaqueSession> {
+    let session: BayaanOpaqueSession | undefined;
+    let saved = false;
+    try {
+      await storage(async () => {
+        assertCurrent(owner);
+        await clearPendingBayaanAuthState();
+        assertCurrent(owner);
+      });
+      session = await client.completeAuth(
+        handoff,
+        proof.state,
+        proof.deviceVerifier,
+      );
+      assertCurrent(owner);
+      await storage(async () => {
+        assertCurrent(owner);
+        await saveBayaanSession(session!);
+        saved = true;
+        assertCurrent(owner);
+      });
+      assertCurrent(owner);
+      return session;
+    } catch (error) {
+      if (session && !saved && owner !== epoch)
+        await client.logout(session.token).catch(() => undefined);
+      // Do not clear an existing authenticated session for an invalid handoff.
+      throw authError(error);
     }
   }
 
   const service = {
     signIn(): Promise<BayaanOpaqueSession> {
-      if (loggingOut) {
+      if (logoutPromise)
         return Promise.reject(
           new BayaanAuthError('access_denied', 'Sign-in was cancelled'),
         );
-      }
-      // One attempt owns the stored verifier, including while /start is pending.
       if (signInPromise) return signInPromise;
-      if (pendingAttempt) revokedPendingStates.add(pendingAttempt.state);
-      acceptUnknownPending = false;
-      const attemptGeneration = ++generation;
-      restoreRevision += 1;
-      const owner = {};
-      signInOwner = owner;
-      lastCallback = null;
-      // Defer even immediate failures until the promise/owner are installed.
-      signInPromise = Promise.resolve().then(async () => {
+      const owner = ++epoch;
+      pending = null;
+      exchange = null;
+      const promise = Promise.resolve().then(async () => {
         try {
-          if (!enabled) {
+          if (!enabled)
             throw new BayaanAuthError('disabled', 'QF sign-in is unavailable');
-          }
           const bytes = await Crypto.getRandomBytesAsync(32);
           const deviceVerifier = Array.from(bytes, byte =>
             byte.toString(16).padStart(2, '0'),
           ).join('');
-          const deviceChallenge = await Crypto.digestStringAsync(
+          const challenge = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             deviceVerifier,
           );
-          const start = await client.startAuth(deviceChallenge);
-          assertGeneration(attemptGeneration);
-          pendingAttempt = {state: start.state, generation: attemptGeneration};
-          await pendingStorage(async () => {
-            assertGeneration(attemptGeneration);
-            await savePendingBayaanAuthState({
-              state: start.state,
-              deviceVerifier,
-              expiresAt: parseExpiresAt(start.expiresAt),
-            });
-            assertGeneration(attemptGeneration);
-            // A successfully persisted new proof now owns this state. Never
-            // remove a tombstone for an ambiguous or logout-cancelled write.
-            revokedPendingStates.delete(start.state);
+          const start = await client.startAuth(challenge);
+          assertCurrent(owner);
+          const expiresAt = parseExpiresAt(start.expiresAt);
+          if (expiresAt === undefined)
+            throw new BayaanAuthError('network_error', 'Invalid auth response');
+          await storage(async () => {
+            assertCurrent(owner);
+            pending = {state: start.state, deviceVerifier, expiresAt};
+            await savePendingBayaanAuthState(pending);
+            assertCurrent(owner);
           });
-          assertGeneration(attemptGeneration);
-          const result = await openAuthSessionAsync(
+          const result = await openBrowser(
             start.authorizationUrl,
-            'bayaan://oauth/callback',
+            `${scheme}://oauth/callback`,
           );
-          if (attemptGeneration !== generation) {
-            throw new BayaanAuthError('access_denied', 'Sign-in was cancelled');
-          }
-          // Android may report dismiss/cancel while the deep-link exchange is
-          // in flight. Join it rather than erasing its state or failing the UI.
-          const delivered =
-            [...callbacksInFlight.values()].find(
-              item =>
-                item.state === start.state &&
-                item.generation === attemptGeneration,
-            ) ??
-            (lastCallback as {
-              state: string | null;
-              generation: number;
-              promise: Promise<BayaanOpaqueSession>;
-            } | null);
-          if (
-            delivered?.state === start.state &&
-            delivered.generation === attemptGeneration
-          ) {
-            const session = await delivered.promise;
-            assertGeneration(attemptGeneration);
-            return session;
-          }
+          assertCurrent(owner);
+          // Android can dismiss while the router's matching exchange is active.
+          const delivered = exchange as typeof exchange;
+          if (delivered?.state === start.state && delivered.epoch === owner)
+            return await delivered.promise;
           if (
             result &&
             typeof result === 'object' &&
@@ -272,347 +216,186 @@ export function createBayaanAuthService(
             'url' in result &&
             typeof result.url === 'string'
           ) {
-            const session = await service.handleCallbackUrl(result.url);
-            assertGeneration(attemptGeneration);
-            return session;
+            return await service.handleCallbackUrl(result.url);
           }
+          const cancelled =
+            result &&
+            typeof result === 'object' &&
+            'type' in result &&
+            (result.type === 'cancel' || result.type === 'dismiss');
           throw new BayaanAuthError(
-            getBrowserResultType(result) ? 'access_denied' : 'network_error',
-            getBrowserResultType(result)
-              ? 'Sign-in was cancelled'
-              : 'Sign-in failed',
+            cancelled ? 'access_denied' : 'network_error',
+            cancelled ? 'Sign-in was cancelled' : 'Sign-in failed',
           );
         } catch (error) {
-          if (attemptGeneration === generation) {
-            if (pendingAttempt?.generation === attemptGeneration) {
-              revokedPendingStates.add(pendingAttempt.state);
-            }
-            // Revoke before cleanup yields: a queued or newly delivered link
-            // must never redeem proof belonging to this terminal failure.
-            const cleanupGeneration = ++generation;
-            lastCallback = null;
-            await pendingStorage(async () => {
-              if (cleanupGeneration === generation) {
-                await clearPendingBayaanAuthState();
-              }
-            });
+          if (owner === epoch) {
+            pending = null;
+            exchange = null;
+            ++epoch; // Revoke BEFORE a possibly failing/held storage cleanup.
+            await storage(clearPendingBayaanAuthState);
           }
-          if (error instanceof BayaanAuthError) throw error;
-          throw new BayaanAuthError('network_error', 'Sign-in failed');
+          throw authError(error);
         } finally {
-          if (signInOwner === owner) {
-            signInPromise = null;
-            signInOwner = null;
-          }
+          if (signInPromise === promise) signInPromise = null;
         }
       });
-      return signInPromise;
+      signInPromise = promise;
+      return promise;
     },
 
-    async handleCallbackUrl(url: string): Promise<BayaanOpaqueSession> {
-      if (loggingOut) {
-        throw new BayaanAuthError('access_denied', 'Sign-in was cancelled');
-      }
-      // Install the shared promise synchronously, before SecureStore yields.
-      // Keep only the most recent result, so duplicate router/browser deliveries
-      // cannot exchange twice or change authenticated UI back to an error.
-      const callback = parseCallback(url);
-      assertNoForbiddenArtifacts(callback);
-      assertExactCallbackRoute(callback);
-      const key = JSON.stringify(
-        ['state', 'handoff', 'error'].map(name =>
-          callback.searchParams.get(name),
-        ),
-      );
-      // Invalidate restores synchronously, before pending storage or exchange
-      // yields. Even a cold-start router callback goes through this gate.
-      restoreRevision += 1;
-      const deliveredGeneration = generation;
-      const existing =
-        lastCallback?.key === key &&
-        lastCallback.generation === deliveredGeneration
-          ? lastCallback
-          : callbacksInFlight.get(key);
-      if (existing?.generation === deliveredGeneration) {
-        const session = await existing.promise;
-        assertGeneration(deliveredGeneration);
-        return session;
-      }
-      // Serialize distinct callbacks as well. A forged link interleaved with
-      // two real deliveries must neither clear state nor start two exchanges.
-      if (callbacksInFlight.size >= 8) {
+    async handleCallbackUrl(
+      url: string,
+      onAccepted?: () => void,
+    ): Promise<BayaanOpaqueSession> {
+      if (!enabled)
+        throw new BayaanAuthError('disabled', 'QF sign-in is unavailable');
+      const owner = epoch;
+      assertCurrent(owner);
+      const callback = parseCallback(url, scheme);
+      const state = callback.searchParams.get('state');
+      if (!state)
         throw new BayaanAuthError(
           'malformed_callback',
           'Invalid auth callback',
         );
-      }
-      const promise = callbackQueue.then(() => {
-        assertGeneration(deliveredGeneration);
-        return service.completeCallback(url);
-      });
-      callbackQueue = promise.then(
-        () => undefined,
-        () => undefined,
-      );
-      callbacksInFlight.set(key, {
-        state: callback.searchParams.get('state'),
-        generation: deliveredGeneration,
-        promise,
-      });
-      try {
-        const session = await promise;
-        assertGeneration(deliveredGeneration);
-        lastCallback = {
-          key,
-          state: callback.searchParams.get('state'),
-          generation: deliveredGeneration,
-          promise,
-        };
-        return session;
-      } finally {
-        if (callbacksInFlight.get(key)?.promise === promise) {
-          callbacksInFlight.delete(key);
+      // Only preparation is queued; returning a wrapper avoids joining network
+      // exchange inside the storage queue. Dedupe is by state, never by URL.
+      const prepared = await storage(async () => {
+        if (exchange?.state === state && exchange.epoch === epoch)
+          return exchange;
+        assertCurrent(owner);
+        if (pending === undefined) {
+          const stored = await getPendingBayaanAuthState();
+          assertCurrent(owner);
+          pending = stored;
         }
-      }
-    },
-
-    async completeCallback(url: string): Promise<BayaanOpaqueSession> {
-      const attemptGeneration = generation;
-      const callback = parseCallback(url);
-      let pending = await pendingStorage(getPendingBayaanAuthState);
-      // Only a callback carrying this attempt's state (or arriving after the
-      // attempt expired) may end it. Anything else is an unrelated or forged
-      // link and must not cancel a sign-in that is still in progress.
-      let endsPendingAttempt = false;
-      const pendingState = pending?.state;
-
-      try {
-        assertGeneration(attemptGeneration);
-        assertNoForbiddenArtifacts(callback);
-        assertExactCallbackRoute(callback);
-
-        if (!pending) {
+        if (!pending)
           throw new BayaanAuthError('missing_state', 'Missing sign-in state');
-        }
-
-        // In-process attempts remain bound to their generation even if a
-        // cancelled write or failed delete left bytes behind. Unknown stored
-        // attempts are still accepted on legitimate cold-start callbacks.
-        if (revokedPendingStates.has(pending.state)) {
-          throw new BayaanAuthError('access_denied', 'Sign-in was cancelled');
-        }
-        if (pendingAttempt?.state === pending.state) {
-          assertGeneration(pendingAttempt.generation);
-        } else {
-          // After a local login/logout, a leftover is never an unknown cold-start
-          // proof in this process. Only a freshly persisted local login may own it.
-          if (!acceptUnknownPending) {
-            throw new BayaanAuthError('access_denied', 'Sign-in was cancelled');
-          }
-          pendingAttempt = {
-            state: pending.state,
-            generation: attemptGeneration,
-          };
-        }
-
-        if (pending.expiresAt <= now()) {
-          endsPendingAttempt = true;
-          throw new BayaanAuthError('expired_state', 'Sign-in state expired');
-        }
-
-        const callbackState = callback.searchParams.get('state');
-        if (!callbackState) {
-          throw new BayaanAuthError(
-            'malformed_callback',
-            'Invalid auth callback',
-          );
-        }
-
-        if (!constantTimeEqual(pending.state, callbackState)) {
+        if (pending.state !== state)
           throw new BayaanAuthError('state_mismatch', 'Sign-in state mismatch');
-        }
-        endsPendingAttempt = true;
-
-        const providerError = callback.searchParams.get('error');
-        if (providerError) {
-          throw new BayaanAuthError(
-            providerError === 'access_denied'
-              ? 'access_denied'
-              : 'oauth_failed',
-            providerError === 'access_denied'
-              ? 'Sign-in was cancelled'
-              : 'Sign-in failed',
+        const proof = pending;
+        pending = null; // Retire matched proof before any await, even on failure.
+        const callbackOwner = signInPromise ? owner : ++epoch;
+        onAccepted?.();
+        const complete = async () => {
+          if (
+            proof.expiresAt <= now() ||
+            callback.searchParams.has('error') ||
+            !callback.searchParams.get('handoff')
+          ) {
+            await storage(clearPendingBayaanAuthState);
+            assertCurrent(callbackOwner);
+            if (proof.expiresAt <= now())
+              throw new BayaanAuthError(
+                'expired_state',
+                'Sign-in state expired',
+              );
+            const denied =
+              callback.searchParams.get('error') === 'access_denied';
+            throw new BayaanAuthError(
+              callback.searchParams.has('error')
+                ? denied
+                  ? 'access_denied'
+                  : 'oauth_failed'
+                : 'malformed_callback',
+              denied ? 'Sign-in was cancelled' : 'Sign-in failed',
+            );
+          }
+          return exchangeSession(
+            callback.searchParams.get('handoff')!,
+            proof,
+            callbackOwner,
           );
-        }
-
-        const handoff = callback.searchParams.get('handoff');
-        if (!handoff) {
-          throw new BayaanAuthError(
-            'malformed_callback',
-            'Invalid auth callback',
-          );
-        }
-
-        const deviceVerifier = pending.deviceVerifier;
-        await pendingStorage(clearPendingBayaanAuthState);
-        pending = null;
-        assertGeneration(attemptGeneration);
-
-        const session = await client.completeAuth(
-          handoff,
-          callbackState,
-          deviceVerifier,
-        );
-        assertGeneration(attemptGeneration);
-        await sessionStorage(async () => {
-          assertGeneration(attemptGeneration);
-          await saveBayaanSession(session);
-        });
-        // Logout drains this save so it can revoke and clear the stored token,
-        // but no callback consumer may receive that now-cancelled session.
-        assertGeneration(attemptGeneration);
-        return session;
-      } catch (error) {
-        if (endsPendingAttempt && attemptGeneration === generation) {
-          // Cold-start failures have no enclosing signIn catch. Tombstone before
-          // cleanup yields, including when consumption/deletion itself failed.
-          if (pendingState) revokedPendingStates.add(pendingState);
-          await pendingStorage(async () => {
-            if (attemptGeneration === generation) {
-              await clearPendingBayaanAuthState();
-            }
-          });
-        }
-        if (pending) {
-          pending = null;
-        }
-        if (
-          error instanceof BayaanBffError &&
-          error.code === 'handoff_invalid'
-        ) {
-          await sessionStorage(async () => {
-            if (!loggingOut && attemptGeneration === generation) {
-              await clearBayaanSession();
-            }
-          });
-          throw new BayaanAuthError(
-            'handoff_invalid',
-            'Invalid or expired sign-in handoff',
-          );
-        }
-        if (error instanceof BayaanAuthError) {
-          throw error;
-        }
-        throw new BayaanAuthError('network_error', 'Sign-in failed');
-      }
+        };
+        // Start after the preparation queue entry has settled.
+        exchange = {
+          state,
+          epoch: callbackOwner,
+          promise: Promise.resolve().then(complete),
+        };
+        return exchange;
+      });
+      const session = await prepared.promise;
+      assertCurrent(prepared.epoch);
+      return session;
     },
 
-    async restore(): Promise<BayaanOpaqueSession | null> {
-      if (loggingOut || signInPromise || callbacksInFlight.size) return null;
-      const attemptGeneration = generation;
-      const revision = ++restoreRevision;
-      const isCurrent = () =>
-        !loggingOut &&
-        attemptGeneration === generation &&
-        revision === restoreRevision;
-      const stored = await sessionStorage(() =>
-        isCurrent() ? getBayaanSession() : Promise.resolve(null),
+    async restore(
+      onStored?: (session: BayaanOpaqueSession) => void,
+    ): Promise<BayaanOpaqueSession | null> {
+      if (!enabled || logoutPromise || signInPromise || exchange) return null;
+      const owner = ++epoch;
+      const current = () => owner === epoch && !logoutPromise;
+      const stored = await storage(() =>
+        current() ? getBayaanSession() : Promise.resolve(null),
       );
-      if (!stored || !isCurrent()) return null;
-
+      if (!stored || !current()) return null;
+      onStored?.(stored); // UI can install this unexpired account without network.
       try {
         const fresh = await client.getSession(stored.token);
+        if (!current()) return null;
         const session = {...fresh, token: stored.token};
-        await sessionStorage(async () => {
-          if (isCurrent()) await saveBayaanSession(session);
+        await storage(async () => {
+          if (current()) await saveBayaanSession(session);
         });
-        return isCurrent() ? session : null;
+        // A matched cold-start callback queued behind a held save supersedes
+        // this restore before either caller may publish its UI result.
+        await storageQueue;
+        return current() ? session : null;
       } catch (error) {
-        if (!isCurrent()) return null;
+        if (!current()) return null;
         if (
           error instanceof BayaanBffError &&
           error.code === 'session_revoked'
         ) {
-          await sessionStorage(async () => {
-            if (isCurrent()) await clearBayaanSession();
+          await storage(async () => {
+            if (current()) await clearBayaanSession();
           });
           return null;
         }
-
-        // Offline fallback may keep only the still-current, unexpired account.
-        // A superseded restore must not resurrect it, even after a held write.
-        return isCurrent() && stored.expiresAt > now() ? stored : null;
+        return current() && stored.expiresAt > now() ? stored : null;
       }
     },
 
     logout(): Promise<void> {
-      // Concurrent callers must not release cancellation before cleanup ends.
       if (logoutPromise) return logoutPromise;
-      loggingOut = true;
-      generation += 1;
-      restoreRevision += 1;
-      // If discovery fails too, reject unknown leftovers for this service's
-      // lifetime. Report the I/O error; a new local signIn can still recover.
-      acceptUnknownPending = false;
-      if (pendingAttempt) revokedPendingStates.add(pendingAttempt.state);
-      signInPromise = null;
-      signInOwner = null;
-      lastCallback = null;
-      logoutPromise = (async () => {
-        const errors: unknown[] = [];
-        const attempt = async (task: () => Promise<unknown>): Promise<void> => {
+      ++epoch;
+      pending = null;
+      signInPromise = null; // Never wait for a browser to close.
+      const activeExchange = exchange;
+      exchange = null;
+      const promise = Promise.resolve().then(async () => {
+        let firstError: unknown;
+        const attempt = async (task: () => Promise<unknown>) => {
           try {
             await task();
           } catch (error) {
-            errors.push(error);
+            firstError ??= error;
           }
         };
         try {
-          // Discover prior-process proof behind pending writes and revoke it
-          // before deletion. Read failure must not skip either delete or drain.
+          await attempt(() => storage(clearPendingBayaanAuthState));
+          // Cancellation makes the exchange discard/revoke its result. Drain
+          // it even when pending deletion failed, before final session cleanup.
+          await activeExchange?.promise.catch(() => undefined);
           await attempt(() =>
-            pendingStorage(async () => {
-              const pending = await getPendingBayaanAuthState();
-              if (pending) revokedPendingStates.add(pending.state);
-            }),
-          );
-          await attempt(() => pendingStorage(clearPendingBayaanAuthState));
-          // This queue already absorbs callback rejections. No started callback
-          // session save may settle after revocation or the final session clear.
-          // Do not join signInPromise: its browser may remain open indefinitely.
-          await callbackQueue;
-          await sessionStorageQueue;
-          lastCallback = null;
-          await attempt(() =>
-            sessionStorage(async () => {
+            storage(async () => {
               const stored = await getBayaanSession();
               if (stored) await client.logout(stored.token);
             }),
           );
-          await attempt(() => sessionStorage(clearBayaanSession));
-          await attempt(() => pendingStorage(clearPendingBayaanAuthState));
-          // Preserve a lone original error; retain all failures in execution
-          // order rather than letting final cleanup mask the earlier failure.
-          if (errors.length === 1) throw errors[0];
-          if (errors.length > 1) {
-            throw new AggregateError(errors, 'Sign-out cleanup failed');
-          }
+          await attempt(() => storage(clearBayaanSession));
+          await attempt(() => storage(clearPendingBayaanAuthState));
+          if (firstError) throw firstError;
         } finally {
-          lastCallback = null;
-          loggingOut = false;
-          logoutPromise = null;
+          if (logoutPromise === promise) logoutPromise = null;
         }
-      })();
-      return logoutPromise;
+      });
+      logoutPromise = promise;
+      return promise;
     },
   };
-  // The exchange implementation is private to the shared callback gate.
-  return {
-    signIn: service.signIn,
-    handleCallbackUrl: service.handleCallbackUrl,
-    restore: service.restore,
-    logout: service.logout,
-  };
+  return service;
 }
 
 export const bayaanAuthService = createBayaanAuthService({

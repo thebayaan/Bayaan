@@ -132,6 +132,7 @@ export class QfSettingsSyncCoordinator {
   private remoteAllowed = false;
   private remoteSessionToken: string | null = null;
   private generation = 0;
+  private cancelChoice: (() => void) | null = null;
 
   constructor(private readonly options: CoordinatorOptions) {
     this.storage = options.storage ?? qfSettingsStorage;
@@ -155,8 +156,12 @@ export class QfSettingsSyncCoordinator {
 
   activateLocal(accountId: string): Promise<void> {
     if (this.accountId === accountId && this.state) return Promise.resolve();
+    this.cancelChoice?.();
+    const departure = this.captureDeparture();
     const generation = ++this.generation;
     return this.exclusive(async () => {
+      if (departure)
+        await this.storage.save(departure.accountId, departure.state);
       if (generation !== this.generation) return;
       this.unsubscribe();
       this.remoteSessionToken = null;
@@ -175,6 +180,35 @@ export class QfSettingsSyncCoordinator {
           baselineDocuments: this.bridge.captureDocuments(),
           baselinePreferences: this.bridge.capturePreferences(),
         };
+      if (
+        !departure &&
+        deviceContext.signedOutDocuments &&
+        deviceContext.signedOutPreferences
+      ) {
+        // Only changes since sign-out are guest intent. Do not copy the prior
+        // account's unchanged settings into the account-neutral baseline.
+        const current = this.bridge.captureDocuments();
+        for (const key of DOCUMENT_KEYS) {
+          deviceContext.baselineDocuments[key] = applySettingsChanges(
+            deviceContext.baselineDocuments[key],
+            settingsChanges(
+              deviceContext.signedOutDocuments[key],
+              current[key],
+            ),
+          );
+        }
+        deviceContext.baselinePreferences = remotePreferenceEntries(
+          applySettingsChanges(
+            preferencesRecord(deviceContext.baselinePreferences),
+            settingsChanges(
+              preferencesRecord(deviceContext.signedOutPreferences),
+              preferencesRecord(this.bridge.capturePreferences()),
+            ),
+          ),
+        );
+      }
+      delete deviceContext.signedOutDocuments;
+      delete deviceContext.signedOutPreferences;
       if (
         storedDeviceContext &&
         storedDeviceContext.ownerAccountId !== accountId &&
@@ -204,9 +238,13 @@ export class QfSettingsSyncCoordinator {
           preferenceFingerprint(devicePreferences) !==
             state.localPreferenceFingerprint;
         if (deviceDiffers) {
-          const choice = await this.options.chooseFirstSyncConflict();
-          if (generation !== this.generation) return;
-          if (choice === 'cloud') {
+          if (storedDeviceContext?.ownerAccountId === accountId) {
+            // App upgrades/default migrations or a missed debounce are local
+            // edits, not a first cloud reconciliation. Preserve leaf intent.
+            await this.recordCurrent(accountId, generation);
+          } else {
+            // Re-entering a known account restores its own local snapshot;
+            // another account's shared-store values are never its local edits.
             this.applyingRemote = true;
             try {
               this.bridge.applyDocuments(state.localDocuments);
@@ -216,22 +254,7 @@ export class QfSettingsSyncCoordinator {
             } finally {
               this.applyingRemote = false;
             }
-            state.localDocuments = this.bridge.captureDocuments();
-            state.localPreferences = this.bridge.capturePreferences();
-            state.localPreferenceFingerprint = preferenceFingerprint(
-              state.localPreferences,
-            );
-          } else {
-            state.localDocuments = deviceDocuments;
-            state.localPreferences = devicePreferences;
-            state.localPreferenceFingerprint =
-              preferenceFingerprint(devicePreferences);
-            state.preferencePending = devicePreferences;
-            for (const key of DOCUMENT_KEYS) {
-              this.queueDocument(key, deviceDocuments[key]);
-            }
           }
-          await this.storage.save(accountId, state);
         }
       }
       if (generation !== this.generation) return;
@@ -242,13 +265,41 @@ export class QfSettingsSyncCoordinator {
     });
   }
 
-  deactivate(): Promise<void> {
+  // Capture synchronously while the old account still owns the shared stores.
+  // Persistence is serialized, but must not recapture a later account's values.
+  private captureDeparture(): {
+    accountId: string;
+    state: PersistedSettingsSyncState;
+  } | null {
+    const accountId = this.accountId;
+    if (!accountId || !this.state) return null;
+    this.captureCurrent();
+    this.unsubscribe();
+    return {accountId, state: JSON.parse(JSON.stringify(this.state))};
+  }
+
+  deactivate(clearAccount = false): Promise<void> {
+    this.cancelChoice?.();
+    const departure = this.captureDeparture();
     const generation = ++this.generation;
     this.remoteAllowed = false;
     this.remoteSessionToken = null;
     this.cancelRetry();
     this.accountId = null;
     return this.exclusive(async () => {
+      if (departure) {
+        await this.storage.save(departure.accountId, departure.state);
+        if (clearAccount) await this.storage.clear(departure.accountId);
+        const context = await this.storage.loadDeviceContext();
+        if (context) {
+          await this.storage.saveDeviceContext({
+            ...context,
+            signedOutDocuments: departure.state
+              .localDocuments as SettingsDocuments,
+            signedOutPreferences: departure.state.localPreferences,
+          });
+        }
+      }
       if (generation !== this.generation) return;
       this.unsubscribe();
       this.state = null;
@@ -484,6 +535,22 @@ export class QfSettingsSyncCoordinator {
     return {documents: byKey, preferences};
   }
 
+  private async chooseConflict(): Promise<ConflictChoice | null> {
+    let cancel!: () => void;
+    const cancelled = new Promise<null>(resolve => {
+      cancel = () => resolve(null);
+    });
+    this.cancelChoice = cancel;
+    try {
+      return await Promise.race([
+        this.options.chooseFirstSyncConflict(),
+        cancelled,
+      ]);
+    } finally {
+      if (this.cancelChoice === cancel) this.cancelChoice = null;
+    }
+  }
+
   private async firstSync(
     accountId: string,
     sessionToken: string,
@@ -507,6 +574,8 @@ export class QfSettingsSyncCoordinator {
     let conflict = hasPreferenceConflict(localPreferences, remote.preferences);
     for (const key of DOCUMENT_KEYS) {
       const document = remote.documents[key];
+      state.readOnlyDocuments ??= {};
+      state.readOnlyDocuments[key] = document?.readOnly === true;
       state.syncedDocuments[key] = document?.value ?? {};
       if (!document) {
         delete state.etags[key];
@@ -528,13 +597,13 @@ export class QfSettingsSyncCoordinator {
       Object.keys(remoteDocuments).length > 0 ||
       remotePreferenceEntries(remote.preferences).length > 0;
     const decisionRevision = this.localRevision;
-    let choice: ConflictChoice =
+    let choice: ConflictChoice | null =
       hasRemote && conflict
-        ? await this.options.chooseFirstSyncConflict()
+        ? await this.chooseConflict()
         : hasRemote
           ? 'cloud'
           : 'local';
-    if (!this.isCurrent(accountId, generation)) return;
+    if (!choice || !this.isCurrent(accountId, generation)) return;
     if (decisionRevision !== this.localRevision) {
       // A setting changed while the conflict UI was open. Preserve that newer
       // device edit rather than applying the older fetched snapshot over it.
@@ -603,7 +672,7 @@ export class QfSettingsSyncCoordinator {
     for (const key of DOCUMENT_KEYS) {
       if (!this.isCurrent(accountId, generation)) return;
       let pending = state.pending[key];
-      if (!pending) continue;
+      if (!pending || state.readOnlyDocuments?.[key]) continue;
       const localAtSend = pending.localSnapshot;
       pending.attempted = true;
       await this.storage.save(accountId, state);
@@ -619,6 +688,17 @@ export class QfSettingsSyncCoordinator {
           throw error;
         const remote = await this.options.api.getDocument(sessionToken, key);
         if (!this.isCurrent(accountId, generation)) return;
+        if (remote?.readOnly) {
+          // The old request was rejected, not ambiguously delivered. Retain
+          // local leaf intent, but never PUT a v1 downgrade of a future schema.
+          state.readOnlyDocuments ??= {};
+          state.readOnlyDocuments[key] = true;
+          state.syncedDocuments[key] = remote.value;
+          state.etags[key] = remote.etag;
+          state.pending[key] = {...pending, attempted: false};
+          await this.storage.save(accountId, state);
+          continue;
+        }
         // A 412 definitively rejected the old bytes. Only its local leaf intent
         // can be rebased, never the stale complete-document body.
         pending = {
@@ -702,6 +782,8 @@ export class QfSettingsSyncCoordinator {
     try {
       for (const key of DOCUMENT_KEYS) {
         const document = remote.documents[key];
+        state.readOnlyDocuments ??= {};
+        state.readOnlyDocuments[key] = document?.readOnly === true;
         const changes = state.pending[key]?.changes ?? [];
         state.syncedDocuments[key] = document?.value ?? {};
         if (document) state.etags[key] = document.etag;

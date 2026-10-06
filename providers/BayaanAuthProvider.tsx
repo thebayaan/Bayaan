@@ -1,4 +1,5 @@
 import React, {useEffect, useRef} from 'react';
+import {AppState} from 'react-native';
 import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 
@@ -19,20 +20,45 @@ export function BayaanAuthProvider({children}: {children: React.ReactNode}) {
     // provider must supersede the earlier service restore and its UI result.
     const attempt = auth.setInitializing();
 
-    bayaanAuthService
-      .restore()
-      .then(session => {
-        if (session) {
-          useBayaanAuthStore
-            .getState()
-            .setAuthenticated(session.profile, attempt);
-        } else {
-          useBayaanAuthStore.getState().setSignedOut(attempt);
-        }
-      })
-      .catch(() => {
-        useBayaanAuthStore.getState().setSignedOut(attempt);
-      });
+    let retryNeeded = false;
+    let disposed = false;
+    const restore = () => {
+      retryNeeded = false;
+      bayaanAuthService
+        .restore(session => {
+          if (!disposed)
+            useBayaanAuthStore
+              .getState()
+              .setAuthenticated(session.profile, attempt);
+        })
+        .then(session => {
+          if (disposed) return;
+          if (session)
+            useBayaanAuthStore
+              .getState()
+              .setAuthenticated(session.profile, attempt);
+          else useBayaanAuthStore.getState().setSignedOut(attempt);
+        })
+        .catch(() => {
+          if (disposed) return;
+          // SecureStore I/O failure is not proof of a missing session. Remain
+          // in initializing scope and retry after the device is unlocked.
+          retryNeeded = true;
+        });
+    };
+    restore();
+    const subscription = AppState.addEventListener('change', state => {
+      if (
+        state === 'active' &&
+        retryNeeded &&
+        useBayaanAuthStore.getState().authAttempt === attempt
+      )
+        restore();
+    });
+    return () => {
+      disposed = true;
+      subscription.remove();
+    };
   }, []);
 
   return <>{children}</>;

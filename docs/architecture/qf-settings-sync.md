@@ -13,10 +13,10 @@ not approved for production launch.
 ## Local architecture
 
 - `qfSettingsSnapshot.ts` is the explicit preference allowlist. Adding a field
-to a persisted store does not upload it automatically; reviewers must classify
-it as a preference or excluded local/runtime state.
+  to a persisted store does not upload it automatically; reviewers must classify
+  it as a preference or excluded local/runtime state.
 - `qfSettingsStoreBridge.ts` waits for Zustand hydration, observes the approved
-stores, captures documents, and applies validated remote fields.
+  stores, captures documents, and applies validated remote fields.
 - `qfSettingsStorage.ts` persists reconciliation metadata per Bayaan account.
 - `qfSettingsSyncCoordinator.ts` persists raw server values, their ETags, and
   the corresponding known-field device projection per account. It records
@@ -44,9 +44,15 @@ On an empty server, local values are uploaded. Before the first sync of a newly
 encountered second account, Bayaan restores the device baseline captured before
 any account settings were applied; this prevents values left in shared Zustand
 stores by another account from being copied silently. When first login or
-account activation finds conflicting device/account settings, the user chooses
-“Use cloud settings” or “Keep this device.” Server fields are retained where
-they exist and local fields are retained where the server has no value.
+first reconciliation finds conflicting device/account settings, the user chooses
+“Use cloud settings” or “Keep this device.” The cloud choice retains local
+values where the server has none; the device choice applies the device's known
+fields over the raw server document. Unknown remote fields survive both choices.
+Returning to an initialized account restores its account-local snapshot when
+another account owned the shared stores. A mismatch on the same account (such
+as an app update or a missed debounce) is a normal local edit, not a prompt.
+An account change or sign-out cancels a pending first-reconciliation choice so
+shutdown never waits for the alert.
 A present remote value unsupported by this device (for example a future reading
 theme ID) is not an absent field: the device fallback becomes its synchronized
 projection, while the raw value survives until an actual local edit. This also
@@ -80,10 +86,21 @@ cloud/device reconciliation before writing. The selected known fields are
 merged onto freshly fetched raw documents; unknown remote fields survive both
 choices. No account metadata is shared with another account.
 
-The mobile preservation algorithm must roll out with the BFF bounded opaque
-extension contract described in the backend settings runbook. Known BFF field
-validation, retired/sensitive exclusions, authentication, ETags, and idempotency
-remain enforced; forward compatibility does not authorize arbitrary local state.
+The BFF enforces exact write allowlists; its allowlist must ship before any app
+version adds a setting. Reads tolerate and omit unsupported/invalid fields while
+retaining the ETag. Mobile does not trim approved captured data to hide a 400.
+If the server advertises a future positive `schemaVersion` with `readOnly: true`,
+mobile may project supported fields for display, but persists a per-key write
+barrier and retains local leaf intent without uploading a v1 downgrade. A 412
+that discovers such a document also installs the barrier before retry. Other
+settings documents continue to sync normally. Malformed documents still fail
+closed, and ambiguous writes retain their byte/idempotency recovery contract.
+
+Capture is drained synchronously before account ownership changes. Explicit
+in-app sign-out drains pending capture, removes only that account's persisted
+settings metadata, and records the visible known-field snapshot as a signed-out
+comparison point. Later deliberate guest edits update the neutral baseline;
+unchanged prior-account settings are not silently copied into a new account.
 
 ## Explicit exclusions
 

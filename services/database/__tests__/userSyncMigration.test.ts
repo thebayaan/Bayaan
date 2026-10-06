@@ -304,6 +304,51 @@ async function columnNames(db: TestDb, table: string): Promise<string[]> {
 }
 
 describe('userSyncV1 annotation migration', () => {
+  it('maps legacy IDs exactly while preserving canonical IDs in every annotation table', async () => {
+    const {
+      PERSISTED_ID_MIGRATIONS,
+    } = require('@/services/rewayah/RewayahIdentity');
+    const db = await openTestDb();
+    await createLegacyAnnotationTables(db);
+    await db.execAsync(
+      'DELETE FROM bookmarks; DELETE FROM notes; DELETE FROM highlights;',
+    );
+    const cases = new Map<string, string>(
+      Object.entries(PERSISTED_ID_MIGRATIONS),
+    );
+    for (const id of Object.values(PERSISTED_ID_MIGRATIONS) as string[])
+      cases.set(id, id);
+    let ayah = 0;
+    for (const [id] of cases) {
+      ayah += 1;
+      for (const table of ['bookmarks', 'notes', 'highlights']) {
+        const extraColumns =
+          table === 'notes'
+            ? ', content, updated_at'
+            : table === 'highlights'
+              ? ', color'
+              : '';
+        const extraValues =
+          table === 'notes'
+            ? ", 'note', 100"
+            : table === 'highlights'
+              ? ", 'blue'"
+              : '';
+        await db.runAsync(
+          `INSERT INTO ${table} (id, verse_key, surah_number, ayah_number, created_at, rewayah_id${extraColumns}) VALUES (?, ?, 2, ?, 100, ?${extraValues})`,
+          [id, `2:${ayah}`, ayah, id],
+        );
+      }
+    }
+    await migrateUserSyncV1(db);
+    for (const table of ['bookmarks', 'notes', 'highlights']) {
+      const rows = await db.getAllAsync(`SELECT id, rewayah_id FROM ${table}`);
+      expect(rows).toHaveLength(cases.size);
+      for (const row of rows)
+        expect(row.rewayah_id).toBe(cases.get(String(row.id)));
+    }
+    await db.closeAsync();
+  });
   it('backfills legacy annotations to guest scope and preserves rows, note ranges, timestamps, and rewayah semantics', async () => {
     const db = await openTestDb();
     await createLegacyAnnotationTables(db);
