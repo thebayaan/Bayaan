@@ -586,6 +586,521 @@ async function createRemoteBackedNote(
 }
 
 describe('SQLite push recovery store', () => {
+  it.each([403, 429, 502, 'head-only', 'duplicate-identities'] as const)(
+    'real wire %s cannot partially acknowledge a SQLite note batch or mutate another account',
+    async fault => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices(`wire-${fault}.db`);
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const store = new SqliteQfSyncPullStore(database);
+      await store.commitStableHead(accountId, 0, 7001, 1000);
+      await store.commitStableHead('reader-b', 0, 9001, 1000);
+      for (const content of ['one', 'two'])
+        await sync.addNote({
+          accountId,
+          verseKey: '2:255',
+          surahNumber: 2,
+          ayahNumber: 255,
+          content,
+        });
+      await sync.addNote({
+        accountId: 'reader-b',
+        verseKey: '3:1',
+        surahNumber: 3,
+        ayahNumber: 1,
+        content: 'private-b',
+      });
+      const before = await sync.getOutboxEntries('reader-b');
+      const fetchImpl = async (input: string, init: RequestInit) => {
+        const url = new URL(input);
+        let status = 200;
+        let body: unknown;
+        if (init.method === 'POST') {
+          if (typeof fault === 'number' || fault === 'duplicate-identities') {
+            status = typeof fault === 'number' ? fault : 502;
+            body = {
+              error: {
+                code:
+                  fault === 403
+                    ? 'QF_SYNC_FORBIDDEN'
+                    : 'QF_SYNC_UPSTREAM_ERROR',
+              },
+            };
+          } else {
+            const requests = JSON.parse(String(init.body)).mutations;
+            body = {
+              success: true,
+              data: {
+                lastMutationAt: 7002,
+                mutations:
+                  fault === 'head-only'
+                    ? []
+                    : requests.map((mutation: BayaanSyncMutation) => ({
+                        ...mutation,
+                        resourceId: 'duplicate-note-id',
+                        timestamp: 7002,
+                      })),
+              },
+            };
+          }
+        } else
+          body = {
+            success: true,
+            data:
+              url.searchParams.get('metadataOnly') === 'true'
+                ? {lastMutationAt: 7001}
+                : {
+                    lastMutationAt: 7001,
+                    mutations: [],
+                    page: 1,
+                    limit: 1000,
+                    total: 0,
+                    hasMore: false,
+                  },
+          };
+        const bytes = new TextEncoder().encode(JSON.stringify(body));
+        return {
+          ok: status === 200,
+          status,
+          headers: new Headers({
+            'content-length': String(bytes.length),
+            'retry-after': '120',
+          }),
+          body: new ReadableStream({
+            start(c) {
+              c.enqueue(bytes);
+              c.close();
+            },
+          }),
+        } as Response;
+      };
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store,
+        pushStore: sync,
+      });
+      if (fault === 403 || fault === 429)
+        await expect(
+          coordinator.push({accountId, sessionToken: 'dummy-a'}),
+        ).rejects.toMatchObject({
+          code: fault === 429 ? 'rate_limited' : 'request_failed',
+          status: fault,
+          ...(fault === 429 ? {retryAfterMs: 120_000} : {}),
+        });
+      else
+        await expect(
+          coordinator.push({accountId, sessionToken: 'dummy-a'}),
+        ).resolves.toMatchObject({
+          status: 'recovered',
+          acknowledged: 0,
+          ambiguous: 2,
+        });
+      expect(await sync.getStoredHead(accountId)).toBe(7001);
+      const outbox = await sync.getOutboxEntries(accountId);
+      expect(outbox).toHaveLength(2);
+      expect(
+        outbox.every(
+          (entry: QfOutboxEntry) =>
+            entry.deliveryState ===
+            (fault === 403 || fault === 429 ? 'PENDING' : 'AMBIGUOUS'),
+        ),
+      ).toBe(true);
+      expect(await sync.getOutboxEntries('reader-b')).toEqual(before);
+      expect(await sync.getStoredHead('reader-b')).toBe(9001);
+      await database.close();
+    },
+  );
+
+  it.each(['NOTE', 'BOOKMARK'] as const)(
+    'rejects a poisoned/unsupported %s page through the real codec without advancing either SQLite account cursor',
+    async resource => {
+      const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
+        await createServices('poisoned-page.db');
+      const {
+        BayaanSyncApiClient,
+      } = require('@/services/sync/bayaanSyncApiClient');
+      await sync.initialize();
+      const store = new SqliteQfSyncPullStore(database);
+      await store.commitStableHead(accountId, 0, 7001, 1000);
+      await store.commitStableHead('reader-b', 0, 9001, 1000);
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({
+          success: true,
+          data: {
+            lastMutationAt: 7002,
+            mutations: [
+              {
+                resource,
+                type: 'CREATE',
+                resourceId: 'poison',
+                timestamp: 7002,
+                data:
+                  resource === 'NOTE'
+                    ? {body: 'private', ranges: [], saveToQR: false}
+                    : {type: 'page', key: 10, verseNumber: null},
+              },
+            ],
+            page: 1,
+            limit: 1000,
+            total: 1,
+            hasMore: false,
+          },
+        }),
+      );
+      const fetchImpl = async () =>
+        ({
+          ok: true,
+          status: 200,
+          headers: new Headers({'content-length': String(bytes.length)}),
+          body: new ReadableStream({
+            start(c) {
+              c.enqueue(bytes);
+              c.close();
+            },
+          }),
+        }) as Response;
+      const coordinator = new IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store,
+        pushStore: sync,
+      });
+      await expect(
+        coordinator.pull({accountId, sessionToken: 'dummy-a'}),
+      ).rejects.toMatchObject({code: 'invalid_response'});
+      expect(await sync.getStoredHead(accountId)).toBe(7001);
+      expect(await sync.getStoredHead('reader-b')).toBe(9001);
+      expect(await sync.getOutboxEntries(accountId)).toEqual([]);
+      const db = await database.getConnection();
+      expect(await db.getAllAsync('SELECT * FROM notes')).toEqual([]);
+      await database.close();
+    },
+  );
+
+  it('converges two SQLite devices through the real API codec with offline edits, reconnect and a separate dummy account', async () => {
+    const a = await createServices('device-a-connected.db');
+    const b = await createServices('device-b-connected.db');
+    const {
+      BayaanSyncApiClient,
+    } = require('@/services/sync/bayaanSyncApiClient');
+    await a.sync.initialize();
+    await b.sync.initialize();
+    const heads = new Map([
+      ['reader-a', 7001],
+      ['reader-b', 7001],
+    ]);
+    const log = new Map<string, BayaanSyncMutation[]>([
+      ['reader-a', []],
+      ['reader-b', []],
+    ]);
+    const posts: Array<{account: string; mutations: BayaanSyncMutation[]}> = [];
+    const fetchImpl = async (input: string, init: RequestInit) => {
+      const url = new URL(input);
+      const account =
+        new Headers(init.headers).get('Authorization') === 'Bearer dummy-b'
+          ? 'reader-b'
+          : 'reader-a';
+      const history = log.get(account)!;
+      let head = heads.get(account)!;
+      let data: Record<string, unknown>;
+      if (init.method === 'POST') {
+        expect(Number(url.searchParams.get('lastMutationAt'))).toBe(head);
+        const body = JSON.parse(String(init.body));
+        const mutations = body.mutations.map(
+          (mutation: BayaanSyncMutation) => ({
+            ...mutation,
+            resourceId: mutation.resourceId ?? `${account}-reading`,
+            timestamp: ++head,
+          }),
+        );
+        history.push(...mutations);
+        heads.set(account, head);
+        posts.push({account, mutations});
+        data = {lastMutationAt: head, mutations};
+      } else {
+        const mutations = history.filter(
+          mutation =>
+            mutation.timestamp > Number(url.searchParams.get('mutationsSince')),
+        );
+        data =
+          url.searchParams.get('metadataOnly') === 'true'
+            ? {lastMutationAt: head}
+            : {
+                lastMutationAt: head,
+                mutations,
+                page: 1,
+                limit: 1000,
+                total: mutations.length,
+                hasMore: false,
+              };
+      }
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({success: true, data}),
+      );
+      return {
+        ok: true,
+        status: 200,
+        headers: new Headers({'content-length': String(bytes.length)}),
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes);
+            controller.close();
+          },
+        }),
+      } as Response;
+    };
+    const makeCoordinator = (device: typeof a) =>
+      new device.IntegratedCoordinator({
+        transport: new BayaanSyncApiClient({
+          apiUrl: 'https://dummy.test',
+          fetchImpl,
+        }),
+        store: new device.SqliteQfSyncPullStore(device.database),
+        pushStore: device.sync,
+      });
+    const ca = makeCoordinator(a);
+    const cb = makeCoordinator(b);
+    const input = {accountId, sessionToken: 'dummy-a'};
+    await a.sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:1',
+      surahNumber: 3,
+      ayahNumber: 1,
+      lastReadAt: 1000,
+    });
+    await ca.pull(input);
+    await ca.push(input);
+    await cb.pull(input);
+    // Both devices go offline. B's older intent must not revert A on reconnect.
+    await b.sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:2',
+      surahNumber: 3,
+      ayahNumber: 2,
+      lastReadAt: 2000,
+    });
+    await a.sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:3',
+      surahNumber: 3,
+      ayahNumber: 3,
+      lastReadAt: 3000,
+    });
+    await ca.pull(input);
+    await ca.push(input);
+    await cb.pull(input);
+    await cb.push(input);
+    expect(posts.filter(item => item.account === accountId)).toHaveLength(2);
+    expect(await b.sync.getLatestReadingLocation(accountId)).toMatchObject({
+      verseKey: '3:3',
+      lastReadAt: 3000,
+    });
+    expect(await b.sync.getOutboxEntries(accountId)).toEqual([]);
+    // Reverse the device winner to check the reciprocal path and later pull.
+    await a.sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:4',
+      surahNumber: 3,
+      ayahNumber: 4,
+      lastReadAt: 4000,
+    });
+    await b.sync.upsertReadingLocation({
+      accountId,
+      verseKey: '3:5',
+      surahNumber: 3,
+      ayahNumber: 5,
+      lastReadAt: 5000,
+    });
+    await cb.pull(input);
+    await cb.push(input);
+    await ca.pull(input);
+    await ca.push(input);
+    expect(posts.filter(item => item.account === accountId)).toHaveLength(3);
+    for (const device of [a, b]) {
+      expect(
+        await device.sync.getLatestReadingLocation(accountId),
+      ).toMatchObject({verseKey: '3:5', lastReadAt: 5000});
+      expect(await device.sync.getOutboxEntries(accountId)).toEqual([]);
+      expect(await device.sync.getStoredHead(accountId)).toBe(
+        heads.get(accountId),
+      );
+    }
+    await b.sync.upsertReadingLocation({
+      accountId: 'reader-b',
+      verseKey: '4:1',
+      surahNumber: 4,
+      ayahNumber: 1,
+      lastReadAt: 6000,
+    });
+    await cb.pull({accountId: 'reader-b', sessionToken: 'dummy-b'});
+    await cb.push({accountId: 'reader-b', sessionToken: 'dummy-b'});
+    expect(await b.sync.getLatestReadingLocation(accountId)).toMatchObject({
+      verseKey: '3:5',
+    });
+    expect(await a.sync.getLatestReadingLocation('reader-b')).toBeNull();
+    expect(posts[3].account).toBe('reader-b');
+    await a.database.close();
+    await b.database.close();
+  });
+
+  it.each(
+    [false, true].flatMap(remoteBacked =>
+      ['PENDING', 'IN_FLIGHT', 'AMBIGUOUS'].flatMap(delivery =>
+        [1000, 2000, 3000].map(remoteTime => ({
+          remoteBacked,
+          delivery,
+          remoteTime,
+        })),
+      ),
+    ),
+  )(
+    'reconciles durable reading intent through pull -> recovery -> push: %j',
+    async ({remoteBacked, delivery, remoteTime}) => {
+      const {database, sync, IntegratedCoordinator, SqliteQfSyncPullStore} =
+        await createServices(
+          `reading-intent-${remoteBacked}-${delivery}-${remoteTime}.db`,
+        );
+      await sync.initialize();
+      await seedHead(database, 7001);
+      await sync.upsertReadingLocation({
+        accountId,
+        verseKey: '3:7',
+        surahNumber: 3,
+        ayahNumber: 7,
+        lastReadAt: 500,
+      });
+      if (remoteBacked) {
+        const [create] = await sync.getOutboxEntries(accountId);
+        await sync.markOperationInFlight({
+          accountId,
+          localOperationId: create.localOperationId,
+          startedAt: 7000,
+        });
+        await sync.acknowledgeOperation({
+          accountId,
+          localOperationId: create.localOperationId,
+          resourceId: 'remote-reading',
+          serverUpdatedAt: 7000,
+        });
+      }
+      await sync.upsertReadingLocation({
+        accountId,
+        verseKey: '3:8',
+        surahNumber: 3,
+        ayahNumber: 8,
+        lastReadAt: 2000,
+      });
+      // Another account on this device must not have its intent or cursor touched.
+      await sync.upsertReadingLocation({
+        accountId: 'reader-b',
+        verseKey: '4:1',
+        surahNumber: 4,
+        ayahNumber: 1,
+        lastReadAt: 2500,
+      });
+      const foreign = await sync.getOutboxEntries('reader-b');
+      const [queued] = await sync.getOutboxEntries(accountId);
+      if (delivery !== 'PENDING') {
+        await sync.markOperationInFlight({
+          accountId,
+          localOperationId: queued.localOperationId,
+          startedAt: 7001,
+        });
+        if (delivery === 'AMBIGUOUS') {
+          const db = await database.getConnection();
+          await db.runAsync(
+            `UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS' WHERE local_operation_id = ?`,
+            [queued.localOperationId],
+          );
+        }
+      }
+      let cloud: BayaanSyncMutation = {
+        resource: 'READING_SESSION',
+        type: 'UPDATE',
+        resourceId: 'remote-reading',
+        timestamp: 7002,
+        data: {
+          chapterNumber: 3,
+          verseNumber: 9,
+          clientCreatedAt: new Date(500).toISOString(),
+          clientUpdatedAt: new Date(remoteTime).toISOString(),
+        },
+      };
+      const requests: BayaanSyncPushRequest[] = [];
+      const transport = {
+        pull: async (
+          _token: string,
+          request: {metadataOnly?: boolean},
+        ): Promise<BayaanSyncPullPage> =>
+          request.metadataOnly
+            ? {lastMutationAt: cloud.timestamp, mutations: []}
+            : {
+                lastMutationAt: cloud.timestamp,
+                mutations: [cloud],
+                page: 1,
+                limit: 1000,
+                total: 1,
+                hasMore: false,
+              },
+        push: async (
+          _token: string,
+          request: BayaanSyncPushRequest,
+        ): Promise<BayaanSyncPushResult> => {
+          requests.push(request);
+          expect(request.mutations[0].type).toBe('UPDATE');
+          cloud = {
+            ...request.mutations[0],
+            resourceId: 'remote-reading',
+            timestamp: 7003,
+          };
+          return {lastMutationAt: 7003, mutations: [cloud]};
+        },
+      };
+      const coordinator = new IntegratedCoordinator({
+        transport,
+        store: new SqliteQfSyncPullStore(database),
+        pushStore: sync,
+        now: () => 8001,
+      });
+      await coordinator.pull({accountId, sessionToken});
+      if (delivery !== 'PENDING') {
+        const [uncertain] = await sync.getOutboxEntries(accountId);
+        expect(uncertain.deliveryState).toBe(delivery);
+        expect(uncertain.inFlightPayloadJson).toBe(queued.payloadJson);
+      }
+      await coordinator.push({accountId, sessionToken});
+      // A recovered immutable revision can leave current intent ready to push.
+      if (
+        (await sync.getOutboxEntries(accountId)).some(
+          (entry: QfOutboxEntry) => entry.deliveryState === 'PENDING',
+        )
+      ) {
+        await coordinator.push({accountId, sessionToken});
+      }
+      expect(requests).toHaveLength(remoteTime < 2000 ? 1 : 0);
+      expect(cloud.data?.verseNumber).toBe(remoteTime < 2000 ? 8 : 9);
+      expect(Date.parse(String(cloud.data?.clientUpdatedAt))).toBe(
+        Math.max(2000, remoteTime),
+      );
+      expect(await sync.getOutboxEntries(accountId)).toEqual([]);
+      expect(await sync.getOutboxEntries('reader-b')).toEqual(foreign);
+      expect(await sync.getStoredHead('reader-b')).toBe(0);
+      expect(await sync.getLatestReadingLocation(accountId)).toMatchObject({
+        verseKey: remoteTime < 2000 ? '3:8' : '3:9',
+        lastReadAt: Math.max(2000, remoteTime),
+      });
+      await database.close();
+    },
+  );
+
   it('drains a newer pending revision after restart recovery without another external trigger', async () => {
     const databaseName = 'lifecycle-restart-newer-bookmark-delete.db';
     let services = await createServices(databaseName);

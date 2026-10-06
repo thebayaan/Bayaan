@@ -118,7 +118,9 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
       },
 
       setRate: (rate: number) => {
-        const clamped = Math.max(0.5, Math.min(2.0, rate));
+        const clamped = Number.isFinite(rate)
+          ? Math.max(0.25, Math.min(2.0, rate))
+          : 1;
         mushafAudioService.setRate(clamped);
         set({rate: clamped});
       },

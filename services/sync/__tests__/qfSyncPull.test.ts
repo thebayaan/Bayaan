@@ -440,6 +440,68 @@ describe('QF stable pull coordinator', () => {
 });
 
 describe('SQLite QF pull store', () => {
+  it.each([false, true])(
+    'compares queued payload dates, not row/server timestamps or insertion order (multiple=%s)',
+    async multiple => {
+      const {database, store} = await createSqliteStore(
+        `reading-payload-time-${multiple}.db`,
+      );
+      await database.runAsync(
+        `INSERT INTO qf_reading_locations (id, owner_scope, remote_id, surah_number, ayah_number, verse_key, last_read_at, server_updated_at, created_at, updated_at) VALUES ('reading', 'qf:reader-a', 'remote', 3, 8, '3:8', ?, 100, 50, 9999)`,
+        [multiple ? 3000 : 9999],
+      );
+      const insert = `INSERT INTO qf_sync_outbox (local_operation_id, owner_scope, account_id, resource, mutation_type, local_id, remote_id, payload_json, base_server_updated_at, created_at, delivery_state) VALUES (?, 'qf:reader-a', 'reader-a', 'READING_SESSION', 'UPDATE', 'reading', 'remote', ?, 100, ?, 'PENDING')`;
+      await database.runAsync(insert, [
+        'older',
+        JSON.stringify({clientUpdatedAt: 1000}),
+        5000,
+      ]);
+      if (multiple)
+        await database.runAsync(insert, [
+          'newer',
+          JSON.stringify({clientUpdatedAt: 3000}),
+          500,
+        ]);
+      const remote: BayaanSyncMutation = {
+        resource: 'READING_SESSION',
+        type: 'UPDATE',
+        resourceId: 'remote',
+        timestamp: 200,
+        data: {
+          chapterNumber: 3,
+          verseNumber: 9,
+          clientUpdatedAt: new Date(2000).toISOString(),
+        },
+      };
+      await store.applyPage('reader-a', [
+        remote,
+        remote,
+        {...remote, timestamp: 150},
+      ]);
+      expect(
+        await database.getFirstAsync(
+          `SELECT verse_key, last_read_at, server_updated_at FROM qf_reading_locations`,
+        ),
+      ).toEqual({
+        verse_key: multiple ? '3:8' : '3:9',
+        last_read_at: multiple ? 3000 : 2000,
+        server_updated_at: 200,
+      });
+      expect(
+        await database.getAllAsync(
+          `SELECT local_operation_id, base_server_updated_at FROM qf_sync_outbox`,
+        ),
+      ).toEqual(
+        multiple
+          ? [{local_operation_id: 'newer', base_server_updated_at: 200}]
+          : [],
+      );
+      // Apply-only never advances the stable traversal cursor.
+      expect(await store.getStoredHead('reader-a')).toBe(0);
+      await database.closeAsync();
+    },
+  );
+
   it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS', 'DELETE'])(
     'adopts a remote bookmark without replaying satisfied creates (%s)',
     async state => {

@@ -14,8 +14,21 @@ jest.mock('@/services/player/store/playerStore', () => {
   };
 });
 
+jest.mock('@/store/translationStore', () => ({
+  useTranslationStore: {
+    getState: () => ({downloadedMeta: [{identifier: 'ur.dummy'}]}),
+  },
+}));
+
 jest.mock('@/store/ambientStore', () => {
-  const state = {currentSound: null, volume: 0.5};
+  const state = {
+    currentSound: null,
+    volume: 0.5,
+    isEnabled: false,
+    setVolume: (volume: number) => {
+      state.volume = volume;
+    },
+  };
   return {
     useAmbientStore: {
       getState: () => state,
@@ -80,6 +93,24 @@ describe('QF settings snapshot mapping', () => {
           item.group === 'reading' && item.key === 'selectedReadingTranslation',
       ),
     ).toBe(false);
+  });
+
+  test('keeps a usable local translation until a cloud edition is downloaded', () => {
+    useMushafSettingsStore.getState().setSelectedTranslationId('saheeh');
+    applySettingsDocuments({
+      mushaf: {selectedTranslationId: 'ur.not-downloaded'},
+    });
+    expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
+      'saheeh',
+    );
+    applySettingsDocuments({mushaf: {selectedTranslationId: 'ur.dummy'}});
+    expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
+      'ur.dummy',
+    );
+    applySettingsDocuments({mushaf: {selectedTranslationId: 'clear-quran'}});
+    expect(useMushafSettingsStore.getState().selectedTranslationId).toBe(
+      'clear-quran',
+    );
   });
 
   test('does not apply incompatible QF preference identifiers', () => {

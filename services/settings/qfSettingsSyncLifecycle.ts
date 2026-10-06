@@ -1,9 +1,7 @@
 import {Alert} from 'react-native';
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
-import {
-  clearBayaanSession,
-  getBayaanSession,
-} from '@/services/auth/bayaanSessionStorage';
+import {getBayaanSession} from '@/services/auth/bayaanSessionStorage';
+import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
 import type {BayaanAuthStatus} from '@/store/bayaanAuthStore';
 import {useBayaanAuthStore} from '@/store/bayaanAuthStore';
 import {
@@ -31,7 +29,7 @@ interface LifecycleOptions {
   enabled: boolean;
   coordinator: SettingsCoordinator;
   getSession: typeof getBayaanSession;
-  onSessionRevoked: () => Promise<void>;
+  onSessionRevoked: (accountId: string, sessionToken: string) => Promise<void>;
 }
 
 function sameContext(
@@ -138,6 +136,7 @@ export class QfSettingsSyncLifecycle {
   }
 
   private async run(accountId: string, epoch: number): Promise<void> {
+    let sessionToken: string | null = null;
     try {
       const session = await this.options.getSession();
       if (
@@ -146,15 +145,19 @@ export class QfSettingsSyncLifecycle {
         session.profile.accountId !== accountId
       )
         return;
+      sessionToken = session.token;
       await this.options.coordinator.syncRemote(accountId, session.token);
       this.retryAttempts = 0;
     } catch (error) {
       if (
         epoch === this.epoch &&
         error instanceof BayaanSettingsApiError &&
-        error.status === 401
+        error.status === 401 &&
+        sessionToken
       ) {
-        await this.options.onSessionRevoked();
+        await this.options
+          .onSessionRevoked(accountId, sessionToken)
+          .catch(() => undefined);
       }
       if (
         __DEV__ &&
@@ -166,6 +169,7 @@ export class QfSettingsSyncLifecycle {
         epoch === this.epoch &&
         (!(error instanceof BayaanSettingsApiError) ||
           error.status === 0 ||
+          error.status === 408 ||
           error.status === 429 ||
           error.status === 412 ||
           error.status >= 500)
@@ -188,9 +192,9 @@ export class QfSettingsSyncLifecycle {
     if (this.retryTimer) return;
     const providerDelay =
       error instanceof BayaanSettingsApiError ? (error.retryAfterMs ?? 0) : 0;
-    const delay = Math.min(
-      Math.max(1_000 * 2 ** this.retryAttempts, providerDelay),
-      60_000,
+    const delay = Math.max(
+      Math.min(1_000 * 2 ** this.retryAttempts, 60_000),
+      providerDelay,
     );
     this.retryAttempts += 1;
     this.retryTimer = setTimeout(() => {
@@ -232,18 +236,25 @@ function chooseFirstSyncConflict(): Promise<'local' | 'cloud'> {
   });
 }
 
+function onSessionRevoked(
+  accountId: string,
+  sessionToken: string,
+): Promise<void> {
+  return bayaanAuthService.revokeSession(accountId, sessionToken, () =>
+    useBayaanAuthStore.getState().setSignedOut(),
+  );
+}
+
 const api = new BayaanSettingsApiClient(bayaanAuthConfig.apiUrl);
 const coordinator = new QfSettingsSyncCoordinator({
   api,
   chooseFirstSyncConflict,
+  onSessionRevoked,
 });
 
 export const qfSettingsSyncLifecycle = new QfSettingsSyncLifecycle({
   enabled: bayaanAuthConfig.qfSyncEnabled,
   coordinator,
   getSession: getBayaanSession,
-  onSessionRevoked: async () => {
-    await clearBayaanSession();
-    useBayaanAuthStore.getState().setSignedOut();
-  },
+  onSessionRevoked,
 });

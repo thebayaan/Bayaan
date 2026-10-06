@@ -37,6 +37,7 @@ interface CoordinatorOptions {
   bridge?: QfSettingsStoreBridge;
   chooseFirstSyncConflict: () => Promise<ConflictChoice>;
   debounceMs?: number;
+  onSessionRevoked?: (accountId: string, sessionToken: string) => Promise<void>;
 }
 
 function canonicalValue(value: unknown): unknown {
@@ -131,6 +132,7 @@ export class QfSettingsSyncCoordinator {
   private localRevision = 0;
   private remoteAllowed = false;
   private remoteSessionToken: string | null = null;
+  private backgroundBlocked = false;
   private generation = 0;
   private cancelChoice: (() => void) | null = null;
 
@@ -311,6 +313,7 @@ export class QfSettingsSyncCoordinator {
     return this.exclusive(async () => {
       if (!this.isCurrent(accountId, generation)) return;
       this.remoteSessionToken = sessionToken;
+      this.backgroundBlocked = false;
       await this.options.api.assertConfiguration(sessionToken);
       const state = this.state;
       if (!this.isCurrent(accountId, generation) || !state) return;
@@ -329,6 +332,18 @@ export class QfSettingsSyncCoordinator {
       await this.flush(accountId, sessionToken, generation);
       this.retryAttempts = 0;
       this.cancelRetry();
+    }).catch(error => {
+      if (
+        this.isCurrent(accountId, generation) &&
+        error instanceof BayaanSettingsApiError &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        ![408, 412, 429].includes(error.status)
+      ) {
+        this.backgroundBlocked = true;
+        this.cancelRetry();
+      }
+      throw error; // Direct run's lifecycle owns its revocation/error handling.
     });
   }
 
@@ -367,24 +382,65 @@ export class QfSettingsSyncCoordinator {
       const accountId = this.accountId;
       const generation = this.generation;
       if (!accountId) return;
+      const sessionToken = this.remoteSessionToken;
       this.exclusive(async () => {
         if (!this.isCurrent(accountId, generation)) return;
         await this.recordCurrent(accountId, generation);
         if (
           this.remoteAllowed &&
-          this.remoteSessionToken &&
+          !this.backgroundBlocked &&
+          sessionToken &&
+          sessionToken === this.remoteSessionToken &&
           this.state?.initialized &&
           !this.state.needsReconciliation &&
           this.accountId === accountId
         ) {
-          await this.flush(accountId, this.remoteSessionToken, generation);
+          await this.flush(accountId, sessionToken, generation);
         }
       })
         .then(() => {
           this.retryAttempts = 0;
         })
-        .catch(error => this.scheduleRetry(accountId, generation, error));
+        .catch(error =>
+          this.handleBackgroundError(
+            accountId,
+            generation,
+            sessionToken,
+            error,
+          ),
+        );
     }, this.debounceMs);
+  }
+
+  private async handleBackgroundError(
+    accountId: string,
+    generation: number,
+    sessionToken: string | null,
+    error: unknown,
+  ): Promise<void> {
+    if (!this.isCurrent(accountId, generation)) return;
+    if (error instanceof BayaanSettingsApiError && error.status === 401) {
+      if (!sessionToken || sessionToken !== this.remoteSessionToken) return;
+      this.remoteAllowed = false;
+      this.remoteSessionToken = null;
+      this.cancelRetry();
+      // This path owns its debounce/retry promise, not a lifecycle run. Route
+      // revocation to the same token-bound auth handler, even on cleanup error.
+      await this.options
+        .onSessionRevoked?.(accountId, sessionToken)
+        .catch(() => undefined);
+      return;
+    }
+    if (
+      error instanceof BayaanSettingsApiError &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      ![408, 412, 429].includes(error.status)
+    ) {
+      this.backgroundBlocked = true;
+      this.cancelRetry();
+    }
+    this.scheduleRetry(accountId, generation, error);
   }
 
   private cancelRetry(): void {
@@ -400,6 +456,7 @@ export class QfSettingsSyncCoordinator {
     const retryable =
       !(error instanceof BayaanSettingsApiError) ||
       error.status === 0 ||
+      error.status === 408 ||
       error.status === 429 ||
       error.status === 412 ||
       error.status >= 500;
@@ -407,6 +464,7 @@ export class QfSettingsSyncCoordinator {
       !retryable ||
       this.retryTimer ||
       !this.remoteAllowed ||
+      this.backgroundBlocked ||
       !this.remoteSessionToken ||
       !this.state?.initialized ||
       this.state.needsReconciliation ||
@@ -417,9 +475,9 @@ export class QfSettingsSyncCoordinator {
     const exponentialDelay = 1_000 * 2 ** this.retryAttempts;
     const providerDelay =
       error instanceof BayaanSettingsApiError ? (error.retryAfterMs ?? 0) : 0;
-    const delay = Math.min(
-      Math.max(exponentialDelay, providerDelay),
-      MAX_RETRY_MS,
+    const delay = Math.max(
+      Math.min(exponentialDelay, MAX_RETRY_MS),
+      providerDelay,
     );
     this.retryAttempts += 1;
     this.retryTimer = setTimeout(() => {
@@ -428,6 +486,7 @@ export class QfSettingsSyncCoordinator {
       if (
         !token ||
         !this.remoteAllowed ||
+        this.backgroundBlocked ||
         !this.state?.initialized ||
         this.state.needsReconciliation ||
         !this.isCurrent(accountId, generation)
@@ -438,7 +497,7 @@ export class QfSettingsSyncCoordinator {
           this.retryAttempts = 0;
         })
         .catch(nextError =>
-          this.scheduleRetry(accountId, generation, nextError),
+          this.handleBackgroundError(accountId, generation, token, nextError),
         );
     }, delay);
   }
@@ -674,6 +733,7 @@ export class QfSettingsSyncCoordinator {
       let pending = state.pending[key];
       if (!pending || state.readOnlyDocuments?.[key]) continue;
       const localAtSend = pending.localSnapshot;
+      const previouslyAttempted = pending.attempted === true;
       pending.attempted = true;
       await this.storage.save(accountId, state);
       if (!this.isCurrent(accountId, generation)) return;
@@ -684,8 +744,25 @@ export class QfSettingsSyncCoordinator {
           ...pending,
         });
       } catch (error) {
-        if (!(error instanceof BayaanSettingsApiError) || error.status !== 412)
+        if (
+          !(error instanceof BayaanSettingsApiError) ||
+          error.status !== 412
+        ) {
+          if (
+            error instanceof BayaanSettingsApiError &&
+            error.status >= 400 &&
+            error.status < 500 &&
+            ![408, 429].includes(error.status) &&
+            !previouslyAttempted
+          ) {
+            // A first-attempt rejection is definitive. A rejection on replay
+            // does not prove earlier ambiguous bytes never landed, so keep
+            // their immutable evidence until receipt/precondition recovery.
+            pending.attempted = false;
+            await this.storage.save(accountId, state);
+          }
           throw error;
+        }
         const remote = await this.options.api.getDocument(sessionToken, key);
         if (!this.isCurrent(accountId, generation)) return;
         if (remote?.readOnly) {

@@ -298,7 +298,7 @@ class ExpoAudioService {
   // ========== PLAYBACK SETTINGS ==========
 
   /**
-   * Set playback rate (0.5 to 2.0)
+   * Set playback rate (0.25 to 2.0)
    * Also enables pitch correction so audio doesn't sound distorted
    */
   setRate(rate: number): void {
@@ -309,7 +309,9 @@ class ExpoAudioService {
     }
 
     // Clamp to valid range (expo-audio supports 0.1 to 2.0)
-    const clampedRate = Math.max(0.5, Math.min(2.0, rate));
+    const clampedRate = Number.isFinite(rate)
+      ? Math.max(0.25, Math.min(2.0, rate))
+      : 1;
     // Use setPlaybackRate method with 'high' pitch correction quality
     this.player.setPlaybackRate(clampedRate, 'high');
     if (__DEV__) console.log('[ExpoAudioService] Rate set to:', clampedRate);

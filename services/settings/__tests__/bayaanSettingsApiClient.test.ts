@@ -159,6 +159,29 @@ describe('BayaanSettingsApiClient', () => {
     );
   });
 
+  test('preserves HTTP-date Retry-After longer than a minute', async () => {
+    const now = 1_700_000_000_000;
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      const client = new BayaanSettingsApiClient('https://bayaan.test', {
+        fetchImpl: async () =>
+          jsonResponse(
+            {},
+            {
+              status: 429,
+              headers: {'retry-after': new Date(now + 120_000).toUTCString()},
+            },
+          ),
+      });
+      await expect(client.getPreferences('session')).rejects.toMatchObject({
+        status: 429,
+        retryAfterMs: 120_000,
+      });
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   test('sends exact App State bytes with the required mutation headers', async () => {
     let captured: {headers: Headers; body: unknown} | undefined;
     const client = new BayaanSettingsApiClient('https://bayaan.test', {

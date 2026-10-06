@@ -247,6 +247,140 @@ function coordinator(
 }
 
 describe('QfSettingsSyncCoordinator', () => {
+  test.each(['debounce', 'retry', 'late-account'] as const)(
+    'routes background-owned 401 through token-bound revocation (%s)',
+    async path => {
+      jest.useFakeTimers();
+      const api = fakeApi();
+      const storage = new MemoryStorage();
+      const bridge = new MemoryBridge();
+      const revoked = jest.fn(async () => undefined);
+      const subject = new QfSettingsSyncCoordinator({
+        api: api as never,
+        storage: storage as unknown as QfSettingsStorage,
+        bridge,
+        chooseFirstSyncConflict: async () => 'local',
+        debounceMs: 1,
+        onSessionRevoked: revoked,
+      });
+      await subject.activateLocal('account-a');
+      await subject.syncRemote('account-a', 'session-a');
+      subject.setRemoteAvailable(true);
+      api.puts.length = 0;
+      api.putDocument.mockImplementation(async () => {
+        throw new BayaanSettingsApiError(401, 'revoked');
+      });
+      if (path === 'retry')
+        api.putDocument.mockRejectedValueOnce(
+          new BayaanSettingsApiError(503, 'unavailable'),
+        );
+      let reject!: (error: Error) => void;
+      if (path === 'late-account')
+        api.putDocument.mockImplementationOnce(
+          () =>
+            new Promise((_resolve, fail) => {
+              reject = fail;
+            }),
+        );
+      const settle = async () => {
+        for (let i = 0; i < 100; i++) await Promise.resolve();
+      };
+      bridge.changeDocument('appearance', {themeMode: 'dark'});
+      jest.advanceTimersByTime(1);
+      await settle();
+      if (path === 'retry') {
+        jest.advanceTimersByTime(1000);
+        await settle();
+      }
+      if (path === 'late-account') {
+        const switching = subject.activateLocal('account-b');
+        reject(new BayaanSettingsApiError(401, 'revoked'));
+        await switching;
+        await settle();
+      }
+      expect(revoked.mock.calls).toEqual(
+        path === 'late-account' ? [] : [['account-a', 'session-a']],
+      );
+      expect(jest.getTimerCount()).toBe(0);
+      const calls = api.putDocument.mock.calls.length;
+      bridge.changeDocument('appearance', {themeMode: 'light'});
+      jest.advanceTimersByTime(60_000);
+      await settle();
+      expect(api.putDocument.mock.calls.length).toBe(calls);
+      expect(storage.states.get('account-a')?.pending.appearance).toBeDefined();
+      await subject.deactivate();
+    },
+  );
+
+  test('honors a long Retry-After and blocks permanent background failures until explicit sync', async () => {
+    jest.useFakeTimers();
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge).value;
+    await subject.activateLocal('account-a');
+    await subject.syncRemote('account-a', 'session-a');
+    subject.setRemoteAvailable(true);
+    api.putDocument.mockRejectedValueOnce(
+      new BayaanSettingsApiError(429, 'limited', 120_000),
+    );
+    api.putDocument.mockRejectedValueOnce(
+      new BayaanSettingsApiError(400, 'invalid'),
+    );
+    const settle = async () => {
+      for (let i = 0; i < 100; i++) await Promise.resolve();
+    };
+    bridge.changeDocument('appearance', {themeMode: 'dark'});
+    jest.advanceTimersByTime(1);
+    await settle();
+    const initial = api.putDocument.mock.calls.length;
+    jest.advanceTimersByTime(119_999);
+    await settle();
+    expect(api.putDocument.mock.calls.length).toBe(initial);
+    jest.advanceTimersByTime(1);
+    await settle();
+    expect(api.putDocument.mock.calls.length).toBe(initial + 1);
+    bridge.changeDocument('appearance', {themeMode: 'light'});
+    jest.advanceTimersByTime(300_000);
+    await settle();
+    expect(api.putDocument.mock.calls.length).toBe(initial + 1);
+    // The 400 on replay does not disprove the earlier ambiguous delivery.
+    expect(storage.states.get('account-a')?.pending.appearance?.attempted).toBe(
+      true,
+    );
+    await subject.syncRemote('account-a', 'session-a');
+    expect(storage.states.get('account-a')?.pending.appearance).toBeUndefined();
+    await subject.deactivate();
+  });
+
+  test('a definitive first rejection releases rejected bytes and blocks background retries', async () => {
+    jest.useFakeTimers();
+    const api = fakeApi();
+    const storage = new MemoryStorage();
+    const bridge = new MemoryBridge();
+    const subject = coordinator(api, storage, bridge).value;
+    await subject.activateLocal('account-a');
+    await subject.syncRemote('account-a', 'session-a');
+    subject.setRemoteAvailable(true);
+    api.putDocument.mockRejectedValueOnce(
+      new BayaanSettingsApiError(400, 'invalid'),
+    );
+    bridge.changeDocument('appearance', {themeMode: 'dark'});
+    await jest.advanceTimersByTimeAsync(1000);
+    await subject.waitForIdle();
+    expect(
+      storage.states.get('account-a')?.pending.appearance?.attempted,
+    ).not.toBe(true);
+    const calls = api.putDocument.mock.calls.length;
+    bridge.changeDocument('appearance', {themeMode: 'light'});
+    await jest.advanceTimersByTimeAsync(120_000);
+    await subject.waitForIdle();
+    expect(api.putDocument.mock.calls.length).toBe(calls);
+    await subject.syncRemote('account-a', 'session-a');
+    expect(storage.states.get('account-a')?.pending.appearance).toBeUndefined();
+    await subject.deactivate();
+  });
+
   test.each([false, true])(
     'retains guest edits for a new account without copying unchanged account settings (restart=%s)',
     async restart => {

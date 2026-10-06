@@ -1,9 +1,7 @@
 import {bayaanAuthConfig} from '@/config/bayaanAuth';
 import {verseAnnotationDatabase} from '@/services/database/VerseAnnotationDatabase';
-import {
-  clearBayaanSession,
-  getBayaanSession,
-} from '@/services/auth/bayaanSessionStorage';
+import {getBayaanSession} from '@/services/auth/bayaanSessionStorage';
+import {bayaanAuthService} from '@/services/auth/bayaanAuthService';
 import {BayaanSyncApiClient, BayaanSyncApiError} from './bayaanSyncApiClient';
 import {
   QfSyncCoordinator,
@@ -72,7 +70,7 @@ interface QfSyncLifecycleOptions {
   guestImportService: LifecycleGuestImportService;
   database: LifecycleDatabase;
   getSession: () => Promise<BayaanOpaqueSession | null>;
-  onSessionRevoked: () => Promise<void>;
+  onSessionRevoked: (accountId: string, sessionToken?: string) => Promise<void>;
   flushReadingSession: (accountId?: string) => Promise<void>;
   getReadingIntentRevision: (accountId: string) => number;
   applyReadingProgress?: (
@@ -362,6 +360,7 @@ export class QfSyncLifecycle {
       retryAt: null,
       errorCode: null,
     });
+    let sessionToken: string | undefined;
     try {
       const session = await this.options.getSession();
       if (!session || session.profile.accountId !== accountId) {
@@ -369,6 +368,7 @@ export class QfSyncLifecycle {
         return;
       }
 
+      sessionToken = session.token;
       const input = {accountId, sessionToken: session.token};
       const readingIntentRevision =
         this.options.getReadingIntentRevision(accountId);
@@ -487,6 +487,7 @@ export class QfSyncLifecycle {
           accountId,
           startedAt,
           error.status,
+          sessionToken,
         );
         return;
       }
@@ -548,9 +549,10 @@ export class QfSyncLifecycle {
     accountId: string,
     startedAt: number,
     status: number,
+    sessionToken?: string,
   ): Promise<void> {
     try {
-      await this.options.onSessionRevoked();
+      await this.options.onSessionRevoked(accountId, sessionToken);
     } catch {
       // Local lifecycle state still expires even if secure cleanup must retry.
     }
@@ -719,10 +721,12 @@ export const qfSyncLifecycle = new QfSyncLifecycle({
   guestImportService: qfGuestImportService,
   database: qfSyncDatabaseService,
   getSession: getBayaanSession,
-  onSessionRevoked: async () => {
-    try {
-      await clearBayaanSession();
-    } finally {
+  onSessionRevoked: async (accountId, sessionToken) => {
+    if (sessionToken) {
+      await bayaanAuthService.revokeSession(accountId, sessionToken, () =>
+        useBayaanAuthStore.getState().setSignedOut(),
+      );
+    } else if (useBayaanAuthStore.getState().profile?.accountId === accountId) {
       useBayaanAuthStore.getState().setSignedOut();
     }
   },

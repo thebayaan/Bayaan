@@ -14,7 +14,9 @@ import {
 import {useReciterStore} from '@/store/reciterStore';
 import {useTafseerStore} from '@/store/tafseerStore';
 import {useThemeStore} from '@/store/themeStore';
-import {AMBIENT_SOUNDS} from '@/types/ambient';
+import {useTranslationStore} from '@/store/translationStore';
+import {BUNDLED_TRANSLATIONS} from '@/types/translation';
+import {AMBIENT_SOUNDS, type AmbientSoundType} from '@/types/ambient';
 import type {
   PreferenceMutation,
   SettingsDocumentKey,
@@ -305,8 +307,8 @@ export function sanitizeRemoteDocument(
       result.mushafRewayatId = value.mushafRewayatId;
     if (optionalString(value.mushafReciterName, 255))
       result.mushafReciterName = value.mushafReciterName;
-    number('verseRepeatCount', 1, 100);
-    number('rangeRepeatCount', 1, 100);
+    number('verseRepeatCount', 0, 100);
+    number('rangeRepeatCount', 0, 100);
     enumeration('repeatMode', ['none', 'queue', 'track']);
     boolean('shuffle');
     boolean('skipSilence');
@@ -349,6 +351,19 @@ export function applySettingsDocuments(
         .getState()
         .setMushafRenderer(patch.mushafRenderer as never);
       delete patch.mushafRenderer;
+    }
+    const translationId = patch.selectedTranslationId;
+    if (
+      typeof translationId === 'string' &&
+      !Object.hasOwn(BUNDLED_TRANSLATIONS, translationId) &&
+      !useTranslationStore
+        .getState()
+        .downloadedMeta.some(edition => edition.identifier === translationId)
+    ) {
+      // Downloads are device-local. Keep the usable local selection without
+      // changing raw cloud identity; the coordinator records this projection
+      // as baseline, so a fallback is not uploaded as a user preference edit.
+      delete patch.selectedTranslationId;
     }
     useMushafSettingsStore.setState(patch);
     const state = useMushafSettingsStore.getState();
@@ -410,14 +425,27 @@ export function applySettingsDocuments(
           : {}),
       },
     });
-    useAmbientStore.setState({
-      ...(patch.ambientSound === null || typeof patch.ambientSound === 'string'
-        ? {currentSound: patch.ambientSound as never}
-        : {}),
-      ...(typeof patch.ambientVolume === 'number'
-        ? {volume: patch.ambientVolume}
-        : {}),
-    });
+    const ambient = useAmbientStore.getState();
+    if (typeof patch.ambientVolume === 'number') {
+      ambient.setVolume(patch.ambientVolume);
+    }
+    if (patch.ambientSound === null) {
+      if (ambient.isEnabled) ambient.setEnabled(false);
+      useAmbientStore.setState({currentSound: null});
+    } else if (
+      typeof patch.ambientSound === 'string' &&
+      patch.ambientSound !== ambient.currentSound
+    ) {
+      if (ambient.isEnabled) {
+        ambient.setSound(patch.ambientSound as AmbientSoundType);
+      } else {
+        // Syncing a preference must not start ambient playback on an idle
+        // device. The next explicit enable action loads the selected sound.
+        useAmbientStore.setState({
+          currentSound: patch.ambientSound as AmbientSoundType,
+        });
+      }
+    }
   }
   if (documents.adhkar) {
     useAdhkarSettingsStore.setState(

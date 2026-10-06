@@ -357,6 +357,36 @@ export function createBayaanAuthService(
       }
     },
 
+    async revokeSession(
+      accountId: string,
+      sessionToken: string,
+      onRevoked: () => void,
+    ): Promise<void> {
+      const owner = epoch;
+      await storage(async () => {
+        if (owner !== epoch || logoutPromise) return;
+        const stored = await getBayaanSession();
+        if (
+          owner !== epoch ||
+          logoutPromise ||
+          stored?.token !== sessionToken ||
+          stored.profile.accountId !== accountId
+        )
+          return;
+        // A late 401 from account A must never delete account B's session or
+        // publish signed-out UI over a newer sign-in. Use the existing queue.
+        const revokedEpoch = ++epoch;
+        pending = null;
+        exchange = null;
+        try {
+          await clearBayaanSession();
+          await clearPendingBayaanAuthState();
+        } finally {
+          if (epoch === revokedEpoch) onRevoked();
+        }
+      });
+    },
+
     logout(): Promise<void> {
       if (logoutPromise) return logoutPromise;
       ++epoch;

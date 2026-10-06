@@ -589,6 +589,40 @@ describe('QfReadingSessionService', () => {
     jest.useRealTimers();
   });
 
+  it('continues a newer debounced page after an earlier held database write rejects', async () => {
+    let reject!: (error: Error) => void;
+    const database = {upsertReadingLocation: jest.fn(async () => undefined)};
+    database.upsertReadingLocation.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        }),
+    );
+    const requestSync = jest.fn();
+    const service = new QfReadingSessionService({
+      database,
+      getActiveAccountId: () => 'account-a',
+      requestSync,
+    });
+    service.recordPageIntent('2:255', 1000);
+    await jest.advanceTimersByTimeAsync(READING_SESSION_DEBOUNCE_MS);
+    service.recordPageIntent('3:7', 2000);
+    await jest.advanceTimersByTimeAsync(READING_SESSION_DEBOUNCE_MS);
+    reject(new Error('disk held/failed'));
+    await jest.advanceTimersByTimeAsync(0);
+    await service.flush('account-a');
+    expect(database.upsertReadingLocation).toHaveBeenCalledTimes(2);
+    expect(database.upsertReadingLocation).toHaveBeenLastCalledWith({
+      accountId: 'account-a',
+      verseKey: '3:7',
+      surahNumber: 3,
+      ayahNumber: 7,
+      lastReadAt: 2000,
+    });
+    expect(requestSync).toHaveBeenCalledTimes(1);
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
   it('debounces only the latest first-visible verse and excludes local metadata', async () => {
     let now = 1000;
     const database = {upsertReadingLocation: jest.fn(async () => undefined)};

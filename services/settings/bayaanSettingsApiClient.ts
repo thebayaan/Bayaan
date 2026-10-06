@@ -96,14 +96,21 @@ export class BayaanSettingsApiClient {
   private assertOk(response: Response, body: unknown | null): void {
     if (!response.ok) {
       const retryAfter = response.headers.get('retry-after');
-      const retryAfterSeconds =
-        retryAfter && /^\d{1,5}$/.test(retryAfter)
-          ? Math.min(Number(retryAfter), 3600)
+      const seconds =
+        retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) : NaN;
+      const deadline =
+        retryAfter && !Number.isFinite(seconds) ? Date.parse(retryAfter) : NaN;
+      const delay = Number.isFinite(seconds)
+        ? seconds * 1000
+        : deadline - Date.now();
+      const retryAfterMs =
+        Number.isFinite(delay) && delay >= 0
+          ? Math.min(delay, 3_600_000)
           : undefined;
       throw new BayaanSettingsApiError(
         response.status,
         serviceCode(body) ?? 'settings_request_failed',
-        retryAfterSeconds === undefined ? undefined : retryAfterSeconds * 1_000,
+        retryAfterMs,
       );
     }
   }

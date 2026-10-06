@@ -136,7 +136,22 @@ interface PendingOutboxRow extends Record<string, unknown> {
 }
 
 interface ReadingOutboxRow extends PendingOutboxRow {
+  payload_json: string;
   delivery_state: 'PENDING' | 'IN_FLIGHT' | 'AMBIGUOUS';
+}
+
+function readingIntentTime(row: ReadingOutboxRow): number {
+  const payload: unknown = JSON.parse(row.payload_json);
+  if (
+    !payload ||
+    typeof payload !== 'object' ||
+    !('clientUpdatedAt' in payload) ||
+    typeof payload.clientUpdatedAt !== 'number' ||
+    !Number.isFinite(payload.clientUpdatedAt)
+  ) {
+    throw new Error('Invalid local reading intent timestamp');
+  }
+  return payload.clientUpdatedAt;
 }
 
 interface PendingNotePayload {
@@ -666,17 +681,27 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
        ORDER BY match_priority, last_read_at DESC LIMIT 1`,
       [scope, mutation.resourceId, scope],
     );
-    const localIntent =
-      existing?.remote_id === null
-        ? await db.getFirstAsync<ReadingOutboxRow>(
-            `SELECT local_operation_id, delivery_state
-             FROM qf_sync_outbox
-             WHERE owner_scope = ? AND resource = 'READING_SESSION'
-               AND local_id = ? AND mutation_type <> 'DELETE'
-             ORDER BY created_at DESC, local_operation_id DESC LIMIT 1`,
-            [scope, existing.id],
-          )
-        : null;
+    const intents = existing
+      ? await db.getAllAsync<ReadingOutboxRow>(
+          `SELECT local_operation_id, payload_json, delivery_state
+           FROM qf_sync_outbox
+           WHERE owner_scope = ? AND resource = 'READING_SESSION'
+             AND local_id = ? AND mutation_type <> 'DELETE'
+           ORDER BY created_at DESC, local_operation_id DESC`,
+          [scope, existing.id],
+        )
+      : [];
+    // Row.updated_at may be a server mutation timestamp, not the time of the
+    // queued device edit. Compare durable payload intent with clientUpdatedAt.
+    const localIntent = intents.reduce<ReadingOutboxRow | null>(
+      (latest, intent) =>
+        !latest || readingIntentTime(intent) > readingIntentTime(latest)
+          ? intent
+          : latest,
+      null,
+    );
+    const localWins =
+      localIntent && readingIntentTime(localIntent) > lastReadAt;
     if (
       existing?.server_updated_at !== null &&
       existing?.server_updated_at !== undefined &&
@@ -684,30 +709,47 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
     ) {
       return;
     }
-    if (
-      existing &&
-      localIntent &&
-      existing.last_read_at !== undefined &&
-      existing.last_read_at > lastReadAt
-    ) {
+    if (existing && localIntent && localWins) {
       await db.runAsync(
         `UPDATE qf_reading_locations
-         SET remote_id = ?, server_updated_at = ?
+         SET remote_id = ?, server_updated_at = CASE WHEN ? THEN ? ELSE server_updated_at END
          WHERE owner_scope = ? AND id = ?`,
-        [mutation.resourceId, mutation.timestamp, scope, existing.id],
-      );
-      await db.runAsync(
-        `UPDATE qf_sync_outbox
-         SET mutation_type = 'UPDATE', remote_id = ?,
-             base_server_updated_at = ?, revision = revision + 1
-         WHERE owner_scope = ? AND local_operation_id = ?`,
         [
           mutation.resourceId,
+          intents.every(intent => intent.delivery_state === 'PENDING') ? 1 : 0,
           mutation.timestamp,
           scope,
-          localIntent.local_operation_id,
+          existing.id,
         ],
       );
+      for (const intent of intents) {
+        // A coalesced/superseded unsent revision must not be pushed first.
+        // Immutable in-flight evidence is retained until stable-pull recovery.
+        if (
+          intent.delivery_state === 'PENDING' &&
+          intent.local_operation_id !== localIntent.local_operation_id
+        ) {
+          await db.runAsync(
+            `DELETE FROM qf_sync_outbox
+             WHERE owner_scope = ? AND local_operation_id = ? AND delivery_state = 'PENDING'`,
+            [scope, intent.local_operation_id],
+          );
+        } else {
+          await db.runAsync(
+            `UPDATE qf_sync_outbox
+             SET mutation_type = 'UPDATE', remote_id = ?,
+                 base_server_updated_at = CASE WHEN delivery_state = 'PENDING' THEN ? ELSE base_server_updated_at END,
+                 revision = revision + 1
+             WHERE owner_scope = ? AND local_operation_id = ?`,
+            [
+              mutation.resourceId,
+              mutation.timestamp,
+              scope,
+              intent.local_operation_id,
+            ],
+          );
+        }
+      }
       return;
     }
     if (existing) {
@@ -728,11 +770,12 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
           existing.id,
         ],
       );
-      if (localIntent?.delivery_state === 'PENDING') {
+      for (const intent of intents) {
+        if (intent.delivery_state !== 'PENDING') continue;
         await db.runAsync(
           `DELETE FROM qf_sync_outbox
-           WHERE owner_scope = ? AND local_operation_id = ?`,
-          [scope, localIntent.local_operation_id],
+           WHERE owner_scope = ? AND local_operation_id = ? AND delivery_state = 'PENDING'`,
+          [scope, intent.local_operation_id],
         );
       }
       return;

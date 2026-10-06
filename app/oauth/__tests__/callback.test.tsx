@@ -86,7 +86,10 @@ describe('OAuth callback route', () => {
     });
 
     expect(mockHandleCallbackUrl).toHaveBeenCalledTimes(1);
-    expect(mockHandleCallbackUrl).toHaveBeenCalledWith(callbackUrl);
+    expect(mockHandleCallbackUrl).toHaveBeenCalledWith(
+      callbackUrl,
+      expect.any(Function),
+    );
     expect(useBayaanAuthStore.getState()).toMatchObject({
       status: 'authenticated',
       profile: {accountId: 'account-1'},
@@ -111,7 +114,10 @@ describe('OAuth callback route', () => {
       await Promise.resolve();
     });
 
-    expect(mockHandleCallbackUrl).toHaveBeenCalledWith(originalUrl);
+    expect(mockHandleCallbackUrl).toHaveBeenCalledWith(
+      originalUrl,
+      expect.any(Function),
+    );
   });
 
   it('leaves a signed-in user untouched when a callback fails', async () => {

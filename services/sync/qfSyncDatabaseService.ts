@@ -1224,6 +1224,38 @@ export class QfSyncDatabaseService {
           ambiguous += 1;
           continue;
         }
+        if (
+          row.resource === 'READING_SESSION' &&
+          row.in_flight_mutation_type === 'UPDATE' &&
+          row.local_id &&
+          row.remote_id
+        ) {
+          const reading = await this.getReadingLocationRowById(
+            db,
+            ownerScope,
+            row.local_id,
+          );
+          const payload = JSON.parse(
+            row.payload_json,
+          ) as ReadingSessionOutboxPayload;
+          if (
+            reading?.remote_id === row.remote_id &&
+            reading.server_updated_at !== null &&
+            row.base_server_updated_at !== null &&
+            reading.server_updated_at > row.base_server_updated_at &&
+            Number.isFinite(payload.clientUpdatedAt) &&
+            reading.last_read_at >= payload.clientUpdatedAt
+          ) {
+            // Stable-pull evidence for this exact remote identity supersedes
+            // even a revised UPDATE. Do not infer that the sent bytes landed;
+            // the newer server position satisfies/wins over current intent.
+            await db.runAsync(
+              `DELETE FROM qf_sync_outbox WHERE owner_scope = ? AND local_operation_id = ?`,
+              [ownerScope, row.local_operation_id],
+            );
+            continue;
+          }
+        }
         const remote = await this.findReconciledRemote(db, ownerScope, row);
         if (remote?.remote_id) {
           await this.acknowledgeOperationInTransaction(db, ownerScope, row, {
@@ -1825,6 +1857,32 @@ export class QfSyncDatabaseService {
         (row.base_server_updated_at === null ||
           note.server_updated_at > row.base_server_updated_at);
       if (updateWasObserved) return note;
+      return null;
+    }
+
+    if (
+      row.resource === 'READING_SESSION' &&
+      row.in_flight_mutation_type === 'UPDATE' &&
+      row.local_id &&
+      row.in_flight_payload_json
+    ) {
+      const reading = await this.getReadingLocationRowById(
+        db,
+        ownerScope,
+        row.local_id,
+      );
+      const payload = JSON.parse(
+        row.in_flight_payload_json,
+      ) as ReadingSessionOutboxPayload;
+      if (
+        reading?.remote_id === row.remote_id &&
+        reading.verse_key === payload.verseKey &&
+        reading.last_read_at === payload.clientUpdatedAt &&
+        reading.server_updated_at !== null &&
+        (row.base_server_updated_at === null ||
+          reading.server_updated_at > row.base_server_updated_at)
+      )
+        return {...reading, server_created_at: null};
       return null;
     }
 

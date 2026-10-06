@@ -115,7 +115,7 @@ export class QfReadingSessionService {
 
   private async flushAccount(accountId: string): Promise<void> {
     const previous = this.flushTails.get(accountId) ?? Promise.resolve();
-    const current = previous.then(async () => {
+    const run = async () => {
       const entry = this.pending.get(accountId);
       if (!entry) return;
       if (entry.timer) clearTimeout(entry.timer);
@@ -139,7 +139,10 @@ export class QfReadingSessionService {
         }
         throw error;
       }
-    });
+    };
+    // A failed earlier write must not strand a newer page whose timer fired.
+    // Each caller still receives its own error; queue ownership continues.
+    const current = previous.then(run, run);
     this.flushTails.set(accountId, current);
     try {
       await current;

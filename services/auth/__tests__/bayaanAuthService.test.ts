@@ -95,6 +95,91 @@ beforeEach(() => {
 });
 
 describe('Bayaan BFF auth service', () => {
+  it('a token-bound revocation held in SecureStore cannot publish signed-out over a newer sign-in', async () => {
+    const service = createBayaanAuthService({apiUrl});
+    await saveBayaanSession({
+      token: 'session-a',
+      expiresAt: Date.now() + 3_600_000,
+      profile: {...profile, accountId: 'account-a'},
+    });
+    let release!: () => void;
+    const reached = new Promise<void>(resolve => {
+      jest
+        .mocked(SecureStore.deleteItemAsync)
+        .mockImplementationOnce(async key => {
+          resolve();
+          await new Promise<void>(done => {
+            release = done;
+          });
+          mockSecureStore.delete(key);
+        });
+    });
+    const signedOut = jest.fn();
+    const revoked = service.revokeSession('account-a', 'session-a', signedOut);
+    await reached;
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce(
+        jsonResponse({
+          authorizationUrl: `${apiUrl}/launch`,
+          state: 'state-b',
+          expiresAt: new Date(Date.now() + 300_000).toISOString(),
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          sessionToken: 'session-b',
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          profile: {...profile, accountId: 'account-b'},
+        }),
+      );
+    mockOpenBrowserAsync.mockResolvedValueOnce({
+      type: 'success',
+      url: 'bayaan://oauth/callback?state=state-b&handoff=handoff-b',
+    });
+    const login = service.signIn(); // Invalidate old revocation before its held delete completes.
+    release();
+    await revoked;
+    await expect(login).resolves.toMatchObject({token: 'session-b'});
+    expect(signedOut).not.toHaveBeenCalled();
+    await expect(getBayaanSession()).resolves.toMatchObject({
+      token: 'session-b',
+      profile: {accountId: 'account-b'},
+    });
+  });
+
+  it.each(['matching', 'new-token', 'new-account', 'delete-error'])(
+    'binds scheduled/direct session revocation to persisted account and token (%s)',
+    async mode => {
+      const service = createBayaanAuthService({apiUrl});
+      await saveBayaanSession({
+        token: mode === 'new-token' ? 'new-session' : 'session-a',
+        expiresAt: Date.now() + 3_600_000,
+        profile: {
+          ...profile,
+          accountId: mode === 'new-account' ? 'account-b' : 'account-a',
+        },
+      });
+      const signedOut = jest.fn();
+      if (mode === 'delete-error')
+        jest
+          .mocked(SecureStore.deleteItemAsync)
+          .mockRejectedValueOnce(new Error('keychain locked'));
+      const action = service.revokeSession('account-a', 'session-a', signedOut);
+      if (mode === 'delete-error')
+        await expect(action).rejects.toThrow('keychain locked');
+      else await action;
+      expect(signedOut).toHaveBeenCalledTimes(
+        ['matching', 'delete-error'].includes(mode) ? 1 : 0,
+      );
+      if (mode === 'matching') expect(await getBayaanSession()).toBeNull();
+      else if (mode !== 'delete-error')
+        expect(await getBayaanSession()).toMatchObject({
+          token: mode === 'new-token' ? 'new-session' : 'session-a',
+        });
+      expect(global.fetch).not.toHaveBeenCalled();
+    },
+  );
+
   it('skips stored-session reads and refresh entirely when sync is disabled', async () => {
     await saveBayaanSession({
       token: 'stored-session',

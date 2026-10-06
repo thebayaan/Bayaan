@@ -58,20 +58,24 @@ function observePreference<TState>(
     getState(): TState;
     subscribe(listener: (state: TState) => void): () => void;
   },
-  signature: (state: TState) => string,
+  selector: (state: TState) => readonly unknown[],
   onChange: () => void,
 ): () => void {
-  let previous = signature(store.getState());
+  let previous = selector(store.getState());
   return store.subscribe(state => {
-    const next = signature(state);
-    if (next === previous) return;
+    const next = selector(state);
+    if (
+      next.length === previous.length &&
+      next.every((value, index) => Object.is(value, previous[index]))
+    )
+      return;
     previous = next;
     onChange();
   });
 }
 
-function values(...items: unknown[]): string {
-  return JSON.stringify(items);
+function values(...items: unknown[]): readonly unknown[] {
+  return items;
 }
 
 async function waitForStoreHydration(store: HydratableStore): Promise<void> {
