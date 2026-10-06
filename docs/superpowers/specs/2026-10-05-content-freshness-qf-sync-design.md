@@ -41,7 +41,7 @@ QF (Basit Minhas) confirmed on 2026-10-06 that the architecture below is correct
 | # | Decision |
 |---|---|
 | D1 | Scope is every translation and tafsir QF serves. Editions QF does not serve are **dropped**. AlQuranCloud is removed entirely. |
-| D2 | Dr. Mustafa Khattab's The Clear Quran stays **bundled** as the default, always-available translation. QF does not serve it, so the no-prepackaging rule does not apply to it. Bundling it rests on Bayaan's own permission from the rights holder, kept on file for due diligence. |
+| D2 | Dr. Mustafa Khattab's The Clear Quran stays **bundled** as the default, always-available translation. QF does not serve it, so the no-prepackaging rule does not apply to it. Bundling it rests on Bayaan's own permission from the rights holder, which was given verbally. |
 | D3 | Saheeh International and Ibn Kathir (169) are QF content and **stop being bundled**. Ibn Kathir (169) auto-installs on first launch. Saheeh becomes a normal download. |
 | D4 | Devices sync **through the Bayaan backend**, never directly with QF. The QF client-credentials secret never ships in the app. |
 | D5 | Architecture is **versioned snapshots plus manifest comparison** (Approach 1). Rejected: relaying QF's row-level change feed to devices (too much client complexity, QF-specific), and a pass-through proxy (every device download hits QF, and it cannot serve Bayaan's own content). |
@@ -371,7 +371,7 @@ The same split should be visible to users (credits screen and the per-edition at
 | Snapshot format, footnotes, sizes and catalog verified against production (see 11a). Done | |
 | Content-source declaration and listing format: answered (see 11b) | Done |
 | Move bundled word-by-word data (`data/wbw/wbw-en.db`, QF-derived) onto Content Sync | Follow-up after C |
-| Written permission for bundling The Clear Quran (Dr. Mustafa Khattab), kept on file | Osman |
+| Optional: a short written confirmation (an email is enough) of the existing verbal permission to bundle The Clear Quran, since the listing declares it as independently licensed and QF removed it at the holder's request | Osman |
 | Final crosswalk for the 12 candidate translations (content comparison) | Sub-project C |
 
 ## 13. Follow-on sub-projects
