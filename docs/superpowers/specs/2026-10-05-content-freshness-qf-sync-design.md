@@ -327,25 +327,37 @@ Only resources the device has installed are updated. Nothing new installs automa
 2. Mobile: engine, installers and migration behind a remote flag (the manifest's `paused` plus an app flag), shipped to TestFlight first.
 3. Enable for everyone. Remove AlQuranCloud and `QuranComTafsirProvider` in sub-project C once the migration has run for most users.
 
-## 11a. Observed QF responses (pre-live, 2026-10-06)
+## 11a. Observed QF responses (2026-10-06)
 
-Fetched with Bayaan's own console client, which currently issues **pre-live** credentials only (production token requests return `invalid_client`). Pre-live covers surahs 1 and 2.
+Fetched with Bayaan's own Developer Console clients. Pre-live and production are **separate clients** (different client IDs); each only authenticates against its own host.
 
-- **Auth:** `POST https://prelive-oauth2.quran.foundation/oauth2/token` with HTTP Basic client authentication and `grant_type=client_credentials&scope=content` returns a token with `expires_in` 3599. Client secret in the form body is rejected.
-- **Resource lists:** `/resources/translations` (14 in pre-live) and `/resources/tafsirs` (6) return `{id, name, author_name, slug, language_name, translated_name: {name, language_name}}`, with `Cache-Control: max-age=604800, public` and a weak ETag. No version or update timestamp, as expected.
-- **Sync bootstrap:** `translations:*;tafsirs:*` returned 14 `RESOURCE_CREATE` mutations in one page. A filter naming a resource that does not exist in the environment (`translations:20`) returns zero mutations and a valid `next_sync_token`.
-- **Snapshots:** `Cache-Control: no-store`, weak ETag, plain JSON (no compression observed). Missing resources return 404 `snapshot_not_found`.
-- **Translation record keys:** `id, resource_id, resource_content_id, verse_id, verse_key, chapter_id, verse_number, text, foot_notes, language_id, language_name, juz_number, hizb_number, rub_el_hizb_number, manzil_number, ruku_number, surah_ruku_number, page_number, updated_at`. The pre-live translations sampled (85, 57) had no footnotes and no markup, so the footnote shape is still unverified.
-- **Tafsir record keys:** the translation keys minus language fields, plus `group_tafsir_id, group_verse_key_from, group_verse_key_to, group_verses_count, start_verse_id, end_verse_id`. Tafsir 169 had 293 rows for 293 verses, of which 112 have empty `text` (continuation rows of a verse group). Text is HTML and matches the content of the currently bundled Ibn Kathir file, confirming that file is QF content.
-- **Size:** tafsir 169 is 1.34 MB of raw JSON for 2 surahs. Extrapolated to the full Quran this is roughly 25 to 30 MB raw before gzip, so the first-launch Ibn Kathir install and the 5 MB Wi-Fi threshold (7.5) must be re-checked against production numbers.
-- Every record carries `updated_at`, which the backend can log for diagnostics; versions remain Bayaan-assigned.
+**Auth (both environments):** `POST {oauth host}/oauth2/token` with HTTP Basic client authentication and `grant_type=client_credentials&scope=content` returns a token with `expires_in` 3599. Sending the secret in the form body is rejected (`invalid_client`).
+
+**Production catalog:** 145 translations across 82 languages and 23 tafsirs in `/resources/translations` and `/resources/tafsirs`. Each entry: `{id, name, author_name, slug, language_name, translated_name: {name, language_name}}`. These lists are `Cache-Control: max-age=604800, public` with a weak ETag and carry no version or timestamps. A tafsir-only bootstrap returned **24** tafsir resources against 23 listed, so the registry must be driven by the sync feed, with the resource lists used only for display metadata.
+
+**Sync filter gotcha:** an unencoded `resources=translations:*;tafsirs:*` returned only the 151 translation resources and **no tafsirs**. The URL-encoded, alphabetically ordered `tafsirs:*;translations:*` returned both groups (paginated, `per_page=100`). The job must build one canonical filter (groups sorted, then URL-encoded), store it in `content_sync_state.resources_filter`, and after bootstrap assert that every group in the filter produced at least one resource.
+
+**Snapshots:** plain JSON, `Cache-Control: no-store`, weak ETag, no compression. Missing resources return 404 `snapshot_not_found`.
+
+| Resource | Rows | Raw | Gzipped |
+|---|---|---|---|
+| Translation 20 (Saheeh International) | 6,236 | 3.65 MB | 0.60 MB |
+| Tafsir 169 (Ibn Kathir, English) | 6,236 (4,340 empty continuation rows) | 12.39 MB | 3.61 MB |
+
+So the first-launch Ibn Kathir install is about 3.6 MB on the wire, under the 5 MB Wi-Fi threshold (7.5).
+
+**Translation records:** `id, resource_id, resource_content_id, verse_id, verse_key, chapter_id, verse_number, text, foot_notes, language_id, language_name, juz_number, hizb_number, rub_el_hizb_number, manzil_number, ruku_number, surah_ruku_number, page_number, updated_at`. Footnotes appear as **inline markup in `text`**, for example `In the name of Allāh,<sup foot_note=254011>1</sup> the Entirely Merciful...`, with the matching entries in `foot_notes`: `{id, translation_id, resource_content_id, language_id, language_name, text}` where `text` is HTML. In Saheeh, 1,613 of 6,236 rows carry footnotes. Translations previously came from AlQuranCloud without footnotes, so sub-project C must either render footnotes (as the bundled Clear Quran already does) or strip the `<sup>` markers. The translation installer stores `text` and `foot_notes` verbatim either way.
+
+**Tafsir records:** the translation keys minus the language fields, plus `group_tafsir_id, group_verse_key_from, group_verse_key_to, group_verses_count, start_verse_id, end_verse_id`. Text is HTML and matches the currently bundled Ibn Kathir file, confirming that file is QF content (D3).
+
+Every record carries `updated_at`, useful for diagnostics; versions remain Bayaan-assigned.
 
 ## 12. Open items
 
 | Item | Owner |
 |---|---|
 | Create Bayaan's own production client in the QF Developer Console with all scopes, including `content` | Osman |
-| Pre-live shapes verified (see 11a). Still needed from **production**: `foot_notes` structure and markup in a footnoted translation (20), full-size tafsir snapshot sizes, and the full catalog count. Requires production credentials for Bayaan's console client | Osman (credentials), Claude (verification) |
+| Snapshot format, footnotes, sizes and catalog verified against production (see 11a). Done | |
 | Content-source declaration and listing format | Mostafa Elkhanany (QF) |
 | Written permission for bundling The Clear Quran (Dr. Mustafa Khattab), kept on file | Osman |
 | Final crosswalk for the 12 candidate translations (content comparison) | Sub-project C |
