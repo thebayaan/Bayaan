@@ -15,7 +15,7 @@ export interface BayaanSyncPullPage {
   limit?: number;
   total?: number;
   hasMore?: boolean;
-  // Provider cardinality before the mobile ayah-only bookmark projection.
+  // Provider cardinality before the supported mobile bookmark projection.
   receivedMutationCount?: number;
 }
 
@@ -197,9 +197,16 @@ function decodeData(
         return invalid();
       }
     }
-    // Recognized non-ayah bookmarks are valid provider data, not deletions.
-    // Validate them fully, then omit only their unsupported local effect.
-    if (unsupported) return null;
+    // Non-ayah and explicitly collection-backed bookmarks are valid provider
+    // reads, not standalone deletions. BOOKMARK DELETE cannot remove Favorites
+    // membership, and this client has no COLLECTION_BOOKMARK mutation contract.
+    // Validate fully, then omit only the unsupported pull effect. Never filter
+    // push receipts or silently reinterpret the bookmark ID as a membership ID.
+    if (
+      unsupported ||
+      (projectBookmarks && value.isInDefaultCollection === true)
+    )
+      return null;
   } else if (resource === 'NOTE') {
     if (
       typeof value.body !== 'string' ||

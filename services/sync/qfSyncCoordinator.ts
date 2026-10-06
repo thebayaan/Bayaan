@@ -392,6 +392,16 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
       );
       return;
     }
+    // The visible row is removed before its remote DELETE is delivered. Keep
+    // that account-scoped identity owned by the durable intent, even when
+    // delivery is deferred, forbidden or uncertain. A pull is not a receipt.
+    const deleted = await db.getFirstAsync<PendingOutboxRow>(
+      `SELECT local_operation_id FROM qf_sync_outbox
+       WHERE owner_scope = ? AND resource = 'BOOKMARK' AND remote_id = ?
+         AND mutation_type = 'DELETE' LIMIT 1`,
+      [scope, mutation.resourceId],
+    );
+    if (deleted) return;
     await db.runAsync(
       `INSERT INTO bookmarks
          (id, owner_scope, verse_key, surah_number, ayah_number, created_at, rewayah_id, remote_id, server_created_at, server_updated_at)

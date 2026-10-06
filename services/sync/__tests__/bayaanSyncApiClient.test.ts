@@ -551,6 +551,8 @@ describe('Bayaan Sync BFF client', () => {
 
   it.each([
     {type: 'ayah', key: 2, verseNumber: null},
+    {type: 'ayah', key: 2, verseNumber: null, isInDefaultCollection: true},
+    {type: 'ayah', key: 2, verseNumber: 255, isInDefaultCollection: 'true'},
     {type: 'unknownType', key: 10, verseNumber: null},
     {type: 'page', bookmarkType: 'ayah', key: 10, verseNumber: null},
     {type: 'juz', key: 0, verseNumber: null},
@@ -613,6 +615,85 @@ describe('Bayaan Sync BFF client', () => {
         mutations: [],
         receivedMutationCount: 3,
       });
+    },
+  );
+
+  it.each(['CREATE', 'UPDATE'] as const)(
+    'excludes known Favorites %s reads without changing raw pagination or tombstones',
+    async type => {
+      const favorite = {
+        resource: 'BOOKMARK' as const,
+        type,
+        resourceId: 'favorite',
+        timestamp: 2,
+        data: {
+          bookmarkType: 'ayah',
+          key: 2,
+          verseNumber: 255,
+          isInDefaultCollection: true,
+        },
+      };
+      const live = {
+        ...favorite,
+        resourceId: 'standalone',
+        data: {...favorite.data, isInDefaultCollection: false},
+      };
+      const legacy = {
+        ...favorite,
+        resourceId: 'membership-unknown',
+        data: {type: 'ayah', key: 3, verseNumber: 1},
+      };
+      const tombstone = {
+        resource: 'BOOKMARK',
+        type: 'DELETE',
+        resourceId: 'favorite',
+        timestamp: 3,
+      };
+      const fetchImpl = jest.fn().mockResolvedValue(
+        jsonResponse({
+          success: true,
+          data: {
+            lastMutationAt: 3,
+            mutations: [favorite, live, legacy, tombstone],
+            page: 1,
+            limit: 4,
+            total: 5,
+            hasMore: true,
+          },
+        }),
+      );
+      const client = new BayaanSyncApiClient({apiUrl, fetchImpl});
+      await expect(
+        client.pull(opaqueSession, {mutationsSince: 0, page: 1, limit: 4}),
+      ).resolves.toEqual({
+        lastMutationAt: 3,
+        mutations: [live, legacy, tombstone],
+        receivedMutationCount: 4,
+        page: 1,
+        limit: 4,
+        total: 5,
+        hasMore: true,
+      });
+      // A successful push receipt is never projected away, even if it reveals
+      // collection membership. This does not authorize collection writes.
+      fetchImpl.mockResolvedValue(
+        jsonResponse({
+          success: true,
+          data: {lastMutationAt: 2, mutations: [favorite]},
+        }),
+      );
+      await expect(
+        client.push(opaqueSession, {
+          lastMutationAt: 1,
+          mutations: [
+            {
+              resource: 'BOOKMARK',
+              type: 'CREATE',
+              data: {type: 'ayah', key: 2, verseNumber: 255},
+            },
+          ],
+        }),
+      ).resolves.toEqual({lastMutationAt: 2, mutations: [favorite]});
     },
   );
 

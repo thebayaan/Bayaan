@@ -606,7 +606,7 @@ describe('SQLite push recovery store', () => {
     'changing-head',
     'single-page',
   ] as const)(
-    'projects valid non-ayah bookmarks across all provider pages without cloud writes (%s)',
+    'projects unsupported non-ayah and Favorites reads across all provider pages without cloud writes (%s)',
     async mode => {
       const {database, sync, SqliteQfSyncPullStore, IntegratedCoordinator} =
         await createServices(`bookmark-projection-${mode}.db`);
@@ -643,7 +643,21 @@ describe('SQLite push recovery store', () => {
       });
       const mutations: unknown[] = Array.from(
         {length: mode === 'single-page' ? 3 : 1000},
-        (_, index) => nonAyah(['page', 'juz', 'surah'][index % 3], index),
+        (_, index) =>
+          index % 2
+            ? {
+                resource: 'BOOKMARK',
+                type: index % 4 === 1 ? 'CREATE' : 'UPDATE',
+                resourceId: `favorite-${index}`,
+                timestamp: 7002 + index,
+                data: {
+                  type: 'ayah',
+                  key: 2,
+                  verseNumber: 255,
+                  isInDefaultCollection: true,
+                },
+              }
+            : nonAyah(['page', 'juz', 'surah'][index % 3], index),
       );
       // In paginated modes, the first page projects to zero effects but continues.
       mutations.push(nonAyah('surah', 1000));
@@ -675,6 +689,18 @@ describe('SQLite push recovery store', () => {
             resourceId: 'keep',
             timestamp: 8104,
             data: {type: 'page', key: 10, verseNumber: null},
+          },
+          {
+            resource: 'BOOKMARK',
+            type: 'UPDATE',
+            resourceId: 'keep',
+            timestamp: 8104,
+            data: {
+              type: 'ayah',
+              key: 2,
+              verseNumber: 254,
+              isInDefaultCollection: true,
+            },
           },
           {
             resource: 'BOOKMARK',

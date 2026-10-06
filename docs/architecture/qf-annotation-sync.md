@@ -55,6 +55,37 @@ document this distinction; Get mutations filters resources, not bookmark types.
 
 On pull, the codec validates the envelope, identity, timestamp, and allowlisted
 bookmark data before projecting out recognized non-ayah CREATE/UPDATE effects.
+It also excludes CREATE/UPDATE reads explicitly marked
+`isInDefaultCollection: true`. These are known Favorites memberships, not
+standalone bookmarks that Bayaan can safely delete. The official
+[Delete Bookmark contract](https://api-docs.quran.com/docs/user_related_apis_prelive/delete-bookmark/)
+states that deleting a collection-backed bookmark only sets `isReading` to
+`false`, leaving Favorites and custom collection membership intact.
+[Delete collection bookmark by id](https://api-docs.quran.com/docs/user_related_apis_prelive/delete-collection-bookmark-by-id/)
+requires both `collectionId` and `bookmarkId`; Favorites use `__default__`.
+The [Sync local mutations contract](https://api-docs.quran.com/docs/user_related_apis_prelive/sync-local-mutations/)
+distinguishes `BOOKMARK` identity from the composite `COLLECTION_BOOKMARK`
+identity. A bookmark ID must not be reinterpreted as a collection membership ID.
+Push receipts are not filtered, and this boundary does not enable collection
+writes or claim that a standalone DELETE removes Favorites.
+
+**Remaining saved-state and custom-collection limit:** existing bookmark rows
+store remote IDs and verse coordinates, but no membership metadata. Previously
+projected Favorites cannot be identified safely from persisted rows/outbox alone.
+An excluded update leaves those rows and all pending work unchanged; it is not a
+migration or full remediation of their deletion semantics. Custom memberships
+are separate `COLLECTION_BOOKMARK` resources, which the current mobile resource
+filter does not request. `bookmarkGroup` (for example `verses_6236`) is not proof
+of a collection ID; `isInDefaultCollection: false` or an absent flag does not
+prove absence of custom membership. This narrow projection therefore excludes
+only known Favorites, not all collection-backed bookmarks. Before claiming full
+collection-backed deletion support, a separate approved design must address
+membership discovery, existing saved rows and queued operations, and a safe
+migration/user-resolution policy (or implement collection resources). Do not
+purge rows, discard pending operations, replay deletes against guessed IDs, or
+quietly declare Favorites removed. No such migration or collection support is
+included here.
+
 It does not reinterpret a page number as an ayah, delete a local row merely
 because its remote update is unsupported, enqueue a cloud write, or change the
 provider bookmark. Unknown types, conflicting type aliases, malformed ayah
@@ -96,9 +127,14 @@ failed. POST error bodies are not interpreted as pull size hints. Preserve
 immutable in-flight evidence and use stable-pull recovery;
 never blindly resend a NOTE CREATE. An uncorrelated ambiguous NOTE CREATE still
 needs an authoritative receipt lookup or an explicit user-resolution policy.
+This remains unresolved and tracked by [Bayaan issue #323](https://github.com/thebayaan/Bayaan/issues/323).
 That open recovery decision is separate from valid unsupported bookmark data.
 
-A durable NOTE DELETE owns its account-local remote identity even after the
-visible row is removed. Pull updates cannot reinsert that note before the delete
-is delivered or reconciled. Explicit Retry clears the lifecycle's permanent-error
+A durable BOOKMARK or NOTE DELETE owns its account-local remote identity even
+after the visible row is removed. Pull CREATE/UPDATE effects check the durable
+DELETE in the same page transaction before inserting an absent row, regardless
+of pending, in-flight or ambiguous delivery. A deferred push or permanent 403
+must not resurrect the bookmark or discard the delete identity/payload. A pull
+or unobserved DELETE tombstone is not an ACK receipt; pending work is retained.
+The stable pull head can still advance over these suppressed local effects. Explicit Retry clears the lifecycle's permanent-error
 barrier; ordinary local-edit triggers do not create a permanent-error retry loop.

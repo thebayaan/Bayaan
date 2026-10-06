@@ -52,7 +52,18 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 import {VerseAnnotationDatabaseService} from '@/services/database/VerseAnnotationDatabaseService';
 import {QfSyncDatabaseService} from '@/services/sync/qfSyncDatabaseService';
-import {SqliteQfSyncPullStore} from '@/services/sync/qfSyncCoordinator';
+import {
+  QfSyncCoordinator,
+  SqliteQfSyncPullStore,
+} from '@/services/sync/qfSyncCoordinator';
+import {
+  BayaanSyncApiError,
+  type BayaanSyncPullRequest,
+} from '@/services/sync/bayaanSyncApiClient';
+import {
+  decodeBayaanSyncPullResponse,
+  type BayaanSyncMutation,
+} from '@/services/sync/bayaanSyncCodec';
 import {withQfSyncTransaction} from '@/services/sync/qfSyncTransaction';
 import {migrateUserSyncV1} from '@/services/database/migrations/userSyncV1';
 import {migrateUserSyncV2} from '@/services/database/migrations/userSyncV2';
@@ -215,6 +226,170 @@ for (const platform of ['ios', 'web']) {
     beforeEach(() => {
       mockPlatform = platform;
       mockOpenDatabaseAsync.mockClear();
+    });
+
+    it.each(['PENDING', 'IN_FLIGHT', 'AMBIGUOUS'] as const)(
+      'retains a locally deleted bookmark identity across CREATE/UPDATE pulls (%s)',
+      async state => {
+        const {root, annotations, sync, pull} = await createServices();
+        root.forbidSharedSql = true;
+        const remote: BayaanSyncMutation = {
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: 'deleted-remote',
+          timestamp: 100,
+          data: {type: 'ayah', key: 2, verseNumber: 255},
+        };
+        await pull.applyPage('reader', [remote]);
+        await sync.removeBookmark({accountId: 'reader', verseKey: '2:255'});
+        const [deleted] = await sync.getOutboxEntries('reader');
+        expect(deleted).toMatchObject({
+          mutationType: 'DELETE',
+          remoteId: remote.resourceId,
+        });
+        expect(await pull.commitStableHead('reader', 0, 100, 100)).toBe(true);
+        let head = 200;
+        const transport = {
+          pull: jest.fn(
+            async (_token: string, request: BayaanSyncPullRequest) => ({
+              lastMutationAt: head,
+              mutations: request.metadataOnly
+                ? []
+                : [
+                    {
+                      ...remote,
+                      type:
+                        head === 200
+                          ? ('CREATE' as const)
+                          : ('UPDATE' as const),
+                      timestamp: head,
+                    },
+                  ],
+            }),
+          ),
+          push: jest.fn(async () => {
+            throw new BayaanSyncApiError('request_failed', 403);
+          }),
+        };
+        const now = Date.now();
+        const coordinator = new QfSyncCoordinator({
+          transport,
+          store: pull,
+          pushStore: sync,
+          now: () => now,
+        });
+        if (state === 'PENDING') {
+          await expect(
+            coordinator.push({accountId: 'reader', sessionToken: 'fixture'}),
+          ).rejects.toMatchObject({status: 403});
+          // The retry deadline defers the next delivery without removing intent.
+          await expect(
+            coordinator.push({accountId: 'reader', sessionToken: 'fixture'}),
+          ).resolves.toMatchObject({status: 'idle'});
+          expect(transport.push).toHaveBeenCalledTimes(1);
+        } else {
+          await sync.markOperationInFlight({
+            accountId: 'reader',
+            localOperationId: deleted.localOperationId,
+            startedAt: now,
+          });
+          if (state === 'AMBIGUOUS')
+            await root.runAsync(
+              "UPDATE qf_sync_outbox SET delivery_state = 'AMBIGUOUS' WHERE owner_scope = ? AND local_operation_id = ?",
+              ['qf:reader', deleted.localOperationId],
+            );
+        }
+        const before = await sync.getOutboxEntries('reader');
+        for (head of [200, 300]) {
+          await expect(
+            coordinator.pull({accountId: 'reader', sessionToken: 'fixture'}),
+          ).resolves.toEqual({status: 'synced', head, restarts: 0});
+          expect(await pull.getStoredHead('reader')).toBe(head);
+          expect(
+            await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+          ).toEqual([]);
+          // No ACK, payload/base/revision rewrite or loss of uncertain evidence.
+          expect(await sync.getOutboxEntries('reader')).toEqual(before);
+        }
+        await pull.applyPage('reader', [
+          {...remote, type: 'DELETE', timestamp: 400},
+        ]);
+        expect(await sync.getOutboxEntries('reader')).toEqual(before);
+        // A different remote identity and the same identity in another account
+        // are live controls, not suppressed by this account's tombstone.
+        await pull.applyPage('reader', [
+          {...remote, resourceId: 'live-remote', timestamp: 500},
+        ]);
+        await pull.applyPage('other-reader', [remote]);
+        expect(
+          await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+        ).toEqual([expect.objectContaining({remoteId: 'live-remote'})]);
+        expect(
+          await annotations.getAllBookmarksInOwnerScope('qf:other-reader'),
+        ).toHaveLength(1);
+        expect(await sync.getOutboxEntries('reader')).toEqual(before);
+        expect(root.transactions.every(txn => txn.closed)).toBe(true);
+        await root.closeAsync();
+      },
+    );
+
+    it('leaves legacy Favorite rows and pending bookmark work unchanged on excluded reads', async () => {
+      const {root, annotations, sync, pull} = await createServices();
+      await pull.applyPage('reader', [
+        {
+          resource: 'BOOKMARK',
+          type: 'CREATE',
+          resourceId: 'legacy-favorite',
+          timestamp: 100,
+          data: {type: 'ayah', key: 2, verseNumber: 255},
+        },
+      ]);
+      await sync.addBookmark({
+        ...bookmarkInput,
+        verseKey: '2:256',
+        ayahNumber: 256,
+      });
+      const beforeRows =
+        await annotations.getAllBookmarksInOwnerScope('qf:reader');
+      const beforeOutbox = await sync.getOutboxEntries('reader');
+      const page = decodeBayaanSyncPullResponse({
+        success: true,
+        data: {
+          lastMutationAt: 200,
+          mutations: [255, 256].map(verseNumber => ({
+            resource: 'BOOKMARK',
+            type: 'UPDATE',
+            resourceId:
+              verseNumber === 255 ? 'legacy-favorite' : 'new-favorite',
+            timestamp: 200,
+            data: {
+              type: 'ayah',
+              key: 2,
+              verseNumber,
+              isInDefaultCollection: true,
+            },
+          })),
+        },
+      });
+      expect(page).toEqual({
+        lastMutationAt: 200,
+        mutations: [],
+        receivedMutationCount: 2,
+      });
+      await pull.applyPage('reader', page.mutations);
+      expect(await pull.commitStableHead('reader', 0, 200, 200)).toBe(true);
+      expect(
+        await annotations.getAllBookmarksInOwnerScope('qf:reader'),
+      ).toEqual(beforeRows);
+      expect(await sync.getOutboxEntries('reader')).toEqual(beforeOutbox);
+      // The schema did not retain membership. Exclusion cannot migrate or
+      // safely reinterpret this already persisted remote ID as a collection ID.
+      expect(
+        (
+          await root.getAllAsync<{name: string}>('PRAGMA table_info(bookmarks)')
+        ).map(column => column.name),
+      ).not.toContain('isInDefaultCollection');
+      await root.closeAsync();
     });
 
     it('keeps successful live highlight, bookmark and note writes after a poisoned pull rolls back', async () => {
