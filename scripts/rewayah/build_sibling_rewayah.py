@@ -10,7 +10,9 @@ Usage (from the repo root):
   python3 scripts/rewayah/build_sibling_rewayah.py --out-dir DIR   # write elsewhere, repo untouched
   python3 scripts/rewayah/build_sibling_rewayah.py --report     # also print every non-trivial alignment
 
-For each rewayah <id> the builder writes, into a fresh temporary directory:
+For each rewayah <id> the builder writes, into a fresh temporary directory
+(under scripts/rewayah/.build/, git-ignored; inside the output directory only
+when that is on another filesystem):
   dk_words_<id>.db     CREATE TABLE + INSERT in id order + VACUUM (deterministic bytes)
   <id>-diff.json       highlight map, format 2 (contract C2)
   <id>-versemap.json   rewayah <-> Hafs verse map, format 1 (contract C3)
@@ -19,6 +21,12 @@ gate for every narrator pair it touches) on them and only if everything
 passes replaces the files in data/mushaf/digitalkhatt/ atomically
 (os.replace). Any failure exits non-zero and leaves the repo files untouched.
 Running the builder twice produces byte-identical files.
+
+A words DB whose schema and rows equal the existing file is NOT replaced:
+other SQLite versions lay the pages out differently, and the app names its
+on-device DB copies by the file's sha256 (services/mushaf/rewayahDataManifest.ts),
+so a rebuild elsewhere must not change the bytes of unchanged data. The
+committed DBs were written by SQLite 3.53.3 (Python 3.14).
 
 Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
 --------------------------------------------------------------------------
@@ -636,6 +644,55 @@ def write_db(path: Path, hafs: list[HafsRow], texts: dict[int, str], schema_sql:
         con.close()
 
 
+def db_content(path: Path) -> tuple[list, list]:
+    """Schema and rows of a words DB (what the app reads; not the page layout)."""
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        schema = con.execute("SELECT type, name, sql FROM sqlite_master ORDER BY name").fetchall()
+        rows = con.execute("SELECT id, location, surah, ayah, word, text FROM words ORDER BY id").fetchall()
+    finally:
+        con.close()
+    return schema, rows
+
+
+def same_content(new: Path, old: Path) -> bool:
+    """`old` exists and holds the same data as `new` (DBs: same schema and
+    rows, whatever SQLite version wrote them; other files: same bytes)."""
+    if not old.exists():
+        return False
+    if new.suffix == ".db":
+        try:
+            return db_content(new) == db_content(old)
+        except sqlite3.Error:
+            return False
+    return new.read_bytes() == old.read_bytes()
+
+
+BUILD_ROOT = HERE / ".build"  # git-ignored
+
+
+def make_temp_dir(out_dir: Path) -> Path:
+    """A fresh build directory on the same filesystem as `out_dir` (os.replace
+    needs that): under scripts/rewayah/.build/ when possible, so a killed run
+    leaves nothing in the data folder. Leftovers of dead runs are removed."""
+    root = BUILD_ROOT
+    try:
+        root.mkdir(exist_ok=True)
+        if os.stat(root).st_dev != os.stat(out_dir).st_dev:
+            root = out_dir
+    except OSError:
+        root = out_dir
+    for old in root.glob(".rewayah-build-*"):
+        try:
+            pid = int(old.name.split("-")[2])
+            os.kill(pid, 0)  # the run that made it is still alive
+        except ProcessLookupError:
+            shutil.rmtree(old, ignore_errors=True)
+        except (ValueError, IndexError, PermissionError, OSError):
+            pass
+    return Path(tempfile.mkdtemp(prefix=f".rewayah-build-{os.getpid()}-", dir=root))
+
+
 def write_json(path: Path, obj: dict) -> None:
     path.write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
@@ -663,7 +720,7 @@ def main(argv: list[str] | None = None) -> int:
 
     hafs = load_hafs()
     schema = hafs_schema()
-    tmp = Path(tempfile.mkdtemp(prefix=".rewayah-build-", dir=out_dir))
+    tmp = make_temp_dir(out_dir)
     cache: dict[str, Assignment] = {}
     try:
         failures = 0
@@ -712,10 +769,15 @@ def main(argv: list[str] | None = None) -> int:
         if failures:
             print(f"FAILED: {failures} rewayah build(s) failed; nothing was replaced in {out_dir}", file=sys.stderr)
             return 1
+        written = kept = 0
         for rid in rids:
             for name in output_names(rid):
+                if same_content(tmp / name, out_dir / name):
+                    kept += 1  # same data: keep the existing bytes (see the module docstring)
+                    continue
                 os.replace(tmp / name, out_dir / name)
-        print(f"OK: wrote {len(rids) * 3} files to {out_dir}")
+                written += 1
+        print(f"OK: {written} file(s) written, {kept} unchanged, in {out_dir}")
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
