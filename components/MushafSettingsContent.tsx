@@ -48,6 +48,7 @@ import {
   getDisplayValue,
   DISPLAY_MIN,
   DISPLAY_MAX,
+  REWAYAH_FALLBACK_RENDERER_LABEL, // @ai
   type MushafRenderer,
   type MushafScrollDirection,
   type MushafArabicTextWeight,
@@ -607,6 +608,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   const verseKey = '1:1';
   const isQCF1440 = mushafRenderer === 'qcf_v2';
+  const hafsOnlyFontDescription = `Hafs only. This font lacks marks used by ${getRewayahShortLabel(rewayah)}.`; // @ai
   const allahNameHighlightHex = getAllahNameHighlightColorHex(
     allahNameHighlightColor,
     theme.isDarkMode,
@@ -668,6 +670,9 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
 
   const handleFontSelect = useCallback(
     async (value: MushafRenderer) => {
+      // IndoPak draws Hafs only; its row is disabled for other rewayat and
+      // the store refuses the pair as well.
+      if (value === 'dk_indopak' && rewayah !== 'hafs') return; // @ai
       const switchingToQCF = value === 'qcf_v2' && mushafRenderer !== 'qcf_v2';
       if (switchingToQCF && rewayah !== 'hafs') {
         try {
@@ -677,6 +682,29 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
             '[MushafSettings] Failed to reset rewayah for QCF:',
             error,
           );
+          // @ai-start
+          // Mushaf 1440 is Hafs only. Without Hafs in the data service the
+          // store and the service would disagree (pages and highlights built
+          // from one rewayah under the other's label), so stay on the
+          // current font and rewayah, putting the service back if the
+          // failed switch moved it.
+          if (digitalKhattDataService.rewayah !== rewayah) {
+            await digitalKhattDataService
+              .switchRewayah(rewayah)
+              .catch(restoreError =>
+                console.error(
+                  '[MushafSettings] Failed to restore rewayah:',
+                  restoreError,
+                ),
+              );
+          }
+          showToast(
+            "Couldn't switch to Mushaf 1440",
+            'Please try again.',
+            'error',
+          );
+          return;
+          // @ai-end
         }
         setRewayah('hafs');
       }
@@ -1128,6 +1156,11 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
       <View style={styles.card}>
         {FONT_OPTIONS.map((option, idx) => {
           const isSelected = mushafRenderer === option.value;
+          // IndoPak's font lacks marks every non-Hafs rewayah uses, so it is
+          // offered for Hafs only (Mushaf 1440 stays selectable: choosing it
+          // returns the reader to Hafs).
+          const isHafsOnly =
+            option.value === 'dk_indopak' && rewayah !== 'hafs'; // @ai
           return (
             <React.Fragment key={option.value}>
               {idx > 0 && <View style={styles.divider} />}
@@ -1135,7 +1168,14 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                 style={({pressed}) => [
                   styles.radioRow,
                   pressed && styles.radioRowPressed,
+                  isHafsOnly && styles.radioRowDisabled, // @ai
                 ]}
+                disabled={isHafsOnly} // @ai
+                accessibilityRole="radio" // @ai
+                accessibilityState={{
+                  selected: isSelected,
+                  disabled: isHafsOnly,
+                }} // @ai
                 onPress={() => handleFontSelect(option.value)}>
                 <View
                   style={[
@@ -1153,7 +1193,7 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
                     {option.label}
                   </Text>
                   <Text style={styles.radioDescription}>
-                    {option.description}
+                    {isHafsOnly ? hafsOnlyFontDescription : option.description}
                   </Text>
                 </View>
               </Pressable>
@@ -1184,9 +1224,25 @@ export const MushafSettingsContent: React.FC<MushafSettingsContentProps> = ({
           />
         )
       )}
+      {/* @ai-start */}
+      {mushafRenderer === 'dk_indopak' && (
+        <Text style={styles.helperText}>
+          IndoPak shows Hafs only. Choosing another rewayah switches the font to{' '}
+          {REWAYAH_FALLBACK_RENDERER_LABEL}.
+        </Text>
+      )}
+      {/* @ai-end */}
       <RewayahAccordion
         selectedId={rewayah}
-        onSelect={handleRewayahSelect}
+        onSelect={value => {
+          // @ai-start
+          // Mushaf 1440 pins the text to Hafs and the store refuses another
+          // rewayah, so a row left expanded across a renderer switch must not
+          // move the data service on its own.
+          if (isQCF1440) return;
+          // @ai-end
+          handleRewayahSelect(value);
+        }}
         styles={styles}
         theme={theme}
         disabled={isQCF1440}
