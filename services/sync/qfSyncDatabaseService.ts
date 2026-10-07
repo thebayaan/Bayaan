@@ -15,10 +15,12 @@ import type {QfMutationType, QfSyncResource} from '@/types/qf-sync';
 import type {BayaanSyncPushResult} from '@/services/sync/bayaanSyncCodec';
 import type {BayaanSyncMutation} from '@/services/sync/bayaanSyncCodec';
 import surahData from '@/data/surahData.json';
+import {refreshUnsentPayloadBlock} from './qfUnsentPayloadBlock';
 import {
-  withQfSyncTransaction,
-  type QfSyncSqliteExecutor,
-} from './qfSyncTransaction';
+  withRetryableQfSyncTransaction as withQfSyncTransaction,
+  atQfSqliteBoundary,
+} from './qfSqliteRetry';
+import {type QfSyncSqliteExecutor} from './qfSyncTransaction';
 
 interface AddBookmarkInput {
   accountId: string;
@@ -183,6 +185,7 @@ export interface QfSyncPersistedStatus {
   pendingCount: number;
   conflictCount: number;
   nextPendingAttemptAt: number | null;
+  blockedPayloadCounts?: Record<string, number>;
 }
 
 interface PendingStatusRow {
@@ -680,10 +683,15 @@ export class QfSyncDatabaseService {
             existingOperation.localOperationId,
           ],
         );
+        await this.refreshNoteBlock(
+          db,
+          ownerScope,
+          existingOperation.localOperationId,
+        );
         return;
       }
 
-      if (existingOperation && existingOperation.deliveryState !== 'PENDING') {
+      if (existingOperation) {
         await db.runAsync(
           `UPDATE qf_sync_outbox
            SET mutation_type = ?, remote_id = ?, payload_json = ?,
@@ -708,6 +716,11 @@ export class QfSyncDatabaseService {
             ownerScope,
             existingOperation.localOperationId,
           ],
+        );
+        await this.refreshNoteBlock(
+          db,
+          ownerScope,
+          existingOperation.localOperationId,
         );
         return;
       }
@@ -951,18 +964,22 @@ export class QfSyncDatabaseService {
 
   async getOutboxEntries(accountId: string): Promise<QfOutboxEntry[]> {
     const db = await this.database.getConnection();
-    const rows = (await db.getAllAsync(
-      `SELECT * FROM qf_sync_outbox WHERE owner_scope = ? ORDER BY created_at, local_operation_id`,
-      [ownerScopeFromAccountId(accountId)],
+    const rows = (await atQfSqliteBoundary(() =>
+      db.getAllAsync(
+        `SELECT * FROM qf_sync_outbox WHERE owner_scope = ? ORDER BY created_at, local_operation_id`,
+        [ownerScopeFromAccountId(accountId)],
+      ),
     )) as OutboxRow[];
     return rows.map(toOutboxEntry);
   }
 
   async getStoredHead(accountId: string): Promise<number> {
     const db = await this.database.getConnection();
-    const row = (await db.getFirstAsync(
-      `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
-      [ownerScopeFromAccountId(accountId)],
+    const row = (await atQfSqliteBoundary(() =>
+      db.getFirstAsync(
+        `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
+        [ownerScopeFromAccountId(accountId)],
+      ),
     )) as SyncStateRow | null;
     if (!row?.last_mutation_at) return 0;
     const head = Number(row.last_mutation_at);
@@ -970,36 +987,55 @@ export class QfSyncDatabaseService {
   }
 
   async getSyncStatus(accountId: string): Promise<QfSyncPersistedStatus> {
-    const db = await this.database.getConnection();
+    const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(accountId);
-    const [state, pending, conflicts] = await Promise.all([
-      db.getFirstAsync(
-        `SELECT last_mutation_at, last_successful_sync_at
+    let status!: QfSyncPersistedStatus;
+    await withQfSyncTransaction(connection, async db => {
+      // Old writers can change bytes or reuse IDs without maintaining markers.
+      await this.refreshPendingBlocks(db, ownerScope);
+      const [state, pending, conflicts, blocks] = await Promise.all([
+        db.getFirstAsync(
+          `SELECT last_mutation_at, last_successful_sync_at
          FROM qf_sync_state WHERE owner_scope = ?`,
-        [ownerScope],
-      ),
-      db.getFirstAsync(
-        `SELECT COUNT(*) AS count,
-                MIN(CASE WHEN delivery_state = 'PENDING'
+          [ownerScope],
+        ),
+        db.getFirstAsync(
+          `SELECT COUNT(*) AS count,
+                MIN(CASE WHEN delivery_state = 'PENDING' AND NOT EXISTS
+                         (SELECT 1 FROM qf_sync_payload_blocks AS block
+                          WHERE block.owner_scope = qf_sync_outbox.owner_scope
+                            AND block.local_operation_id = qf_sync_outbox.local_operation_id)
                          THEN COALESCE(next_attempt_at, 0) END)
                   AS next_pending_attempt_at
          FROM qf_sync_outbox WHERE owner_scope = ?`,
-        [ownerScope],
-      ),
-      db.getFirstAsync(
-        `SELECT COUNT(*) AS count FROM qf_note_conflicts
+          [ownerScope],
+        ),
+        db.getFirstAsync(
+          `SELECT COUNT(*) AS count FROM qf_note_conflicts
          WHERE owner_scope = ? AND resolved_at IS NULL`,
-        [ownerScope],
-      ),
-    ]);
-    return {
-      lastSuccessfulSyncAt:
-        (state as SyncStatusRow | null)?.last_successful_sync_at ?? null,
-      pendingCount: (pending as PendingStatusRow | null)?.count ?? 0,
-      conflictCount: (conflicts as {count: number} | null)?.count ?? 0,
-      nextPendingAttemptAt:
-        (pending as PendingStatusRow | null)?.next_pending_attempt_at ?? null,
-    };
+          [ownerScope],
+        ),
+        db.getAllAsync(
+          'SELECT reason, COUNT(*) AS count FROM qf_sync_payload_blocks WHERE owner_scope = ? GROUP BY reason',
+          [ownerScope],
+        ),
+      ]);
+      status = {
+        blockedPayloadCounts: Object.fromEntries(
+          (blocks as Array<{reason: string; count: number}>).map(block => [
+            block.reason,
+            block.count,
+          ]),
+        ),
+        lastSuccessfulSyncAt:
+          (state as SyncStatusRow | null)?.last_successful_sync_at ?? null,
+        pendingCount: (pending as PendingStatusRow | null)?.count ?? 0,
+        conflictCount: (conflicts as {count: number} | null)?.count ?? 0,
+        nextPendingAttemptAt:
+          (pending as PendingStatusRow | null)?.next_pending_attempt_at ?? null,
+      };
+    });
+    return status;
   }
 
   async markOperationInFlight(
@@ -1058,9 +1094,13 @@ export class QfSyncDatabaseService {
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     const reserved: QfOutboxEntry[] = [];
     await withQfSyncTransaction(connection, async db => {
+      await this.refreshPendingBlocks(db, ownerScope);
       const candidates = (await db.getAllAsync(
         `SELECT * FROM qf_sync_outbox
          WHERE owner_scope = ? AND delivery_state = 'PENDING'
+           AND NOT EXISTS (SELECT 1 FROM qf_sync_payload_blocks AS block
+             WHERE block.owner_scope = qf_sync_outbox.owner_scope
+               AND block.local_operation_id = qf_sync_outbox.local_operation_id)
            AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
          ORDER BY created_at, local_operation_id LIMIT ?`,
         [ownerScope, input.dueAt, input.limit],
@@ -1316,9 +1356,13 @@ export class QfSyncDatabaseService {
     const connection = await this.database.getConnection();
     const ownerScope = ownerScopeFromAccountId(input.accountId);
     await withQfSyncTransaction(connection, async db => {
+      await this.refreshPendingBlocks(db, ownerScope);
       const rows = (await db.getAllAsync(
         `SELECT * FROM qf_sync_outbox
          WHERE owner_scope = ? AND delivery_state = 'PENDING'
+           AND NOT EXISTS (SELECT 1 FROM qf_sync_payload_blocks AS block
+             WHERE block.owner_scope = qf_sync_outbox.owner_scope
+               AND block.local_operation_id = qf_sync_outbox.local_operation_id)
          ORDER BY created_at, local_operation_id`,
         [ownerScope],
       )) as OutboxRow[];
@@ -1994,6 +2038,46 @@ export class QfSyncDatabaseService {
     return matches[0];
   }
 
+  private async refreshNoteBlock(
+    db: SyncDatabaseConnection,
+    ownerScope: string,
+    operationId: string,
+  ): Promise<void> {
+    const row = (await db.getFirstAsync(
+      'SELECT * FROM qf_sync_outbox WHERE owner_scope = ? AND local_operation_id = ?',
+      [ownerScope, operationId],
+    )) as OutboxRow | null;
+    if (row) await refreshUnsentPayloadBlock(db, toOutboxEntry(row));
+  }
+
+  private async refreshPendingBlocks(
+    db: SyncDatabaseConnection,
+    ownerScope: string,
+  ): Promise<void> {
+    await db.runAsync(
+      `DELETE FROM qf_sync_payload_blocks WHERE owner_scope = ? AND NOT EXISTS
+      (SELECT 1 FROM qf_sync_outbox AS op WHERE op.owner_scope = qf_sync_payload_blocks.owner_scope
+       AND op.local_operation_id = qf_sync_payload_blocks.local_operation_id AND op.delivery_state = 'PENDING')`,
+      [ownerScope],
+    );
+    let cursor: {createdAt: number; id: string} | null = null;
+    for (;;) {
+      const rows = (await db.getAllAsync(
+        `SELECT * FROM qf_sync_outbox WHERE owner_scope = ? AND delivery_state = 'PENDING'
+        ${cursor ? 'AND (created_at > ? OR (created_at = ? AND local_operation_id > ?))' : ''}
+        ORDER BY created_at, local_operation_id LIMIT 100`,
+        cursor
+          ? [ownerScope, cursor.createdAt, cursor.createdAt, cursor.id]
+          : [ownerScope],
+      )) as OutboxRow[];
+      if (rows.length === 0) break;
+      for (const row of rows)
+        await refreshUnsentPayloadBlock(db, toOutboxEntry(row));
+      const last = rows[rows.length - 1];
+      cursor = {createdAt: last.created_at, id: last.local_operation_id};
+    }
+  }
+
   private async enqueueMutation(
     db: SyncDatabaseConnection,
     {
@@ -2018,6 +2102,7 @@ export class QfSyncDatabaseService {
       baseServerUpdatedAt?: number;
     },
   ): Promise<void> {
+    const operationId = generateId();
     await db.runAsync(
       `INSERT INTO qf_sync_outbox (
          local_operation_id,
@@ -2037,7 +2122,7 @@ export class QfSyncDatabaseService {
        )
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 1, 'PENDING')`,
       [
-        generateId(),
+        operationId,
         ownerScope,
         accountId,
         resource,
@@ -2050,6 +2135,8 @@ export class QfSyncDatabaseService {
         createdAt,
       ],
     );
+    if (resource === 'NOTE')
+      await this.refreshNoteBlock(db, ownerScope, operationId);
   }
 
   private async getBookmarkRow(

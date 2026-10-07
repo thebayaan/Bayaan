@@ -115,6 +115,72 @@ short page. Traverse every page, then recheck the provider metadata head before
 committing the account cursor. A committed cursor means this supported local
 projection is caught up, not that every provider resource has a local model.
 
+## Unsupported unsent NOTE payloads and additive storage compatibility
+
+Local note TEXT remains unrestricted and is never truncated. The existing
+outbound codec supports up to 200,000 UTF-16 code units (JavaScript length);
+200,001 cannot be sent. A typed local unsupported NOTE error records an
+account-scoped reason and current revision in the additive
+`qf_sync_payload_blocks` sidecar. No delivery enum or existing annotation/outbox
+column changes. V3 creates the table, index and migration version atomically
+using the private transaction handle. V1/V2 version guards remain unchanged.
+
+Only UNSENT PENDING intent can be blocked. IN_FLIGHT/AMBIGUOUS rows and immutable
+sent snapshots retain receipt recovery, never quota-driven reclassification or
+blind CREATE replay. Reservation, conflict rebase and retry-status calculation
+revalidate actual payload bytes in keyset chunks before trusting any marker. This includes old
+writers that change bytes without updating revision, and old deletes followed
+by operation-ID reuse. Markers are diagnostics, not authority to hide a row.
+Blocked rows are excluded from retry-due calculation, not from retained intent
+counts. Healthy neighbors beyond a blocked first chunk can still push. Supported
+edits clear the marker atomically, retaining pending CREATE identity and keeping
+remote-backed UPDATE intent as UPDATE. DELETE does not validate historical body.
+Diagnostics contain reason counts only, not note text or payloads.
+
+Guest merge validates before copying: unsupported notes keep the full guest
+source, create no copy/claim evidence and return skipped reason counts. The
+merge decision is not an import-finished flag. A later eligible edit is offered
+and, with consent, copied exactly once. Keep-separate membership is unchanged.
+
+Sandbox SQLite WASM fixtures exercise V1-to-V2-to-V3 upgrades and existing V2
+pending/in-flight/ambiguous rows, repeated migration/reopen, unchanged columns,
+IDs, content and sent evidence, plus published `432baa3` V1/V2 migration guards
+and old SQL read/INSERT/UPDATE/DELETE contracts against the upgraded schema.
+Older clients can ignore the sidecar; they do not retroactively gain these
+features and retain their previous oversized-push behavior. This is tested SQL
+compatibility, not a claim that every historical native binary was QA-tested.
+No actual device database migration or native old/new application QA was run.
+
+## Public NOTE pull projection and transient local locks
+
+The pull codec validates NOTE identity, timestamp, field allowlist, body length,
+1..100 bounded canonical verse ranges, optional source and boolean `saveToQR`
+before omitting a valid public (`true`) CREATE/UPDATE local effect. Private
+(`false`) notes remain projected; missing/nonboolean markers and malformed
+public data fail closed. Public push ACKs/outbound public requests are rejected;
+markerless DELETE identity semantics are unchanged. Pagination and raw received
+cardinality still describe the original stream, including public-only pages;
+metadata-head stability/CAS is required before cursor advancement. This is
+mobile robustness, not evidence of a live provider/BFF bug (the BFF already
+filters valid public notes).
+
+Known SQLite BUSY/LOCKED codes and exact bounded Expo/WASM lock diagnostics are
+converted to a typed transient error only at the local SQLite boundary, retaining
+the original error as its cause. Source-controlled fixtures include the installed
+Expo Android binding's exact BUSY/LOCKED control-character prefixes, raw and
+wrapped; these fixtures are not native-device QA. Unknown errors and generic busy/locked wording remain permanent, and provider errors
+retain their existing HTTP policy. The lifecycle retries a known lock after
+exactly the existing 1,000 ms default delay without setting its permanent epoch
+barrier; subsequent annotation triggers remain eligible. Logout, offline and
+account-switch epoch guards cancel/ignore stale retries. The WASM ACK fixture injects BUSY/LOCKED during an ACK transaction after a
+bookmark receipt, proves rollback retains the immutable IN_FLIGHT snapshot,
+then exercises the lifecycle's 1,000 ms retry and existing stable-pull bookmark
+identity recovery with exactly one provider push. NOTE sent-evidence fixtures
+remain unchanged by blocking; this does not resolve ambiguous NOTE CREATE
+receipt correlation (issue 323), add a receipt endpoint, or authorize blind
+CREATE replay. The exclusive/private transaction implementation itself is
+unchanged. Local fake-clock and WASM fixtures are not native-device QA.
+
 ## Bounded pages and recovery
 
 SYNC GET responses are limited to 2 MiB on both the BFF and this client. A

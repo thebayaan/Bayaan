@@ -3,10 +3,13 @@ import {
   type VerseAnnotationDatabase,
 } from '@/services/database/VerseAnnotationDatabase';
 
+import {type QfSyncSqliteExecutor} from './qfSyncTransaction';
+
+import {withRetryableQfSyncTransaction as withQfSyncTransaction} from './qfSqliteRetry';
 import {
-  withQfSyncTransaction,
-  type QfSyncSqliteExecutor,
-} from './qfSyncTransaction';
+  mapOutboxEntryToSyncMutation,
+  LocalUnsupportedNoteError,
+} from './qfSyncResourceMapper';
 
 export type QfGuestImportDecision = 'merge' | 'keep_separate';
 
@@ -23,6 +26,7 @@ type QfGuestImportResult =
       bookmarkCount: number;
       noteCount: number;
       highlightCount: number;
+      skippedNoteCounts?: Record<string, number>;
     }
   | {status: 'kept_separate'}
   | {status: 'already_decided'; decision: QfGuestImportDecision};
@@ -157,7 +161,11 @@ export class QfGuestImportService {
       }
 
       const bookmarkCount = await this.copyBookmarks(db, accountId, scope);
-      const noteCount = await this.copyNotes(db, accountId, scope);
+      const {copied: noteCount, skipped} = await this.copyNotes(
+        db,
+        accountId,
+        scope,
+      );
       const highlightCount = await this.copyHighlights(db, accountId, scope);
       await db.runAsync(
         `INSERT INTO qf_guest_imports
@@ -183,6 +191,7 @@ export class QfGuestImportService {
         bookmarkCount,
         noteCount,
         highlightCount,
+        ...(Object.keys(skipped).length ? {skippedNoteCounts: skipped} : {}),
       };
     });
     return result;
@@ -328,7 +337,7 @@ export class QfGuestImportService {
     db: SyncDatabaseConnection,
     accountId: string,
     scope: `qf:${string}`,
-  ): Promise<number> {
+  ): Promise<{copied: number; skipped: Record<string, number>}> {
     const rows = (await db.getAllAsync(
       `SELECT id, verse_key, surah_number, ayah_number, content, verse_keys,
               created_at, updated_at, rewayah_id
@@ -337,7 +346,31 @@ export class QfGuestImportService {
        ORDER BY created_at, id`,
       [scope, guestRowPrefix(accountId, 'NOTE')],
     )) as GuestNoteRow[];
+    let copied = 0;
+    const skipped: Record<string, number> = {};
     for (const row of rows) {
+      const payload = {
+        verseKey: row.verse_key,
+        surahNumber: row.surah_number,
+        ayahNumber: row.ayah_number,
+        content: row.content,
+        ...(row.verse_keys ? {verseKeys: row.verse_keys.split(',')} : {}),
+        rewayahId: row.rewayah_id ?? 'hafs',
+        clientCreatedAt: row.created_at,
+        clientUpdatedAt: row.updated_at,
+      };
+      try {
+        mapOutboxEntryToSyncMutation({
+          resource: 'NOTE',
+          mutationType: 'CREATE',
+          remoteId: null,
+          payloadJson: JSON.stringify(payload),
+        });
+      } catch (error) {
+        if (!(error instanceof LocalUnsupportedNoteError)) throw error;
+        skipped[error.reason] = (skipped[error.reason] ?? 0) + 1;
+        continue; // Keep full guest source; no copy/claim ledger or deletion.
+      }
       const id = this.generateId();
       await db.runAsync(
         `INSERT INTO notes
@@ -377,8 +410,9 @@ export class QfGuestImportService {
         `DELETE FROM notes WHERE owner_scope = 'guest' AND id = ?`,
         [row.id],
       );
+      copied += 1;
     }
-    return rows.length;
+    return {copied, skipped};
   }
 
   private async copyHighlights(

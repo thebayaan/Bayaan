@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import {migrateUserSyncV1} from '@/services/database/migrations/userSyncV1';
 import {migrateUserSyncV2} from '@/services/database/migrations/userSyncV2';
+import {migrateUserSyncV3} from '@/services/database/migrations/userSyncV3';
 
 const DEFAULT_DATABASE_NAME = 'verse-annotations.db';
 
@@ -23,6 +24,7 @@ export class VerseAnnotationDatabase {
         this.db = await SQLite.openDatabaseAsync(this.databaseName);
         await migrateUserSyncV1(this.db);
         await migrateUserSyncV2(this.db);
+        await migrateUserSyncV3(this.db);
         this.ready = true;
       } catch (error) {
         console.error(

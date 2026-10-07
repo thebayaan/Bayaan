@@ -401,13 +401,15 @@ type TestDatabase = {
     params?: unknown[] | Record<string, unknown>,
   ): Promise<T | null>;
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
+  beforeRunAsync?: (source: string) => void;
   closeAsync(): Promise<void>;
 };
 
 class ExpoSqliteWasmDatabase implements TestDatabase {
   private readonly dbPromise: Promise<number>;
+  beforeRunAsync?: (source: string) => void;
 
-  constructor(databaseName: string) {
+  constructor(private readonly databaseName: string) {
     this.dbPromise = sqlitePromise.then(({sqlite3}) =>
       sqlite3.open_v2(databaseName),
     );
@@ -422,6 +424,7 @@ class ExpoSqliteWasmDatabase implements TestDatabase {
     source: string,
     params: unknown[] | Record<string, unknown> = [],
   ): Promise<unknown> {
+    this.beforeRunAsync?.(source);
     const {sqlite3} = await sqlitePromise;
     const db = await this.dbPromise;
     for await (const stmt of sqlite3.statements(db, source)) {
@@ -474,14 +477,17 @@ class ExpoSqliteWasmDatabase implements TestDatabase {
   async withExclusiveTransactionAsync(
     task: (txn: QfSyncSqliteExecutor) => Promise<void>,
   ): Promise<void> {
-    // Existing fault-injection tests use this executor; isolation has its own suite.
-    await this.withTransactionAsync(() =>
-      task({
-        runAsync: this.runAsync.bind(this),
-        getAllAsync: this.getAllAsync.bind(this),
-        getFirstAsync: this.getFirstAsync.bind(this),
-      } as QfSyncSqliteExecutor),
-    );
+    // Expo native exclusive transactions supply a distinct callback connection.
+    await this.dbPromise;
+    const txn = new ExpoSqliteWasmDatabase(this.databaseName);
+    txn.beforeRunAsync = source => this.beforeRunAsync?.(source);
+    try {
+      await txn.withTransactionAsync(() =>
+        task(txn as unknown as QfSyncSqliteExecutor),
+      );
+    } finally {
+      await txn.closeAsync();
+    }
   }
 
   async closeAsync(): Promise<void> {
@@ -2561,16 +2567,14 @@ describe('SQLite push recovery store', () => {
       content: 'second',
     });
     const connection = (await database.getConnection()) as TestDatabase;
-    const originalRunAsync = connection.runAsync.bind(connection);
     let marks = 0;
-    connection.runAsync = async (source, params) => {
+    connection.beforeRunAsync = source => {
       if (
         source.includes("SET delivery_state = 'IN_FLIGHT'") &&
         ++marks === 2
       ) {
         throw new Error('inject second reservation failure');
       }
-      return originalRunAsync(source, params);
     };
 
     await expect(
@@ -2915,12 +2919,10 @@ describe('SQLite push recovery store', () => {
        VALUES (?, ?, ?, ?)`,
       ['qf:reader-a', '7001', 7001, 7001],
     );
-    const originalRunAsync = connection.runAsync.bind(connection);
-    connection.runAsync = async (source, params) => {
+    connection.beforeRunAsync = source => {
       if (source.includes('INSERT INTO qf_sync_state')) {
         throw new Error('inject head failure');
       }
-      return originalRunAsync(source, params);
     };
 
     await expect(

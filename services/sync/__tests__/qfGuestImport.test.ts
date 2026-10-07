@@ -174,6 +174,59 @@ async function createServices(name: string) {
 }
 
 describe('QfGuestImportService', () => {
+  it('keeps unsupported guest text without a claim, and copies a later eligible edit exactly once', async () => {
+    const {database, annotations, guestImport} = await createServices(
+      'unsupported-guest.db',
+    );
+    const oversized = 'x'.repeat(200_001);
+    const note = await annotations.addNote('2:255', 2, 255, oversized);
+    await annotations.addNote('1:1', 1, 1, 'healthy guest');
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      expect(await guestImport.merge('account-a')).toMatchObject({
+        status: 'merged',
+        noteCount: attempt === 0 ? 1 : 0,
+        skippedNoteCounts: {note_body_too_large: 1},
+      });
+      expect(await annotations.getAllNotes()).toEqual([
+        expect.objectContaining({id: note.id, content: oversized}),
+      ]);
+      expect(
+        await annotations.getAllNotesInOwnerScope('qf:account-a'),
+      ).toHaveLength(1);
+    }
+    const db = await database.getConnection();
+    expect(
+      await db.getFirstAsync('SELECT id FROM qf_guest_imports WHERE id = ?', [
+        `guest-row:9:account-a:NOTE:${note.id}`,
+      ]),
+    ).toBeNull();
+    await annotations.updateNoteInOwnerScope(
+      'guest',
+      note.id,
+      'eligible edited guest',
+    );
+    expect(await guestImport.getOffer('account-a')).toMatchObject({
+      noteCount: 1,
+    });
+    expect(await guestImport.merge('account-a')).toMatchObject({
+      status: 'merged',
+      noteCount: 1,
+    });
+    expect(await guestImport.merge('account-a')).toEqual({
+      status: 'already_decided',
+      decision: 'merge',
+    });
+    expect(await annotations.getAllNotes()).toEqual([]);
+    expect(
+      await annotations.getAllNotesInOwnerScope('qf:account-a'),
+    ).toHaveLength(2);
+    expect(
+      await db.getFirstAsync(
+        "SELECT COUNT(*) AS count FROM qf_sync_outbox WHERE owner_scope = 'qf:account-a'",
+      ),
+    ).toEqual({count: 2});
+    await database.close();
+  });
   it('claims guest data and enqueues syncable resources in one at-most-once transaction', async () => {
     const {database, annotations, guestImport} =
       await createServices('merge.db');

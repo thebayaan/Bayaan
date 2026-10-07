@@ -14,6 +14,7 @@ export type QfSyncHttpClass = 'none' | '2xx' | '4xx' | '5xx' | 'network';
 
 export interface QfSyncDiagnostics {
   pendingCount: number;
+  blockedPayloadCounts?: Record<string, number>;
   pushedCount: number;
   ambiguousCount: number;
   conflictCount: number;

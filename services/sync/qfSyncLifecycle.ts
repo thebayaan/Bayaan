@@ -34,6 +34,8 @@ import {
 } from '@/store/qfSyncStore';
 import type {BayaanOpaqueSession} from '@/types/bayaan-auth';
 
+import {QfSqliteTransientError} from './qfSqliteRetry';
+
 const DEFAULT_RETRY_MS = 1000;
 
 export interface QfSyncLifecycleContext {
@@ -475,6 +477,9 @@ export class QfSyncLifecycle {
         errorCode,
         diagnostics: emptyDiagnostics({
           pendingCount: persisted.pendingCount,
+          ...(persisted.blockedPayloadCounts
+            ? {blockedPayloadCounts: persisted.blockedPayloadCounts}
+            : {}),
           pushedCount,
           ambiguousCount,
           conflictCount: persisted.conflictCount,
@@ -505,19 +510,25 @@ export class QfSyncLifecycle {
         );
         return;
       }
+      const sqliteRetryable = error instanceof QfSqliteTransientError;
       const errorCode =
-        error instanceof BayaanSyncApiError ? error.code : 'sync_failed';
+        error instanceof BayaanSyncApiError
+          ? error.code
+          : sqliteRetryable
+            ? 'local_sqlite_locked'
+            : 'sync_failed';
       const httpClass =
         error instanceof BayaanSyncApiError
           ? httpClassForStatus(error.status)
           : 'none';
       const retryable =
-        error instanceof BayaanSyncApiError &&
-        (error.status === 0 ||
-          error.status === 408 ||
-          error.status === 409 ||
-          error.status === 429 ||
-          error.status >= 500);
+        sqliteRetryable ||
+        (error instanceof BayaanSyncApiError &&
+          (error.status === 0 ||
+            error.status === 408 ||
+            error.status === 409 ||
+            error.status === 429 ||
+            error.status >= 500));
       if (!retryable) this.permanentErrorEpoch = epoch;
       const retryDelay =
         error instanceof BayaanSyncApiError
@@ -713,6 +724,9 @@ export class QfSyncLifecycle {
         diagnostics: {
           ...state.diagnostics,
           pendingCount: persisted.pendingCount,
+          ...(persisted.blockedPayloadCounts
+            ? {blockedPayloadCounts: persisted.blockedPayloadCounts}
+            : {}),
           conflictCount: persisted.conflictCount,
         },
       }));

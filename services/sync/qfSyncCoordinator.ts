@@ -9,12 +9,13 @@ import type {
   BayaanSyncPushResult,
 } from './bayaanSyncCodec';
 import type {QfOutboxEntry} from './qfSyncDatabaseService';
-import {
-  withQfSyncTransaction,
-  type QfSyncTransactionDatabase,
-} from './qfSyncTransaction';
+import {type QfSyncTransactionDatabase} from './qfSyncTransaction';
 import {mapOutboxEntryToSyncMutation} from './qfSyncResourceMapper';
 import surahData from '@/data/surahData.json';
+import {
+  withRetryableQfSyncTransaction as withQfSyncTransaction,
+  atQfSqliteBoundary,
+} from './qfSqliteRetry';
 
 const DEFAULT_PAGE_LIMIT = 1000;
 const DEFAULT_MAX_RESTARTS = 2;
@@ -275,9 +276,11 @@ export class SqliteQfSyncPullStore implements QfSyncPullStore {
 
   async getStoredHead(accountId: string): Promise<number> {
     const db = await this.database.getConnection();
-    const row = await db.getFirstAsync<SyncStateRow>(
-      `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
-      [ownerScope(accountId)],
+    const row = await atQfSqliteBoundary(() =>
+      db.getFirstAsync<SyncStateRow>(
+        `SELECT last_mutation_at FROM qf_sync_state WHERE owner_scope = ?`,
+        [ownerScope(accountId)],
+      ),
     );
     if (!row?.last_mutation_at) return 0;
     const head = Number(row.last_mutation_at);

@@ -1,5 +1,17 @@
 import type {QfMutationType, QfSyncResource} from '@/types/qf-sync';
 import surahData from '@/data/surahData.json';
+import {
+  MAX_SYNC_NOTE_BODY_LENGTH,
+  decodeBayaanSyncRequestMutation,
+  BayaanSyncDecodeError,
+} from './bayaanSyncCodec';
+
+export class LocalUnsupportedNoteError extends Error {
+  constructor(readonly reason: 'note_body_too_large' | 'invalid_note_shape') {
+    super(reason);
+    this.name = 'LocalUnsupportedNoteError';
+  }
+}
 
 interface BookmarkPayload {
   surahNumber: number;
@@ -13,7 +25,7 @@ interface NotePayload extends BookmarkPayload {
   verseKeys?: string[];
 }
 
-interface ReadingSessionPayload extends BookmarkPayload {}
+type ReadingSessionPayload = BookmarkPayload;
 
 export interface QfSyncRequestMutation {
   resource: QfSyncResource;
@@ -28,6 +40,8 @@ export interface QfOutboxEntryLike {
   remoteId: string | null;
   payloadJson: string;
 }
+
+class InvalidLocalVerseRangeError extends Error {}
 
 interface ParsedVerseKey {
   raw: string;
@@ -61,14 +75,14 @@ function parsePayload<T>(entry: QfOutboxEntryLike): T {
 function parseVerseKey(verseKey: string): ParsedVerseKey {
   const match = /^(\d+):(\d+)$/.exec(verseKey);
   if (!match) {
-    throw new Error(`Invalid verse key: ${verseKey}`);
+    throw new InvalidLocalVerseRangeError(`Invalid verse key: ${verseKey}`);
   }
 
   const surahNumber = Number(match[1]);
   const ayahNumber = Number(match[2]);
   const verseCount = SURAH_VERSE_COUNTS.get(surahNumber);
   if (!verseCount || ayahNumber < 1 || ayahNumber > verseCount) {
-    throw new Error(`Invalid verse key: ${verseKey}`);
+    throw new InvalidLocalVerseRangeError(`Invalid verse key: ${verseKey}`);
   }
 
   return {
@@ -86,7 +100,10 @@ function compareVerseKeys(left: ParsedVerseKey, right: ParsedVerseKey): number {
   return left.ayahNumber - right.ayahNumber;
 }
 
-function areContiguous(previous: ParsedVerseKey, next: ParsedVerseKey): boolean {
+function areContiguous(
+  previous: ParsedVerseKey,
+  next: ParsedVerseKey,
+): boolean {
   if (previous.surahNumber === next.surahNumber) {
     return next.ayahNumber === previous.ayahNumber + 1;
   }
@@ -104,7 +121,7 @@ export function buildVerseRanges(verseKeys: string[]): string[] {
     .sort(compareVerseKeys);
 
   if (uniqueSorted.length === 0) {
-    throw new Error('At least one verse key is required');
+    throw new InvalidLocalVerseRangeError('At least one verse key is required');
   }
 
   const ranges: string[] = [];
@@ -165,13 +182,49 @@ function mapNote(entry: QfOutboxEntryLike): QfSyncRequestMutation {
     };
   }
 
-  const payload = parsePayload<NotePayload>(entry);
+  let payload: NotePayload;
+  try {
+    payload = parsePayload<NotePayload>(entry);
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    throw new LocalUnsupportedNoteError('invalid_note_shape');
+  }
+  if (!payload || typeof payload.content !== 'string') {
+    throw new LocalUnsupportedNoteError('invalid_note_shape');
+  }
+  if (payload.content.length > MAX_SYNC_NOTE_BODY_LENGTH) {
+    throw new LocalUnsupportedNoteError('note_body_too_large');
+  }
+  if (
+    !Number.isSafeInteger(payload.clientCreatedAt) ||
+    !Number.isSafeInteger(payload.clientUpdatedAt) ||
+    payload.clientCreatedAt < 0 ||
+    payload.clientUpdatedAt < 0 ||
+    payload.clientCreatedAt > 8_640_000_000_000_000 ||
+    payload.clientUpdatedAt > 8_640_000_000_000_000 ||
+    (payload.verseKeys !== undefined &&
+      (!Array.isArray(payload.verseKeys) ||
+        payload.verseKeys.some(key => typeof key !== 'string')))
+  ) {
+    throw new LocalUnsupportedNoteError('invalid_note_shape');
+  }
+  let ranges: string[];
+  try {
+    ranges = buildVerseRanges(
+      payload.verseKeys?.length
+        ? payload.verseKeys
+        : [`${payload.surahNumber}:${payload.ayahNumber}`],
+    );
+  } catch (error) {
+    if (!(error instanceof InvalidLocalVerseRangeError)) throw error;
+    throw new LocalUnsupportedNoteError('invalid_note_shape');
+  }
   const mutation: QfSyncRequestMutation = {
     resource: 'NOTE',
     type: entry.mutationType,
     data: {
       body: payload.content,
-      ranges: buildVerseRanges(payload.verseKeys?.length ? payload.verseKeys : [`${payload.surahNumber}:${payload.ayahNumber}`]),
+      ranges,
       saveToQR: false,
       clientCreatedAt: toIsoString(payload.clientCreatedAt),
       clientUpdatedAt: toIsoString(payload.clientUpdatedAt),
@@ -179,9 +232,16 @@ function mapNote(entry: QfOutboxEntryLike): QfSyncRequestMutation {
   };
 
   if (entry.mutationType === 'UPDATE') {
+    if (!entry.remoteId)
+      throw new LocalUnsupportedNoteError('invalid_note_shape');
     mutation.resourceId = requireRemoteId(entry);
   }
-
+  try {
+    decodeBayaanSyncRequestMutation(mutation);
+  } catch (error) {
+    if (!(error instanceof BayaanSyncDecodeError)) throw error;
+    throw new LocalUnsupportedNoteError('invalid_note_shape');
+  }
   return mutation;
 }
 

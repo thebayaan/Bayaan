@@ -1,4 +1,23 @@
 import type {QfMutationType, QfSyncResource} from '@/types/qf-sync';
+import surahData from '@/data/surahData.json';
+
+export const MAX_SYNC_NOTE_BODY_LENGTH = 200_000;
+const verseCounts = new Map(
+  surahData.map(surah => [surah.id, surah.verses_count]),
+);
+function validNoteRange(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length > 64) return false;
+  const match = /^(\d+):(\d+)-(\d+):(\d+)$/.exec(value);
+  if (!match) return false;
+  const [startSurah, startAyah, endSurah, endAyah] = match.slice(1).map(Number);
+  return (
+    startAyah >= 1 &&
+    startAyah <= (verseCounts.get(startSurah) ?? 0) &&
+    endAyah >= 1 &&
+    endAyah <= (verseCounts.get(endSurah) ?? 0) &&
+    (startSurah < endSurah || (startSurah === endSurah && startAyah <= endAyah))
+  );
+}
 
 export interface BayaanSyncMutation {
   resource: QfSyncResource;
@@ -15,7 +34,7 @@ export interface BayaanSyncPullPage {
   limit?: number;
   total?: number;
   hasMore?: boolean;
-  // Provider cardinality before the supported mobile bookmark projection.
+  // Provider cardinality before the supported mobile pull projection.
   receivedMutationCount?: number;
 }
 
@@ -211,19 +230,20 @@ function decodeData(
   } else if (resource === 'NOTE') {
     if (
       typeof value.body !== 'string' ||
-      value.body.length > 200_000 ||
+      value.body.length > MAX_SYNC_NOTE_BODY_LENGTH ||
       !Array.isArray(value.ranges) ||
       value.ranges.length === 0 ||
       value.ranges.length > 100 ||
-      value.ranges.some(
-        range =>
-          typeof range !== 'string' || range.length === 0 || range.length > 64,
-      ) ||
-      value.saveToQR !== false ||
+      value.ranges.some(range => !validNoteRange(range)) ||
+      typeof value.saveToQR !== 'boolean' ||
+      (!projectBookmarks && value.saveToQR !== false) ||
       (value.source !== undefined && typeof value.source !== 'string')
     ) {
       return invalid();
     }
+    // Fully validated public reads have no private local effect. Receipts and
+    // outbound requests still require saveToQR:false; DELETE remains unchanged.
+    if (projectBookmarks && value.saveToQR === true) return null;
   } else if (
     !isPositiveSafeInteger(value.chapterNumber) ||
     value.chapterNumber > 114 ||

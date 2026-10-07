@@ -182,6 +182,47 @@ describe('BayaanSettingsApiClient', () => {
     }
   });
 
+  test('forwards weak App State ETags unchanged from GET to If-Match', async () => {
+    const oldEtag = 'W/"document-1"';
+    const newEtag = 'W/"document-2"';
+    let captured: Headers | undefined;
+    const client = new BayaanSettingsApiClient('https://bayaan.test', {
+      fetchImpl: jest.fn(async (_url, init) => {
+        if (init?.method === 'PUT') {
+          captured = new Headers(init.headers);
+          return jsonResponse(
+            {success: true, data: {version: 2}},
+            {headers: {etag: newEtag}},
+          );
+        }
+        return jsonResponse(
+          {
+            success: true,
+            data: {
+              collection: 'settings',
+              key: 'appearance',
+              schemaVersion: 1,
+              value: {themeMode: 'dark'},
+            },
+          },
+          {headers: {etag: oldEtag}},
+        );
+      }),
+    });
+    const document = await client.getDocument('opaque-session', 'appearance');
+    expect(document?.etag).toBe(oldEtag);
+    await expect(
+      client.putDocument('opaque-session', {
+        key: 'appearance',
+        body: JSON.stringify({schemaVersion: 1, value: {themeMode: 'light'}}),
+        idempotencyKey: 'operation-weak-etag',
+        etag: document!.etag,
+      }),
+    ).resolves.toBe(newEtag);
+    expect(captured?.get('if-match')).toBe(oldEtag);
+    expect(captured?.get('if-none-match')).toBeNull();
+  });
+
   test('sends exact App State bytes with the required mutation headers', async () => {
     let captured: {headers: Headers; body: unknown} | undefined;
     const client = new BayaanSettingsApiClient('https://bayaan.test', {

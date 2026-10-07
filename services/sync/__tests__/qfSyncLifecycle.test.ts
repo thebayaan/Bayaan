@@ -2,6 +2,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
+import {
+  atQfSqliteBoundary,
+  QfSqliteTransientError,
+} from '@/services/sync/qfSqliteRetry';
 import {BayaanSyncApiError} from '@/services/sync/bayaanSyncApiClient';
 import {
   QfSyncLifecycle,
@@ -99,7 +103,172 @@ beforeEach(() => {
   useVerseAnnotationsStore.getState().clearActiveView();
 });
 
+// Source-controlled diagnostics from the installed Android binding, not device QA.
+const androidLockDiagnostics = [5, 6].flatMap(code =>
+  [
+    'database is locked',
+    'database table is locked',
+    'database schema is locked',
+  ].flatMap(message => {
+    const raw = `Error code ${String.fromCharCode(code)}: ${message}`;
+    return [
+      raw,
+      `Call to function 'NativeDatabase.execAsync' has been rejected.\n→ Caused by: ${raw}`,
+      `Call to function 'NativeStatement.runAsync' has been rejected.\n→ Caused by: Error: ${raw}`,
+    ];
+  }),
+);
+
 describe('QfSyncLifecycle', () => {
+  it.each([
+    ...[
+      5,
+      6,
+      'SQLITE_BUSY',
+      'SQLITE_LOCKED',
+      'ERR_INTERNAL_SQLITE_ERROR',
+      undefined,
+    ].map(code => ({code, message: 'database is locked'})),
+    ...androidLockDiagnostics.map(message => ({
+      code: 'ERR_INTERNAL_SQLITE_ERROR',
+      message,
+    })),
+  ])(
+    'known SQLite lock (%s) retries at exactly 1000ms without relogin or permanent annotation barrier',
+    async ({code, message}) => {
+      jest.useFakeTimers();
+      jest.setSystemTime(6000);
+      try {
+        const original = Object.assign(
+          new Error(message),
+          code === undefined ? {} : {code},
+        );
+        const locked = await atQfSqliteBoundary(async () => {
+          throw original;
+        }).catch(error => error);
+        expect(locked).toBeInstanceOf(QfSqliteTransientError);
+        expect(locked.cause).toBe(original);
+        const coordinator = {
+          pull: jest
+            .fn()
+            .mockRejectedValueOnce(locked)
+            .mockResolvedValue(stablePull()),
+          push: jest.fn().mockResolvedValue(idlePush()),
+        };
+        const {lifecycle} = createLifecycle({
+          coordinator,
+          now: () => Date.now(),
+        });
+        lifecycle.updateContext(authenticatedOnline);
+        await lifecycle.waitForIdle();
+        expect(useQfSyncStore.getState()).toMatchObject({
+          status: 'retry',
+          retryAt: 7000,
+          errorCode: 'local_sqlite_locked',
+        });
+        await jest.advanceTimersByTimeAsync(999);
+        expect(coordinator.pull).toHaveBeenCalledTimes(1);
+        await jest.advanceTimersByTimeAsync(1);
+        await lifecycle.waitForIdle();
+        expect(coordinator.pull).toHaveBeenCalledTimes(2);
+        expect(useQfSyncStore.getState().status).toBe('idle');
+        lifecycle.requestSync();
+        await lifecycle.waitForIdle();
+        expect(coordinator.pull).toHaveBeenCalledTimes(3);
+        await lifecycle.stop();
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it.each(
+    (['offline', 'logout', 'account-switch'] as const).flatMap(mode =>
+      ['database is locked', ...androidLockDiagnostics].map(message => ({
+        mode,
+        message,
+      })),
+    ),
+  )(
+    'cancels a known-lock timer on %s and ignores stale callbacks',
+    async ({mode, message}) => {
+      let callback: () => void = () => undefined;
+      const clearTimer = jest.fn();
+      const locked = await atQfSqliteBoundary(async () => {
+        throw Object.assign(new Error(message), {
+          code: 'ERR_INTERNAL_SQLITE_ERROR',
+        });
+      }).catch(error => error);
+      const coordinator = {
+        pull: jest.fn().mockRejectedValue(locked),
+        push: jest.fn(),
+      };
+      const {lifecycle} = createLifecycle({
+        coordinator,
+        clearTimer,
+        setTimer: (task: () => void) => {
+          callback = task;
+          return 42;
+        },
+      });
+      lifecycle.updateContext(authenticatedOnline);
+      await lifecycle.waitForIdle();
+      lifecycle.updateContext(
+        mode === 'offline'
+          ? {...authenticatedOnline, online: false}
+          : mode === 'logout'
+            ? {
+                ...authenticatedOnline,
+                authStatus: 'signed_out',
+                accountId: null,
+              }
+            : {...authenticatedOnline, accountId: 'account-b', online: false},
+      );
+      callback();
+      await lifecycle.waitForIdle();
+      expect(clearTimer).toHaveBeenCalled();
+      expect(coordinator.pull).toHaveBeenCalledTimes(1);
+      await lifecycle.stop();
+    },
+  );
+
+  it.each([
+    new Error('service busy, retry later'),
+    new Error('account locked'),
+    Object.assign(new Error('database is locked'), {code: 19}),
+    new Error('database is locked plus secret SQL'),
+    new Error('Error code \u0007: database is locked'),
+    new Error('Error code 19: database is locked'),
+    new Error('Error code \u0005: service busy, retry later'),
+    new Error('Error code \u0006: account locked'),
+    new Error('Error code \u0005: database is locked' + 'x'.repeat(257)),
+    Object.assign(new Error('Error code \u0005: database is locked'), {
+      code: 19,
+    }),
+    new Error(
+      "Call to function 'OtherService.runAsync' has been rejected.\n→ Caused by: Error code \u0005: database is locked",
+    ),
+    new BayaanSyncApiError('invalid_response', 200),
+  ])('unknown/permanent errors do not become SQLite retryable', async error => {
+    const boundaryError = await atQfSqliteBoundary(async () => {
+      throw error;
+    }).catch(caught => caught);
+    expect(boundaryError).toBe(error);
+    const setTimer = jest.fn();
+    const coordinator = {
+      pull: jest.fn().mockRejectedValue(error),
+      push: jest.fn(),
+    };
+    const {lifecycle} = createLifecycle({coordinator, setTimer});
+    lifecycle.updateContext(authenticatedOnline);
+    await lifecycle.waitForIdle();
+    lifecycle.requestSync();
+    await lifecycle.waitForIdle();
+    expect(coordinator.pull).toHaveBeenCalledTimes(1);
+    expect(setTimer).not.toHaveBeenCalled();
+    expect(useQfSyncStore.getState().retryAt).toBeNull();
+    await lifecycle.stop();
+  });
   it.each([400, 403, 404, 413, 422, 408, 409, 429, 500, 503, 0])(
     'only schedules retryable HTTP failures (%s)',
     async status => {

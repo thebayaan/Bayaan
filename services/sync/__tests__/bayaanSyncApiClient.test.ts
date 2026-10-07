@@ -384,7 +384,7 @@ describe('Bayaan Sync BFF client', () => {
       },
     ],
     [
-      'public Quran Reflect note',
+      'malformed public Quran Reflect note',
       {
         success: true,
         data: {
@@ -397,7 +397,7 @@ describe('Bayaan Sync BFF client', () => {
               timestamp: 1,
               data: {
                 body: 'unsafe public note',
-                ranges: ['2:255-2:255'],
+                ranges: ['2:999-2:999'],
                 saveToQR: true,
               },
             },
