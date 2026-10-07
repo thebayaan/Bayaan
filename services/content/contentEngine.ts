@@ -126,15 +126,24 @@ export async function removeResource(
   });
 }
 
+function isPlaceholder(row: LocalContentRow): boolean {
+  // A failure placeholder: a first install that never succeeded. Legacy rows are real local copies.
+  return !row.legacy && row.installed_at === null && row.version === 0;
+}
+
 async function purge(
   deps: EngineDeps,
+  installer: ContentInstaller,
   row: LocalContentRow,
   entry: ManifestEntry | undefined,
 ): Promise<void> {
-  const installer = deps.installers[row.kind];
-  if (!installer) return;
+  if (isPlaceholder(row)) {
+    await deps.registry.delete(row.key);
+    return;
+  }
   await installer.remove(row.key);
   await installer.onWithdrawn(row.key);
+  // withdrawal_notified is never set here: the row is deleted below, so a later check cannot notify again.
   if (!row.withdrawal_notified)
     deps.notify({key: row.key, name: row.name ?? entry?.meta?.name ?? row.key});
   await deps.registry.delete(row.key);
@@ -143,6 +152,32 @@ async function purge(
     version: row.version,
     reason: entry?.withdrawn_reason ?? 'absent',
   });
+}
+
+async function applyRow(
+  deps: EngineDeps,
+  installer: ContentInstaller,
+  row: LocalContentRow,
+  entry: ManifestEntry | undefined,
+  onWifi: () => Promise<boolean>,
+): Promise<void> {
+  if (!entry || entry.status === 'withdrawn') {
+    // Withdrawals are retried on every check, ignoring backoff, so removal is never delayed.
+    await purge(deps, installer, row, entry);
+    return;
+  }
+  const needsUpdate = row.legacy || entry.version > row.version;
+  const schemaOk = installer.supportsSchemaVersion(
+    entry.upstream_schema_version ?? 1,
+  );
+  const backoffOver =
+    row.next_retry_at === null || row.next_retry_at <= deps.now();
+  if (!needsUpdate || !schemaOk || !backoffOver) return;
+  const networkOk =
+    (entry.bytes ?? 0) <= WIFI_THRESHOLD_BYTES || (await onWifi());
+  if (!networkOk) return;
+  await deps.registry.upsert({...row, name: entry.meta?.name ?? row.name});
+  await installResource(deps, row.key, row.kind, 'auto');
 }
 
 export async function runContentCheck(
@@ -175,25 +210,24 @@ export async function runContentCheck(
   const entries = new Map(
     result.manifest.resources.map(entry => [entry.key, entry]),
   );
-  const onWifi = await deps.isOnWifi();
+  let wifi: Promise<boolean> | null = null;
+  function onWifi(): Promise<boolean> {
+    wifi ??= deps.isOnWifi();
+    return wifi;
+  }
   for (const row of await deps.registry.list()) {
     const installer = deps.installers[row.kind];
     if (!installer || row.user_removed) continue;
-    const entry = entries.get(row.key);
-    if (!entry || entry.status === 'withdrawn') {
-      await purge(deps, row, entry);
-      continue;
-    }
-    const needsUpdate = row.legacy || entry.version > row.version;
-    const schemaOk = installer.supportsSchemaVersion(
-      entry.upstream_schema_version ?? 1,
-    );
-    const backoffOver =
-      row.next_retry_at === null || row.next_retry_at <= deps.now();
-    const networkOk = onWifi || (entry.bytes ?? 0) <= WIFI_THRESHOLD_BYTES;
-    if (needsUpdate && schemaOk && backoffOver && networkOk) {
-      await deps.registry.upsert({...row, name: entry.meta?.name ?? row.name});
-      await installResource(deps, row.key, row.kind, 'auto');
+    try {
+      await applyRow(deps, installer, row, entries.get(row.key), onWifi);
+    } catch (error) {
+      // One failing row must not block the others; it retries via its backoff.
+      await recordFailure(
+        deps,
+        row.key,
+        row.kind,
+        error instanceof Error ? error.message : 'unknown',
+      ).catch(() => undefined);
     }
   }
   return 'applied';

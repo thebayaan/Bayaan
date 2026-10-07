@@ -264,6 +264,144 @@ describe('runContentCheck', () => {
   });
 });
 
+describe('runContentCheck per-row isolation', () => {
+  const A = 'qf:tafsirs:1';
+  const C = 'qf:tafsirs:5';
+
+  it('a throwing remove on one row still updates and removes the others, and retries later', async () => {
+    const {deps, registry, installer} = setup(
+      manifest([
+        {key: A, kind: 'tafsir', source: 'qf', version: 1, status: 'withdrawn'},
+        active(2),
+      ]),
+    );
+    await registry.upsert({...emptyRow(A, 'tafsir'), version: 1, name: 'A'});
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
+    await registry.upsert({...emptyRow(C, 'tafsir'), version: 1, name: 'C'});
+    installer.remove.mockImplementation(async (key: string) => {
+      if (key === A) throw new Error('remove failed');
+    });
+
+    expect(await runContentCheck(deps)).toBe('applied');
+    expect((await registry.get(KEY))?.version).toBe(2);
+    expect(await registry.get(C)).toBeNull();
+    expect(deps.notify).toHaveBeenCalledWith({key: C, name: 'C'});
+    expect(deps.notify).not.toHaveBeenCalledWith({key: A, name: 'A'});
+    expect(await registry.get(A)).toMatchObject({
+      version: 1,
+      failures: 1,
+      next_retry_at: deps.now() + BACKOFF_MS[0],
+    });
+    expect(deps.track).toHaveBeenCalledWith('failed', {
+      key: A,
+      version: 1,
+      reason: 'remove failed',
+    });
+
+    installer.remove.mockResolvedValue(undefined);
+    await runContentCheck(deps, {force: true});
+    expect(await registry.get(A)).toBeNull();
+    expect(deps.notify).toHaveBeenCalledWith({key: A, name: 'A'});
+  });
+
+  it('a throwing isOnWifi does not abort the check', async () => {
+    const LARGE = 'qf:tafsirs:7';
+    const {deps, registry, installer} = setup(
+      manifest([{...active(2, 6_000_000), key: LARGE}, active(2)]),
+    );
+    (deps.isOnWifi as jest.Mock).mockRejectedValue(new Error('netinfo'));
+    await registry.upsert({...emptyRow(LARGE, 'tafsir'), version: 1});
+    await registry.upsert({...emptyRow(KEY, 'tafsir'), version: 1});
+    await registry.upsert({...emptyRow(C, 'tafsir'), version: 1});
+
+    expect(await runContentCheck(deps)).toBe('applied');
+    expect((await registry.get(KEY))?.version).toBe(2);
+    expect(await registry.get(C)).toBeNull();
+    expect(installer.install).toHaveBeenCalledTimes(1);
+    expect(await registry.get(LARGE)).toMatchObject({
+      version: 1,
+      failures: 1,
+      next_retry_at: deps.now() + BACKOFF_MS[0],
+    });
+  });
+});
+
+describe('runContentCheck never-installed placeholders', () => {
+  function placeholder() {
+    return {
+      ...emptyRow(KEY, 'tafsir'),
+      failures: 1,
+      next_retry_at: 1,
+      name: 'Ibn Kathir',
+    };
+  }
+
+  it('deletes a withdrawn placeholder silently', async () => {
+    const {deps, registry, installer} = setup(
+      manifest([
+        {
+          key: KEY,
+          kind: 'tafsir',
+          source: 'qf',
+          version: 2,
+          status: 'withdrawn',
+        },
+      ]),
+    );
+    await registry.upsert(placeholder());
+    await runContentCheck(deps);
+    expect(await registry.get(KEY)).toBeNull();
+    expect(deps.notify).not.toHaveBeenCalled();
+    expect(installer.remove).not.toHaveBeenCalled();
+    expect(installer.onWithdrawn).not.toHaveBeenCalled();
+    expect(deps.track).not.toHaveBeenCalledWith('withdrawn', expect.anything());
+  });
+
+  it('deletes an absent placeholder silently', async () => {
+    const {deps, registry, installer} = setup(manifest([]));
+    await registry.upsert(placeholder());
+    await runContentCheck(deps);
+    expect(await registry.get(KEY)).toBeNull();
+    expect(deps.notify).not.toHaveBeenCalled();
+    expect(installer.remove).not.toHaveBeenCalled();
+    expect(installer.onWithdrawn).not.toHaveBeenCalled();
+  });
+
+  it('still removes and notifies for a withdrawn legacy copy at version 0', async () => {
+    const {deps, registry, installer} = setup(manifest([]));
+    await registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      legacy: true,
+      name: 'Ibn Kathir',
+    });
+    await runContentCheck(deps);
+    expect(installer.remove).toHaveBeenCalledWith(KEY);
+    expect(deps.notify).toHaveBeenCalledWith({key: KEY, name: 'Ibn Kathir'});
+  });
+
+  it('sends no second notice on a later check after a withdrawal', async () => {
+    const {deps, registry} = setup(
+      manifest([
+        {
+          key: KEY,
+          kind: 'tafsir',
+          source: 'qf',
+          version: 2,
+          status: 'withdrawn',
+        },
+      ]),
+    );
+    await registry.upsert({
+      ...emptyRow(KEY, 'tafsir'),
+      version: 1,
+      name: 'Ibn Kathir',
+    });
+    await runContentCheck(deps);
+    await runContentCheck(deps, {force: true});
+    expect(deps.notify).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('installResource', () => {
   it('rejects a sha mismatch without installing and backs off', async () => {
     const {deps, registry, installer} = setup(manifest([active(2)]));

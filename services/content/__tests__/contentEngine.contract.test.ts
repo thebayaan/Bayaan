@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import {isManifest, type ContentApi} from '../contentApi';
@@ -25,9 +26,18 @@ function loadManifest(name: string): Manifest {
   return parsed;
 }
 
+function sha256Hex(text: string): string {
+  return crypto.createHash('sha256').update(text).digest('hex');
+}
+
+// The backend hashes the compact JSON text, so serve exactly that.
+function compact(name: string): string {
+  return JSON.stringify(JSON.parse(readFixture(name)));
+}
+
 const ENVELOPES: Record<string, string> = {
-  'qf:tafsirs:169': readFixture('envelope-tafsir.json'),
-  'qf:translations:20': readFixture('envelope-translation.json'),
+  'qf:tafsirs:169': compact('envelope-tafsir.json'),
+  'qf:translations:20': compact('envelope-translation.json'),
 };
 
 function fakeInstaller(kind: ContentKind): jest.Mocked<ContentInstaller> {
@@ -46,11 +56,6 @@ function setup(manifest: Manifest) {
     tafsir: fakeInstaller('tafsir'),
     translation: fakeInstaller('translation'),
   };
-  const shaByText = new Map<string, string>();
-  for (const entry of manifest.resources) {
-    const text = ENVELOPES[entry.key];
-    if (text && entry.sha256) shaByText.set(text, entry.sha256);
-  }
   const api: ContentApi = {
     fetchManifest: jest.fn(async () => ({
       status: 'ok' as const,
@@ -80,7 +85,7 @@ function setup(manifest: Manifest) {
     registry,
     installers,
     isOnWifi: async () => true,
-    sha256: async text => shaByText.get(text) ?? 'unknown',
+    sha256: async text => sha256Hex(text),
     now: () => 1_000_000_000_000,
     notify: jest.fn(),
     track: jest.fn(),
@@ -89,6 +94,14 @@ function setup(manifest: Manifest) {
 }
 
 describe('content engine against backend contract fixtures', () => {
+  it('envelope fixtures hash to the sha256 the manifest lists', () => {
+    const manifest = loadManifest('manifest.json');
+    for (const [key, text] of Object.entries(ENVELOPES)) {
+      const entry = manifest.resources.find(candidate => candidate.key === key);
+      expect(sha256Hex(text)).toBe(entry?.sha256);
+    }
+  });
+
   it('installs every resource listed in the active manifest', async () => {
     const manifest = loadManifest('manifest.json');
     const {deps, registry, installers} = setup(manifest);
