@@ -8,8 +8,14 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
+import {
+  useMushafPlayerStore,
+  usePlaybackVerseKeys, // @ai
+} from '@/store/mushafPlayerStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -115,12 +121,12 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     [allahNameHighlightColorSetting, theme.isDarkMode],
   );
 
-  const dkFontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // Same font as before for Hafs; a font that cannot draw a rewayah's marks
+  // (IndoPak) is never used for non-Hafs text.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
+  // @ai-end
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||
@@ -132,8 +138,10 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
 
   const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
 
-  // Active ayah highlighting
+  // Active ayah highlighting. currentVerseKey (the first Hafs verse being
+  // recited) drives the auto-scroll; every recited Hafs verse is highlighted.
   const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+  const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const isPlaying = playbackState === 'playing';
 
@@ -247,7 +255,9 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
-            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
+            isActive={
+              isPlaying && playbackVerseKeys.includes(item.verse.verse_key) // @ai
+            }
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
@@ -274,7 +284,7 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
       dkFontFamily,
       indexedTajweedData,
       handleVersePress,
-      currentVerseKey,
+      playbackVerseKeys, // @ai
       isPlaying,
       translationName,
       selectedTranslationId,

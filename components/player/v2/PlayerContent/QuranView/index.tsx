@@ -19,7 +19,10 @@ import SurahDivider, {computeDividerTotalHeight} from './SurahDivider';
 import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useBottomSheetScrollableCreator} from '@gorhom/bottom-sheet';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import type {
   MushafArabicTextWeight,
   RewayahId,
@@ -31,6 +34,10 @@ import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService
 import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {useTimestampStore} from '@/store/timestampStore';
+import {
+  parseVerseKeyListId, // @ai
+  selectTrackedVerseKeysId, // @ai
+} from '@/utils/timestampNumbering';
 import {
   enhancedVersesBySurah,
   rebuildEnhancedVerses,
@@ -179,8 +186,17 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const trackRewayah = useCurrentTrackRewayah();
   const surah = surahData.find(s => s.id === currentSurah);
 
-  // Ayah timestamp tracking
+  // Ayah timestamp tracking. currentVerseKey (the first Hafs verse being
+  // recited) drives scrolling; every Hafs verse the reciter is reciting is
+  // highlighted (a reciter verse can cover several Hafs verses).
   const currentVerseKey = useTimestampStore(s => s.currentAyah?.verseKey);
+  // @ai-start
+  const trackedVerseKeysId = useTimestampStore(selectTrackedVerseKeysId);
+  const trackedVerseKeys = useMemo(
+    () => parseVerseKeyListId(trackedVerseKeysId),
+    [trackedVerseKeysId],
+  );
+  // @ai-end
   const isLocked = useTimestampStore(s => s.isLocked);
   const setIsLocked = useTimestampStore(s => s.setIsLocked);
 
@@ -242,12 +258,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
       trackRewayah !== 'hafs') &&
     mushafPreloadService.initialized &&
     digitalKhattDataService.initialized;
-  const dkFontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // The font follows the text it draws, like the mushaf settings gating: a
+  // rewayah track's text is drawn with a DigitalKhatt font that has its
+  // marks, never IndoPak (Hafs only) or the QCF glyphs. Hafs tracks keep the
+  // reader's font. The word-by-word grid always shows Hafs words, so it
+  // keeps the reader's font too.
+  const dkFontFamily = getDkFontFamily(mushafRenderer, trackRewayah);
+  const wbwFontFamily = getDkFontFamily(mushafRenderer, 'hafs');
+  // @ai-end
   const subscribedFontMgr = useMushafFontMgr();
   const fontMgr = isDK ? subscribedFontMgr : null;
 
@@ -379,8 +398,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
         arabicFontSize={arabicFontSize}
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
+        wbwFontFamily={wbwFontFamily} // @ai
         indexedTajweedData={indexedTajweedData}
-        isActive={isLocked && item.verse_key === currentVerseKey}
+        isActive={isLocked && trackedVerseKeys.includes(item.verse_key)} // @ai
         translationName={translationName}
         translationId={selectedTranslationId}
         showWBW={showWBW}
@@ -401,8 +421,9 @@ export const QuranView: React.FC<QuranViewProps> = ({
       arabicFontSize,
       fontMgr,
       dkFontFamily,
+      wbwFontFamily, // @ai
       indexedTajweedData,
-      currentVerseKey,
+      trackedVerseKeys, // @ai
       isLocked,
       translationName,
       selectedTranslationId,

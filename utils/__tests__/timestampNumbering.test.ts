@@ -20,7 +20,10 @@ import {
   getRegisteredTimingNumbering,
   getTimingEntryStats,
   getTrackedVerseKeys,
+  parseVerseKeyListId,
   registerTimingNumbering,
+  selectTrackedVerseKeysId,
+  verseKeyListId,
   type TimingNumberingMode,
   type TimingSetClass,
 } from '../timestampNumbering';
@@ -208,14 +211,53 @@ describe('createTimingNumbering (rewayah-numbered)', () => {
     expect(n.entryAyahsForHafsAyah(2)).toEqual([1]);
   });
 
-  it('starts the Fatiha basmala (no Madani verse) at the next entry', () => {
+  // @ai-start
+  it('resolves the Fatiha basmala (no Madani verse) to the nearest real reciter verse', () => {
     const f = numbering('riwayah', 'warsh', 1, timings('warsh-14', 1));
     expect(f.entryAyahsForHafsAyah(1)).toEqual([]);
     expect(f.startEntryForHafsAyah(1)?.ayahNumber).toBe(1);
-    expect(f.endEntryAyahForHafsAyah(1)).toBeNull();
+    // Nothing precedes it: a range ending there ends on the reciter's verse 1
+    // (it used to resolve to nothing, so the range ended before it began).
+    expect(f.endEntryAyahForHafsAyah(1)).toBe(1);
+    expect(f.entryRangeForHafsAyah(1)).toEqual({start: 1, end: 1});
     expect(f.hafsKeysForEntry(1)).toEqual(['1:2']);
     expect(f.entryRangeForHafsAyah(7)).toEqual({start: 6, end: 7});
+    // Hafs verses that the reciter does recite are unaffected
+    expect(f.endEntryAyahForHafsAyah(2)).toBe(1);
+    expect(f.startEntryForHafsAyah(7)?.ayahNumber).toBe(6);
+    expect(f.endEntryAyahForHafsAyah(7)).toBe(7);
   });
+
+  it.each([
+    ['warsh' as RewayahId],
+    ['qalun' as RewayahId],
+    ['al-duri-abi-amr' as RewayahId],
+    ['al-susi' as RewayahId],
+  ])(
+    '%s (basmala is not a verse): every unit at Hafs 1:1 is the reciter verse 1',
+    rewayah => {
+      expect(verseMap.toRiwayahKeys(rewayah, '1:1')).toEqual([]);
+      const count = verseMap.verseCount(rewayah, 1)!;
+      const f = numbering('riwayah', rewayah, 1, synthetic(1, range(count)));
+      expect(f.startEntryForHafsAyah(1)?.ayahNumber).toBe(1);
+      expect(f.endEntryAyahForHafsAyah(1)).toBe(1);
+      expect(f.entryRangeForHafsAyah(1)).toEqual({start: 1, end: 1});
+      expect(f.hafsKeysForEntry(1)).toEqual(['1:2']);
+    },
+  );
+
+  it('al-Bazzi (Makki count): the basmala is a verse, nothing to resolve', () => {
+    const f = numbering(
+      'riwayah',
+      'al-bazzi',
+      1,
+      synthetic(1, range(verseMap.verseCount('al-bazzi', 1)!)),
+    );
+    expect(f.entryAyahsForHafsAyah(1)).toEqual([1]);
+    expect(f.endEntryAyahForHafsAyah(1)).toBe(1);
+    expect(f.hafsKeysForEntry(1)).toEqual(['1:1']);
+  });
+  // @ai-end
 
   it('never emits a key that does not exist in Hafs (al-Bazzi 112:5)', () => {
     const b = numbering('riwayah', 'al-bazzi', 112, timings('bazzi-296', 112));
@@ -315,7 +357,61 @@ describe('labels', () => {
     );
     expect(label([], '2:4', 'riwayah', 'warsh', 'warsh')).toBeNull();
   });
+
+  // @ai-start
+  it('gives no verse number to what has none in the mushaf on screen', () => {
+    // The Fatiha basmala (Hafs 1:1) is not a verse in a Warsh / Qalun / Duri /
+    // Susi mushaf: a "1:1" there would name al-hamdu.
+    expect(label(['1:1'], '1:1', 'hafs', 'hafs', 'warsh')).toBeNull();
+    expect(label(['1:1'], '1:1', 'hafs', 'warsh', 'al-duri-abi-amr')).toBe(
+      null,
+    );
+    expect(label(['1:2'], '1:2', 'hafs', 'hafs', 'warsh')).toBe('1:1');
+    // Hafs mushaf (and Hafs reciter): unchanged
+    expect(label(['1:1'], '1:1', 'hafs', 'hafs', 'hafs')).toBe('1:1');
+    expect(label(['112:0'], '112:0', 'hafs', 'hafs', 'hafs')).toBe('112:0');
+    // a mushaf whose numbering counts the basmala
+    expect(label(['1:1'], '1:1', 'hafs', 'hafs', 'al-bazzi')).toBe('1:1');
+  });
+  // @ai-end
 });
+
+// @ai-start
+describe('verse key list ids (value-comparable selector results)', () => {
+  it('round-trips and is the key itself for a single verse', () => {
+    expect(verseKeyListId([])).toBe('');
+    expect(verseKeyListId(['2:5'])).toBe('2:5');
+    expect(parseVerseKeyListId('')).toEqual([]);
+    expect(parseVerseKeyListId(verseKeyListId(['2:1', '2:2']))).toEqual([
+      '2:1',
+      '2:2',
+    ]);
+  });
+
+  it('selectTrackedVerseKeysId lists every Hafs verse being recited', () => {
+    expect(selectTrackedVerseKeysId({currentAyah: null})).toBe('');
+    const legacy = {
+      surahNumber: 2,
+      ayahNumber: 5,
+      verseKey: '2:5',
+      timestampFrom: 0,
+      timestampTo: 1,
+    };
+    // Hafs (and states written by older code): the verse key itself
+    expect(selectTrackedVerseKeysId({currentAyah: legacy})).toBe('2:5');
+    const mapped = {
+      ...legacy,
+      ayahNumber: 1,
+      verseKey: '2:1',
+      verseKeys: ['2:1', '2:2'],
+      reciterVerseKey: '2:1',
+    };
+    expect(
+      parseVerseKeyListId(selectTrackedVerseKeysId({currentAyah: mapped})),
+    ).toEqual(['2:1', '2:2']);
+  });
+});
+// @ai-end
 
 describe('getTrackedVerseKeys', () => {
   it('reads mapped keys and falls back to the legacy single key', () => {

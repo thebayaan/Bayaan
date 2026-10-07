@@ -24,7 +24,10 @@ import {moderateScale} from 'react-native-size-matters';
 import {SheetManager} from 'react-native-actions-sheet';
 import Color from 'color';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  formatPlaybackInfo, // @ai
+  useMushafPlayerStore,
+} from '@/store/mushafPlayerStore';
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {SURAHS} from '@/data/surahData';
 import {PlayIcon, PauseIcon} from '@/components/Icons';
@@ -43,9 +46,8 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
   const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
-  const verseTrackingUnavailable = useMushafPlayerStore(
-    s => s.numberingMode === 'disabled',
-  );
+  const numberingMode = useMushafPlayerStore(s => s.numberingMode); // @ai
+  const verseTrackingUnavailable = numberingMode === 'disabled'; // @ai
   const timestampError = useMushafPlayerStore(s => s.timestampError);
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
@@ -181,12 +183,11 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   }
 
   // ── Active state (playing / paused / loading) ───────────────────────
-  let infoText = surahName;
-  if (verseTrackingUnavailable) {
-    infoText = `${surahName} · Verse tracking unavailable`;
-  } else if (currentVerseLabel) {
-    infoText = `${surahName} ${currentVerseLabel}`;
-  }
+  // Same text as the iOS 26 toolbar (formatPlaybackInfo).
+  const infoText = formatPlaybackInfo(surahName, {
+    currentVerseLabel,
+    numberingMode,
+  }); // @ai
   const verseNavDisabled = verseTrackingUnavailable;
   const chevronColor = verseNavDisabled
     ? Color(theme.colors.text).alpha(0.3).toString()

@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTimestampStore} from '@/store/timestampStore';
+import type {AyahTrackingState} from '@/types/timestamps'; // @ai
 import {useReciterStore} from '@/store/reciterStore';
 import {expoAudioService} from '@/services/audio/ExpoAudioService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
@@ -29,6 +30,11 @@ import {
  * useCurrentTrackRewayah), without that hook's display fallback to Hafs: for
  * verse numbering an unresolvable rewayah is unknown, never Hafs. Until the
  * catalog has loaded, an unknown rewayat id counts as "not known yet".
+ *
+ * A verse written to the store by someone else ("Play from here" publishes
+ * the tapped verse) is replaced on the next tick by the state of the timing
+ * entry being recited, so the highlight always covers every Hafs verse the
+ * reciter is reciting.
  */
 export function useAyahTracker() {
   const playbackState = usePlayerStore(s => s.playback.state);
@@ -54,6 +60,8 @@ export function useAyahTracker() {
   const rewayahKnown = reciterRewayah !== null || catalogReady;
   const [numbering, setNumbering] = useState<TimingNumbering | null>(null);
   const lastAyahRef = useRef<number | null>(null);
+  // The state this tracker last wrote (null after clearing it). @ai
+  const lastPublishedRef = useRef<AyahTrackingState | null>(null);
 
   const surahNumber = surahId ? parseInt(surahId, 10) : NaN;
   const timestampsMatchTrack =
@@ -132,6 +140,15 @@ export function useAyahTracker() {
     const interval = setInterval(() => {
       const current = useTimestampStore.getState().currentSurahTimestamps;
       if (current !== timestamps) return;
+      // @ai-start
+      // Someone else wrote the current verse (e.g. "Play from here" with only
+      // the tapped key): publish the full state of the entry on this tick.
+      if (
+        useTimestampStore.getState().currentAyah !== lastPublishedRef.current
+      ) {
+        lastAyahRef.current = null;
+      }
+      // @ai-end
 
       const positionSec = expoAudioService.getCurrentTime(); // seconds (sync)
       const positionMs = positionSec * 1000;
@@ -142,6 +159,7 @@ export function useAyahTracker() {
       if (!entry || keys.length === 0) {
         if (lastAyahRef.current !== null) {
           lastAyahRef.current = null;
+          lastPublishedRef.current = null; // @ai
           useTimestampStore.getState().clearCurrentAyah();
         }
         return;
@@ -159,6 +177,7 @@ export function useAyahTracker() {
           verseKeys: keys,
           reciterVerseKey: `${entry.surahNumber}:${entry.ayahNumber}`,
         };
+        lastPublishedRef.current = tracked; // @ai
         useTimestampStore.getState().setCurrentAyah(tracked);
       }
     }, 200);

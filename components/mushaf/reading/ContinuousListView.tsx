@@ -10,7 +10,10 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -22,7 +25,10 @@ import {
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  useMushafPlayerStore,
+  usePlaybackVerseKeys, // @ai
+} from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
@@ -178,8 +184,9 @@ const ContinuousListView = forwardRef<
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
 
-    // Active ayah highlighting (same pattern as player QuranView)
-    const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+    // Active ayah highlighting (same pattern as player QuranView): every
+    // Hafs verse the reciter is reciting.
+    const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
     const playbackState = useMushafPlayerStore(s => s.playbackState);
     const isPlaying = playbackState === 'playing';
 
@@ -243,12 +250,12 @@ const ContinuousListView = forwardRef<
       [allahNameHighlightColorSetting, theme.isDarkMode],
     );
 
-    const dkFontFamily =
-      mushafRenderer === 'dk_indopak'
-        ? 'DigitalKhattIndoPak'
-        : mushafRenderer === 'dk_v1'
-          ? 'DigitalKhattV1'
-          : 'DigitalKhattV2';
+    // @ai-start
+    // Same font as before for Hafs; a font that cannot draw a rewayah's marks
+    // (IndoPak) is never used for non-Hafs text.
+    const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+    const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
+    // @ai-end
     const isDK =
       (mushafRenderer === 'dk_v1' ||
         mushafRenderer === 'dk_v2' ||
@@ -341,7 +348,9 @@ const ContinuousListView = forwardRef<
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
-            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
+            isActive={
+              isPlaying && playbackVerseKeys.includes(item.verse.verse_key) // @ai
+            }
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
@@ -367,7 +376,7 @@ const ContinuousListView = forwardRef<
         dkFontFamily,
         indexedTajweedData,
         handleVersePress,
-        currentVerseKey,
+        playbackVerseKeys, // @ai
         isPlaying,
         translationName,
         selectedTranslationId,
@@ -397,7 +406,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={items}
         renderItem={renderItem}
-        extraData={`${currentVerseKey}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
+        extraData={`${playbackVerseKeys.join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`} // @ai
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}

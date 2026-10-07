@@ -17,6 +17,7 @@
  * follow-along highlight and verse seeking are disabled for that surah.
  */
 
+import {useMemo} from 'react'; // @ai
 import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,6 +40,8 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
   formatPlaybackVerseLabel,
+  parseVerseKeyListId, // @ai
+  verseKeyListId, // @ai
   type TimingNumbering,
   type TimingNumberingMode,
 } from '@/utils/timestampNumbering';
@@ -65,6 +68,19 @@ export const TIMESTAMPS_UNAVAILABLE_ERROR =
 /** Shown when a repeat / loop is requested on a surah without verse timing. */
 export const VERSE_TIMING_UNAVAILABLE_ERROR =
   "Verse-by-verse playback isn't available for this reciter on this surah. Try a different reciter.";
+
+// @ai-start
+/**
+ * Shown when a requested range resolves to no timing entry of the reciter
+ * (playback would end before it starts), instead of a silent stop or a
+ * 'playing' state with no audio.
+ */
+export const RANGE_UNPLAYABLE_ERROR =
+  'This selection has no verses to play for this reciter. Try a different reciter or range.';
+
+/** Shown in place of a verse number while the surah has no verse tracking. */
+export const VERSE_TRACKING_UNAVAILABLE_LABEL = 'Verse tracking unavailable';
+// @ai-end
 
 const NO_KEYS: readonly string[] = Object.freeze([]);
 
@@ -208,7 +224,10 @@ function isIdentity(numbering: TimingNumbering | null): boolean {
 
 /**
  * Last timing entry inside the range for `surah`: +Infinity when the range
- * continues past this surah, -Infinity when it ended before it.
+ * continues past this surah, -Infinity when it ended before it. For a
+ * translated numbering both ends resolve to real reciter verses (see
+ * TimingNumbering), and a range never ends before the entry it starts at:
+ * Hafs 1:1-1:1 with a Madani reciter plays the reciter's verse 1.
  */
 function rangeEndEntry(
   state: MushafPlayerStoreState,
@@ -219,7 +238,12 @@ function rangeEndEntry(
   if (end.surah > surah) return Infinity;
   if (end.surah < surah) return -Infinity;
   if (isIdentity(numbering)) return end.ayah;
-  return numbering!.endEntryAyahForHafsAyah(end.ayah) ?? -Infinity;
+  // @ai-start
+  const last = numbering!.endEntryAyahForHafsAyah(end.ayah);
+  if (last === null) return -Infinity;
+  const first = rangeStartEntry(state, numbering, surah);
+  return first !== null ? Math.max(last, first) : last;
+  // @ai-end
 }
 
 /** First timing entry of the range when it starts in `surah`, else null. */
@@ -270,8 +294,14 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
   const jumpToEntry = (surah: number, entryAyah: number): boolean => {
     set({_entryAyah: 0});
     const ok = mushafAudioService.seekToAyah(entryAyah);
-    if (ok) set(verseStateFor(get()._numbering, surah, entryAyah));
-    return ok;
+    // @ai-start
+    // The seek dispatches the entry change synchronously, and a range that
+    // ends there finishes playback inside that dispatch: never republish a
+    // verse for playback that has already stopped.
+    if (!ok || get().playbackState === 'idle') return false;
+    set(verseStateFor(get()._numbering, surah, entryAyah));
+    return true;
+    // @ai-end
   };
 
   const finishPlayback = () => {
@@ -351,6 +381,13 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
         }
         if (start !== null) jumpToEntry(surah, start);
       }
+      // @ai-start
+      if (get().playbackState === 'idle') {
+        // The range ended at its first entry: nothing to play.
+        set({timestampError: RANGE_UNPLAYABLE_ERROR});
+        return;
+      }
+      // @ai-end
       mushafAudioService.play();
       set({playbackState: 'playing'});
     } catch (error) {
@@ -370,7 +407,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
     const entry = rangeStartEntry(state, state._numbering, surah);
     if (entry === null || !jumpToEntry(surah, entry)) {
       // No timing entry to return to: stop rather than loop on nothing.
-      finishPlayback();
+      if (get().playbackState !== 'idle') finishPlayback(); // @ai
       return;
     }
     if (resume) mushafAudioService.play();
@@ -466,6 +503,7 @@ function createPlaybackEngine(set: StoreSet, get: StoreGet) {
           mushafAudioService.play();
           return;
         }
+        if (get().playbackState === 'idle') return; // @ai
       }
       set({_versePlayCount: 1});
     }
@@ -666,6 +704,14 @@ export const useMushafPlayerStore = create<MushafPlayerStoreState>()(
               const start = numbering.startEntryForHafsAyah(ayahNumber);
               if (start) engine.jumpToEntry(surahNumber, start.ayahNumber);
             }
+            // @ai-start
+            if (get().playbackState === 'idle') {
+              // The range ended at its first entry (it resolved to no verse
+              // of this reciter): say so instead of claiming to play.
+              set({timestampError: RANGE_UNPLAYABLE_ERROR});
+              return;
+            }
+            // @ai-end
             mushafAudioService.play();
 
             set({playbackState: 'playing'});
@@ -754,3 +800,89 @@ export function isVerseKeyPlaying(
 ): boolean {
   return s.playbackState !== 'idle' && s.currentVerseKeys.includes(verseKey);
 }
+
+// @ai-start
+/**
+ * Value-comparable id of the Hafs verse keys to highlight ('' when idle or
+ * when no verse is tracked). For a Hafs recitation it is just
+ * currentVerseKey; a reciter verse covering several Hafs verses (Warsh 2:1 =
+ * Hafs 2:1 + 2:2) lists them all.
+ */
+export function selectPlaybackVerseKeysId(s: MushafPlayerStoreState): string {
+  if (s.playbackState === 'idle') return '';
+  if (s.currentVerseKeys.length > 0) return verseKeyListId(s.currentVerseKeys);
+  return s.currentVerseKey ?? '';
+}
+
+/**
+ * Every Hafs verse key the mushaf player is reciting (empty when idle): what
+ * every follow-along highlight must paint. Re-renders only when the set of
+ * keys changes.
+ */
+export function usePlaybackVerseKeys(): readonly string[] {
+  const id = useMushafPlayerStore(selectPlaybackVerseKeysId);
+  return useMemo(() => parseVerseKeyListId(id), [id]);
+}
+
+/**
+ * What the player is reciting, for the player bar and the iOS 26 toolbar:
+ * "Al-Baqarah 2:4" (verse in the numbering of the mushaf on screen),
+ * "Al-Mulk · Verse tracking unavailable", or just the surah name when no
+ * verse is being recited yet.
+ */
+export function formatPlaybackInfo(
+  surahName: string,
+  s: Pick<MushafPlayerStoreState, 'currentVerseLabel' | 'numberingMode'>,
+): string {
+  if (s.numberingMode === 'disabled') {
+    return `${surahName} · ${VERSE_TRACKING_UNAVAILABLE_LABEL}`;
+  }
+  if (s.currentVerseLabel) return `${surahName} ${s.currentVerseLabel}`;
+  return surahName;
+}
+
+export interface PlaybackNotice {
+  title: string;
+  message: string;
+  preset: 'error' | 'none';
+}
+
+type NoticeState = Pick<
+  MushafPlayerStoreState,
+  'playbackState' | 'timestampError' | 'numberingMode' | 'currentSurah'
+>;
+
+/**
+ * Messages the player bar shows inline, as a one-off notice for surfaces
+ * that have no room for them (the iOS 26 toolbar): a refused or impossible
+ * playback request, and a surah that plays without verse tracking. Null when
+ * the transition from `prev` to `next` shows nothing new.
+ */
+export function getPlaybackNotice(
+  prev: NoticeState,
+  next: NoticeState,
+  surahName: (surah: number) => string,
+): PlaybackNotice | null {
+  if (next.timestampError && next.timestampError !== prev.timestampError) {
+    return {
+      title: 'Playback unavailable',
+      message: next.timestampError,
+      preset: 'error',
+    };
+  }
+  if (
+    next.playbackState !== 'idle' &&
+    next.numberingMode === 'disabled' &&
+    (prev.numberingMode !== 'disabled' ||
+      prev.currentSurah !== next.currentSurah)
+  ) {
+    const name = surahName(next.currentSurah);
+    return {
+      title: VERSE_TRACKING_UNAVAILABLE_LABEL,
+      message: `${name ? `${name} plays` : 'This surah plays'} without verse highlighting for this reciter.`,
+      preset: 'none',
+    };
+  }
+  return null;
+}
+// @ai-end

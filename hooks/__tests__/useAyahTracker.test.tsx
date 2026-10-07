@@ -84,7 +84,10 @@ import {RECITERS} from '@/data/reciterData';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
 import {loadTimings} from '@/services/timestamps/__fixtures__/timingFixtures';
 import {findAyahTimestamp, getTrackedVerseKeys} from '@/utils/timestampUtils';
-import type {MappedAyahTrackingState} from '@/utils/timestampNumbering';
+import {
+  selectTrackedVerseKeysId, // @ai
+  type MappedAyahTrackingState,
+} from '@/utils/timestampNumbering';
 
 declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -238,6 +241,51 @@ describe('useAyahTracker', () => {
     await tickAt(t[4].timestampFrom + 60);
     expect(current()?.verseKey).toBe('2:5');
   });
+
+  // @ai-start
+  it('"Play from here" writing only the tapped verse is completed to every recited Hafs verse', async () => {
+    await startTrack('warsh-14', 2);
+    const t = loadTimings('warsh-14', 2)!;
+    await tickAt(t[0].timestampFrom + 50); // Warsh 2:1 = Hafs 2:1 + 2:2
+    expect(getTrackedVerseKeys(current())).toEqual(['2:1', '2:2']);
+    // The verse-actions sheet seeks to the entry and writes the tapped key
+    await act(async () => {
+      useTimestampStore.getState().setCurrentAyah({
+        surahNumber: 2,
+        ayahNumber: 1,
+        verseKey: '2:2',
+        timestampFrom: t[0].timestampFrom,
+        timestampTo: t[0].timestampTo,
+      });
+    });
+    expect(getTrackedVerseKeys(current())).toEqual(['2:2']);
+    await tickAt(t[0].timestampFrom + 60); // same entry, next tick
+    expect(current()).toMatchObject({
+      verseKey: '2:1',
+      verseKeys: ['2:1', '2:2'],
+      reciterVerseKey: '2:1',
+    });
+  });
+
+  it('Hafs: an external write is replaced by the same single verse', async () => {
+    await startTrack('hafs-clean', 2);
+    const t = loadTimings('hafs-clean', 2)!;
+    await tickAt(t[4].timestampFrom + 50);
+    await act(async () => {
+      useTimestampStore.getState().setCurrentAyah({
+        surahNumber: 2,
+        ayahNumber: 5,
+        verseKey: '2:5',
+        timestampFrom: t[4].timestampFrom,
+        timestampTo: t[4].timestampTo,
+      });
+    });
+    await tickAt(t[4].timestampFrom + 60);
+    expect(current()).toMatchObject({verseKey: '2:5', verseKeys: ['2:5']});
+    // what the verse list highlights did not change
+    expect(selectTrackedVerseKeysId(useTimestampStore.getState())).toBe('2:5');
+  });
+  // @ai-end
 
   it('Hafs recitations are unchanged', async () => {
     await startTrack('hafs-clean', 2);

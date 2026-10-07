@@ -12,6 +12,8 @@
  * Hafs-numbered sets keep the identity behaviour.
  */
 
+import React, {act} from 'react';
+import TestRenderer from 'react-test-renderer';
 import type {AyahTimestamp} from '@/types/timestamps';
 
 interface MockPlayer {
@@ -109,7 +111,16 @@ import {
   isVerseKeyPlaying,
   selectPlaybackVerseKeys,
   VERSE_TIMING_UNAVAILABLE_ERROR,
+  // @ai-start
+  RANGE_UNPLAYABLE_ERROR,
+  TIMESTAMPS_UNAVAILABLE_ERROR,
+  formatPlaybackInfo,
+  getPlaybackNotice,
+  selectPlaybackVerseKeysId,
+  usePlaybackVerseKeys,
+  // @ai-end
 } from '../mushafPlayerStore';
+import {parseVerseKeyListId} from '@/utils/timestampNumbering'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
 import {
@@ -532,3 +543,237 @@ describe('playback requests', () => {
     });
   });
 });
+
+// @ai-start
+declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
+global.IS_REACT_ACT_ENVIRONMENT = true;
+
+/**
+ * Records every store update that claims 'playing' while no audio player
+ * exists (the "playing with no audio" state).
+ */
+function watchSilentPlaying() {
+  const violations: (string | null)[] = [];
+  const unsubscribe = useMushafPlayerStore.subscribe(s => {
+    if (s.playbackState === 'playing' && !mushafAudioService.hasPlayer()) {
+      violations.push(s.currentVerseKey);
+    }
+  });
+  return {violations, unsubscribe};
+}
+
+describe('Fatiha basmala (Hafs 1:1) with a Madani-numbered reciter', () => {
+  // The basmala is not a verse in the Madani count (Warsh 1:1 = Hafs 1:2):
+  // every range / repeat unit resolves to the nearest real reciter verse.
+
+  it('a range 1:1-1:1 plays the reciter verse 1 once, then stops', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 1});
+    const watch = watchSilentPlaying();
+    await play('warsh-14', 1, '1:1');
+    expect(st().playbackState).toBe('playing');
+    expect(player().playing).toBe(true);
+    expect(player().seeks).toEqual([
+      entry('warsh-14', 1, 1).timestampFrom / 1000,
+    ]);
+    expect(st().currentVerseKeys).toEqual(['1:2']);
+    const heard = await listen('warsh-14', 1);
+    expect(heard).toEqual([1]);
+    expect(st().playbackState).toBe('idle');
+    expect(st().timestampError).toBeNull();
+    watch.unsubscribe();
+    expect(watch.violations).toEqual([]);
+  });
+
+  it('Repeat 1:1 loops the reciter verse 1 with real audio', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 1});
+    st().setVerseRepeatCount(0);
+    st().setRangeRepeatCount(0);
+    const watch = watchSilentPlaying();
+    await play('warsh-14', 1, '1:1');
+    const heard = await listen('warsh-14', 1, 4);
+    expect(heard).toEqual([1, 1, 1, 1]);
+    expect(st().playbackState).toBe('playing');
+    expect(player().playing).toBe(true);
+    expect(st().currentVerseKeys).toEqual(['1:2']);
+    watch.unsubscribe();
+    expect(watch.violations).toEqual([]);
+  });
+
+  it('a range 1:1-1:3 plays Hafs 1:2 and 1:3 (reciter verses 1-2)', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 3});
+    await play('warsh-14', 1, '1:1');
+    const heard = await listen('warsh-14', 1);
+    expect(heard).toEqual([1, 2]);
+    expect(heard.flatMap(a => warshHafs(1, a))).toEqual(['1:2', '1:3']);
+    expect(st().playbackState).toBe('idle');
+  });
+
+  it('Hafs: a range 1:1-1:1 still plays entry 1 once', async () => {
+    st().setRange({surah: 1, ayah: 1}, {surah: 1, ayah: 1});
+    await play('hafs-clean', 1, '1:1');
+    expect(st().currentVerseKeys).toEqual(['1:1']);
+    const heard = await listen('hafs-clean', 1);
+    expect(heard).toEqual([1]);
+    expect(st().playbackState).toBe('idle');
+  });
+});
+
+describe('a range that ends before it starts', () => {
+  it('reports it instead of claiming to play with no audio', async () => {
+    // Not reachable from the range pickers (they keep end >= start); this
+    // pins the guard: the engine used to release the player inside the
+    // first seek and then still set 'playing'.
+    st().setRange({surah: 2, ayah: 10}, {surah: 2, ayah: 5});
+    const watch = watchSilentPlaying();
+    await play('hafs-clean', 2, '2:10');
+    watch.unsubscribe();
+    expect(st().playbackState).toBe('idle');
+    expect(st().timestampError).toBe(RANGE_UNPLAYABLE_ERROR);
+    expect(st().currentVerseKey).toBeNull();
+    expect(watch.violations).toEqual([]);
+  });
+});
+
+describe('highlight keys for the renderers', () => {
+  it('selectPlaybackVerseKeysId lists every recited Hafs verse while not idle', async () => {
+    expect(selectPlaybackVerseKeysId(st())).toBe('');
+    await play('warsh-14', 2);
+    at(entry('warsh-14', 2, 1).timestampFrom + 50);
+    expect(parseVerseKeyListId(selectPlaybackVerseKeysId(st()))).toEqual([
+      '2:1',
+      '2:2',
+    ]);
+    // page modes keep the highlight while paused
+    st().setPlaybackState('paused');
+    expect(parseVerseKeyListId(selectPlaybackVerseKeysId(st()))).toEqual([
+      '2:1',
+      '2:2',
+    ]);
+    st().stop();
+    expect(selectPlaybackVerseKeysId(st())).toBe('');
+  });
+
+  it('Hafs: the id is exactly currentVerseKey (single verse)', async () => {
+    await play('hafs-clean', 2);
+    for (const e of T('hafs-clean', 2).slice(0, 20)) {
+      at(e.timestampFrom + 50);
+      expect(selectPlaybackVerseKeysId(st())).toBe(st().currentVerseKey);
+    }
+  });
+
+  it('usePlaybackVerseKeys re-renders only when the recited verses change', async () => {
+    await play('warsh-14', 2);
+    at(entry('warsh-14', 2, 1).timestampFrom + 50);
+    const seen: (readonly string[])[] = [];
+    function Probe() {
+      seen.push(usePlaybackVerseKeys());
+      return null;
+    }
+    let renderer: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      renderer = TestRenderer.create(
+        React.createElement(Probe) as Parameters<typeof TestRenderer.create>[0],
+      );
+    });
+    expect(seen[seen.length - 1]).toEqual(['2:1', '2:2']);
+    const renders = seen.length;
+    act(() => st().setRate(1.25)); // unrelated store update
+    expect(seen.length).toBe(renders);
+    act(() => at(entry('warsh-14', 2, 2).timestampFrom + 50)); // Hafs 2:3
+    expect(seen[seen.length - 1]).toEqual(['2:3']);
+    act(() => st().stop());
+    expect(seen[seen.length - 1]).toEqual([]);
+    act(() => renderer?.unmount());
+  });
+});
+
+describe('player info text and notices', () => {
+  it('formats the verse in the numbering of the mushaf on screen', () => {
+    expect(
+      formatPlaybackInfo('Al-Baqarah', {
+        currentVerseLabel: '2:4',
+        numberingMode: 'riwayah',
+      }),
+    ).toBe('Al-Baqarah 2:4');
+    expect(
+      formatPlaybackInfo('Al-Mulk', {
+        currentVerseLabel: null,
+        numberingMode: 'disabled',
+      }),
+    ).toBe('Al-Mulk · Verse tracking unavailable');
+    // no verse yet: the surah alone (never "2:0")
+    expect(
+      formatPlaybackInfo('Al-Baqarah', {
+        currentVerseLabel: null,
+        numberingMode: 'hafs',
+      }),
+    ).toBe('Al-Baqarah');
+  });
+
+  it('Hafs: the text is "<surah> <surah>:<ayah>" as before', async () => {
+    await play('hafs-clean', 2, '2:5');
+    expect(formatPlaybackInfo('Al-Baqarah', st())).toBe('Al-Baqarah 2:5');
+  });
+
+  const base = {
+    playbackState: 'idle' as const,
+    timestampError: null,
+    numberingMode: null,
+    currentSurah: 0,
+  };
+  const names = (n: number) => (n === 67 ? 'Al-Mulk' : '');
+
+  it('notices a refused request once per refusal', () => {
+    const refused = {...base, timestampError: VERSE_TIMING_UNAVAILABLE_ERROR};
+    expect(getPlaybackNotice(base, refused, names)).toEqual({
+      title: 'Playback unavailable',
+      message: VERSE_TIMING_UNAVAILABLE_ERROR,
+      preset: 'error',
+    });
+    expect(getPlaybackNotice(refused, refused, names)).toBeNull();
+    expect(
+      getPlaybackNotice(
+        refused,
+        {...base, timestampError: TIMESTAMPS_UNAVAILABLE_ERROR},
+        names,
+      )?.message,
+    ).toBe(TIMESTAMPS_UNAVAILABLE_ERROR);
+  });
+
+  it('notices a surah that plays without verse tracking, once', () => {
+    const loading = {
+      ...base,
+      playbackState: 'loading' as const,
+      numberingMode: 'disabled' as const,
+      currentSurah: 67,
+    };
+    const notice = getPlaybackNotice(base, loading, names);
+    expect(notice?.title).toBe('Verse tracking unavailable');
+    expect(notice?.message).toContain('Al-Mulk');
+    const playing = {...loading, playbackState: 'playing' as const};
+    expect(getPlaybackNotice(loading, playing, names)).toBeNull();
+    // tracked surahs never notice anything
+    const tracked = {...playing, numberingMode: 'hafs' as const};
+    expect(getPlaybackNotice(base, tracked, names)).toBeNull();
+  });
+
+  it('the store emits the notices the toolbar shows', async () => {
+    const notices: string[] = [];
+    const unsubscribe = useMushafPlayerStore.subscribe((s, prev) => {
+      const n = getPlaybackNotice(prev, s, names);
+      if (n) notices.push(n.title);
+    });
+    await play('doori-269', 562, '67:5');
+    st().stop();
+    st().setRange({surah: 67, ayah: 5}, {surah: 67, ayah: 5});
+    st().setVerseRepeatCount(0);
+    await play('doori-269', 562, '67:5');
+    await play('hafs-clean', 2, '2:5');
+    unsubscribe();
+    expect(notices).toEqual([
+      'Verse tracking unavailable',
+      'Playback unavailable',
+    ]);
+  });
+});
+// @ai-end
