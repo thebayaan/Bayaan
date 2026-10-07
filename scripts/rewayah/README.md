@@ -28,15 +28,17 @@ build or CI on any difference.
 | `build_sibling_rewayah.py` | the builder (alignment, slot policies, markers, highlights, verse maps) |
 | `highlights.py` | Release 1 highlight classification (diff JSON format 2) |
 | `validate_rewayah_db.py` | independent exact-match validator (+ `--glyphs`, `--marks`) |
+| `render_review.json` | the visually reviewed clusters the glyph gate accepts (see [Render review](#render-review)) |
 | `validate.py` | round-trip self-test of the convention map against the DK Hafs DB |
 | `compare_outputs.py` | a fresh build must equal the committed files (CI drift check) |
+| `requirements-ci.txt` | pinned `uharfbuzz` / `fonttools` for the glyph gate |
 
 ## Rebuild
 
 ```sh
 python3 scripts/rewayah/vendor_sources.py --check        # sources match the lock
 python3 scripts/rewayah/build_sibling_rewayah.py         # all 7 (or: ... warsh bazzi)
-python3 scripts/rewayah/validate_rewayah_db.py --glyphs  # needs: pip install uharfbuzz fonttools
+python3 scripts/rewayah/validate_rewayah_db.py --glyphs  # needs: pip install -r scripts/rewayah/requirements-ci.txt
 python3 scripts/rewayah/validate.py
 ```
 
@@ -74,8 +76,10 @@ changes:
    dropped, the trailing verse number checked against `aya_no`, a standalone
    `۞` attached to the next word, a letterless token glued to the previous
    word (A1).
-2. Convert each token (`normalize.dk_token`): the KFGQPC → DK convention map
-   and the per-rewayah render policy (below).
+2. Convert each token (`normalize.dk_tokens`): the KFGQPC → DK convention map
+   and the per-rewayah render policy (below). The token read before it is
+   passed as context: it decides which of its two meanings a KFGQPC U+06DF
+   dot has (`normalize.side_dot_kinds`).
 3. Align, per surah, the Hafs content slots with the rewayah tokens on their
    rasm skeleton: skeleton-equality anchors plus a banded dynamic programme
    with the moves 1:1, 1:0, 0:1, 2:1, 1:2.
@@ -109,6 +113,9 @@ Summary:
 
 | rule | rewayat | decision |
 |---|---|---|
+| U+06DF dot for a softened / changed hamza (`أَ۟ذَا`, `هَٰؤُلَآ۟`) | all but Shu'bah | → U+06EC, DK's tashil dot (DK draws U+06DF as the 'silent letter' circle) |
+| U+06DF start-with-damma dot on a silent alef (wasl, Warsh naql) | far rewayat | kept: DK's circle (no dot beside a letter in DK) |
+| sukun + U+06DC (69:28) | all | CGJ inserted, as the DK Hafs DB writes it |
 | U+06D2 yeh barree | Warsh, Qalun | → U+0649 |
 | U+0652 Maghribi sukun | Warsh, Qalun | → U+06DF (circle shape, kept) |
 | U+06D6 Habti waqf `ص` | Warsh, Qalun | omitted (DK draws `صلى`, the opposite advice) |
@@ -121,7 +128,8 @@ Summary:
 | `ضظ` (81:24) | Bazzi, Qunbul, Duri, Susi | → `ظ` (DK has no small ظ) |
 
 Letters are only changed by the three listed mappings (U+06D2, U+066E, `ضظ`);
-the validator's letter gate enforces it.
+the validator's letter gate enforces it. Rules marked `confirm` in
+`--policy` change what a reader sees and await a qualified reader's decision.
 
 ## Highlights (`<id>-diff.json`, format 2)
 
@@ -149,8 +157,37 @@ omitted; Shu'bah's maps are empty.
 
 ## Gates (`validate_rewayah_db.py`)
 
-sources lock · row identity · slot format and DK cmap · exact reading stream
-per surah · verse numbers 1..N · letter preservation · diff JSON integrity ·
-verse map re-derived from the DB · (`--glyphs`) HarfBuzz: 0 `.notdef`, 0
-dotted circles, no unattached mark outside the listed render limitations.
+- sources lock; row identity with the Hafs DB;
+- slot format, DK cmap, no token starting with a combining mark;
+- exact reading stream per surah (content and verse markers); verse numbers
+  1..N; letter preservation;
+- placement: every content slot holds one rewayah word within a skeleton
+  distance of 1/3 of the Hafs word in that slot, except the declared
+  `PLACEMENT_EVENTS` (P2 / P3 / P4 / 1:2), so a word moved to a neighbouring
+  slot fails even if the reading order is intact;
+- diff JSON integrity (an entry's words, without an inline marker, must differ
+  from Hafs); verse map re-derived from the DB;
+- `--glyphs` (HarfBuzz, DigitalKhattFont and the V1 font): 0 `.notdef`; every
+  cluster absent from the DK Hafs DB is in `render_review.json`; a mark without
+  an anchor or turned into a spacing glyph is accepted only for a reviewed
+  cluster and context; with all 7 rewayat, an unused review entry fails.
+  The DK fonts have no dotted-circle glyph, so broken clusters are checked on
+  the text (slot gate).
+
 CI runs all of them (`.github/workflows/quran-data.yml`).
+
+## Render review
+
+`render_review.json` lists every cluster (base letter + mark sequence, as hex
+code points) of the rewayah DBs that never occurs in the DK Hafs DB, plus the
+clusters the DK fonts draw with a mark left without an anchor (zero offset) or
+turned into a spacing glyph. Each entry has a family with a verdict (`ok`:
+drawn like the KFGQPC font; `limitation`: a known DK render limit) and, for an
+accepted issue, the bases before the cluster (`^` = start of the word) where it
+was reviewed, since the joining form decides whether DK has an anchor.
+
+When the glyph gate reports an unreviewed cluster or context: render the word
+in DigitalKhattFont (e.g. `hb-view --font-file=data/mushaf/digitalkhatt/DigitalKhattFont.otf`)
+next to the official KFGQPC riwayah font, decide whether it reads correctly,
+and add or extend the entry (or fix the render policy). Remove entries the
+gate reports as unused.

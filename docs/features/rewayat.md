@@ -62,7 +62,7 @@ python3 scripts/rewayah/validate_rewayah_db.py --glyphs
 
 1. **Verify** each source against `sources.lock.json`.
 2. **Tokenize** (`normalize.parse_verse`): the v2.x verse number (one code point U+FC00 + n − 1, or digits) is checked against `aya_no` and removed; NBSP is a space; RLM dropped; a standalone `۞` is attached to the next word; a letterless token is glued to the previous word.
-3. **Convert** each token (`normalize.dk_token`): KFGQPC → DigitalKhatt encoding conventions (sukun shapes, open tanween, decomposed hamza, `ـَٔا`) plus the per-rewayah [render policy](#render-policy).
+3. **Convert** each token (`normalize.dk_tokens`): KFGQPC → DigitalKhatt encoding conventions (sukun shapes, open tanween, decomposed hamza, `ـَٔا`) plus the per-rewayah [render policy](#render-policy). The token read before it is passed as context, because the KFGQPC dot U+06DF has two meanings (below).
 4. **Align** each surah's Hafs word slots with the rewayah tokens on their rasm skeleton: skeleton-equality anchors and a banded dynamic programme (moves 1:1, 1:0, 0:1, 2:1, 1:2). Hafs text never leaks into a slot and no rewayah word is dropped.
 5. **Assign** with declared policies: Hafs-only word → `''` (Nafi' 57:24 `هُوَ`); one token over two slots → first slot (15:7, 27:20, 36:22, 40:26, 73:20, 75:1); extra token → previous slot (9:100); 37:130 keeps both words; sources without a basmala verse (Madani / Basri counts) keep the exact Hafs basmala, unnumbered, in 1:1, and number from al-hamdu (`۝٦` inline after `عَلَيْهِمْ`).
 6. **Markers**: a Hafs marker slot receives the rewayah marker whose verse ends there, else `''`; rewayah verse ends without a Hafs slot are written inline.
@@ -76,6 +76,9 @@ The DigitalKhatt font is a Madani font: some KFGQPC riwayah marks have no glyph 
 
 | Mark | Rewayat | Decision |
 |---|---|---|
+| U+06DF dot in place of a softened or changed hamza (`أَ۟ذَا`, Qalun `أَٰ۟نَّكَ`, `هَٰؤُلَآ۟`, Qunbul `جَآءَ ا۟لَ`) | Warsh 26, Qalun 39, Bazzi 46, Qunbul 33, Duri 32, Susi 32 | → U+06EC, DK's tashil dot (Hafs 41:44); DK draws U+06DF as the Madani circle 'this letter is never pronounced', which inverted the meaning. The KFGQPC Bazzi / Qunbul / Duri / Susi texts themselves write the 23:44 tashil with U+06EC. Which of the two uses applies is decided from the token and the word before it (`side_dot_kinds`, checked against a Hafs-alignment oracle on all 877 U+06DF) |
+| U+06DF start-with-damma dot beside a silent alef (hamzat al-wasl, 138 per far rewayah; Warsh naql `كُفَّارٌ ا۟وْلَٰٓئِكَ`, 117) | Warsh, Qalun, Duri, Susi | kept: DK draws its circle above the alef (silent in connected reading, as the alef is); the start vowel is lost |
+| sukun + small high seen (69:28) | Bazzi, Qunbul, Shu'bah | CGJ inserted between them, as the DK Hafs DB writes 69:28 / 75:27 / 83:14 (otherwise DK stacks the sukun on the seen) |
 | U+06D2 yeh barree | Warsh, Qalun | → U+0649 alef maksura |
 | U+0652 Maghribi sukun (circle) | Warsh, Qalun | → U+06DF (DK's circle) |
 | U+06D6 Habti waqf `ص` | Warsh, Qalun | omitted: DK draws the Madani `صلى` (continuing preferred), the opposite advice |
@@ -87,7 +90,7 @@ The DigitalKhatt font is a Madani font: some KFGQPC riwayah marks have no glyph 
 | U+066E dotless tooth (6:19) | Bazzi, Qunbul | → U+0649 |
 | `ضظ` (81:24) | Bazzi, Qunbul, Duri, Susi | → `ظ`: KFGQPC draws ض with a small ظ (read ظ); DK has no small ظ |
 
-Letters change only through the three listed mappings (U+06D2, U+066E, `ضظ`); the letter gate enforces it.
+Letters change only through the three listed mappings (U+06D2, U+066E, `ضظ`); the letter gate enforces it. The decisions that change what a reader sees (tashil dot, start-with-damma dot, Habti sign omitted, wasl start-with-kasra dot, 81:24 `ظ`) are flagged `confirm` in the policy table and await a qualified reader's sign-off.
 
 ## Highlight model
 
@@ -99,7 +102,7 @@ The diff JSON is format 2: `{"__format": 2, "s:a": {category: [[wordPos, [charId
 | `mukhtalif` | Warsh, Qalun, Duri, Susi | background tint, whole word (`[]`) | same |
 | `silah` | all with differences | foreground, explicit char indices | silah marks (ۥ ۦ and their damma / kasra) this rewayah pronounces where Hafs does not |
 
-"Read differently" means different letters (including a hamza Hafs does not have), long vowels (the dagger alef counts: 1:4 `مَلِكِ` vs `مَٰلِكِ`), doubling (5:89 `عَقَدتُّمُ`, `تَذَّكَّرُونَ`), vowels or case ending; in Shu'bah, al-Bazzi and Qunbul an imala dot also counts (Shu'bah `رٜءٜا`). Encoding conventions (wasl writing, sukun shapes, tanween placement, ى/ي, shadda) and general rules marked only by diacritics or by the hamza's carrier (madd length, imala / taqlil dots, two-hamza tashil, and for Warsh / al-Susi the softened hamza, naql and idgham kabir) are not tinted; `scripts/rewayah/highlights.py` defines the rules. Whole-word entries per rewayah: Warsh 795, Qalun 1,334, al-Duri 1,287, al-Susi 1,112, al-Bazzi 1,060, Qunbul 1,097, Shu'bah 634. Silah entries: al-Bazzi 7,260, Qunbul 7,263, Warsh 945, others under 50.
+"Read differently" means different letters (including a hamza Hafs does not have), long vowels (the dagger alef counts: 1:4 `مَلِكِ` vs `مَٰلِكِ`), doubling (5:89 `عَقَدتُّمُ`, `تَذَّكَّرُونَ`), vowels or case ending; in Shu'bah, al-Bazzi and Qunbul an imala dot also counts (Shu'bah `رٜءٜا`). Encoding conventions (wasl writing, sukun shapes, tanween placement, ى/ي, shadda) and general rules marked only by diacritics or by the hamza's carrier (madd length, imala / taqlil dots, two-hamza tashil, and for Warsh / al-Susi the softened hamza, naql and idgham kabir) are not tinted; `scripts/rewayah/highlights.py` defines the rules. A hamza written without a vowel on an alef, tatweel or dagger-alef seat counts as the same hamza (Qalun `يَسْتَٰٔذِنُكَ` is not tinted against Hafs `يَسْتَـْٔذِنُكَ`). Whole-word entries per rewayah: Warsh 795, Qalun 1,313, al-Duri 1,287, al-Susi 1,112, al-Bazzi 1,060, Qunbul 1,097, Shu'bah 634. Silah entries: al-Bazzi 7,260, Qunbul 7,263, Warsh 945, others under 50.
 
 Release 1 does not emit the letter-level categories `tashil`, `madd`, `ibdal`, `taghliz` or `minor`: an audit found them 84-99% false or never produced, and the legend must not advertise them. A whole-word tint must not cover a trailing inline marker (`' ۝N'`), and `silah` comes from the JSON, not from scanning the stored text (format 2).
 
@@ -113,6 +116,8 @@ The service (`services/mushaf/DigitalKhattDataService.ts`) is a singleton with o
 - `ensureRewayahLoaded(rewayah)` lazy-imports and caches a non-active rewayah's words DB.
 
 Blank slots contribute nothing (no separator) and a multi-token slot is one word unit; derived caches (verse map, tajweed maps, Allah-name memos, page memos) are keyed by the active rewayah and the data version.
+
+**Data / runtime compatibility.** The Release 1 data depends on these runtime rules and on the format-2 loader (silah from the JSON, whole-word ranges that stop before an inline `۝N`). A runtime that predates Release 1 adds a separator for every blank slot, scans silah from the stored text and lets a whole-word range cover an inline marker, which misplaces taps and highlights around the 57-67 content slots per rewayah that end with an inline marker and the 76-83 blank marker slots. The data and the Release 1 runtime must ship in the same build, together with the regenerated asset manifest (`services/mushaf/rewayahDataManifest.ts`).
 
 ### RewayahDiffService: highlight map loader
 
@@ -155,20 +160,29 @@ Audio-side UGC (loved tracks, downloads, playlists, recently played) already sta
 
 - a source that does not match `sources.lock.json`;
 - a DB whose schema or rows (other than `text`) differ from `digital-khatt-v2.db`;
-- a malformed slot or a code point outside the DigitalKhatt cmap;
+- a malformed slot, a code point outside the DigitalKhatt cmap, or a token that starts with a combining mark;
 - any difference between the slot tokens read in id order and the normalized official tokens of each surah (content and verse markers, P10 and A2 the only allowed exceptions);
 - verse numbers that are not 1..N per surah;
 - a stored token whose base letters differ from its official token (outside the listed mappings);
-- a diff entry that is not on an existing non-blank content slot whose text differs from Hafs, or a silah index that is not on a silah mark before any inline marker;
+- a word in the wrong slot: every content slot must hold one rewayah word within a rasm-skeleton distance of 1/3 of the Hafs word in that slot, except the declared non-1:1 placements (P2 / P3 / P4 / 1:2 per rewayah), so a word moved to a neighbouring slot fails even when the reading order is intact;
+- a diff entry that is not on an existing non-blank content slot whose words (without an inline marker) differ from Hafs, or a silah index that is not on a silah mark before any inline marker;
 - a verse map that differs from the one re-derived from the DB;
-- with `--glyphs`: any `.notdef` or dotted circle when shaping every stored word with DigitalKhattFont.otf and the V1 font (HarfBuzz), or an unattached mark outside the listed render limitations.
+- with `--glyphs` (HarfBuzz, DigitalKhattFont.otf and the V1 font, pinned `uharfbuzz` / `fonttools`): any `.notdef`; any cluster (base + mark sequence) absent from the DK Hafs DB that is not in `scripts/rewayah/render_review.json`, the list of 259 clusters rendered next to the official KFGQPC fonts and reviewed; a mark without an anchor or turned into a spacing glyph outside a reviewed cluster and context; a review entry no DB uses. (The DK fonts have no dotted-circle glyph, so broken clusters are checked on the text.)
 
-`validate.py` proves the convention map on the official Hafs text (77,385 of 77,429 words identical to the DK Hafs DB; the rest are 25 listed verses with DK-only encodings). `compare_outputs.py` checks that the committed files are what a fresh build produces. Two builds are byte-identical.
+`validate.py` proves the convention map on the official Hafs text (77,388 of 77,429 words identical to the DK Hafs DB; the rest are 22 listed verses with DK-only encodings). `compare_outputs.py` checks that the committed files are what a fresh build produces. Two builds are byte-identical.
 
 ## Known limits
 
 - **Hafs layout.** Release 1 keeps the Hafs word slots and page lines: line breaks, page starts and word slots follow the Hafs mushaf, not the printed riwayah mushaf. Merged / split words leave blank or multi-token slots; rewayah-only verse ends appear inline.
-- **DigitalKhatt cannot draw some riwayah marks.** The Maghribi wasl alef (connecting vowel + start dot) is drawn with Madani vowel marks, so it can look like a hamzat qat'; the side dot (U+06DF) is drawn as a small circle above; taqlil and imala share one filled dot; the Habti waqf signs are omitted; KFGQPC dots on a waw / ya / ain / ha / dal / seen, the hamza below a tatweel and Qunbul's small seen on `صِرَٰطَ` have no anchor and sit at their default position (listed in the validator); 81:24 shows `ظ` instead of ض with a small ظ.
+- **DigitalKhatt cannot draw some riwayah marks** (each case is a `limitation` family in `render_review.json`):
+  - the Maghribi wasl alef (connecting vowel + start dot) and Warsh's naql alef are drawn with Madani vowel marks, so they can look like a hamzat qat';
+  - the start-with-damma dot beside a silent alef is drawn as DK's small circle above it, so the start vowel is not shown;
+  - the tashil dot is drawn above the letter (Madani position); where DK has no anchor for it (after a joined alef or alef madda, on a waw / ya / dal / seen / ain / ha) it falls on the line at the foot of the letter, where the KFGQPC fonts draw their own tashil dot, never above a dal or ain where it could read as ذ / غ; in Warsh 23:44 `اُ۬مَّةً` it overlaps the damma;
+  - a dagger alef that carries the tashil dot or follows an alef is drawn as a small standing alef: Qalun `أَرَٰ۬يْتَ` (34 words) and Qalun / Duri / Susi `أَٰ۬ذَا` (80) show the dot on the small alef instead of above it, `ءَاٰ۬مَنتُمْ` / `ءَاٰ۬لِهَتُنَا` (7:123, 20:71, 26:49, 43:58 in six rewayat) likewise, and Warsh's naql `اٰمَنَ` / `آٰنتُمْ` (177 words) shows a second small alef where KFGQPC draws a madd stroke;
+  - taqlil and imala share one filled dot; the Habti waqf signs are omitted;
+  - the hamza below a tatweel (Nafi' `خَٰسِـِٕينَ`) is drawn on the tatweel line; Qunbul's small seen on `صِۜرَٰطَ` and the small noon of 12:110 have no anchor but sit above their letter;
+  - 81:24 shows `ظ` instead of ض with a small ظ.
+- **Upstream text.** Qunbul 4:135 (Hafs 4:136) `أُنزَلَ` is kept as both official Qunbul artifacts write it, although Ibn Kathir reads `أُنزِلَ` (as the official al-Bazzi text has it); a qualified reader should decide before release, and a correction is one entry in `sources/errata.json`.
 - **Highlights** cover whole-word reading differences and silah only; letter-level rules (madd, tashil, ibdal, taghliz, taqlil, naql) are not highlighted in Release 1.
 - **Word-by-word** translation and transliteration remain Hafs-only.
 
