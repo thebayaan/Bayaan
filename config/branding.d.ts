@@ -119,6 +119,13 @@ export interface Branding {
    */
   catalogVersionEndpoint?: string;
   /**
+   * Base URL for the content freshness API (manifest and downloads).
+   * Absent: Bayaan's backend (`EXPO_PUBLIC_BAYAAN_API_URL`). Forks point
+   * this at their own backend, or leave it unset to reuse Bayaan's.
+   * No trailing slash.
+   */
+  contentApiBase?: string;
+  /**
    * RFC-008 — optional component that replaces the Listen-tab top
    * region (the default `RecitersHero`). Forks return a React
    * component; `undefined` keeps Bayaan's `RecitersHero` verbatim.
