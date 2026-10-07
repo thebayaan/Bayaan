@@ -53,7 +53,7 @@ The YAML has 25 entries (two of them `echo` notes). Numbered as in the flow repo
 6. `tap` Tafseer in the verse sheet (coordinates).
 7. `screenshot`.
 8. `await-ui-element` `IBN KATHIR` (sheet header).
-9. `await-ui-element` `The Meaning of Al-Hamd` (a heading in the bundled Ibn Kathir text for 1:2, so an empty or "not available" sheet fails). Added after the baseline below and not yet replayed (the simulator touch transport was down); replace the substring when the content-sync work changes the tafsir source.
+9. `await-ui-element` `The Meaning of Al-Hamd` (a heading in the bundled Ibn Kathir text for 1:2, so an empty or "not available" sheet fails). Replayed 2026-10-07: full flow 23 of 23 steps pass in 33 s; replace the substring when the content-sync work changes the tafsir source.
 10. `gesture-swipe` down to dismiss the sheet.
 11. `gesture-tap` the playback settings button at the bottom (coordinates, y 0.94).
 12. `screenshot`.
