@@ -22,6 +22,7 @@ import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
+import type {RewayahWordsStatus} from '@/hooks/useRewayahWords'; // @ai
 import SkiaVerseText from './SkiaVerseText';
 import {WBWVerseView} from './WBWVerseView';
 import {AyahCommunityReflections} from '@/components/mushaf/AyahCommunityReflections';
@@ -57,6 +58,9 @@ interface SaheehData {
   [verseKey: string]: SaheehFootnoteEntry;
 }
 
+// Shown in place of the Arabic line when the rewayah's words fail to load. @ai
+const TEXT_UNAVAILABLE_MESSAGE = "Verse text couldn't be loaded.";
+
 // Load Saheeh data at module scope (require() is cached — zero cost since QuranView already loaded it)
 const saheehDataForFootnotes =
   require('@/data/SaheehInternational.translation-with-footnote-tags.json') as SaheehData;
@@ -75,6 +79,9 @@ interface VerseItemProps {
   arabicFontSize: number;
   fontMgr: SkTypefaceFontProvider | null;
   dkFontFamily: string;
+  /** Font of the word-by-word grid, which always shows Hafs words (defaults
+   *  to dkFontFamily). @ai */
+  wbwFontFamily?: string;
   indexedTajweedData: IndexedTajweedData | null;
   isActive?: boolean;
   translationName?: string;
@@ -113,6 +120,7 @@ export const VerseItem = memo<VerseItemProps>(
     arabicFontSize,
     fontMgr,
     dkFontFamily,
+    wbwFontFamily, // @ai
     indexedTajweedData,
     isActive,
     translationName,
@@ -127,10 +135,14 @@ export const VerseItem = memo<VerseItemProps>(
     const verseKey = verse.verse_key;
     const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
     const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
-    // The non-DK fallback below can only show the QPC (Hafs) text; label it
-    // when the verse should be in another rewayah instead of passing it off
-    // as that rewayah's text.
-    const showsHafsFallbackNotice = (rewayah ?? mushafRewayah) !== 'hafs';
+    // @ai-start
+    // The QPC fallback below can only show Hafs text. In a non-Hafs context
+    // (a rewayah track in the player, a rewayah mushaf's verse list) it is
+    // never shown, not even for the first frame before the row is measured:
+    // a neutral placeholder holds the place until DigitalKhatt draws the
+    // rewayah's own text.
+    const isHafsText = (rewayah ?? mushafRewayah) === 'hafs';
+    // @ai-end
     const showAllahNameHighlight = useMushafSettingsStore(
       s => s.showAllahNameHighlight,
     );
@@ -398,6 +410,36 @@ export const VerseItem = memo<VerseItemProps>(
       [derivedColors.translationSource],
     );
 
+    // @ai-start
+    // Neutral stand-in for the Arabic line while the rewayah's own text
+    // cannot be drawn yet (fonts loading, row not measured, words loading):
+    // about one line high, no text. If the words fail to load, say so rather
+    // than show nothing (or another rewayah's text).
+    const placeholderStyle = useMemo(
+      () => ({height: Math.round(moderateScale(arabicFontSize) * 1.9)}),
+      [arabicFontSize],
+    );
+    const renderTextPlaceholder = useCallback(
+      (status: RewayahWordsStatus) =>
+        status === 'error' || status === 'unavailable' ? (
+          <Text
+            style={[
+              styles.textUnavailable,
+              {color: derivedColors.translationSource},
+            ]}>
+            {TEXT_UNAVAILABLE_MESSAGE}
+          </Text>
+        ) : (
+          <View
+            style={placeholderStyle}
+            accessibilityLabel="Loading verse text"
+            testID="verse-text-placeholder"
+          />
+        ),
+      [placeholderStyle, derivedColors.translationSource],
+    );
+    // @ai-end
+
     return (
       <Pressable
         style={containerStyle}
@@ -448,7 +490,7 @@ export const VerseItem = memo<VerseItemProps>(
             verseKey={verseKey}
             textColor={textColor}
             arabicFontSize={arabicFontSize}
-            dkFontFamily={dkFontFamily}
+            dkFontFamily={wbwFontFamily ?? dkFontFamily} // @ai
             fontMgr={fontMgr}
             showTranslation={wbwShowTranslation ?? true}
             showTransliteration={wbwShowTransliteration ?? false}
@@ -480,26 +522,19 @@ export const VerseItem = memo<VerseItemProps>(
                 showAllahNameHighlight={showAllahNameHighlight}
                 allahNameHighlightColor={allahNameHighlightColor}
                 rewayah={rewayah}
+                renderPlaceholder={
+                  isHafsText ? undefined : renderTextPlaceholder // @ai
+                }
               />
+            ) : !isHafsText ? (
+              // @ai — never Hafs text in a non-Hafs context
+              renderTextPlaceholder('loading')
+            ) : isQPCSelected && tajweedNodes ? (
+              // QPC Rendering: Always use generated tajweedNodes
+              <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
             ) : (
-              <>
-                {showsHafsFallbackNotice && (
-                  <Text
-                    style={[
-                      styles.hafsNotice,
-                      {color: derivedColors.translationSource},
-                    ]}>
-                    Shown in Hafs
-                  </Text>
-                )}
-                {isQPCSelected && tajweedNodes ? (
-                  // QPC Rendering: Always use generated tajweedNodes
-                  <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
-                ) : (
-                  // Fallback (e.g., data is loading/missing)
-                  <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
-                )}
-              </>
+              // Fallback (e.g., data is loading/missing)
+              <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
             )}
           </View>
         )}
@@ -607,11 +642,13 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     writingDirection: 'rtl',
   },
-  hafsNotice: {
+  // @ai-start
+  textUnavailable: {
     fontFamily: 'Manrope-Medium',
-    fontSize: moderateScale(10.5),
-    marginBottom: verticalScale(4),
+    fontSize: moderateScale(12),
+    marginVertical: verticalScale(6),
   },
+  // @ai-end
   transliterationText: {
     fontSize: moderateScale(14),
     fontFamily: 'Manrope-Regular',

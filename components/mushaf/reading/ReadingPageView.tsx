@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {
   useMushafPlayerStore,
   usePlaybackVerseKeys, // @ai
@@ -118,12 +121,12 @@ const ReadingPageView: React.FC<ReadingPageViewProps> = ({
     [allahNameHighlightColorSetting, theme.isDarkMode],
   );
 
-  const dkFontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  // Same font as before for Hafs; a font that cannot draw a rewayah's marks
+  // (IndoPak) is never used for non-Hafs text.
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
+  // @ai-end
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||

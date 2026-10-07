@@ -2,7 +2,8 @@
 /**
  * Mushaf verse-list modes (ContinuousListView, ReadingPageView): the
  * follow-along highlight covers every Hafs verse the reciter is reciting
- * (Warsh 2:1 = Hafs 2:1 + 2:2) and Hafs stays one verse.
+ * (Warsh 2:1 = Hafs 2:1 + 2:2), Hafs stays one verse, and the text font never
+ * pairs IndoPak with a rewayah.
  */
 
 import React, {act} from 'react';
@@ -261,5 +262,20 @@ describe.each(Object.keys(views))('%s', name => {
       currentVerseKeys: [],
     });
     expect(active()).toEqual([]);
+  });
+
+  it('keeps the reader font for Hafs and never draws a rewayah with IndoPak', () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'dk_indopak'});
+    render();
+    expect(rows().get('2:1')!.dkFontFamily).toBe('DigitalKhattIndoPak');
+    act(() => renderer?.unmount());
+    mockVerseItems.length = 0;
+    // a state the settings gating forbids, e.g. restored from an old version
+    useMushafSettingsStore.setState({
+      mushafRenderer: 'dk_indopak',
+      rewayah: 'warsh',
+    });
+    render();
+    expect(rows().get('2:1')!.dkFontFamily).toBe('DigitalKhattV2');
   });
 });

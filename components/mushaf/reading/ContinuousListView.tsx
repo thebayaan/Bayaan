@@ -10,7 +10,10 @@ import {FlashList, type FlashListRef} from '@shopify/flash-list';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {moderateScale, verticalScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
@@ -247,12 +250,12 @@ const ContinuousListView = forwardRef<
       [allahNameHighlightColorSetting, theme.isDarkMode],
     );
 
-    const dkFontFamily =
-      mushafRenderer === 'dk_indopak'
-        ? 'DigitalKhattIndoPak'
-        : mushafRenderer === 'dk_v1'
-          ? 'DigitalKhattV1'
-          : 'DigitalKhattV2';
+    // @ai-start
+    // Same font as before for Hafs; a font that cannot draw a rewayah's marks
+    // (IndoPak) is never used for non-Hafs text.
+    const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+    const dkFontFamily = getDkFontFamily(mushafRenderer, mushafRewayah);
+    // @ai-end
     const isDK =
       (mushafRenderer === 'dk_v1' ||
         mushafRenderer === 'dk_v2' ||

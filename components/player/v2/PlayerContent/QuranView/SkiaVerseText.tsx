@@ -24,7 +24,10 @@ import type {
   RewayahId,
 } from '@/store/mushafSettingsStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {useRewayahWords} from '@/hooks/useRewayahWords';
+import {
+  useRewayahWords,
+  type RewayahWordsStatus, // @ai
+} from '@/hooks/useRewayahWords';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
@@ -59,6 +62,9 @@ interface SkiaVerseTextProps {
    *  mushaf one. Used by the player to show text matching the currently
    *  playing reciter's rewayah. Ignored if `text` prop is provided. */
   rewayah?: RewayahId;
+  /** Rendered (instead of nothing) while the verse's words cannot be drawn
+   *  yet: still loading, or failed / unavailable. @ai */
+  renderPlaceholder?: (status: RewayahWordsStatus) => React.ReactNode;
 }
 
 const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
@@ -75,6 +81,7 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
   showAllahNameHighlight = false,
   allahNameHighlightColor,
   rewayah,
+  renderPlaceholder, // @ai
 }) => {
   // When no explicit prop, follow the mushaf setting. This is the mushaf
   // list-mode / preview case; the player passes an explicit prop.
@@ -281,7 +288,9 @@ const SkiaVerseText: React.FC<SkiaVerseTextProps> = ({
     overlayWords,
   ]);
 
-  if (!paragraph || width <= 0) return null;
+  if (!paragraph || width <= 0) {
+    return renderPlaceholder ? <>{renderPlaceholder(status)}</> : null; // @ai
+  }
 
   return (
     <Canvas pointerEvents="none" style={{width, height, direction: 'rtl'}}>

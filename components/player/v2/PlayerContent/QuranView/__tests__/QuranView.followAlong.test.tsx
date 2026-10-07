@@ -1,8 +1,11 @@
 // @ai-generated
 /**
  * Player verse list (QuranView):
- * follow-along highlights every Hafs verse the reciter is reciting (Warsh
- * 2:1 = Hafs 2:1 + 2:2), not just the first; Hafs stays one verse.
+ *  - follow-along highlights every Hafs verse the reciter is reciting (Warsh
+ *    2:1 = Hafs 2:1 + 2:2), not just the first; Hafs stays one verse;
+ *  - a rewayah track's text is never drawn with a font that cannot draw it
+ *    (IndoPak is Hafs only), mirroring the mushaf settings gating, while Hafs
+ *    tracks and the Hafs word-by-word grid keep the reader's font.
  */
 
 import React, {act} from 'react';
@@ -287,5 +290,48 @@ describe('player verse list follow-along', () => {
       });
     });
     expect(active()).toEqual([]);
+  });
+});
+
+describe('player text font', () => {
+  it('IndoPak + a rewayah track: the text is drawn with DigitalKhatt', () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'dk_indopak'});
+    mockTrack.rewayah = 'warsh';
+    render();
+    const row = rows().get('2:1')!;
+    expect(row.dkFontFamily).toBe('DigitalKhattV2');
+    expect(row.fontMgr).toBeTruthy();
+    expect(row.rewayah).toBe('warsh');
+    // the word-by-word grid shows Hafs words: the reader's font
+    expect(row.wbwFontFamily).toBe('DigitalKhattIndoPak');
+    // the basmala above the rewayah's verses matches them
+    expect(mockHeaderFonts[mockHeaderFonts.length - 1]).toBe('DigitalKhattV2');
+  });
+
+  it.each([
+    ['dk_indopak', 'DigitalKhattIndoPak'],
+    ['dk_v1', 'DigitalKhattV1'],
+    ['dk_v2', 'DigitalKhattV2'],
+  ] as const)('Hafs track under %s keeps %s', (renderer_, font) => {
+    useMushafSettingsStore.setState({mushafRenderer: renderer_});
+    render();
+    const row = rows().get('2:1')!;
+    expect(row.dkFontFamily).toBe(font);
+    expect(row.wbwFontFamily).toBe(font);
+    expect(mockHeaderFonts[mockHeaderFonts.length - 1]).toBe(font);
+  });
+
+  it('Mushaf 1440 (QCF): a rewayah track is drawn with DigitalKhatt, a Hafs track keeps QCF text', () => {
+    useMushafSettingsStore.setState({mushafRenderer: 'qcf_v2'});
+    mockTrack.rewayah = 'qalun';
+    render();
+    expect(rows().get('2:1')!.dkFontFamily).toBe('DigitalKhattV2');
+    expect(rows().get('2:1')!.fontMgr).toBeTruthy();
+    act(() => renderer?.unmount());
+    mockVerseItems.length = 0;
+    mockTrack.rewayah = 'hafs';
+    render();
+    // no DigitalKhatt font manager: VerseItem shows the QPC (Hafs) text
+    expect(rows().get('2:1')!.fontMgr).toBeNull();
   });
 });
