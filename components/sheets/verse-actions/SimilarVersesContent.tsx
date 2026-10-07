@@ -20,7 +20,7 @@ import {Feather} from '@expo/vector-icons';
 import Color from 'color';
 import {qulDataService} from '@/services/mushaf/QulDataService';
 import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
-import {joinWholeWords} from '@/services/mushaf/lineWordSpans';
+import {getSimilarPhraseText} from '@/components/sheets/similarVersePhrase'; // @ai
 import {useMushafNavigationStore} from '@/store/mushafNavigationStore';
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {useTajweedStore} from '@/store/tajweedStore';
@@ -41,25 +41,6 @@ function getSurahName(surahNumber: number): string {
 function parseVerseKey(verseKey: string): {surah: number; ayah: number} {
   const [s, a] = verseKey.split(':');
   return {surah: parseInt(s, 10), ayah: parseInt(a, 10)};
-}
-
-// The phrase's words (QUL Hafs word positions == slot positions in every
-// rewayah DB) as the active rewayah renders them: blank slots skipped, a
-// multi-token slot kept whole, inline verse numbers dropped (a phrase snippet
-// shows words only).
-function getPhraseText(
-  sourceVerse: string,
-  wordFrom: number,
-  wordTo: number,
-): string {
-  return joinWholeWords(
-    digitalKhattDataService
-      .getVerseWords(sourceVerse)
-      .filter(
-        w =>
-          w.wordPositionInVerse >= wordFrom && w.wordPositionInVerse <= wordTo,
-      ),
-  );
 }
 
 function getVersePreview(verseKey: string): string {
@@ -201,11 +182,13 @@ export const SimilarVersesContent: React.FC<SimilarVersesContentProps> = ({
           <Text style={styles.sectionLabel}>SHARED PHRASES</Text>
 
           {mutashabihat.map(phrase => {
-            const phraseText = getPhraseText(
+            // @ai-start
+            const phraseText = getSimilarPhraseText(
               phrase.sourceVerse,
               phrase.sourceWordRange[0],
               phrase.sourceWordRange[1],
             );
+            // @ai-end
             const otherMatches = phrase.matches.filter(
               m => m.verseKey !== verseKey,
             );
