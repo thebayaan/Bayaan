@@ -45,7 +45,7 @@ import Color from 'color';
 import {router} from 'expo-router';
 import {usePlayerStore} from '@/services/player/store/playerStore';
 import {useTimestampStore} from '@/store/timestampStore';
-import {findAyahTimestamp} from '@/utils/timestampUtils';
+import {getPlayFromHereTarget} from '@/utils/timestampUtils'; // @ai
 import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import * as Clipboard from 'expo-clipboard';
@@ -454,27 +454,32 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     lightHaptics();
     const keys = isRange ? verseKeys! : [verseKey];
     const firstKey = keys[0];
-    const [, ayahStr] = firstKey.split(':');
-    const ayahNumber = parseInt(ayahStr, 10);
 
-    const timestamps = useTimestampStore.getState().currentSurahTimestamps;
-    if (!timestamps) return;
-
-    const ts = findAyahTimestamp(timestamps, ayahNumber);
-    if (!ts) return;
+    // @ai-start
+    // While the reciter's verse numbering is still being resolved, or when
+    // it cannot be established for this surah, say so instead of silently
+    // keeping the sheet open.
+    const target = getPlayFromHereTarget(
+      useTimestampStore.getState().currentSurahTimestamps,
+      firstKey,
+    );
+    if (target.status !== 'ready') {
+      showToast(
+        target.title,
+        target.message,
+        target.status === 'pending' ? 'none' : 'error',
+      );
+      return;
+    }
 
     const playerState = usePlayerStore.getState();
-    playerState.seekTo(ts.timestampFrom / 1000);
+    playerState.seekTo(target.entry.timestampFrom / 1000);
     if (playerState.playback.state !== 'playing') {
       playerState.play();
     }
-    useTimestampStore.getState().setCurrentAyah({
-      surahNumber: ts.surahNumber,
-      ayahNumber: ts.ayahNumber,
-      verseKey: firstKey,
-      timestampFrom: ts.timestampFrom,
-      timestampTo: ts.timestampTo,
-    });
+    // Every Hafs verse the reciter verse recites (Warsh 2:1 = Hafs 2:1 + 2:2)
+    useTimestampStore.getState().setCurrentAyah(target.tracking);
+    // @ai-end
 
     hideCurrentSheet();
   }, [verseKey, verseKeys, isRange, hideCurrentSheet]);
