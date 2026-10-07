@@ -1,5 +1,6 @@
 import {digitalKhattDataService} from './DigitalKhattDataService';
-import {quranTextService} from './QuranTextService';
+import {getLineWordSpans} from './lineWordSpans';
+import type {RewayahId} from '@/services/rewayah/RewayahIdentity';
 
 export interface VerseSegment {
   verseKey: string; // "2:255"
@@ -11,13 +12,48 @@ export interface VerseSegment {
   lastWordId: number;
 }
 
+/**
+ * Verse segments per mushaf line (verse highlights, playback/selection tints
+ * and long-press hit-testing). Char ranges index into the exact string
+ * DigitalKhattDataService.getLineText() renders; they come from the shared
+ * span model (lineWordSpans.ts), so blank slots and multi-token slots never
+ * shift a verse boundary.
+ *
+ * Caches are tied to the words they were computed from: they are dropped
+ * automatically whenever the active rewayah or
+ * digitalKhattDataService.getCacheVersion() changes, so no char range from a
+ * previous rewayah (or a previous copy of the data) survives a switch.
+ */
 class MushafVerseMapService {
   // Cache: key = "pageNumber:lineIndex"
   private cache: Map<string, VerseSegment[]> = new Map();
   // Cache: key = pageNumber
   private orderedVerseKeysCache: Map<number, string[]> = new Map();
+  // Words cache (rewayah + cache version) the caches above were computed on.
+  private dataRewayah: RewayahId | null = null;
+  private dataVersion = -1;
+
+  /** Drops every cached segment. Also happens automatically on data change. */
+  clear(): void {
+    this.cache.clear();
+    this.orderedVerseKeysCache.clear();
+    this.dataRewayah = null;
+    this.dataVersion = -1;
+  }
+
+  private ensureFresh(): void {
+    const rewayah = digitalKhattDataService.rewayah;
+    const version = digitalKhattDataService.getCacheVersion();
+    if (rewayah !== this.dataRewayah || version !== this.dataVersion) {
+      this.cache.clear();
+      this.orderedVerseKeysCache.clear();
+      this.dataRewayah = rewayah;
+      this.dataVersion = version;
+    }
+  }
 
   getVerseSegments(pageNumber: number, lineIndex: number): VerseSegment[] {
+    this.ensureFresh();
     const key = `${pageNumber}:${lineIndex}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
@@ -34,34 +70,20 @@ class MushafVerseMapService {
     const lines = digitalKhattDataService.getPageLines(pageNumber);
     if (lineIndex >= lines.length) return [];
 
-    const line = lines[lineIndex];
-    if (line.line_type !== 'ayah' && line.line_type !== 'basmallah') return [];
-
-    const lineTextInfo = quranTextService.analyzeText(pageNumber, lineIndex);
-    if (!lineTextInfo.wordInfos.length) return [];
+    // Surah-name and basmallah lines have no word slots, hence no segments.
+    const spans = getLineWordSpans(lines[lineIndex], digitalKhattDataService);
+    if (spans.length === 0) return [];
 
     const segments: VerseSegment[] = [];
     let currentSegment: VerseSegment | null = null;
-    let wordOffset = 0;
 
-    for (
-      let wordId = line.first_word_id;
-      wordId <= line.last_word_id;
-      wordId++
-    ) {
-      const dkWordInfo = digitalKhattDataService.getWordInfo(wordId);
-      if (!dkWordInfo || wordOffset >= lineTextInfo.wordInfos.length) {
-        wordOffset++;
-        continue;
-      }
-
-      const textWordInfo = lineTextInfo.wordInfos[wordOffset];
-      const verseKey = dkWordInfo.verseKey;
+    for (const span of spans) {
+      const verseKey = span.info.verseKey;
 
       if (currentSegment && currentSegment.verseKey === verseKey) {
-        // Extend current segment
-        currentSegment.endCharIndex = textWordInfo.endIndex;
-        currentSegment.lastWordId = wordId;
+        // Extend current segment (covers the space before this slot too)
+        currentSegment.endCharIndex = span.end;
+        currentSegment.lastWordId = span.wordId;
       } else {
         // Start new segment
         const parts: string[] = verseKey.split(':');
@@ -69,21 +91,20 @@ class MushafVerseMapService {
           verseKey,
           surahNumber: parseInt(parts[0], 10),
           ayahNumber: parseInt(parts[1], 10),
-          startCharIndex: textWordInfo.startIndex,
-          endCharIndex: textWordInfo.endIndex,
-          firstWordId: wordId,
-          lastWordId: wordId,
+          startCharIndex: span.start,
+          endCharIndex: span.end,
+          firstWordId: span.wordId,
+          lastWordId: span.wordId,
         };
         segments.push(currentSegment);
       }
-
-      wordOffset++;
     }
 
     return segments;
   }
 
   getOrderedVerseKeysForPage(pageNumber: number): string[] {
+    this.ensureFresh();
     const cached = this.orderedVerseKeysCache.get(pageNumber);
     if (cached) return cached;
 

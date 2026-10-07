@@ -126,6 +126,11 @@ export const VerseItem = memo<VerseItemProps>(
     const {theme} = useTheme();
     const verseKey = verse.verse_key;
     const arabicTextWeight = useMushafSettingsStore(s => s.arabicTextWeight);
+    const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+    // The non-DK fallback below can only show the QPC (Hafs) text; label it
+    // when the verse should be in another rewayah instead of passing it off
+    // as that rewayah's text.
+    const showsHafsFallbackNotice = (rewayah ?? mushafRewayah) !== 'hafs';
     const showAllahNameHighlight = useMushafSettingsStore(
       s => s.showAllahNameHighlight,
     );
@@ -476,12 +481,25 @@ export const VerseItem = memo<VerseItemProps>(
                 allahNameHighlightColor={allahNameHighlightColor}
                 rewayah={rewayah}
               />
-            ) : isQPCSelected && tajweedNodes ? (
-              // QPC Rendering: Always use generated tajweedNodes
-              <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
             ) : (
-              // Fallback (e.g., data is loading/missing)
-              <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
+              <>
+                {showsHafsFallbackNotice && (
+                  <Text
+                    style={[
+                      styles.hafsNotice,
+                      {color: derivedColors.translationSource},
+                    ]}>
+                    Shown in Hafs
+                  </Text>
+                )}
+                {isQPCSelected && tajweedNodes ? (
+                  // QPC Rendering: Always use generated tajweedNodes
+                  <Text style={arabicStyleNoColor}>{tajweedNodes}</Text>
+                ) : (
+                  // Fallback (e.g., data is loading/missing)
+                  <Text style={arabicStyle}>{verse.text || 'Loading...'}</Text>
+                )}
+              </>
             )}
           </View>
         )}
@@ -588,6 +606,11 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(24),
     textAlign: 'right',
     writingDirection: 'rtl',
+  },
+  hafsNotice: {
+    fontFamily: 'Manrope-Medium',
+    fontSize: moderateScale(10.5),
+    marginBottom: verticalScale(4),
   },
   transliterationText: {
     fontSize: moderateScale(14),

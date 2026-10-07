@@ -20,11 +20,9 @@ import {
   type SkColor,
 } from '@shopify/react-native-skia';
 import Color from 'color';
-import {
-  digitalKhattDataService,
-  type DKWordInfo,
-} from '@/services/mushaf/DigitalKhattDataService';
+import type {DKWordInfo} from '@/services/mushaf/DigitalKhattDataService';
 import {wbwDataService, type WBWWord} from '@/services/wbw/WBWDataService';
+import {useRewayahWords} from '@/hooks/useRewayahWords';
 import {useTheme} from '@/hooks/useTheme';
 import {mediumHaptics} from '@/utils/haptics';
 import {
@@ -347,21 +345,12 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     const contextRewayah = rewayahProp ?? activeRewayah;
     const showingHafsFallback = contextRewayah !== 'hafs';
 
-    // Word-by-word data is Hafs-aligned — always fetch Hafs DK words so
-    // word boundaries match the translation/transliteration payload.
-    // Lazy-load Hafs into the side cache if the mushaf is currently on a
-    // non-Hafs rewayah, then re-render.
-    const [, bumpHafsLoaded] = React.useReducer(x => x + 1, 0);
-    useEffect(() => {
-      if (digitalKhattDataService.rewayah === 'hafs') return;
-      let cancelled = false;
-      digitalKhattDataService.ensureRewayahLoaded('hafs').then(() => {
-        if (!cancelled) bumpHafsLoaded();
-      });
-      return () => {
-        cancelled = true;
-      };
-    }, []);
+    // Word-by-word data is Hafs-aligned — always read Hafs DK words so word
+    // boundaries match the translation/transliteration payload. The hook
+    // lazy-loads Hafs into the side cache when the mushaf is on another
+    // rewayah and re-renders (via the DK cache version) once it is ready, so
+    // the grid never stays on the empty pre-load word list.
+    const {words: dkWords} = useRewayahWords(verseKey, 'hafs');
 
     // Try sync cache first, fall back to async
     const cachedWords = useMemo(
@@ -383,12 +372,6 @@ export const WBWVerseView = memo<WBWVerseViewProps>(
     }, [verseKey, cachedWords]);
 
     const wbwWords = cachedWords ?? asyncWords;
-
-    // Always read Hafs DK words — WBW word indexing is Hafs-aligned.
-    const dkWords = useMemo(
-      () => digitalKhattDataService.getVerseWords(verseKey, 'hafs'),
-      [verseKey],
-    );
 
     // Match DK words with WBW words using text-aware sequential alignment.
     // DK sometimes splits compound words (e.g. "بَعْدَ مَا") into two tokens

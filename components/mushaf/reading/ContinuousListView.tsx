@@ -103,10 +103,20 @@ function getVerseIndex(verseKey: string): number {
   return verseIndexMap.get(verseKey) ?? 0;
 }
 
-// Reverse lookup: verseKey → page number (built lazily from all 604 pages)
+// Reverse lookup: verseKey → page number (built lazily from all 604 pages,
+// rebuilt whenever the active rewayah or the DK words cache changes).
 let verseToPageMap: Map<string, number> | null = null;
+let verseToPageMapRewayah: string | null = null;
+let verseToPageMapVersion = -1;
 
 function getPageForVerse(verseKey: string): number | null {
+  const rewayah = digitalKhattDataService.rewayah;
+  const version = digitalKhattDataService.getCacheVersion();
+  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
+    verseToPageMap = null;
+    verseToPageMapRewayah = rewayah;
+    verseToPageMapVersion = version;
+  }
   if (!verseToPageMap) {
     if (!digitalKhattDataService.initialized) return null;
     verseToPageMap = new Map();

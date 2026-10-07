@@ -4,6 +4,7 @@ import React, {
   useRef,
   useEffect,
   useImperativeHandle,
+  useSyncExternalStore,
   forwardRef,
 } from 'react';
 import {View, Platform} from 'react-native';
@@ -41,20 +42,25 @@ import {
 } from '@/services/mushaf/DigitalKhattDataService';
 import {JustService} from '@/services/mushaf/JustificationService';
 import {mushafLayoutCacheService} from '@/services/mushaf/MushafLayoutCacheService';
-import {rewayahDiffService} from '@/services/mushaf/RewayahDiffService';
-import {getLineAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightService';
 import {
   quranTextService,
   PAGE_WIDTH,
   MARGIN,
   FONTSIZE,
 } from '@/services/mushaf/QuranTextService';
-import {getLineTajweedMap} from '@/services/mushaf/TajweedMappingService';
 import {mushafVerseMapService} from '@/services/mushaf/MushafVerseMapService';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {getAllahNameHighlightColorHex} from '@/constants/mushafAllahHighlight';
 import SkiaLine from './SkiaLine';
 import SkiaSurahHeader from './SkiaSurahHeader';
+import {
+  computeLineAllahNameColorMaps,
+  computeLineCharRuleMaps,
+  computeLineTajweedMaps,
+  computePageDiffBackgrounds,
+  isRewayahDiffPaintEnabled,
+  isTajweedEnabled,
+} from './pageOverlays';
 import {type MushafLayoutMetrics} from '../constants';
 
 // Rendering constants are now derived from live `metrics` (see
@@ -118,10 +124,20 @@ function buildRenderConstants(metrics: MushafLayoutMetrics): RenderConstants {
 const TOTAL_PAGES = 604;
 const pages = Array.from({length: TOTAL_PAGES}, (_, i) => i + 1);
 
-// Reverse lookup: verseKey → page number (built lazily)
+// Reverse lookup: verseKey → page number (built lazily from the verse map,
+// rebuilt whenever the active rewayah or the DK words cache changes).
 let verseToPageMap: Map<string, number> | null = null;
+let verseToPageMapRewayah: string | null = null;
+let verseToPageMapVersion = -1;
 
 function getPageForVerse(verseKey: string): number | null {
+  const rewayah = digitalKhattDataService.rewayah;
+  const version = digitalKhattDataService.getCacheVersion();
+  if (rewayah !== verseToPageMapRewayah || version !== verseToPageMapVersion) {
+    verseToPageMap = null;
+    verseToPageMapRewayah = rewayah;
+    verseToPageMapVersion = version;
+  }
   if (!verseToPageMap) {
     if (!digitalKhattDataService.initialized) return null;
     verseToPageMap = new Map();
@@ -175,6 +191,8 @@ interface MushafPageContentProps {
   allahNameHighlightColor: string;
   rewayah: string;
   showRewayahDiffs: boolean;
+  /** digitalKhattDataService.getCacheVersion(); char-offset memos depend on it. */
+  dataVersion: number;
   dividerFont: SkFont | null;
   nameFontSize: number;
   onTap?: () => void;
@@ -201,12 +219,21 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     allahNameHighlightColor,
     rewayah,
     showRewayahDiffs,
+    dataVersion,
     dividerFont,
     nameFontSize,
     onTap,
     render,
   }) => {
     const {isDarkMode} = useTheme();
+    // Rewayah of the text this page renders (the active DK words cache). The
+    // store value can lag it during a switch, so overlays gate on this one.
+    const textRewayah = digitalKhattDataService.rewayah;
+    const tajweedEnabled = isTajweedEnabled(showTajweed, textRewayah);
+    const rewayahDiffPaintEnabled = isRewayahDiffPaintEnabled(
+      showRewayahDiffs,
+      textRewayah,
+    );
     const {
       screenWidth,
       contentWidth,
@@ -221,7 +248,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     // ── Page data ──────────────────────────────────────────
     const pageLines = useMemo(
       () => digitalKhattDataService.getPageLines(pageNumber),
-      [pageNumber],
+      // dataVersion: re-read after a data reload.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [pageNumber, dataVersion],
     );
 
     const justResults = useMemo(() => {
@@ -241,80 +270,86 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
         mushafLayoutCacheService.setPageLayout(pageNumber, fontFamily, result);
       }
       return result;
-      // rewayah is intentionally in the dep list even though it's not read
-      // directly: getCachedPageLayout/setPageLayout key the cache by rewayah
-      // internally, so the memo must re-run when rewayah changes.
+      // rewayah/dataVersion are intentionally in the dep list even though
+      // they're not read directly: the layout depends on the line text, and
+      // getCachedPageLayout/setPageLayout key the cache internally.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pageNumber, fontMgr, fontFamily, rewayah, fontSizeLineWidthRatio]);
-
-    const lineTajweedMaps = useMemo(() => {
-      if (!showTajweed || !indexedTajweedData) return null;
-      return pageLines.map((_, i) =>
-        getLineTajweedMap(pageNumber, i, indexedTajweedData),
-      );
-    }, [showTajweed, indexedTajweedData, pageNumber, pageLines]);
-
-    const lineAllahNameColorMaps = useMemo(() => {
-      if (!showAllahNameHighlight) return null;
-      return pageLines.map((_, i) => {
-        const charMap = getLineAllahNameCharMap(pageNumber, i);
-        if (!charMap) return null;
-        const colorMap = new Map<number, string>();
-        for (const key of charMap.keys()) {
-          colorMap.set(key, allahNameHighlightColor);
-        }
-        return colorMap;
-      });
     }, [
-      showAllahNameHighlight,
       pageNumber,
-      pageLines,
-      allahNameHighlightColor,
+      fontMgr,
+      fontFamily,
+      rewayah,
+      fontSizeLineWidthRatio,
+      dataVersion,
     ]);
 
-    // Merged tajweed + rewayah foreground rules. Mirrors SkiaPage:
-    // identical helper, identical precedence (tajweed base → rewayah
-    // categories → silah). Keeps the vertical continuous-mushaf renderer
-    // and the paginated SkiaPage renderer in lockstep so list-mode and
-    // page-mode paint the same foreground highlights.
-    const lineCharRuleMaps = useMemo(() => {
-      if (
-        !lineTajweedMaps &&
-        !rewayahDiffService.hasAnyDiffs &&
-        !rewayahDiffService.hasSilahColoring
-      ) {
-        return null;
-      }
-
-      const maps: (Map<number, string> | null)[] = [];
-      for (let i = 0; i < pageLines.length; i++) {
-        const tajweed = lineTajweedMaps?.[i] ?? null;
-        const rewayahMap = rewayahDiffService.getRewayahRuleMapForLine(
+    // Tajweed char-to-rule maps per line (Hafs text only; see pageOverlays).
+    const lineTajweedMaps = useMemo(
+      () =>
+        computeLineTajweedMaps(
           pageNumber,
-          i,
-        );
-        if (!tajweed && !rewayahMap) {
-          maps.push(null);
-          continue;
-        }
-        if (!rewayahMap) {
-          maps.push(tajweed);
-          continue;
-        }
-        if (!tajweed) {
-          maps.push(rewayahMap);
-          continue;
-        }
-        const merged = new Map(tajweed);
-        for (const [k, v] of rewayahMap) merged.set(k, v);
-        maps.push(merged);
-      }
-      return maps;
-      // rewayah is in the dep list so the memo re-runs when the active
-      // rewayah changes; rewayahDiffService is a singleton whose internal
-      // state isn't tracked by React directly.
+          pageLines.length,
+          indexedTajweedData,
+          tajweedEnabled,
+        ),
+      // rewayah/textRewayah/dataVersion: maps index into the rendered text.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lineTajweedMaps, pageNumber, pageLines, rewayah]);
+      [
+        tajweedEnabled,
+        indexedTajweedData,
+        pageNumber,
+        pageLines,
+        rewayah,
+        textRewayah,
+        dataVersion,
+      ],
+    );
+
+    const lineAllahNameColorMaps = useMemo(
+      () =>
+        computeLineAllahNameColorMaps(
+          pageNumber,
+          pageLines.length,
+          allahNameHighlightColor,
+          showAllahNameHighlight,
+        ),
+      // rewayah/textRewayah/dataVersion: maps index into the rendered text.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [
+        showAllahNameHighlight,
+        pageNumber,
+        pageLines,
+        allahNameHighlightColor,
+        rewayah,
+        textRewayah,
+        dataVersion,
+      ],
+    );
+
+    // Merged tajweed + rewayah foreground rules. Same helper and precedence
+    // as SkiaPage (tajweed base → rewayah categories → silah); the rewayah
+    // layer is off whenever 'Show differences' is off.
+    const lineCharRuleMaps = useMemo(
+      () =>
+        computeLineCharRuleMaps(
+          pageNumber,
+          pageLines.length,
+          lineTajweedMaps,
+          rewayahDiffPaintEnabled,
+        ),
+      // rewayah/textRewayah/dataVersion: rewayahDiffService is a singleton
+      // whose state follows the active rewayah and words cache.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [
+        lineTajweedMaps,
+        pageNumber,
+        pageLines,
+        rewayahDiffPaintEnabled,
+        rewayah,
+        textRewayah,
+        dataVersion,
+      ],
+    );
 
     const canvasHeight = pageLines.length * baseLineHeight;
 
@@ -359,7 +394,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
     // ── Hit testing ────────────────────────────────────────
     const orderedVerseKeys = useMemo(
       () => mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber),
-      [pageNumber],
+      // rewayah/dataVersion: segments follow the rendered text.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [pageNumber, rewayah, dataVersion],
     );
 
     const hitTestVerse = useCallback(
@@ -565,8 +602,11 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       const hasAnnotations = Object.keys(persistentHighlights).length > 0;
       const hasBookmarks = bookmarkedVerseKeys.size > 0;
       const hasPlayback = !!playbackVerseKey;
-      const hasRewayahDiffs =
-        showRewayahDiffs && rewayah !== 'hafs' && rewayahDiffService.hasDiffs;
+      const diffHighlights = computePageDiffBackgrounds(
+        pageNumber,
+        rewayahDiffPaintEnabled,
+      );
+      const hasRewayahDiffs = diffHighlights.size > 0;
       const selectedSet =
         selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
           ? new Set(selectedVerseKeys)
@@ -589,8 +629,6 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       // Shared pipeline with SkiaPage; both consume the same per-line
       // diff-highlight map produced by rewayahDiffService.
       if (hasRewayahDiffs) {
-        const diffHighlights =
-          rewayahDiffService.getPageDiffHighlightsByLine(pageNumber);
         for (const [lineIndex, entries] of diffHighlights) {
           let arr = map.get(lineIndex);
           if (!arr) {
@@ -653,6 +691,9 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       }
 
       return map;
+      // rewayah/textRewayah/dataVersion: verse segments and diff ranges follow
+      // the rendered text (singleton services; not read directly).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       persistentHighlights,
       bookmarkedVerseKeys,
@@ -663,8 +704,10 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
       pageNumber,
       selectionBgColor,
       rewayah,
-      showRewayahDiffs,
+      textRewayah,
+      rewayahDiffPaintEnabled,
       pageLines,
+      dataVersion,
     ]);
 
     // ── Render ─────────────────────────────────────────────
@@ -726,6 +769,7 @@ const MushafPageContent: React.FC<MushafPageContentProps> = React.memo(
                 charToRule={lineCharRuleMaps?.[lineIndex] ?? undefined}
                 fontFamily={fontFamily}
                 arabicTextWeight={arabicTextWeight}
+                dataVersion={dataVersion}
                 lineHeight={baseLineHeight}
                 onParagraphReady={handleParagraphReady}
                 backgroundHighlights={lineBackgroundHighlightsMap.get(
@@ -797,6 +841,12 @@ const ContinuousMushafView = forwardRef<
     const rewayah = useMushafSettingsStore(s => s.rewayah);
     const showRewayahDiffs = useMushafSettingsStore(s => s.showRewayahDiffs);
     const indexedTajweedData = useTajweedStore(s => s.indexedTajweedData);
+    // Words-cache version (bumps on rewayah switch / data reload); passed to
+    // every page so mounted pages recompute their char-offset overlays.
+    const dataVersion = useSyncExternalStore(
+      digitalKhattDataService.subscribeCacheChanges,
+      digitalKhattDataService.getCacheVersion,
+    );
 
     const fontFamily =
       getRewayahFontFamily(
@@ -878,6 +928,7 @@ const ContinuousMushafView = forwardRef<
             allahNameHighlightColor={allahNameHighlightColor}
             rewayah={rewayah}
             showRewayahDiffs={showRewayahDiffs}
+            dataVersion={dataVersion}
             dividerFont={surahHeaderFonts.dividerFont}
             nameFontSize={surahHeaderFonts.nameFontSize}
             onTap={onTap}
@@ -897,6 +948,7 @@ const ContinuousMushafView = forwardRef<
         allahNameHighlightColor,
         rewayah,
         showRewayahDiffs,
+        dataVersion,
         surahHeaderFonts,
         onTap,
         render,
@@ -910,7 +962,7 @@ const ContinuousMushafView = forwardRef<
         ref={flashListRef}
         data={pages}
         renderItem={renderItem}
-        extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}`}
+        extraData={`${showTajweed}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}-${rewayah}-${showRewayahDiffs}-${dataVersion}`}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialPage - 1}
         contentContainerStyle={{

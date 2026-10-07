@@ -6,6 +6,7 @@ import {
 } from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 import {REWAYAH_DATA_MANIFEST} from './rewayahDataManifest';
+import {joinSlotTexts, layoutLineSlots, visibleWords} from './lineWordSpans';
 
 const TOTAL_PAGES = 604;
 
@@ -1265,15 +1266,18 @@ export class DigitalKhattDataService {
     return this.wordsById.get(wordId) || '';
   }
 
+  /**
+   * Rendered text of a page line. Ayah lines follow the Release 1 slot model
+   * (services/mushaf/lineWordSpans.ts): blank slots render nothing and add no
+   * separator, a slot containing spaces stays one unit. Every per-line overlay
+   * computes its char offsets with getLineWordSpans over the same join.
+   */
   getLineText(line: DKLine): string {
     if (line.line_type === 'surah_name') return '';
     if (line.line_type === 'basmallah') return BASMALLAH_TEXT;
-    const words: string[] = [];
-    for (let i = line.first_word_id; i <= line.last_word_id; i++) {
-      const text = this.wordsById.get(i);
-      if (text) words.push(text);
-    }
-    return words.join(' ');
+    return layoutLineSlots(line.first_word_id, line.last_word_id, wordId =>
+      this.getWordText(wordId),
+    ).text;
   }
 
   getWordInfo(wordId: number): DKWordInfo | undefined {
@@ -1288,17 +1292,23 @@ export class DigitalKhattDataService {
     return this.pageToSurah;
   }
 
+  /**
+   * The verse's rendered words in order: blank slots ('' text) are omitted, so
+   * joining `text` with single spaces gives exactly getVerseText(). Each entry
+   * keeps its Hafs wordPositionInVerse. A slot may hold several space-separated
+   * tokens and may end with an inline verse marker (' ۝N'); it is still one
+   * word unit (see lineWordSpans.ts).
+   */
   getVerseWords(verseKey: string, rewayah?: RewayahId): DKWordInfo[] {
-    if (!rewayah || rewayah === this.currentRewayah) {
-      return this.verseWords.get(verseKey) || [];
-    }
-    return this.sideVerseWords.get(rewayah)?.get(verseKey) || [];
+    const slots =
+      !rewayah || rewayah === this.currentRewayah
+        ? this.verseWords.get(verseKey)
+        : this.sideVerseWords.get(rewayah)?.get(verseKey);
+    return slots ? visibleWords(slots) : [];
   }
 
   getVerseText(verseKey: string, rewayah?: RewayahId): string {
-    const words = this.getVerseWords(verseKey, rewayah);
-    if (words.length === 0) return '';
-    return words.map(w => w.text).join(' ');
+    return joinSlotTexts(this.getVerseWords(verseKey, rewayah));
   }
 
   /**

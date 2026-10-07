@@ -16,7 +16,11 @@ import {getTextAllahNameCharMap} from '@/services/mushaf/AllahNameHighlightServi
 import {getBasmalaTajweedMap} from '@/services/mushaf/DigitalKhattVerseTajweedService';
 import {tajweedColors} from '@/constants/tajweedColors';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
-import type {MushafArabicTextWeight} from '@/store/mushafSettingsStore';
+import {
+  useMushafSettingsStore,
+  type MushafArabicTextWeight,
+  type RewayahId,
+} from '@/store/mushafSettingsStore';
 import {
   createTextStrokePaint,
   getArabicTextWeightStrokeWidth,
@@ -148,20 +152,28 @@ interface BasmalaHeaderProps {
   arabicTextWeight?: MushafArabicTextWeight;
   showAllahNameHighlight?: boolean;
   allahNameHighlightColor?: string;
+  /** Rewayah of the surrounding verses (player: the track's rewayah).
+   *  Defaults to the active mushaf rewayah. Hafs (QPC) tajweed is painted
+   *  only in a Hafs context. */
+  rewayah?: RewayahId;
 }
 
 const BasmalaHeader: React.FC<BasmalaHeaderProps> = ({
   visible,
   width,
   textColor,
-  showTajweed,
+  showTajweed: showTajweedSetting,
   fontMgr,
   dkFontFamily,
   indexedTajweedData,
   arabicTextWeight = 'normal',
   showAllahNameHighlight = false,
   allahNameHighlightColor,
+  rewayah,
 }) => {
+  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
+  const showTajweed =
+    showTajweedSetting && (rewayah ?? mushafRewayah) === 'hafs';
   const charToRule = useMemo(() => {
     if (!showTajweed || !indexedTajweedData) return null;
     return getBasmalaTajweedMap(indexedTajweedData);
