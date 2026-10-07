@@ -43,14 +43,37 @@ Simulator: iPhone 17 Pro (test), iOS 26.
 
 Prerequisite: the app was last left on the Al-Fatihah mushaf page (the app reopens where it was left). The flow returns to that page at the end, so replays are repeatable.
 
-1. Relaunch; wait for the mushaf (`Juz 1`).
-2. Long-press 1:2, open Tafseer, wait for `IBN KATHIR`, dismiss.
-3. Play: open playback settings, pick the first reciter, play, stop.
-4. Turn the page (horizontal swipe), wait for `Al-Baqarah`, swipe back.
+The YAML has 25 entries (two of them `echo` notes). Numbered as in the flow report:
 
-Replay: `flow-execute` with `name: core-smoke`, `project_root: <repo root>`, `device: <udid>`. Baseline on `develop` (2026-10-07): 22 of 22 steps pass in 31 s.
+1. `launch` the app.
+2. `screenshot`.
+3. `await-ui-element` `Juz 1` (mushaf visible).
+4. `echo`: prerequisite note.
+5. `gesture-custom` long-press on 1:2 (coordinates).
+6. `tap` Tafseer in the verse sheet (coordinates).
+7. `screenshot`.
+8. `await-ui-element` `IBN KATHIR` (sheet header).
+9. `await-ui-element` `The Meaning of Al-Hamd` (a heading in the bundled Ibn Kathir text for 1:2, so an empty or "not available" sheet fails). Added after the baseline below and not yet replayed (the simulator touch transport was down); replace the substring when the content-sync work changes the tafsir source.
+10. `gesture-swipe` down to dismiss the sheet.
+11. `gesture-tap` the playback settings button at the bottom (coordinates, y 0.94).
+12. `screenshot`.
+13. `tap` the reciter row (coordinates).
+14. `screenshot`.
+15. `tap` the first reciter (coordinates).
+16. `screenshot`.
+17. `tap` play (coordinates).
+18. `screenshot`.
+19. `tap` `stop.fill` (accessibility id).
+20. `gesture-swipe` to the next page.
+21. `screenshot`.
+22. `await-ui-element` `Al-Baqarah`.
+23. `echo`: return note.
+24. `gesture-swipe` back to page 1.
+25. `await-ui-element` `Al-Fatihah`.
 
-Steps 6, 12, 14 and 16 are coordinate taps (the sheets have no accessible labels); a layout change in those sheets needs a re-record.
+Replay: `flow-execute` with `name: core-smoke`, `project_root: <repo root>`, `device: <udid>`. Baseline on `develop` (2026-10-07), before step 9 was added: all 24 entries pass in 31 s (the report counted 22 steps).
+
+Steps 5, 6, 11, 13, 15 and 17 use coordinates (the sheets have no accessible labels); a layout change in those sheets needs a re-record.
 
 ### Upgrade (manual for now)
 

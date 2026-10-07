@@ -31,6 +31,12 @@ steps:
       selector:
         text: IBN KATHIR
       timeoutMs: 10000
+  - tool: await-ui-element
+    args:
+      condition: visible
+      selector:
+        text: The Meaning of Al-Hamd
+      timeoutMs: 10000
   - tool: gesture-swipe
     args:
       fromX: 0.5
