@@ -104,6 +104,22 @@ describe('RewayahVerseMapService with small fixture maps', () => {
     expect(svc.isIdentitySurah('warsh', 3)).toBe(true);
   });
 
+  it('tolerates explicit identity entries', () => {
+    const svc = serviceWith({
+      warsh: () => {
+        const m = tinyWarshMap();
+        return {
+          ...m,
+          r2h: {...m.r2h, '3:7': ['3:7']},
+          h2r: {...m.h2r, '3:7': ['3:7']},
+        };
+      },
+    });
+    expect(svc.toHafsKeys('warsh', '3:7')).toEqual(['3:7']);
+    expect(svc.toRiwayahKeys('warsh', '3:7')).toEqual(['3:7']);
+    expect(svc.isIdentitySurah('warsh', 3)).toBe(true);
+  });
+
   it('treats Hafs as the identity map without any file', () => {
     const svc = serviceWith({});
     expect(svc.hasVerseMap('hafs')).toBe(true);

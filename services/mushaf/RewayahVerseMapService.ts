@@ -176,7 +176,10 @@ export function parseVerseMap(
         throw new Error(`${fileId}: r2h["${key}"] is empty`);
       }
       out.set(key, Object.freeze(value.slice()));
-      nonIdentitySurahs.add(k.surah);
+      // An explicit [same key] entry is identity (the contract omits them,
+      // but tolerate it without losing the surah's identity status).
+      if (value.length !== 1 || value[0] !== key)
+        nonIdentitySurahs.add(k.surah);
     }
     return out;
   };
