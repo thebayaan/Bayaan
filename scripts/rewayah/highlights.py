@@ -13,27 +13,32 @@ classify(hafs_text, target_text, rid) returns a list of
 A word gets the whole-word tint when it is READ differently from the Hafs
 word in that slot: different letters (incl. a hamza Hafs does not have, or
 the seen of 'صِۜرَٰطَ'), a different long vowel (the dagger alef counts as an
-alef: 1:4 مَلِكِ vs مَٰلِكِ), different vowels on its letters, or a different
-case ending (2:214 يَقُولُ vs يَقُولَ).
+alef: 1:4 مَلِكِ vs مَٰلِكِ; an alef read in waqf only, ٱلظُّنُونَا۠), a
+different doubling (5:89 عَقَدتُّمُ, تَذَّكَّرُونَ, idgham ٱتَّخَذتُّمُ), different
+vowels on its letters, or a different case ending (2:214 يَقُولُ vs يَقُولَ).
+In the close rewayat an imala dot is also a difference (Shu'bah رٜءٜا, حٜمٓ).
 
 NOT highlighted (the reading_key() normalizations):
   encoding    KFGQPC (Maghribi) vs DK (Madani) spelling of the same reading:
               the wasl alef written alef + connecting vowel (+ start dot),
               sukun / rounded-zero shapes, open vs closed tanween, tanween
               written after a final alef, ى / ي / ے, ٱ / آ / ا, full vs
-              dagger alef, the unmarked assimilated lam of الذين / لله,
-              shadda, hamza seat on a tatweel vs on the ya, a long vowel
-              written small inside a word (دَاوُۥدَ), an assimilated nun
-              written or not ('وَأَن لَّوِ' / 'وَأَلَّوِ'), CGJ / ZWJ / tatweel,
-              iqlab meem forms, waqf and sajdah signs, rub' el-hizb.
+              dagger alef, the unmarked assimilated lam of الذين / لله, the
+              doubled ta' of an idgham naqis (بَسَطتَ / بَسَط۟تَّ), hamza seat on
+              a tatweel vs on the ya, a long vowel written small inside a
+              word (دَاوُۥدَ), an assimilated nun written or not ('وَأَن لَّوِ' /
+              'وَأَلَّوِ'), the upright zero in the Nafi' texts (never written),
+              CGJ / ZWJ / tatweel, iqlab meem forms, waqf and sajdah signs,
+              rub' el-hizb, and a doubled FIRST letter (an idgham with the
+              previous word, which carries the difference itself).
   usul        rules marked by diacritics or by the hamza's carrier only:
-              madd length (U+0653), imala / taqlil dots (a dot written
-              instead of the fatha counts as the fatha), the second of two
-              hamzas and the dropped first of two hamzas across words
-              (non-Kufi rewayat), and for Warsh and al-Susi the softened
-              hamza (ibdal, naql, tashil), a case ending added by naql
-              (Warsh) or dropped by idgham kabir (al-Susi); for these two the
-              softened hamza is compared as the long vowel it becomes.
+              madd length (U+0653), imala / taqlil dots in the far rewayat (a
+              dot written instead of the fatha counts as the fatha), the
+              second of two hamzas and the dropped first of two hamzas across
+              words (non-Kufi rewayat), and for Warsh and al-Susi the softened
+              hamza (ibdal, naql, tashil), a case ending added by naql (Warsh)
+              or dropped by idgham kabir (al-Susi); for these two the softened
+              hamza is compared as the long vowel it becomes.
   silah       the 'silah' category instead (a Hafs-only silah, e.g. 25:69
               فِيهِۦ in Warsh, is a whole-word difference: there is no mark
               to colour).
@@ -58,8 +63,10 @@ IQLAB_MEEMS = frozenset("\u06E2\u06ED")
 DOT_BELOW = "\u065C"
 TATWEEL = "\u0640"
 SHADDA = "\u0651"
+UPRIGHT_ZERO = "\u06E0"
 DAGGER_ALEF = "\u0670"
 ALEF, WAW, YEH, LAM, HAMZA, NOON = "\u0627", "\u0648", "\u064A", "\u0644", "\u0621", "\u0646"
+TEH, TAH = "\u062A", "\u0637"
 ASSIMILATING = frozenset("\u0644\u0631\u0645\u0646\u0648\u064A")  # ل ر م ن و ي
 HAMZA_SEATS = frozenset("\u064A\u0649\u0648\u0627")  # ي ى و ا
 SILAH_CHARS = frozenset("\u06E5\u06E6")
@@ -70,6 +77,8 @@ CLOSE = frozenset({"shouba", "bazzi", "qumbul"})
 KUFI = frozenset({"shouba"})  # reads both of two hamzas
 HAMZA_SOFTENING = frozenset({"warsh", "soosi"})  # general ibdal / naql / tashil of the hamza
 MAGHRIBI_LAM = frozenset({"warsh", "qaloon", "doori", "soosi"})
+# The KFGQPC Nafi' texts never write the upright zero (alef dropped in wasl).
+MAGHRIBI_NO_UPRIGHT_ZERO = frozenset({"warsh", "qaloon"})
 
 # Removed from the key: encoding-only signs and diacritic-only general rules.
 _REMOVE = frozenset(
@@ -81,7 +90,6 @@ _REMOVE = frozenset(
     "\u0651"  # shadda
     "\u0653\u06E4"  # madd, sajdah overline
     "\u06EC\u06EA"  # wasl / tashil dots (U+065C is resolved per letter)
-    "\u06E0"  # upright rectangular zero
 )
 _LETTER_CANON = {
     "\u0671": ALEF,  # ٱ
@@ -107,7 +115,7 @@ _WASL = re.compile("\u0627[\u064E\u064F\u0650]?[\u06EC\u065C\u06DF\u06EA][\u064E
 
 
 class _Unit:
-    __slots__ = ("letter", "marks", "silah", "shadda", "dagger", "hamza", "dot")
+    __slots__ = ("letter", "marks", "silah", "shadda", "dagger", "hamza", "dot", "token_start")
 
     def __init__(self, letter: str, dagger: bool = False) -> None:
         self.letter = letter
@@ -117,6 +125,7 @@ class _Unit:
         self.dagger = dagger
         self.hamza = False  # carried a hamza mark
         self.dot = False  # carried a tashil / imala dot
+        self.token_start = False  # first letter of its whitespace token
 
 
 def _is_letter(c: str) -> bool:
@@ -136,6 +145,8 @@ def _units(text: str, rid: str) -> tuple[list[_Unit], int]:
     hamzas = 0
     for token in text.split(" "):
         u, h = _token_units(token, rid)
+        if u:
+            u[0].token_start = True
         units.extend(u)
         hamzas += h
     return units, hamzas
@@ -184,7 +195,7 @@ def _token_units(token: str, rid: str) -> tuple[list[_Unit], int]:
         u.dot = DOT_BELOW in marks
         if any(c in IQLAB_MEEMS for c in marks):  # vowel + small meem = tanween with iqlab
             marks = "".join(TANWEEN_OF.get(c, c) for c in marks if c not in IQLAB_MEEMS)
-        if u.dot:  # imala / taqlil dot written instead of the fatha
+        if u.dot and rid not in CLOSE:  # imala / taqlil dot written instead of the fatha
             marks = marks.replace(DOT_BELOW, "")
             if not any(c in VOWELS for c in marks):
                 marks += FATHA
@@ -216,6 +227,10 @@ def reading_key(text: str, rid: str) -> tuple[list[_Unit], int]:
     for u in units:
         has_hamza = any(x in HAMZA_MARKS for x in u.marks)
         vowels = "".join(sorted(x for x in u.marks if x in VOWELS))
+        if DOT_BELOW in u.marks:  # close rewayat: the imala dot is kept as a mark
+            vowels += DOT_BELOW
+        if UPRIGHT_ZERO in u.marks and rid not in MAGHRIBI_NO_UPRIGHT_ZERO:
+            vowels += UPRIGHT_ZERO  # alef read in waqf only (ٱلظُّنُونَا۠ vs Shu'bah ٱلظُّنُونَا)
         if softening:
             if u.letter == HAMZA:
                 # ibdal / tashil: the hamza becomes the long vowel of the vowel
@@ -285,11 +300,15 @@ def _word_differs(hafs: str, target: str, rid: str) -> bool:
         else:
             return True
     if not any(u.marks for u in a):
-        return False  # unvowelled Hafs word (muqatta'at: Nafi' writes أَلَٓرٜ)
+        # unvowelled Hafs word (muqatta'at: Nafi' writes أَلَٓرٜ); an imala dot
+        # is still a difference in the close rewayat (Shu'bah حمٓ -> حٜمٓ)
+        return any(DOT_BELOW in y.marks for y in b)
     if rid in HAMZA_SOFTENING and hb > ha:
         return True  # a hamza Hafs does not have (e.g. Nafi' النَّبِيٓءَ)
     n = len(a)
     for i, (x, y) in enumerate(zip(a, b)):
+        if x.shadda != y.shadda and not _shadda_excused(i, a, b, rid):
+            return True  # عَقَدتُّمُ / عَقَّدتُّمُ, تَذَّكَّرُونَ, نَزَّلَ, idgham ٱتَّخَذتُّمُ
         if x.marks == y.marks:
             continue
         one_sided = not x.marks or not y.marks
@@ -310,6 +329,19 @@ def _word_differs(hafs: str, target: str, rid: str) -> bool:
         if x.letter == LAM and rid in MAGHRIBI_LAM and x.marks in ("", FATHA) and y.marks in ("", FATHA):
             continue  # unmarked assimilated lam (الذين, لله)
         return True
+    return False
+
+
+def _shadda_excused(i: int, a: list[_Unit], b: list[_Unit], rid: str) -> bool:
+    x, y = a[i], b[i]
+    if x.token_start or y.token_start:
+        return True  # doubled first letter = idgham with the previous word (مَن يَّقُولُ)
+    if x.letter == LAM and rid in MAGHRIBI_LAM and x.marks in ("", FATHA) and y.marks in ("", FATHA):
+        return True  # unmarked assimilated lam (الذين, لله)
+    if rid == "soosi" and i >= 1 and not b[i - 1].marks and a[i - 1].marks and y.shadda:
+        return True  # idgham kabir inside the word (خَلَقكُّمْ)
+    if x.letter == TEH and i >= 1 and a[i - 1].letter == TAH:
+        return True  # idgham naqis of ta' in ta: DK بَسَطتَ, KFGQPC Nafi' بَسَط۟تَّ
     return False
 
 

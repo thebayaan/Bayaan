@@ -130,7 +130,8 @@ Hafs verse and word position:
 
 - `major` (Shu'bah, Bazzi, Qunbul) / `mukhtalif` (Warsh, Qalun, Duri, Susi):
   whole word (`[]`), for words read differently from the Hafs word in that
-  slot (letters, long vowels, vowels, case ending). Encoding conventions and
+  slot (letters, long vowels, doubling, vowels, case ending; imala dots in the
+  close rewayat). Encoding conventions and
   general rules marked only by diacritics or by the hamza's carrier are not
   highlighted; see the docstring of `highlights.py`.
 - `silah`: char indices (UTF-16 = code points here) of the silah marks
