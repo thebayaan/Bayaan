@@ -67,6 +67,8 @@ import PageEdgeDecoration, {
 import {analyticsService} from '@/services/analytics/AnalyticsService';
 import {qcfFontLoader} from '@/services/mushaf/QCFFontLoader';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
+import {useHeaderHeight} from 'expo-router/react-navigation'; // @ai
+import {RewayahFallbackBanner} from '@/components/MushafSettingsContent'; // @ai
 
 const TOTAL_PAGES = 604;
 const ANIMATION_DURATION = 300;
@@ -548,6 +550,9 @@ export default function MushafViewer({
   const scrollDirection = useMushafSettingsStore(s => s.scrollDirection);
   const rewayah = useMushafSettingsStore(s => s.rewayah);
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
+  const rewayahFallbackFrom = useMushafSettingsStore(
+    s => s.rewayahFallbackFrom,
+  ); // @ai
   const isVertical = scrollDirection === 'vertical';
   const isBookLayout = pageLayout === 'book';
   const edgeBg = isDarkMode ? '#000' : readingColors.card;
@@ -560,6 +565,8 @@ export default function MushafViewer({
   const flatListRef = useRef<FlatList>(null);
   const continuousListRef = useRef<ContinuousListViewHandle>(null);
   const insets = useSafeAreaInsets();
+  // @ai — the iOS 26 Stack header is transparent and drawn over the content
+  const rawHeaderHeight = useHeaderHeight(); // @ai
   const {isTablet} = useResponsive();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   // A paged, `inverted` FlatList preserves its pixel scroll offset when its
@@ -1299,8 +1306,34 @@ export default function MushafViewer({
                   </Pressable>
                 </View>
               </View>
+              {/* @ai — Hafs is standing in for a rewayah that failed to load */}
+              <RewayahFallbackBanner style={styles.headerFallbackBanner} />
             </Animated.View>
           )}
+
+          {/* @ai-start */}
+          {/* iOS 26: the same notice, under the transparent Stack header */}
+          {USE_GLASS && rewayahFallbackFrom && (
+            <Animated.View
+              style={[
+                styles.glassFallbackBanner,
+                overlayAnimatedStyle,
+                {
+                  top: rawHeaderHeight + moderateScale(8),
+                  left: Math.max(insets.left, moderateScale(12)),
+                  right: Math.max(insets.right, moderateScale(12)),
+                },
+              ]}
+              pointerEvents={isImmersive ? 'none' : 'box-none'}>
+              <RewayahFallbackBanner
+                style={[
+                  styles.glassFallbackBannerCard,
+                  {backgroundColor: theme.colors.background},
+                ]}
+              />
+            </Animated.View>
+          )}
+          {/* @ai-end */}
 
           {/* ================================================================ */}
           {/* Normal mode bottom bar — non-glass (iOS 26 uses Stack.Toolbar)  */}
@@ -1417,4 +1450,17 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
   },
+  // @ai-start
+  headerFallbackBanner: {
+    marginTop: moderateScale(8),
+    marginBottom: 0,
+  },
+  glassFallbackBanner: {
+    position: 'absolute',
+    zIndex: 10,
+  },
+  glassFallbackBannerCard: {
+    marginBottom: 0,
+  },
+  // @ai-end
 });
