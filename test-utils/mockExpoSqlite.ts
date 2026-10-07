@@ -1,0 +1,28 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import {openAdapterDatabase, type AdapterDatabase} from './sqliteAdapter';
+
+let currentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'expo-sqlite-'));
+const open = new Map<string, AdapterDatabase>();
+
+export function databaseDir(): string {
+  return currentDir;
+}
+
+// Called in beforeEach for isolation; closes handles and starts a new directory.
+export async function resetDatabases(): Promise<void> {
+  for (const db of open.values()) await db.closeAsync();
+  open.clear();
+  currentDir = fs.mkdtempSync(path.join(os.tmpdir(), 'expo-sqlite-'));
+}
+
+export const expoSqliteModule = {
+  openDatabaseAsync: async (name: string): Promise<AdapterDatabase> => {
+    const existing = open.get(name);
+    if (existing) return existing;
+    const db = openAdapterDatabase(path.join(currentDir, name));
+    open.set(name, db);
+    return db;
+  },
+};
