@@ -759,13 +759,31 @@ export class DigitalKhattDataService {
       const failed = error instanceof RewayahLoadError ? error.rewayah : target;
       if (failed === 'hafs') throw error;
       // A blank mushaf on every launch is worse than reading Hafs: fall back
-      // (the commit relabels the store to Hafs) and keep the failure visible
-      // through getRewayahLoadState / getRewayahLoadError.
+      // and keep the failure visible through getRewayahLoadState /
+      // getRewayahLoadError.
       console.warn(
         `[DigitalKhattDataService] Could not load "${failed}" at startup; falling back to Hafs`,
         error,
       );
-      await this.requestMain('hafs', true);
+      // @ai-start
+      // The reader's saved rewayah is kept. Recording the fallback before the
+      // Hafs commit relabels the store makes the store persist the saved
+      // rewayah instead of Hafs (so the next launch tries it again) while
+      // `rewayah`, which every label reads, names the Hafs on screen. The UI
+      // tells the reader and offers a retry.
+      const saved = useMushafSettingsStore.getState().rewayah;
+      if (REWAYAH_DATA[saved]) {
+        useMushafSettingsStore.getState().startRewayahFallback(saved);
+      }
+      try {
+        await this.requestMain('hafs', true);
+      } catch (hafsError) {
+        // Nothing can be shown; the saved rewayah was never overwritten, and
+        // no notice may claim that Hafs is on screen.
+        useMushafSettingsStore.getState().clearRewayahFallback();
+        throw hafsError;
+      }
+      // @ai-end
     }
   }
 

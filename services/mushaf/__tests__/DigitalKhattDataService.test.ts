@@ -139,13 +139,28 @@ jest.mock('expo-file-system/legacy', () => ({
 }));
 
 jest.mock('@/store/mushafSettingsStore', () => {
+  // @ai-start
+  // Mirrors the real store's rewayah rules: setRewayah is refused under
+  // qcf_v2, and showing a non-Hafs rewayah ends a startup fallback.
   const state = {
     rewayah: 'hafs',
     mushafRenderer: 'dk_v2',
+    rewayahFallbackFrom: null as string | null,
     setRewayah: jest.fn((rewayah: string) => {
-      if (state.mushafRenderer !== 'qcf_v2') state.rewayah = rewayah;
+      if (state.mushafRenderer === 'qcf_v2') return;
+      state.rewayah = rewayah;
+      if (rewayah !== 'hafs') state.rewayahFallbackFrom = null;
+    }),
+    startRewayahFallback: jest.fn((from: string) => {
+      if (from !== 'hafs' && state.mushafRenderer !== 'qcf_v2') {
+        state.rewayahFallbackFrom = from;
+      }
+    }),
+    clearRewayahFallback: jest.fn(() => {
+      state.rewayahFallbackFrom = null;
     }),
   };
+  // @ai-end
   return {useMushafSettingsStore: {getState: () => state}, __state: state};
 });
 
@@ -222,6 +237,11 @@ const store = (
       rewayah: string;
       mushafRenderer: string;
       setRewayah: jest.Mock;
+      // @ai-start
+      rewayahFallbackFrom: string | null;
+      startRewayahFallback: jest.Mock;
+      clearRewayahFallback: jest.Mock;
+      // @ai-end
     };
   }
 ).__state;
@@ -294,6 +314,11 @@ beforeEach(() => {
   store.rewayah = 'hafs';
   store.mushafRenderer = 'dk_v2';
   store.setRewayah.mockClear();
+  // @ai-start
+  store.rewayahFallbackFrom = null;
+  store.startRewayahFallback.mockClear();
+  store.clearRewayahFallback.mockClear();
+  // @ai-end
   consoleSpies = [
     jest.spyOn(console, 'log').mockImplementation(() => undefined),
     jest.spyOn(console, 'warn').mockImplementation(() => undefined),
@@ -644,22 +669,67 @@ describe('switchRewayah', () => {
 });
 
 describe('initialization failures', () => {
-  it('falls back to Hafs (relabelling the store) when the persisted rewayah cannot load', async () => {
+  // @ai-start
+  it('falls back to Hafs when the persisted rewayah cannot load, keeping the saved rewayah', async () => {
     store.rewayah = 'warsh';
     fake.readFailures.set('dk_words_warsh', Infinity);
     const service = await initialized();
     expect(service.rewayah).toBe('hafs');
-    expect(store.rewayah).toBe('hafs');
     expect(texts(service, '1:1')).toEqual(H);
     expect(service.getRewayahLoadState('warsh')).toBe('error');
+    // The label names the Hafs on screen; the saved Warsh is recorded as a
+    // fallback (which the real store persists instead of Hafs) before the
+    // commit relabels the store.
+    expect(store.rewayah).toBe('hafs');
+    expect(store.rewayahFallbackFrom).toBe('warsh');
+    expect(store.startRewayahFallback).toHaveBeenCalledWith('warsh');
+    expect(store.setRewayah).toHaveBeenCalledWith('hafs');
+    expect(store.startRewayahFallback.mock.invocationCallOrder[0]).toBeLessThan(
+      store.setRewayah.mock.invocationCallOrder[0],
+    );
   });
 
-  it('starts with Hafs when the persisted rewayah has no bundled text', async () => {
+  it('retries the saved rewayah on demand after a startup fallback', async () => {
+    store.rewayah = 'warsh';
+    fake.readFailures.set('dk_words_warsh', 2);
+    const service = await initialized();
+    expect(store.rewayahFallbackFrom).toBe('warsh');
+
+    await service.switchRewayah('warsh');
+    expect(service.rewayah).toBe('warsh');
+    expect(texts(service, '1:1')).toEqual(W);
+    expect(store.rewayah).toBe('warsh');
+    expect(store.rewayahFallbackFrom).toBeNull();
+  });
+
+  it('records no fallback when Hafs cannot load either', async () => {
+    store.rewayah = 'warsh';
+    fake.readFailures.set('dk_words_warsh', Infinity);
+    fake.readFailures.set('dk_words', Infinity);
+    const service = new DigitalKhattDataService();
+    await expect(service.initialize()).rejects.toBeInstanceOf(RewayahLoadError);
+    expect(service.initialized).toBe(false);
+    // Nothing is on screen: the saved rewayah stays, with no Hafs notice.
+    expect(store.rewayah).toBe('warsh');
+    expect(store.rewayahFallbackFrom).toBeNull();
+  });
+
+  it('starts with Hafs and no fallback when the persisted rewayah has no bundled text', async () => {
     store.rewayah = 'hisham';
     const service = await initialized();
     expect(service.rewayah).toBe('hafs');
     expect(store.rewayah).toBe('hafs');
+    expect(store.startRewayahFallback).not.toHaveBeenCalled();
   });
+
+  it('records no fallback when the persisted rewayah loads', async () => {
+    store.rewayah = 'warsh';
+    const service = await initialized();
+    expect(service.rewayah).toBe('warsh');
+    expect(store.startRewayahFallback).not.toHaveBeenCalled();
+    expect(store.rewayahFallbackFrom).toBeNull();
+  });
+  // @ai-end
 
   it('rejects when Hafs cannot load, then can be retried', async () => {
     fake.readFailures.set('dk_words', Infinity);

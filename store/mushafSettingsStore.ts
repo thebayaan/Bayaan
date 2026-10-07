@@ -151,6 +151,16 @@ interface MushafSettingsState {
   // Rewayah (qiraat transmission) selection
   rewayah: RewayahId;
   showRewayahDiffs: boolean;
+  // @ai-start
+  /**
+   * The saved rewayah that could not be loaded at startup while Hafs is shown
+   * in its place (DigitalKhattDataService's startup fallback), else null.
+   * `rewayah` always names the text on screen, so it is 'hafs' meanwhile.
+   * Never persisted; while it is set, this saved rewayah (not the Hafs shown)
+   * is what gets persisted, so the next launch tries it again.
+   */
+  rewayahFallbackFrom: RewayahId | null;
+  // @ai-end
 
   // Actions
   toggleTranslation: () => void;
@@ -181,6 +191,12 @@ interface MushafSettingsState {
   setReadingTheme: (themeId: string) => void;
   setRewayah: (rewayah: RewayahId) => void;
   toggleRewayahDiffs: () => void;
+  // @ai-start
+  /** Records that the saved rewayah `from` failed to load and Hafs is shown. */
+  startRewayahFallback: (from: RewayahId) => void;
+  /** Ends a startup fallback, making Hafs the saved rewayah. */
+  clearRewayahFallback: () => void;
+  // @ai-end
 }
 
 export const useMushafSettingsStore = create<MushafSettingsState>()(
@@ -213,6 +229,7 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       darkThemeId: 'dark-default',
       rewayah: 'hafs' as RewayahId,
       showRewayahDiffs: true,
+      rewayahFallbackFrom: null, // @ai
 
       // Actions
       toggleTranslation: () =>
@@ -266,6 +283,17 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             showRewayahDiffs:
               renderer === 'qcf_v2' ? false : state.showRewayahDiffs,
             uthmaniFont: uthmaniFontForRenderer(renderer),
+            // A font that cannot draw the saved rewayah (IndoPak, Mushaf
+            // 1440) ends a startup fallback: Hafs becomes the saved choice,
+            // so the persisted pair stays valid.
+            rewayahFallbackFrom:
+              state.rewayahFallbackFrom &&
+              isRendererCompatibleWithRewayah(
+                renderer,
+                state.rewayahFallbackFrom,
+              )
+                ? state.rewayahFallbackFrom
+                : null,
           };
         }),
       // @ai-end
@@ -313,6 +341,11 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
       setRewayah: (rewayah: RewayahId) =>
         set(state => {
           if (state.mushafRenderer === 'qcf_v2') return state;
+          // Showing a non-Hafs rewayah ends a startup fallback (the text on
+          // screen is a rewayah the reader chose again); showing Hafs is
+          // what the fallback itself does, so it leaves it in place.
+          const fallback =
+            rewayah === 'hafs' ? {} : {rewayahFallbackFrom: null};
           // Callers switch the DigitalKhatt data service before writing the
           // store, so the rewayah is always accepted here and the renderer
           // follows it (see REWAYAH_FALLBACK_RENDERER).
@@ -321,9 +354,10 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
               rewayah,
               mushafRenderer: REWAYAH_FALLBACK_RENDERER,
               uthmaniFont: uthmaniFontForRenderer(REWAYAH_FALLBACK_RENDERER),
+              ...fallback,
             };
           }
-          return {rewayah};
+          return {rewayah, ...fallback};
         }),
       // @ai-end
       toggleRewayahDiffs: () =>
@@ -332,11 +366,33 @@ export const useMushafSettingsStore = create<MushafSettingsState>()(
             ? state
             : {showRewayahDiffs: !state.showRewayahDiffs},
         ),
+      // @ai-start
+      startRewayahFallback: (from: RewayahId) =>
+        set(state =>
+          // Mushaf 1440 pins Hafs, and a Hafs failure has nothing to fall
+          // back to, so neither is ever a fallback.
+          from === 'hafs' || state.mushafRenderer === 'qcf_v2'
+            ? state
+            : {rewayahFallbackFrom: from},
+        ),
+      clearRewayahFallback: () => set({rewayahFallbackFrom: null}),
+      // @ai-end
     }),
     {
       name: 'mushaf-settings',
       storage: createJSONStorage(() => AsyncStorage),
       version: 18, // @ai
+      // @ai-start
+      // A startup fallback lasts one session: persist the reader's saved
+      // rewayah rather than the Hafs shown in its place, and never the
+      // fallback marker itself.
+      partialize: state => {
+        const {rewayahFallbackFrom, ...persisted} = state;
+        return rewayahFallbackFrom
+          ? {...persisted, rewayah: rewayahFallbackFrom}
+          : persisted;
+      },
+      // @ai-end
       migrate: (persistedState: unknown, version: number) => {
         const state = persistedState as Record<string, unknown>;
         if (version === 0) {
