@@ -216,7 +216,7 @@ New table `content_local` (`key` PK, `kind`, `version`, `sha256`, `upstream_sche
 
 ### 7.3 Check cadence
 
-On app foreground, if the last successful check was more than 24 hours ago. Always, if it was more than 7 days ago. The manifest endpoint comes from a new optional branding slot `contentManifestEndpoint`, defaulting to Bayaan's backend (RFC-007).
+On app foreground, if the last successful check was more than 24 hours ago. Always, if it was more than 7 days ago. The manifest endpoint comes from a new optional branding slot `contentApiBase` (a base URL used for both manifest and download), defaulting to Bayaan's backend (RFC-007).
 
 ### 7.4 Comparing the manifest
 
@@ -257,6 +257,8 @@ Only resources the device has installed are updated. Nothing new installs automa
   - Unmatched translations are purged with a notice (D1).
   - The bundled Ibn Kathir import (`importBundledIbnKathir` in `AppInitializer`) is removed. The already-imported copy becomes `version = 0` and is replaced from QF.
   - Bundled Saheeh is removed from the app. Users who selected it get it installed from QF on the first check. They are on Clear Quran until it lands.
+
+**Delivery split (2026-10-06):** the tafsir half of this section ships with the first mobile plan (`docs/superpowers/plans/2026-10-06-content-sync-mobile.md`). The translation half (AlQuranCloud crosswalk, removing bundled Saheeh, QF footnote rendering, translation installer) ships with sub-project C, because installing translations from QF depends on C's picker, identifier and footnote work. Until C lands, translations keep downloading from AlQuranCloud (not a QF endpoint) and bundled Saheeh remains.
 
 ## 8. Error handling and monitoring
 
