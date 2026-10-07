@@ -14,10 +14,11 @@ For each rewayah <id> the builder writes, into a fresh temporary directory:
   dk_words_<id>.db     CREATE TABLE + INSERT in id order + VACUUM (deterministic bytes)
   <id>-diff.json       highlight map, format 2 (contract C2)
   <id>-versemap.json   rewayah <-> Hafs verse map, format 1 (contract C3)
-then runs the hard validator (validate_rewayah_db.validate) on them and only
-if every rewayah passes replaces the files in data/mushaf/digitalkhatt/
-atomically (os.replace). Any failure exits non-zero and leaves the repo files
-untouched. Running the builder twice produces byte-identical files.
+then runs the hard validator (validate_rewayah_db.validate, plus the sibling
+gate for every narrator pair it touches) on them and only if everything
+passes replaces the files in data/mushaf/digitalkhatt/ atomically
+(os.replace). Any failure exits non-zero and leaves the repo files untouched.
+Running the builder twice produces byte-identical files.
 
 Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
 --------------------------------------------------------------------------
@@ -50,7 +51,11 @@ Algorithm (the reconciled prototype of the 2026-10 audit, adapted to v2.x)
    the verse's last token inside its slot ('عَلَيْهِمْ ۝٦', P6), so every surah
    displays 1..N.
 6. Highlights (format 2) and the verse map are computed from the same final
-   assignment (see make_diff / make_versemap).
+   assignment (see make_diff / make_versemap). The highlight classifier
+   (highlights.py) gets each slot's next word in Hafs and in the rewayah, and
+   Warsh / al-Susi also get the whole-word tint that Qalun / al-Duri give to
+   the same stored words (highlights.SIBLING_BASE), so the builder aligns that
+   sibling too.
 """
 from __future__ import annotations
 
@@ -262,6 +267,21 @@ class SlotInfo:
 
 
 @dataclass
+class Assignment:
+    """The final slot assignment of one rewayah (steps 1-5)."""
+
+    rid: str
+    verses: list[N.Verse]
+    texts: dict[int, str]  # word id -> stored text
+    # word id -> (surah, ayah, word, Hafs text, stored words, next words) for
+    # every non-blank content slot whose words differ from the Hafs slot
+    hl_inputs: dict[int, tuple[int, int, int, str, str, HL.Context]]
+    r2h: dict[str, list[str]]
+    stats: Counter
+    events: list[str]
+
+
+@dataclass
 class Result:
     rid: str
     texts: dict[int, str]  # word id -> stored text
@@ -318,8 +338,8 @@ def verify_source(rid: str) -> Path:
     return path
 
 
-def build(rid: str, hafs: list[HafsRow] | None = None, source: Path | None = None) -> Result:
-    hafs = hafs if hafs is not None else load_hafs()
+def assign(rid: str, hafs: list[HafsRow], source: Path | None = None) -> Assignment:
+    """Align the official text of `rid` to the Hafs slots (steps 1-5)."""
     source = source if source is not None else verify_source(rid)
     verses = N.load_source(source, rid)
     dk_of = dict(zip(((v.surah, v.ayah) for v in verses), N.dk_tokens(verses, rid)))
@@ -333,9 +353,9 @@ def build(rid: str, hafs: list[HafsRow] | None = None, source: Path | None = Non
     texts: dict[int, str] = {}
     stats: Counter = Counter()
     events: list[str] = []
-    diff_entries: dict[tuple[int, int], dict[str, list]] = {}
+    hl_inputs: dict[int, tuple[int, int, int, str, str, HL.Context]] = {}
     r2h: dict[str, list[str]] = {}
-    category = WHOLE_WORD_CATEGORY[rid]
+    mushaf: list[tuple[HafsRow, SlotInfo]] = []  # every content slot, in reading order
 
     for surah in range(1, 115):
         rows = by_surah_h[surah]
@@ -474,35 +494,96 @@ def build(rid: str, hafs: list[HafsRow] | None = None, source: Path | None = Non
         for vn in sorted(tv_hafs):
             r2h[f"{surah}:{vn}"] = tv_hafs[vn]
 
-        # --- highlight map ---------------------------------------------------
-        for ci, (row, s) in enumerate(zip(content, slots)):
-            if not s.tokens:
-                continue
-            stored = texts[row.id]
-            if stored == row.text:
-                continue
-            content_text = " ".join(t for t in stored.split() if not N.is_marker(t))
-            base = row.text if not s.covers_next else row.text + " " + content[ci + 1].text
-            cats = HL.classify(base, content_text, rid)
-            if not cats:
-                stats["differs from Hafs, encoding only (no highlight)"] += 1
-                continue
-            key = (row.surah, row.ayah)
-            for cat, chars in cats:
-                cat_name = category if cat == "word" else cat
-                diff_entries.setdefault(key, {}).setdefault(cat_name, []).append([row.word, chars])
-                stats[f"highlight {cat_name}"] += 1
+        mushaf.extend(zip(content, slots))
 
+    # --- highlight inputs: stored words + the words read after the slot ----
+    # (across verse and surah ends: the KFGQPC texts join surahs, e.g. Warsh
+    # 93:11 'فَحَدِّثَ اَلَم۟', al-Susi's idgham into the next basmala)
+    target_next = [""] * len(mushaf)
+    following = ""
+    for k in range(len(mushaf) - 1, -1, -1):
+        target_next[k] = following
+        words = [t for t in texts[mushaf[k][0].id].split(" ") if t and not N.is_marker(t)]
+        if words:
+            following = words[0]
+    for k, (row, s) in enumerate(mushaf):
+        if not s.tokens:
+            continue
+        words_text = " ".join(t for t in texts[row.id].split(" ") if not N.is_marker(t))
+        if words_text == row.text:
+            continue  # an inline verse marker alone is no reading difference
+        base = row.text if not s.covers_next else row.text + " " + mushaf[k + 1][0].text
+        hn = k + (2 if s.covers_next else 1)
+        hafs_next = mushaf[hn][0].text.split(" ")[0] if hn < len(mushaf) else ""
+        surah_end = hn >= len(mushaf) or mushaf[hn][0].surah != row.surah
+        basmala_next = surah_end and row.surah < 114 and row.surah + 1 != 9
+        ctx = HL.Context(hafs_next, target_next[k], basmala_next)
+        hl_inputs[row.id] = (row.surah, row.ayah, row.word, base, words_text, ctx)
+
+    return Assignment(rid, verses, texts, hl_inputs, r2h, stats, events)
+
+
+def _whole_word(cats: list[tuple[str, list[int]]]) -> bool:
+    return any(c == "word" for c, _ in cats)
+
+
+def make_diff(a: Assignment, sibling: Assignment | None = None) -> tuple[dict, Counter]:
+    """Highlight map (contract C2, format 2) of an assignment. `sibling` is
+    the assignment of highlights.SIBLING_BASE[a.rid]: a slot with the same
+    stored words also gets its whole-word tint."""
+    category = WHOLE_WORD_CATEGORY[a.rid]
+    stats: Counter = Counter()
+    entries: dict[tuple[int, int], dict[str, list]] = {}
+    for wid in sorted(a.hl_inputs):
+        surah, ayah, word, base, words, ctx = a.hl_inputs[wid]
+        cats = HL.classify(base, words, a.rid, ctx)
+        if sibling is not None and not _whole_word(cats):
+            sib = sibling.hl_inputs.get(wid)
+            if sib is not None and sib[4] == words and _whole_word(HL.classify(sib[3], sib[4], sibling.rid, sib[5])):
+                cats.insert(0, ("word", []))
+                stats[f"whole-word tint from {sibling.rid} (same stored words)"] += 1
+        if not cats:
+            stats["differs from Hafs, encoding only (no highlight)"] += 1
+            continue
+        for cat, chars in cats:
+            cat_name = category if cat == "word" else cat
+            entries.setdefault((surah, ayah), {}).setdefault(cat_name, []).append([word, chars])
+            stats[f"highlight {cat_name}"] += 1
     diff: dict = {"__format": DIFF_FORMAT}
-    for key in sorted(diff_entries):
+    for key in sorted(entries):
         ordered = {}
         for cat in (category, "silah"):
-            if cat in diff_entries[key]:
-                ordered[cat] = sorted(diff_entries[key][cat], key=lambda e: e[0])
+            if cat in entries[key]:
+                ordered[cat] = sorted(entries[key][cat], key=lambda e: e[0])
         diff[f"{key[0]}:{key[1]}"] = ordered
+    return diff, stats
 
-    versemap = make_versemap(rid, verses, r2h, hafs)
-    return Result(rid, texts, diff, versemap, stats, events)
+
+def build(
+    rid: str,
+    hafs: list[HafsRow] | None = None,
+    source: Path | None = None,
+    cache: dict[str, Assignment] | None = None,
+) -> Result:
+    """Words DB texts, highlight map and verse map of one rewayah. `cache`
+    (rid -> Assignment) lets one run align every rewayah only once."""
+    hafs = hafs if hafs is not None else load_hafs()
+    cache = {} if cache is None else cache
+    if source is not None:
+        a = assign(rid, hafs, source)
+    else:
+        if rid not in cache:
+            cache[rid] = assign(rid, hafs)
+        a = cache[rid]
+    sibling = None
+    sib_rid = HL.SIBLING_BASE.get(rid)
+    if sib_rid is not None:
+        if sib_rid not in cache:
+            cache[sib_rid] = assign(sib_rid, hafs)
+        sibling = cache[sib_rid]
+    diff, diff_stats = make_diff(a, sibling)
+    versemap = make_versemap(rid, a.verses, a.r2h, hafs)
+    return Result(rid, a.texts, diff, versemap, a.stats + diff_stats, list(a.events))
 
 
 def make_versemap(rid: str, verses: list[N.Verse], r2h_full: dict[str, list[str]], hafs: list[HafsRow]) -> dict:
@@ -583,11 +664,12 @@ def main(argv: list[str] | None = None) -> int:
     hafs = load_hafs()
     schema = hafs_schema()
     tmp = Path(tempfile.mkdtemp(prefix=".rewayah-build-", dir=out_dir))
+    cache: dict[str, Assignment] = {}
     try:
         failures = 0
         for rid in rids:
             try:
-                res = build(rid, hafs)
+                res = build(rid, hafs, cache=cache)
             except (BuildError, N.SourceError) as e:
                 print(f"[{rid}] BUILD FAILED: {e}", file=sys.stderr)
                 failures += 1
@@ -613,6 +695,19 @@ def main(argv: list[str] | None = None) -> int:
                 out=sys.stdout,
             )
             if not ok:
+                failures += 1
+        # sibling gate for every narrator pair this run touches (the other
+        # member's current files when it was not rebuilt)
+        for pair in V.SIBLING_PAIRS:
+            if not set(pair) & set(rids):
+                continue
+            where = {r: (tmp if r in rids else out_dir) for r in pair}
+            files = {r: (where[r] / output_names(r)[0], where[r] / output_names(r)[1]) for r in pair}
+            missing = [r for r in pair if not all(p.exists() for p in files[r])]
+            if missing:
+                print(f"== siblings {pair[0]}/{pair[1]}: skipped (no files for {', '.join(missing)} in {where[missing[0]]})")
+                continue
+            if not V.validate_siblings(pair, files, hafs_db=HAFS_DB, out=sys.stdout):
                 failures += 1
         if failures:
             print(f"FAILED: {failures} rewayah build(s) failed; nothing was replaced in {out_dir}", file=sys.stderr)

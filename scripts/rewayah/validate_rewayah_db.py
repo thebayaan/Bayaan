@@ -39,6 +39,11 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               inline marker) differ from Hafs, whole-word entries [] and
               silah indices on silah marks before any inline marker
   versemap    <id>-versemap.json format 1 equals the map re-derived from the DB
+  siblings    (whenever both rewayat of a pair are validated: Warsh / Qalun,
+              al-Duri / al-Susi, al-Bazzi / Qunbul) a content slot holding the
+              same words in both DBs, differing from Hafs, gets the same
+              whole-word highlight decision in both diff JSONs, unless listed
+              in SIBLING_EXCEPTIONS
   glyphs      (--glyphs) every unique stored token shaped with HarfBuzz and
               DigitalKhattFont (and the V1 font): 0 .notdef; every cluster
               (base + mark sequence) that never occurs in the DK Hafs DB is in
@@ -111,6 +116,12 @@ PLACEMENT_EVENTS: dict[str, dict[str, str]] = {
 # farsh word with another prefix letter (8:65 'يَكُن' vs Hafs 'تَكُن'); a word
 # moved to a neighbouring slot is far above it.
 PLACEMENT_MAX_DISTANCE = 0.34
+
+# Two narrators of one reader: a slot where both store the same words is read
+# the same way and must get the same whole-word highlight decision.
+SIBLING_PAIRS = (("warsh", "qaloon"), ("doori", "soosi"), ("bazzi", "qumbul"))
+# (pair) -> {Hafs word location: reason} for an intended disagreement. Empty.
+SIBLING_EXCEPTIONS: dict[tuple[str, str], dict[str, str]] = {}
 
 # Clusters (base + mark sequence) that never occur in the DK Hafs DB, visually
 # reviewed against the official KFGQPC fonts; see the glyph gate.
@@ -768,6 +779,69 @@ def mark_report(rid: str, verses: list[N.Verse], db: list[tuple], rep: Report) -
     rep.note("mark accounting (source -> stored, changed only; Hafs basmala words in P10 count as stored): " + ", ".join(lines))
 
 
+# ---------------------------------------------------------------------------
+# Sibling gate
+# ---------------------------------------------------------------------------
+
+
+def _whole_word_slots(diff_path: Path, rid: str) -> set[tuple[int, int, int]]:
+    diff = json.loads(Path(diff_path).read_text(encoding="utf-8"))
+    out: set[tuple[int, int, int]] = set()
+    for vk, cats in diff.items():
+        if vk == "__format":
+            continue
+        s, a = (int(x) for x in vk.split(":"))
+        for w, _ in cats.get(WHOLE_WORD[rid], []):
+            out.add((s, a, w))
+    return out
+
+
+def validate_siblings(
+    pair: tuple[str, str],
+    files: dict[str, tuple[Path, Path]],
+    hafs_db: Path = HAFS_DB,
+    out: TextIO = sys.stdout,
+    max_examples: int = 8,
+) -> bool:
+    """Same stored words in both rewayat of a pair -> same whole-word
+    decision. `files` maps each rid to (words DB, diff JSON)."""
+    a, b = pair
+    hafs, _ = _rows(hafs_db)
+    texts = {r: {row[0]: row[5] for row in _rows(files[r][0])[0]} for r in pair}
+    tints = {r: _whole_word_slots(files[r][1], r) for r in pair}
+    exceptions = SIBLING_EXCEPTIONS.get(pair, {})
+
+    def words(t: str) -> str:
+        return " ".join(x for x in t.split(" ") if x and not N.is_marker(x))
+
+    same = 0
+    bad: list[str] = []
+    used: set[str] = set()
+    for wid, loc, s, ay, w, htext in hafs:
+        if N.is_marker(htext):
+            continue
+        wa, wb = words(texts[a][wid]), words(texts[b][wid])
+        if not wa or wa != wb or wa == htext:
+            continue
+        same += 1
+        key = (s, ay, w)
+        if (key in tints[a]) != (key in tints[b]):
+            k = f"{s}:{ay}:{w}"
+            if k in exceptions:
+                used.add(k)
+                continue
+            bad.append(f"{k} hafs={htext} both={wa} whole-word tint only in {a if key in tints[a] else b}")
+    for k in sorted(set(exceptions) - used):
+        bad.append(f"exception {k} is not a disagreement any more: remove it from SIBLING_EXCEPTIONS")
+    status = "PASS" if not bad else f"FAIL ({len(bad)})"
+    print(f"== siblings {a}/{b}: {status} ({same} slots with the same words, differing from Hafs)", file=out)
+    for e in bad[:max_examples]:
+        print(f"      - {e}", file=out)
+    if len(bad) > max_examples:
+        print(f"      ... {len(bad) - max_examples} more", file=out)
+    return not bad
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("rewayat", nargs="*", help=f"subset of {', '.join(N.REWAYAT)} (default: all)")
@@ -793,6 +867,14 @@ def main(argv: list[str] | None = None) -> int:
             glyphs=a.glyphs,
             marks=a.marks,
         )
+    for pair in SIBLING_PAIRS:
+        if set(pair) <= set(rids):
+            files = {r: (a.db_dir / f"dk_words_{r}.db", a.db_dir / f"{r}-diff.json") for r in pair}
+            try:
+                ok &= validate_siblings(pair, files, hafs_db=a.hafs_db)
+            except (OSError, ValueError, sqlite3.Error) as e:
+                print(f"== siblings {pair[0]}/{pair[1]}: FAIL ({e})")
+                ok = False
     if a.glyphs and set(rids) == set(N.REWAYAT) and RENDER_REVIEW_FILE.exists():
         try:
             stale = sorted(set(load_render_review()["clusters"]) - USED_REVIEW_KEYS)
