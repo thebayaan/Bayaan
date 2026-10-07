@@ -7,7 +7,10 @@ import {Image} from 'react-native';
 import {digitalKhattDataService} from './DigitalKhattDataService';
 import {quranTextService} from './QuranTextService';
 import {rewayahDiffService} from './RewayahDiffService';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  useMushafSettingsStore,
+  type RewayahId,
+} from '@/store/mushafSettingsStore';
 import {migratePersistedId} from '@/services/rewayah/RewayahIdentity';
 
 const FONT_ASSETS: Record<string, number> = {
@@ -42,6 +45,9 @@ class MushafPreloadService {
   private _surahNameTypeface: SkTypeface | null = null;
   private _state: MushafPreloadState = 'idle';
   private _initPromise: Promise<void> | null = null;
+  // Registered once (a retried init must not stack listeners).
+  private _rewayahSubscription: (() => void) | null = null;
+  private _diffRewayah: RewayahId | null = null;
   // `useSyncExternalStore` subscribers so mushaf components can read
   // fontMgr synchronously without needing a useFonts fallback that races
   // at first-mount.
@@ -132,17 +138,27 @@ class MushafPreloadService {
         store.setRewayah(normalized);
       }
 
+      // Keep line-text/layout caches and diff ranges in step with the DK
+      // service. The listener runs synchronously inside each commit that
+      // changes the active rewayah (after the maps are swapped, before cache
+      // subscribers re-render), so SkiaPage never recomputes line text or
+      // highlight offsets from the previous rewayah's caches. Registered
+      // before initialize() so the first commit (when the persisted rewayah
+      // is not Hafs, or a bookmark switch landed first) is covered too.
+      if (!this._rewayahSubscription) {
+        this._rewayahSubscription = digitalKhattDataService.onRewayahChange(
+          rewayah => {
+            quranTextService.clearCaches();
+            this._loadDiffsFor(rewayah);
+          },
+        );
+      }
+
       // DK data must be ready first; page lines are needed for layout computation
       await digitalKhattDataService.initialize();
 
-      // Load rewayah diff ranges for the current rewayah, then keep in sync.
-      // On switch the line-text caches and diff cache must be cleared before
-      // SkiaPage re-renders so line text and highlight offsets are recomputed.
-      rewayahDiffService.loadForRewayah(digitalKhattDataService.rewayah);
-      digitalKhattDataService.onRewayahChange(rewayah => {
-        quranTextService.clearCaches();
-        rewayahDiffService.loadForRewayah(rewayah);
-      });
+      // Hafs (the service's starting rewayah) commits without a change event.
+      this._loadDiffsFor(digitalKhattDataService.rewayah);
 
       await this.loadSkiaFonts();
 
@@ -166,6 +182,12 @@ class MushafPreloadService {
       this._notify();
       console.log(`[MushafPreload] Initialization ${this._state}`);
     }
+  }
+
+  private _loadDiffsFor(rewayah: RewayahId): void {
+    if (this._diffRewayah === rewayah) return;
+    rewayahDiffService.loadForRewayah(rewayah);
+    this._diffRewayah = rewayah;
   }
 
   private async loadSkiaFonts(): Promise<void> {
