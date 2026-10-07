@@ -1,4 +1,11 @@
-import {createContentApi, isManifest} from '../contentApi';
+import branding from '@/config/branding';
+import {
+  createContentApi,
+  isManifest,
+  resolveContentApiBase,
+} from '../contentApi';
+
+jest.mock('@/config/branding', () => ({__esModule: true, default: {}}));
 
 const manifest = {
   format: 1,
@@ -133,5 +140,120 @@ describe('createContentApi', () => {
     await expect(api.getDownloadTicket('qf:tafsirs:1')).rejects.toThrow(
       'download_ticket_404',
     );
+  });
+});
+
+describe('manifest body handling', () => {
+  it('maps invalid JSON to malformed', async () => {
+    const api = createContentApi(
+      'https://api.test',
+      'k',
+      jest.fn(() => respond('not json{')) as unknown as typeof fetch,
+    );
+    expect(await api.fetchManifest(['tafsir'], null)).toEqual({
+      status: 'error',
+      reason: 'malformed',
+    });
+  });
+
+  describe('stalled bodies', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    const stalled = (): Promise<unknown> =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        text: () => new Promise<string>(() => undefined),
+      });
+
+    it('aborts a stalled manifest body and reports network', async () => {
+      const api = createContentApi(
+        'https://api.test',
+        'k',
+        jest.fn(stalled) as unknown as typeof fetch,
+      );
+      const pending = api.fetchManifest(['tafsir'], null);
+      await jest.advanceTimersByTimeAsync(15_001);
+      expect(await pending).toEqual({status: 'error', reason: 'network'});
+    });
+
+    it('aborts a stalled ticket body', async () => {
+      const api = createContentApi(
+        'https://api.test',
+        'k',
+        jest.fn(stalled) as unknown as typeof fetch,
+      );
+      const pending = api.getDownloadTicket('k');
+      const outcome = pending.then(
+        () => 'resolved',
+        (error: Error) => error.message,
+      );
+      await jest.advanceTimersByTimeAsync(15_001);
+      expect(await outcome).toBe('timeout');
+    });
+
+    it('aborts a stalled download body', async () => {
+      const api = createContentApi(
+        'https://api.test',
+        'k',
+        jest.fn(stalled) as unknown as typeof fetch,
+      );
+      const pending = api.fetchText('https://r2.test/x');
+      const outcome = pending.then(
+        () => 'resolved',
+        (error: Error) => error.message,
+      );
+      await jest.advanceTimersByTimeAsync(120_001);
+      expect(await outcome).toBe('timeout');
+    });
+  });
+});
+
+describe('fetchText', () => {
+  it('returns the body text', async () => {
+    const api = createContentApi(
+      'https://api.test',
+      'k',
+      jest.fn(() => respond('hello')) as unknown as typeof fetch,
+    );
+    expect(await api.fetchText('https://r2.test/x')).toBe('hello');
+  });
+
+  it('throws download_<status> on non-2xx', async () => {
+    const api = createContentApi(
+      'https://api.test',
+      'k',
+      jest.fn(() => respond('', {status: 403})) as unknown as typeof fetch,
+    );
+    await expect(api.fetchText('https://r2.test/x')).rejects.toThrow(
+      'download_403',
+    );
+  });
+});
+
+describe('resolveContentApiBase', () => {
+  const original = process.env.EXPO_PUBLIC_BAYAAN_API_URL;
+  afterEach(() => {
+    delete branding.contentApiBase;
+    if (original === undefined) delete process.env.EXPO_PUBLIC_BAYAAN_API_URL;
+    else process.env.EXPO_PUBLIC_BAYAAN_API_URL = original;
+  });
+
+  it('is null when nothing is configured', () => {
+    delete process.env.EXPO_PUBLIC_BAYAAN_API_URL;
+    expect(resolveContentApiBase()).toBeNull();
+  });
+
+  it('prefers branding over env and strips trailing slashes', () => {
+    process.env.EXPO_PUBLIC_BAYAAN_API_URL = 'https://env.test';
+    branding.contentApiBase = 'https://brand.test//';
+    expect(resolveContentApiBase()).toBe('https://brand.test');
+  });
+
+  it('falls back to env', () => {
+    process.env.EXPO_PUBLIC_BAYAAN_API_URL = 'https://env.test/';
+    expect(resolveContentApiBase()).toBe('https://env.test');
   });
 });

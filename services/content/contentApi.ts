@@ -68,11 +68,25 @@ async function withTimeout<T>(
   run: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('timeout'));
+    }, ms);
+  });
   try {
-    return await run(controller.signal);
+    return await Promise.race([run(controller.signal), aborted]);
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
   }
 }
 
@@ -91,46 +105,56 @@ export function createContentApi(
   return {
     async fetchManifest(kinds, etag) {
       try {
-        const response = await withTimeout(MANIFEST_TIMEOUT_MS, signal =>
-          fetchImpl(`${base}/v1/content/manifest?kinds=${kinds.join(',')}`, {
-            headers: etag ? {...auth, 'If-None-Match': etag} : auth,
-            signal,
-          }),
+        return await withTimeout<ManifestResult>(
+          MANIFEST_TIMEOUT_MS,
+          async signal => {
+            const response = await fetchImpl(
+              `${base}/v1/content/manifest?kinds=${kinds.join(',')}`,
+              {
+                headers: etag ? {...auth, 'If-None-Match': etag} : auth,
+                signal,
+              },
+            );
+            if (response.status === 304) return {status: 'not_modified'};
+            if (!response.ok)
+              return {status: 'error', reason: `http_${response.status}`};
+            const body = parseJson(await response.text());
+            if (!isManifest(body))
+              return {status: 'error', reason: 'malformed'};
+            return {
+              status: 'ok',
+              manifest: body,
+              etag: response.headers.get('ETag'),
+            };
+          },
         );
-        if (response.status === 304) return {status: 'not_modified'};
-        if (!response.ok)
-          return {status: 'error', reason: `http_${response.status}`};
-        const body: unknown = await response.json();
-        if (!isManifest(body)) return {status: 'error', reason: 'malformed'};
-        return {
-          status: 'ok',
-          manifest: body,
-          etag: response.headers.get('ETag'),
-        };
       } catch {
         return {status: 'error', reason: 'network'};
       }
     },
     async getDownloadTicket(key) {
-      const response = await withTimeout(MANIFEST_TIMEOUT_MS, signal =>
-        fetchImpl(
+      return withTimeout(MANIFEST_TIMEOUT_MS, async signal => {
+        const response = await fetchImpl(
           `${base}/v1/content/resources/${encodeURIComponent(key)}/download`,
-          {headers: auth, signal},
-        ),
-      );
-      if (!response.ok) throw new Error(`download_ticket_${response.status}`);
-      const body: unknown = await response.json();
-      if (!isRecord(body) || !isTicket(body.data))
-        throw new Error('download_ticket_malformed');
-      return body.data;
+          {
+            headers: auth,
+            signal,
+          },
+        );
+        if (!response.ok) throw new Error(`download_ticket_${response.status}`);
+        const body = parseJson(await response.text());
+        if (!isRecord(body) || !isTicket(body.data))
+          throw new Error('download_ticket_malformed');
+        return body.data;
+      });
     },
     async fetchText(url) {
       // The R2 object carries Content-Encoding: gzip; the native HTTP stack decompresses it.
-      const response = await withTimeout(DOWNLOAD_TIMEOUT_MS, signal =>
-        fetchImpl(url, {signal}),
-      );
-      if (!response.ok) throw new Error(`download_${response.status}`);
-      return response.text();
+      return withTimeout(DOWNLOAD_TIMEOUT_MS, async signal => {
+        const response = await fetchImpl(url, {signal});
+        if (!response.ok) throw new Error(`download_${response.status}`);
+        return response.text();
+      });
     },
   };
 }
