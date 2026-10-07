@@ -647,6 +647,7 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   <WBWContent
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
+                    rewayah={resolvedRewayah} // @ai
                     onBack={handleBack}
                   />
                 )}
