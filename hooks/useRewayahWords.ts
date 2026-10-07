@@ -5,12 +5,16 @@ import {
 } from '@/services/mushaf/DigitalKhattDataService';
 import {hasTextData, type RewayahId} from '@/services/rewayah/RewayahIdentity';
 
-// Return shape for useRewayahWords/useRewayahText. `status` distinguishes
-// "we're still loading the DB" from "we don't ship DK data for this rewayah"
-// so UI can render the right state instead of a silent Hafs fallback.
+// `status` distinguishes "still loading" from "we don't ship DK data for
+// this rewayah" from "loading failed", so UI can render the right state
+// instead of empty text or a silent Hafs fallback. `words` is non-empty only
+// when status is 'ready'.
+export type RewayahWordsStatus = 'loading' | 'ready' | 'unavailable' | 'error';
+
+// Return shape for useRewayahWords/useRewayahText.
 export interface RewayahWordsResult {
   words: DKWordInfo[];
-  status: 'loading' | 'ready' | 'unavailable';
+  status: RewayahWordsStatus;
 }
 
 const EMPTY_WORDS: DKWordInfo[] = [];
@@ -23,15 +27,19 @@ const UNAVAILABLE: RewayahWordsResult = {
 //
 // Subscribes to the service's cache-version counter via useSyncExternalStore,
 // so the component re-renders whenever the main cache is rebuilt or a side
-// cache for the requested rewayah becomes ready. No more stale-useMemo bugs
-// from the older useReducer+bump pattern — if the cache changes, consumers
-// see it on the next commit.
+// cache for the requested rewayah becomes ready (or fails). If the cache
+// changes, consumers see it on the next commit.
 //
-// Triggers ensureRewayahLoaded on demand for non-active rewayat (e.g. the
-// player rendering a track in a different rewayah from the mushaf setting).
-// Silently returns {status: 'unavailable'} for rewayat without bundled DK
-// data — callers should not pass these to the render path, but the hook
-// degrades gracefully rather than throwing.
+// Loads on demand: whenever the requested rewayah's words are neither in
+// memory nor on the way ('idle'), it calls ensureRewayahLoaded. That check
+// re-runs on every cache change, because a mushaf switch can move the
+// rewayah this consumer shows out of the main cache (the player keeps
+// showing a track's rewayah while the mushaf moves on) without any prop of
+// this hook changing. A failed load stays 'error' (no retry loop); an
+// explicit ensureRewayahLoaded or switchRewayah call retries.
+//
+// Returns {status: 'unavailable'} for rewayat without bundled DK data, so
+// callers can show "text not available" rather than another rewayah's text.
 export function useRewayahWords(
   verseKey: string | null,
   rewayah: RewayahId,
@@ -43,51 +51,57 @@ export function useRewayahWords(
 
   const rewayahHasData = hasTextData(rewayah);
 
-  // Kick off a side-cache load the first time we see a rewayah that isn't
-  // the active one. ensureRewayahLoaded is idempotent (de-dupes in-flight
-  // loads via sideLoading); completion fires notifyCacheChange which
-  // cascades through useSyncExternalStore to re-render this component.
   useEffect(() => {
     if (!verseKey || !rewayahHasData) return;
-    if (rewayah === digitalKhattDataService.rewayah) return;
+    if (digitalKhattDataService.getRewayahLoadState(rewayah) !== 'idle') {
+      return;
+    }
     let cancelled = false;
+    // Completion (or failure) bumps the cache version, which re-renders this
+    // component through useSyncExternalStore.
     digitalKhattDataService.ensureRewayahLoaded(rewayah).catch(err => {
       if (!cancelled) {
-        console.warn(`[useRewayahWords] Side-load failed for ${rewayah}:`, err);
+        console.warn(`[useRewayahWords] Loading ${rewayah} failed:`, err);
       }
     });
     return () => {
       cancelled = true;
     };
-  }, [verseKey, rewayah, rewayahHasData]);
+  }, [verseKey, rewayah, rewayahHasData, cacheVersion]);
 
   return useMemo<RewayahWordsResult>(() => {
     if (!verseKey) return {words: EMPTY_WORDS, status: 'ready'};
     if (!rewayahHasData) return UNAVAILABLE;
 
-    const words = digitalKhattDataService.getVerseWords(verseKey, rewayah);
-    if (words.length > 0) return {words, status: 'ready'};
-    // Empty array can mean two things:
-    //   - cache not populated yet (initial boot or side-cache warming), or
-    //   - verseKey genuinely has no words in this rewayah's DB.
-    // Treat "service not initialized" as loading; otherwise ready-but-empty.
-    const status: 'loading' | 'ready' = digitalKhattDataService.initialized
-      ? 'ready'
-      : 'loading';
-    return {words, status};
+    // null = this rewayah's words are not in memory; [] = loaded, and this
+    // verse key genuinely has no words in its DB.
+    const words = digitalKhattDataService.tryGetVerseWords(verseKey, rewayah);
+    if (words) return {words, status: 'ready'};
+    const status: RewayahWordsStatus =
+      digitalKhattDataService.getRewayahLoadState(rewayah) === 'error'
+        ? 'error'
+        : 'loading';
+    return {words: EMPTY_WORDS, status};
     // cacheVersion is intentionally a dep — it's the reactivity signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [verseKey, rewayah, rewayahHasData, cacheVersion]);
 }
 
-// Convenience: joined text. Same reactivity as useRewayahWords.
+// Convenience: joined text. Same reactivity as useRewayahWords. Blank word
+// slots ('' text) contribute neither text nor a separator.
 export function useRewayahText(
   verseKey: string | null,
   rewayah: RewayahId,
-): {text: string; status: 'loading' | 'ready' | 'unavailable'} {
+): {text: string; status: RewayahWordsStatus} {
   const {words, status} = useRewayahWords(verseKey, rewayah);
   const text = useMemo(
-    () => (status === 'ready' ? words.map(w => w.text).join(' ') : ''),
+    () =>
+      status === 'ready'
+        ? words
+            .map(w => w.text)
+            .filter(t => t !== '')
+            .join(' ')
+        : '',
     [words, status],
   );
   return {text, status};
