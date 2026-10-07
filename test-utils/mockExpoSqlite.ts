@@ -26,3 +26,5 @@ export const expoSqliteModule = {
     return db;
   },
 };
+
+export const openDatabaseAsync = expoSqliteModule.openDatabaseAsync;

@@ -1,0 +1,18 @@
+{
+  "tag": "v2.3.0",
+  "commit": "e6b4d1e6ad69c2a80a13fd615a9dbccee4cf9340",
+  "generated_at": "2026-10-07T19:25:23.589Z",
+  "tables": {
+    "verse-annotations/bookmarks": 15,
+    "verse-annotations/highlights": 5,
+    "verse-annotations/notes": 6,
+    "playlists/playlist_items": 6,
+    "playlists/user_playlists": 2,
+    "tafaseer/schema_version": 1,
+    "tafaseer/tafaseer": 12,
+    "tafaseer/tafseer_metadata": 2,
+    "translations/translation_metadata": 1,
+    "translations/translations": 10
+  },
+  "skipped": []
+}
