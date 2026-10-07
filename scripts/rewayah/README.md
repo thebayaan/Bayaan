@@ -42,13 +42,18 @@ python3 scripts/rewayah/validate_rewayah_db.py --glyphs  # needs: pip install -r
 python3 scripts/rewayah/validate.py
 ```
 
-The builder writes into a temporary directory, runs the validator on the
-result, and only then replaces `dk_words_<id>.db`, `<id>-diff.json` and
-`<id>-versemap.json` (atomic `os.replace`). A failure exits non-zero and
-leaves the committed files untouched. The output is deterministic: two runs
-give byte-identical files (`--out-dir DIR` builds elsewhere). After a rebuild,
-regenerate the asset manifest (`node scripts/rewayah/gen-manifest.mjs`, owned
-by the runtime) so installed apps re-import the new DBs.
+The builder writes into a temporary directory (under `scripts/rewayah/.build/`,
+git-ignored), runs the validator on the result (and the sibling gate for every
+narrator pair it touches), and only then replaces `dk_words_<id>.db`,
+`<id>-diff.json` and `<id>-versemap.json` (atomic `os.replace`). A failure
+exits non-zero and leaves the committed files untouched. The output is
+deterministic: two runs give byte-identical files (`--out-dir DIR` builds
+elsewhere). A words DB whose schema and rows equal the existing file is not
+replaced, because another SQLite version writes other bytes for the same rows
+and the app names its DB copies by sha256 (the committed DBs were written by
+SQLite 3.53.3). When the data does change, regenerate the asset manifest
+(`node scripts/rewayah/gen-manifest.mjs`, owned by the runtime) so installed
+apps re-import the new DBs.
 
 To update a source: put the new official zip in a directory, add its entry
 (URL, capture, SHA-256, published MD5 / SHA-1, member, SHA-256) to
@@ -99,7 +104,11 @@ changes:
 5. Markers: a Hafs marker slot gets `۝v` if the last token consumed so far
    ends rewayah verse v, otherwise `''` (P7). A rewayah verse end with no Hafs
    slot is written inline after its last word (P6), so every surah shows 1..N.
-6. Highlights and the verse map are derived from the same assignment.
+6. Highlights and the verse map are derived from the same assignment. The
+   classifier gets each slot's next word in Hafs and in the rewayah (verse
+   and surah ends crossed), and Warsh / al-Susi get the whole-word tint that
+   Qalun / al-Duri give to the same stored words, so their sibling is aligned
+   too.
 
 Per rewayah: blank Hafs marker slots 81 (Nafi'), 83 (Ibn Kathir), 76 (Abu
 'Amr), 0 (Shu'bah); inline verse numbers 59 / 67 / 57 / 0. Run the builder
@@ -126,6 +135,7 @@ Summary:
 | U+200D hamza seat (17:7) | Duri, Susi | → U+0640 |
 | U+066E dotless tooth (6:19) | Bazzi, Qunbul | → U+0649 |
 | `ضظ` (81:24) | Bazzi, Qunbul, Duri, Susi | → `ظ` (DK has no small ظ) |
+| wasl alef: alef + connecting vowel (+ start dot) | far rewayat | kept verbatim; DK draws the connecting vowel as a Madani vowel (alternatives `ٱ` or alef + start dot evaluated; awaiting a decision) |
 
 Letters are only changed by the three listed mappings (U+06D2, U+066E, `ضظ`);
 the validator's letter gate enforces it. Rules marked `confirm` in
@@ -138,10 +148,17 @@ Hafs verse and word position:
 
 - `major` (Shu'bah, Bazzi, Qunbul) / `mukhtalif` (Warsh, Qalun, Duri, Susi):
   whole word (`[]`), for words read differently from the Hafs word in that
-  slot (letters, long vowels, doubling, vowels, case ending; imala dots in the
-  close rewayat). Encoding conventions and
-  general rules marked only by diacritics or by the hamza's carrier are not
-  highlighted; see the docstring of `highlights.py`.
+  slot (letters, including a letter the rewayah never pronounces; long
+  vowels, doubling, vowels, case ending, ya' al-idafa and ha' al-kinaya
+  vowels; imala dots in the close rewayat). Encoding conventions and general
+  rules marked only by diacritics or by the hamza's carrier are not
+  highlighted. A vowel added or dropped on the last letter is excused only by
+  its across-word rule in context: Warsh's naql (the next word's hamza moves
+  its vowel onto this word's final consonant) and al-Susi's idgham kabir (the
+  final letter merges into the next word: a doubled first letter, a meem
+  before ba, a ba before the next surah's basmala). Two narrators of one
+  reader that store the same words get the same decision. See the docstring
+  of `highlights.py`.
 - `silah`: char indices (UTF-16 = code points here) of the silah marks
   U+06E5 / U+06E6 and their damma / kasra that this rewayah pronounces where
   Hafs does not.
@@ -161,12 +178,18 @@ omitted; Shu'bah's maps are empty.
 - slot format, DK cmap, no token starting with a combining mark;
 - exact reading stream per surah (content and verse markers); verse numbers
   1..N; letter preservation;
+- markers: a verse number sits in the first Hafs marker slot after its
+  verse's last word (P7); inline only if another word comes before the next
+  Hafs marker slot (P6);
 - placement: every content slot holds one rewayah word within a skeleton
   distance of 1/3 of the Hafs word in that slot, except the declared
   `PLACEMENT_EVENTS` (P2 / P3 / P4 / 1:2), so a word moved to a neighbouring
   slot fails even if the reading order is intact;
 - diff JSON integrity (an entry's words, without an inline marker, must differ
   from Hafs); verse map re-derived from the DB;
+- siblings (when both rewayat of a pair are validated: Warsh / Qalun, al-Duri /
+  al-Susi, al-Bazzi / Qunbul): a slot holding the same words in both DBs gets
+  the same whole-word decision, unless listed in `SIBLING_EXCEPTIONS` (empty);
 - `--glyphs` (HarfBuzz, DigitalKhattFont and the V1 font): 0 `.notdef`; every
   cluster absent from the DK Hafs DB is in `render_review.json`; a mark without
   an anchor or turned into a spacing glyph is accepted only for a reviewed
