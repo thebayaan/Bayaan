@@ -137,6 +137,41 @@ describe.each(TAGS)('develop code on %s databases', tag => {
     expect((await s.annotations.getAllBookmarks()).length).toBeGreaterThan(0);
   });
 
+  it('golden carries the real-device notes_new orphan and develop keeps data intact over it', async () => {
+    // Real devices end up with an empty orphan notes_new table: the "drop
+    // UNIQUE" migration mistakes the PRIMARY KEY autoindex for a UNIQUE
+    // constraint and rebuilds on every launch. The goldens model that
+    // second-launch state (verified against a v2.2.1 simulator).
+    const manifest = goldenManifest(tag);
+    expect(manifest.tables['verse-annotations/notes_new']).toBe(0);
+    const db = await s.mock.openDatabaseAsync('verse-annotations.db');
+    const tables = await db.getAllAsync<NameRow>(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='notes_new'",
+    );
+    expect(tables).toHaveLength(1);
+    const columns = await db.getAllAsync<NameRow>(
+      "SELECT name FROM pragma_table_info('notes_new') ORDER BY cid",
+    );
+    expect(columns.map(c => c.name)).toEqual([
+      'id',
+      'verse_key',
+      'surah_number',
+      'ayah_number',
+      'content',
+      'created_at',
+      'updated_at',
+    ]);
+    expect(await s.annotations.getAllNotes()).toHaveLength(
+      manifest.tables['verse-annotations/notes'],
+    );
+    expect(await s.annotations.getAllBookmarks()).toHaveLength(
+      manifest.tables['verse-annotations/bookmarks'],
+    );
+    expect(await s.annotations.getHighlightsBySurah(1)).toHaveLength(
+      manifest.tables['verse-annotations/highlights'],
+    );
+  });
+
   it('keeps every bookmark with a valid canonical rewayah id', async () => {
     const manifest = goldenManifest(tag);
     const all = await s.annotations.getAllBookmarks();

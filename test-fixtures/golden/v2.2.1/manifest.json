@@ -1,11 +1,12 @@
 {
   "tag": "v2.2.1",
   "commit": "8b0ccde1ceed79f25b337ef76bb7b0b45ee1cad6",
-  "generated_at": "2026-10-07T19:25:31.974Z",
+  "generated_at": "2026-10-07T21:06:25.904Z",
   "tables": {
     "verse-annotations/bookmarks": 15,
     "verse-annotations/highlights": 5,
     "verse-annotations/notes": 6,
+    "verse-annotations/notes_new": 0,
     "playlists/playlist_items": 6,
     "playlists/user_playlists": 2,
     "tafaseer/schema_version": 1,

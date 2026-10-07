@@ -4,7 +4,11 @@ import {databaseService} from '@/services/database/DatabaseService';
 import {verseAnnotationDatabaseService as annotations} from '@/services/database/VerseAnnotationDatabaseService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
-import {databaseDir, resetDatabases} from '@/test-utils/mockExpoSqlite';
+import {
+  closeOpenDatabases,
+  databaseDir,
+  resetDatabases,
+} from '@/test-utils/mockExpoSqlite';
 import {openAdapterDatabase} from '@/test-utils/sqliteAdapter';
 
 const CANONICAL = [
@@ -26,6 +30,14 @@ const DB_FILES = [
   'tafaseer.db',
   'translations.db',
 ];
+
+type AnnotationsModule =
+  typeof import('@/services/database/VerseAnnotationDatabaseService');
+type PlaylistsModule = typeof import('@/services/database/DatabaseService');
+type TafseerModule = typeof import('@/services/tafseer/TafseerDbService');
+type TranslationModule =
+  typeof import('@/services/translation/TranslationDbService');
+type SqliteMockModule = typeof import('@/test-utils/mockExpoSqlite');
 
 interface NameRow {
   name: string;
@@ -215,9 +227,37 @@ describe('golden database generation', () => {
       })),
     );
 
+    // Simulate a second app launch: close every handle, load a fresh copy of
+    // the release modules (new singletons) and run each service's own
+    // initialize() again over the same files. Real devices hit this state on
+    // every launch after the first (e.g. the orphan notes_new table).
+    await closeOpenDatabases();
+    jest.resetModules();
+    const sqliteAfterReset = jest.requireActual<SqliteMockModule>(
+      '@/test-utils/mockExpoSqlite',
+    );
+    sqliteAfterReset.useDatabaseDir(dir);
+    const relaunched = {
+      annotations: jest.requireActual<AnnotationsModule>(
+        '@/services/database/VerseAnnotationDatabaseService',
+      ).verseAnnotationDatabaseService,
+      playlists: jest.requireActual<PlaylistsModule>(
+        '@/services/database/DatabaseService',
+      ).databaseService,
+      tafseer: jest.requireActual<TafseerModule>(
+        '@/services/tafseer/TafseerDbService',
+      ).tafseerDbService,
+      translation: jest.requireActual<TranslationModule>(
+        '@/services/translation/TranslationDbService',
+      ).translationDbService,
+    };
+    await relaunched.annotations.initialize();
+    await relaunched.playlists.initialize();
+    await relaunched.tafseer.initialize();
+    await relaunched.translation.initialize();
+
     // Close every handle (checkpoints WAL), then copy the files out.
-    await annotations.close();
-    await databaseService.close();
+    await sqliteAfterReset.closeOpenDatabases();
     await resetDatabases();
 
     const out = process.env.GOLDEN_OUT;
