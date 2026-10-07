@@ -18,21 +18,35 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               (id, location, surah, ayah, word identical); only text differs
   slots       every text is '' or tokens joined by single U+0020; a Hafs
               marker slot holds '' or one '۝N'; a content slot may end with
-              one inline '۝N'; every code point is in the DigitalKhatt cmap
+              one inline '۝N'; every code point is in the DigitalKhatt cmap;
+              no token starts with a combining mark (a broken cluster, where
+              shapers with a dotted-circle glyph would insert one: the DK
+              fonts have none, so this is checked on the text)
   stream      per surah, the slot tokens read in id order are EXACTLY the
               normalized source tokens (content + verse markers). Allowed:
               Fatiha basmala exception (P10) and declared A2 joins
   numbers     the displayed verse numbers of every surah are 1..N of the source
   letters     every stored token has the base letters of its raw official
               token (after hamza decomposition and the listed letter mappings)
+  placement   every content slot holds exactly one rewayah word whose rasm
+              skeleton is within PLACEMENT_MAX_DISTANCE of the Hafs word in
+              that slot, except the declared PLACEMENT_EVENTS (P2 blank, P3
+              merge over two slots, P4 extra word, 1:2 two words); so a word
+              moved to a neighbouring slot fails even when the reading order
+              is unchanged
   diff        <id>-diff.json format 2: valid keys / categories / entries, each
-              on an existing non-blank content slot whose text differs from
-              Hafs, whole-word entries [] and silah indices on silah marks
-              before any inline marker
+              on an existing non-blank content slot whose words (without an
+              inline marker) differ from Hafs, whole-word entries [] and
+              silah indices on silah marks before any inline marker
   versemap    <id>-versemap.json format 1 equals the map re-derived from the DB
-  glyphs      (--glyphs) every unique stored token shaped with DigitalKhattFont
-              (and the V1 font): 0 .notdef, 0 dotted circles, and no
-              unattached / orphan mark beyond the known render limitations
+  glyphs      (--glyphs) every unique stored token shaped with HarfBuzz and
+              DigitalKhattFont (and the V1 font): 0 .notdef; every cluster
+              (base + mark sequence) that never occurs in the DK Hafs DB is in
+              render_review.json (visually reviewed against the KFGQPC fonts);
+              a mark left without an anchor (zero offset) or a mark turned
+              into a spacing glyph where the Hafs DB has no such cluster is
+              allowed only for a reviewed cluster that lists that issue;
+              with all 7 rewayat, a review entry no DB uses also fails
 """
 from __future__ import annotations
 
@@ -76,22 +90,32 @@ DK_CMAP = frozenset(
     ).split()
 )
 
-# Words the DigitalKhatt fonts shape with a mark left at its default position
-# (no anchor). Visually checked against the official KFGQPC fonts: the marks
-# stay legible next to their letter. Any NEW unattached / orphan mark fails
-# the glyph gate. Keyed by the mark code point and the base letter before it.
-KNOWN_UNATTACHED = {
-    ("\u06EC", "\u0648"): "KFGQPC dot (ibdal / tashil sign) on a waw, e.g. 2:225 yu-akhidhukum, 3:15",
-    ("\u06EC", "\u064A"): "KFGQPC dot on a ya, e.g. Warsh 2:150 li-alla",
-    ("\u06EC", "\u0627"): "KFGQPC dot after a lam-alef / ha-alef, e.g. 2:220 la-a'natakum, 3:66 ha-antum, 19:19",
-    ("\u06EC", "\u0639"): "KFGQPC ikhfa dot on an ain, Qalun 4:154 ta'adu",
-    ("\u06EC", "\u0647"): "KFGQPC ikhfa dot on a ha, 10:35 yahiddi",
-    ("\u06EC", "\u062F"): "KFGQPC ishmam dot on a dal, Shu'bah 18:2 / 18:76 ladnihi / ladni",
-    ("\u06EC", "\u0633"): "KFGQPC ishmam dot on a seen, Nafi' 11:77 / 29:33 / 67:27 si'a",
-    ("\u0655", "\u0640"): "hamza below a tatweel seat, Nafi' khasi'ina / muttaki'ina: drawn on the tatweel line",
-    ("\u06DC", "\u0635"): "small high seen on a sad (Qunbul sirat with seen): drawn above the sad, unanchored",
-    ("\u06E8", "\u0640"): "small high noon on a tatweel, 12:110 fa-nunji: drawn on the tatweel",
+# Slots that do not hold exactly one rewayah word matching the Hafs word, per
+# rewayah (Hafs word location -> event, as the builder reports them):
+#   P2   a Hafs-only word: the slot is blank
+#   P3   one rewayah word covering this slot and the next content slot (blank)
+#   P4   the slot's own word followed by an extra rewayah word
+#   1:2  two rewayah words in one Hafs slot (37:130 keeps both; 72:16 'وَأَن لَّوِ')
+_P3_COMMON = {"15:7:1": "P3", "27:20:4": "P3", "36:22:1": "P3"}
+PLACEMENT_EVENTS: dict[str, dict[str, str]] = {
+    "warsh": {**_P3_COMMON, "40:26:13": "P3", "57:24:10": "P2", "37:130:3": "1:2", "72:16:1": "1:2"},
+    "qaloon": {**_P3_COMMON, "40:26:13": "P3", "57:24:10": "P2", "37:130:3": "1:2", "72:16:1": "1:2"},
+    "bazzi": {**_P3_COMMON, "40:26:13": "P3", "75:1:1": "P3", "9:100:17": "P4", "37:130:3": "1:2"},
+    "qumbul": {**_P3_COMMON, "40:26:13": "P3", "9:100:17": "P4", "37:130:3": "1:2"},
+    "doori": {**_P3_COMMON, "40:26:13": "P3", "73:20:21": "P3", "37:130:3": "1:2", "72:16:1": "1:2"},
+    "soosi": {**_P3_COMMON, "40:26:13": "P3", "73:20:21": "P3", "37:130:3": "1:2", "72:16:1": "1:2"},
+    "shouba": {**_P3_COMMON, "37:130:3": "1:2"},
 }
+# Normalized Levenshtein distance between rasm skeletons (see _skel). The
+# largest distance of an undeclared slot in the 7 DBs is 1/3: a three-letter
+# farsh word with another prefix letter (8:65 'يَكُن' vs Hafs 'تَكُن'); a word
+# moved to a neighbouring slot is far above it.
+PLACEMENT_MAX_DISTANCE = 0.34
+
+# Clusters (base + mark sequence) that never occur in the DK Hafs DB, visually
+# reviewed against the official KFGQPC fonts; see the glyph gate.
+RENDER_REVIEW_FILE = HERE / "render_review.json"
+REVIEW_ISSUES = frozenset({"unattached", "spacing"})
 
 
 class Report:
@@ -145,6 +169,22 @@ def _skel(t: str) -> str:
 def _a2_allowed(t1: str, t2: str, hafs_slot: str) -> bool:
     last = next((c for c in reversed(t1) if c in _LETTERS), "")
     return " " not in hafs_slot and last in _NONJOIN and _skel(t1 + t2) == _skel(hafs_slot)
+
+
+def _skel_distance(a: str, b: str) -> float:
+    """Normalized Levenshtein distance between the rasm skeletons of a and b."""
+    x, y = _skel(a), _skel(b)
+    if x == y:
+        return 0.0
+    if not x or not y:
+        return 1.0
+    prev = list(range(len(y) + 1))
+    for i, cx in enumerate(x, 1):
+        cur = [i] + [0] * len(y)
+        for j, cy in enumerate(y, 1):
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (cx != cy))
+        prev = cur
+    return prev[-1] / max(len(x), len(y))
 
 
 _HAMZA_DECOMPOSE = {
@@ -219,7 +259,7 @@ def validate(
     out: TextIO = sys.stdout,
 ) -> bool:
     rep = Report(rid, out)
-    gates = ["sources", "rows", "slots", "stream", "numbers", "letters", "diff", "versemap"]
+    gates = ["sources", "rows", "slots", "stream", "numbers", "letters", "placement", "diff", "versemap"]
     if glyphs:
         gates.append("glyphs")
 
@@ -261,6 +301,9 @@ def validate(
         bad = sorted({c for c in text if c not in DK_CMAP})
         if bad:
             rep.fail("slots", f"{loc}: code points outside the DK cmap {[f'U+{ord(c):04X}' for c in bad]} in {text!r}")
+        for t in toks:
+            if unicodedata.category(t[0]).startswith("M"):
+                rep.fail("slots", f"{loc}: token starts with a combining mark (broken cluster): {t!r}")
         markers = [k for k, t in enumerate(toks) if N.is_marker(t)]
         if is_hafs_marker[wid]:
             if len(toks) != 1 or not markers:
@@ -282,10 +325,10 @@ def validate(
         return False
     counts = N.verse_counts(verses)
     expected: dict[int, list[tuple[str, int, str]]] = {}  # (dk token, verse, raw token)
-    for v in verses:
+    for v, dks in zip(verses, N.dk_tokens(verses, rid)):
         lst = expected.setdefault(v.surah, [])
-        for raw in v.tokens:
-            lst.append((N.dk_token(raw, rid), v.ayah, raw))
+        for raw, dk in zip(v.tokens, dks):
+            lst.append((dk, v.ayah, raw))
         lst.append((N.marker(v.ayah), v.ayah, ""))
     actual: dict[int, list[tuple[str, int]]] = {}  # (token, word id)
     for wid, loc, s, a, w, text in db:
@@ -293,8 +336,7 @@ def validate(
             actual.setdefault(s, []).extend((t, wid) for t in text.split(" "))
 
     fatiha_exception = False
-    first = verses[0]
-    if _skel(N.dk_token(first.tokens[0], rid)) != "\u0628\u0633\u0645":
+    if _skel(expected[1][0][0]) != "\u0628\u0633\u0645":
         basmala_ids = [loc_to_id[(1, 1, k)] for k in (1, 2, 3, 4)]
         act1 = actual.get(1, [])
         if [t for t, _ in act1[:4]] == [hafs_text[i] for i in basmala_ids] and [i for _, i in act1[:4]] == basmala_ids:
@@ -356,8 +398,59 @@ def validate(
     stats["A2 joins"] = a2_joins
     stats["tokens letter-checked"] = letters_checked
 
-    # --- diff JSON ------------------------------------------------------------
     db_text = {r[0]: r[5] for r in db}
+
+    # --- placement ------------------------------------------------------------
+    events = PLACEMENT_EVENTS.get(rid, {})
+    content_rows = [r for r in hafs if not is_hafs_marker[r[0]]]
+    p3_followers: set[int] = set()
+    seen_events: set[str] = set()
+    max_dist = 0.0
+    for k, (wid, loc, s, a, w, htext) in enumerate(content_rows):
+        key = f"{s}:{a}:{w}"
+        words = [t for t in db_text[wid].split(" ") if t and not N.is_marker(t)]
+        ev = events.get(key)
+        if ev:
+            seen_events.add(key)
+        if ev == "P2":
+            if words:
+                rep.fail("placement", f"{key}: declared P2 (blank) but holds {words}")
+            continue
+        if ev == "P3":
+            nxt = content_rows[k + 1] if k + 1 < len(content_rows) else None
+            if nxt is None or db_text[nxt[0]] != "" or len(words) != 1:
+                rep.fail("placement", f"{key}: declared P3 needs one word here and a blank next slot")
+                continue
+            p3_followers.add(nxt[0])
+            d = _skel_distance(words[0], htext + nxt[5])
+            if d > PLACEMENT_MAX_DISTANCE:
+                rep.fail("placement", f"{key}: P3 word {words[0]!r} vs Hafs {htext + ' ' + nxt[5]!r} distance {d:.2f}")
+            continue
+        if ev in ("P4", "1:2"):
+            if len(words) != 2:
+                rep.fail("placement", f"{key}: declared {ev} needs two words, holds {words}")
+                continue
+            probe = words[0] if ev == "P4" else words[0] + words[1]
+            d = _skel_distance(probe, htext)
+            if d > PLACEMENT_MAX_DISTANCE:
+                rep.fail("placement", f"{key}: {ev} {words} vs Hafs {htext!r} distance {d:.2f}")
+            continue
+        if not words:
+            if wid not in p3_followers:
+                rep.fail("placement", f"{key}: blank slot not declared (Hafs {htext!r})")
+            continue
+        if len(words) != 1:
+            rep.fail("placement", f"{key}: {len(words)} words in one slot not declared: {words}")
+            continue
+        d = _skel_distance(words[0], htext)
+        max_dist = max(max_dist, d)
+        if d > PLACEMENT_MAX_DISTANCE:
+            rep.fail("placement", f"{key}: {words[0]!r} vs Hafs {htext!r} skeleton distance {d:.2f} > {PLACEMENT_MAX_DISTANCE}")
+    for key in sorted(set(events) - seen_events):
+        rep.fail("placement", f"declared event {key} {events[key]} is not a Hafs word slot")
+    stats["placement max skeleton distance (undeclared slots)"] = round(max_dist, 3)
+
+    # --- diff JSON ------------------------------------------------------------
     try:
         diff = json.loads(Path(diff_path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as e:
@@ -403,12 +496,13 @@ def validate(
                 if text == "":
                     rep.fail("diff", f"{vk}:{w} ({cat}) is a blank slot")
                     continue
-                if text == hafs_text[wid]:
-                    rep.fail("diff", f"{vk}:{w} ({cat}) equals the Hafs text")
                 content = text
                 toks = text.split(" ")
                 if N.is_marker(toks[-1]):
                     content = " ".join(toks[:-1])
+                if content == hafs_text[wid]:
+                    # compared without an inline marker: a marker alone is not a reading difference
+                    rep.fail("diff", f"{vk}:{w} ({cat}) has the same words as the Hafs slot")
                 if cat == WHOLE_WORD[rid]:
                     if chars:
                         rep.fail("diff", f"{vk}:{w} whole-word entry has char indices {chars}")
@@ -471,7 +565,7 @@ def validate(
 
     # --- glyph gate -------------------------------------------------------------
     if glyphs:
-        glyph_gate(rid, db, rep, stats)
+        glyph_gate(rid, db, hafs, rep, stats)
 
     if marks:
         mark_report(rid, verses, db, rep)
@@ -489,6 +583,38 @@ def validate(
 # ---------------------------------------------------------------------------
 
 _FONT_CACHE: dict = {}
+_BASELINE_CACHE: dict = {}
+USED_REVIEW_KEYS: set[str] = set()  # review entries seen by glyph_gate in this process
+
+
+def cluster_spans(token: str) -> list[tuple[int, int, str]]:
+    """(start, end, key) of every base + marks cluster of a token. The key is
+    the hex code points, base first ('0627 064E 06EC')."""
+    out = []
+    i = 0
+    while i < len(token):
+        j = i + 1
+        while j < len(token) and unicodedata.category(token[j]).startswith("M"):
+            j += 1
+        out.append((i, j, " ".join(f"{ord(c):04X}" for c in token[i:j])))
+        i = j
+    return out
+
+
+def load_render_review(path: Path | None = None) -> dict:
+    path = path or RENDER_REVIEW_FILE
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    families = doc.get("families", {})
+    clusters = doc.get("clusters", {})
+    for key, e in clusters.items():
+        if e.get("family") not in families:
+            raise ValueError(f"{path.name}: {key} has unknown family {e.get('family')!r}")
+        allow = e.get("allow", {})
+        if not isinstance(allow, dict) or not set(allow) <= REVIEW_ISSUES:
+            raise ValueError(f"{path.name}: {key} allow must map {sorted(REVIEW_ISSUES)} to contexts")
+        if not all(isinstance(v, list) and v for v in allow.values()):
+            raise ValueError(f"{path.name}: {key} allow contexts must be non-empty lists")
+    return doc
 
 
 def _font(path: Path):
@@ -499,85 +625,125 @@ def _font(path: Path):
         tt = TTFont(str(path), lazy=True)
         classes = tt["GDEF"].table.GlyphClassDef.classDefs
         order = tt.getGlyphOrder()
-        dotted = tt.getBestCmap().get(0x25CC)
-        _FONT_CACHE[path] = (hb.Font(hb.Face(hb.Blob.from_file_path(str(path)))), classes, order, dotted)
+        _FONT_CACHE[path] = (hb.Font(hb.Face(hb.Blob.from_file_path(str(path)))), classes, order)
     return _FONT_CACHE[path]
 
 
-def shape_issues(path: Path, text: str) -> list[tuple[str, int]]:
-    """[(issue, cluster index)] for one token."""
+def shape_issues(path: Path, token: str) -> tuple[bool, set[tuple[str, str]], set[tuple[str, str]]]:
+    """Shape one token -> (has .notdef, clusters with a mark left at its default
+    position, clusters whose marks became spacing glyphs). A cluster is given
+    as (key, context): the context is the hex code point of the base before
+    it ('^' at the start of the token), which decides the joining form of an
+    alef or waw and with it whether the font has an anchor for the mark."""
     import uharfbuzz as hb
 
-    font, classes, order, dotted = _font(path)
+    font, classes, order = _font(path)
     buf = hb.Buffer()
-    buf.add_str(text)
+    buf.add_str(token)
     buf.direction = "rtl"
     buf.script = "Arab"
     buf.language = "ar"
     hb.shape(font, buf, {})
-    by_cluster: dict[int, list[int]] = {}
-    for gi in buf.glyph_infos:
-        by_cluster.setdefault(gi.cluster, []).append(gi.codepoint)
-    issues = []
-    for gi, gp in zip(buf.glyph_infos, buf.glyph_positions):
-        name = order[gi.codepoint]
+    infos, poss = buf.glyph_infos, buf.glyph_positions
+    starts = sorted({gi.cluster for gi in infos}) + [len(token)]
+    span_end = {s: starts[k + 1] for k, s in enumerate(starts[:-1])}
+    spans = cluster_spans(token)
+    ctx = {a: (f"{ord(token[spans[i - 1][0]]):04X}" if i else "^") for i, (a, _, _) in enumerate(spans)}
+
+    def keys_in(lo: int, hi: int) -> list[tuple[str, str]]:
+        marked = [(k, ctx[a]) for a, b, k in spans if lo <= a < hi and b - a > 1]
+        return marked or [(k, ctx[a]) for a, b, k in spans if lo <= a < hi]
+
+    notdef = False
+    unattached: set[tuple[str, str]] = set()
+    spacing_glyphs: Counter = Counter()
+    for gi, gp in zip(infos, poss):
         if gi.codepoint == 0:
-            issues.append(("notdef", gi.cluster))
-        elif dotted is not None and name == dotted:
-            issues.append(("dotted_circle", gi.cluster))
-        elif classes.get(name) == 3 and gp.x_offset == 0 and gp.y_offset == 0:
-            base = any(classes.get(order[g]) != 3 for g in by_cluster[gi.cluster])
-            issues.append(("unattached_mark" if base else "orphan_mark", gi.cluster))
-    return issues
+            notdef = True
+        if gp.x_advance > 0:
+            spacing_glyphs[gi.cluster] += 1
+        if classes.get(order[gi.codepoint]) == 3 and gp.x_offset == 0 and gp.y_offset == 0:
+            unattached.update(keys_in(gi.cluster, span_end[gi.cluster]))
+    spacing: set[tuple[str, str]] = set()
+    for cl, n in spacing_glyphs.items():
+        text = token[cl : span_end[cl]]
+        letters = sum(1 for c in text if c == "\u0640" or unicodedata.category(c) in ("Lo", "Lm"))
+        if n > letters:
+            spacing.update(keys_in(cl, span_end[cl]))
+    return notdef, unattached, spacing
 
 
-def _mark_context(text: str, cluster: int) -> list[tuple[str, str]]:
-    """(mark, base letter) pairs of the marks in the cluster starting at `cluster`."""
-    out = []
-    base = ""
-    i = cluster
-    j = i
-    while j > 0 and unicodedata.category(text[j]).startswith("M"):
-        j -= 1
-    base = text[j]
-    k = i
-    while k < len(text) and (k == i or unicodedata.category(text[k]).startswith("M")):
-        if unicodedata.category(text[k]).startswith("M"):
-            out.append((text[k], base))
-        k += 1
-    return out
+def _baseline(path: Path, hafs_tokens: frozenset[str]) -> tuple[set[str], set[str], set[str]]:
+    """Cluster keys of the DK Hafs DB, and the keys of its clusters with
+    unattached / spacing marks (per font; DK's own design, e.g. the dagger
+    alef after a ra drawn as a small standing alef)."""
+    if path not in _BASELINE_CACHE:
+        keys: set[str] = set()
+        unattached: set[str] = set()
+        spacing: set[str] = set()
+        for t in hafs_tokens:
+            keys.update(k for _, _, k in cluster_spans(t))
+            _, u, sp = shape_issues(path, t)
+            unattached.update(k for k, _ in u)
+            spacing.update(k for k, _ in sp)
+        _BASELINE_CACHE[path] = (keys, unattached, spacing)
+    return _BASELINE_CACHE[path]
 
 
-def glyph_gate(rid: str, db: list[tuple], rep: Report, stats: Counter) -> None:
+def glyph_gate(rid: str, db: list[tuple], hafs: list[tuple], rep: Report, stats: Counter) -> None:
     import importlib.util
 
     if importlib.util.find_spec("uharfbuzz") is None or importlib.util.find_spec("fontTools") is None:
-        rep.fail("glyphs", "uharfbuzz / fonttools not installed (pip install uharfbuzz fonttools)")
+        rep.fail("glyphs", "uharfbuzz / fonttools not installed (pip install -r scripts/rewayah/requirements-ci.txt)")
         return
+    try:
+        review = load_render_review()
+    except (OSError, ValueError) as e:
+        rep.fail("glyphs", f"render review: {e}")
+        return
+    reviewed = review["clusters"]
+    families = review["families"]
     words = Counter(t for r in db for t in r[5].split(" ") if r[5])
+    hafs_tokens = frozenset(t for r in hafs for t in r[5].split(" ") if r[5])
     fonts = [FONT_V2] + ([FONT_V1] if FONT_V1.exists() else [])
-    for fp in fonts:
-        occ = Counter()
-        limitations: Counter = Counter()
+    family_occ: Counter = Counter()
+    for fi, fp in enumerate(fonts):
+        base_keys, base_unattached, base_spacing = _baseline(fp, hafs_tokens)
+        issue_occ: Counter = Counter()
         for w, n in words.items():
-            for issue, cl in shape_issues(fp, w):
-                occ[issue] += n
-                if issue in ("notdef", "dotted_circle"):
-                    rep.fail("glyphs", f"{fp.name}: {issue} in {w!r}")
-                    continue
-                pairs = _mark_context(w, cl)
-                known = [p for p in pairs if p in KNOWN_UNATTACHED]
-                if known:
-                    for p in known:
-                        limitations[p] += n
-                else:
-                    rep.fail("glyphs", f"{fp.name}: new {issue} in {w!r} (marks {[(f'U+{ord(m):04X}', b) for m, b in pairs]})")
+            notdef, unattached, spacing = shape_issues(fp, w)
+            if notdef:
+                rep.fail("glyphs", f"{fp.name}: .notdef in {w!r}")
+                issue_occ["notdef"] += n
+            for kind, found, base in (("unattached", unattached, base_unattached), ("spacing", spacing, base_spacing)):
+                for key, ctx in found:
+                    if key in base:
+                        continue
+                    issue_occ[kind] += n
+                    e = reviewed.get(key)
+                    if e is None or ctx not in e.get("allow", {}).get(kind, []):
+                        rep.fail(
+                            "glyphs",
+                            f"{fp.name}: {kind} mark in cluster [{key}] after [{ctx}] of {w!r} is not an allowed reviewed issue",
+                        )
+                    else:
+                        USED_REVIEW_KEYS.add(key)
+            if fi == 0:
+                for _, _, key in cluster_spans(w):
+                    if key in base_keys:
+                        continue
+                    e = reviewed.get(key)
+                    if e is None:
+                        rep.fail("glyphs", f"cluster [{key}] of {w!r} never occurs in the DK Hafs DB and is not in {RENDER_REVIEW_FILE.name}")
+                        continue
+                    USED_REVIEW_KEYS.add(key)
+                    family_occ[e["family"]] += n
         stats[f"glyphs {fp.stem} unique words"] = len(words)
-        for issue, n in sorted(occ.items()):
-            stats[f"glyphs {fp.stem} {issue} occurrences"] = n
-        if fp == FONT_V2:
-            for (m, b), n in sorted(limitations.items()):
-                rep.note(f"render limitation U+{ord(m):04X} on {b}: {n} occurrences ({KNOWN_UNATTACHED[(m, b)]})")
+        for issue, n in sorted(issue_occ.items()):
+            stats[f"glyphs {fp.stem} {issue} occurrences (beyond the Hafs baseline)"] = n
+    for fam, n in sorted(family_occ.items()):
+        f = families[fam]
+        rep.note(f"reviewed clusters [{f['verdict']}] {fam}: {n} occurrences")
 
 
 # ---------------------------------------------------------------------------
@@ -627,6 +793,18 @@ def main(argv: list[str] | None = None) -> int:
             glyphs=a.glyphs,
             marks=a.marks,
         )
+    if a.glyphs and set(rids) == set(N.REWAYAT) and RENDER_REVIEW_FILE.exists():
+        try:
+            stale = sorted(set(load_render_review()["clusters"]) - USED_REVIEW_KEYS)
+        except (OSError, ValueError):
+            stale = []  # already reported by the glyph gate
+        if stale:
+            ok = False
+            print(f"== render review: FAIL ({len(stale)} entries no DB uses; remove them from {RENDER_REVIEW_FILE.name})")
+            for key in stale[:20]:
+                print(f"      - {key}")
+        else:
+            print(f"== render review: every entry of {RENDER_REVIEW_FILE.name} is used")
     print("ALL PASS" if ok else "VALIDATION FAILED")
     return 0 if ok else 1
 
