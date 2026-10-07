@@ -54,8 +54,8 @@ The member path inside each zip is listed in `sources.lock.json`.
     from the signed Word file; it is the only erratum.
 - **Hafs.** `hafs.json` is not a build input. `validate.py` uses it to prove
   that `normalize.CONVENTION_MAP` turns the KFGQPC encoding into the
-  DigitalKhatt one (77,385 of 77,429 words identical; the rest are 25 listed
-  DK-only encodings).
+  DigitalKhatt one (77,385 of 77,429 words identical; the other words are
+  in 25 listed verses with DK-only encodings).
 
 ## Schema notes (v2.x)
 

@@ -26,8 +26,9 @@ used by the builder (build_sibling_rewayah.py) and by the validator
    a. CONVENTION_MAP: encoding conventions that differ between KFGQPC and
       DK for the same sign (sukun shapes, open tanween, precomposed hamza,
       'أٓ'). Derived from the Hafs round trip: applied to the official
-      KFGQPC Hafs v2.0 text it reproduces the DK Hafs DB in 77,353 of
-      77,401 words; the 48 residuals are listed in validate.py.
+      KFGQPC Hafs v2.0 text (with the sajdah and dot-below rules) it
+      reproduces the DK Hafs DB in 77,385 of 77,429 words; the 25 verses
+      with DK-only encodings are listed in validate.py.
    b. RENDER_POLICY: the per-rewayah table of marks the DK font cannot draw
       or draws with a different meaning, with the decision taken for each
       (see the table below and docs/features/rewayat.md). Letters are never
