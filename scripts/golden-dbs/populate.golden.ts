@@ -381,7 +381,7 @@ async function relaunch(dir: string): Promise<SqliteMockModule> {
     '@/test-utils/mockExpoSqlite',
   );
   sqliteAfterReset.useDatabaseDir(dir);
-  const annotations = jest.requireActual<AnnotationsModule>(
+  const annotationsAgain = jest.requireActual<AnnotationsModule>(
     '@/services/database/VerseAnnotationDatabaseService',
   ).verseAnnotationDatabaseService;
   const playlists = jest.requireActual<PlaylistsModule>(
@@ -399,7 +399,7 @@ async function relaunch(dir: string): Promise<SqliteMockModule> {
   const uploads = jest.requireActual<UploadsModule>(
     '@/services/uploads/UploadsDatabaseService',
   ).uploadsDatabaseService;
-  await annotations.initialize();
+  await annotationsAgain.initialize();
   await playlists.initialize();
   await tafseer.initialize();
   await translation.initialize();
