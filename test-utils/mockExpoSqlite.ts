@@ -33,6 +33,13 @@ export const expoSqliteModule = {
     const existing = open.get(name);
     if (existing) return existing;
     const db = openAdapterDatabase(path.join(currentDir, name));
+    // Real expo-sqlite opens a fresh connection after closeAsync(), so drop
+    // the cached handle when a service closes it.
+    const close = db.closeAsync.bind(db);
+    db.closeAsync = async (): Promise<void> => {
+      if (open.get(name) === db) open.delete(name);
+      await close();
+    };
     open.set(name, db);
     return db;
   },
