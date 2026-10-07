@@ -6,6 +6,11 @@ import {
   setActiveRemoteTranslationCache,
   clearActiveRemoteTranslationCache,
 } from '../translationLookup';
+import crypto from 'crypto';
+
+function sha256(text: string): string {
+  return crypto.createHash('sha256').update(text).digest('hex');
+}
 
 const mockGetAllVerses = jest.fn();
 jest.mock('@/services/translation/TranslationDbService', () => ({
@@ -15,6 +20,27 @@ jest.mock('@/services/translation/TranslationDbService', () => ({
 }));
 
 describe('translationLookup (characterization, develop behavior)', () => {
+  // Exact bundled text, pinned by hash so a swapped or edited translation
+  // fails (the prefix checks below would not catch Saheeh and Clear Quran
+  // being swapped for 2:255).
+  it('returns the exact bundled text for 1:1 and 2:255 in both translations', () => {
+    expect({
+      saheeh11: sha256(getBundledTranslation('1:1', 'saheeh')),
+      saheeh2255: sha256(getBundledTranslation('2:255', 'saheeh')),
+      clear11: sha256(getBundledTranslation('1:1', 'clear-quran')),
+      clear2255: sha256(getBundledTranslation('2:255', 'clear-quran')),
+    }).toEqual({
+      saheeh11:
+        'bb9ebf73f5e2c8b94a2956b0bc62f9315409cc3c933b24d2312f0399b5ab032a',
+      saheeh2255:
+        '8365bdf532d87bc3905904c012932b8a35e30a0e67c20eec474d1ad64d5e494f',
+      clear11:
+        '38fcf74d05c29c7478254a7c48623d214e4eaf3894fa9f529753207f0954e91c',
+      clear2255:
+        '23da26f47875bd83423f036ce01a181ae0222c86efa5509f373aa7250951f16d',
+    });
+  });
+
   it('returns Saheeh text for 1:1 and 2:255 (footnote tags are NOT stripped)', () => {
     const t11 = getBundledTranslation('1:1', 'saheeh');
     expect(t11.startsWith('In the name of')).toBe(true);

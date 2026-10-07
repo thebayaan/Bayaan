@@ -2,9 +2,18 @@ jest.mock(
   'expo-sqlite',
   () => require('@/test-utils/mockExpoSqlite').expoSqliteModule,
 );
+import crypto from 'crypto';
 import {resetDatabases} from '@/test-utils/mockExpoSqlite';
 
+interface BundledRow {
+  verse_key: string;
+  from_ayah: number | null;
+  to_ayah: number | null;
+  text: string;
+}
+
 type Service = typeof import('../TafseerDbService').tafseerDbService;
+type MockModule = typeof import('@/test-utils/mockExpoSqlite');
 
 function freshService(): Service {
   let service: Service | undefined;
@@ -104,11 +113,33 @@ describe('TafseerDbService (characterization, develop behavior)', () => {
 
   // Bundled data has 5 fewer rows than QF's 6236; the content-sync parity check will name them.
   it('imports the bundled Ibn Kathir once with 6231 rows', async () => {
-    const svc = freshService();
+    // Load the service and the sqlite mock from the same isolated registry so
+    // the raw query below reads the service's own database file.
+    let svc: Service | undefined;
+    let mock: MockModule | undefined;
+    jest.isolateModules(() => {
+      svc = require('../TafseerDbService').tafseerDbService;
+      mock = require('@/test-utils/mockExpoSqlite');
+    });
+    if (!svc || !mock) throw new Error('service not loaded');
     await svc.initialize();
     await svc.importBundledIbnKathir();
     await svc.importBundledIbnKathir();
     expect(await svc.isDownloaded('169')).toBe(true);
     expect(Object.keys(await svc.getAllVerses('169'))).toHaveLength(6231);
+    // Pin the expansion of the compact JSON: ranges and text per verse.
+    const db = await mock.openDatabaseAsync('tafaseer.db');
+    const rows = await db.getAllAsync<BundledRow>(
+      "SELECT verse_key, from_ayah, to_ayah, text FROM tafaseer WHERE identifier = '169' ORDER BY surah_number, ayah_number",
+    );
+    expect(rows).toHaveLength(6231);
+    const digest = crypto.createHash('sha256');
+    for (const r of rows) {
+      const text = crypto.createHash('sha256').update(r.text).digest('hex');
+      digest.update(`${r.verse_key}|${r.from_ayah}|${r.to_ayah}|${text}\n`);
+    }
+    expect(digest.digest('hex')).toBe(
+      '3f60d32d385627b7efc1b721b8113a526737ec5b0e24c5cbcb58e9b2547f0d22',
+    );
   }, 60000);
 });
