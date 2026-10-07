@@ -8,8 +8,8 @@ steps:
       selector:
         text: Juz 1
       timeoutMs: 30000
-  - echo: "Prerequisite: app last left on the Al-Fatihah mushaf page. Next: open
-      tafsir for 1:2."
+  - echo: 'Prerequisite: app last left on the Al-Fatihah mushaf page. Next: open
+      tafsir for 1:2.'
   - tool: gesture-custom
     args:
       events:
