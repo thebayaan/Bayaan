@@ -26,6 +26,10 @@ Gates (each failure is reported; exit code 1 if any gate fails):
               normalized source tokens (content + verse markers). Allowed:
               Fatiha basmala exception (P10) and declared A2 joins
   numbers     the displayed verse numbers of every surah are 1..N of the source
+  markers     every verse number sits in the first Hafs marker slot after the
+              verse's last word (P7); it is written inline at the end of the
+              content slot holding that word only when another word comes
+              before the next Hafs marker slot (P6)
   letters     every stored token has the base letters of its raw official
               token (after hamza decomposition and the listed letter mappings)
   placement   every content slot holds exactly one rewayah word whose rasm
@@ -270,7 +274,7 @@ def validate(
     out: TextIO = sys.stdout,
 ) -> bool:
     rep = Report(rid, out)
-    gates = ["sources", "rows", "slots", "stream", "numbers", "letters", "placement", "diff", "versemap"]
+    gates = ["sources", "rows", "slots", "stream", "numbers", "markers", "letters", "placement", "diff", "versemap"]
     if glyphs:
         gates.append("glyphs")
 
@@ -410,6 +414,39 @@ def validate(
     stats["tokens letter-checked"] = letters_checked
 
     db_text = {r[0]: r[5] for r in db}
+
+    # --- markers (P6 / P7) ------------------------------------------------------
+    by_surah: dict[int, list[tuple]] = {}
+    for r in db:
+        by_surah.setdefault(r[2], []).append(r)
+    inline_ok = 0
+    for s, srows in by_surah.items():
+        last_word = None  # index in srows of the last non-blank content slot
+        for k, (wid, loc, _, _, _, text) in enumerate(srows):
+            if is_hafs_marker[wid]:
+                if text:
+                    if last_word is None:
+                        rep.fail("markers", f"{loc}: verse number {text!r} before any word of surah {s}")
+                    else:
+                        earlier = [srows[m][1] for m in range(last_word + 1, k) if is_hafs_marker[srows[m][0]]]
+                        if earlier:
+                            rep.fail("markers", f"{loc}: {text!r} belongs in the earlier Hafs marker slot {earlier[0]}")
+                continue
+            if not text:
+                continue
+            last_word = k
+            toks = text.split(" ")
+            if not N.is_marker(toks[-1]):
+                continue
+            m = k + 1
+            while m < len(srows) and not is_hafs_marker[srows[m][0]] and not srows[m][5]:
+                m += 1
+            if m >= len(srows) or is_hafs_marker[srows[m][0]]:
+                nxt = srows[m][1] if m < len(srows) else "the surah end"
+                rep.fail("markers", f"{loc}: {toks[-1]!r} written inline but the Hafs marker slot {nxt} can hold it")
+            else:
+                inline_ok += 1
+    stats["inline verse numbers (no Hafs marker slot before the next word)"] = inline_ok
 
     # --- placement ------------------------------------------------------------
     events = PLACEMENT_EVENTS.get(rid, {})
