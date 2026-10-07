@@ -1,7 +1,8 @@
 {
   "tag": "v2.1.2",
+  "variant": "second-launch",
   "commit": "2d07c7c5fbc32d6e1259c1e085123866a3f088f9",
-  "generated_at": "2026-10-07T21:06:20.099Z",
+  "generated_at": "2026-10-07T22:00:31.622Z",
   "tables": {
     "verse-annotations/bookmarks": 15,
     "verse-annotations/highlights": 5,
@@ -13,7 +14,23 @@
     "tafaseer/tafaseer": 12,
     "tafaseer/tafseer_metadata": 2,
     "translations/translation_metadata": 1,
-    "translations/translations": 10
+    "translations/translations": 10,
+    "adhkar/adhkar": 406,
+    "adhkar/adhkar_categories": 134,
+    "adhkar/adhkar_meta": 1,
+    "adhkar/adhkar_tags": 12,
+    "adhkar/category_tags": 143,
+    "adhkar/dhikr_counts": 2,
+    "adhkar/dhikr_favorites": 2,
+    "adhkar/super_categories": 29,
+    "uploads/custom_reciters": 1,
+    "uploads/uploaded_recitations": 3
+  },
+  "digests": {
+    "tafaseer/tafaseer": "ee3cf4928084ed7f46c1b8242163e7e217238e29e785eb2e2f67dded8cac2f6e",
+    "tafaseer/tafseer_metadata": "6ce08a60f26411a8d52a7801d5523efb364b1a6a89a60357396c4f4bd42cc128",
+    "translations/translation_metadata": "9aaa46de27aea1f9d8f37c8e0f4cc128ffaff0954aaf4696fd0e9d64caff3593",
+    "translations/translations": "771c839e7d963c76ebbd7892b42a992ec8f891131c516a9807a09da8e6ba31f5"
   },
   "skipped": [
     "rewayahId args: release has no rewayah_id column"

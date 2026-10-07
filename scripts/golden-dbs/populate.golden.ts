@@ -1,9 +1,18 @@
 import fs from 'fs';
 import path from 'path';
+import {adhkarService} from '@/services/adhkar/AdhkarService';
+import {adhkarDatabaseService} from '@/services/database/AdhkarDatabaseService';
 import {databaseService} from '@/services/database/DatabaseService';
 import {verseAnnotationDatabaseService as annotations} from '@/services/database/VerseAnnotationDatabaseService';
 import {tafseerDbService} from '@/services/tafseer/TafseerDbService';
 import {translationDbService} from '@/services/translation/TranslationDbService';
+import {uploadsDatabaseService} from '@/services/uploads/UploadsDatabaseService';
+import {
+  DIGEST_TABLES,
+  listTables,
+  readTable,
+  rowsDigest,
+} from '@/test-utils/goldenDb';
 import {
   closeOpenDatabases,
   databaseDir,
@@ -29,7 +38,13 @@ const DB_FILES = [
   'playlists.db',
   'tafaseer.db',
   'translations.db',
+  'adhkar.db',
+  'uploads.db',
 ];
+// GOLDEN_FIRST_LAUNCH=1 stops after the first launch: rows keep the rewayah
+// ids exactly as the release wrote them (legacy slugs and NULL), before the
+// release's own relaunch migrations rewrite them.
+const FIRST_LAUNCH = process.env.GOLDEN_FIRST_LAUNCH === '1';
 
 type AnnotationsModule =
   typeof import('@/services/database/VerseAnnotationDatabaseService');
@@ -37,14 +52,9 @@ type PlaylistsModule = typeof import('@/services/database/DatabaseService');
 type TafseerModule = typeof import('@/services/tafseer/TafseerDbService');
 type TranslationModule =
   typeof import('@/services/translation/TranslationDbService');
+type AdhkarModule = typeof import('@/services/adhkar/AdhkarService');
+type UploadsModule = typeof import('@/services/uploads/UploadsDatabaseService');
 type SqliteMockModule = typeof import('@/test-utils/mockExpoSqlite');
-
-interface NameRow {
-  name: string;
-}
-interface CountRow {
-  n: number;
-}
 
 describe('golden database generation', () => {
   it('populates', async () => {
@@ -227,60 +237,119 @@ describe('golden database generation', () => {
       })),
     );
 
-    // Simulate a second app launch: close every handle, load a fresh copy of
-    // the release modules (new singletons) and run each service's own
-    // initialize() again over the same files. Real devices hit this state on
-    // every launch after the first (e.g. the orphan notes_new table).
-    await closeOpenDatabases();
-    jest.resetModules();
-    const sqliteAfterReset = jest.requireActual<SqliteMockModule>(
-      '@/test-utils/mockExpoSqlite',
+    // Adhkar: the release seeds its bundled adhkar content on first launch;
+    // the user data is favorites and tasbeeh counts.
+    await adhkarService.initialize();
+    const categories = await adhkarDatabaseService.getAllCategories();
+    const adhkar = await adhkarDatabaseService.getAdhkarByCategoryIds(
+      categories.map(c => c.id),
     );
-    sqliteAfterReset.useDatabaseDir(dir);
-    const relaunched = {
-      annotations: jest.requireActual<AnnotationsModule>(
-        '@/services/database/VerseAnnotationDatabaseService',
-      ).verseAnnotationDatabaseService,
-      playlists: jest.requireActual<PlaylistsModule>(
-        '@/services/database/DatabaseService',
-      ).databaseService,
-      tafseer: jest.requireActual<TafseerModule>(
-        '@/services/tafseer/TafseerDbService',
-      ).tafseerDbService,
-      translation: jest.requireActual<TranslationModule>(
-        '@/services/translation/TranslationDbService',
-      ).translationDbService,
-    };
-    await relaunched.annotations.initialize();
-    await relaunched.playlists.initialize();
-    await relaunched.tafseer.initialize();
-    await relaunched.translation.initialize();
+    if (adhkar.length < 3) throw new Error('release seeded too few adhkar');
+    await adhkarDatabaseService.toggleSaved(adhkar[0].id);
+    await adhkarDatabaseService.toggleSaved(adhkar[1].id);
+    await adhkarDatabaseService.updateDhikrCount(adhkar[0].id, 33);
+    await adhkarDatabaseService.updateDhikrCount(adhkar[2].id, 7);
 
+    // Uploads: user recordings (tagged surah, tagged other with a custom
+    // reciter, untagged) and one custom reciter. user-recitation-1 is the id
+    // the second playlist references.
+    await uploadsDatabaseService.initialize();
+    await uploadsDatabaseService.insertCustomReciter({
+      id: 'custom-reciter-1',
+      name: 'Synthetic Reciter',
+      imageUri: null,
+      createdAt: now,
+    });
+    await uploadsDatabaseService.insertRecitation({
+      id: 'user-recitation-1',
+      filePath: 'user-recitation-1.mp3',
+      originalFilename: 'fatiha.m4a',
+      duration: 123,
+      dateAdded: now,
+      type: 'surah',
+      surahNumber: 1,
+      startVerse: null,
+      endVerse: null,
+      title: null,
+      category: null,
+      reciterId: 'reciter-1',
+      customReciterId: null,
+      isPersonal: false,
+      rewayah: 'hafs',
+      style: 'murattal',
+      recordingType: 'studio',
+    });
+    await uploadsDatabaseService.insertRecitation({
+      id: 'user-recitation-2',
+      filePath: 'user-recitation-2.mp3',
+      originalFilename: 'dua.mp3',
+      duration: 45,
+      dateAdded: now + 1,
+      type: 'other',
+      surahNumber: null,
+      startVerse: null,
+      endVerse: null,
+      title: 'Synthetic dua',
+      category: 'dua',
+      reciterId: null,
+      customReciterId: 'custom-reciter-1',
+      isPersonal: true,
+      rewayah: null,
+      style: null,
+      recordingType: 'salah',
+    });
+    await uploadsDatabaseService.insertRecitation({
+      id: 'user-recitation-3',
+      filePath: 'user-recitation-3.mp3',
+      originalFilename: 'untagged.wav',
+      duration: null,
+      dateAdded: now + 2,
+      type: null,
+      surahNumber: null,
+      startVerse: null,
+      endVerse: null,
+      title: null,
+      category: null,
+      reciterId: null,
+      customReciterId: null,
+      isPersonal: false,
+      rewayah: null,
+      style: null,
+      recordingType: null,
+    });
+
+    await closeOpenDatabases();
+    let sqliteForCopy: SqliteMockModule | null = null;
+    if (FIRST_LAUNCH) {
+      skipped.push('second launch: first-launch variant');
+    } else {
+      sqliteForCopy = await relaunch(dir);
+    }
     // Close every handle (checkpoints WAL), then copy the files out.
-    await sqliteAfterReset.closeOpenDatabases();
+    if (sqliteForCopy) await sqliteForCopy.closeOpenDatabases();
     await resetDatabases();
 
     const out = process.env.GOLDEN_OUT;
     if (!out) throw new Error('GOLDEN_OUT not set');
     fs.mkdirSync(out, {recursive: true});
     const tables: Record<string, number> = {};
+    const digests: Record<string, string> = {};
     for (const file of DB_FILES) {
       const src = path.join(dir, file);
       fs.copyFileSync(src, path.join(out, file));
       const db = openAdapterDatabase(path.join(out, file));
-      const names = await db.getAllAsync<NameRow>(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
-      );
-      for (const {name} of names) {
-        const row = await db.getFirstAsync<CountRow>(
-          `SELECT COUNT(*) AS n FROM "${name}"`,
-        );
-        tables[`${file.replace('.db', '')}/${name}`] = row?.n ?? 0;
+      // Rollback journal on disk: opening a golden never needs sidecars.
+      await db.execAsync('PRAGMA journal_mode = DELETE;');
+      for (const name of await listTables(db)) {
+        const key = `${file.replace('.db', '')}/${name}`;
+        const rows = await readTable(db, name);
+        tables[key] = rows.length;
+        if (DIGEST_TABLES.includes(key)) digests[key] = rowsDigest(rows);
       }
       await db.closeAsync();
     }
     for (const f of fs.readdirSync(out)) {
-      if (f.endsWith('-wal') || f.endsWith('-shm'))
+      if (f.endsWith('-wal') || f.endsWith('-shm') || f.endsWith('-journal'))
         fs.rmSync(path.join(out, f));
     }
     fs.writeFileSync(
@@ -288,9 +357,11 @@ describe('golden database generation', () => {
       JSON.stringify(
         {
           tag: process.env.GOLDEN_TAG,
+          variant: FIRST_LAUNCH ? 'first-launch' : 'second-launch',
           commit: process.env.GOLDEN_COMMIT,
           generated_at: new Date().toISOString(),
           tables,
+          digests,
           skipped,
         },
         null,
@@ -299,3 +370,40 @@ describe('golden database generation', () => {
     );
   });
 });
+
+// Simulate a second app launch: load a fresh copy of the release modules (new
+// singletons) and run each service's own initialize() again over the same
+// files. Real devices hit this state on every launch after the first (e.g.
+// the orphan notes_new table). Returns the mock module that owns the handles.
+async function relaunch(dir: string): Promise<SqliteMockModule> {
+  jest.resetModules();
+  const sqliteAfterReset = jest.requireActual<SqliteMockModule>(
+    '@/test-utils/mockExpoSqlite',
+  );
+  sqliteAfterReset.useDatabaseDir(dir);
+  const annotations = jest.requireActual<AnnotationsModule>(
+    '@/services/database/VerseAnnotationDatabaseService',
+  ).verseAnnotationDatabaseService;
+  const playlists = jest.requireActual<PlaylistsModule>(
+    '@/services/database/DatabaseService',
+  ).databaseService;
+  const tafseer = jest.requireActual<TafseerModule>(
+    '@/services/tafseer/TafseerDbService',
+  ).tafseerDbService;
+  const translation = jest.requireActual<TranslationModule>(
+    '@/services/translation/TranslationDbService',
+  ).translationDbService;
+  const adhkarAgain = jest.requireActual<AdhkarModule>(
+    '@/services/adhkar/AdhkarService',
+  ).adhkarService;
+  const uploads = jest.requireActual<UploadsModule>(
+    '@/services/uploads/UploadsDatabaseService',
+  ).uploadsDatabaseService;
+  await annotations.initialize();
+  await playlists.initialize();
+  await tafseer.initialize();
+  await translation.initialize();
+  await adhkarAgain.initialize();
+  await uploads.initialize();
+  return sqliteAfterReset;
+}

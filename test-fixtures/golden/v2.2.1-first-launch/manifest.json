@@ -1,13 +1,12 @@
 {
-  "tag": "v2.3.0",
-  "variant": "second-launch",
-  "commit": "e6b4d1e6ad69c2a80a13fd615a9dbccee4cf9340",
-  "generated_at": "2026-10-07T22:00:22.660Z",
+  "tag": "v2.2.1",
+  "variant": "first-launch",
+  "commit": "8b0ccde1ceed79f25b337ef76bb7b0b45ee1cad6",
+  "generated_at": "2026-10-07T22:00:09.456Z",
   "tables": {
     "verse-annotations/bookmarks": 15,
     "verse-annotations/highlights": 5,
     "verse-annotations/notes": 6,
-    "verse-annotations/notes_new": 0,
     "playlists/playlist_items": 6,
     "playlists/user_playlists": 2,
     "tafaseer/schema_version": 1,
@@ -28,9 +27,11 @@
   },
   "digests": {
     "tafaseer/tafaseer": "ee3cf4928084ed7f46c1b8242163e7e217238e29e785eb2e2f67dded8cac2f6e",
-    "tafaseer/tafseer_metadata": "9281872f7046ce4988fdc87975b72d25a9d3ebf9c5dcbea738cffccb509c4165",
-    "translations/translation_metadata": "ef30590fcef7790fd59fd1ab9e5a97571b7f0e5107ebe274deb6133730bd65b0",
+    "tafaseer/tafseer_metadata": "193f2bacef82270153136138b3071949caa318ce353fc684946f6613893af1b7",
+    "translations/translation_metadata": "c9543a6d4bd779dff61f9ae219c42fd1ed34e8d4ddaa7170cd1a61176a533fa6",
     "translations/translations": "771c839e7d963c76ebbd7892b42a992ec8f891131c516a9807a09da8e6ba31f5"
   },
-  "skipped": []
+  "skipped": [
+    "second launch: first-launch variant"
+  ]
 }
