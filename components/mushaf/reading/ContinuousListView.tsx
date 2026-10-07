@@ -22,7 +22,10 @@ import {
   type EnhancedVerse,
 } from '@/utils/enhancedVerseData';
 import {VerseItem} from '@/components/player/v2/PlayerContent/QuranView/VerseItem';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {
+  useMushafPlayerStore,
+  usePlaybackVerseKeys, // @ai
+} from '@/store/mushafPlayerStore';
 import SurahDivider from '@/components/player/v2/PlayerContent/QuranView/SurahDivider';
 import BasmalaHeader from '@/components/player/v2/PlayerContent/QuranView/BasmalaHeader';
 import {getTranslationName} from '@/utils/translationLookup';
@@ -178,8 +181,9 @@ const ContinuousListView = forwardRef<
     const insets = useSafeAreaInsets();
     const flashListRef = useRef<FlashListRef<ContinuousListItem>>(null);
 
-    // Active ayah highlighting (same pattern as player QuranView)
-    const currentVerseKey = useMushafPlayerStore(s => s.currentVerseKey);
+    // Active ayah highlighting (same pattern as player QuranView): every
+    // Hafs verse the reciter is reciting.
+    const playbackVerseKeys = usePlaybackVerseKeys(); // @ai
     const playbackState = useMushafPlayerStore(s => s.playbackState);
     const isPlaying = playbackState === 'playing';
 
@@ -341,7 +345,9 @@ const ContinuousListView = forwardRef<
             fontMgr={fontMgr}
             dkFontFamily={dkFontFamily}
             indexedTajweedData={indexedTajweedData}
-            isActive={isPlaying && item.verse.verse_key === currentVerseKey}
+            isActive={
+              isPlaying && playbackVerseKeys.includes(item.verse.verse_key) // @ai
+            }
             source="mushaf"
             translationName={translationName}
             translationId={selectedTranslationId}
@@ -367,7 +373,7 @@ const ContinuousListView = forwardRef<
         dkFontFamily,
         indexedTajweedData,
         handleVersePress,
-        currentVerseKey,
+        playbackVerseKeys, // @ai
         isPlaying,
         translationName,
         selectedTranslationId,
@@ -397,7 +403,7 @@ const ContinuousListView = forwardRef<
         ref={flashListRef}
         data={items}
         renderItem={renderItem}
-        extraData={`${currentVerseKey}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`}
+        extraData={`${playbackVerseKeys.join(',')}-${arabicTextWeight}-${showAllahNameHighlight}-${allahNameHighlightColor}`} // @ai
         getItemType={getItemType}
         keyExtractor={keyExtractor}
         initialScrollIndex={initialScrollIndex}

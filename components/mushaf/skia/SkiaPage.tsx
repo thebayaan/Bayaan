@@ -36,7 +36,7 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {mushafPreloadService} from '@/services/mushaf/MushafPreloadService';
 import {useTheme} from '@/hooks/useTheme';
 import {useMushafVerseSelectionStore} from '@/store/mushafVerseSelectionStore';
-import {useMushafPlayerStore} from '@/store/mushafPlayerStore';
+import {usePlaybackVerseKeys} from '@/store/mushafPlayerStore'; // @ai
 import {useVerseAnnotationsStore} from '@/store/verseAnnotationsStore';
 import {
   BOOKMARK_HIGHLIGHT_COLOR,
@@ -54,6 +54,7 @@ import {
   isRewayahDiffPaintEnabled,
   isTajweedEnabled,
 } from './pageOverlays';
+import {computePageHighlightLayers} from './verseHighlightLayers'; // @ai
 import {
   SCREEN_WIDTH as DEFAULT_SCREEN_WIDTH,
   SCREEN_HEIGHT as DEFAULT_SCREEN_HEIGHT,
@@ -216,12 +217,11 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
     s => s.bookmarkedVerseKeys,
   );
 
-  // Mushaf playback highlighting: only subscribe when verse is on this page
+  // Mushaf playback highlighting
   const {isDarkMode} = useTheme();
-  const playbackVerseKey = useMushafPlayerStore(s => {
-    if (!s.currentVerseKey || s.playbackState === 'idle') return null;
-    return s.currentVerseKey;
-  });
+  // @ai — every Hafs verse the reciter is reciting (several when one reciter
+  // verse covers several Hafs verses); empty when idle.
+  const playbackVerseKeys = usePlaybackVerseKeys();
 
   // Paragraph references for hit testing
   const paragraphMapRef = useRef<Map<number, ParagraphInfo>>(new Map());
@@ -673,129 +673,49 @@ const SkiaPage: React.FC<SkiaPageProps> = ({
   const lineBackgroundHighlightsMap = useMemo<
     Map<number, Array<{start: number; end: number; color: string}>>
   >(() => {
-    const hasAnnotations = Object.keys(persistentHighlights).length > 0;
-    const hasBookmarks = bookmarkedVerseKeys.size > 0;
-    const hasPlayback = !!playbackVerseKey;
-    const diffHighlights = computePageDiffBackgrounds(
-      pageNumber,
-      rewayahDiffPaintEnabled,
-    );
-    const hasRewayahDiffs = diffHighlights.size > 0;
-    const selectedSet =
-      selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
-        ? new Set(selectedVerseKeys)
-        : null;
-
-    if (
-      !hasAnnotations &&
-      !hasBookmarks &&
-      !hasPlayback &&
-      !selectedSet &&
-      !showThemes &&
-      !hasRewayahDiffs
-    )
-      return EMPTY_BG_MAP;
-
-    const map = new Map<
-      number,
-      Array<{start: number; end: number; color: string}>
-    >();
-
-    const addVerseHighlight = (vk: string, color: string) => {
-      const verseLines = mushafVerseMapService.getVerseSegmentsForPage(
+    // @ai-start
+    // Layers (rewayah diff tints < themes < bookmarks < colour highlights <
+    // playback < selection) are built by the helper shared with
+    // ContinuousMushafView. Diff tints use a saturated orange so differing
+    // words pop out as a study aid; a bookmarked verse keeps a persistent
+    // tint unless a colour highlight, playback or selection paints over it.
+    const layers = computePageHighlightLayers({
+      getVerseSegments: vk =>
+        mushafVerseMapService.getVerseSegmentsForPage(pageNumber, vk),
+      diffHighlights: computePageDiffBackgrounds(
         pageNumber,
-        vk,
-      );
-      for (const {lineIndex, segment} of verseLines) {
-        let arr = map.get(lineIndex);
-        if (!arr) {
-          arr = [];
-          map.set(lineIndex, arr);
-        }
-        arr.push({
-          start: segment.startCharIndex,
-          end: segment.endCharIndex,
-          color,
-        });
-      }
-    };
-
-    // Layer -1: Rewayah diff highlights (painted first, overdrawn by any
-    // higher-priority highlight). Uses a saturated orange tint so differing
-    // words clearly pop out as a study aid for students. Shared pipeline
-    // with ContinuousMushafView via rewayahDiffService.
-    if (hasRewayahDiffs) {
-      for (const [lineIndex, entries] of diffHighlights) {
-        let arr = map.get(lineIndex);
-        if (!arr) {
-          arr = [];
-          map.set(lineIndex, arr);
-        }
-        for (const entry of entries) arr.push(entry);
-      }
-    }
-
-    // Layer 0: Theme zebra highlights (lowest priority)
-    if (showThemes) {
-      const themeColor = Color(textColor).alpha(0.12).toString();
-      const pageVerseKeys =
-        mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber);
-      for (const vk of pageVerseKeys) {
-        // Skip verses that will be painted by a higher layer
-        if (persistentHighlights[vk]) continue;
-        if (bookmarkedVerseKeys.has(vk)) continue;
-        if (playbackVerseKey === vk) continue;
-        if (selectedSet?.has(vk)) continue;
-
-        const themeInfo = themeDataService.getThemeForVerse(vk);
-        if (!themeInfo) continue;
-
-        // Only paint even-indexed themes; odd themes stay transparent (zebra)
-        if (themeInfo.themeIndex % 2 !== 0) continue;
-
-        addVerseHighlight(vk, themeColor);
-      }
-    }
-
-    // Layer 0.5: Bookmark highlights. @ai — a bookmarked verse keeps a
-    // persistent tint so the marker survives the sheet closing; an explicit
-    // colored highlight, playback, or selection paints over it instead.
-    for (const verseKey of bookmarkedVerseKeys) {
-      if (persistentHighlights[verseKey]) continue;
-      if (playbackVerseKey === verseKey) continue;
-      if (selectedSet?.has(verseKey)) continue;
-      addVerseHighlight(verseKey, BOOKMARK_HIGHLIGHT_COLOR);
-    }
-
-    // Layer 1: Persistent annotation highlights (lowest priority)
-    for (const [verseKey, colorName] of Object.entries(persistentHighlights)) {
-      if (selectedSet?.has(verseKey)) continue;
-      if (playbackVerseKey === verseKey) continue;
-      const color = HIGHLIGHT_COLORS[colorName];
-      if (!color) continue;
-      addVerseHighlight(verseKey, color);
-    }
-
-    // Layer 2: Playback highlight (skip if selected)
-    if (playbackVerseKey && !selectedSet?.has(playbackVerseKey)) {
-      addVerseHighlight(playbackVerseKey, playbackBgColor);
-    }
-
-    // Layer 3: Selection highlight (highest priority)
-    if (selectedSet) {
-      for (const vk of selectedVerseKeys) {
-        addVerseHighlight(vk, selectionBgColor);
-      }
-    }
-
-    return map;
+        rewayahDiffPaintEnabled,
+      ),
+      themes: showThemes
+        ? {
+            verseKeys:
+              mushafVerseMapService.getOrderedVerseKeysForPage(pageNumber),
+            color: Color(textColor).alpha(0.12).toString(),
+            themeIndexOf: vk =>
+              themeDataService.getThemeForVerse(vk)?.themeIndex,
+          }
+        : null,
+      bookmarkedVerseKeys,
+      bookmarkColor: BOOKMARK_HIGHLIGHT_COLOR,
+      persistentHighlights,
+      highlightColors: HIGHLIGHT_COLORS,
+      playbackVerseKeys,
+      playbackColor: playbackBgColor,
+      selectedVerseKeys:
+        selectedVerseKeys.length > 0 && selectedPageNumber === pageNumber
+          ? selectedVerseKeys
+          : null,
+      selectionColor: selectionBgColor,
+    });
+    return layers ?? EMPTY_BG_MAP;
+    // @ai-end
     // rewayah/textRewayah/dataVersion: verse segments and diff ranges follow
     // the rendered text (singleton services; not read directly).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     persistentHighlights,
     bookmarkedVerseKeys,
-    playbackVerseKey,
+    playbackVerseKeys, // @ai
     playbackBgColor,
     selectedVerseKeys,
     selectedPageNumber,

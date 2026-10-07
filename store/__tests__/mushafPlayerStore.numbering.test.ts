@@ -12,6 +12,8 @@
  * Hafs-numbered sets keep the identity behaviour.
  */
 
+import React, {act} from 'react';
+import TestRenderer from 'react-test-renderer';
 import type {AyahTimestamp} from '@/types/timestamps';
 
 interface MockPlayer {
@@ -111,8 +113,11 @@ import {
   VERSE_TIMING_UNAVAILABLE_ERROR,
   // @ai-start
   RANGE_UNPLAYABLE_ERROR,
+  selectPlaybackVerseKeysId,
+  usePlaybackVerseKeys,
   // @ai-end
 } from '../mushafPlayerStore';
+import {parseVerseKeyListId} from '@/utils/timestampNumbering'; // @ai
 import {mushafAudioService} from '@/services/audio/MushafAudioService';
 import {timingNumberingService} from '@/services/timestamps/TimingNumberingService';
 import {
@@ -537,6 +542,9 @@ describe('playback requests', () => {
 });
 
 // @ai-start
+declare const global: {IS_REACT_ACT_ENVIRONMENT?: boolean};
+global.IS_REACT_ACT_ENVIRONMENT = true;
+
 /**
  * Records every store update that claims 'playing' while no audio player
  * exists (the "playing with no audio" state).
@@ -620,6 +628,59 @@ describe('a range that ends before it starts', () => {
     expect(st().timestampError).toBe(RANGE_UNPLAYABLE_ERROR);
     expect(st().currentVerseKey).toBeNull();
     expect(watch.violations).toEqual([]);
+  });
+});
+
+describe('highlight keys for the renderers', () => {
+  it('selectPlaybackVerseKeysId lists every recited Hafs verse while not idle', async () => {
+    expect(selectPlaybackVerseKeysId(st())).toBe('');
+    await play('warsh-14', 2);
+    at(entry('warsh-14', 2, 1).timestampFrom + 50);
+    expect(parseVerseKeyListId(selectPlaybackVerseKeysId(st()))).toEqual([
+      '2:1',
+      '2:2',
+    ]);
+    // page modes keep the highlight while paused
+    st().setPlaybackState('paused');
+    expect(parseVerseKeyListId(selectPlaybackVerseKeysId(st()))).toEqual([
+      '2:1',
+      '2:2',
+    ]);
+    st().stop();
+    expect(selectPlaybackVerseKeysId(st())).toBe('');
+  });
+
+  it('Hafs: the id is exactly currentVerseKey (single verse)', async () => {
+    await play('hafs-clean', 2);
+    for (const e of T('hafs-clean', 2).slice(0, 20)) {
+      at(e.timestampFrom + 50);
+      expect(selectPlaybackVerseKeysId(st())).toBe(st().currentVerseKey);
+    }
+  });
+
+  it('usePlaybackVerseKeys re-renders only when the recited verses change', async () => {
+    await play('warsh-14', 2);
+    at(entry('warsh-14', 2, 1).timestampFrom + 50);
+    const seen: (readonly string[])[] = [];
+    function Probe() {
+      seen.push(usePlaybackVerseKeys());
+      return null;
+    }
+    let renderer: TestRenderer.ReactTestRenderer | null = null;
+    act(() => {
+      renderer = TestRenderer.create(
+        React.createElement(Probe) as Parameters<typeof TestRenderer.create>[0],
+      );
+    });
+    expect(seen[seen.length - 1]).toEqual(['2:1', '2:2']);
+    const renders = seen.length;
+    act(() => st().setRate(1.25)); // unrelated store update
+    expect(seen.length).toBe(renders);
+    act(() => at(entry('warsh-14', 2, 2).timestampFrom + 50)); // Hafs 2:3
+    expect(seen[seen.length - 1]).toEqual(['2:3']);
+    act(() => st().stop());
+    expect(seen[seen.length - 1]).toEqual([]);
+    act(() => renderer?.unmount());
   });
 });
 // @ai-end

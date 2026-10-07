@@ -20,7 +20,10 @@ import {
   getRegisteredTimingNumbering,
   getTimingEntryStats,
   getTrackedVerseKeys,
+  parseVerseKeyListId,
   registerTimingNumbering,
+  selectTrackedVerseKeysId,
+  verseKeyListId,
   type TimingNumberingMode,
   type TimingSetClass,
 } from '../timestampNumbering';
@@ -355,6 +358,43 @@ describe('labels', () => {
     expect(label([], '2:4', 'riwayah', 'warsh', 'warsh')).toBeNull();
   });
 });
+
+// @ai-start
+describe('verse key list ids (value-comparable selector results)', () => {
+  it('round-trips and is the key itself for a single verse', () => {
+    expect(verseKeyListId([])).toBe('');
+    expect(verseKeyListId(['2:5'])).toBe('2:5');
+    expect(parseVerseKeyListId('')).toEqual([]);
+    expect(parseVerseKeyListId(verseKeyListId(['2:1', '2:2']))).toEqual([
+      '2:1',
+      '2:2',
+    ]);
+  });
+
+  it('selectTrackedVerseKeysId lists every Hafs verse being recited', () => {
+    expect(selectTrackedVerseKeysId({currentAyah: null})).toBe('');
+    const legacy = {
+      surahNumber: 2,
+      ayahNumber: 5,
+      verseKey: '2:5',
+      timestampFrom: 0,
+      timestampTo: 1,
+    };
+    // Hafs (and states written by older code): the verse key itself
+    expect(selectTrackedVerseKeysId({currentAyah: legacy})).toBe('2:5');
+    const mapped = {
+      ...legacy,
+      ayahNumber: 1,
+      verseKey: '2:1',
+      verseKeys: ['2:1', '2:2'],
+      reciterVerseKey: '2:1',
+    };
+    expect(
+      parseVerseKeyListId(selectTrackedVerseKeysId({currentAyah: mapped})),
+    ).toEqual(['2:1', '2:2']);
+  });
+});
+// @ai-end
 
 describe('getTrackedVerseKeys', () => {
   it('reads mapped keys and falls back to the legacy single key', () => {

@@ -386,6 +386,37 @@ export function getTrackedVerseKeys(
   return keys && keys.length ? keys : [state.verseKey];
 }
 
+// @ai-start
+// ── Highlight key lists for store selectors ────────────────────────────────
+//
+// A store selector that returned the verse-key array itself would re-render
+// its component whenever an equal array is rebuilt; joined into a string the
+// selection compares by value. For a single verse (every Hafs recitation)
+// the id is just that verse key.
+
+const VERSE_KEY_LIST_SEPARATOR = '|';
+
+/** Value-comparable id of a verse-key list ('' for none). */
+export function verseKeyListId(keys: readonly string[]): string {
+  return keys.join(VERSE_KEY_LIST_SEPARATOR);
+}
+
+/** Inverse of verseKeyListId. */
+export function parseVerseKeyListId(id: string): readonly string[] {
+  return id ? id.split(VERSE_KEY_LIST_SEPARATOR) : NO_KEYS;
+}
+
+/**
+ * The main player's highlighted Hafs verse keys as a value-comparable id:
+ * use with `useTimestampStore(selectTrackedVerseKeysId)`.
+ */
+export function selectTrackedVerseKeysId(s: {
+  currentAyah: AyahTrackingState | null;
+}): string {
+  return verseKeyListId(getTrackedVerseKeys(s.currentAyah));
+}
+// @ai-end
+
 // ── Labels ─────────────────────────────────────────────────────────────────
 
 /** ['2:1','2:2'] -> '2:1-2'; ['2:286','3:1'] -> '2:286-3:1'; ['2:5'] -> '2:5'. */

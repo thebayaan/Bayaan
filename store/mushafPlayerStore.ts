@@ -17,6 +17,7 @@
  * follow-along highlight and verse seeking are disabled for that surah.
  */
 
+import {useMemo} from 'react'; // @ai
 import {create} from 'zustand';
 import {createJSONStorage, persist} from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,6 +40,8 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {resolveMushafAudioUrl} from '@/utils/mushafAudioUtils';
 import {
   formatPlaybackVerseLabel,
+  parseVerseKeyListId, // @ai
+  verseKeyListId, // @ai
   type TimingNumbering,
   type TimingNumberingMode,
 } from '@/utils/timestampNumbering';
@@ -794,3 +797,27 @@ export function isVerseKeyPlaying(
 ): boolean {
   return s.playbackState !== 'idle' && s.currentVerseKeys.includes(verseKey);
 }
+
+// @ai-start
+/**
+ * Value-comparable id of the Hafs verse keys to highlight ('' when idle or
+ * when no verse is tracked). For a Hafs recitation it is just
+ * currentVerseKey; a reciter verse covering several Hafs verses (Warsh 2:1 =
+ * Hafs 2:1 + 2:2) lists them all.
+ */
+export function selectPlaybackVerseKeysId(s: MushafPlayerStoreState): string {
+  if (s.playbackState === 'idle') return '';
+  if (s.currentVerseKeys.length > 0) return verseKeyListId(s.currentVerseKeys);
+  return s.currentVerseKey ?? '';
+}
+
+/**
+ * Every Hafs verse key the mushaf player is reciting (empty when idle): what
+ * every follow-along highlight must paint. Re-renders only when the set of
+ * keys changes.
+ */
+export function usePlaybackVerseKeys(): readonly string[] {
+  const id = useMushafPlayerStore(selectPlaybackVerseKeysId);
+  return useMemo(() => parseVerseKeyListId(id), [id]);
+}
+// @ai-end

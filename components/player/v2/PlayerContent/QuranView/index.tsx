@@ -32,6 +32,10 @@ import type {SkTypefaceFontProvider} from '@shopify/react-native-skia';
 import type {IndexedTajweedData} from '@/utils/tajweedLoader';
 import {useTimestampStore} from '@/store/timestampStore';
 import {
+  parseVerseKeyListId, // @ai
+  selectTrackedVerseKeysId, // @ai
+} from '@/utils/timestampNumbering';
+import {
   enhancedVersesBySurah,
   rebuildEnhancedVerses,
   type EnhancedVerse,
@@ -179,8 +183,17 @@ export const QuranView: React.FC<QuranViewProps> = ({
   const trackRewayah = useCurrentTrackRewayah();
   const surah = surahData.find(s => s.id === currentSurah);
 
-  // Ayah timestamp tracking
+  // Ayah timestamp tracking. currentVerseKey (the first Hafs verse being
+  // recited) drives scrolling; every Hafs verse the reciter is reciting is
+  // highlighted (a reciter verse can cover several Hafs verses).
   const currentVerseKey = useTimestampStore(s => s.currentAyah?.verseKey);
+  // @ai-start
+  const trackedVerseKeysId = useTimestampStore(selectTrackedVerseKeysId);
+  const trackedVerseKeys = useMemo(
+    () => parseVerseKeyListId(trackedVerseKeysId),
+    [trackedVerseKeysId],
+  );
+  // @ai-end
   const isLocked = useTimestampStore(s => s.isLocked);
   const setIsLocked = useTimestampStore(s => s.setIsLocked);
 
@@ -380,7 +393,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
         fontMgr={fontMgr}
         dkFontFamily={dkFontFamily}
         indexedTajweedData={indexedTajweedData}
-        isActive={isLocked && item.verse_key === currentVerseKey}
+        isActive={isLocked && trackedVerseKeys.includes(item.verse_key)} // @ai
         translationName={translationName}
         translationId={selectedTranslationId}
         showWBW={showWBW}
@@ -402,7 +415,7 @@ export const QuranView: React.FC<QuranViewProps> = ({
       fontMgr,
       dkFontFamily,
       indexedTajweedData,
-      currentVerseKey,
+      trackedVerseKeys, // @ai
       isLocked,
       translationName,
       selectedTranslationId,
