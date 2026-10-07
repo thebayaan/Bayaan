@@ -1,0 +1,95 @@
+steps:
+  - launch: com.bayaan.app
+  - tool: screenshot
+    delayMs: 6000
+  - tool: await-ui-element
+    args:
+      condition: visible
+      selector:
+        text: Juz 1
+      timeoutMs: 30000
+  - echo: "Prerequisite: app last left on the Al-Fatihah mushaf page. Next: open
+      tafsir for 1:2."
+  - tool: gesture-custom
+    args:
+      events:
+        - type: Down
+          x: 0.55
+          y: 0.445
+        - type: Up
+          x: 0.55
+          y: 0.445
+          delayMs: 900
+  - tap:
+      x: 0.5
+      y: 0.605
+  - tool: screenshot
+    delayMs: 1500
+  - tool: await-ui-element
+    args:
+      condition: visible
+      selector:
+        text: IBN KATHIR
+      timeoutMs: 10000
+  - tool: gesture-swipe
+    args:
+      fromX: 0.5
+      fromY: 0.16
+      toX: 0.5
+      toY: 0.9
+      durationMs: 300
+  - tool: gesture-tap
+    args:
+      x: 0.5
+      y: 0.94
+    delayMs: 800
+  - tool: screenshot
+    delayMs: 4000
+  - tap:
+      x: 0.5
+      y: 0.485
+  - tool: screenshot
+    delayMs: 1500
+  - tap:
+      x: 0.4
+      y: 0.485
+  - tool: screenshot
+    delayMs: 1000
+  - tap:
+      x: 0.5
+      y: 0.891
+  - tool: screenshot
+    delayMs: 6000
+  - tap:
+      id: stop.fill
+  - tool: gesture-swipe
+    args:
+      fromX: 0.15
+      fromY: 0.5
+      toX: 0.85
+      toY: 0.5
+      durationMs: 250
+    delayMs: 800
+  - tool: screenshot
+    delayMs: 1500
+  - tool: await-ui-element
+    args:
+      condition: visible
+      selector:
+        text: Al-Baqarah
+      timeoutMs: 5000
+  - echo: Return to page 1 so the next replay starts from the same state.
+  - tool: gesture-swipe
+    args:
+      fromX: 0.85
+      fromY: 0.5
+      toX: 0.15
+      toY: 0.5
+      durationMs: 250
+    delayMs: 800
+  - tool: await-ui-element
+    args:
+      condition: visible
+      selector:
+        text: Al-Fatihah
+      timeoutMs: 5000
