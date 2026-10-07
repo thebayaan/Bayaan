@@ -55,11 +55,15 @@ async function getToken(): Promise<string> {
     throw new Error(`Token request failed with status ${response.status}`);
   }
 
-  interface TokenResponse {
-    access_token: string;
+  const data: unknown = await response.json();
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    !('access_token' in data) ||
+    typeof data.access_token !== 'string'
+  ) {
+    throw new Error('Token response has no access_token');
   }
-
-  const data = (await response.json()) as TokenResponse;
   return data.access_token;
 }
 
