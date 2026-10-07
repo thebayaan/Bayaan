@@ -231,11 +231,15 @@ export const QuranView: React.FC<QuranViewProps> = ({
     headerHeightRef.current = e.nativeEvent.layout.height;
   }, []);
 
-  // DK Skia rendering: derive font family and fontMgr from mushafRenderer
+  // DK Skia rendering: derive font family and fontMgr from mushafRenderer.
+  // A rewayah track has no QPC (Hafs) text to fall back on, so it always
+  // renders from its DK words DB, also under the Hafs-only QCF renderer,
+  // instead of showing Hafs text for a Warsh/Qalun/... recitation.
   const isDK =
     (mushafRenderer === 'dk_v1' ||
       mushafRenderer === 'dk_v2' ||
-      mushafRenderer === 'dk_indopak') &&
+      mushafRenderer === 'dk_indopak' ||
+      trackRewayah !== 'hafs') &&
     mushafPreloadService.initialized &&
     digitalKhattDataService.initialized;
   const dkFontFamily =
