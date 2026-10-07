@@ -17,6 +17,11 @@
  *   Writes snapshot to .parity/tafsir-169.json
  *   Prints only row count and byte size
  *   Exits with code 1 if credentials missing
+ *
+ * Retention: QF terms allow no caching beyond 7 days. Consumers must read the
+ * file through assertSnapshotFresh() in scripts/parity/snapshot.ts, which
+ * refuses a snapshot older than that. Delete .parity/ when done
+ * (rm -rf .parity) and re-fetch before each parity run.
  */
 
 import fs from 'fs';
@@ -38,6 +43,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
 const parityDir = path.resolve(projectRoot, '.parity');
 const outputFile = path.resolve(parityDir, 'tafsir-169.json');
+const TOKEN_TIMEOUT_MS = 30_000;
+const SNAPSHOT_TIMEOUT_MS = 120_000;
 
 async function getToken(): Promise<string> {
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -49,6 +56,7 @@ async function getToken(): Promise<string> {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: 'grant_type=client_credentials&scope=content',
+    signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -89,6 +97,7 @@ async function fetchSnapshot(token: string): Promise<string> {
         'x-auth-token': token,
         'x-client-id': clientId ?? '',
       },
+      signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS),
     },
   );
 
