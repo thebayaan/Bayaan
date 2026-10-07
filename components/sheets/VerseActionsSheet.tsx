@@ -9,6 +9,7 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
+  ActivityIndicator, // @ai
 } from 'react-native';
 import {ScaledSheet, moderateScale} from 'react-native-size-matters';
 import {useTheme} from '@/hooks/useTheme';
@@ -49,6 +50,15 @@ import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import * as Clipboard from 'expo-clipboard';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+// @ai-start
+import {showToast} from '@/utils/toastUtils';
+import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
+import {
+  formatQuranCitation,
+  joinVerseTexts,
+  resolveVerseTexts,
+} from '@/components/share/rewayahVerseText';
+// @ai-end
 import branding from '@/config/branding';
 import {HighlightContent} from './verse-actions/HighlightContent';
 import {NoteContent} from './verse-actions/NoteContent';
@@ -61,8 +71,6 @@ import {WBWContent} from './verse-actions/WBWContent';
 import {CommunityReflectionsContent} from './verse-actions/CommunityReflectionsContent';
 
 const surahData = require('@/data/surahData.json');
-const quranVerses = require('@/data/quran.json');
-const transliterationData = require('@/data/transliteration.json');
 
 type ActiveScreen =
   | 'highlight'
@@ -133,60 +141,39 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   const resolvedRewayah = payload?.rewayah ?? mushafRewayah;
 
-  const {arabicText, translation, transliteration} = useMemo(() => {
-    // Prefer the rewayah-specific DK text so copy/share matches what the
-    // user is actually reading (or listening to, if player passed its own
-    // rewayah). Fall back to the static Hafs JSON only if DK has no entry.
-    const resolveArabic = (vk: string): string => {
-      const dk = digitalKhattDataService.getVerseText(vk, resolvedRewayah);
-      if (dk) return dk;
-      const legacy = (
-        Object.values(quranVerses) as Array<{verse_key: string; text: string}>
-      ).find(v => v.verse_key === vk)?.text;
-      return legacy ?? '';
-    };
+  // @ai-start
+  // Arabic text always comes from the resolved rewayah's words DB (loaded on
+  // demand when it is not the active one), never from the static Hafs JSON
+  // and never from a caller-supplied string of unknown rewayah.
+  const selectionKeys = useMemo(
+    () => (isRange ? verseKeys : verseKey ? [verseKey] : []),
+    [isRange, verseKeys, verseKey],
+  );
+  const arabicTexts = useRewayahVerseTexts(selectionKeys, resolvedRewayah);
+  const [isCopying, setIsCopying] = useState(false);
 
+  const {translation} = useMemo(() => {
     if (isRange) {
-      const arabicParts: string[] = [];
       const translationParts: string[] = [];
-      const transliterationParts: string[] = [];
       for (const vk of verseKeys) {
-        const arabic = resolveArabic(vk);
-        if (arabic) arabicParts.push(arabic);
         const trans = getTranslationTextRaw(vk, selectedTranslationId);
         if (trans) translationParts.push(trans);
-        const translit = transliterationData[vk]?.t;
-        if (translit) transliterationParts.push(translit);
       }
-      return {
-        arabicText: arabicParts.join('\n'),
-        translation: translationParts.join('\n'),
-        transliteration: transliterationParts.join('\n'),
-      };
+      return {translation: translationParts.join('\n')};
     }
-
-    const resolvedArabic = payload?.arabicText || resolveArabic(verseKey);
-    const resolvedTranslation =
-      payload?.translation ||
-      getTranslationTextRaw(verseKey, selectedTranslationId) ||
-      '';
-    const resolvedTransliteration =
-      payload?.transliteration || transliterationData[verseKey]?.t || '';
     return {
-      arabicText: resolvedArabic as string,
-      translation: resolvedTranslation as string,
-      transliteration: resolvedTransliteration as string,
+      translation: (payload?.translation ||
+        getTranslationTextRaw(verseKey, selectedTranslationId) ||
+        '') as string,
     };
   }, [
     verseKey,
     verseKeys,
     isRange,
-    payload?.arabicText,
     payload?.translation,
-    payload?.transliteration,
     selectedTranslationId,
-    resolvedRewayah,
   ]);
+  // @ai-end
 
   const surah = surahData.find(
     (s: {id: number; name: string}) => s.id === surahNumber,
@@ -273,19 +260,45 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
     setActiveScreen('note');
   }, []);
 
+  // @ai-start
   const handleCopy = useCallback(async () => {
+    if (isCopying) return;
     lightHaptics();
-    const parts: string[] = [];
-    if (arabicText) parts.push(arabicText);
-    if (translation) parts.push(translation);
-    const ref =
-      resolvedRewayah === 'hafs'
-        ? `Quran ${verseRefText}`
-        : `Quran ${verseRefText} · ${getRewayahShortLabel(resolvedRewayah)}`;
-    parts.push(ref);
-    await Clipboard.setStringAsync(parts.join('\n\n'));
-    await SheetManager.hide(props.sheetId);
-  }, [arabicText, translation, verseRefText, resolvedRewayah, props.sheetId]);
+    setIsCopying(true);
+    try {
+      // Waits (bounded) for the rewayah's words when they are still loading.
+      const result =
+        arabicTexts.status === 'ready'
+          ? arabicTexts
+          : await resolveVerseTexts(selectionKeys, resolvedRewayah);
+      if (result.status !== 'ready') {
+        showToast(
+          `Couldn't load the ${getRewayahShortLabel(resolvedRewayah)} text`,
+          'Nothing was copied. Please try again.',
+          'error',
+        );
+        return;
+      }
+      const parts: string[] = [];
+      const arabic = joinVerseTexts(result.texts);
+      if (arabic) parts.push(arabic);
+      if (translation) parts.push(translation);
+      parts.push(formatQuranCitation(verseRefText, result.rewayah));
+      await Clipboard.setStringAsync(parts.join('\n\n'));
+      await SheetManager.hide(props.sheetId);
+    } finally {
+      setIsCopying(false);
+    }
+  }, [
+    isCopying,
+    arabicTexts,
+    selectionKeys,
+    resolvedRewayah,
+    translation,
+    verseRefText,
+    props.sheetId,
+  ]);
+  // @ai-end
 
   const handleShare = useCallback(() => {
     lightHaptics();
@@ -672,8 +685,6 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                     surahNumber={surahNumber}
                     ayahNumber={ayahNumber}
                     verseKeys={verseKeys}
-                    arabicText={arabicText}
-                    translation={translation}
                     rewayah={resolvedRewayah}
                     onDone={handleDismiss}
                   />
@@ -921,8 +932,23 @@ export const VerseActionsSheet = (props: SheetProps<'verse-actions'>) => {
                   styles.option,
                   pressed && styles.optionPressed,
                 ]}
-                onPress={handleCopy}>
-                <CopyIcon size={moderateScale(18)} color={theme.colors.text} />
+                onPress={handleCopy}
+                // @ai-start
+                disabled={isCopying}
+                accessibilityState={{busy: isCopying}}>
+                {isCopying ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.text}
+                    style={{width: moderateScale(18)}}
+                  />
+                ) : (
+                  <CopyIcon
+                    size={moderateScale(18)}
+                    color={theme.colors.text}
+                  />
+                )}
+                {/* @ai-end */}
                 <Text style={styles.optionText}>Copy</Text>
               </Pressable>
               <View style={styles.divider} />

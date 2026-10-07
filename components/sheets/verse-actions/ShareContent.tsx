@@ -25,13 +25,25 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import ShareCardPreview from '@/components/share/ShareCardPreview';
 import {captureShareCard} from '@/components/share/captureShareCard';
 import {lightHaptics} from '@/utils/haptics';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {ScrollView} from 'react-native-actions-sheet';
 import {SheetManager} from 'react-native-actions-sheet';
 import {getTranslationTextRaw} from '@/utils/translationLookup';
 import {verseShareUrl, shareUrl as nativeShareUrl} from '@/utils/shareUtils';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+// @ai-start
+import {showToast} from '@/utils/toastUtils';
+import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
+import {
+  formatQuranCitation,
+  formatVerseRange,
+  joinVerseTexts,
+  resolveVerseTexts,
+} from '@/components/share/rewayahVerseText';
+// @ai-end
 import type {RewayahId} from '@/store/mushafSettingsStore';
 
 const surahData = require('@/data/surahData.json') as Array<{
@@ -39,24 +51,11 @@ const surahData = require('@/data/surahData.json') as Array<{
   name: string;
 }>;
 
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const textByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) textByKey[entry.verse_key] = entry.text;
-}
-
 interface ShareContentProps {
   verseKey: string;
   surahNumber: number;
   ayahNumber: number;
   verseKeys?: string[];
-  arabicText: string;
-  translation: string;
   rewayah?: RewayahId;
   onDone: () => void;
 }
@@ -77,8 +76,14 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const [showWatermark, setShowWatermark] = useState(true);
   const [showBasmallah, setShowBasmallah] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  // @ai-start
+  const [isPreparingText, setIsPreparingText] = useState(false);
 
-  const verseKeys = verseKeysProp ?? [verseKey];
+  const verseKeys = useMemo(
+    () => verseKeysProp ?? [verseKey],
+    [verseKeysProp, verseKey],
+  );
+  // @ai-end
   const fontMgr = useMushafFontMgr();
   const quranCommonTypeface = mushafPreloadService.quranCommonTypeface;
 
@@ -89,53 +94,38 @@ export const ShareContent: React.FC<ShareContentProps> = ({
   const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
   const rewayah: RewayahId = rewayahProp ?? mushafRewayah;
   const rewayahLabel = getRewayahShortLabel(rewayah);
-  const fontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
+  // @ai-start
+  const fontFamily = getDkFontFamily(mushafRenderer, rewayah);
+
+  // The card and the shared text use this rewayah's words only. While they
+  // load (a reciter's rewayah that is not the active mushaf one) the preview
+  // shows a spinner; if they cannot be loaded the sheet says so instead of
+  // substituting Hafs.
+  const verseTexts = useRewayahVerseTexts(verseKeys, rewayah);
+  // @ai-end
 
   const previewWidth = screenWidth - moderateScale(48);
   const captureLogicalWidth = 1080 / PixelRatio.get();
 
-  const {arabicText, translation, verseRefText} = useMemo(() => {
-    const arabicParts: string[] = [];
+  // @ai-start
+  const {translation, verseRefText} = useMemo(() => {
     const translationParts: string[] = [];
     for (const vk of verseKeys) {
-      const arabic =
-        digitalKhattDataService.getVerseText(vk, rewayah) || textByKey[vk];
-      if (arabic) arabicParts.push(arabic);
       const trans = getTranslationTextRaw(vk, selectedTranslationId);
       if (trans) translationParts.push(trans);
     }
-
-    const firstKey = verseKeys[0];
-    const lastKey = verseKeys[verseKeys.length - 1];
-    const [firstSurah, firstAyah] = firstKey.split(':');
-    const [lastSurah, lastAyah] = lastKey.split(':');
+    const [firstSurah] = verseKeys[0].split(':');
     const surah = surahData.find(s => s.id === parseInt(firstSurah, 10));
     const surahName = surah?.name ?? '';
-
-    let ref: string;
-    if (firstSurah === lastSurah) {
-      ref =
-        firstAyah === lastAyah
-          ? `${firstSurah}:${firstAyah}`
-          : `${firstSurah}:${firstAyah}-${lastAyah}`;
-    } else {
-      ref = `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
-    }
-
     return {
-      arabicText: arabicParts.join('\n'),
       translation: translationParts.join('\n'),
-      verseRefText: `${surahName} ${ref}`,
+      verseRefText: `${surahName} ${formatVerseRange(verseKeys)}`,
     };
-  }, [verseKeys, selectedTranslationId, rewayah]);
+  }, [verseKeys, selectedTranslationId]);
+  // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
-    if (isCapturing) return;
+    if (isCapturing || verseTexts.status !== 'ready') return; // @ai
     setIsCapturing(true);
     lightHaptics();
 
@@ -150,30 +140,60 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, captureCanvasRef]);
+  }, [isCapturing, captureCanvasRef, verseTexts.status]); // @ai
 
+  // @ai-start
   const handleShareAsText = useCallback(async () => {
+    if (isPreparingText) return;
     lightHaptics();
-    const ref =
-      rewayah === 'hafs'
-        ? `Quran ${verseRefText}`
-        : `Quran ${verseRefText} · ${rewayahLabel}`;
-    const message = `${arabicText}\n\n${translation}\n\n-- ${ref}`;
-    await Share.share({message});
-    SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText, rewayah, rewayahLabel]);
+    setIsPreparingText(true);
+    try {
+      const result =
+        verseTexts.status === 'ready'
+          ? verseTexts
+          : await resolveVerseTexts(verseKeys, rewayah);
+      if (result.status !== 'ready') {
+        showToast(
+          `Couldn't load the ${rewayahLabel} text`,
+          'Nothing was shared. Please try again.',
+          'error',
+        );
+        return;
+      }
+      const parts = [
+        joinVerseTexts(result.texts),
+        translation,
+        `-- ${formatQuranCitation(verseRefText, result.rewayah)}`,
+      ].filter(Boolean);
+      await Share.share({message: parts.join('\n\n')});
+      SheetManager.hideAll();
+    } finally {
+      setIsPreparingText(false);
+    }
+  }, [
+    isPreparingText,
+    verseTexts,
+    verseKeys,
+    rewayah,
+    rewayahLabel,
+    translation,
+    verseRefText,
+  ]);
 
   const handleShareLink = useCallback(async () => {
     lightHaptics();
+    // The link carries the rewayah and the page renders its own text, so no
+    // local text is needed here.
     const url = verseShareUrl(
       surahNumber,
       ayahNumber,
       isDarkMode ? 'dark' : 'light',
       rewayah,
     );
-    await nativeShareUrl(url, `Quran ${verseRefText}`);
+    await nativeShareUrl(url, formatQuranCitation(verseRefText, rewayah));
     SheetManager.hideAll();
   }, [surahNumber, ayahNumber, verseRefText, isDarkMode, rewayah]);
+  // @ai-end
 
   if (!fontMgr) return null;
 
@@ -181,34 +201,74 @@ export const ShareContent: React.FC<ShareContentProps> = ({
     <ScrollView showsVerticalScrollIndicator={false} bounces={true}>
       {/* Visible preview */}
       <View style={styles.previewContent}>
-        <ShareCardPreview
-          verseKeys={verseKeys}
-          isDarkMode={isDarkMode}
-          showWatermark={showWatermark}
-          showBasmallah={showBasmallah}
-          fontMgr={fontMgr}
-          quranCommonTypeface={quranCommonTypeface}
-          fontFamily={fontFamily}
-          width={previewWidth}
-          rewayah={rewayah}
-        />
+        {/* @ai-start */}
+        {verseTexts.status === 'ready' ? (
+          <ShareCardPreview
+            verseKeys={verseKeys}
+            verseTexts={verseTexts.texts}
+            isDarkMode={isDarkMode}
+            showWatermark={showWatermark}
+            showBasmallah={showBasmallah}
+            fontMgr={fontMgr}
+            quranCommonTypeface={quranCommonTypeface}
+            fontFamily={fontFamily}
+            width={previewWidth}
+            rewayah={verseTexts.rewayah}
+          />
+        ) : (
+          <View style={[styles.previewPlaceholder, {width: previewWidth}]}>
+            {verseTexts.status === 'loading' ? (
+              <>
+                <ActivityIndicator
+                  size="small"
+                  color={theme.colors.textSecondary}
+                />
+                <Text style={styles.previewPlaceholderText}>
+                  Loading the {rewayahLabel} text
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.previewPlaceholderText}>
+                  Couldn&apos;t load the {rewayahLabel} text.
+                </Text>
+                <Pressable
+                  onPress={verseTexts.retry}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  style={({pressed}) => [
+                    styles.retryButton,
+                    pressed && {opacity: 0.7},
+                  ]}>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        )}
+        {/* @ai-end */}
       </View>
 
       {/* Hidden capture canvas */}
-      <View style={styles.hiddenCanvas} pointerEvents="none">
-        <ShareCardPreview
-          canvasRef={captureCanvasRef}
-          verseKeys={verseKeys}
-          isDarkMode={isDarkMode}
-          showWatermark={showWatermark}
-          showBasmallah={showBasmallah}
-          fontMgr={fontMgr}
-          quranCommonTypeface={quranCommonTypeface}
-          fontFamily={fontFamily}
-          width={captureLogicalWidth}
-          rewayah={rewayah}
-        />
-      </View>
+      {/* @ai-start */}
+      {verseTexts.status === 'ready' && (
+        <View style={styles.hiddenCanvas} pointerEvents="none">
+          <ShareCardPreview
+            canvasRef={captureCanvasRef}
+            verseKeys={verseKeys}
+            verseTexts={verseTexts.texts}
+            isDarkMode={isDarkMode}
+            showWatermark={showWatermark}
+            showBasmallah={showBasmallah}
+            fontMgr={fontMgr}
+            quranCommonTypeface={quranCommonTypeface}
+            fontFamily={fontFamily}
+            width={captureLogicalWidth}
+            rewayah={verseTexts.rewayah}
+          />
+        </View>
+      )}
+      {/* @ai-end */}
 
       <View style={styles.toggleRow}>
         <Text style={styles.toggleLabel}>Show Basmallah</Text>
@@ -244,11 +304,11 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         <Pressable
           style={({pressed}) => [
             styles.primaryButton,
-            isCapturing && {opacity: 0.6},
+            (isCapturing || verseTexts.status !== 'ready') && {opacity: 0.6}, // @ai
             pressed && !isCapturing && {opacity: 0.85},
           ]}
           onPress={handleShareAsImage}
-          disabled={isCapturing}>
+          disabled={isCapturing || verseTexts.status !== 'ready'}>
           {isCapturing ? (
             <ActivityIndicator size="small" color={theme.colors.text} />
           ) : (
@@ -264,14 +324,22 @@ export const ShareContent: React.FC<ShareContentProps> = ({
         <Pressable
           style={({pressed}) => [
             styles.secondaryButton,
+            isPreparingText && {opacity: 0.6}, // @ai
             pressed && {opacity: 0.85},
           ]}
-          onPress={handleShareAsText}>
-          <Feather
-            name="type"
-            size={moderateScale(16)}
-            color={theme.colors.text}
-          />
+          onPress={handleShareAsText}
+          // @ai-start
+          disabled={isPreparingText}>
+          {isPreparingText ? (
+            <ActivityIndicator size="small" color={theme.colors.text} />
+          ) : (
+            <Feather
+              name="type"
+              size={moderateScale(16)}
+              color={theme.colors.text}
+            />
+          )}
+          {/* @ai-end */}
           <Text style={styles.secondaryButtonText}>Share as Text</Text>
         </Pressable>
 
@@ -299,6 +367,34 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       marginBottom: moderateScale(4),
     },
+    // @ai-start
+    previewPlaceholder: {
+      minHeight: verticalScale(140),
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: moderateScale(10),
+      borderRadius: moderateScale(12),
+      backgroundColor: Color(theme.colors.text).alpha(0.04).toString(),
+      paddingHorizontal: moderateScale(16),
+    },
+    previewPlaceholderText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-Medium',
+      color: Color(theme.colors.text).alpha(0.6).toString(),
+      textAlign: 'center',
+    },
+    retryButton: {
+      paddingHorizontal: moderateScale(14),
+      paddingVertical: verticalScale(6),
+      borderRadius: moderateScale(8),
+      backgroundColor: Color(theme.colors.text).alpha(0.08).toString(),
+    },
+    retryButtonText: {
+      fontSize: moderateScale(13),
+      fontFamily: 'Manrope-SemiBold',
+      color: theme.colors.text,
+    },
+    // @ai-end
     hiddenCanvas: {
       position: 'absolute',
       left: -99999,

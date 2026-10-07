@@ -30,9 +30,21 @@ import {useMushafFontMgr} from '@/hooks/useMushafFontMgr';
 import ShareCardPreview from '@/components/share/ShareCardPreview';
 import {captureShareCard} from '@/components/share/captureShareCard';
 import {lightHaptics} from '@/utils/haptics';
-import {useMushafSettingsStore} from '@/store/mushafSettingsStore';
-import {digitalKhattDataService} from '@/services/mushaf/DigitalKhattDataService';
+import {
+  getDkFontFamily, // @ai
+  useMushafSettingsStore,
+} from '@/store/mushafSettingsStore';
 import {getRewayahShortLabel} from '@/utils/rewayahLabels';
+// @ai-start
+import {showToast} from '@/utils/toastUtils';
+import {useRewayahVerseTexts} from '@/components/share/useRewayahVerseTexts';
+import {
+  formatQuranCitation,
+  formatVerseRange,
+  joinVerseTexts,
+  resolveVerseTexts,
+} from '@/components/share/rewayahVerseText';
+// @ai-end
 
 const surahData = require('@/data/surahData.json') as Array<{
   id: number;
@@ -43,17 +55,6 @@ const saheehData =
     string,
     {t?: string}
   >;
-
-interface QuranEntry {
-  verse_key: string;
-  text: string;
-}
-const quranRaw = require('@/data/quran.json') as Record<string, QuranEntry>;
-const textByKey: Record<string, string> = {};
-for (const key of Object.keys(quranRaw)) {
-  const entry = quranRaw[key];
-  if (entry?.verse_key) textByKey[entry.verse_key] = entry.text;
-}
 
 export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
   const {theme, isDarkMode} = useTheme();
@@ -67,18 +68,18 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
 
   const payload = props.payload;
   const verseKey = payload?.verseKey ?? '';
-  const verseKeys = payload?.verseKeys ?? [verseKey];
+  // @ai-start
+  const payloadVerseKeys = payload?.verseKeys;
+  const verseKeys = useMemo(
+    () => payloadVerseKeys ?? [verseKey],
+    [payloadVerseKeys, verseKey],
+  );
+  // @ai-end
 
   const fontMgr = useMushafFontMgr();
   const quranCommonTypeface = mushafPreloadService.quranCommonTypeface;
 
   const mushafRenderer = useMushafSettingsStore(s => s.mushafRenderer);
-  const fontFamily =
-    mushafRenderer === 'dk_indopak'
-      ? 'DigitalKhattIndoPak'
-      : mushafRenderer === 'dk_v1'
-        ? 'DigitalKhattV1'
-        : 'DigitalKhattV2';
 
   // Preview width (sheet padding = 16*2, small inset = 8*2)
   const previewWidth = screenWidth - moderateScale(48);
@@ -86,47 +87,31 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
   // Capture canvas: target 1080 physical pixels
   const captureLogicalWidth = 1080 / PixelRatio.get();
 
-  // Build text for "Share as Text" fallback
-  const mushafRewayah = useMushafSettingsStore(s => s.rewayah);
-  const rewayah = mushafRewayah;
+  // @ai-start
+  // This sheet shares the active mushaf rewayah. Its text comes only from
+  // that rewayah's words (never the static Hafs JSON under a rewayah label).
+  const rewayah = useMushafSettingsStore(s => s.rewayah);
+  const fontFamily = getDkFontFamily(mushafRenderer, rewayah);
+  const verseTexts = useRewayahVerseTexts(verseKeys, rewayah);
 
-  const {arabicText, translation, verseRefText} = useMemo(() => {
-    const arabicParts: string[] = [];
+  const {translation, verseRefText} = useMemo(() => {
     const translationParts: string[] = [];
     for (const vk of verseKeys) {
-      const arabic =
-        digitalKhattDataService.getVerseText(vk, rewayah) || textByKey[vk];
-      if (arabic) arabicParts.push(arabic);
       const trans = saheehData[vk]?.t;
       if (trans) translationParts.push(trans);
     }
-
-    const firstKey = verseKeys[0];
-    const lastKey = verseKeys[verseKeys.length - 1];
-    const [firstSurah, firstAyah] = firstKey.split(':');
-    const [lastSurah, lastAyah] = lastKey.split(':');
+    const [firstSurah] = verseKeys[0].split(':');
     const surah = surahData.find(s => s.id === parseInt(firstSurah, 10));
     const surahName = surah?.name ?? '';
-
-    let ref: string;
-    if (firstSurah === lastSurah) {
-      ref =
-        firstAyah === lastAyah
-          ? `${firstSurah}:${firstAyah}`
-          : `${firstSurah}:${firstAyah}-${lastAyah}`;
-    } else {
-      ref = `${firstSurah}:${firstAyah} - ${lastSurah}:${lastAyah}`;
-    }
-
     return {
-      arabicText: arabicParts.join('\n'),
       translation: translationParts.join('\n'),
-      verseRefText: `${surahName} ${ref}`,
+      verseRefText: `${surahName} ${formatVerseRange(verseKeys)}`,
     };
-  }, [verseKeys, rewayah]);
+  }, [verseKeys]);
+  // @ai-end
 
   const handleShareAsImage = useCallback(async () => {
-    if (isCapturing) return;
+    if (isCapturing || verseTexts.status !== 'ready') return; // @ai
     setIsCapturing(true);
     lightHaptics();
 
@@ -141,18 +126,32 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
     } finally {
       setIsCapturing(false);
     }
-  }, [isCapturing, captureCanvasRef]);
+  }, [isCapturing, captureCanvasRef, verseTexts.status]); // @ai
 
+  // @ai-start
   const handleShareAsText = useCallback(async () => {
     lightHaptics();
-    const ref =
-      rewayah === 'hafs'
-        ? `Quran ${verseRefText}`
-        : `Quran ${verseRefText} · ${getRewayahShortLabel(rewayah)}`;
-    const message = `${arabicText}\n\n${translation}\n\n-- ${ref}`;
-    await Share.share({message});
+    const result =
+      verseTexts.status === 'ready'
+        ? verseTexts
+        : await resolveVerseTexts(verseKeys, rewayah);
+    if (result.status !== 'ready') {
+      showToast(
+        `Couldn't load the ${getRewayahShortLabel(rewayah)} text`,
+        'Nothing was shared. Please try again.',
+        'error',
+      );
+      return;
+    }
+    const parts = [
+      joinVerseTexts(result.texts),
+      translation,
+      `-- ${formatQuranCitation(verseRefText, result.rewayah)}`,
+    ].filter(Boolean);
+    await Share.share({message: parts.join('\n\n')});
     SheetManager.hideAll();
-  }, [arabicText, translation, verseRefText, rewayah]);
+  }, [verseTexts, verseKeys, rewayah, translation, verseRefText]);
+  // @ai-end
 
   if (!payload || !fontMgr) return null;
 
@@ -170,34 +169,53 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
 
         {/* Visible preview */}
         <View style={styles.previewContent}>
-          <ShareCardPreview
-            verseKeys={verseKeys}
-            isDarkMode={isDarkMode}
-            showWatermark={showWatermark}
-            showBasmallah={showBasmallah}
-            fontMgr={fontMgr}
-            quranCommonTypeface={quranCommonTypeface}
-            fontFamily={fontFamily}
-            width={previewWidth}
-            rewayah={rewayah}
-          />
+          {/* @ai-start */}
+          {verseTexts.status === 'ready' ? (
+            <ShareCardPreview
+              verseKeys={verseKeys}
+              verseTexts={verseTexts.texts}
+              isDarkMode={isDarkMode}
+              showWatermark={showWatermark}
+              showBasmallah={showBasmallah}
+              fontMgr={fontMgr}
+              quranCommonTypeface={quranCommonTypeface}
+              fontFamily={fontFamily}
+              width={previewWidth}
+              rewayah={verseTexts.rewayah}
+            />
+          ) : verseTexts.status === 'loading' ? (
+            <ActivityIndicator size="small" color={theme.colors.text} />
+          ) : (
+            <Pressable onPress={verseTexts.retry} accessibilityRole="button">
+              <Text style={styles.toggleLabel}>
+                Couldn&apos;t load the {getRewayahShortLabel(rewayah)} text. Tap
+                to try again.
+              </Text>
+            </Pressable>
+          )}
+          {/* @ai-end */}
         </View>
 
         {/* Hidden capture canvas — 1080px physical, positioned off-screen */}
-        <View style={styles.hiddenCanvas} pointerEvents="none">
-          <ShareCardPreview
-            canvasRef={captureCanvasRef}
-            verseKeys={verseKeys}
-            isDarkMode={isDarkMode}
-            showWatermark={showWatermark}
-            showBasmallah={showBasmallah}
-            fontMgr={fontMgr}
-            quranCommonTypeface={quranCommonTypeface}
-            fontFamily={fontFamily}
-            width={captureLogicalWidth}
-            rewayah={rewayah}
-          />
-        </View>
+        {/* @ai-start */}
+        {verseTexts.status === 'ready' && (
+          <View style={styles.hiddenCanvas} pointerEvents="none">
+            <ShareCardPreview
+              canvasRef={captureCanvasRef}
+              verseKeys={verseKeys}
+              verseTexts={verseTexts.texts}
+              isDarkMode={isDarkMode}
+              showWatermark={showWatermark}
+              showBasmallah={showBasmallah}
+              fontMgr={fontMgr}
+              quranCommonTypeface={quranCommonTypeface}
+              fontFamily={fontFamily}
+              width={captureLogicalWidth}
+              rewayah={verseTexts.rewayah}
+            />
+          </View>
+        )}
+        {/* @ai-end */}
 
         {/* Basmallah toggle */}
         <View style={styles.toggleRow}>
@@ -238,9 +256,15 @@ export const VerseShareSheet = (props: SheetProps<'verse-share'>) => {
         {/* Share buttons */}
         <View style={styles.buttonsContainer}>
           <Pressable
-            style={[styles.primaryButton, isCapturing && styles.buttonDisabled]}
+            // @ai-start
+            style={[
+              styles.primaryButton,
+              (isCapturing || verseTexts.status !== 'ready') &&
+                styles.buttonDisabled,
+            ]}
+            // @ai-end
             onPress={handleShareAsImage}
-            disabled={isCapturing}>
+            disabled={isCapturing || verseTexts.status !== 'ready'}>
             {isCapturing ? (
               <ActivityIndicator size="small" color={theme.colors.background} />
             ) : (
