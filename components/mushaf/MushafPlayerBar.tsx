@@ -4,6 +4,11 @@
  * Idle state:   [Search] ---- [Play] ---- [...]
  * Active state: [Stop]  ---- [Prev] [Play/Pause] [Next] ---- [...]
  *                           Surah Name S:A (centered below)
+ *
+ * The verse reference comes from the store's currentVerseLabel, which is in
+ * the numbering of the mushaf on screen (a Warsh reciter in a Warsh mushaf
+ * shows Warsh numbers). Surahs whose timing numbering is unknown show no
+ * verse and disable previous / next ayah.
  */
 
 import React, {useCallback} from 'react';
@@ -37,7 +42,10 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
 
   const playbackState = useMushafPlayerStore(s => s.playbackState);
   const currentSurah = useMushafPlayerStore(s => s.currentSurah);
-  const currentAyah = useMushafPlayerStore(s => s.currentAyah);
+  const currentVerseLabel = useMushafPlayerStore(s => s.currentVerseLabel);
+  const verseTrackingUnavailable = useMushafPlayerStore(
+    s => s.numberingMode === 'disabled',
+  );
   const timestampError = useMushafPlayerStore(s => s.timestampError);
   const isIdle = playbackState === 'idle';
   const isLoading = playbackState === 'loading';
@@ -173,7 +181,16 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
   }
 
   // ── Active state (playing / paused / loading) ───────────────────────
-  const infoText = `${surahName} ${currentSurah}:${currentAyah}`;
+  let infoText = surahName;
+  if (verseTrackingUnavailable) {
+    infoText = `${surahName} · Verse tracking unavailable`;
+  } else if (currentVerseLabel) {
+    infoText = `${surahName} ${currentVerseLabel}`;
+  }
+  const verseNavDisabled = verseTrackingUnavailable;
+  const chevronColor = verseNavDisabled
+    ? Color(theme.colors.text).alpha(0.3).toString()
+    : theme.colors.text;
 
   return (
     <View style={styles.activeContainer}>
@@ -195,12 +212,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           <Pressable
             style={styles.chevronButton}
             onPress={handlePrevAyah}
+            disabled={verseNavDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Previous ayah">
+            accessibilityLabel="Previous ayah"
+            accessibilityState={{disabled: verseNavDisabled}}>
             <Feather
               name="chevrons-left"
               size={moderateScale(22)}
-              color={theme.colors.text}
+              color={chevronColor}
             />
           </Pressable>
 
@@ -224,12 +243,14 @@ export const MushafPlayerBar: React.FC<MushafPlayerBarProps> = ({
           <Pressable
             style={styles.chevronButton}
             onPress={handleNextAyah}
+            disabled={verseNavDisabled}
             accessibilityRole="button"
-            accessibilityLabel="Next ayah">
+            accessibilityLabel="Next ayah"
+            accessibilityState={{disabled: verseNavDisabled}}>
             <Feather
               name="chevrons-right"
               size={moderateScale(22)}
-              color={theme.colors.text}
+              color={chevronColor}
             />
           </Pressable>
         </View>
