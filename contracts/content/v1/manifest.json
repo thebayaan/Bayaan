@@ -10,8 +10,8 @@
       "version": 1,
       "status": "active",
       "upstream_schema_version": 1,
-      "bytes": 292,
-      "sha256": "783f40ae135f045f446f158611fe78302f116e48fbd45e644d925317cd692ffe",
+      "bytes": 420,
+      "sha256": "dfc2bf743e683e8f5d0f985a0272ebfaa4df0f39650800938c8f2db9fcd75981",
       "meta": {
         "name": "Synthetic Tafsir",
         "language": "en",
@@ -25,8 +25,8 @@
       "version": 1,
       "status": "active",
       "upstream_schema_version": 1,
-      "bytes": 275,
-      "sha256": "807d96a625d103c7a298b410e627a0df10f512d02925344e7d9b811adba746b7",
+      "bytes": 418,
+      "sha256": "79d8c79d911ff25cbd7b9118551b65001cd82cc08d2f857610634cb51169971e",
       "meta": {
         "name": "Synthetic Translation",
         "language": "en",
